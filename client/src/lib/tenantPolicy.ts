@@ -1,0 +1,258 @@
+import type { TenantKey } from "@/types/tenant";
+import {
+  getTenantDefaultRoute as getTenantDefaultRouteFromRegistry,
+  hasTenantModule,
+  type PlatformModuleKey,
+} from "../../../tenants/index";
+
+const CORE_BACKOFFICE_TENANTS: TenantKey[] = ["bdo", "exportunity", "zone", "zogueland", "rayon1km"];
+const TENANTS_EXPORTUNITY_ZONE: TenantKey[] = ["exportunity", "zone", "rayon1km"];
+const ALL_TENANTS: TenantKey[] = ["bdo", "exportunity", "zone", "mindbase", "met", "vs", "hoz", "zogueland", "rayon1km"];
+
+function normalizePath(value: string) {
+  const raw = String(value || "").trim();
+  if (!raw.startsWith("/")) return "";
+  const noQuery = raw.split(/[?#]/)[0] || raw;
+  if (noQuery.length > 1 && noQuery.endsWith("/")) return noQuery.slice(0, -1);
+  return noQuery || "/";
+}
+
+function matchesPrefix(path: string, prefix: string) {
+  return path === prefix || path.startsWith(`${prefix}/`);
+}
+
+const RULES: Array<{ prefix: string; tenants: TenantKey[] }> = [
+  // Canonical admin IA aliases available platform-wide.
+  { prefix: "/admin/dashboard", tenants: [...ALL_TENANTS] },
+  { prefix: "/admin/orders", tenants: [...ALL_TENANTS] },
+  { prefix: "/admin/products", tenants: [...ALL_TENANTS] },
+  { prefix: "/admin/collections", tenants: [...ALL_TENANTS] },
+  { prefix: "/admin/users", tenants: [...ALL_TENANTS] },
+  { prefix: "/admin/agents", tenants: [...ALL_TENANTS] },
+  { prefix: "/admin/wallets", tenants: [...ALL_TENANTS] },
+  { prefix: "/admin/analytics", tenants: [...ALL_TENANTS] },
+  { prefix: "/admin/map", tenants: [...ALL_TENANTS] },
+  { prefix: "/admin/settings", tenants: [...ALL_TENANTS] },
+  { prefix: "/admin/brand", tenants: [...ALL_TENANTS] },
+  { prefix: "/admin/modules", tenants: [...ALL_TENANTS] },
+
+  // Canonical commerce routes (platform-wide, gated by module access).
+  { prefix: "/store", tenants: [...ALL_TENANTS] },
+  { prefix: "/collections", tenants: [...ALL_TENANTS] },
+  { prefix: "/product", tenants: [...ALL_TENANTS] },
+  { prefix: "/cart", tenants: [...ALL_TENANTS] },
+  { prefix: "/checkout", tenants: [...ALL_TENANTS] },
+
+  // Mindbase is isolated from operations shell.
+  { prefix: "/mindbase", tenants: ["mindbase"] },
+  { prefix: "/discover", tenants: ["mindbase"] },
+  { prefix: "/explore", tenants: ["mindbase"] },
+  { prefix: "/studio", tenants: ["mindbase"] },
+  { prefix: "/build", tenants: ["mindbase"] },
+  { prefix: "/workspaces", tenants: ["mindbase"] },
+  { prefix: "/docs/api", tenants: ["mindbase"] },
+  { prefix: "/i", tenants: ["mindbase"] },
+  { prefix: "/c", tenants: ["mindbase"] },
+  { prefix: "/admin/mindbase", tenants: ["mindbase"] },
+
+  // BDO specific.
+  { prefix: "/bureaus", tenants: ["bdo"] },
+  { prefix: "/admin/stamped-gold", tenants: ["bdo"] },
+  { prefix: "/machinery", tenants: ["bdo"] },
+  { prefix: "/finance", tenants: ["bdo"] },
+  { prefix: "/territories", tenants: ["bdo"] },
+  { prefix: "/admin/territories", tenants: ["bdo"] },
+
+  // Exportunity + zone.
+  { prefix: "/zone", tenants: [...ALL_TENANTS] },
+  { prefix: "/retail", tenants: [...ALL_TENANTS] },
+  { prefix: "/marketplace", tenants: [...ALL_TENANTS] },
+  { prefix: "/shop", tenants: [...ALL_TENANTS] },
+  { prefix: "/admin/marketplace", tenants: TENANTS_EXPORTUNITY_ZONE },
+  { prefix: "/seller-dashboard", tenants: TENANTS_EXPORTUNITY_ZONE },
+  { prefix: "/seller", tenants: TENANTS_EXPORTUNITY_ZONE },
+  { prefix: "/sellers", tenants: TENANTS_EXPORTUNITY_ZONE },
+  { prefix: "/admin/equipment-ops", tenants: TENANTS_EXPORTUNITY_ZONE },
+
+  // MET.
+  { prefix: "/maison-modele", tenants: ["met"] },
+  { prefix: "/briques", tenants: ["met"] },
+  { prefix: "/plans", tenants: ["met"] },
+  { prefix: "/devis", tenants: ["met"] },
+  { prefix: "/realisations", tenants: ["met"] },
+  { prefix: "/blog", tenants: ["met"] },
+  { prefix: "/contact", tenants: ["met", "vs", "hoz", "zogueland", "rayon1km"] },
+  { prefix: "/mentions-legales", tenants: ["met"] },
+  { prefix: "/politique-confidentialite", tenants: ["met"] },
+  { prefix: "/admin/met", tenants: ["met"] },
+
+  // VS.
+  { prefix: "/press", tenants: ["vs"] },
+  { prefix: "/portfolio", tenants: ["vs"] },
+  { prefix: "/insights", tenants: ["vs"] },
+  { prefix: "/admin/vs", tenants: ["vs"] },
+
+  // HOZ.
+  { prefix: "/books", tenants: ["hoz"] },
+  { prefix: "/jewelry", tenants: ["hoz"] },
+  { prefix: "/admin/hoz", tenants: ["hoz"] },
+
+  // Zogueland.
+  { prefix: "/admin/zogueland", tenants: ["zogueland"] },
+  // Rayon 1km.
+  { prefix: "/admin/rayon1km", tenants: ["rayon1km"] },
+];
+
+const SHARED_SAFE_PREFIXES = [
+  "/switch",
+  "/auth",
+  "/login",
+  "/register",
+  "/setup-password",
+  "/application-status",
+  "/install",
+  "/pay",
+  "/wallet/topup/return",
+  "/wallet/topup/flutterwave/return",
+];
+
+const SHARED_BACKOFFICE_PREFIXES = [
+  "/dashboard",
+  "/companies",
+  "/agents",
+  "/agents-os",
+  "/operations/agents",
+  "/commerce/ai-marketplace/agents",
+  "/ai-team",
+  "/agenda",
+  "/meetings",
+  "/tasks",
+  "/goals",
+  "/actions",
+  "/knowledge",
+  "/expert-clones",
+  "/mail",
+  "/webmail",
+  "/notifications",
+  "/admin/workstations",
+  "/admin/evidence",
+  "/admin/action-forge",
+  "/admin/inbox",
+  "/admin/notifications",
+  "/admin/communications",
+  "/admin/settings",
+  "/admin/system",
+  "/admin/wallet",
+  "/admin/email",
+  "/admin/posts",
+  "/admin/press",
+  "/admin/library",
+  "/admin/media",
+  "/admin/screenshots",
+  "/admin/contacts",
+  "/contracts",
+  "/delivery/admin",
+];
+
+const ROUTE_MODULE_RULES: Array<{ prefix: string; module: PlatformModuleKey }> = [
+  { prefix: "/store", module: "products" },
+  { prefix: "/collections", module: "collections" },
+  { prefix: "/product", module: "products" },
+  { prefix: "/cart", module: "cart" },
+  { prefix: "/checkout", module: "checkout" },
+  { prefix: "/admin/orders", module: "checkout" },
+  { prefix: "/admin/products", module: "products" },
+  { prefix: "/admin/collections", module: "collections" },
+  { prefix: "/admin/agents", module: "agents" },
+  { prefix: "/admin/wallets", module: "wallet" },
+  { prefix: "/admin/analytics", module: "analytics" },
+  { prefix: "/admin/map", module: "map" },
+  { prefix: "/dashboard", module: "analytics" },
+  { prefix: "/agents", module: "agents" },
+  { prefix: "/admin/wallet", module: "wallet" },
+  { prefix: "/wallet", module: "wallet" },
+  { prefix: "/admin/map", module: "map" },
+  { prefix: "/territories", module: "map" },
+  { prefix: "/admin/territories", module: "map" },
+  { prefix: "/admin/stamped-gold", module: "products" },
+  { prefix: "/devis", module: "bulk_quotes" },
+  { prefix: "/admin/met/estimates", module: "bulk_quotes" },
+  { prefix: "/books", module: "collections" },
+  { prefix: "/jewelry", module: "collections" },
+];
+
+function resolveRouteModule(path: string): PlatformModuleKey | null {
+  for (const rule of ROUTE_MODULE_RULES) {
+    if (matchesPrefix(path, rule.prefix)) return rule.module;
+  }
+  return null;
+}
+
+export function getAllowedTenantsForPath(path: string): TenantKey[] {
+  const normalized = normalizePath(path);
+  if (!normalized) return [];
+
+  if (normalized === "/") {
+    return [...ALL_TENANTS];
+  }
+
+  if (normalized === "/admin" || matchesPrefix(normalized, "/admin/password")) {
+    return [...ALL_TENANTS];
+  }
+
+  for (const rule of RULES) {
+    if (matchesPrefix(normalized, rule.prefix)) return [...rule.tenants];
+  }
+
+  if (SHARED_BACKOFFICE_PREFIXES.some((prefix) => matchesPrefix(normalized, prefix))) {
+    return [...CORE_BACKOFFICE_TENANTS];
+  }
+
+  if (SHARED_SAFE_PREFIXES.some((prefix) => matchesPrefix(normalized, prefix))) {
+    return [...ALL_TENANTS];
+  }
+
+  if (
+    normalized.startsWith("/admin") ||
+    normalized.startsWith("/dashboard") ||
+    normalized.startsWith("/operations") ||
+    normalized.startsWith("/trade") ||
+    normalized.startsWith("/assets") ||
+    normalized.startsWith("/gold") ||
+    normalized.startsWith("/media") ||
+    normalized.startsWith("/inbox") ||
+    normalized.startsWith("/internal") ||
+    normalized.startsWith("/actions") ||
+    normalized.startsWith("/goals") ||
+    normalized.startsWith("/tasks") ||
+    normalized.startsWith("/agenda") ||
+    normalized.startsWith("/meetings") ||
+    normalized.startsWith("/ai-team") ||
+    normalized.startsWith("/companies") ||
+    normalized.startsWith("/agents") ||
+    normalized.startsWith("/knowledge") ||
+    normalized.startsWith("/expert-clones") ||
+    normalized.startsWith("/mail") ||
+    normalized.startsWith("/notifications")
+  ) {
+    return [...CORE_BACKOFFICE_TENANTS];
+  }
+
+  return [...ALL_TENANTS];
+}
+
+export function isTenantRouteAllowed(path: string, tenantKey: TenantKey) {
+  const normalized = normalizePath(path);
+  if (!normalized) return false;
+
+  if (!getAllowedTenantsForPath(normalized).includes(tenantKey)) return false;
+
+  const routeModule = resolveRouteModule(normalized);
+  if (!routeModule) return true;
+
+  return hasTenantModule(tenantKey, routeModule);
+}
+
+export function getTenantDefaultRoute(tenantKey: TenantKey) {
+  return getTenantDefaultRouteFromRegistry(tenantKey);
+}

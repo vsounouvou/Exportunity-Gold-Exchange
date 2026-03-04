@@ -1,0 +1,246 @@
+Perfect, then we lock this in once and for all:
+
+* **Every capability (email, Google, APIs, etc.) = an Action.**
+* **Every Action can be assigned to specific agents.**
+* **By default, the Chairman’s Assistant can perform ALL Actions.**
+
+I’ll refine the **Actions page spec** so your dev knows exactly how to implement that behavior.
+
+---
+
+## 1. Global Rule: Chairman’s Assistant = Full Capabilities by Default
+
+System-level rule:
+
+> For each company, the **Chairman’s Assistant** is always:
+>
+> * Allowed to call **all Actions** that exist for that company,
+> * Unless explicitly disabled for legal/safety reasons at platform level.
+
+That means:
+
+* You don’t have to manually assign actions to the Chairman’s Assistant.
+* Whenever a new Action is added (e.g. “send_email_via_Gmail”, “google_calendar_create_event”), the Chairman’s Assistant automatically has access.
+* It can:
+
+  * Analyze the running chat,
+  * Decide *which* Action to trigger,
+  * Execute that Action itself **or** decide which specialized agent should execute it (if allowed).
+
+So in code/permissions:
+
+* `chairman_assistant.allowedActions = ALL_BY_DEFAULT`
+* Other agents have **subset** of actions.
+
+---
+
+## 2. Updating the Actions Page: Assign Agents Per Action
+
+You said:
+
+> “For every action we must be able to, when we click on the action, assign it to an agent, or know which agents can perform that action.”
+
+We already have the **Action Detail panel** under **Actions → Catalog**.
+We now extend it with a **“Agents Allowed”** block.
+
+### 2.1 In the Action Detail Panel (Catalog tab)
+
+Under the existing fields (description, inputs, outputs, cost), add:
+
+### Block: **Agents Who Can Perform This Action**
+
+Layout:
+
+* Small note at top:
+
+  > “By default, the Chairman’s Assistant can perform this action for this company.”
+
+* A **searchable list** of agents for the selected company, with a per-agent setting:
+
+Columns:
+
+* Agent name (e.g. `Sales Agent – West Africa`)
+* Role / Department (e.g. `Sales / Business Development`)
+* Permission for this Action:
+
+  * `Not allowed`
+  * `Allowed`
+  * `Allowed but needs approval`
+
+Controls:
+
+* For each agent, a dropdown or segmented buttons:
+
+  * `None | Allowed | Needs approval`
+* Optional buttons for bulk:
+
+  * `Select all Sales agents`
+  * `Apply “Allowed” to all selected`
+
+Example for Action `send_email`:
+
+* Chairman’s Assistant → implicitly “Allowed” (shown as label “Always allowed”)
+* Sales Agent – West Africa → Allowed
+* Sales Agent – Europe → Allowed
+* Finance Agent → Not allowed
+* Compliance Agent → Needs approval
+
+When the Chairman changes these toggles, the backend updates:
+
+```ts
+ActionPermission {
+  actionId,
+  agentId,
+  mode: 'none' | 'allowed' | 'needs_approval'
+}
+```
+
+This is exactly what you want: **per Action**, we know **which agents can perform it**.
+
+---
+
+## 3. How This Feels in Practice (Chat + Actions)
+
+You also said:
+
+> “Chairman Assistant… within a chat, analyze the chat and make the decision of performing that action.”
+
+That’s the runtime behavior:
+
+### 3.1 Flow Inside a Chat
+
+Chairman (or any human) writes in chat with the Chairman’s Assistant:
+
+> “Send a follow-up email to all leads we talked to yesterday.”
+
+The Chairman’s Assistant:
+
+1. **Understands intent**:
+
+   * Needs:
+
+     * `search_memory` (to get yesterday’s leads),
+     * `send_email` (for each lead).
+2. **Checks permissions**:
+
+   * For `send_email`:
+
+     * Chairman’s Assistant: “Allowed by default” → can execute.
+   * If instead the Assistant wants to delegate to `Sales Agent`:
+
+     * Checks if `Sales Agent` is “Allowed” for `send_email`.
+3. **Decides who executes**:
+
+   * Option A:
+
+     * Assistant executes `send_email` itself.
+   * Option B:
+
+     * Assistant delegates the Action to the `Sales Agent` (internal orchestration).
+4. **Executes Action(s)**:
+
+   * Calls central `executeAction('send_email', payload, actorId)` for each email.
+5. **Logs Actions** in Executions:
+
+   * You see them later under:
+
+     * `Executions → filter by action=send_email`
+
+If `Needs approval` is set for a given agent/action combo:
+
+* The Assistant:
+
+  * Prepares the Action,
+  * Sets status `needs_approval`,
+  * Tells you:
+
+    > “I prepared 15 emails for approval. Do you want me to send them?”
+* On “yes”, the system:
+
+  * Executes the pending `send_email` actions.
+
+The important part:
+**All of this uses the same Action + Permission model defined in the Actions page.**
+
+---
+
+## 4. External APIs (Google, Email, etc.) as Actions with Agent Assignment
+
+For integrations like Google, Gmail, etc., we define Actions such as:
+
+* `send_email_gmail`
+* `google_calendar_create_event`
+* `google_drive_upload_file`
+* `google_sheets_read_range`
+* `google_sheets_write_range`
+
+Each of these appears in:
+
+* **Actions → Catalog** (as individual actions),
+* With its own **“Agents who can perform this action”** section.
+
+So you can say:
+
+* Only Chairman’s Assistant + Sales Agent can `send_email_gmail`.
+* Only Chairman’s Assistant + Finance Agent can `google_sheets_write_range`.
+* Only Orchestrator or Admin agents can `google_drive_upload_file`.
+
+Again, the Chairman’s Assistant is always allowed by default — it just checks whether a **specialist agent** can/should execute the action, or if it should handle it personally.
+
+---
+
+## 5. Concrete Dev Adjustments (based on your last comments)
+
+Here’s the exact dev to-do list to align with your vision:
+
+1. **Default Permission for Chairman’s Assistant**
+
+   * In the permission system, treat the Chairman’s Assistant as:
+
+     * `allowed` for all Actions by default (except those globally disabled).
+   * Reflect this in the UI as a label:
+
+     * “Chairman’s Assistant: Always allowed (system default)”
+
+2. **Add “Agents who can perform this action” section to Action Detail**
+
+   * On **Actions → Catalog**, when clicking an Action:
+
+     * Show a panel listing all agents (for the current company) with a per-agent permission:
+
+       * `Not allowed`
+       * `Allowed`
+       * `Allowed but needs approval`
+   * Save changes to a `ActionPermission` model.
+
+3. **Make sure external capabilities (Gmail, Google, APIs) are represented as Actions**
+
+   * `send_email_*`,
+   * `google_calendar_*`,
+   * `google_drive_*`,
+   * etc.
+   * All of them appear in the Catalog and can be assigned to agents the same way.
+
+4. **Update the orchestration layer (Chairman’s Assistant runtime)**
+
+   * When the Assistant decides to do something:
+
+     1. Map intent → Action(s)
+     2. Choose **who performs** the Action:
+
+        * Itself (always allowed),
+        * Or a specialized agent (check permissions).
+     3. Execute via central `executeAction()`.
+   * If `needs_approval`, create a pending execution and notify Chairman.
+
+5. **Ensure the Actions → Permissions tab and the per-Action “Agents who can perform this” stay synchronized**
+
+   * Editing per-Action (in Catalog) should update the matrix in Permissions.
+   * Editing in Permissions should reflect back in per-Action views.
+
+---
+
+If you want, next I can:
+
+* Draft an example **UI wireframe text** for one Action detail (e.g. `send_email`) with all the fields and the agent assignment block, so your dev sees exactly what needs to be on that screen, or
+* Propose a **sample list of actions** specific to your world (gold trade, AI outreach, reporting) with categories and descriptions so your initial Catalog is very concrete.

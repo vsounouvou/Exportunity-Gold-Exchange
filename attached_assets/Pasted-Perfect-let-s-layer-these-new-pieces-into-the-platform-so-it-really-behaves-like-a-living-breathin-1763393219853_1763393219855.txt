@@ -1,0 +1,581 @@
+Perfect, let’s layer these new pieces into the platform so it really behaves like a living, breathing company with real “people” (agents), real conversations, and real metrics.
+
+I’ll focus on **four big additions** and clearly show **where they live in the UI**:
+
+1. Dynamic chatrooms & conversation naming
+2. Meetings history (including AI-only meetings)
+3. Agent performance & token usage dashboards
+4. Agent creation/editing with full “HR-style” profiles (birthday, origin, CV, personality)
+
+I’ll plug them into the architecture we already designed so the dev can see exactly *what goes where*.
+
+---
+
+## 1. Dynamic Chatrooms & Conversation Naming
+
+### 1.1 Concept
+
+Every internal conversation between agents lives in **chatrooms** (channels + threads), but we don’t want meaningless names like `chat-12345`.
+
+We want:
+
+* **Smart, evolving titles** like:
+
+  * “Initial Outreach Strategy – West Africa”
+  * “Investor Update Draft – March 2026”
+  * “New Subsidiary Setup – Ghana”
+
+And as the conversation evolves, the **name can change automatically** so humans always understand what’s going on.
+
+### 1.2 Where in the UI
+
+Inside each **Company Workspace**:
+
+* Left sidebar:
+
+  * `Internal Conversations` (already there)
+
+    * `All Channels`
+    * `#strategy`
+    * `#sales_pipeline`
+    * `#finance`
+    * `#legal`
+    * etc.
+
+When you click a channel, you see:
+
+* **Threads** (each is a conversation, with an evolving name)
+* Agents talking to each other
+* Summaries + decisions
+
+### 1.3 Dynamic Naming Logic
+
+Every thread has:
+
+* `thread_id`
+* `current_title`
+* `previous_titles` (history)
+* `topic_tags`
+* `owner_agent_id` (who started it)
+* `created_at`, `updated_at`
+
+**Naming rules:**
+
+1. **Initial Name:**
+
+   * When an agent starts a new conversation, we auto-generate a name from:
+
+     * The **first message**,
+     * The **agent’s role**, and
+     * The **context** (channel + company type).
+   * E.g., if Sales Agent starts:
+
+     > “We need to define our email script for French-speaking logistics leads in Abidjan.”
+   * Title becomes:
+
+     * “Email Script – Logistics Leads (Abidjan, FR)”
+
+2. **Automatic Renaming During Evolution:**
+
+   * Every N messages or when the topic shifts significantly, a **Conversation Title Agent** (small internal function) runs:
+
+     * It summarizes the *current* topic,
+     * Compares with existing title,
+     * If different enough → propose a new title.
+   * Example:
+
+     * Old title: “Email Script – Logistics Leads (Abidjan, FR)”
+     * After 30 messages, conversation shifts to pricing tiers:
+
+       * New title: “Pricing & Discounts – Logistics Leads (Abidjan, FR)”
+   * The old title is stored in `previous_titles` for audit.
+
+3. **Visibility to Humans:**
+
+* Humans (Chairman, employees, investors with access) see:
+
+  * Current title at top.
+  * Hover → show “Previously titled: …”
+  * Tag chips like `#sales`, `#email_script`, `#pricing`.
+
+4. **Agent-Driven Renames:**
+
+* CEO Orchestrator or any agent can explicitly rename a thread:
+
+  * “I’m renaming this thread to: Q2 Pricing Experiments – Côte d’Ivoire.”
+* This is also logged.
+
+---
+
+## 2. Meetings – Including AI-only Meetings
+
+You want to:
+
+* See **which meetings have been had**,
+* Across rooms, agents, and humans,
+* And **understand what was discussed**.
+
+### 2.1 Types of Meetings
+
+1. **AI + Human meetings**
+
+   * On Google/Outlook calendar, with real time slots.
+
+2. **AI-only meetings**
+
+   * Scheduled internal “syncs” between agents:
+
+     * They happen as **structured conversations** in a special channel (e.g. `#executive_meetings`).
+
+### 2.2 Where in the UI
+
+In each Company Workspace:
+
+* `Meetings & Calendar` page (we already designed it) now has:
+
+Tabs:
+
+1. **Calendar View**
+
+   * Real calendar (synced with human’s calendar).
+   * Shows:
+
+     * Human meetings,
+     * Important AI-managed meetings that affect human schedule.
+
+2. **Meeting List**
+
+   * Filters:
+
+     * `Human-only (classic)`,
+     * `AI + Human`,
+     * `AI-only`.
+   * Each row:
+
+     * Title,
+     * Participants (agents + humans),
+     * Date & time,
+     * Channel / thread link,
+     * Status (scheduled, completed, cancelled).
+
+3. **Meeting Details**
+
+   * When you click a meeting:
+
+     * Agenda,
+     * Participants,
+     * Meeting notes (captured by Knowledge Agent),
+     * Decisions & tasks,
+     * Links to:
+
+       * Internal conversation threads,
+       * Related KPIs,
+       * Commitments made (e.g. “Increase outreach budget”).
+
+### 2.3 AI-only Meetings
+
+Example:
+
+* “Weekly Sales Review”
+  Participants: CEO Orchestrator, Sales Agent, Outreach Agent.
+
+Behaviour:
+
+* Scheduled by CEO Orchestrator.
+* At the scheduled time:
+
+  * The system triggers a dedicated internal thread in `#executive_meetings`:
+
+    * Title: “Weekly Sales Review – 2025-11-17.”
+  * Agents exchange:
+
+    * Performance numbers,
+    * Blockers,
+    * Proposals.
+  * After conversation:
+
+    * Knowledge Agent writes:
+
+      * Meeting summary,
+      * Decisions,
+      * Action items (tasks created).
+
+Humans can come later and **read** it like minutes of a meeting.
+
+---
+
+## 3. Agent Performance Dashboard
+
+You want a **real performance dashboard** like a manager’s HR / KPI cockpit.
+
+### 3.1 Where in the UI
+
+Inside each Company Workspace:
+
+* Left sidebar: add a new item (or a subpage under Agents):
+
+  * `Agent Performance`
+
+And at the **Chairman Console (My Group)** level:
+
+* A **Group Performance** section aggregating all companies & agents.
+
+### 3.2 Company-Level Agent Performance Page
+
+Layout:
+
+* Top filters:
+
+  * Time range (last 7 days / 30 days / quarter).
+  * Department (Sales, Finance, Legal, etc.).
+  * Agent selection.
+
+Sections:
+
+1. **Performance Overview**
+
+   * Cards:
+
+     * Total meetings booked (by all agents),
+     * Total deals closed,
+     * Total tasks completed,
+     * Total messages sent,
+     * Total revenue influenced.
+
+2. **Agent Ranking Table**
+
+   * Columns:
+
+     * Agent name & role,
+     * Department,
+     * Key KPI (e.g. meetings, leads, documents, etc.),
+     * KPI target vs actual,
+     * Cost (tokens + API),
+     * Cost per unit (e.g. cost per meeting),
+     * Performance index (AI-calculated score).
+
+3. **Agent Detail Panel (click any agent)**
+
+   * KPI breakdown:
+
+     * For Sales agents: calls, emails, meetings, conversion.
+     * For Finance: periods closed, distributions processed, errors avoided.
+     * For Legal: tasks completed, risk mitigated items.
+   * Trend graph: performance over time.
+   * Budget changes:
+
+     * When budget increased or decreased and why (AI explanation).
+   * Link to:
+
+     * Their internal conversations,
+     * Their tasks,
+     * Their meetings.
+
+### 3.3 Group-Level Performance (Chairman Console)
+
+Here you see:
+
+* Top-performing agents across *all* companies,
+* Companies with best ROI per token,
+* Underperforming agents flagged by Co-Agent.
+
+---
+
+## 4. Token Usage Dashboard
+
+You want to see:
+
+* What tokens are being used,
+* By which agents,
+* How much,
+* Over time.
+
+### 4.1 Where in UI
+
+Two places:
+
+1. Within a **Company Workspace**:
+
+   * `System & Tokens` page (or section under `Finance & Taxes`).
+
+2. In the **Chairman Console**:
+
+   * `System Usage` / `Compute & Tokens` for global view.
+
+### 4.2 Company Token Dashboard
+
+Sections:
+
+1. **Overview**
+
+   * Total tokens used (period).
+   * Estimated cost.
+   * Cost vs company budget.
+
+2. **By Agent**
+
+   * Table:
+
+     * Agent name & role,
+     * Tokens used,
+     * Cost,
+     * Share of total (%),
+     * Primary tasks (e.g. “Outreach, meeting scheduling”).
+
+3. **By Task Type**
+
+   * Buckets:
+
+     * Outreach & sales,
+     * Strategy & planning,
+     * Finance & legal,
+     * Knowledge processing,
+     * Investor reports.
+
+4. **Time Series Graph**
+
+   * Tokens/per day or per week.
+   * Spikes annotated with events:
+
+     * “Large outreach campaign launched.”
+     * “Investor report batch.”
+
+5. **Optimization Suggestions (from a “Cost Optimizer Agent”)**
+
+   * “We can reduce tokens by 15% if we:
+
+     * Shorten email drafts,
+     * Summarize knowledge less frequently,
+     * Reduce meeting frequency for low-performing agents.”
+
+---
+
+## 5. Agent Creation & Editing – With Human-like Profiles
+
+You want agents to feel like:
+
+* Real personnel,
+* With:
+
+  * Birthdays,
+  * Country of origin,
+  * CV,
+  * Personality traits.
+
+And you want to be able to **edit agents** easily.
+
+### 5.1 Where in the UI
+
+Inside a Company Workspace:
+
+* `Agents & Hierarchy` page (we already have).
+* From here:
+
+  * Click any agent → open **Agent Profile**.
+  * Button: `Create New Agent`.
+
+Also: A secondary page `Agent Directory` that lists all agents as “employees” of the company.
+
+### 5.2 Agent Profile Structure
+
+Every agent has:
+
+1. **Identity**
+
+   * Agent Name (e.g. “Aïcha – West Africa Sales Agent”)
+   * Avatar (you can choose / AI-generate it)
+   * Role Title (Sales Agent, Finance Agent, Legal Agent, etc.)
+   * Department (Sales, Finance, Legal, Knowledge, etc.)
+
+2. **HR-style Personal Information**
+
+   * “Birthday” (symbolic, not real age-critical)
+   * Country of origin (e.g. “Senegal”, “Ghana”, etc.)
+   * Timezone they “operate” in (for scheduling logic)
+   * Languages spoken (FR, EN, etc.)
+
+3. **CV / Background**
+
+   * Short paragraph (AI generated or edited by you):
+
+     * “Aïcha has 10 years of experience in B2B sales across Francophone West Africa, specializing in logistics & supply chain clients.”
+   * Skills list:
+
+     * Negotiation,
+     * Cold outreach,
+     * CRM management,
+     * French & English communication.
+   * Industry focus:
+
+     * Logistics, fintech, etc.
+
+4. **Personality Profile**
+
+   * Sliders or tags:
+
+     * Tone: Formal ↔ Friendly.
+     * Risk tolerance: Conservative ↔ Bold.
+     * Speed: Deliberate ↔ Fast-moving.
+     * Detail level: High-level ↔ Very detailed.
+   * These map into the agent’s system prompts & behavior:
+
+     * e.g. a “bold, fast, highly-detailed” Sales Agent will send more aggressive proposals with thorough information.
+
+5. **Job Description & KPIs**
+
+   * Mission:
+
+     * 1–3 sentences.
+   * Responsibilities:
+
+     * List of bullet points.
+   * KPIs:
+
+     * Meetings per week,
+     * Deals influenced,
+     * Response rate, etc.
+   * Budget & performance bonus rules:
+
+     * Base budget,
+     * Bonus per KPI unit.
+
+6. **Tools & Permissions**
+
+   * Email access (which account).
+   * Calendar.
+   * CRM.
+   * Doc & knowledge base.
+   * Payment or legal APIs (if relevant).
+   * Web research / browsing.
+
+7. **Autonomy Settings**
+
+   * Draft-only vs partial vs full auto.
+   * What decisions require human approval.
+
+8. **Lifecycle**
+
+   * Status: Active / Paused / Archived.
+   * Date “hired.”
+   * Date “promoted” (if hierarchy changes).
+   * “Birthday celebration” (optional playful features later – e.g. AI sends you a note: “It’s Aïcha’s 1-year work anniversary, here’s a summary of what she has achieved.”)
+
+### 5.3 Agent Editing Flow
+
+From **Agents & Hierarchy**:
+
+* Click on any agent node:
+
+  * Open the full profile on the right or in a modal.
+  * Editable sections:
+
+    * Identity (name, avatar),
+    * Personality,
+    * KPIs & budget,
+    * Tools & permissions.
+* Any change:
+
+  * Updates the agent’s system prompt & configuration.
+  * Is logged in an “AgentConfigHistory”.
+
+### 5.4 Creating a New Agent
+
+Click: `Create Agent` → opens **Agent Creation Wizard** (“Agent Studio”).
+
+Steps:
+
+1. **Role Definition**
+
+   * Ask:
+
+     * “What do you want this agent to do?”
+   * Or select from templates (Sales, Finance, Legal, etc.).
+   * Co-Agent suggests a role based on company gaps.
+
+2. **Profile & CV**
+
+   * AI proposes:
+
+     * Name,
+     * Country of origin,
+     * Background,
+     * Skills.
+   * You can accept or edit.
+
+3. **Personality & Tone**
+
+   * Slider-based:
+
+     * Tone (Formal/Friendly),
+     * Risk,
+     * Speed,
+     * Detail level.
+   * Preview text:
+
+     * Example of how emails/messages would sound.
+
+4. **Manager & Hierarchy**
+
+   * Choose:
+
+     * Who this agent reports to.
+     * Department.
+
+5. **Permissions & Tools**
+
+   * Checkboxes:
+
+     * Can send emails?
+     * Access CRM?
+     * Schedule meetings?
+     * Access finance/payments? (Careful.)
+     * Web research allowed?
+
+6. **Budget & KPI Objectives**
+
+   * Set:
+
+     * Initial monthly budget,
+     * Target KPIs,
+     * Bonus rules.
+
+7. **Confirmation**
+
+   * Summary page:
+
+     * Show: profile, personality, KPIs, tools, manager.
+   * Button:
+
+     * `Create Agent`.
+
+When you finish:
+
+* Agent created in DB.
+* Node appears in hierarchy.
+* CEO Orchestrator receives a notification:
+
+  * “New agent Aïcha hired for Francophone Sales. I’ll onboard her and assign initial tasks.”
+
+---
+
+## 6. Bringing It Together
+
+With these additions:
+
+* **Chatrooms** have smart, evolving names that make sense in human terms.
+* **Meetings** (AI-human and AI-only) are logged, readable, and linked to real outcomes.
+* **Agent Performance Dashboards** show who’s doing what, how well, and at which cost.
+* **Token Usage Dashboards** give you full control of compute consumption.
+* **Agents** are **edit-able, hire-able, and human-like**, with CVs, origins, birthdays, and personalities that influence how they work.
+
+And all of this fits neatly into the platform structure we already designed.
+
+If you want, next I can:
+
+* Write a **step-by-step UX flow** specifically for:
+
+  * “Create a new agent from scratch”
+  * “Read an AI-only weekly sales meeting”
+  * “Investigate why one agent used too many tokens this week”
+
+…so your dev and designer can literally turn that into Figma screens and user stories.

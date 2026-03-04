@@ -1,0 +1,471 @@
+Alright, let’s wire this cleanly so your dev can execute without guessing.
+
+I’ll do it in 3 parts:
+
+1. **Chairman Assistant as a real Agent + action testing**
+2. **Top navigation order & renames**
+3. **Full design of the Knowledge Base page (ex-Memory)**
+
+---
+
+## 1. Chairman Assistant as a Real Agent + Testing Actions
+
+### 1.1 Chairman Assistant must appear in Agents list
+
+In **Agents & Hierarchy**:
+
+* Add a special agent entry:
+
+  * **Name (default):** `Chairman’s Assistant`
+  * **Type/Role:** `System Agent / Executive`
+  * **Department:** `Executive` or `Core`
+  * **Company:** for each company there is *one* Chairman’s Assistant (or one global + company context)
+* This agent:
+
+  * **Appears like any other agent** in the tree and in agent lists.
+  * Has an **“immutable core”** (cannot be deleted).
+  * Can be **renamed** and “personality-edited” by the Chairman from the Agent detail page.
+
+#### Agent detail page for Chairman’s Assistant
+
+Fields:
+
+* Display name (editable, e.g. “Aisha”, “Zogué AI”, etc.)
+* Description / role
+* Personality / tone settings (how it speaks)
+* Avatar (optional)
+* **Capabilities (read-only note):**
+
+  > “This agent is the system Chairman’s Assistant and has access to all actions by default. Some platform-level limitations may apply (legal/safety).”
+
+You **can** show the Actions list for it, but:
+
+* All actions are marked **Allowed** by default.
+* Toggles can either be:
+
+  * Disabled (to avoid breaking things), or
+  * Allowed to override, but flagged (e.g. “removing this may reduce autonomy”).
+
+---
+
+### 1.2 Testing Actions – “Run as Chairman’s Assistant”
+
+You want to **test that Chairman’s Assistant can perform actions**.
+
+On the **Actions page → Catalog → Action Detail**, add a **Test section**.
+
+#### Test area in the Action Detail panel
+
+At the bottom of each Action detail:
+
+**Block: “Test this Action”**
+
+* Dropdown: `Run as`:
+
+  * Default: `Chairman’s Assistant`
+  * (Optionally other agents if you want to test their permissions too)
+* Simple input form matching the action’s input schema:
+
+  * For `send_email`:
+
+    * To:
+    * Subject:
+    * Body:
+  * For `generate_image`:
+
+    * Prompt:
+    * Style:
+    * Size:
+  * Etc.
+
+Buttons:
+
+* `Test (dry run)` – simulate / validate payload without calling external APIs (for dev / sanity check).
+* `Test (live)` – actually execute the action (respecting integration config).
+
+Behavior:
+
+* When you click **Test as Chairman’s Assistant**:
+
+  * Backend calls `executeAction()` with:
+
+    * `actorId = chairmanAssistantAgentId`
+    * `companyId = selected company`
+    * `payload = form input`
+  * Result appears in:
+
+    * A small **Output panel** under the form (for quick view),
+    * The **Executions** tab (log entry).
+
+If **permissions are misconfigured**, you’ll see:
+
+* Status `failed` with reason:
+
+  * “Actor not allowed to perform this action.”
+
+That’s exactly how you test that the Chairman’s Assistant actually has access.
+
+---
+
+## 2. Top Menu Order & Renaming
+
+You asked to organize the menu logically, with “memory” renamed to **Knowledge Base**.
+
+### 2.1 Recommended top navigation order
+
+From left to right in the main nav:
+
+1. **Home**
+
+   * Dashboard for all companies (KPIs, calendar, today’s activity, company cards…)
+
+2. **Meetings**
+
+   * Legacy Chat → renamed & redesigned as Meetings page (meeting rooms with agents/humans).
+
+3. **Agents & Hierarchy**
+
+   * Org tree of departments and agents.
+   * Agent editing (including Chairman’s Assistant).
+
+4. **Knowledge Base** (rename from “Memory”)
+
+   * All documents, imported data, AI-generated docs, etc.
+   * Separate from per-agent memory.
+
+5. **Actions**
+
+   * Catalog, Executions, Permissions.
+
+6. **Performance & Diagnostics**
+
+   * Agent performance, tokens, errors, system health.
+
+7. **Settings**
+
+   * Account, company config, integrations, billing, etc.
+
+If you later add more pages (e.g. “Integrations”), they should sit near Actions / Settings.
+
+---
+
+## 3. Knowledge Base Page (ex-Memory)
+
+You were very clear on the distinction:
+
+* **Agent Memory** = internal, per-agent experience / context it builds over time.
+* **Knowledge Base** = documents and data **the user or AIs add** (files, web imports, AI-written docs, etc.), shared as a resource across agents.
+
+So we design Knowledge Base as a **content hub** for the company.
+
+### 3.1 Key Concepts
+
+* **Knowledge Base = shared, structured repository** per company.
+* Includes:
+
+  * Uploaded docs (PDF, Word, Excel, images…),
+  * Notes / internal docs,
+  * AI-generated reports, summaries, SOPs,
+  * Web imports (pages you capture),
+  * Folder / space organization.
+
+Agents access it via Actions:
+
+* `kb_add_document`
+* `kb_search`
+* `kb_get_document`
+* `kb_tag_document`
+* etc.
+
+Agent Memory (per agent) remains **separate** and is not user-visible on this page (it’s more for internal behavior).
+
+---
+
+### 3.2 Knowledge Base Page – Layout
+
+At the top:
+
+* Title: **Knowledge Base**
+* Company selector: `All Companies` / `[Company X]`
+* Big primary button: `+ Add to Knowledge Base`
+* Search bar: `Search across documents, titles, and content…`
+
+Below, use tabs:
+
+* `Documents`
+* `Spaces / Collections`
+* `Sources` (integrations)
+* (Later) `AI Drafts` or `Generated Docs`
+
+---
+
+### 3.3 `+ Add to Knowledge Base` Flow
+
+When the user clicks the button, show options:
+
+1. **Upload file**
+
+   * PDF, Word, Excel, images, etc.
+
+2. **Paste text / Create note**
+
+   * Opens a rich text editor for internal notes, SOPs, strategies.
+
+3. **Import from URL**
+
+   * Capture content from a public web page (with summarization and cleaning).
+
+4. **Create with AI**
+
+   * Let the Chairman’s Assistant generate a structured doc:
+
+     * e.g. “Company Profile,” “Sales Playbook for Côte d’Ivoire,” “Gold Export SOP.”
+
+For each added item, prompt:
+
+* Title
+* Description
+* Company (if you’re in All Companies mode)
+* Tags (Sales, Finance, Gold, Compliance, etc.)
+* Assign to **Space/Collection** (e.g. “Sales Playbook”, “Legal”, “Gold Trade Docs”)
+
+Behind the scenes, each document is indexed for semantic search.
+
+---
+
+### 3.4 Tab: **Documents**
+
+A table/grid of all docs in the selected company:
+
+Columns:
+
+* Title
+* Type (`PDF`, `Note`, `AI Doc`, `Web Import`)
+* Company
+* Space / Collection
+* Tags
+* Last updated
+* Created by (Human or Agent)
+
+Filters:
+
+* By type (file, note, AI doc, web)
+* By tags
+* By space/collection
+* By date
+
+Click a document:
+
+* Open a **Document Detail** view:
+
+  * Preview / viewer (for PDF/Note/AI doc).
+  * Metadata:
+
+    * Company
+    * Space
+    * Tags
+    * Author (human/agent)
+  * Actions:
+
+    * `Open in full`
+    * `Download`
+    * `Edit` (for notes/AI docs)
+    * `Retag`
+    * `Summarize with AI`
+    * `Create derivative` (e.g. email template, social post)
+
+Agents get access via actions like:
+
+* `kb_search(query, companyId, tags?)`
+* `kb_get_document(documentId)`
+
+---
+
+### 3.5 Tab: **Spaces / Collections**
+
+Spaces = thematic folders / collections inside the Knowledge Base.
+
+Examples:
+
+* `Company Strategy`
+* `Gold Trade SOPs`
+* `Sales Playbooks`
+* `Marketing Assets`
+* `Legal & Compliance`
+* `HR & Internal Policies`
+
+In this tab:
+
+* Show a grid/list of spaces:
+
+  * Name
+  * Description
+  * Number of documents
+  * Last activity
+
+Click a space:
+
+* See all documents inside that space (with same document table layout).
+* Actions:
+
+  * `Rename space`
+  * `Add document to space`
+  * `Move documents between spaces`
+
+Chairman’s Assistant can also create new spaces via an Action:
+
+* “Create a space called ‘Flying Cars Project’ and organize related docs.”
+
+---
+
+### 3.6 Tab: **Sources** (Integrations)
+
+This is where external data sources are managed:
+
+Examples:
+
+* Google Drive folder(s) linked to the company,
+* Specific Shared Drives,
+* Notion workspace,
+* Confluence spaces,
+* Other cloud storages.
+
+List entries:
+
+* Source type (`Google Drive`, `Notion`, etc.)
+* Connected account / workspace
+* Sync status:
+
+  * On / Off
+  * Last sync time
+* Scope:
+
+  * Which folders / pages are synced into the Knowledge Base
+
+For each source:
+
+* Buttons:
+
+  * `Configure scope`
+  * `Sync now`
+  * `Disconnect`
+
+All files synced from sources appear in **Documents** with type `Imported`.
+
+---
+
+### 3.7 Interaction with Agents and Memory
+
+We must keep the distinction very clear in the architecture:
+
+1. **Knowledge Base = shared, curated corpus**
+
+   * Agents read from it using `kb_search`.
+   * Agents can write to it via:
+
+     * `kb_add_document` (e.g. after summarizing a meeting, they store “Weekly Report”).
+   * When the Chairman asks:
+
+     > “Create a playbook for new sales agents and store it in our Knowledge Base.”
+
+     * Chairman’s Assistant:
+
+       * Generates doc,
+       * Calls `kb_add_document`,
+       * Assigns it to `Sales Playbooks` space.
+
+2. **Agent Memory = private, internal long-term memory**
+
+   * Stored separately per agent:
+
+     * Preferences,
+     * Patterns,
+     * Frequent contacts,
+     * Personal style.
+   * Not edited from Knowledge Base page.
+   * Managed via memory Actions (`memory_create`, `memory_search`) that are **per agent**.
+
+So, **Knowledge Base page** is about what *the company knows*,
+while **Agent memory** is about what each agent “remembers”.
+
+---
+
+### 3.8 Chairman’s Assistant on the Knowledge Base Page
+
+As always:
+
+* At the **bottom of the page**, same design, same behavior as Home.
+* Global conversation for today.
+
+Typical interactions:
+
+* “Search the Knowledge Base for all documents about ‘gold trade in Côte d’Ivoire’ and summarize them for me.”
+* “Create a new document summarizing our last 5 meetings with investors and store it in the ‘Investors’ space.”
+* “Import this URL into the Knowledge Base and tag it as ‘Market Research’.”
+
+Under the hood:
+
+* These are mapped to Actions:
+
+  * `kb_search`
+  * `kb_add_document`
+  * `kb_tag_document`
+  * `crawl_url_and_store`, etc.
+
+---
+
+## 4. Concrete Dev Checklist From Your Message
+
+You can give your dev this exact list:
+
+1. **Add Chairman’s Assistant as a real Agent in Agents & Hierarchy**
+
+   * Show it in the tree.
+   * Allow editing name/personality/description.
+   * Mark it as “system agent” that cannot be deleted.
+   * Ensure it is treated as allowed for all Actions by default.
+
+2. **Implement Action testing on Actions → Catalog → Action Detail**
+
+   * “Test this Action” section:
+
+     * Run as: Chairman’s Assistant (default).
+     * Input form based on Action’s input schema.
+     * Buttons: dry run + live.
+   * Log tests in Executions.
+
+3. **Reorder top navigation**
+
+   * Home
+   * Meetings
+   * Agents & Hierarchy
+   * Knowledge Base (rename Memory)
+   * Actions
+   * Performance & Diagnostics
+   * Settings
+
+4. **Implement the Knowledge Base page**
+
+   * Top:
+
+     * Company selector,
+     * `+ Add to Knowledge Base` button,
+     * Search bar.
+   * Tabs:
+
+     * Documents
+     * Spaces / Collections
+     * Sources
+   * Upload/import flow (files, text notes, URLs, AI-generated docs).
+   * Document detail view with preview, metadata, and AI helpers.
+   * Spaces listing and management.
+   * Sources listing and basic configuration (placeholder for now).
+
+5. **Ensure Chairman’s Assistant chat bar appears at the bottom of the Knowledge Base and Actions pages (and all other pages) with the exact same design and behavior as on Home.**
+
+---
+
+If you want, next I can design:
+
+* The **exact “Add to Knowledge Base” modal**,
+* Or a **sample structure for Spaces** tailored to one of your companies (e.g. “Xportunity Gold CI”) so the first setup already feels real.

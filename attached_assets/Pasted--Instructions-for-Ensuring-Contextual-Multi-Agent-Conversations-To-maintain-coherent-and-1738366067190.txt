@@ -1,0 +1,146 @@
+### **Instructions for Ensuring Contextual Multi-Agent Conversations**
+
+To maintain **coherent and meaningful** conversations, agents must be able to:
+1. **Quote and reference previous messages** to keep track of discussions.
+2. **Read and understand prior messages** before responding.
+3. **Maintain context** across multiple exchanges, ensuring smooth and logical communication.
+
+---
+
+### **Key Features to Implement**
+
+#### **1. Context Awareness for Agents**
+- Each agent must:
+  1. **Retrieve the latest messages** from the chat before generating a response.
+  2. **Analyze the full conversation history** to determine relevance.
+  3. **Quote previous agents' messages** when necessary.
+
+**Implementation:**
+- Before responding, the agent fetches the last **X** messages (configurable, e.g., last 5 messages).
+- Example:
+  ```plaintext
+  Marketing Agent: Based on what Research Agent said earlier about audience trends, we should focus on social media.
+  ```
+
+- **Database Schema for Conversation Context**:
+  ```sql
+  CREATE TABLE chat_messages (
+      message_id SERIAL PRIMARY KEY,
+      chatroom_id INTEGER REFERENCES chatrooms(chatroom_id),
+      agent_id INTEGER REFERENCES agents(agent_id),
+      content TEXT,
+      quoted_message_id INTEGER REFERENCES chat_messages(message_id) -- Tracks quoted messages
+  );
+  ```
+
+---
+
+#### **2. Quoting System for Multi-Agent Conversations**
+- Agents should **refer to previous messages** naturally in responses.
+- When an agent responds, they must:
+  - **Identify the most relevant message** in the conversation history.
+  - **Embed the reference** into their response.
+
+**Example Workflow:**
+1. **User asks a question**:
+   ```plaintext
+   [You]: What are the best marketing strategies for our new product?
+   ```
+2. **Research Agent responds**:
+   ```plaintext
+   [Research Agent]: Based on past trends, social media engagement has yielded the best results.
+   ```
+3. **Marketing Agent builds on this**:
+   ```plaintext
+   [Marketing Agent]: As Research Agent mentioned, social media engagement is key. We can focus on TikTok and Instagram for targeting Gen Z.
+   ```
+
+---
+
+#### **3. Implementing Context-Aware Responses**
+- **Backend Logic for Agents**:
+  - Fetch last **X** messages before responding.
+  - Determine **which message(s) are relevant** to quote.
+  - Generate a response that **integrates previous messages**.
+
+**Example Backend Code (Python - Flask & OpenAI API)**:
+```python
+def generate_agent_response(agent_id, chatroom_id, user_input):
+    # Fetch last 5 messages from the chatroom
+    messages = db.execute("""
+        SELECT agent_id, content FROM chat_messages
+        WHERE chatroom_id = %s ORDER BY timestamp DESC LIMIT 5
+    """, (chatroom_id,))
+
+    # Prepare conversation history for context
+    conversation_history = "\n".join([f"{msg['agent_id']}: {msg['content']}" for msg in messages])
+
+    # Generate response using AI
+    response = openai.ChatCompletion.create(
+        model="gpt-4",
+        messages=[
+            {"role": "system", "content": "You are a business assistant AI."},
+            {"role": "user", "content": conversation_history},
+            {"role": "assistant", "content": f"{user_input}"}
+        ]
+    )
+
+    return response['choices'][0]['message']['content']
+```
+
+---
+
+#### **4. Conversation Flow Rules**
+- **Turn-Taking Mechanism**:
+  - Prevent multiple agents from responding simultaneously.
+  - The **conversation leader** assigns speaking turns if necessary.
+  
+- **Smart Quoting**:
+  - Agents should:
+    - Quote **directly relevant** previous messages.
+    - Avoid unnecessary repetition.
+  
+- **Prioritization of Messages**:
+  - If multiple agents respond at once, the **system should prioritize**:
+    - The **most relevant** agent (based on role/task).
+    - The **earliest responder** (to prevent unnecessary duplication).
+
+---
+
+#### **5. Improving User Experience**
+- **Visual Formatting for Quoted Messages**:
+  - Ensure quoted messages are:
+    - **Indented** under the agent’s response.
+    - **Highlighted** for clarity.
+
+**Example in UI (React.js)**
+```javascript
+function ChatMessage({ agent, message, quotedMessage }) {
+    return (
+        <div className="message">
+            <strong>{agent.name}</strong>: {message}
+            {quotedMessage && (
+                <div className="quoted-message">
+                    <em>{quotedMessage}</em>
+                </div>
+            )}
+        </div>
+    );
+}
+```
+- **Output Example**:
+  ```plaintext
+  [Marketing Agent]: As Research Agent mentioned, social media engagement is key.
+      > Research Agent: Based on past trends, social media engagement has yielded the best results.
+  ```
+
+---
+
+### **Final Implementation Steps**
+1. **Ensure agents fetch prior messages** before responding.
+2. **Create a quoting mechanism** so agents refer to relevant past responses.
+3. **Optimize conversation flow** to prevent unnecessary duplication or overlapping responses.
+4. **Enhance UX** with formatted quoted messages for clarity.
+5. **Ensure seamless integration with the existing chat system** without disrupting what already works.
+
+This will ensure **fluid, logical, and well-structured** multi-agent conversations.

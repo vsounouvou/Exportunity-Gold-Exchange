@@ -1,0 +1,330 @@
+1. Core Principle: “A Chat is a Meeting”
+
+From now on:
+
+Chat = Meeting = Conversation with a timeframe & participants, recorded in the diary.
+
+So we stop thinking of “Chat” and “Meetings” as separate things.
+Everything becomes a Conversation that:
+
+Has participants (Chairman, agents, humans, external guests),
+
+Has a timeframe (date + start/end),
+
+Has a message stream (chat log),
+
+Lives on the Diary timeline.
+
+There are just two flavors:
+
+Instant Conversations (ad-hoc chats, like now)
+
+Scheduled Conversations (what we used to call “Meetings”)
+
+But technically and visually they are one thing.
+
+2. New Unified Concept: Conversation
+
+Introduce a unified object:
+
+type Conversation = {
+  id: string;
+  companyId?: string | null;
+  date: string;           // YYYY-MM-DD (for the diary)
+  startTime?: string;     // optional, for scheduled meetings
+  endTime?: string;       // optional
+  title: string;
+  type: 'chat' | 'scheduled' | 'agent-sync';
+  participants: Participant[];
+  messages: ChatMessage[];
+  status: 'planned' | 'ongoing' | 'completed' | 'cancelled';
+  createdBy: 'chairman' | 'agent' | 'system';
+};
+
+type Participant = {
+  id: string;
+  type: 'chairman' | 'agent' | 'human_guest' | 'system';
+  name: string;
+};
+
+
+The Chairman’s Assistant chat is just a special Conversation of type 'chat' with:
+
+participant = Chairman,
+
+participant = Chairman’s Assistant.
+
+A normal scheduled meeting (e.g. with an investor) is:
+
+type 'scheduled',
+
+participants may include external guests,
+
+might have a calendar link.
+
+Internal AI-only discussions:
+
+type 'agent-sync',
+
+participants = agents only.
+
+All of them are visible in the Diary.
+
+3. UX: Merge Chat Page + Meetings Page into One
+
+We create a single page:
+
+Conversations & Diary (or Diary & Meetings – choose naming you like)
+
+This replaces:
+
+Old “Chat page”
+
+Old “Meetings page”
+
+3.1 Page Layout
+
+For a given company (or global view), the page has:
+
+Left side: Timeline / Calendar
+
+A vertical list of days:
+
+Today
+
+Yesterday
+
+Dates (e.g. 2025-11-14, 2025-11-13, …)
+
+For each day:
+
+Number of conversations that day (e.g. “3 conversations”),
+
+Small icons for types (chat, meeting, agent-sync).
+
+Optional: a calendar/month view to click a date and jump to that day in the timeline.
+
+Right side: Conversation Area
+
+When a day is selected:
+
+Show a list of conversation cards for that day.
+
+When a conversation is selected:
+
+Open the full conversation view:
+
+Title + participants + time at the top,
+
+Chat log (messages) below.
+
+So:
+
+Left: select day
+
+Right: see all conversations that happened that day, and open one.
+
+4. Today’s Conversation = Live Chat + Meeting Context
+
+On today’s date, there is always at least one conversation:
+
+The ongoing chat with the Chairman’s Assistant.
+
+This conversation:
+
+Is type 'chat' (or 'daily_session' if you want a special type),
+
+Lives under Today in the diary,
+
+Is the same stream you see in the bottom dock.
+
+When you open today’s main conversation from the Conversations & Diary page:
+
+The view shows:
+
+The same message stream as the dock,
+
+Plus meta info:
+
+Title: e.g. “Daily Session with Chairman’s Assistant”
+
+Participants: Chairman + Assistant
+
+Tags: strategy, operations, gold, etc. (optional)
+
+Summary (generated end of day)
+
+Decisions taken (later)
+
+So you have one live chat that is also a structured meeting in your diary.
+
+5. Scheduling & Viewing Meetings Inside the Same System
+5.1 Creating a Scheduled Meeting
+
+From anywhere (chat or page) the Chairman’s Assistant might say:
+
+“Should I schedule a 20-minute sync tomorrow at 10:00?”
+
+If the user says yes:
+
+Create a Conversation:
+
+type = 'scheduled'
+
+date = tomorrow
+
+startTime = 10:00
+
+status = 'planned'
+
+Also, if calendar access is given, create a calendar event.
+
+This scheduled conversation appears:
+
+Under tomorrow’s date in the left-side timeline,
+
+In the Upcoming list, if you show a small “Upcoming Conversations” panel.
+
+5.2 Running the Meeting
+
+When the time comes and the user opens it:
+
+That Conversation becomes ongoing.
+
+If it’s a chat-based meeting:
+
+Messages are recorded in messages[].
+
+If it’s a video/voice meeting (later):
+
+Notes/transcript can be attached as messages or summary.
+
+After the meeting:
+
+status = 'completed'
+
+A summary is generated and stored.
+
+But again: same model, same page. No separate “Meetings” page.
+
+6. Daily Grouping & Collapsible View
+
+You already defined you want day-based grouping like a diary.
+
+Extend that:
+
+Each day on the Conversations & Diary page is a group of conversations.
+
+Example:
+
+Today – 2025-11-17
+
+Daily Session with Chairman’s Assistant (ongoing)
+
+Sales Strategy Sync – Company Gold (completed)
+
+Internal Agent Sync: Outreach Team (agent-sync, hidden by default maybe)
+
+You can:
+
+Expand/collapse days,
+
+Click each conversation card to see the full chat/notes.
+
+The bottom dock always shows today’s active conversation with the Chairman’s Assistant, but the page lets you inspect all conversations on that day, including other agents and scheduled meetings.
+
+7. Multi-Party Chats (Agent ↔ Agent, Agent ↔ Human, etc.)
+
+Because everything is a Conversation:
+
+You can have:
+
+Chairman + Assistant,
+
+Chairman + multiple agents,
+
+Agents only,
+
+Chairman + external guests.
+
+In the UI:
+
+Each conversation card shows:
+
+Title,
+
+Time,
+
+Participants (avatars or names),
+
+Type icon (chat, meeting, agent-sync).
+
+You can filter:
+
+Show only:
+
+Conversations involving the Chairman, or
+
+All (including agent-only syncs).
+
+8. Chairman’s Assistant Dock – Always the Same, Everywhere
+
+Reinforce this rule to the dev:
+
+On every single page (home, company view, Agents & Hierarchy, Performance & Diagnostics, Conversations & Diary, settings, etc.) the Chairman’s Assistant dock appears exactly the same as on the homepage.
+
+Same position: bottom of the screen.
+
+Same conversation state: today’s Conversation with the Chairman’s Assistant.
+
+Same behavior:
+
+The Chairman can type from any page,
+
+This always writes into “Today’s main conversation” entry in the diary.
+
+The Conversations & Diary page just gives a full-page, zoomed-out view of all conversations, past and scheduled.
+
+9. Concrete Tasks for Dev / Agency
+
+You can literally tell them:
+
+Unify Chat & Meetings into a single Conversation model.
+
+Add fields for:
+
+type (chat, scheduled, agent-sync),
+
+participants,
+
+status,
+
+date/time.
+
+Create a single Conversations & Diary page.
+
+Left: Date-based timeline (days with conversations).
+
+Right: List of conversations for selected day and detailed conversation view.
+
+Make the current Chairman’s Assistant chat a Conversation for today.
+
+This is the default, ongoing conversation.
+
+It appears under Today in the diary.
+
+Remove the separate “Meetings page”.
+
+All meetings are now just Conversations (type 'scheduled') shown in the diary.
+
+Make each scheduled meeting use the same conversation UI.
+
+Meta data at top (title, time, participants).
+
+Chat/log/transcript below.
+
+Ensure the Chairman’s Assistant dock is identical on every page.
+
+Always uses today’s ongoing conversation.
+
+All messages go into that Conversation object.

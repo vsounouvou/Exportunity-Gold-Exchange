@@ -1,0 +1,99 @@
+{
+  "audit": "gold-stamping",
+  "timestamp": "2026-02-27T20:39:41.572Z",
+  "baseUrl": "https://boursedelor.com",
+  "tenantKey": "bdo",
+  "tag": "gold-audit-1772224776953",
+  "allowMutation": false,
+  "summary": {
+    "passCount": 10,
+    "failCount": 0,
+    "skipCount": 2
+  },
+  "checks": [
+    {
+      "id": "feature.gold_stamping",
+      "passed": true,
+      "details": "feature.gold_stamping=true",
+      "endpoint": "/api/admin/features",
+      "status": 200
+    },
+    {
+      "id": "sku.list",
+      "passed": true,
+      "details": "loaded 3 sku(s)",
+      "endpoint": "/api/stamped-gold/skus",
+      "status": 200
+    },
+    {
+      "id": "sku.counters",
+      "passed": true,
+      "details": "mintedTotal/inStock/reserved/delivered present",
+      "endpoint": "/api/stamped-gold/skus",
+      "status": 200
+    },
+    {
+      "id": "jewellers.public",
+      "passed": true,
+      "details": "loaded 1 active partner(s)",
+      "endpoint": "/api/stamped-gold/jewellers/public",
+      "status": 200
+    },
+    {
+      "id": "authorized.partner.lock",
+      "passed": true,
+      "details": "only authorized partner visible for BDO",
+      "endpoint": "/api/stamped-gold/jewellers/public",
+      "status": 200
+    },
+    {
+      "id": "item.list",
+      "passed": true,
+      "details": "loaded 20 item(s)",
+      "endpoint": "/api/stamped-gold/items?limit=20",
+      "status": 200
+    },
+    {
+      "id": "verify.serial",
+      "passed": true,
+      "details": "serial lookup valid=true",
+      "endpoint": "/api/stamped-gold/verify/BDO-2026-BAR-50G-KCGL6Q1O",
+      "status": 200
+    },
+    {
+      "id": "verify.token.fallback",
+      "passed": true,
+      "details": "token endpoint resolves serial fallback",
+      "endpoint": "/api/stamped-gold/verify/token/BDO-2026-BAR-50G-KCGL6Q1O",
+      "status": 200
+    },
+    {
+      "id": "verify.public.fallback",
+      "passed": true,
+      "details": "public verify resolves serial fallback",
+      "endpoint": "/public/verify/BDO-2026-BAR-50G-KCGL6Q1O",
+      "status": 200
+    },
+    {
+      "id": "pickup.scan.match",
+      "passed": true,
+      "details": "pickup scanner resolved item",
+      "endpoint": "/api/pickup/scan",
+      "status": 200
+    },
+    {
+      "id": "mint.contract",
+      "passed": false,
+      "skipped": true,
+      "details": "set ALLOW_MUTATION=1 to execute mint checks",
+      "endpoint": "/api/stamped-gold/items/mint"
+    },
+    {
+      "id": "pickup.confirm.validation",
+      "passed": false,
+      "skipped": true,
+      "details": "set ALLOW_MUTATION=1 to execute pickup confirm checks",
+      "endpoint": "/api/pickup/confirm"
+    }
+  ]
+}

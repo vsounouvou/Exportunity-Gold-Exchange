@@ -1,0 +1,150 @@
+Got it, that bug is super clear: **both sides look like “you”** right now.
+
+Here’s exactly what to tell the dev / builder agent to fix the chat UX so it behaves like a normal messenger:
+
+---
+
+## 1. Core Behavior to Implement
+
+In the **Chairman Assistant chat dock**:
+
+* **User (Chairman) messages**:
+
+  * Aligned to the **right**
+  * Styled as “Me” / “You”
+* **Assistant (AI) messages**:
+
+  * Aligned to the **left**
+  * Styled as “Chairman Assistant”
+
+Right now, both sides are using the same alignment and label. That’s the bug.
+
+---
+
+## 2. Data Model Requirement
+
+Each message in the chat history **must** carry a `sender` field:
+
+```ts
+type ChatMessage = {
+  id: string;
+  sender: 'user' | 'assistant';  // IMPORTANT
+  content: string;
+  timestamp: string;
+};
+```
+
+Make sure the frontend logic uses this `sender` value when rendering.
+
+---
+
+## 3. Rendering Logic (Frontend)
+
+Where you map over `chairmanChatHistory`, do something like:
+
+```tsx
+{chairmanChatHistory.map((msg) => (
+  <div
+    key={msg.id}
+    className={
+      msg.sender === 'user'
+        ? 'message-row message-row-user'
+        : 'message-row message-row-assistant'
+    }
+  >
+    <div
+      className={
+        msg.sender === 'user'
+          ? 'message-bubble message-bubble-user'
+          : 'message-bubble message-bubble-assistant'
+      }
+    >
+      <div className="message-meta">
+        {msg.sender === 'user' ? 'You' : 'Chairman Assistant'}
+      </div>
+      <div className="message-content">{msg.content}</div>
+    </div>
+  </div>
+))}
+```
+
+### CSS / Layout Rules (simplified)
+
+```css
+.message-row {
+  display: flex;
+  margin: 4px 0;
+}
+
+.message-row-user {
+  justify-content: flex-end;          /* Right side */
+}
+
+.message-row-assistant {
+  justify-content: flex-start;        /* Left side */
+}
+
+.message-bubble {
+  max-width: 70%;
+  padding: 8px 12px;
+  border-radius: 12px;
+  font-size: 0.9rem;
+}
+
+.message-bubble-user {
+  background: #2f80ed;                /* or your brand color */
+  color: white;
+  border-bottom-right-radius: 2px;
+}
+
+.message-bubble-assistant {
+  background: #f2f2f2;
+  color: #333;
+  border-bottom-left-radius: 2px;
+}
+
+.message-meta {
+  font-size: 0.7rem;
+  opacity: 0.7;
+  margin-bottom: 2px;
+}
+```
+
+**Result:**
+
+* Your message: right side, colored bubble, label “You”.
+* Assistant response: left side, neutral bubble, label “Chairman Assistant”.
+
+---
+
+## 4. Backend Reminder
+
+When the backend returns a message from the AI, make sure it sets:
+
+```json
+{
+  "sender": "assistant",
+  "content": "…"
+}
+```
+
+And when you push the user’s own message into the history, set:
+
+```ts
+{ sender: 'user', content: inputValue, ... }
+```
+
+---
+
+## 5. Quick QA Checklist
+
+Tell the builder agent to verify:
+
+* [ ] When *you* type, the bubble appears **on the right** labeled “You”.
+* [ ] When the **assistant** answers, bubble appears **on the left** labeled “Chairman Assistant”.
+* [ ] Scrolling still works properly.
+* [ ] On mobile, the layout still keeps right vs left properly.
+
+You can literally tell them:
+
+> “Fix the chat alignment so user messages are on the right labeled ‘You’, and Chairman Assistant responses are on the left labeled ‘Chairman Assistant’. Use the `sender` field to render different classes and make sure the UI reflects a normal two-sided chat.”

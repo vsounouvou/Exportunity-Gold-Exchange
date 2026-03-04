@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0B0F14"/>
+      <stop offset="1" stop-color="#111827"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FFF7D6"/>
+      <stop offset="0.32" stop-color="#FDE68A"/>
+      <stop offset="0.55" stop-color="#F59E0B"/>
+      <stop offset="1" stop-color="#92400E"/>
+    </linearGradient>
+    <radialGradient id="shine" cx="30%" cy="25%" r="70%">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.55"/>
+      <stop offset="0.6" stop-color="#FFFFFF" stop-opacity="0.08"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#000" flood-opacity="0.45"/>
+    </filter>
+  </defs>
+
+  <rect width="512" height="512" rx="96" fill="url(#bg)"/>
+
+  <g filter="url(#shadow)">
+    <path d="M256 84c64 0 112 52 112 118 0 56-22 100-58 126 10 6 22 10 36 14 28 8 48 32 48 62v10c0 8-6 14-14 14H132c-8 0-14-6-14-14v-10c0-30 20-54 48-62 14-4 26-8 36-14-36-26-58-70-58-126 0-66 48-118 112-118Z" fill="url(#gold)"/>
+    <path d="M256 118c44 0 78 36 78 82 0 40-18 74-46 94-10 8-21 12-32 12s-22-4-32-12c-28-20-46-54-46-94 0-46 34-82 78-82Z" fill="#0B0F14" opacity="0.12"/>
+    <path d="M172 404c22-18 52-28 84-28s62 10 84 28" fill="none" stroke="#111827" stroke-opacity="0.28" stroke-width="10" stroke-linecap="round"/>
+    <ellipse cx="214" cy="206" rx="18" ry="12" fill="#111827" opacity="0.55"/>
+    <ellipse cx="298" cy="206" rx="18" ry="12" fill="#111827" opacity="0.55"/>
+    <path d="M256 226c-10 10-10 24 0 34 10-10 10-24 0-34Z" fill="#111827" opacity="0.55"/>
+    <path d="M206 280c32 18 68 18 100 0" fill="none" stroke="#111827" stroke-opacity="0.45" stroke-width="10" stroke-linecap="round"/>
+    <path d="M158 424c30-24 62-36 98-36s68 12 98 36" fill="none" stroke="#F59E0B" stroke-opacity="0.28" stroke-width="10" stroke-linecap="round"/>
+    <path d="M154 156c18-26 52-44 102-44s84 18 102 44c-32-14-66-20-102-20s-70 6-102 20Z" fill="#111827" opacity="0.16"/>
+  </g>
+
+  <circle cx="190" cy="132" r="120" fill="url(#shine)"/>
+</svg>

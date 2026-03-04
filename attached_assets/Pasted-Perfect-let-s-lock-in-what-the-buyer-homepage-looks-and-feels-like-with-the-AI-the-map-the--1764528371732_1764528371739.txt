@@ -1,0 +1,399 @@
+Perfect, let’s lock in what the **buyer homepage** looks and feels like – with the AI, the map, the products, and the full “place an order” flow.
+
+---
+
+## 1. Big picture: what the homepage *is*
+
+When a user lands:
+
+* We **detect their location** (with permission).
+* We **show a navy-blue map** centered on them.
+* On top of that, we overlay **beautiful, colorful product/shop icons**.
+* On the right (or below on mobile), there’s a **product feed**: “Around you”, “Popular now”, etc.
+* At the bottom/right, a **chat bubble AI assistant** that can take a plain request (“I need fresh bread”) and **drive the whole order**.
+
+Think:
+**Left = “Where” (map)**
+**Right = “What” (products)**
+**Bottom/right = “How” (AI assistant)**
+
+---
+
+## 2. Data: how we get shops & products (Google + generated)
+
+### 2.1. Shop sourcing logic
+
+1. **Use geolocation** (HTML5 / mobile):
+
+   * Get `lat, lon`.
+
+2. **Call Google Places / Maps APIs** around that point to get real places:
+
+   * `place_id`
+   * `name`
+   * `location`
+   * `categories` (bakery, restaurant, grocery, etc.)
+   * `opening_hours`
+   * `rating` (if available)
+
+3. For each place, our backend:
+
+   * Wraps it into a **`Shop` object** for our platform.
+   * If we don’t yet have a relationship with them:
+
+     * Mark as **“External / Not yet onboarded”**.
+     * We can still show them as “Discover this shop” and let an AI trader (or human) invite them.
+
+4. **Generated shops / fallback**
+
+   * In areas with poor data, we can:
+
+     * Use known onboarded shops from our DB.
+     * Or generate virtual shop placeholders (e.g. “Local Bakery – Coming Soon”) to seed the experience and push traders to activate real ones.
+
+So the engine tries, in order:
+
+1. Onboarded shops in DB near user
+2. Google Maps/Places shops nearby
+3. Generated shops if needed.
+
+---
+
+## 3. Homepage layout (desktop)
+
+### 3.1. Top bar
+
+**Fixed header**, simple and clean:
+
+* Logo (Zogué / Exportunity AI)
+* Tabs:
+
+  * **Shop**
+  * **Sell**
+  * **Earn (Trader)**
+  * **My AI**
+* Right side:
+
+  * Language switch
+  * Wallet balance (credits / money)
+  * User avatar (profile, settings)
+
+---
+
+### 3.2. Main hero band (just under header)
+
+A **wide horizontal panel**:
+
+* Left: short sentence:
+
+  * “Find anything around you with your AI.”
+* Center:
+
+  * **Unified search / command bar**:
+
+    * Placeholder:
+
+      > “What do you need? (ex: fresh bread, a mechanic, fruits...)”
+  * This is both:
+
+    * A normal search bar, and
+    * An entry to the AI assistant.
+* Right:
+
+  * Button: **“Talk to your AI”** (voice/mic icon).
+
+---
+
+### 3.3. Center layout: Map + Product feed
+
+#### A. Left side: the navy-blue map (≈ 40–50% width)
+
+* **Map theme**:
+
+  * Background: deep **navy blue**.
+  * Roads / rivers / borders: subtle lighter lines.
+  * Minimal labels (just key areas / city names).
+
+* **User marker**:
+
+  * Glowing circle around current location.
+
+* **Shop markers** (very colorful, category-based):
+
+  * Bakery → golden bread icon
+  * Fruits & veg → bright green crate
+  * Fashion → bold magenta hanger
+  * Electronics → cyan chip icon
+  * etc.
+
+* **Product “bubbles” on the map**:
+
+  * For some shops, show a little floating tile:
+
+    * Product image
+    * Price
+    * “2 km” badge
+  * When you hover/click:
+
+    * Left side: small card opens with 2–3 best products.
+    * Right side feed scrolls automatically to that shop’s section.
+
+* **Filters & chips on top of map**:
+
+  * Row of category chips:
+
+    * 🥖 Bread
+    * 🍅 Groceries
+    * 🍽️ Ready-to-eat
+    * 🛠️ Services
+    * 🧃 Drinks
+  * Toggling a chip:
+
+    * Updates both the map markers and the product feed.
+
+---
+
+#### B. Right side: product feed (≈ 50–60% width)
+
+A vertical, scrollable feed with **sections**:
+
+1. **“Around you right now”** (geo-sorted)
+
+   * Horizontal cards:
+
+     * Product image
+     * Name
+     * Price
+     * Distance/ETA (e.g. “1.2 km – delivery in ~25min”)
+     * Shop name.
+   * “Add to cart” button directly on card.
+
+2. **“Top picks from nearby shops”**
+
+   * Grouped by shop:
+
+     * Shop card (logo, name, rating, distance)
+     * 3–4 best products under it.
+   * “View shop” to open full shop page.
+
+3. **“Categories near you”**
+
+   * Tiles: “Bakery near you”, “Fruit & Veg near you”, etc.
+
+4. **AI Suggestions strip**
+
+   * A band like:
+
+     * “Because you bought bread last time…”
+     * “Popular this evening in your area…”
+
+At the bottom right corner of the screen: always a **floating cart**.
+
+---
+
+### 3.4. AI assistant bubble
+
+Bottom-left or bottom-right:
+
+* Always visible chat bubble:
+
+  * When closed: shows latest hint like:
+
+    * “Ask me to find ‘fresh bread now’”
+  * When opened:
+
+    * A chat pane slides up (mobile: full-screen).
+
+---
+
+## 4. Full user journey: AI places an order
+
+Let’s walk one concrete flow end-to-end.
+
+### Step 1 – Landing
+
+* User lands on homepage.
+* We ask: “Allow location?”
+
+  * If accepted:
+
+    * Map centers on them.
+    * “Around you” products fill in.
+  * If refused:
+
+    * Ask for city/area instead.
+
+### Step 2 – Ask the AI
+
+User types in the big search / assistant bar:
+
+> “I want two baguettes and some fresh orange juice delivered.”
+
+The AI pipeline:
+
+1. **Interpret request**:
+
+   * `intent = place_order`
+   * `products = [baguette (qty2), orange juice (qty1..2)]`
+   * `constraints = {delivery: true, asap: true}`
+
+2. **Query the product/shops engine**:
+
+   * Filter shops near user:
+
+     * Category: bakery + groceries
+     * Open now
+   * For each candidate:
+
+     * Check basket availability:
+
+       * Do they have “baguette” (or close equivalent)?
+       * Do they have “orange juice” (bottle/carton)?
+     * Estimate:
+
+       * Delivery time and fee (from delivery module)
+       * Total cost.
+
+3. **AI summarises 2–3 best options** in a *short* way (your rule: no long essays):
+
+> “I found 3 options near you:
+>
+> 1. **Boulangerie Nana** – 2 fresh baguettes + 1L orange juice, ~20 min, 3.200 XOF total.
+> 2. **Supermarché Soleil** – similar, ~30 min, 3.000 XOF.
+> 3. **Market Express** – ~40 min, 2.700 XOF.”
+
+On the UI:
+
+* Each option appears as a card with:
+
+  * Shop name, distance, ETA
+  * Content summary
+  * Price
+  * “Select” button.
+
+Map:
+
+* Highlights those 3 shops with **pulsing markers**.
+
+### Step 3 – User chooses & confirms
+
+User clicks **Boulangerie Nana** card.
+
+* Cart preview slides in:
+
+  * 2x Baguette
+  * 1x Orange juice
+  * Delivery fee
+  * Total price.
+
+AI asks:
+
+> “Confirm this order?”
+
+Buttons:
+
+* **Confirm**
+* “Change quantity”
+* “See more options”
+
+User taps **Confirm**.
+
+### Step 4 – Payment & order creation
+
+* If user has stored payment:
+
+  * Show concise payment confirmation dialog.
+* Otherwise:
+
+  * Quick payment selection (Card / Mobile Money / Wallet).
+
+Once confirmed:
+
+* Order created in backend.
+* Delivery assigned using the **uberized delivery module** we designed earlier (matching nearest agent whose deposit/insurance covers order value).
+
+UI:
+
+* AI message:
+
+  > “Your order is confirmed with Boulangerie Nana. Delivery in ~20–25 minutes. I’ll update you when the driver picks it up.”
+* Map:
+
+  * Shows:
+
+    * Shop icon
+    * User icon
+    * Delivery path (once assigned).
+
+---
+
+## 5. Mobile version (very important)
+
+On mobile, we stack:
+
+1. **Top**: search / AI bar + category chips.
+2. **Middle**: product feed (default).
+3. **Toggle to map**:
+
+   * A big button: “View map”.
+   * When tapped:
+
+     * Map slides full-screen (navy blue, pins, etc.).
+4. **AI assistant**:
+
+   * Full-screen chat panel when opened, with mini-map preview inside messages when needed (“Here’s the shop I picked”).
+
+Always:
+
+* Floating cart on bottom right.
+* Quick filter chips for fast navigation.
+
+---
+
+## 6. For devs: key building blocks
+
+Just to make the build direction crystal clear:
+
+### Frontend components
+
+* `<HomePageLayout>`
+* `<TopNav>`
+* `<SearchAndAIBar>`
+* `<MapPanel theme="navy">`
+* `<ShopMarker>` & `<ProductBubble>`
+* `<ProductFeed>`
+
+  * `<AroundYouSection>`
+  * `<ShopGroupSection>`
+* `<FloatingCart>`
+* `<AssistantChatBubble>`
+
+### Backend endpoints (examples)
+
+* `GET /me/location` (or from client)
+* `GET /shops/nearby?lat=&lon=&radius=&category=`
+* `GET /products/nearby?lat=&lon=&radius=&category=`
+* `POST /assistant/query` → returns:
+
+  * `intent`
+  * `candidate_shops`
+  * `proposed_baskets`
+* `POST /orders` (creates order)
+* `GET /orders/{id}` (status + tracking)
+
+### Google integration layer
+
+* `service/places/searchNearby(lat, lon, type)`
+* `service/places/details(place_id)`
+* Map SDK integration with **custom navy style**:
+
+  * Suppressed POI colors
+  * Dark theme
+  * Custom icons for your categories.
+
+---
+
+If you want, next step I can:
+
+* Turn this into a **wireframe-level description** (section by section, like a Figma spec),
+* Or write a **front-end structure in React** (components + props) that your devs can plug into the existing backend and map SDK.

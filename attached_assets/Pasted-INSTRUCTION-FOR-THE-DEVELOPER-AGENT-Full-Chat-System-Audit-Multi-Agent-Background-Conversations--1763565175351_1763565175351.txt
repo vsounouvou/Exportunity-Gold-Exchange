@@ -1,0 +1,243 @@
+INSTRUCTION FOR THE DEVELOPER-AGENT
+
+(Full Chat System Audit + Multi-Agent Background Conversations)**
+
+Do not return any message to the user until this entire task is fully completed, tested three times, and validated with simulated data.
+Do not return early.
+Do not send partial results.
+Only return when the entire chat system works exactly as described.
+
+⸻
+
+1. FULL SYSTEM-WIDE AUDIT OF THE CHAT ENGINE
+
+You must perform a complete audit of:
+	•	The chat UI
+	•	The chat backend
+	•	The meeting system
+	•	The internal “legacy chat” logic
+	•	The background agent-to-agent communication engine
+	•	The message routing logic
+	•	The context and memory usage of each agent
+	•	The action execution triggered by chats
+	•	The way chats are saved in daily diaries
+	•	The hierarchy-awareness and cross-page navigation
+	•	The role of the user’s Assistant across all pages
+
+Your goal is to identify and fix every weakness in the chat and the underlying agents’ communication model.
+
+⸻
+
+2. BUILD A SYSTEM WHERE AGENTS CONSTANTLY TALK TO EACH OTHER IN THE BACKGROUND
+
+The platform must run like a real company.
+
+✔ Agents must have:
+	•	Their own goals
+	•	Their own tasks
+	•	Their own responsibilities
+	•	Their own conversations
+	•	Their own reporting flows
+
+✔ Agents must communicate:
+	•	Department heads with junior agents
+	•	Cross-department agents
+	•	Compliance agents correcting others
+	•	Marketing agents initiating tasks
+	•	Finance agents reporting budgets
+	•	Support agents updating operations
+	•	Internal meetings created automatically
+
+✔ Conversations must be:
+	•	Efficient
+	•	Short
+	•	Sharp
+	•	Context-aware
+	•	Realistic
+
+✔ These conversations must run even when the user is not interacting.
+
+✔ These conversations must be saved by day in the Diary/Dashboard timeline.
+
+✔ These conversations must affect the company’s state.
+
+⸻
+
+3. MAINTAIN AND ENFORCE HIERARCHY IN THE BACKGROUND
+
+You must ensure:
+	•	The org tree is respected
+	•	Senior agents supervise junior agents
+	•	Department leads coordinate tasks
+	•	Sub-agents report to supervising agents
+	•	The user’s Assistant oversees all activity and ensures coherence
+
+Agents that do not respect hierarchy should be automatically corrected.
+
+Hierarchy must be actively used by the conversation engine.
+
+⸻
+
+4. THE USER’S ASSISTANT MUST ORCHESTRATE EVERYTHING
+
+The user’s Assistant must:
+
+✔ Be fully aware of the entire platform:
+	•	All pages
+	•	All companies
+	•	All departments
+	•	Every agent
+	•	Every action
+	•	Every log
+	•	Every meeting
+
+✔ Be able to navigate across pages automatically
+
+For example:
+
+If the user says:
+
+“Open the marketing agents and review what they did.”
+
+The Assistant must:
+	1.	Switch to Agents & Hierarchy
+	2.	Open the Marketing department
+	3.	Review logs
+	4.	Summarize in chat
+
+✔ Be able to move between contexts:
+	•	Home
+	•	Dashboard
+	•	Meetings
+	•	Knowledge Base
+	•	Actions
+	•	Companies
+	•	Settings
+
+✔ Use memory intelligently:
+	•	Know the user
+	•	Maintain context across days
+	•	Log decisions
+	•	Track preferences
+	•	Reinforce the long-term vision
+
+✔ Represent the user’s will across the entire agent ecosystem.
+
+⸻
+
+5. AGENT EFFICIENCY & ANSWER QUALITY
+
+Agent responses must:
+	•	Be short
+	•	Be efficient
+	•	Be purpose-driven
+	•	Contain no fluff
+	•	Be respectful of resource usage
+	•	Reduce token consumption
+	•	Deliver maximum clarity
+
+You must adjust:
+	•	Response templates
+	•	Agent behavior rules
+	•	Internal prompts
+	•	Decision-making logic
+	•	Message summarization
+
+So the overall communication remains sharp, like a real high-performance company.
+
+⸻
+
+6. SIMULATION OF FULL BACKGROUND ACTIVITY
+
+Once the chat system is fully implemented, you must simulate:
+
+✔ Multi-agent conversations
+	•	Marketing talking with sales
+	•	Legal correcting compliance tasks
+	•	Finance doing budget checks
+	•	Operations reporting daily status
+	•	Strategy agent sending alerts
+	•	R&D agent proposing improvements
+
+✔ User Assistant coordinating activity
+	•	Sending meeting summaries
+	•	Opening new meetings
+	•	Assigning tasks
+	•	Organizing agents’ work
+
+✔ Daily looping engine
+	•	Every simulated “day” has its own conversations
+	•	Collapsible day structure in the Diary
+	•	Timestamped logs
+	•	Meeting summaries
+	•	Decisions
+	•	Actions executed
+	•	Budget updates
+	•	Performance analytics
+
+✔ Stress-testing unexpected cases
+	•	Agent disagreement
+	•	Missing data
+	•	Failed API calls
+	•	Permission conflicts
+	•	Incomplete knowledge base
+
+All simulations must feel real and complete.
+
+⸻
+
+7. TEST EVERYTHING THREE TIMES
+
+When the implementation is complete:
+
+Run three full test cycles:
+
+🔵 Test Cycle 1: Functional Test
+	•	Agents talk
+	•	Background meetings run
+	•	Assistant navigates pages
+	•	All chat features work
+	•	Context flows correctly
+	•	Daily diary logs correct
+	•	No crashes
+
+🔵 Test Cycle 2: Efficiency Test
+	•	Messages are short
+	•	Responses are sharp
+	•	No unnecessary tokens
+	•	Agents behave professionally
+
+🔵 Test Cycle 3: Stress Test
+	•	Break the hierarchy
+	•	Give conflicting instructions
+	•	Overload conversations
+	•	Missing fields
+	•	Permission denied cases
+	•	Dead agents / empty responses
+	•	Reassign departments
+	•	Trigger multiple background meetings
+
+Fix anything that breaks and restart all three test cycles until perfect.
+
+⸻
+
+8. FINAL RETURN CONDITION
+
+Return to the user ONLY when:
+	•	All pages are audited
+	•	All chat systems are fixed
+	•	Multi-agent background conversations work
+	•	Hierarchy-based communication is correct
+	•	User’s Assistant can navigate everywhere
+	•	All agents are efficient
+	•	Full simulation data is injected
+	•	All tests are passed three times
+	•	No broken components exist
+	•	No placeholder exists
+	•	The system behaves like a real autonomous company
+
+Only then return:
+
+“The full chat system, background conversations, hierarchy logic, navigation awareness, and agent orchestration have all been fully implemented, tested three times, and simulated with realistic data. Everything works correctly.”
+
+Until then, the agent must stay silent and keep working.

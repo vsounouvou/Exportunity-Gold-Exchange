@@ -1,0 +1,54 @@
+services:
+  bdo-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        BUILD_ID: ${BUILD_ID}
+        GIT_SHA: ${GIT_SHA}
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      PORT: 5000
+      BUILD_ID: ${BUILD_ID}
+      GIT_SHA: ${GIT_SHA}
+      REPLICATE_API_TOKEN: ${REPLICATE_API_TOKEN}
+      REPLICATE_MODEL_QUALITY: ${REPLICATE_MODEL_QUALITY}
+      REPLICATE_MODEL_FAST: ${REPLICATE_MODEL_FAST}
+      IMAGE_STORAGE_PROVIDER: ${IMAGE_STORAGE_PROVIDER}
+      ASSET_BASE_PATH: ${ASSET_BASE_PATH}
+      ASSET_PUBLIC_PATH: ${ASSET_PUBLIC_PATH}
+      UPLOAD_DIR: ${UPLOAD_DIR:-/data/uploads}
+      MET_WHATSAPP_NUMBER: ${MET_WHATSAPP_NUMBER}
+      MET_DEFAULT_COUNTRY: ${MET_DEFAULT_COUNTRY:-BJ}
+      MET_PRICING_DEFAULT_DELIVERY_FEE_CFA: ${MET_PRICING_DEFAULT_DELIVERY_FEE_CFA:-25000}
+      MET_PRICING_INCLUDED_RADIUS_KM: ${MET_PRICING_INCLUDED_RADIUS_KM:-15}
+      MET_PRICING_EXTRA_FEE_PER_KM_CFA: ${MET_PRICING_EXTRA_FEE_PER_KM_CFA:-1200}
+      MET_PRICING_BRICKS_PER_M2: ${MET_PRICING_BRICKS_PER_M2:-50}
+      # Maildir indexing (read-only bind mount into container)
+      MAILDIR_BASE: /var/mail
+      MAIL_INDEXER_ENABLED: ${MAIL_INDEXER_ENABLED:-true}
+      MAIL_INDEXER_INTERVAL_MS: ${MAIL_INDEXER_INTERVAL_MS:-300000}
+      MAIL_INDEXER_LIMIT_PER_MAILBOX: ${MAIL_INDEXER_LIMIT_PER_MAILBOX:-100}
+    volumes:
+      - ../data/attached_assets:/app/attached_assets
+      - bdo_assets:/data/assets
+      - bdo_uploads:/data/uploads
+      - /home/vital/infra/mailserver/maildata:/var/mail:ro
+      # Allow admin email provisioning via docker exec into docker-mailserver (see server/lib/mail/mailserverSetup.ts)
+      - /var/run/docker.sock:/var/run/docker.sock
+    ports:
+      - "127.0.0.1:5000:5000"
+    networks:
+      - bdo-proxy
+
+networks:
+  bdo-proxy:
+    external: true
+    name: bdo-proxy
+
+volumes:
+  bdo_assets: {}
+  bdo_uploads: {}

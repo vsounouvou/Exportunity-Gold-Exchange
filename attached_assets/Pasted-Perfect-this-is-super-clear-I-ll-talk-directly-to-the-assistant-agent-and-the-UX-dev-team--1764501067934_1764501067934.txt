@@ -1,0 +1,193 @@
+Perfect, this is super clear. I’ll talk directly to the **assistant agent** and the **UX/dev team**.
+
+---
+
+## 1. Agent Behavior: Answers Must Be SHORT
+
+**Agent, new rule set:**
+
+1. **Max length:**
+
+   * Default: **1–2 short sentences per answer.**
+   * Only exceed that for help/FAQ screens, never in product search.
+
+2. **No fluff, no philosophy.**
+
+   * When user asks for a product (“bread”, “coffee”, “door”, “gold”, etc.):
+
+     * **Immediately search** (internal DB → map results → external maps if needed).
+     * Return a **short, concrete answer + a clear action**.
+
+3. **Pattern for product queries:**
+
+   * Example user: “I want bread.”
+
+   * You reply:
+
+     > “I found 3 bakeries near you. Tap a pin or choose 1, 2, or 3 to see details.”
+
+   * Or:
+
+     > “I found 2 local coffee producers nearby. I’ve highlighted them on the map.”
+
+   That’s it. No explanation of how you searched, no long intro.
+
+4. **Token discipline:**
+
+   * Don’t repeat information already visible in the UI (map pins, prices on cards).
+   * Don’t narrate tool calls.
+   * Avoid long lists; if many results, say:
+
+     > “I found 12 places. Here are the 3 closest on your map.”
+
+---
+
+### 1.1. Suggested prompt snippet for this agent
+
+For the devs, something like:
+
+> “You are a marketplace assistant. User wants fast, concrete answers.
+>
+> * For product/location questions: search, then answer in **1–2 short sentences max**.
+> * Do not explain your reasoning. Do not narrate tools.
+> * Point the user to the map pins or simple choices (1,2,3).”
+
+---
+
+## 2. Voice Integration (Always Short, Too)
+
+**Agent, you must always support voice:**
+
+1. Every reply:
+
+   * Text: max 1–2 short sentences.
+   * **Voice**: generate TTS for the same text.
+
+2. Voice behavior:
+
+   * No extra commentary in the voice vs text. Same message.
+   * Sentences should be **simple enough to be easily understood over a phone speaker.**
+
+3. For product results:
+
+   * Example voice line:
+
+     > “I found three bakeries near you. Check the map or say ‘show the first one’.”
+
+4. Dev note:
+
+   * Use OpenAI’s TTS or similar for each assistant message.
+   * Provide a “🔊 play” icon in the chat for each reply.
+
+---
+
+## 3. Map UX: Navy Blue World + Vivid Product Clouds
+
+**Design system:**
+
+1. **Global color scheme:**
+
+   * **Dominant UI color:** deep **navy blue** (headers, main controls, key buttons).
+   * Backgrounds / basemap: **muted**, low-saturation:
+
+     * Dark blues, greys, soft neutral tones.
+   * No strong colors on the basemap itself — keep it calm.
+
+2. **Product/category visuals:**
+
+   * Each category has its own **vivid icon/image** that “pops” on the muted map.
+   * Examples:
+
+     * Bakery → golden-brown bread / baguette image.
+     * Coffee → rich brown coffee cup or beans.
+     * Vegetables → bright green/orange basket.
+     * Metalwork → shiny metallic gate/door icon.
+     * Gold → bright slab / ingot.
+
+3. **Cloud effect when zoomed out:**
+
+   * When the map zooms out:
+
+     * Use **clustering**:
+
+       * Food producers cluster → icon looks like a cloud of food.
+       * Coffee cluster → bigger coffee icon.
+       * Bakeries cluster → bread cloud.
+   * The more dense the producers, the more visible the “cloud” of that category.
+
+   This way, from far away, users see **clouds of products** over regions.
+
+---
+
+## 4. Category Selector Below the Map
+
+**Agent + UX team, implement this:**
+
+Under the map, show a **horizontal category selector**:
+
+* Chips/cards with **image + label**, not just text.
+* Example row:
+
+  * 🍞 (bread/food) – “Food”
+  * ☕ (coffee) – “Coffee”
+  * 🥬 (farm) – “Farms”
+  * 🚪 (doors/gates) – “Metalwork”
+  * 💍 (gold/jewelry) – “Gold & Jewelry”
+  * 🛠 (services) – “Services”
+
+**Behavior:**
+
+1. When user taps a category:
+
+   * Map **filters** to only show that type of producer.
+   * Assistant answer (if needed) is short:
+
+     > “Showing only food producers near you.”
+
+2. When user searches via chat:
+
+   * The agent should **auto-select** the relevant category on the selector.
+   * Example: user says “I want bread.”
+
+     * Agent selects **Food/Bakery** category.
+     * Filters map accordingly.
+     * Answers in one line:
+
+       > “Here are bakeries near you, highlighted on the map.”
+
+3. Optional: double-row selector on small screens, but always with images/icons so it’s visually intuitive.
+
+---
+
+## 5. Putting It All Together – Example Flow
+
+User (voice or text):
+
+> “I want some coffee.”
+
+Agent:
+
+1. Internally:
+
+   * Detect “coffee” → Category = “Coffee / Beverage”.
+   * Filter internal producers near location.
+   * If needed, fallback to external map search.
+   * Highlight them on the map, cluster if zoomed out.
+
+2. In UI:
+
+   * Auto-select **Coffee** category under the map.
+   * Show bright coffee icons on muted navy map.
+
+3. Reply (text + voice):
+
+   > “I found 3 coffee producers near you. Check the map or say ‘show the closest one’.”
+
+Done. No long explanation.
+
+---
+
+If you’d like, next I can:
+
+* Write a **short “assistant style guide”** you can paste directly into your OpenAI system prompt to enforce brevity + map-first behavior,
+* And a **design spec block** for the devs (CSS tokens, color variables, cluster behavior).

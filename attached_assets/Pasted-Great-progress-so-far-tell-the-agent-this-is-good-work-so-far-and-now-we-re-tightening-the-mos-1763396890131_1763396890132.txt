@@ -1,0 +1,278 @@
+Great progress so far – tell the agent this is **good work so far** and now we’re tightening the most important part:
+👉 the **Chairman Assistant Chat** must become a **real, fully working, integrated chat dock** at the bottom of the app, not just a visual mock.
+
+Here’s exactly what needs to be done.
+
+---
+
+## 1. Core Requirements (What Must Be True)
+
+1. The **Chairman Assistant** chat:
+
+   * Is always visible as a **bottom dock** on the **Home page**.
+   * Uses the **existing chat module** (same components, same backend logic).
+   * Is **clickable** and fully interactive:
+
+     * User can type, send, see responses.
+   * Is **context-aware**:
+
+     * Knows **which user** (Chairman) is speaking.
+     * Knows **which company** is currently selected (if any).
+   * Can receive instructions like:
+
+     * “Focus on Company X and increase outreach.”
+     * “Show me meetings for Company Y this week.”
+2. When the user **clicks on a company** anywhere in the homepage:
+
+   * The context of the Chairman Assistant is updated to that company.
+   * The Assistant responds knowing **which company** the Chairman is talking about.
+
+---
+
+## 2. UX / UI Behavior
+
+### 2.1 Chat Dock on Homepage
+
+**Location:**
+
+* At the **bottom of the Home page**, spanning the full width.
+* Always visible (no scrolling past it – it stays docked).
+
+**Elements:**
+
+* Title bar:
+
+  * Left: “Chairman Assistant” (or “Your Assistant”).
+  * Right: small indicator of current context:
+
+    * “Context: All Companies”
+    * or “Context: [Company Name]”
+
+* Chat area:
+
+  * Scrollable list of messages (user & assistant).
+  * Show at least last 20 messages.
+
+* Input area:
+
+  * Text input: “Talk to your assistant…”
+  * Send button.
+
+**Interaction:**
+
+* Typing + Enter / Send = sends message to backend.
+* Message appears immediately in UI, then assistant reply is appended when received.
+
+---
+
+### 2.2 Company Context Integration
+
+On the Homepage:
+
+* In the **left column**, each company card is clickable (already planned).
+* We add a light **context selection** behavior:
+
+**When the user clicks a company card:**
+
+1. Normal behavior: open the Company Workspace (as already designed).
+2. Additionally:
+
+   * Set a global `currentCompanyId` in frontend state.
+   * Update the **context label** in the chat dock:
+
+     * “Context: [Company Name]”.
+   * The next messages from the Chairman to the assistant include this company context.
+
+**Optional quick interaction:**
+
+* On each company card, you can also add a small icon “Chat about this company”.
+
+  * Clicking this:
+
+    * Does NOT change page,
+    * Only sets `currentCompanyId` and scrolls focus to the chat dock.
+
+---
+
+## 3. Technical Integration Instructions
+
+### 3.1 Data Structures Needed
+
+In the frontend global state (store / context):
+
+* `currentUser`:
+
+  * `id`
+  * `displayName` (e.g. “Vital”)
+  * `role` = “Chairman”
+
+* `currentCompanyId` (nullable):
+
+  * `null` = no specific company selected (Assistant acts at group level).
+  * Or set to a company’s id.
+
+* `chairmanChatHistory`: array of messages:
+
+  * `[{ sender: 'user' | 'assistant', content: string, timestamp: ... }]`
+
+In the backend:
+
+* A **Chairman Assistant chat endpoint**, for example:
+
+  * `POST /api/chat/chairman-assistant`
+  * Body:
+
+    * `userId`
+    * `message`
+    * `currentCompanyId` (optional)
+* This endpoint calls the existing chat/orchestrator module, with:
+
+  * System prompt that says:
+
+    * “You are the Chairman Assistant. User name is X. Current company context is Y (or none). Act as strategic assistant and orchestrator of companies and agents.”
+
+### 3.2 Reuse Existing Chat Module
+
+**Do NOT build a separate prototype chat.**
+
+Instead:
+
+1. Identify the current chat component used elsewhere (e.g. for other agents).
+2. Wrap it as a `ChatDock` component with:
+
+   * Props:
+
+     * `conversationId` or `mode: 'chairman-assistant'`
+     * `currentCompanyId`
+     * `user` (Chairman).
+3. On homepage:
+
+   * Render `<ChatDock mode="chairman-assistant" ... />` in the bottom dock.
+4. Ensure the chat sends requests to the correct backend endpoint (`chairman-assistant` mode).
+
+---
+
+## 4. Behavior of the Chairman Assistant (Logic)
+
+The backend LLM prompt for the Chairman Assistant must:
+
+* Always receive:
+
+  * `user.name`
+  * `user.role`
+  * `currentCompany` (id + basic info if set)
+  * High-level group metrics (if available)
+
+* Must:
+
+  * Address the user by name (e.g. “Vital,”).
+  * Understand the difference between:
+
+    * No company context (talk at group level),
+    * Specific company context (only talk about that company).
+
+Examples of behavior:
+
+* User: “What should we focus on today?”
+
+  * Assistant checks metrics for current company (if set) or all companies.
+
+* User (on homepage with Company X selected):
+  “Increase meetings in Abidjan this month.”
+
+  * Assistant:
+
+    * Understands this refers to Company X,
+    * Suggests actions OR can send instructions to specific agents (Sales/Outreach) in the backend.
+
+---
+
+## 5. State & Context Passing
+
+### 5.1 Frontend → Backend
+
+When user sends a message:
+
+```json
+{
+  "userId": "USER_123",
+  "message": "I want to get more meetings in Abidjan next week.",
+  "currentCompanyId": "COMPANY_456"
+}
+```
+
+Backend:
+
+* Loads:
+
+  * User profile,
+  * Company basic info (if `currentCompanyId`),
+  * Relevant metrics.
+
+* Builds LLM context like:
+
+> “User Vital (Chairman) is asking: ‘I want to get more meetings in Abidjan next week.’
+> Current context: Company Exportunity CI (id COMPANY_456), sector: trade/logistics, market: Abidjan.
+> Your role: Chairman Assistant. Explain clearly, propose a plan, and optionally suggest which internal agents to activate.”
+
+### 5.2 LLM Response → UI
+
+* Response text is returned and appended to `chairmanChatHistory`.
+* Optionally, the response can include **structured actions** later (e.g. propose to create a campaign), but for now just text is enough.
+
+---
+
+## 6. QA Checklist – Chat Must Fully Work
+
+The builder agent must **manually test**:
+
+1. **Chat Visible & Fixed**
+
+   * [ ] Chat dock appears on bottom of homepage and stays visible.
+   * [ ] It does not overlap key content or hide essential elements.
+
+2. **Basic Chat Functionality**
+
+   * [ ] Typing and sending a message works.
+   * [ ] Assistant replies are displayed correctly.
+   * [ ] Long conversations can scroll without visual glitches.
+
+3. **User Name & Greeting**
+
+   * [ ] Assistant addresses the user by their stored `displayName` (e.g. “Vital”).
+   * [ ] If name changes in profile (later), assistant greets with new name.
+
+4. **Company Context**
+
+   * [ ] When no company has been clicked, the context label shows “All Companies” or similar.
+   * [ ] When clicking on Company A, the context label changes to “Company A”.
+   * [ ] Messages sent after selecting Company A are handled **with** that `currentCompanyId` in backend.
+   * [ ] Switching to Company B updates context.
+
+5. **Integration With Existing Chat Module**
+
+   * [ ] The same core chat module is used (same message rendering).
+   * [ ] No duplication of logic; just different configuration (Chairman Assistant mode).
+
+6. **No Dead Clicks**
+
+   * [ ] Chat dock header not dead: cannot be interacted as a non-functional element.
+   * [ ] Input box always responsive.
+   * [ ] “Send” button always functional.
+
+---
+
+## 7. Summary Instruction (What You Tell the Agent/Dev)
+
+You can literally say to your dev/agent:
+
+> “Good work so far. Now, I want you to **fully wire the Chairman Assistant chat** as a bottom dock on the homepage.
+> Use the existing chat module, make it clickable and fully interactive.
+> The chat must always be visible on the homepage, and it must know who the Chairman is and which company is currently selected.
+> When I click a company, it sets the context for the Chairman Assistant, and I can give instructions to that assistant about that company directly from the homepage.
+> Implement the state (`currentUser`, `currentCompanyId`, `chairmanChatHistory`), the backend endpoint for the Chairman Assistant, and test every interaction. No dead buttons. The chat is the central entry point of the product now.”
+
+If you’d like, I can next write:
+
+* The **exact system prompt** for the Chairman Assistant,
+* Or a **small pseudo-API contract** for `/api/chat/chairman-assistant` that the backend and frontend can both follow.

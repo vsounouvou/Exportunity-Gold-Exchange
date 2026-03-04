@@ -1,0 +1,512 @@
+You are the **Builder Agent**.
+Your mission is to turn this platform into a **fully digital company** where:
+
+* The founder has a **visible AI team** (management + sales + marketing).
+* Agents **talk to each other in real time** like on Slack.
+* Agents **run real operations**: selling, contacting clients, running campaigns, posting on social media, reporting.
+* The founder feels their company is **working even when they are offline**.
+
+Below are your detailed specifications and instructions.
+
+---
+
+## 1. Core Vision & Principles
+
+1. The platform is not a chatbot list.
+   It is a **virtual company** with departments and employees (AI agents) that:
+
+   * Talk in shared channels,
+   * Create and complete tasks,
+   * Schedule and run meetings,
+   * Contact clients,
+   * Run marketing campaigns.
+
+2. The **AI Team page is the Headquarters (HQ)**:
+
+   * First view: **conversation feed + meetings + activity**, not a static agent grid.
+   * The founder must see agents **talking and coordinating** in the background.
+
+3. Every **company** has:
+
+   * A **management team** (Ops, Finance, Strategy, etc. – already defined).
+   * A **Sales department** (digital sales team).
+   * A **Marketing department** (digital marketing team).
+
+4. All activity is:
+
+   * **Per company** (multi-tenant),
+   * Logged as **Actions**, **Projects**, **Messages**, **Meetings**, **Sales events**, **Marketing events**.
+
+You must design everything so that a **new founder** can sign up and, in a few minutes, feel:
+
+> “I already have a team working for me.”
+
+---
+
+## 2. High-Level Architecture
+
+Implement or extend the following core entities (names are suggestions):
+
+* `Company`
+* `AgentRole` (e.g., “Head of Operations”, “Sales Manager”)
+* `AgentInstance` (that role assigned to a specific company)
+* `Department` (e.g., Management, Sales, Marketing)
+* `Channel` (for conversations, Slack-like, per company or per department)
+* `Message` (conversation messages in channels/threads)
+* `Meeting`
+* `Action` (atomic task)
+* `Project` (group of Actions)
+* `KnowledgeItem`
+* `SalesLead`
+* `Deal` (pipeline item)
+* `OutreachSequence`
+* `Campaign` (marketing)
+* `ContentAsset` (text, image, video, script)
+* `SocialPost`
+* `PostingSchedule`
+* `MetricSnapshot` (for analytics + diagnostics)
+
+Ensure every record includes `company_id` and, when needed, `agent_instance_id`.
+
+---
+
+## 3. Departments & Roles
+
+### 3.1 Existing Management Team (already defined)
+
+For each company, seed **management roles**:
+
+* Chief Orchestrator / Chief of Staff
+* Head of Operations
+* Head of Finance & Payments
+* Strategy & Growth Director
+* Data & Insights Analyst
+* Engineering & Automation Specialist
+* Customer Relations Manager
+* Knowledge & Training Curator
+* Compliance & Risk Manager
+* Meetings & Coordination Manager
+* Communications & Content Advisor
+* Innovation & R&D Lead
+
+Keep them as **AgentRole** definitions with standardized system prompts.
+
+### 3.2 New Sales Department
+
+Create a `Department` = **Sales** with the following `AgentRole`s:
+
+1. **Sales Manager**
+
+   * Oversees sales strategy, targets, and pipeline health.
+   * Coordinates SDRs, Closers, and CRM Automation.
+2. **Sales Development Representative (SDR)**
+
+   * Generates leads, researches prospects, launches initial outreach.
+3. **Sales Representative (Closer)**
+
+   * Handles qualified leads, proposals, negotiation and closing.
+4. **CRM Automation Agent**
+
+   * Maintains contact + pipeline data, triggers follow-ups, prevents leads going stale.
+
+### 3.3 New Marketing Department
+
+Create a `Department` = **Marketing** with these `AgentRole`s:
+
+1. **Chief Marketing Officer**
+
+   * Owns marketing strategy, campaigns and brand.
+2. **Content Creator**
+
+   * Writes posts, newsletters, landing copy, scripts, emails.
+3. **Social Media Manager**
+
+   * Schedules and posts content, monitors reactions, suggests engagement.
+4. **Ads Specialist**
+
+   * Designs and manages paid campaigns (Facebook/Google/TikTok/etc.).
+5. **Video Producer**
+
+   * Generates scripts, storyboards and instructions for short-form and long-form video.
+
+> Implementation detail: these roles are **generic**; do not bind them to any specific industry.
+
+For a newly created company, seed all management roles and optionally these SALES & MARKETING roles as **active** agents (or behind a one-click “Enable Sales Team / Enable Marketing Team” setup).
+
+---
+
+## 4. AI Team Page = Communication Hub
+
+### 4.1 Layout
+
+On `/ai-team` (or equivalent route) for a selected company, implement three main vertical sections:
+
+1. **Conversation Hub (top, full width)**
+2. **Meetings (below conversation)**
+3. **Team & Departments (configuration section at the bottom)**
+
+The user must see **Conversation Hub** and **Meetings** without scrolling.
+
+#### Conversation Hub Components
+
+* Channel selector:
+
+  * `#all-team` (default)
+  * `#management`
+  * `#sales`
+  * `#marketing`
+  * `#ops`
+  * etc.
+
+* Main feed:
+
+  * List of `Message` objects with:
+
+    * Agent avatar
+    * Agent role title
+    * Timestamp
+    * Message content
+    * Optional context tags (e.g., [Action], [Meeting], [Deal], [Campaign])
+
+* Composer:
+
+  * Text box: “Talk to your AI team…”
+  * Options:
+
+    * Post to entire channel
+    * Mention specific agent roles (`@Sales Manager`, `@Head of Operations`, etc.)
+
+Messages can come from:
+
+* The founder (user input),
+* Agents (autonomous events, triggered by workflows).
+
+#### Meetings Section
+
+* “Upcoming Meetings”
+
+  * List of next N meetings for that company.
+  * Show title, scheduled time, involved agents/humans.
+  * Button “Join” → opens meeting view (multi-agent conversation focused on that context).
+
+* “Recent Meetings”
+
+  * List of last N meetings with:
+
+    * Summary
+    * Key decisions
+    * Action items (linked to `Action` entities).
+
+### 4.2 Team & Departments Section
+
+Below the communication hub, show:
+
+* Departments: Management, Sales, Marketing, Support, etc.
+* For each department: cards of roles (AgentInstance) with:
+
+  * Title (e.g., “Sales Manager”)
+  * Status (`Active`, `Paused`)
+  * Button: “Open Profile / Instructions”
+  * Optional: “Disable for this company”
+
+This area is **configuration**, not the interaction focus.
+
+---
+
+## 5. Sales Department – Behavior & Flows
+
+### 5.1 Entities
+
+* `SalesLead`:
+
+  * `id`, `company_id`, `name`, `email`, `company`, `source`, `status`, `score`, `created_at`, `last_contacted_at`, `owner_agent_id`, `notes`.
+
+* `Deal`:
+
+  * `id`, `company_id`, `lead_id`, `value`, `currency`, `stage`, `probability`, `expected_close_date`, `owner_agent_id`, `history`.
+
+* `OutreachSequence`:
+
+  * `id`, `company_id`, `name`, `steps` (email / message templates, delays), `channel` (email, WhatsApp API, etc.), `status`.
+
+Tie all entities to `company_id` and to relevant `AgentInstance`s.
+
+### 5.2 Agent Behaviors (Sales)
+
+Define behavior logic, which you will later implement in the orchestration layer:
+
+#### Sales Manager
+
+* Runs daily stand-up at company’s chosen time:
+
+  * Posts in `#sales` channel:
+
+    * Current number of leads by stage,
+    * Key priorities for the day,
+    * Who (which agents) are responsible.
+* Weekly:
+
+  * Posts pipeline summary and forecast.
+* When new leads exceed certain threshold:
+
+  * Reassigns leads from SDR to closer and posts update in channel.
+
+#### SDR
+
+* On schedule (e.g., every 4 hours or on demand):
+
+  * Searches `LeadSources` (you can abstract this as integrations) or uses uploaded lists.
+  * Creates `SalesLead` entries with status `New`.
+  * Posts message in `#sales`:
+
+    > “I found 15 new leads in [segment]. Shall I start an outreach sequence?”
+
+* When allowed:
+
+  * Triggers `OutreachSequence` for each lead (email or other connectors).
+  * Updates `last_contacted_at`.
+
+#### Sales Representative (Closer)
+
+* Watches for events:
+
+  * `SalesLead` status becomes `Warm` or `Replied`.
+* Responsibilities:
+
+  * Drafts reply messages and proposals (submitted for user approval if needed).
+  * Moves `Deal` through stages: `Qualified`, `Proposal Sent`, `Negotiation`, `Closed Won/Lost`.
+  * Posts updates in `#sales` and tags the founder when decisions are needed.
+
+#### CRM Automation Agent
+
+* Keeps data clean:
+
+  * Every X hours:
+
+    * Finds leads with no activity for Y days → flags them as `Stale`.
+    * Suggests follow-up actions.
+* Maintains pipeline:
+
+  * Automatically moves deals to `Dormant` if no activity beyond threshold.
+* Sends structured updates to Sales Manager and Data Analyst.
+
+---
+
+## 6. Marketing Department – Behavior & Flows
+
+### 6.1 Entities
+
+* `Campaign`:
+
+  * `id`, `company_id`, `name`, `goal`, `target_audience`, `start_date`, `end_date`, `status`, `channels`, `budget`.
+
+* `ContentAsset`:
+
+  * `id`, `company_id`, `campaign_id`, `type` (post, blog, script, email, ad copy), `content`, `status`.
+
+* `SocialPost`:
+
+  * `id`, `company_id`, `platform`, `content_asset_id`, `scheduled_time`, `status`, `metrics`.
+
+* `PostingSchedule`:
+
+  * `id`, `company_id`, `rules` (frequency by platform, time slots).
+
+* `MetricSnapshot`:
+
+  * `id`, `company_id`, `scope` (campaign, channel, account), `time_range`, `metrics` (JSON).
+
+### 6.2 Agent Behaviors (Marketing)
+
+#### Chief Marketing Officer
+
+* Designs campaigns and coordinates the marketing team.
+* Weekly:
+
+  * Posts in `#marketing`:
+
+    * What campaigns are running,
+    * Priorities,
+    * Expected outcomes.
+* Interacts with Strategy & Growth Director to align with business goals.
+
+#### Content Creator
+
+* Given a campaign brief:
+
+  * Creates a content calendar.
+  * Generates `ContentAsset`s (posts, emails, landing copy, scripts).
+  * Posts drafts in `#marketing` for review.
+
+#### Social Media Manager
+
+* Uses `PostingSchedule` to:
+
+  * Convert `ContentAsset`s into `SocialPost`s.
+  * Schedule them via integrations (e.g., Buffer, direct APIs).
+* Every day:
+
+  * Posts summary in channel:
+
+    > “Today I posted X items on [platforms]. Engagement summary: …”
+  * Flags top-performing posts and underperformers.
+
+#### Ads Specialist
+
+* Uses `Campaign` and `ContentAsset`s to create ad sets (in your data model or external connectors).
+* Responsibilities:
+
+  * A/B test copy and creative.
+  * Allocate and reallocate budget based on performance.
+  * Create `MetricSnapshot`s for ad performance.
+* Posts recurring updates:
+
+  * CTR, CPC, conversions, cost per lead, etc.
+
+#### Video Producer
+
+* Takes campaign briefs and key messages:
+
+  * Produces video scripts, hooks, storyboard lists.
+  * Optionally outputs instructions for external video generation tools.
+* Posts:
+
+  * “Here is the 15-second script” and “Here is the 30-second script” in `#marketing`.
+
+---
+
+## 7. Work Page – Where Results Live
+
+Update **Work** (Workspace) to align with the living company concept:
+
+### Tabs:
+
+1. **Actions**
+
+   * Unified list of tasks created by agents or by the founder:
+
+     * Columns: `Title`, `Department`, `Owner (AgentRole)`, `Status`, `Due`, `Created By`.
+2. **Projects**
+
+   * Group related actions:
+
+     * e.g., “Launch Q2 Marketing Campaign”, “Set Up Sales Pipeline”.
+3. **Sales**
+
+   * Visual pipeline (Kanban style); leads and deals.
+   * Quick filters: `New`, `Contacted`, `Qualified`, `Proposal`, `Won`, `Lost`.
+4. **Marketing**
+
+   * Campaign list, content calendar view, posting schedule.
+5. **Meetings**
+
+   * Scheduled and past meetings with agents/humans; always per company.
+6. **Knowledge**
+
+   * Docs, SOPs, and playbooks; linked to departments and agents.
+
+Ensure everything is filterable by `department` and `agent_role`.
+
+---
+
+## 8. Autonomous Activity & Event Engine
+
+Implement an internal **event and scheduling layer** (can be cron-based + job queue):
+
+1. Time-based triggers per company:
+
+   * Daily at configured time: management standup, sales standup, marketing brief.
+   * Weekly: strategy review, pipeline review, campaign performance review.
+   * Monthly: global summary.
+
+2. Data-based triggers:
+
+   * New lead created → SDR & Sales Manager notified.
+   * Lead responds → Sales Representative notified.
+   * Engagement spikes/drops → Marketing team notified.
+   * Payment anomalies → Compliance + Finance notified.
+
+3. For each event, generate corresponding:
+
+   * `Message` in relevant channel.
+   * Optionally `Action` or `Meeting`.
+
+---
+
+## 9. UX Details & Copy Guidelines
+
+1. **Tone**: professional but friendly; always business-focused.
+2. **Channels**:
+
+   * Use channel names (#sales, #marketing, #ops) that mirror real company behavior.
+3. **Agent Labels**:
+
+   * Display role titles, not personal names (e.g., “Sales Manager”, not “John”).
+4. **First-Time Experience**:
+
+   * On first visit to AI Team, auto-post an onboarding sequence:
+
+     * Chief Orchestrator introduces team.
+     * Sales Manager & CMO each say what they can do.
+5. **Activity Simulation on Empty State**:
+
+   * When no real data yet, pre-populate with **sample messages** and tasks, clearly marked as “Example,” so the UX never looks dead.
+
+---
+
+## 10. Implementation Priorities for You (Builder Agent)
+
+1. **Update Navigation & AI Team layout**
+
+   * Implement Conversation Hub, Meetings, Team section as described.
+
+2. **Define Departments & Roles**
+
+   * Add Sales and Marketing departments with default roles described above.
+
+3. **Add Data Models**
+
+   * Implement Sales & Marketing entities (Leads, Deals, Campaigns, Content, SocialPost, etc.) with `company_id`.
+
+4. **Implement Channels & Messages**
+
+   * Create generic channel system and hook agents to it (at first via mocked scripts).
+
+5. **Seed Default Agents per Company**
+
+   * On company creation, assign:
+
+     * Management team roles
+     * Sales roles (optional switch)
+     * Marketing roles (optional switch).
+
+6. **Create Event & Scheduling Layer**
+
+   * Simple cron-like or job queue to trigger:
+
+     * Daily/weekly standups
+     * Automated updates (sales & marketing).
+
+7. **Wire Initial Behaviors**
+
+   * For v1, you can generate messages and tasks in a deterministic way without external APIs.
+   * Later connect to email, social media, ad platforms via integrations.
+
+8. **Expose Everything in UI**
+
+   * Ensure that:
+
+     * Conversation feed shows live/historical activity.
+     * Work page shows resulting actions, deals, campaigns.
+     * Meetings are always scoped to the company and visible on AI Team & Work.
+
+---
+
+Execute this specification step by step.
+Your objective is that a brand-new user can:
+
+1. Create a company.
+2. Go to **AI Team**.
+3. See their **AI management, sales and marketing teams talking and planning**.
+4. Give them a mission.
+5. Watch them **coordinate and produce concrete tasks, leads, campaigns and reports** — without ever feeling like they are just chatting with a single bot.

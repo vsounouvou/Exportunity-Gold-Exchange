@@ -1,0 +1,33 @@
+version: 1
+routes:
+  - scope: global
+    module_pattern: "gold.*"
+    cron_kind: TIME
+    preferred_queue: execution-gold
+    preferred_tier: EXECUTION
+    concurrency_limit: 8
+    max_retry: 4
+
+  - scope: global
+    module_pattern: "wallet.*"
+    cron_kind: EVENT
+    preferred_queue: execution-wallet
+    preferred_tier: EXECUTION
+    concurrency_limit: 10
+    max_retry: 5
+
+  - scope: global
+    module_pattern: "tenant.monitor.*"
+    cron_kind: MONITOR
+    preferred_queue: monitoring
+    preferred_tier: MANAGER
+    concurrency_limit: 4
+    max_retry: 2
+
+  - scope: global
+    module_pattern: "rebuild.*"
+    cron_kind: REGENERATION
+    preferred_queue: regeneration
+    preferred_tier: EXECUTION
+    concurrency_limit: 6
+    max_retry: 3

@@ -1,0 +1,59 @@
+{
+  "items": [
+    {
+      "id": "platform-wide-console",
+      "title": "Platform console (wide)",
+      "module": "Exportunity OS",
+      "tags": ["platform", "os", "governance"],
+      "imagePath": "/assets/screenshots/seed/platform-wide-console.png",
+      "caption": "Operational console view used as a proof tile until curated module-specific screenshots are uploaded.",
+      "createdAt": "2026-02-09T00:00:00.000Z"
+    },
+    {
+      "id": "meetings-room-ready",
+      "title": "Meetings: room ready",
+      "module": "Meet",
+      "tags": ["meet", "meetings", "collaboration"],
+      "imagePath": "/assets/screenshots/seed/meetings-room-ready.png",
+      "caption": "Meeting room ready state with participants and meeting navigation.",
+      "createdAt": "2026-02-09T00:00:00.000Z"
+    },
+    {
+      "id": "platform-screen-01",
+      "title": "Platform workflow screen 1",
+      "module": "Operations",
+      "tags": ["workflow", "operations"],
+      "imagePath": "/assets/screenshots/seed/platform-screen-01.png",
+      "caption": "Seed workflow proof tile (replace via /admin/screenshots).",
+      "createdAt": "2026-02-09T00:00:00.000Z"
+    },
+    {
+      "id": "platform-screen-02",
+      "title": "Platform workflow screen 2",
+      "module": "Operations",
+      "tags": ["workflow", "operations"],
+      "imagePath": "/assets/screenshots/seed/platform-screen-02.png",
+      "caption": "Seed workflow proof tile (replace via /admin/screenshots).",
+      "createdAt": "2026-02-09T00:00:00.000Z"
+    },
+    {
+      "id": "platform-screen-03",
+      "title": "Platform workflow screen 3",
+      "module": "Governance",
+      "tags": ["governance", "audit"],
+      "imagePath": "/assets/screenshots/seed/platform-screen-03.png",
+      "caption": "Seed governance proof tile (replace via /admin/screenshots).",
+      "createdAt": "2026-02-09T00:00:00.000Z"
+    },
+    {
+      "id": "platform-screen-04",
+      "title": "Platform workflow screen 4",
+      "module": "Governance",
+      "tags": ["governance", "audit"],
+      "imagePath": "/assets/screenshots/seed/platform-screen-04.png",
+      "caption": "Seed governance proof tile (replace via /admin/screenshots).",
+      "createdAt": "2026-02-09T00:00:00.000Z"
+    }
+  ]
+}
+

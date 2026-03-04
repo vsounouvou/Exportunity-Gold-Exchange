@@ -1,0 +1,6 @@
+<svg xmlns='http://www.w3.org/2000/svg' width='512' height='128' viewBox='0 0 512 128'>
+  <rect width='512' height='128' rx='20' fill='#0b1324'/>
+  <circle cx='64' cy='64' r='34' fill=''/>
+  <circle cx='64' cy='64' r='18' fill=''/>
+  <text x='116' y='74' fill='white' font-family='Inter,Arial,sans-serif' font-weight='700' font-size='34'></text>
+</svg>

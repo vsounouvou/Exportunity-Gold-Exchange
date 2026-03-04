@@ -1,0 +1,172 @@
+### Comprehensive Instructions for Developing the Multi-Agent Platform
+
+---
+
+#### **Platform Vision**
+The goal is to build a **multi-agent system that simulates a real company**. Agents will:
+1. **Work autonomously** like employees in a company.
+2. **Communicate in real time**, using a Slack-inspired multi-agent chatroom.
+3. Have **client-facing AIs** for external communication and **back-office AIs** for internal operations.
+4. Be structured with a **dynamic hierarchy** that mirrors a real organization.
+5. Simulate multiple **parallel meetings in different rooms**, managed by specific agents.
+6. Allow the CEO (user) to oversee operations and intervene minimally.
+
+This platform will run as a **company simulation**, allowing agents to collaborate, execute tasks, and use APIs to handle external integrations.
+
+---
+
+#### **Core Features to Implement**
+1. **Multi-Agent Chatroom:**
+   - Create **Slack-like chatrooms** for agents to communicate in real time.
+   - Agents can:
+     - Self-regulate their responses.
+     - Quote and respond to each other's inputs.
+   - Allow users to:
+     - Add/remove agents from chatrooms dynamically.
+     - Start/stop conversations.
+
+2. **Memory Management:**
+   - Agents will have:
+     - **Self-created memories**: Generated during tasks or meetings.
+     - **User-attached memories**: Data uploaded by the user or retrieved from local systems.
+   - Leverage existing frameworks (OpenAI, Facebook AI) for memory systems.
+   - Build a memory upload system for the CEO to provide agents with additional context.
+
+3. **Dynamic Hierarchy Management:**
+   - Create a **visual hierarchy tool** to:
+     - Rearrange agent roles.
+     - Promote/demote agents.
+     - Assign permissions dynamically.
+   - Allow the user to **auto-generate a hierarchy** based on organizational goals.
+
+4. **Agent Agendas:**
+   - Build an **agenda management system** where:
+     - Agents can schedule tasks and meetings.
+     - Agendas can have specific time slots, tied to tasks or goals.
+     - The CEO can monitor all agendas in a single view.
+   - Support **simultaneous meetings** in multiple virtual rooms.
+
+5. **Agent Creation and Collaboration:**
+   - The **main assistant agent** (CEO assistant) can:
+     - Create new agents dynamically based on tasks or goals.
+     - Assign specific tasks to agents.
+     - Call upon existing agents for collaboration.
+   - Agents will have a **lifespan** tied to their tasks.
+
+6. **Real-Time Communication:**
+   - Enable agents to:
+     - Analyze tasks and start discussions with relevant agents.
+     - Hold meetings until tasks are completed efficiently.
+     - Manage their roles and collaborate autonomously without user intervention.
+
+7. **API Integration:**
+   - Build API connectors for:
+     - Email systems.
+     - External chat tools (WhatsApp, Slack).
+     - File management (Word, Excel).
+   - Allow agents to interact with real-world systems as needed.
+
+---
+
+#### **Key Functional Requirements**
+
+1. **Dynamic Chatroom Rules:**
+   - Each chatroom will have predefined rules to:
+     - Allow specific agents to speak based on roles or tasks.
+     - Automatically appoint a "head of meeting" to guide discussions.
+   - End meetings efficiently when objectives are achieved.
+
+2. **Agent Capabilities:**
+   - Each agent must have:
+     - **CVs** with detailed histories, skills, and specializations.
+     - **Cultural sensitivity settings** (e.g., Yoruba culture influence).
+     - Performance metrics for promotion/demotion decisions.
+     - The ability to be "paid" in tokens and use these tokens to improve their capabilities.
+
+3. **Multi-Agent Multiverse:**
+   - Agents must:
+     - Operate across multiple parallel meetings.
+     - Maintain context in each meeting room.
+   - The CEO will have a **dashboard to view all active meetings** and intervene as needed.
+
+4. **Flexibility and Scalability:**
+   - Ensure agents can be added/removed easily.
+   - Support unlimited scalability for agents, tasks, and integrations.
+
+---
+
+#### **Implementation Instructions**
+1. **Preserve Existing Features:**
+   - Keep all working features intact.
+   - Debug or modify only if absolutely necessary.
+   - Ensure new additions blend seamlessly into the current system.
+
+2. **Use Proven Frameworks:**
+   - For chat: **Socket.IO** for real-time communication.
+   - For memory: OpenAI and Facebook AI's memory frameworks.
+   - For APIs: Integrate existing RESTful APIs and modular connectors.
+   - For UI/UX: Follow a Slack-inspired design for chatrooms and dashboards.
+
+3. **Multi-Agent Chatroom Development:**
+   - Use Socket.IO to enable real-time communication.
+   - Implement logic for:
+     - Self-regulation (agents decide when to speak).
+     - Quoting other agents’ responses.
+   - Create rules for efficient meeting management.
+
+4. **Build Memory and Hierarchy Management:**
+   - Create memory modules:
+     - Use existing frameworks for memory handling.
+     - Allow manual memory uploads by the user.
+   - For hierarchy:
+     - Develop a drag-and-drop tool to rearrange roles.
+     - Integrate performance tracking for agent promotions/demotions.
+
+5. **Develop the Agenda System:**
+   - Agents must:
+     - Manage personal agendas with time slots for tasks/meetings.
+     - Collaborate autonomously based on assigned tasks.
+   - The CEO should have visibility into all active agendas.
+
+6. **Optimize Agent Creation and Collaboration:**
+   - Allow the main assistant to:
+     - Create new agents based on goals.
+     - Assign tasks to agents dynamically.
+   - Build logic for agents to consult past memories and tasks.
+
+---
+
+#### **UI/UX Guidelines**
+1. **Chat Interface:**
+   - Follow Slack’s layout.
+   - Use clear sections for:
+     - Available agents.
+     - Active chatrooms.
+   - Allow renaming of chatrooms for better organization.
+
+2. **Dashboard Design:**
+   - Include:
+     - Active meetings and agendas.
+     - Agent performance tracking.
+     - Memory and hierarchy management pages.
+
+3. **Color Scheme:**
+   - Primary: **Dark Blue** (#001F3F) for the background.
+   - Accent: **Teal** (#00C1D4) for buttons and highlights.
+   - Text: **White** (#FFFFFF) and **Light Gray** (#AAAAAA).
+
+---
+
+#### **Deliverables**
+1. Fully functional **multi-agent chatroom**.
+2. Integrated **memory management and hierarchy tools**.
+3. Robust **agenda and meeting management system**.
+4. Scalable **agent creation and collaboration** framework.
+5. Cleanly integrated API connectors for future real-world tasks.
+
+---
+
+#### **Reminders for the Developer:**
+- **Do not disrupt existing features.**
+- Focus on modular implementation for scalability.
+- Use proven frameworks and ensure seamless integration.

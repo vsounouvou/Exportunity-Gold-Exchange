@@ -1,0 +1,497 @@
+Here’s a single, clean spec you can hand directly to the dev building the platform.
+
+---
+
+# AI SWARM – Product Vision & System Design (Chairman, Companies, Agents)
+
+## 1. Core Concept
+
+We are building a **multi-company, multi-agent “virtual organization” platform**.
+
+* A **Chairman of the Board** (the human user) connects to the platform.
+* The Chairman can create and manage **multiple companies** inside the platform.
+* For each company, they:
+
+  * Define goals.
+  * Allocate a **budget**.
+  * Configure an **agent hierarchy (arborescence)**.
+* Inside each company, **AI agents operate like a real team**:
+
+  * They talk to each other.
+  * They act through tools (email, calendar, LinkedIn, CRM, etc.).
+  * They book meetings, send emails, update CRMs, generate reports.
+  * They run in the background based on events and schedules.
+* Every agent **costs money** (LLM tokens, API calls, tools).
+* Every agent can also **earn more budget** based on performance (KPIs).
+
+The human mostly interacts at the top as **Chairman / CEO** through a chat and a visual hierarchy page.
+
+---
+
+## 2. Actors & Hierarchy
+
+### 2.1 Levels
+
+1. **Chairman (Human)**
+
+   * Top level, owns a personal account.
+   * Can create **multiple companies**.
+   * Can switch between companies.
+   * Sees global overview: budgets, performance, costs per company.
+
+2. **Company**
+
+   * Name, region, target markets, etc.
+   * Has:
+
+     * A **global budget** (monthly or total).
+     * A **CEO Agent** (main orchestrator).
+     * An **Agent Hierarchy** (tree).
+     * A **knowledge base** and **memory**.
+     * Connected tools (email, calendar, LinkedIn, CRMs, Drive…).
+
+3. **Agents**
+
+   * Virtual employees inside each company.
+   * Each agent has:
+
+     * A **role** (CEO Orchestrator, Outreach Agent, Sales Agent, etc.).
+     * A **manager** (who it reports to in the tree).
+     * **Tools** it can use (email, calendar, CRM, etc.).
+     * A **budget allocation** (how much it can spend).
+     * **KPIs and performance metrics**.
+   * Agents can:
+
+     * Communicate with each other in an internal “agent chatroom.”
+     * Delegate tasks vertically (manager ↔ subordinate).
+     * Request more budget from their manager / CEO Agent.
+
+### 2.2 Example Hierarchy (Arborescence)
+
+For one company:
+
+* **Chairman (Human)**
+
+  * **Company: Exportunity AI**
+
+    * **CEO Orchestrator Agent**
+
+      * **Strategy Agent**
+      * **Sales & Meetings Agent**
+
+        * Outreach Agent
+        * CRM Agent
+      * **Marketing Agent**
+
+        * Content Agent
+        * Social Media Agent
+      * **Scheduler & Calendar Agent**
+      * **Knowledge & Memory Agent**
+
+This hierarchy is editable by the Chairman/CEO via a visual tree.
+
+---
+
+## 3. Agent Hierarchy Page (UX)
+
+We want **une belle arborescence**: clear, visual, and editable.
+
+### 3.1 Main Elements
+
+* **Company Selector** (top left)
+
+  * Dropdown of all companies of the Chairman.
+  * When you switch company, the tree updates.
+
+* **Hierarchy Tree**
+
+  * Root node: **CEO Orchestrator Agent** of that company.
+  * Children: department lead agents.
+  * Under them: specialised agents (outreach, calendar, content, etc.).
+  * Each node shows:
+
+    * Agent name & role.
+    * Manager.
+    * Current budget / budget used.
+    * Key KPI (e.g. “Meetings booked this month: 7”).
+
+* **Inspector Panel (Right Side)**
+
+  * When you click an agent node:
+
+    * Role & description.
+    * Manager (dropdown to reassign).
+    * Tools connected (email, LinkedIn, calendar, etc.).
+    * Budget:
+
+      * Base allocation.
+      * Performance bonus earned.
+    * Cost metrics:
+
+      * Tokens used.
+      * API costs.
+      * Cost per meeting / per lead, etc.
+    * KPIs:
+
+      * Custom KPI list: e.g. “Meetings booked,” “Replies obtained,” “Docs summarised,” etc.
+
+### 3.2 Actions for Chairman/CEO
+
+* **Drag & Drop** an agent to change who they report to.
+* **Add Agent**:
+
+  * Choose from templates (Sales, Marketing, Knowledge, etc.).
+  * Or define custom role.
+* **Remove / Disable Agent** (soft delete or pause).
+* **Set Budget**:
+
+  * Per company (top-level).
+  * Per agent (portion of company budget).
+* **Set KPI Rules**:
+
+  * For each agent:
+
+    * “If this agent books X meetings → they get +Y budget next week.”
+    * “If cost per meeting > threshold → reduce budget or pause agent.”
+
+---
+
+## 4. Budget, Cost & Performance System
+
+The platform must treat agents like employees with **economic behavior**.
+
+### 4.1 Company-Level Budget
+
+* For each company, Chairman defines:
+
+  * **Total budget** (e.g. $1,000 / month).
+  * Optional constraints:
+
+    * Max daily spend.
+    * Max cost per meeting / per lead.
+
+* The **CEO Orchestrator Agent** is responsible for:
+
+  * Distributing this budget to child agents.
+  * Reallocating over time based on performance and Chairman’s settings.
+
+### 4.2 Agent Cost Model
+
+Each agent consumes budget by:
+
+* **LLM Tokens** (core cost per run).
+* **External APIs**:
+
+  * Email provider.
+  * Calendar provider.
+  * LinkedIn automation.
+  * CRM operations.
+  * Any other paid tool.
+
+The system tracks per agent:
+
+* Total tokens used.
+* Total external API cost.
+* **Cost per unit of value**:
+
+  * Cost per meeting booked.
+  * Cost per lead generated.
+  * Cost per email sent or replied.
+
+### 4.3 Agent Budget Model
+
+Each agent has:
+
+1. **Base Budget**
+
+   * Assigned by CEO Orchestrator or directly by Chairman.
+   * Example: Outreach Agent gets $300 this month.
+
+2. **Performance Bonus Budget**
+
+   * Automatically increased when KPIs are met.
+   * Example rules:
+
+     * For Outreach Agent:
+
+       * Every **qualified positive reply** → +$5 budget.
+       * Every **meeting booked** → +$20 budget.
+     * For Knowledge Agent:
+
+       * Every **important doc correctly summarised & reused** → +$3 budget.
+
+3. **Spending Rules**
+
+   * Agent cannot exceed its own budget.
+   * When close to limit, agent can:
+
+     * Ask CEO Orchestrator for more budget, with justification.
+     * Or pause non-critical actions.
+
+### 4.4 Performance Feedback Loop
+
+* At defined intervals (daily/weekly):
+
+  * CEO Orchestrator evaluates:
+
+    * Agent costs vs KPIs.
+    * Cost effectiveness (e.g. cost per meeting).
+  * It then:
+
+    * Increases budget for effective agents.
+    * Reduces or pauses ineffective ones.
+    * Sends a summary to Chairman:
+
+      * “Outreach Agent – cost/meeting: $12 (good). Budget +20%.”
+      * “Social Media Agent – low impact. Budget -30% until new strategy.”
+
+---
+
+## 5. Knowledge Base & Memory
+
+We separate **static knowledge**, **dynamic memory**, and **agent state**.
+
+### 5.1 Static Knowledge
+
+* Source: company documents, decks, website, Drive/Notion, etc.
+* Stored in:
+
+  * File storage.
+  * Vector index with metadata.
+* Used for:
+
+  * Outreach personalization.
+  * Explaining the company to leads.
+  * Internal SOPs and rules.
+
+### 5.2 Dynamic Memory
+
+* Records:
+
+  * Decisions, policies, preferences.
+  * Meeting summaries.
+  * Client histories.
+* Maintained by the **Knowledge & Memory Agent**:
+
+  * Summarises long interactions.
+  * Provides short, searchable memories to other agents.
+  * Periodically compresses old data to save tokens.
+
+### 5.3 Agent Memory
+
+* Each agent has:
+
+  * Local memory of its tasks and history.
+  * Access rights to global company memory (fine-grained, configurable).
+
+---
+
+## 6. Core Agents & Responsibilities
+
+For each company, we start with a base set of agents. Chairman can add more later.
+
+### 6.1 CEO Orchestrator Agent (Top of Tree)
+
+* Main interface between human and agent swarm.
+* Responsibilities:
+
+  * Understand goals from Chairman/CEO.
+  * Translate goals into strategies and tasks for other agents.
+  * Manage budget allocation per agent.
+  * Evaluate performance, boost or reduce budgets.
+  * Provide summaries and reports to the Chairman.
+* Tools:
+
+  * Read/write access to the hierarchy.
+  * Read all costs and metrics.
+  * Read from knowledge base.
+
+### 6.2 Knowledge & Memory Agent
+
+* Manages:
+
+  * Document ingestion and indexing.
+  * Summaries of meetings and email threads.
+  * Dynamic memory (history, decisions).
+* Supports other agents with:
+
+  * Context retrieval.
+  * Knowledge updates (e.g. “we changed pricing”).
+
+### 6.3 Outreach / Marketing Agent
+
+* Finds and contacts leads:
+
+  * From LinkedIn / web / CRM.
+* Sends emails and follow-ups (according to guardrails).
+* Tracks response rates and lead quality.
+* KPIs:
+
+  * Positive replies.
+  * New prospects added to pipeline.
+  * Cost per positive reply.
+
+### 6.4 Sales & Meetings Agent
+
+* Receives warm leads from Outreach.
+* Qualifies leads according to rules.
+* Coordinates with Scheduler Agent to book meetings.
+* Sends pre-meeting and post-meeting emails.
+* Logs everything in CRM / memory.
+* KPIs:
+
+  * Qualified meetings booked.
+  * Conversion rates.
+
+### 6.5 Scheduler & Calendar Agent
+
+* Manages calendar constraints:
+
+  * Working hours.
+  * Blocked times.
+* Proposes and confirms slots.
+* Sends invites and reminders.
+* KPIs:
+
+  * Successful meetings (held).
+  * Low cancellation / double booking.
+
+*(More agents – Finance, Support, HR – can be added later, but the pattern stays the same.)*
+
+---
+
+## 7. Operation Model (Events, Not Infinite Loops)
+
+We want continuous operation **without** burning tokens unnecessarily.
+
+### 7.1 Event Types
+
+* New instruction from Chairman/CEO.
+* New incoming email.
+* New reply from a lead.
+* Calendar events (meeting created/updated).
+* Time events:
+
+  * Hourly tick (check follow-ups).
+  * Daily tick (summary).
+  * Weekly tick (performance/budget reallocation).
+
+Each event triggers:
+
+* One or a few agent actions.
+* Short, focused LLM calls with:
+
+  * Retrieved context (not full history).
+  * Strict token limits per call.
+
+### 7.2 Background Jobs
+
+Examples:
+
+* **Every hour**:
+
+  * Outreach Agent checks who needs follow-up.
+* **Every day**:
+
+  * CEO Orchestrator sends a daily summary to Chairman.
+* **Every week**:
+
+  * Performance evaluation & budget reallocation.
+
+---
+
+## 8. Onboarding Flow (From Chairman’s Perspective)
+
+1. **Sign Up as Chairman**
+
+   * Create account.
+   * Optionally, import existing companies later.
+
+2. **Create First Company**
+
+   * Name, description, target customers.
+   * Set company goal (e.g. “10 qualified meetings/month”).
+   * Set monthly budget.
+
+3. **Connect Tools**
+
+   * Email + calendar.
+   * Optional: LinkedIn, CRM, Drive/Notion.
+
+4. **Review Default Agent Hierarchy**
+
+   * CEO Orchestrator + core agents pre-configured.
+   * Chairman can:
+
+     * Rearrange hierarchy.
+     * Disable agents.
+     * Add specialised agents.
+
+5. **Define KPIs & Autonomy**
+
+   * Choose autopilot mode:
+
+     * Draft-only, partial autonomy, or full autonomy.
+   * Set KPI → budget rules for each agent.
+
+6. **Launch**
+
+   * Start chat with CEO Orchestrator:
+
+     > “For this company, target logistics SMEs in West Africa and get us 5 demo meetings this month.”
+   * Agents start operating according to budget.
+
+---
+
+## 9. v1 Implementation Priorities
+
+To keep dev focused, here is the minimal viable v1:
+
+1. **Multi-tenant structure**:
+
+   * Chairman with multiple companies.
+
+2. **Company-level basics**:
+
+   * One company at first for testing.
+   * Company budget + simple overview of costs.
+
+3. **Agent hierarchy page (minimal version)**:
+
+   * Tree with CEO Orchestrator + 2–3 agents.
+   * Ability to:
+
+     * View hierarchy.
+     * Click agent → see basic info (role, manager, budget, costs).
+     * Manually adjust manager and budget.
+
+4. **Core agents implemented**:
+
+   * CEO Orchestrator Agent.
+   * Outreach Agent.
+   * Scheduler/Meetings Agent (can be one combined agent in v1).
+   * Knowledge & Memory Agent (basic ingestion + retrieval).
+
+5. **Integrations**:
+
+   * Email send/receive.
+   * Calendar create events.
+
+6. **Basic budget & performance**:
+
+   * Track tokens & API cost per agent.
+   * Track one KPI (e.g. meetings booked).
+   * Simple rule: if KPI threshold met → increase agent budget by X%.
+
+Once this works well for one Chairman and one company, we can extend:
+
+* More agents.
+* More APIs (LinkedIn, CRMs).
+* More advanced KPI rules and dashboards.
+
+---
+
+If you want next, I can turn this into:
+
+* A **data model** (tables/entities + relationships) for dev,
+* Or detailed screens (wireframe descriptions) for the hierarchy page, dashboard, and onboarding.

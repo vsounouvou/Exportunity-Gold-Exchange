@@ -1,0 +1,80 @@
+P0 OBJECTIVE (NO MORE DEBUGGING LOOPS):
+exportunity.net must show Exportunity branding (name/logo/text/colors) and must NOT display any "Bourse de l'Or / gold exchange" branding.
+boursedelor.com must remain unchanged.
+
+RULES:
+- Do NOT touch Bourse UX/branding.
+- Implement tenant branding by domain/host header (multi-tenant) at the core level.
+- After changes, redeploy and verify with a simple pass/fail checklist + screenshots.
+
+STEP 0 -- READ FIRST (NO REDUNDANT WORK):
+1) Pull latest code / review current tenant logic (where hostname -> tenantKey).
+2) Identify where "Bourse de l'Or" strings, logo, title, meta, manifest, and theme colors are set.
+3) Confirm Nginx Proxy Manager forwards Host headers correctly to the app container.
+
+STEP 1 -- HARD ENFORCE TENANT RESOLUTION (THE FIX):
+Implement a single source of truth function like:
+resolveTenant({ host, xForwardedHost }) -> tenantKey
+- If host ends with "boursedelor.com" or "www.boursedelor.com" => tenantKey = "bdo"
+- If host ends with "exportunity.net" or "www.exportunity.net" => tenantKey = "exportunity"
+- Otherwise default to "bdo" (or safe fallback)
+
+Important:
+- Use X-Forwarded-Host first when behind proxy, then Host.
+- Log tenantKey on server start and per request (only in server logs, not UI).
+
+STEP 2 -- APPLY BRANDING OVERRIDES FOR exportunity.net (P0 BRANDING SET):
+When tenantKey="exportunity", override ALL of the following:
+- App name in header: "Exportunity"
+- Browser title: "Exportunity"
+- Logo/mark (if shared component, swap asset by tenant)
+- Any text "Bourse de l'Or" anywhere (header, footer, help pages, chatbot greeting, etc.)
+- Meta tags: og:title, og:site_name, description
+- PWA: manifest fields (name, short_name), icons if applicable, theme_color/background_color
+- Service worker caches must not serve old branding across domains
+
+Do NOT remove gold products/features. Only remove "Bourse de l'Or" branding on exportunity.net.
+If the platform is still gold-focused internally, that's fine -- branding must be Exportunity.
+
+STEP 3 -- CACHE / PWA SAFETY (STOP STALE BRANDING):
+- Set manifest.webmanifest response headers: Cache-Control: no-store (or very low max-age) + must-revalidate.
+- In SW, ensure cache keys are tenant-aware OR do not precache manifest at all.
+- Bump SW cache version to force refresh.
+- Ensure exportunity.net and boursedelor.com do not share cached branding artifacts.
+
+STEP 4 -- NPM PROXY CONFIG (FORCE CORRECT HOST HEADERS):
+In Nginx Proxy Manager for exportunity.net proxy host, add/ensure these headers:
+proxy_set_header Host $host;
+proxy_set_header X-Forwarded-Host $host;
+proxy_set_header X-Forwarded-Proto $scheme;
+proxy_set_header X-Real-IP $remote_addr;
+
+Then reload NPM.
+
+STEP 5 -- DEPLOY (DO IT, DON'T ASK):
+- Rebuild docker image and restart app container (src-bdo-app-1 or relevant stack).
+- Confirm new version is live.
+
+STEP 6 -- VERIFY (NO MORE DISCUSSION, PROVIDE RESULTS):
+Provide this final checklist:
+
+A) Desktop browser:
+- Visit https://exportunity.net -> header shows "Exportunity", no "Bourse de l'Or" visible anywhere.
+- Visit https://boursedelor.com -> unchanged.
+
+B) API verification:
+Create or reuse /api/whoami (or equivalent) to return:
+{ host, xForwardedHost, tenantKey, appName }
+Run and paste:
+curl -s https://boursedelor.com/api/whoami
+curl -s https://exportunity.net/api/whoami
+
+C) PWA/manifest:
+curl -s https://exportunity.net/manifest.webmanifest | head
+must show Exportunity name/short_name.
+
+D) Screenshots:
+Attach 2 screenshots (one per domain) showing header branding.
+
+DONE CRITERIA:
+If ANY "Bourse de l'Or" branding appears on exportunity.net, the task is not done.

@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="600" viewBox="0 0 900 600" role="img" aria-label="Miner role">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0B1220"/>
+      <stop offset="100%" stop-color="#020617"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#F5D06A"/>
+      <stop offset="100%" stop-color="#D4A83B"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="65%" cy="35%" r="60%">
+      <stop offset="0%" stop-color="#D4A83B" stop-opacity="0.28"/>
+      <stop offset="100%" stop-color="#D4A83B" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="900" height="600" fill="url(#bg)"/>
+  <rect width="900" height="600" fill="url(#glow)"/>
+
+  <!-- Simple pickaxe mark -->
+  <g transform="translate(240 140)" fill="none" stroke="url(#gold)" stroke-width="22" stroke-linecap="round" stroke-linejoin="round" opacity="0.9">
+    <path d="M210 280L310 380"/>
+    <path d="M300 300C240 220 150 190 60 200"/>
+    <path d="M320 320C380 240 470 210 560 220"/>
+  </g>
+
+  <g opacity="0.22">
+    <rect x="90" y="430" width="720" height="24" rx="12" fill="#CBD5E1"/>
+    <rect x="90" y="468" width="560" height="16" rx="8" fill="#CBD5E1"/>
+  </g>
+</svg>

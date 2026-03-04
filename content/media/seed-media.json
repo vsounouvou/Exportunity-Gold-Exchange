@@ -1,0 +1,155 @@
+[
+  {
+    "type": "profile",
+    "title": "Vital Sounouvou — Tony Elumelu Foundation profile (EN)",
+    "outlet": "Tony Elumelu Foundation",
+    "published_at": null,
+    "url": "https://www.tonyelumelufoundation.org/member/vital-sounouvou",
+    "tags": ["profile", "institutional", "founder", "trade", "Africa"],
+    "notes": "Founder profile referencing Exportunity mission and operational metrics."
+  },
+  {
+    "type": "profile",
+    "title": "Vital Sounouvou — Fondation Tony Elumelu (FR)",
+    "outlet": "Tony Elumelu Foundation",
+    "published_at": null,
+    "url": "https://www.tonyelumelufoundation.org/fr/member/vital-sounouvou",
+    "tags": ["profil", "institutionnel", "fondateur", "commerce", "Afrique"],
+    "notes": "French version of TEF profile."
+  },
+  {
+    "type": "article",
+    "title": "One Marketplace For Africa Through Exportunity — the Dream of Vital Sounouvou (2017)",
+    "outlet": "Tony Elumelu Foundation",
+    "published_at": "2017-06-02",
+    "url": "https://www.tonyelumelufoundation.org/west-africa/one-marketplace-for-africa-through-exportunity-the-dream-of-vital-sounouvou",
+    "tags": ["feature", "institutional", "story", "payments", "platform"],
+    "notes": "Long-form TEF feature story."
+  },
+  {
+    "type": "article",
+    "title": "Une Marketplace pour l’Afrique grâce à l’Exportunité (FR, 2017)",
+    "outlet": "Tony Elumelu Foundation",
+    "published_at": "2017-06-02",
+    "url": "https://www.tonyelumelufoundation.org/fr/afrique-de-louest-2/un-marche-pour-lafrique-grace-a-lexportunite-le-reve-de-vital-sounouvou",
+    "tags": ["feature", "institutionnel", "histoire", "paiements", "plateforme"],
+    "notes": "French version of the TEF feature."
+  },
+  {
+    "type": "article",
+    "title": "Beninese-born Vital Sounouvou expands SMEs' export opportunities (2023)",
+    "outlet": "WeAreTech Africa",
+    "published_at": "2023-03-31",
+    "url": "https://www.wearetech.africa/en/fils-uk/tech-stars/beninese-born-vital-sounouvou-expands-smes-export-opportunities",
+    "tags": ["press", "tech", "export", "SME", "platform"],
+    "notes": "English article about Exportunity.net and expansion."
+  },
+  {
+    "type": "article",
+    "title": "Le Béninois Vital Sounouvou étend les possibilités d’exportation (2023)",
+    "outlet": "WeAreTech Africa",
+    "published_at": "2023-03-31",
+    "url": "https://www.wearetech.africa/fr/fils/tech-stars/le-beninois-vital-sounouvou-etend-les-possibilites-dexportation-des-commercants-vers-dautres-regions-du-monde",
+    "tags": ["presse", "tech", "export", "PME", "plateforme"],
+    "notes": "French version."
+  },
+  {
+    "type": "article",
+    "title": "Want to Trade in U.S. Markets? Here's Where to Start (2019)",
+    "outlet": "YALI (Mandela Washington Fellowship)",
+    "published_at": "2019-09-06",
+    "url": "https://yali.state.gov/want-to-trade-in-u-s-markets-heres-where-to-start/",
+    "tags": ["institutional", "trade", "US markets", "YALI"],
+    "notes": "Mentions Vital as founder/CEO and Mandela Washington Fellow."
+  },
+  {
+    "type": "document",
+    "title": "Biographies of the 2014 Mandela Washington Fellows (PDF)",
+    "outlet": "OpportunitiesForAfricans",
+    "published_at": "2014-07-01",
+    "url": "https://www.opportunitiesforafricans.com/wp-content/uploads/2014/07/Biographies-of-the-2014-mandela-washington-fellows.pdf",
+    "tags": ["pdf", "archive", "institutional", "bio"],
+    "notes": "Contains a bio for Sedjro Vital Sounouvou referencing Exportunity.com."
+  },
+  {
+    "type": "video",
+    "title": "Vital Sounouvou — Fondateur & CEO de Exportunity : Ambitions (TV5MONDE Afrique)",
+    "outlet": "TV5MONDE Afrique (YouTube)",
+    "published_at": null,
+    "url": "https://www.youtube.com/watch?v=WGfC9_GEkgc",
+    "tags": ["video", "tv", "interview", "founder"],
+    "notes": "YouTube interview/segment."
+  },
+  {
+    "type": "video",
+    "title": "Ambitions — Vital Sounouvou (TV5MONDE Afrique, Facebook)",
+    "outlet": "TV5MONDE Afrique (Facebook)",
+    "published_at": null,
+    "url": "https://www.facebook.com/tv5mondeafrique/videos/ambitions-vital-sounouvou-b%C3%A9nin/777852479238538/",
+    "tags": ["video", "tv", "facebook", "interview"],
+    "notes": "Facebook version of TV5 segment."
+  },
+  {
+    "type": "video",
+    "title": "Réussite — Exportunity (Canal+ Afrique, Facebook)",
+    "outlet": "Canal+ Afrique (Facebook)",
+    "published_at": null,
+    "url": "https://www.facebook.com/canalplusafrique/videos/extrait-r%C3%A9ussite-011019/3037270522956296/",
+    "tags": ["video", "tv", "facebook", "ecommerce", "Benin"],
+    "notes": "Clip about Exportunity e-commerce proximity model."
+  },
+  {
+    "type": "video",
+    "title": "Réussite — Exportunity (Canal+ Bénin, Facebook)",
+    "outlet": "Canal+ Bénin (Facebook)",
+    "published_at": null,
+    "url": "https://www.facebook.com/canalplusbenin/videos/782607478824433/",
+    "tags": ["video", "tv", "facebook", "ecommerce", "Benin"],
+    "notes": "Canal+ Benin page entry."
+  },
+  {
+    "type": "video",
+    "title": "Stanford Seed — Drive: Vital Sounouvou (Facebook)",
+    "outlet": "Stanford Seed (Facebook)",
+    "published_at": null,
+    "url": "https://www.facebook.com/seedstanford/videos/drive-vital-sounouvou/1608546842676249/",
+    "tags": ["video", "institutional", "Stanford", "seed"],
+    "notes": "Stanford Seed video entry."
+  },
+  {
+    "type": "article",
+    "title": "30 jeunes entrepreneurs africains... (Forbes list relay, 2016)",
+    "outlet": "Agence Ecofin",
+    "published_at": "2016-06-23",
+    "url": "https://www.agenceecofin.com/economie/2306-39047-30-jeunes-entrepreneurs-africains-parmi-les-plus-prometteurs-en-2016-selon-le-magazine-forbes",
+    "tags": ["ranking", "forbes", "mention", "Benin"],
+    "notes": "Lists Vital Sounouvou as founder of Exportunity."
+  },
+  {
+    "type": "article",
+    "title": "Exportunity, la nouvelle plateforme numérique... (2017)",
+    "outlet": "BeninRevele",
+    "published_at": null,
+    "url": "https://www.beninrevele.com/exportunity-la-nouvelle-plateforme-numerique-de-commerce-presentee-au-public/",
+    "tags": ["local press", "Benin", "launch", "ecommerce"],
+    "notes": "Local article about platform presentation in Cotonou."
+  },
+  {
+    "type": "profile",
+    "title": "Vital Sounouvou — LinkedIn profile",
+    "outlet": "LinkedIn",
+    "published_at": null,
+    "url": "https://ae.linkedin.com/in/vitalsounouvou",
+    "tags": ["profile", "founder"],
+    "notes": "Public founder profile (metadata only)."
+  },
+  {
+    "type": "profile",
+    "title": "Vital Sounouvou — F6S profile",
+    "outlet": "F6S",
+    "published_at": null,
+    "url": "https://www.f6s.com/member/vitalsounouvou",
+    "tags": ["profile", "startup"],
+    "notes": "Startup community profile entry."
+  }
+]

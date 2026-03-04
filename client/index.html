@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Roboto:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
+    <title>Exportunity Marketplace</title>
+    <meta
+      name="description"
+      content="One engine for trade, operations, and AI execution."
+    />
+    <meta id="theme-color" name="theme-color" content="#0B0F19" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Exportunity" />
+    <link id="manifest-link" rel="manifest" href="/manifest.webmanifest" />
+    <link id="apple-touch-icon" rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link id="favicon-32" rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link id="favicon-16" rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+    <link rel="apple-touch-startup-image" href="/splash/apple-splash-1170x2532.png" media="(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3)" />
+    <link rel="apple-touch-startup-image" href="/splash/apple-splash-1290x2796.png" media="(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3)" />
+    <link rel="apple-touch-startup-image" href="/splash/apple-splash-1242x2688.png" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3)" />
+    <link id="favicon-ico" rel="icon" href="/favicon.ico" sizes="any" />
+    <link id="favicon-svg" rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Exportunity Marketplace" />
+    <meta property="og:description" content="One engine for trade, operations, and AI execution." />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Exportunity Marketplace" />
+    <meta name="twitter:description" content="One engine for trade, operations, and AI execution." />
+    <script>
+      (function () {
+        var host = (location.hostname || "").toLowerCase();
+        var cacheBuster = String(Date.now());
+
+        function resolveTenant(hostname) {
+          if (!hostname) return "exportunity";
+          if (hostname.indexOf("boursedelor") !== -1) return "bdo";
+          if (hostname.indexOf("houseofzogue") !== -1) return "hoz";
+          if (hostname.indexOf("maisonenterre") !== -1 || hostname.indexOf("maisonsenterre") !== -1) return "met";
+          if (hostname.indexOf("vitalsounouvou") !== -1 || hostname.indexOf("vss.") !== -1) return "vs";
+          if (hostname.indexOf("mindbase.cloud") !== -1) return "mindbase";
+          if (hostname.indexOf("zogueland") !== -1) return "zogueland";
+          if (hostname.indexOf("rayon1km") !== -1) return "rayon1km";
+          if (hostname.indexOf("exportunity.zone") !== -1) return "zone";
+          if (hostname.indexOf("exportunity") !== -1) return "exportunity";
+          return "exportunity";
+        }
+
+        var tenant = resolveTenant(host);
+        var tenantMeta = {
+          bdo: {
+            title: "Bourse de l'Or Retail",
+            app: "Bourse de l'Or",
+            color: "#f59e0b",
+            description: "Stamped-gold retail and operations platform."
+          },
+          exportunity: {
+            title: "Exportunity Marketplace",
+            app: "Exportunity",
+            color: "#0B0F19",
+            description: "Export-ready trade marketplace."
+          },
+          zone: {
+            title: "Exportunity Marketplace",
+            app: "Exportunity",
+            color: "#0B0F19",
+            description: "Export-ready trade marketplace."
+          },
+          mindbase: {
+            title: "MindBase - Own your intelligence. Deploy your Mind.",
+            app: "MindBase",
+            color: "#6B4EFF",
+            description: "AI agents, templates, and knowledge kits marketplace."
+          },
+          met: {
+            title: "Maison en Terre Materials",
+            app: "Maison en Terre",
+            color: "#7A3E12",
+            description: "Construction materials, plans, and contractor services."
+          },
+          vs: {
+            title: "Vital Sounouvou Studio",
+            app: "Vital Sounouvou",
+            color: "#8B0000",
+            description: "Books, courses, and strategic media products."
+          },
+          hoz: {
+            title: "House of Zogue Marketplace",
+            app: "House of Zogue",
+            color: "#9A7D4F",
+            description: "Luxury creative house for jewelry and collectible drops."
+          },
+          zogueland: {
+            title: "Zogueland Marketplace",
+            app: "Zogueland",
+            color: "#FF6B6B",
+            description: "Stories, audio, and child-safe learning adventures."
+          },
+          rayon1km: {
+            title: "Rayon 1km Nearby",
+            app: "Rayon 1km",
+            color: "#f59e0b",
+            description: "Proximity-first commerce within 1 km."
+          }
+        }[tenant];
+
+        function withBuster(path) {
+          if (!path) return path;
+          return path + (path.indexOf("?") >= 0 ? "&" : "?") + "v=" + cacheBuster;
+        }
+
+        var themeMeta = document.getElementById("theme-color");
+        if (themeMeta) themeMeta.setAttribute("content", tenantMeta.color);
+        document.title = tenantMeta.title;
+
+        var appTitle = document.querySelector('meta[name="apple-mobile-web-app-title"]');
+        if (appTitle) appTitle.setAttribute("content", tenantMeta.app);
+
+        var ogTitle = document.querySelector('meta[property="og:title"]');
+        if (ogTitle) ogTitle.setAttribute("content", tenantMeta.title);
+        var ogDescription = document.querySelector('meta[property="og:description"]');
+        if (ogDescription) ogDescription.setAttribute("content", tenantMeta.description || tenantMeta.title);
+        var twitterTitle = document.querySelector('meta[name="twitter:title"]');
+        if (twitterTitle) twitterTitle.setAttribute("content", tenantMeta.title);
+        var twitterDescription = document.querySelector('meta[name="twitter:description"]');
+        if (twitterDescription) twitterDescription.setAttribute("content", tenantMeta.description || tenantMeta.title);
+
+        var manifest = document.getElementById("manifest-link");
+        if (manifest) manifest.setAttribute("href", withBuster("/manifest.webmanifest"));
+
+        var tenantFaviconSvg = "/tenants/" + tenant + "/favicon.svg";
+        var tenantFaviconIco = "/tenants/" + tenant + "/favicon.ico";
+
+        var apple = document.getElementById("apple-touch-icon");
+        if (apple) apple.setAttribute("href", withBuster(tenantFaviconSvg));
+
+        var favicon32 = document.getElementById("favicon-32");
+        if (favicon32) favicon32.setAttribute("href", withBuster(tenantFaviconSvg));
+
+        var favicon16 = document.getElementById("favicon-16");
+        if (favicon16) favicon16.setAttribute("href", withBuster(tenantFaviconSvg));
+
+        var faviconIco = document.getElementById("favicon-ico");
+        if (faviconIco) faviconIco.setAttribute("href", withBuster(tenantFaviconIco));
+
+        var faviconSvg = document.getElementById("favicon-svg");
+        if (faviconSvg) faviconSvg.setAttribute("href", withBuster(tenantFaviconSvg));
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script src="/config.js"></script>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

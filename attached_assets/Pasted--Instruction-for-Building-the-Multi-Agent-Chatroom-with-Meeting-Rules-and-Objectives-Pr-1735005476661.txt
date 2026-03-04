@@ -1,0 +1,219 @@
+### Instruction for Building the Multi-Agent Chatroom with Meeting Rules and Objectives
+
+#### **Primary Goal**
+Focus on creating a multi-agent chatroom where:
+1. Agents can **join, leave, and converse dynamically**.
+2. Each agent can:
+   - **Quote or refer to other agents' messages.**
+   - **Self-regulate** to decide whether to respond based on relevance.
+3. Conversations are task-focused, with a clear objective and minimal over-talk.
+4. Each session is **moderated by a lead agent** who runs the session, ensures efficiency, and provides a summary at the end.
+
+---
+
+### **Step-by-Step Implementation**
+
+#### **1. Multi-Agent Chatroom Core Functionality**
+**Features**:
+1. **Add/Remove Agents**:
+   - Allow agents to join or leave a chatroom dynamically.
+   - Agents can be assigned to specific tasks when joining a chatroom.
+
+2. **Message Context Awareness**:
+   - Agents must review the chat context before responding.
+   - Allow agents to **quote messages** or **reference other agents** when answering.
+
+3. **Rules of Conversation**:
+   - Define rules to limit over-talking:
+     - Agents only respond if their input is relevant.
+     - Agents must acknowledge task progress to avoid redundancy.
+
+4. **Conversation History**:
+   - Store chat history for each session, accessible to all agents for reflection.
+
+---
+
+#### **2. Meeting Roles and Structure**
+1. **Head of Meeting**:
+   - Assign a lead agent for each session (either the main agent or a designated agent).
+   - The lead agent:
+     - **Opens the meeting**: Sets the agenda and objectives.
+     - **Moderates the discussion**: Ensures agents stay task-focused.
+     - **Closes the meeting**: Summarizes outcomes and assigns follow-up tasks.
+
+2. **Self-Regulation**:
+   - Agents must decide:
+     - Whether a question or task is relevant to them.
+     - Whether another agent is better suited to respond.
+   - Implement **turn-taking** to avoid simultaneous responses.
+
+3. **Task-Based Conversations**:
+   - Conversations are tied to specific tasks, and agents discuss only those objectives.
+
+---
+
+#### **3. Rules for Chatroom Efficiency**
+1. **Timed Responses**:
+   - Limit how long agents can take to respond.
+   - Set response turn deadlines to prevent delays.
+
+2. **Message Relevance**:
+   - Agents should evaluate the question and respond only if:
+     - The task aligns with their role or capabilities.
+     - Their input adds value to the discussion.
+
+3. **Quoting and Referencing**:
+   - Agents must reference other messages to maintain conversation coherence:
+     ```python
+     "Agent A: As Agent B mentioned earlier, the deadline needs adjustment."
+     ```
+
+4. **Meeting Closure**:
+   - Ensure every meeting concludes with:
+     - A **summary of decisions**.
+     - **Actionable follow-ups** assigned to specific agents.
+
+---
+
+#### **4. Technical Implementation**
+
+##### **Database Structure**
+1. **Chatroom Table**:
+   ```sql
+   CREATE TABLE chatroom (
+       chatroom_id SERIAL PRIMARY KEY,
+       task_id INTEGER REFERENCES tasks(task_id),
+       status VARCHAR(50) DEFAULT 'Active', -- Active, Closed
+       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+   );
+   ```
+
+2. **Message Table**:
+   ```sql
+   CREATE TABLE messages (
+       message_id SERIAL PRIMARY KEY,
+       chatroom_id INTEGER REFERENCES chatroom(chatroom_id),
+       agent_id INTEGER REFERENCES agents(agent_id),
+       content TEXT,
+       quoted_message_id INTEGER REFERENCES messages(message_id),
+       timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+   );
+   ```
+
+3. **Agent Participation Table**:
+   ```sql
+   CREATE TABLE chat_participants (
+       chatroom_id INTEGER REFERENCES chatroom(chatroom_id),
+       agent_id INTEGER REFERENCES agents(agent_id),
+       role VARCHAR(50) -- e.g., Head of Meeting, Participant
+   );
+   ```
+
+---
+
+##### **Backend (Python + Flask-SocketIO)**
+1. **Join/Leave Chatroom**:
+   ```python
+   @socketio.on('join_chatroom')
+   def join_chatroom(data):
+       agent_id = data['agent_id']
+       chatroom_id = data['chatroom_id']
+       # Add agent to chat participants
+       db.execute("""
+           INSERT INTO chat_participants (chatroom_id, agent_id, role)
+           VALUES (%s, %s, 'Participant')
+       """, (chatroom_id, agent_id))
+       emit('agent_joined', {'agent_id': agent_id}, broadcast=True)
+
+   @socketio.on('leave_chatroom')
+   def leave_chatroom(data):
+       agent_id = data['agent_id']
+       chatroom_id = data['chatroom_id']
+       # Remove agent from chat participants
+       db.execute("""
+           DELETE FROM chat_participants WHERE chatroom_id = %s AND agent_id = %s
+       """, (chatroom_id, agent_id))
+       emit('agent_left', {'agent_id': agent_id}, broadcast=True)
+   ```
+
+2. **Post Messages**:
+   ```python
+   @socketio.on('send_message')
+   def send_message(data):
+       agent_id = data['agent_id']
+       chatroom_id = data['chatroom_id']
+       content = data['content']
+       quoted_message_id = data.get('quoted_message_id')
+       # Save message to database
+       db.execute("""
+           INSERT INTO messages (chatroom_id, agent_id, content, quoted_message_id)
+           VALUES (%s, %s, %s, %s)
+       """, (chatroom_id, agent_id, content, quoted_message_id))
+       emit('new_message', {'agent_id': agent_id, 'content': content}, broadcast=True)
+   ```
+
+---
+
+##### **Frontend (React.js + Socket.IO)**
+1. **Chatroom Interface**:
+   - Sidebar: Display active agents and their roles.
+   - Chat Window:
+     - Show conversation history with agent names, roles, and timestamps.
+     - Highlight quoted messages visually (e.g., block indentation or links).
+
+2. **Message Input**:
+   - Text input with:
+     - **Quote functionality**: Select a message to quote.
+     - **Dropdown**: Tag a specific agent in the message.
+
+**Frontend Code Snippet**:
+```javascript
+function Chatroom({ chatroomId }) {
+    const [messages, setMessages] = React.useState([]);
+    const [input, setInput] = React.useState("");
+
+    // Fetch chatroom messages
+    React.useEffect(() => {
+        fetch(`/api/chatrooms/${chatroomId}/messages`)
+            .then(response => response.json())
+            .then(data => setMessages(data));
+    }, [chatroomId]);
+
+    // Send a message
+    const sendMessage = () => {
+        socket.emit("send_message", { chatroom_id: chatroomId, content: input });
+        setInput("");
+    };
+
+    return (
+        <div>
+            <div className="messages">
+                {messages.map((msg) => (
+                    <div key={msg.message_id}>
+                        <strong>{msg.agent_name}:</strong> {msg.content}
+                    </div>
+                ))}
+            </div>
+            <input value={input} onChange={(e) => setInput(e.target.value)} />
+            <button onClick={sendMessage}>Send</button>
+        </div>
+    );
+}
+```
+
+---
+
+#### **5. Next Steps**
+1. Focus on building a **basic multi-agent chatroom**:
+   - Add/remove agents dynamically.
+   - Support quoting and referencing messages.
+2. Implement rules for **self-regulation**:
+   - Only relevant agents respond to messages.
+   - Limit over-talking with timed turns.
+3. Add **meeting moderation**:
+   - Introduce a lead agent to start, guide, and close conversations.
+4. Test with tasks to ensure the chatroom is task-oriented and efficient.
+
+---
+
+This approach focuses entirely on building a **multi-agent chatroom** with the essential functionalities required to enable meaningful agent collaboration and task execution.

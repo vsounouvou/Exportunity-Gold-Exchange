@@ -1,0 +1,77 @@
+{
+  "smoke": "chairman-auth",
+  "timestamp": "2026-02-27T21:18:47.173Z",
+  "baseUrl": "https://boursedelor.com",
+  "tenantId": 1,
+  "tenantKey": "bdo",
+  "tag": "chairman-smoke-1772227121.52127-postfix",
+  "summary": {
+    "passCount": 8,
+    "failCount": 0
+  },
+  "run": {
+    "threadId": 2,
+    "messageId": 61,
+    "actionRunId": 42,
+    "quickTokenPrefix": "rShC-w",
+    "quickRedeemSessionPrefix": "U4G9HU0V"
+  },
+  "checks": [
+    {
+      "id": "terminal-agent",
+      "passed": true,
+      "details": "assistant=Tassi Hangbé",
+      "endpoint": "/api/tenants/1/terminal-agent",
+      "status": 200
+    },
+    {
+      "id": "assistant.thread",
+      "passed": true,
+      "details": "threadId=2",
+      "endpoint": "/api/assistant/thread",
+      "status": 200
+    },
+    {
+      "id": "assistant.message",
+      "passed": true,
+      "details": "assistantMessageId=61",
+      "endpoint": "/api/assistant/message",
+      "status": 200
+    },
+    {
+      "id": "actions.run.create",
+      "passed": true,
+      "details": "runId=42",
+      "endpoint": "/api/actions/run",
+      "status": 201
+    },
+    {
+      "id": "actions.evidence.complete",
+      "passed": true,
+      "details": "runStatus=SUCCEEDED",
+      "endpoint": "/api/actions/run/42/evidence",
+      "status": 200
+    },
+    {
+      "id": "quick-token.create",
+      "passed": true,
+      "details": "tokenPrefix=rShC-w",
+      "endpoint": "/api/chairman/quick-token",
+      "status": 201
+    },
+    {
+      "id": "quick-token.redeem.once",
+      "passed": true,
+      "details": "redeem succeeded",
+      "endpoint": "/api/chairman/quick-token/redeem",
+      "status": 200
+    },
+    {
+      "id": "quick-token.redeem.second.blocked",
+      "passed": true,
+      "details": "blocked with 401",
+      "endpoint": "/api/chairman/quick-token/redeem",
+      "status": 401
+    }
+  ]
+}

@@ -1,0 +1,319 @@
+Exactly, this is the key design rule of the whole platform.
+Let me translate what you just said into a **clear architecture + concrete instructions** for your dev.
+
+---
+
+## 1. Golden Rule for the Platform
+
+> **Any action that a human can trigger with a button in the UI
+> must also be triggerable automatically by the Chairman’s Assistant (and other agents), through the same Action system.**
+
+No “magic” UI shortcuts.
+No “hidden” operations.
+
+* Button = **Action wrapper**
+* Chairman’s Assistant = **super user** over Actions (with hierarchy rules)
+* Other agents = **subset of Actions** based on their role & permissions
+
+This keeps everything **coherent** and makes full autonomy possible.
+
+---
+
+## 2. Actions Also Include Google & External Access
+
+Add explicitly to the Action catalog:
+
+### Google / Cloud Actions (examples)
+
+* `google_search`
+* `google_calendar_create_event`
+* `google_calendar_update_event`
+* `google_drive_upload_file`
+* `google_drive_list_files`
+* `google_sheets_read_range`
+* `google_sheets_write_range`
+* (later) `gmail_send_email`, `gmail_list_threads`, etc.
+
+These are **actions**, not hard-coded features.
+
+* The **UI** might show a button like “Add to Google Calendar”.
+* Technically, that button calls the `google_calendar_create_event` action.
+* The **Chairman’s Assistant** or another agent can also call that same action autonomously when needed.
+
+---
+
+## 3. Buttons = Actions
+
+Very concrete rule for the dev:
+
+> Every clickable “operation” button in the UI **must map to a specific ActionDefinition**.
+
+Examples:
+
+* `New Meeting` button → `create_meeting` action
+* `End Meeting` button → `end_meeting` action
+* `+ Add Agent` to meeting → `add_participant_to_meeting` action
+* `Create Company` wizard → `create_company` action
+* `Create Agent` modal → `create_agent` action
+* `Change Budget` field → `update_budget` action
+* `Upload Document` → `upload_document` action
+* `Tag document as “Sales”` → `tag_document` action
+
+Even things like:
+
+* “Enable this feature for Agent X”
+* “Give this agent access to Action Y”
+
+Those themselves are **Actions**:
+
+* `grant_action_permission`
+* `revoke_action_permission`
+* `update_agent_capabilities`
+
+So the **platform configuration itself** is controlled by Actions.
+
+---
+
+## 4. Chairman’s Assistant = Top of the Action Hierarchy
+
+You said it well:
+
+> “Chairman Assistant is on top of all the ability to do things as per the hierarchy.”
+
+So we define:
+
+### Chairman’s Assistant Capabilities
+
+* Has **access to all Actions** that:
+
+  * Are allowed for that company,
+  * Are not restricted by legal/safety global rules.
+* Can:
+
+  * **Execute** Actions directly,
+  * **Sequence** Actions into workflows,
+  * **Delegate** tasks to other agents (who will use Actions).
+
+Examples:
+
+* “Create a new Sales Agent for the Ghana subsidiary with email access and lead-creation rights.”
+
+  * `create_agent`
+  * `grant_action_permission` (for `send_email`, `create_lead`)
+
+* “Schedule a weekly sync between Sales Agent and Finance Agent every Monday at 9:00.”
+
+  * `create_recurring_meeting`
+  * `google_calendar_create_event` (if integrated)
+
+* “Upload these contracts to the knowledge base and tag them as ‘Gold Trade / Côte d’Ivoire’.”
+
+  * `upload_document`
+  * `tag_document`
+  * `memory_create` (to remember their location)
+
+Chairman’s Assistant = **master orchestrator** of Actions in that company.
+
+---
+
+## 5. When Creating an Agent, We Assign Actions as “Abilities”
+
+You said:
+
+> “When we are creating an agent… we can give it some of those accesses manually.”
+
+Exactly. That’s the **agent capabilities** model.
+
+### Agent Profile Must Include:
+
+* Basic info:
+
+  * Name, role, department, country, CV/personality.
+* **Action abilities**:
+
+  * A list of which Actions this agent can call.
+  * For each Action:
+
+    * `allowed = true/false`
+    * `requires_approval = true/false`
+
+Example – Sales Agent:
+
+* Allowed:
+
+  * `send_email` (no approval)
+  * `create_lead` (no approval)
+  * `update_deal` (maybe no approval)
+  * `generate_text` (scripts, emails)
+  * `memory_search` (to recall client info)
+
+* Not allowed:
+
+  * `update_budget`
+  * `log_transaction` (money)
+  * `google_calendar_create_event` (maybe limited to draft mode)
+
+Example – Finance Agent:
+
+* Allowed:
+
+  * `log_transaction`
+  * `update_budget`
+  * `generate_report`
+  * `memory_search`
+
+* Not allowed:
+
+  * `send_email` to external leads (maybe restricted).
+
+### Where to Configure This
+
+* On the **Agent editing page** (Agents & Hierarchy → click an agent):
+
+  * There must be a **Capabilities / Actions section**:
+
+    * List of Actions,
+    * Checkboxes or toggles:
+
+      * “Can use”
+      * “Requires approval”
+    * Or assign by role & adjust manually.
+
+The Chairman’s Assistant uses a **default template** based on role,
+and the Chairman can fine-tune.
+
+---
+
+## 6. Manual vs Automatic Must Use the Same Pipeline
+
+Key implementation rule:
+
+> Any operation that happens through the UI **must internally call the same Action service** that agents use.
+
+That means:
+
+* Create a **central ActionService** or “command bus” in the backend:
+
+  ```ts
+  executeAction({ actionCode, actorId, companyId, payload })
+  ```
+
+* UI buttons:
+
+  * Use `executeAction()`.
+
+* AI agents:
+
+  * Use `executeAction()`.
+
+No special shortcuts.
+No “UI-only” logic.
+
+This ensures:
+
+* Full **auditability** (all actions are logged),
+* Full **autonomy** (Assistant can do everything humans can),
+* Easy **governance** (approvals, permissions, quotas).
+
+---
+
+## 7. Activities = Executed Actions
+
+You also mentioned:
+
+> “Of the activities, the buttons should be actions.”
+
+So: what we show as **activities** in the Dashboard / Home / logs is simply:
+
+* **Executed Actions** (`ActionExecution` records),
+* Grouped and summarized.
+
+Examples:
+
+* “Generated image for LinkedIn campaign.”
+
+  * Action: `generate_image`
+  * Agent: Marketing Agent
+  * Status: success
+
+* “Created 10 leads from LinkedIn import.”
+
+  * Action: `create_lead`
+  * Agent: Sales Agent
+  * Count: 10
+
+* “Logged transaction $25,000 from Client Y.”
+
+  * Action: `log_transaction`
+  * Agent: Finance Agent
+  * Money: 25,000
+
+On the UI, a card in the activity log might show:
+
+> **Action:** `log_transaction`
+> **By:** Finance Agent
+> **Money:** $25,000
+> `[Open Conversation]` `[View Transaction]`
+
+And that *card itself* can contain buttons that trigger more Actions:
+
+* `Undo` → `reverse_transaction`
+* `Edit` → `update_transaction`
+
+Again: **buttons = Actions**.
+
+---
+
+## 8. Summary of What You Want (for the dev)
+
+You can say this to your team:
+
+1. **All platform operations must be Actions.**
+
+   * Any button that does something (create, modify, delete, integrate, send, schedule) must:
+
+     * Call a central `executeAction()` function,
+     * Be logged in an ActionExecution log.
+
+2. **The Chairman’s Assistant is allowed to call everything that a human can call (per company & legal constraints).**
+
+   * If I can click it, the Chairman’s Assistant must be able to do it programmatically,
+   * Using the same ActionDefinition.
+
+3. **Access to Google & external services are Actions.**
+
+   * Calendar, Drive, Sheets, Gmail, web search, etc. are:
+
+     * Represented as Actions,
+     * Managed with permissions.
+
+4. **Agent creation includes Action abilities.**
+
+   * On the agent edit screen:
+
+     * There must be a section to define which Actions this agent can use and whether they require approval.
+
+5. **Chairman’s Assistant sits at the top of the hierarchy.**
+
+   * It can:
+
+     * Configure other agents’ abilities (via Actions),
+     * Orchestrate, chain, and schedule Actions.
+
+6. **The Activities shown in the Dashboard/Home are just aggregated executed Actions.**
+
+   * Revenue, meetings, actions, decisions:
+
+     * All derived from ActionExecution + conversation summaries.
+
+7. **Chairman’s Assistant chat bar is visible everywhere.**
+
+   * Same design, bottom of every page,
+   * Uses Actions under the hood whenever it “does” something in the platform.
+
+---
+
+If you want next, I can:
+
+* Propose a **first concrete JSON schema** for `executeAction()` and `ActionDefinition`,
+* Or design the **Agent Capabilities section UI** so the dev knows exactly how to present & edit which Actions an agent can use.

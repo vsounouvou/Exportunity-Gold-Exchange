@@ -1,0 +1,216 @@
+import type { Agent } from "@db/schema";
+import { useMemo, useRef, useState } from "react";
+
+type OrgChartTreeProps = {
+  agents: Agent[];
+  onAgentClick: (agent: Agent) => void;
+};
+
+function buildChildrenMap(agents: Agent[]) {
+  const map = new Map<number, Agent[]>();
+  for (const agent of agents) {
+    const managerId = agent.managerId ?? 0;
+    const list = map.get(managerId) ?? [];
+    list.push(agent);
+    map.set(managerId, list);
+  }
+  for (const [, list] of map) {
+    list.sort((a, b) => a.name.localeCompare(b.name));
+  }
+  return map;
+}
+
+function safeNodeKey(agent: Agent) {
+  return `${agent.id}`;
+}
+
+export function OrgChartTree({ agents, onAgentClick }: OrgChartTreeProps) {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const panRef = useRef<{
+    isPanning: boolean;
+    pointerId: number | null;
+    startX: number;
+    startY: number;
+    scrollLeft: number;
+    scrollTop: number;
+  }>({
+    isPanning: false,
+    pointerId: null,
+    startX: 0,
+    startY: 0,
+    scrollLeft: 0,
+    scrollTop: 0,
+  });
+  const [isPanning, setIsPanning] = useState(false);
+
+  const agentIdSet = useMemo(() => new Set(agents.map((a) => a.id)), [agents]);
+  const childrenMap = useMemo(() => buildChildrenMap(agents), [agents]);
+  const roots = useMemo(() => {
+    return agents
+      .filter((a) => a.managerId == null || !agentIdSet.has(a.managerId))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [agents, agentIdSet]);
+
+  const visited = new Set<number>();
+
+  const renderNode = (agent: Agent) => {
+    if (visited.has(agent.id)) return null;
+    visited.add(agent.id);
+
+    const children = childrenMap.get(agent.id) ?? [];
+
+    return (
+      <li key={safeNodeKey(agent)}>
+        <button
+          type="button"
+          onClick={() => onAgentClick(agent)}
+          className="inline-flex max-w-[260px] flex-col gap-1 rounded-lg border border-gray-800 bg-gray-900 px-3 py-2 text-left shadow-sm hover:border-gray-700 hover:bg-gray-900/70"
+        >
+          <div className="flex items-center justify-between gap-2">
+            <div className="truncate text-sm font-semibold text-white">{agent.name}</div>
+            <span
+              className={`rounded-full px-2 py-0.5 text-xs ${
+                agent.status === "active" ? "bg-green-500/20 text-green-300" : "bg-gray-700/40 text-gray-300"
+              }`}
+            >
+              {agent.status}
+            </span>
+          </div>
+          <div className="truncate text-xs text-gray-400">{agent.role}</div>
+          <div className="text-[11px] text-gray-500">
+            {children.length} {children.length === 1 ? "report" : "reports"}
+          </div>
+        </button>
+        {children.length > 0 && (
+          <ul>
+            {children.map((child) => renderNode(child))}
+          </ul>
+        )}
+      </li>
+    );
+  };
+
+  return (
+    <div
+      ref={containerRef}
+      className="org-tree max-h-[70vh] overflow-auto rounded-lg border border-gray-800 bg-gray-950 p-4"
+      style={{ cursor: isPanning ? "grabbing" : "grab", touchAction: "none" }}
+      onPointerDown={(e) => {
+        const target = e.target as HTMLElement | null;
+        if (target?.closest("button")) return;
+        const el = containerRef.current;
+        if (!el) return;
+        panRef.current.isPanning = true;
+        panRef.current.pointerId = e.pointerId;
+        panRef.current.startX = e.clientX;
+        panRef.current.startY = e.clientY;
+        panRef.current.scrollLeft = el.scrollLeft;
+        panRef.current.scrollTop = el.scrollTop;
+        try {
+          el.setPointerCapture(e.pointerId);
+        } catch {
+          // ignore
+        }
+        setIsPanning(true);
+      }}
+      onPointerMove={(e) => {
+        const el = containerRef.current;
+        if (!el) return;
+        if (!panRef.current.isPanning) return;
+        if (panRef.current.pointerId !== e.pointerId) return;
+        const dx = e.clientX - panRef.current.startX;
+        const dy = e.clientY - panRef.current.startY;
+        el.scrollLeft = panRef.current.scrollLeft - dx;
+        el.scrollTop = panRef.current.scrollTop - dy;
+      }}
+      onPointerUp={(e) => {
+        const el = containerRef.current;
+        if (!el) return;
+        if (panRef.current.pointerId === e.pointerId) {
+          panRef.current.isPanning = false;
+          panRef.current.pointerId = null;
+          try {
+            el.releasePointerCapture(e.pointerId);
+          } catch {
+            // ignore
+          }
+          setIsPanning(false);
+        }
+      }}
+      onPointerCancel={() => {
+        panRef.current.isPanning = false;
+        panRef.current.pointerId = null;
+        setIsPanning(false);
+      }}
+      onPointerLeave={() => {
+        panRef.current.isPanning = false;
+        panRef.current.pointerId = null;
+        setIsPanning(false);
+      }}
+    >
+      <style>{`
+        .org-tree ul {
+          padding-top: 20px;
+          position: relative;
+          display: inline-flex;
+          justify-content: flex-start;
+          gap: 8px;
+          width: max-content;
+          min-width: 100%;
+        }
+        .org-tree li {
+          list-style-type: none;
+          text-align: center;
+          position: relative;
+          padding: 20px 6px 0 6px;
+        }
+        .org-tree li::before,
+        .org-tree li::after {
+          content: '';
+          position: absolute;
+          top: 0;
+          width: 50%;
+          height: 20px;
+          border-top: 1px solid rgba(255,255,255,0.12);
+        }
+        .org-tree li::before {
+          right: 50%;
+        }
+        .org-tree li::after {
+          left: 50%;
+          border-left: 1px solid rgba(255,255,255,0.12);
+        }
+        .org-tree li:only-child::before,
+        .org-tree li:only-child::after {
+          display: none;
+        }
+        .org-tree li:only-child {
+          padding-top: 0;
+        }
+        .org-tree li:first-child::before {
+          border-top: none;
+        }
+        .org-tree li:last-child::after {
+          border-top: none;
+        }
+        .org-tree ul ul::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: 50%;
+          width: 0;
+          height: 20px;
+          border-left: 1px solid rgba(255,255,255,0.12);
+        }
+      `}</style>
+
+      {roots.length === 0 ? (
+        <div className="text-sm text-gray-400">No top-level agents found.</div>
+      ) : (
+        <div className="w-max min-w-full">
+          <ul>{roots.map((root) => renderNode(root))}</ul>
+        </div>
+      )}
+    </div>
+  );
+}

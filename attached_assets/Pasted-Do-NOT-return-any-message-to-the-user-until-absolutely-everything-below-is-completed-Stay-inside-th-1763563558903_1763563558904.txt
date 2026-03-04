@@ -1,0 +1,208 @@
+Do NOT return any message to the user until absolutely everything below is completed.
+Stay inside the task as long as needed — even if it takes hours — and only respond when every placeholder is developed, all functions are tested, and full simulation data is added.
+
+⸻
+
+1. FULL PLATFORM AUDIT — PAGE BY PAGE
+
+Go through every single page of the platform, including but not limited to:
+	•	Home
+	•	Dashboard
+	•	Meetings
+	•	Agents & Hierarchy
+	•	Actions
+	•	Action Details
+	•	Action Executions
+	•	Knowledge Base
+	•	Add/Edit Company
+	•	Company List
+	•	Company Overview
+	•	Company Dashboard
+	•	Departments & Agents
+	•	Finance & Budget
+	•	Shareholding
+	•	Subsidiaries
+	•	Settings
+	•	Performance & Diagnostics
+	•	Integrations
+
+For each page:
+
+A. Locate all placeholders
+	•	Text placeholders
+	•	Empty containers
+	•	Missing sections
+	•	Incomplete UI
+	•	Disabled buttons
+	•	“Coming soon” areas
+	•	Static mock data
+	•	Unwired UI components
+
+B. Replace ALL placeholders with full, correct, working functionality
+
+You must infer missing functionality from platform context and previous instructions.
+
+C. Make sure every component on each page performs a real action
+	•	Every button
+	•	Every dropdown
+	•	Every card
+	•	Every modal
+	•	Every navigation item
+	•	Every form field
+
+No UI element should remain inactive or empty.
+
+⸻
+
+2. IMPLEMENT AND CONNECT EVERY FEATURE
+
+For each page:
+	•	Build missing components
+	•	Connect UI to backend logic
+	•	Implement the correct API calls
+	•	Populate dropdowns with real data
+	•	Ensure navigation flows work
+	•	Add real interactivity
+	•	Replace mock values with dynamic state
+	•	Validate inputs
+	•	Add forms and modals
+	•	Ensure the design is consistent and clean
+
+All state, data, and interactions must be fully functional.
+
+⸻
+
+3. TEST EVERYTHING — THREE TIMES
+
+Every time you implement or fix something:
+
+Test 1 — Functionality Test
+	•	Does it work end-to-end?
+	•	Does it save?
+	•	Does it update correctly?
+	•	Does it break under normal use?
+
+Test 2 — UX Test
+	•	Smooth scrolling
+	•	Clean layout
+	•	Responsive design
+	•	Buttons and modals behave predictably
+	•	No broken visual elements
+
+Test 3 — Edge Case Test
+	•	Empty input
+	•	Invalid input
+	•	API failure
+	•	Missing data
+	•	Permission conflicts
+	•	Wrong data types
+
+If any test fails, FIX the issue and restart all three tests again.
+Do not move to the next item until the current one passes all three tests.
+
+⸻
+
+4. SIMULATE COMPLETE TEST DATA ACROSS THE PLATFORM
+
+Once everything is functional and stable:
+
+Create fully realistic simulation data:
+
+A. Companies
+	•	At least 3 companies
+	•	Full descriptions
+	•	Sectors, industries, countries
+	•	Vision, goals, KPIs
+	•	Budgets
+	•	Shareholders
+	•	Subsidiaries
+
+B. Agents
+	•	5–10 agents per company
+	•	Departments
+	•	Realistic roles
+	•	Personalities
+	•	Permissions
+
+C. Meetings
+	•	Historic meetings with timestamps
+	•	Multi-agent meetings
+	•	User–agent meetings
+	•	Automatic meetings
+	•	Transcripts
+	•	Summaries
+	•	Linked decisions and actions
+
+D. Actions
+	•	20+ action execution logs
+	•	Success
+	•	Failure
+	•	Retry
+	•	Blocked due to permissions
+	•	Blocked due to budget
+
+E. Knowledge Base
+	•	SOPs
+	•	Internal notes
+	•	Uploaded documents
+	•	AI-generated reports
+	•	Tagged collections
+	•	Web imports
+
+F. Finance
+	•	Revenue entries
+	•	Expense logs
+	•	Profit calculations
+	•	Automatic distribution simulations
+
+G. Agent Memory
+	•	Personality evolution
+	•	Task history
+	•	Learned preferences
+	•	Recurrent contacts
+
+The simulation must look real and complete, not like mock data.
+
+⸻
+
+5. ENSURE THE USER ASSISTANT BAR APPEARS ON EVERY PAGE
+
+On every page:
+	•	Same design
+	•	Same placement
+	•	Fully functional input
+	•	Able to access actions
+	•	Able to interpret the page context
+
+The assistant must feel permanent and intelligent, not page-specific.
+
+Run the three-test cycle for the assistant as well:
+	•	Functional
+	•	UX
+	•	Edge cases
+
+⸻
+
+6. FINAL VALIDATION BEFORE RETURNING TO USER
+
+You may return to the user ONLY when:
+	•	All placeholders are gone
+	•	All UI elements work
+	•	All actions run
+	•	All pages are complete
+	•	Everything is tested three times
+	•	Simulated data is fully injected
+	•	No crashes
+	•	No missing logic
+	•	No empty sections
+	•	No broken navigation
+	•	No incorrect styling
+	•	No missing modals
+	•	The assistant works everywhere
+	•	The entire platform loads cleanly
+
+When and ONLY when the entire platform is fully implemented and validated, return:
+
+“All pages are fully developed, all placeholders replaced, all features tested three times, and the platform now includes complete simulated data. Everything is working correctly.”
+
+Until then: stay in hidden execution mode and do not send partial results.

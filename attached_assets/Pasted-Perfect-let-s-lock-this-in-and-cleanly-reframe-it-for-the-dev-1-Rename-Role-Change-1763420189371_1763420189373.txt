@@ -1,0 +1,287 @@
+Perfect, let’s lock this in and cleanly reframe it for the dev.
+
+---
+
+## 1. Rename + Role Change
+
+* **“Diary” is now called: `Dashboard`** everywhere in the app.
+* This page is **not just history**, it’s:
+
+  * A **calendar-driven view** of the past and future,
+  * A **summary of conversations, actions, decisions, and money**,
+  * A **control tower** for what has happened in the company.
+
+So now you have:
+
+* **Home** – quick entry / overview
+* **Meetings** – run meetings, talk with agents in rooms
+* **Dashboard** – see what happened, by day & category, with numbers
+* **Agents & Hierarchy**
+* **Performance & Diagnostics**
+* **Settings**
+* etc.
+
+And of course:
+✅ **Chairman’s Assistant bar at the bottom of EVERY page, same design as Home, unchanged.**
+
+---
+
+## 2. Dashboard Page – What It Does
+
+**Goal:**
+Show, for any period (day / week / month):
+
+* What conversations and meetings happened,
+* What **actions** were taken,
+* What **decisions** were made,
+* What **money** was generated or moved,
+* All organized by **date** and **category**.
+
+So it’s both:
+
+* A **calendar of your AI company**, and
+* A **business dashboard of outcomes**.
+
+---
+
+## 3. Dashboard Layout
+
+Think in three vertical zones:
+
+### 3.1 Top: KPIs Summary (Money & Activity)
+
+At the top of the Dashboard:
+
+* **Date range selector**:
+
+  * Today / This week / This month / Custom range
+
+* **Key metric tiles** (example):
+
+  * `Revenue generated` (for the range)
+  * `Number of meetings held`
+  * `Number of actions executed` (tasks, emails sent, follow-ups)
+  * `Number of decisions recorded`
+  * `New leads / opportunities created`
+
+Each tile clickable → drills down to the underlying conversations/meetings.
+
+### 3.2 Middle: Calendar
+
+Under the KPIs:
+
+* **Calendar widget (month view)**
+
+Features:
+
+* Days with activity are **highlighted**:
+
+  * small dots or badges showing:
+
+    * number of meetings,
+    * or color by main category (e.g. Sales, Finance, Ops).
+* Click on a date:
+
+  * The **bottom section** updates to show:
+
+    * All conversations/meetings of that date,
+    * Their actions, decisions, money impact.
+
+Optional:
+
+* Week/day toggle for more detailed view.
+
+### 3.3 Bottom: Daily Log (Organized by Category)
+
+When a date is selected:
+
+* Show a **list grouped by category**, for that day:
+
+Example categories:
+
+* **Strategy**
+* **Sales / Business Development**
+* **Marketing**
+* **Finance**
+* **Operations**
+* **Compliance / Legal**
+* **Product / Tech**
+* **Agent-only syncs**
+
+For each category, show:
+
+* A group header:
+
+  > **Sales / Business Development (3 meetings, 12 actions, $15,000 closed)**
+
+* Under it, **cards** for each conversation/meeting on that day:
+
+  Card example:
+
+  * Title: `Meeting: Sales & Finance Weekly Sync`
+  * Time: `10:00–10:45`
+  * Participants: Chairman, Sales Agent, Finance Agent
+  * **Decisions** (bulleted):
+
+    * “Increase outreach budget by 20%.”
+    * “Focus next week on Côte d’Ivoire leads.”
+  * **Actions executed**:
+
+    * “Sales Agent sent 12 follow-up emails.”
+    * “Finance Agent updated budget forecast.”
+  * **Money**:
+
+    * “Expected: $25,000 potential”
+    * “Confirmed: $5,000 closed deals”
+
+Buttons:
+
+* `Open Conversation` → opens the full meeting room (on Meetings page or overlay)
+* `See Details` → shows full summary, tasks, attachments, etc.
+
+---
+
+## 4. How Categories & Data Are Built
+
+Behind the scenes, after each conversation/meeting:
+
+1. The system summarizes:
+
+   * Main **topic(s)** → assign one or more **categories**.
+   * **Decisions** made.
+   * **Actions** executed or assigned.
+   * **Money impact** (if any: revenue, cost, budgets, etc.).
+
+2. These are saved as structured fields on the **Conversation / Meeting**:
+
+```ts
+type ConversationSummary = {
+  conversationId: string;
+  date: string;
+  categories: string[]; // ['Sales', 'Finance']
+  decisions: string[];
+  actions: string[];
+  money: {
+    revenueGenerated?: number;
+    pipelineCreated?: number;
+    budgetChanged?: number;
+  };
+};
+```
+
+3. The **Dashboard** reads from these summaries:
+
+   * Aggregates money & counts (for KPIs),
+   * Groups by category,
+   * Displays per-day logs under the calendar.
+
+---
+
+## 5. Calendar Integration Inside the Dashboard
+
+The **calendar on the Dashboard** must:
+
+* Show both:
+
+  * Past conversations/meetings,
+  * Scheduled upcoming meetings.
+
+Visual cues:
+
+* Dot or badge:
+
+  * Dark color → past meetings held,
+  * Light color → upcoming meetings,
+  * Tiny label for key type (e.g. “3” = 3 conversations that day).
+
+Clicking a date:
+
+* Bottom section shows:
+
+  * Past conversations (with actions, decisions, money),
+  * Upcoming meetings scheduled on that day (marked clearly as upcoming / planned).
+
+From an **upcoming meeting** card here:
+
+* You can click `Open Meeting` → takes you to the Meetings page and that room, or opens it in a modal.
+
+---
+
+## 6. Chairman’s Assistant Dock – Confirmed Behavior
+
+Re-state for the dev exactly as you want it:
+
+> * The **Chairman’s Assistant chat bar** at the bottom of the screen
+>   must be **identical to the one on the HomePage**,
+>   with the **same design, same behavior**, and
+>   must appear on **every single page**:
+>
+>   * Home
+>   * Companies
+>   * Agents & Hierarchy
+>   * Meetings
+>   * Dashboard (Diary renamed)
+>   * Performance & Diagnostics
+>   * Settings
+>   * any other.
+
+* It always uses **today’s ongoing conversation** with the Chairman’s Assistant.
+* The Dashboard does **not** change its design or behavior.
+* The Dashboard just **sits above it** as a separate page content.
+
+---
+
+## 7. Concrete Instructions for the Dev / Agency
+
+You can summarize like this:
+
+1. **Rename “Diary” to “Dashboard” everywhere**:
+
+   * Menu, routes, page title, code references.
+
+2. **On the Dashboard page:**
+
+   * Add **top KPI band**:
+
+     * Revenue, meetings count, actions, decisions for selected date range.
+   * Add a **calendar widget** in the middle:
+
+     * Highlight days with conversations/meetings.
+     * Clicking a day filters the bottom log.
+   * At the bottom, show a **daily log grouped by category**:
+
+     * For each category, show cards for each conversation/meeting with:
+
+       * Decisions, actions, and money impact.
+
+3. **Connect Dashboard to Meetings/Conversations data:**
+
+   * After each meeting/conversation, generate/save:
+
+     * Categories,
+     * Actions,
+     * Decisions,
+     * Money data.
+   * Aggregate these for the KPIs and daily logs.
+
+4. **Allow navigation from Dashboard to Meetings:**
+
+   * On each conversation/meeting card:
+
+     * `Open Conversation` → opens the meeting room in the Meetings page (or a modal).
+
+5. **Ensure the Chairman’s Assistant bar is:**
+
+   * Global, identical, and at the bottom of **every page**, unmodified from the HomePage design.
+
+6. **No dead UI:**
+
+   * Every button, date, card, filter on the Dashboard must:
+
+     * Either navigate,
+     * Filter,
+     * Or show a clear “not implemented yet” state (but don’t leave it clickable with no effect).
+
+---
+
+If you want, next step I can **simulate one full Dashboard day** (e.g. “2025-11-17 Dashboard view”) with example metrics, calendar state, and category sections, so your dev has a concrete reference of the data & layout.

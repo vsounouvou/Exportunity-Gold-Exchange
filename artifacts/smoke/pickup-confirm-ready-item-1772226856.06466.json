@@ -1,0 +1,53 @@
+﻿{
+    "check":  "pickup.confirm.ready_pickup.e2e",
+    "timestamp":  "2026-02-27T21:14:16.0476545Z",
+    "serialCode":  "QA-RP-20260227211409305",
+    "confirm":  {
+                    "status":  200,
+                    "ok":  true,
+                    "body":  {
+                                 "ok":  true
+                             },
+                    "raw":  "{\"ok\":true}"
+                },
+    "verify":  {
+                   "valid":  true,
+                   "serialCode":  "QA-RP-20260227211409305",
+                   "status":  "DELIVERED",
+                   "sku":  {
+                               "skuCode":  "BDO-BAR-50G-22K-E6YE1D",
+                               "type":  "BAR",
+                               "weightGrams":  50,
+                               "purity":  "916.7",
+                               "metal":  "FINE GOLD",
+                               "brandText":  "BOURSE DE L\u0027OR",
+                               "hallmarkText":  "BDO-22K",
+                               "year":  2026,
+                               "requiresLegalStamp":  true
+                           },
+                   "product":  {
+                                   "id":  1322,
+                                   "name":  "Stamped Gold Bar - 50g (22K)",
+                                   "status":  "active"
+                               },
+                   "location":  {
+                                    "type":  "DELIVERED",
+                                    "partnerId":  null
+                                },
+                   "order":  {
+                                 "orderNumber":  "SG-1771443816265-RMU_WH",
+                                 "status":  "delivered",
+                                 "paidAt":  "2026-02-18T19:43:35.259Z",
+                                 "deliveredAt":  "2026-02-27T21:14:12.776Z"
+                             },
+                   "owner":  {
+                                 "name":  "S***",
+                                 "email":  "s***@example.local",
+                                 "phone":  "***0002"
+                             }
+               },
+    "db":  {
+               "status":  "DELIVERED",
+               "pickupIdVerified":  "t"
+           }
+}

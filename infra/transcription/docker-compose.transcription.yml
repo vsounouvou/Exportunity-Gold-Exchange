@@ -1,0 +1,30 @@
+services:
+  transcription:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: transcription
+    restart: unless-stopped
+    environment:
+      WHISPER_MODEL: ${WHISPER_MODEL:-small}
+      WHISPER_DEVICE: ${WHISPER_DEVICE:-cpu}
+      WHISPER_COMPUTE_TYPE: ${WHISPER_COMPUTE_TYPE:-int8}
+      WHISPER_BEAM_SIZE: ${WHISPER_BEAM_SIZE:-1}
+      WHISPER_LANGUAGE: ${WHISPER_LANGUAGE:-}
+    expose:
+      - "8080"
+    networks:
+      - bdo-proxy
+      - default
+    # Optional GPU acceleration:
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+
+networks:
+  bdo-proxy:
+    external: true

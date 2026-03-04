@@ -1,0 +1,389 @@
+Nice, we’re converging to a clear model: **one “meeting room” concept** that absorbs both the old Chat and the old Meetings.
+
+I’ll lay this out so your dev/agency knows exactly how to mix them **without losing anything good** from either side.
+
+---
+
+## 1. Core Concept: “Meeting Room = Conversation + Time + Participants”
+
+From now on:
+
+> **Everything is a meeting room.**
+> A meeting room is a **conversation** with:
+>
+> * A **timeframe** (when it happened or is happening),
+> * A set of **participants** (humans, agents, or both),
+> * A **chat log / transcript** (messages),
+> * Optional **calendar link**.
+
+There are different flavors of meeting rooms:
+
+1. **Instant meetings / chats**
+
+   * You click “Start meeting now”, or you just start chatting with the Chairman’s Assistant.
+   * This is basically what we used to call “chat”.
+
+2. **Scheduled meetings**
+
+   * Have a start time (and optionally end time).
+   * They appear on the calendar and “upcoming meetings” list.
+
+3. **Multi-agent meetings**
+
+   * Several agents (and optionally the Chairman) talk together.
+   * This is where we reuse the **Legacy Multi-Agent Chat**.
+
+4. **Automated (background) meetings**
+
+   * Meetings started by agents themselves to coordinate.
+   * They may run without the Chairman present.
+   * Their transcript & summary are recorded and can be reviewed later.
+
+Same model, **one UI surface**.
+
+---
+
+## 2. New `Chat & Meetings` Page = Main Meeting Room Hub
+
+We keep the structure you liked and upgrade it with this “meeting room” logic.
+
+### Layout recap
+
+**Desktop:**
+
+* **Left:** Current meeting room (live conversation view)
+* **Right:** Meetings list + mini calendar + multi-agent rooms
+
+**Mobile:**
+
+* Tabs or toggle: `Conversation` | `Meetings`
+
+The **Chairman’s Assistant dock** at the bottom of the app is just a **mini view of “today’s main meeting room” with the Chairman’s Assistant**.
+
+---
+
+## 3. What We Keep From “Chat” (and upgrade)
+
+From the old Chat page we keep:
+
+* Real-time message stream
+* Left/right bubbles
+* Attachments (files)
+* Simple “type → answer” behavior
+* Multi-agent support (agents speaking with their own name)
+* Day-based grouping concept (Diary integration)
+
+We **add** to that:
+
+* Meeting metadata at the top (title, time, participants, status)
+* “Start / End meeting” controls
+* Actions like **Summon Agent** and **Schedule Follow-up**.
+
+So the left panel becomes a **standard chat UI but with a meeting header**.
+
+---
+
+## 4. What We Keep From “Meetings”
+
+From the old Meetings page we keep:
+
+* Title of meeting
+* Date & time
+* Link to **calendar**
+* Participants list
+* Status (planned / ongoing / completed)
+
+We **add**:
+
+* The actual **chat transcript** as the body of the meeting
+* Ability to **open** the meeting room and see the full conversation
+* Ability to **start** an instant meeting with agents (no calendar required).
+
+This all lives in the **right panel** of the `Chat & Meetings` page.
+
+---
+
+## 5. Starting a Meeting Room (Human or Agents)
+
+### 5.1 “Start Meeting Now”
+
+On the `Chat & Meetings` page (right panel), add a button:
+
+> **`Start Meeting`**
+
+Click → open a small modal:
+
+1. **Title** (optional, default suggestion like “Quick Sync with Chairman’s Assistant”)
+2. **Participants**:
+
+   * Chairman (always there),
+   * Chairman’s Assistant (suggested),
+   * Other agents (pick from list),
+   * Optional humans (by email/name, for later).
+3. **Mode**:
+
+   * `Now` (instant meeting room starts),
+   * `Later` (scheduled meeting).
+
+If `Now`:
+
+* Create a **Meeting Room conversation**:
+
+  ```ts
+  type = 'meeting_now'
+  status = 'ongoing'
+  date = today
+  startTime = current time
+  participants = selected participants
+  ```
+* Show it immediately in the **left chat panel**.
+* The header shows:
+
+  * Title,
+  * “Meeting in progress”,
+  * Participant avatars.
+
+From here, you just **talk**. It’s like chat, but with a clear meeting frame.
+
+---
+
+### 5.2 Scheduling a Meeting (Linked to Calendar)
+
+If user chooses `Later` in the modal:
+
+* Same fields (title, participants),
+* Add date & time,
+* Optionally duration.
+
+We:
+
+* Create a **Meeting Room conversation**:
+
+  ```ts
+  type = 'meeting_scheduled'
+  status = 'planned'
+  date = chosen date
+  startTime = chosen time
+  ```
+* If calendar integration is connected:
+
+  * Create a calendar event,
+  * Store the calendar event ID.
+* Show it in **Upcoming Meetings** list (right panel) and in the mini calendar.
+
+When time comes and user opens it:
+
+* Status goes to `ongoing`.
+* Chat panel shows meeting room with header (title, time, participants).
+
+---
+
+## 6. Summoning Agents into a Meeting
+
+This is important for your flow: “start a meeting and summon some AIs to join until I’m satisfied”.
+
+Inside an ongoing meeting room (left panel), we add:
+
+* A **Participants list** (in the header or right sidebar) with:
+
+  * Chairman,
+  * Human guests,
+  * Agents currently in the room.
+
+* A **`Summon Agent` button**:
+
+  * Click → opens a selector:
+
+    * Search and pick agents from the company org tree (Sales Agent, Finance Agent, Knowledge Agent, etc.).
+  * On confirm:
+
+    * Add agent as a participant,
+    * The agent joins the conversation (its messages start appearing).
+
+You can also do this via natural language:
+
+> “Chairman’s Assistant, bring the Finance Agent into this meeting.”
+
+Assistant:
+
+* Calls backend to add `Finance Agent` to `participants[]`,
+* Confirms:
+
+  > “I’ve added Finance Agent to this meeting.”
+
+Same for removing:
+
+> “Dismiss the Marketing Agent for now.”
+> → Agent is removed from the `participants` list and stops responding here.
+
+---
+
+## 7. Automated Meetings in the Background (Agent–Agent)
+
+Now the “crazy” but powerful part you mentioned:
+
+> “Some automated meetings will happen in the back with agents talking to each other.”
+
+We support this as:
+
+* **`type = 'agent_auto'`** meetings / conversations.
+
+### How they work:
+
+* The Orchestrator or Chairman’s Assistant decides:
+
+  * “Sales Agent and Knowledge Agent need to sync every morning at 09:00.”
+* The system creates:
+
+  ```ts
+  type = 'agent_auto'
+  participants = [SalesAgent, KnowledgeAgent, Orchestrator?]
+  createdBy = 'system' or 'agent'
+  status = 'planned'
+  ```
+* When time comes, agents start exchanging messages:
+
+  * They can:
+
+    * Review performance,
+    * Plan tasks,
+    * Sync knowledge.
+
+All messages are still stored as `messages[]` in this meeting room.
+
+### Visibility for the Chairman
+
+On UI:
+
+* **Right panel (‘Meetings’ list)**:
+
+  * Show these under a **section**:
+
+    * “Agent-only meetings”
+  * Or hide them by default with a toggle:
+
+    * `[ ] Show agent-only meetings`
+
+On the Diary:
+
+* Those meetings are visible under that day if you want to inspect:
+
+  * Title: “Agent Auto-Sync — Sales + Knowledge”
+  * Type: agent-only
+  * Click → see full transcript.
+
+The Chairman can later tell the Chairman’s Assistant:
+
+> “Summarize all agent-only meetings for this week and tell me if there is anything I should know.”
+
+---
+
+## 8. Reading Past Meetings & Reusing Context
+
+On the `Chat & Meetings` page:
+
+* **Right panel** – Meetings list:
+
+  * Filter by:
+
+    * Past meetings,
+    * Today,
+    * Upcoming,
+    * Agent-only.
+
+Pour example:
+
+* Click `Past` → list of all meetings in the last X days.
+* Click one meeting:
+
+  * The left panel shows **the entire transcript** with:
+
+    * Meeting header,
+    * Chat log,
+    * Summary (if generated),
+    * Decisions (optional).
+
+The **Chairman’s Assistant** can also:
+
+* Read those transcripts,
+* Extract important facts,
+* Push them into long-term memory,
+* Use them in future conversations.
+
+So the system truly becomes a **diary of meetings** over months and years.
+
+---
+
+## 9. How This Ties to the Diary Page
+
+We keep the separate **Diary page**, but now everything is unified:
+
+* Each day:
+
+  * 0+ instant meetings (chats),
+  * 0+ scheduled meetings,
+  * 0+ multi-agent meetings,
+  * 0+ agent-only meetings.
+
+Diary just groups all `Meeting Rooms (Conversations)` **by date**, with collapse/expand:
+
+* Click a day → see all meeting room cards of that day → click one → open full transcript.
+
+The `Chat & Meetings` page is for **operating now and near-future**.
+The Diary is for **navigating the past**.
+
+---
+
+## 10. Concrete Instructions for Your Dev / Agency
+
+You can summarise like this:
+
+1. **Unify Chat and Meetings into a single concept: Meeting Rooms (Conversations).**
+
+   * Each room has:
+
+     * `title`, `date`, `startTime`, `endTime?`,
+     * `participants` (humans & agents),
+     * `type` (`meeting_now`, `meeting_scheduled`, `multi_agent`, `agent_auto`),
+     * `status` (`planned`, `ongoing`, `completed`).
+
+2. **On the `Chat & Meetings` page:**
+
+   * **Left panel:** current meeting room = chat UI with:
+
+     * Header (title, time, participants, type, status),
+     * Messages,
+     * Input/attachments,
+     * Buttons: `Summon Agent`, `End Meeting`, `Schedule Follow-up`.
+   * **Right panel:** list of meetings & rooms + mini calendar:
+
+     * Upcoming meetings,
+     * Multi-agent rooms,
+     * Optional section for agent-only meetings.
+
+3. **From this page, I must be able to:**
+
+   * Start a new instant meeting now,
+   * Schedule a meeting later (linked to calendar),
+   * Summon agents into the meeting room,
+   * Open any past meeting and read its transcript.
+
+4. **Integrate Legacy Multi-Agent Chat as `type = 'multi_agent'` meeting rooms.**
+
+   * They appear in the right panel list.
+   * When selected, the left panel shows multi-agent conversation with participants.
+
+5. **Implement automated “agent-only” meetings (`type = 'agent_auto'`):**
+
+   * Orchestrator or agents can create them.
+   * They run without the Chairman, but are logged.
+   * Visible in Meetings list (with filter/toggle) and in the Diary.
+
+6. **Keep the Chairman’s Assistant dock identical everywhere.**
+
+   * It always reflects “today’s main meeting room” with the Chairman’s Assistant.
+   * The `Chat & Meetings` left panel is the full-screen view of that same room (or any other room when selected).
+
+---
+
+If you want, next I can write a **sample UI spec just for the meeting header** (participants list, icons, buttons) so the dev has a pixel-level reference for the room interface.

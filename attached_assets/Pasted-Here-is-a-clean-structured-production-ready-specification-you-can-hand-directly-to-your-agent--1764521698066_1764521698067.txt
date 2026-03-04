@@ -1,0 +1,277 @@
+Here is a **clean, structured, production-ready specification** you can hand directly to your agent.
+It captures *exactly* the supplier logic, geolocation architecture, seller onboarding rules, marketplace hierarchy, and the demo-access buttons you want on the admin dashboard.
+
+It is written in a direct, operational tone—ready for implementation.
+
+---
+
+# ✅ **SPECIFICATION: SUPPLIER SYSTEM + MARKETPLACE + SELLER/DELIVERY/FRANCHISEE DEMO ACCESS**
+
+## **1. Supplier Philosophy (Core Rule)**
+
+* The platform only accepts **producers** — people and companies that **make what they sell**.
+* **No resellers. No middlemen. No dropshipping.**
+* Objective: map every country, region, city, neighborhood with **verified local producers**.
+
+---
+
+## **2. Global → Africa-First Strategy**
+
+* Tier 1 rollout: **Black Africa / Sub-Saharan Africa**.
+* Tier 2: Africa at large.
+* Tier 3: rest of the world.
+* Architecture must support global onboarding from day one.
+
+---
+
+## **3. Marketplace Structure**
+
+### **3.1. Entities**
+
+1. **Shops / Sellers (Producers)**
+2. **Products**
+3. **Delivery Agents**
+4. **Buyers**
+5. **Admin**
+6. **Shareholders**
+7. **Franchisees**
+
+### **3.2. Hierarchy**
+
+* A **Seller** owns Products.
+* Products belong to **one precise Geolocation node**.
+* A **Delivery Agent** operates inside a limited radius.
+* A **Franchisee** owns a geographic territory.
+* Platform Admin can override, audit, suspend, view KPIs.
+
+---
+
+## **4. Precise Geolocation System**
+
+The marketplace must map:
+
+* **Continent → Country → Region → City → District → Neighborhood → Street → Exact GPS point**
+
+Every **seller**, every **delivery agent**, every **product** is tied to:
+
+* A **GPS coordinate**, AND
+* A **geographical hierarchy node**
+
+### Buyer Experience (Core Rule)
+
+When a buyer searches a product:
+
+1. System identifies buyer GPS.
+2. System retrieves closest sellers that produce that item.
+3. Products appear on a **muted map**, with **powerful colored category icons** (navy-blue theme UI).
+4. Buyer can:
+
+   * order,
+   * pick up,
+   * or request delivery.
+
+---
+
+## **5. Seller Requirements**
+
+### A seller must:
+
+1. **Produce what they sell.**
+2. Have a **physical location**.
+3. Provide **inventory** (text + prices + optional photos).
+4. Accept the platform’s **payment gateway integration**.
+
+### Seller Account Features
+
+* Add/Edit/Delete products
+* Manage stock
+* Set opening hours
+* Receive and process orders
+* Chat with the buyer
+* Financial dashboard (wallet + withdrawals)
+* Sales analytics
+
+---
+
+## **6. Financial Architecture**
+
+The platform acts like a **payment gateway**:
+
+* Every buyer must load money into a **wallet** (top-up via bank card, mobile money, etc.).
+* Payments are done using **vouchers / wallet credits**.
+* Sellers and agents receive funds in real time.
+
+This aligns with your **broker strategy** described in your Harvard paper.
+
+
+Integration reference from rayOn showing wallet + payment logic.
+
+
+---
+
+## **7. Admin Dashboard – New Required Buttons**
+
+Inside Admin Dashboard, add a section:
+
+### **🟦 “DEMO ACCOUNTS”**
+
+Buttons:
+
+1. **Demo Seller Account**
+
+   * Opens the seller interface with demo data.
+   * Allows the admin to test seller UX end-to-end.
+
+2. **Demo Delivery Agent Account**
+
+   * Opens the agent interface (QR scanning, tasks, delivery tracking).
+
+3. **Demo Franchisee Account**
+
+   * Shows territory management
+   * Sub-agents
+   * Royalty dashboard
+   * Commission structure
+
+4. **Demo Shareholder Account**
+
+   * Shows shares, revenue distribution, dashboards
+   * Voting features if needed
+
+Every demo account should use the same **navy blue + muted map + vivid category colors** UX.
+
+---
+
+## **8. Franchisee Model (Territory Owners)**
+
+Each franchisee:
+
+* Owns a **district / city / region / country**
+* Has a **team of employees** linked to their territory
+* Has access to:
+
+  * sellers in their territory
+  * delivery agents
+  * commissions + royalties
+  * performance dashboard
+  * tasks (from your AI task system)
+
+---
+
+## **9. Admin → Seller Experience Bridge**
+
+Add this direct shortcut:
+
+**Button: “View Seller Experience”**
+
+* Opens the exact UI the seller will see.
+* Allows admin to simulate:
+
+  * product upload,
+  * sales flow,
+  * delivery assignment,
+  * financial settlement.
+
+Purpose: quality control before onboarding new producers.
+
+---
+
+## **10. Onboarding Flow (Suppliers / Sellers)**
+
+### **Step 1: Identity Verification**
+
+* Business registration
+* Personal ID
+* Proof of production (photos or short video)
+
+### **Step 2: Geolocation Verification**
+
+* Live GPS pin
+* Auto-detect address
+* Admin confirmation
+
+### **Step 3: Shop Setup**
+
+* Upload logo
+* Add product categories
+* Add products
+* Set delivery rules
+
+### **Step 4: Connect to Wallet**
+
+* Automatically generated seller wallet
+* Payout methods
+* Commission rules applied
+
+---
+
+## **11. Platform Logic with Buyers**
+
+When buyers browse:
+
+* They see **the closest producers**.
+* Payment is **wallet-based**.
+* Orders are **assigned to delivery agents with sufficient deposit**.
+
+(Per your instructions, delivery agents must maintain deposits ≥ value of orders they can carry.)
+
+---
+
+## **12. Placeholders for Company-Owned Products**
+
+* The platform must allow you to **advertise and sell your own products**.
+* These products appear:
+
+  * inside the marketplace,
+  * in priority positions when relevant.
+
+You maintain full flexibility to use supplier slots for corporate products.
+
+---
+
+## **13. Extra Module Needed Later**
+
+* AI-driven supplier verification
+* AI auto-scoring of production authenticity
+* Supplier ranking based on proximity + reliability
+* AI quality-check on images uploaded by sellers
+
+---
+
+# ✅ SUMMARY TO SEND TO THE AGENT
+
+Here is the exact text you can copy/paste to your agent:
+
+---
+
+**AGENT INSTRUCTION — SUPPLIER & MARKETPLACE MODULE**
+
+1. Build a supplier system where we only onboard **producers who make what they sell**. No resellers.
+2. Implement a full geolocation hierarchy: Continent → Country → Region → City → District → Neighborhood → GPS Point.
+3. Every seller, delivery agent, and product must be tied to a precise geolocation.
+4. The buyer experience must always show the **closest producers** to the buyer.
+5. Build the marketplace with the following entities: Sellers, Products, Delivery Agents, Buyers, Franchisees, Shareholders, Admin.
+6. Create demo accounts accessible from Admin Dashboard:
+
+   * Demo Seller Account
+   * Demo Delivery Agent Account
+   * Demo Franchisee Account
+   * Demo Shareholder Account
+7. Add a button “View Seller Experience” in Admin so we can simulate the seller UX.
+8. Build the seller interface: product management, stock, orders, payout wallet, analytics.
+9. Delivery agents must maintain a **deposit ≥ the value of orders they carry**.
+10. The entire platform must be wallet-based, operating like a payment gateway.
+11. Allow the company to advertise and sell its own products using placeholder slots.
+12. Territory system: franchisees manage regions, with teams, commissions, royalties.
+13. Prepare the architecture to expand globally later.
+
+---
+
+If you want, I can now:
+✅ generate the interface layout (page by page)
+✅ generate the database schema
+✅ generate API endpoints
+✅ generate the seller onboarding UX
+✅ generate the whole marketplace UI in navy-blue theme
+
+Just tell me what you want next.

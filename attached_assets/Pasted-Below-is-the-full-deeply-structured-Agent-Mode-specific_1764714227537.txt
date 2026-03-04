@@ -1,0 +1,352 @@
+Below is the **full, deeply structured Agent-Mode specification** you can give directly to your AI Swarm / platform agents so they understand **exactly how an international gold trader must experience the Exportunity Gold Exchange** — including LBMA integration, ROI computation, automated groupage, multi-seller order orchestration, delivery reporting, and certified traceability.
+
+This is written as a complete **internal instruction for the orchestrator agent and all specialized agents**.
+
+---
+
+# **AGENT MODE – FULL GOLD TRADER WORKFLOW SPECIFICATION**
+
+**Exportunity Gold Exchange**
+*(Internal instruction for orchestrator, buyer agent, seller agent, finance agent, delivery agent, compliance agent, pricing agent)*
+
+---
+
+# **1. HOMEPAGE / FIRST CONTACT**
+
+When an international gold trader logs in:
+
+### **1.1 Display Live LBMA Price**
+
+* Show LBMA spot price **per kg**, **per gram**, and **per ounce**.
+* Auto-refresh every minute.
+* Display **USD**, **EUR**, **AED**, **XOF**.
+
+### **1.2 Show “Instant ROI Calculator”**
+
+Trader selects:
+
+* Desired quantity (ex: 10 kg)
+* Desired discount or price offered by sellers
+* Expected export cost (auto-filled by country)
+* Refinery fees (auto-filled by buyer’s location)
+* Logistics (auto-filled by route)
+
+Agent instantly displays:
+
+* **Cost price**
+* **Sell price (LBMA)**
+* **Gross margin**
+* **Net margin**
+* **Net ROI per rotation**
+* **Estimated payout time**
+
+This is key:
+**Trader must feel that the platform instantly calculates everything for him.**
+
+---
+
+# **2. BUYING GOLD – AGENT AUTOMATED PURCHASE MODE**
+
+## **2.1 Trader loads wallet**
+
+Trader can:
+
+* Deposit USDT
+* Deposit USD
+* Deposit EUR
+* Deposit AED
+* Bank transfer (SWIFT)
+* Pay with card (Visa/Mastercard)
+
+Wallet shows:
+
+* Available balance
+* Locked balance (escrow)
+* Released balance (after seller delivery)
+
+---
+
+# **2.2 Trader allocates a budget**
+
+Example:
+**“I allocate $450,000 to buy gold.”**
+
+The AI Agent must:
+
+### **A. Convert budget → maximum kg available**
+
+Using current LBMA price and average discounts from sellers.
+
+### **B. Search the gold map in real time**
+
+Across multiple Bureau d’Achat:
+
+* Ivory Coast
+* Guinea
+* Mali
+* Ghana
+* Congo
+* Burkina (if added)
+
+### **C. Identify matching offers**
+
+Based on:
+
+* Weight
+* Purity
+* Location
+* Available export conditions
+* Price
+
+### **D. Make automatic purchase requests**
+
+If one seller cannot provide the full quantity:
+
+* Split orders across many sellers
+* Create **“groupage buying pool”**
+
+### **E. Lock offers once sellers accept**
+
+Once seller accepts:
+
+* Funds move from wallet → escrow
+* Seller receives notification
+* Offer becomes **“Committed & Locked”**
+
+This prevents double selling.
+
+---
+
+# **3. GROUPAGE LOGIC (CRITICAL)**
+
+When budget is allocated:
+
+* Agent automatically organizes **groupage orders**.
+* Purchases from multiple Bureau d’Achat.
+* Consolidates gold in one export hub (Abidjan, Conakry, Bamako, Accra).
+
+### **Groupage rules**
+
+1. Sellers confirm “ready to deliver”
+2. Buyer wallet transfers funds into escrow
+3. Delivery agent collects gold
+4. Compliance agent verifies weight/purity
+5. All documents generated
+6. Export is arranged
+7. Funds released to sellers after verification
+
+---
+
+# **4. DELIVERY REPORT (MUST BE PROMINENT)**
+
+Buyers must feel SAFE.
+
+Your platform must highlight the **Delivery Report System** — similar to a shipment tracking report for gold.
+
+### **4.1 Delivery Report Contains**
+
+* Seller name (Bureau d’Achat)
+* License number
+* Location
+* Weight purchased
+* Purity (carat)
+* Assay documents
+* Photos of the gold
+* Timestamp of pickup
+* GPS coordinates of pickup
+* Transport agent name
+* Export documents
+* Certificate of Origin
+* Certificate of Conformity
+* Customs documents (as per each country)
+
+### **4.2 Display on Buyer Dashboard**
+
+A timeline similar to DHL or FedEx tracking:
+
+1. **Order Confirmed**
+2. **Seller Preparing Gold**
+3. **Pickup Scheduled**
+4. **Gold Collected**
+5. **Assay Completed**
+6. **Customs Cleared**
+7. **Flight Departed**
+8. **Arrival in Dubai**
+9. **Delivery to Refinery**
+10. **Payment Released**
+
+This MUST appear on homepage / marketing description as a key selling point:
+
+> “Every gold purchase comes with a full delivery report, complete traceability, and certified origin documents.”
+
+---
+
+# **5. ORIGIN TRACEABILITY**
+
+### **The platform must show origin transparency:**
+
+* Name of the mine (when available legally)
+* Type of production (industrial / semi-industrial / artisanal)
+* Region
+* Batch ID
+* Miner certification if applicable
+
+From your files:
+
+Only gold coming from **licensed Bureau d’Achat** can legally be exported
+.
+
+Therefore, origin flow is:
+
+**Mine → Bush buyer → Local buyer → Bureau d’Achat → Buyer (international)**
+
+
+This chain must be cleaned and displayed in a simplified, legal way:
+
+> “Sourced from registered collection points under national mining regulations.”
+
+---
+
+# **6. FULL AGENT MODE SPECIFICATION**
+
+## **6.1 Orchestrator Agent**
+
+Manages:
+
+* Budget allocation
+* Groupage
+* Compliance checks
+* Continuous updates to buyer
+* Oversees all other agents
+
+## **6.2 Pricing Agent**
+
+Tasks:
+
+* Show LBMA price live
+* Show spreads & discounts
+* Calculate:
+
+  * Buyer ROI
+  * Cost breakdown
+  * Margin analysis
+
+## **6.3 Buyer Agent**
+
+Tasks:
+
+* Search the map for gold
+* Compare offers
+* Split orders
+* Place purchase requests
+* Notify buyer with every update
+
+## **6.4 Seller Agent (for Bureau d’Achat)**
+
+Tasks:
+
+* Publish offers
+* Set prices
+* Upload photos
+* Accept or reject orders
+* Manage pickup
+* Confirm availability
+
+## **6.5 Delivery Agent**
+
+Tasks:
+
+* Organize gold pickup
+* For each gold batch:
+
+  * Scan QR
+  * Confirm quantity
+  * Verify purity
+  * Transport
+* Generate delivery report
+* Upload documents digitally
+
+## **6.6 Compliance Agent**
+
+Tasks:
+
+* Check seller license
+* Check export permissions
+* Ensure correct documents:
+
+  * Certificate of Conformity
+  * Assay certificate
+  * Customs approval
+  * CO (country-specific)
+
+## **6.7 Finance Agent**
+
+Tasks:
+
+* Manage wallet
+* Move funds to escrow
+* Release payments
+* Generate invoices & receipts
+
+---
+
+# **7. HOW TO PRESENT THIS TO USERS ON HOMEPAGE**
+
+Homepage must say:
+
+### **Key Features**
+
+* Live LBMA gold pricing
+* Instant ROI calculator
+* Verified Bureau d’Achat
+* Automated groupage
+* Escrow-secured payments
+* Full delivery report
+* Certified origin traceability
+* Export-ready documentation
+* AI-managed purchasing
+
+### **Tagline**
+
+**“Your trusted gateway to certified African gold — sourced, consolidated, delivered.”**
+
+---
+
+# **8. FINAL SUMMARY TO GIVE YOUR AGENTS**
+
+(You can copy/paste this one block)
+
+---
+
+### **AGENT BLOCK – IMPLEMENTATION DIRECTIVE**
+
+The Exportunity Gold Exchange must provide:
+
+1. Live LBMA pricing and instant ROI calculator for traders.
+2. Wallet funding and budget allocation.
+3. Automated agent-driven gold sourcing:
+
+   * Search for gold
+   * Multi-seller orders
+   * Groupage
+   * Budget optimization
+4. Sellers publish real-time gold offers (weight, purity, price, photo).
+5. Buyers place orders instantly; funds move to escrow.
+6. Delivery agents handle pickup, assay, customs, export, and track everything.
+7. Generate a complete Delivery Report including all origin documents.
+8. Ensure legal flow from artisanal/industrial miners → Bureau d’Achat → Export.
+9. Automatically calculate investor ROI, cost, margin, and delivery time.
+10. Full transparency, certified origin, and export documentation included.
+
+---
+
+If you want, I can now generate:
+
+🔥 The complete **database schema**
+🔥 The **API endpoints**
+🔥 The **AI Swarm agent architecture**
+🔥 The **UI mockups**
+🔥 The **mobile app flow**
+🔥 The **marketing pitch for buyers**
+
+Just tell me what you want next.

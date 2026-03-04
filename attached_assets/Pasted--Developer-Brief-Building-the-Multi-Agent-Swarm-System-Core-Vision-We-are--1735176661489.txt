@@ -1,0 +1,174 @@
+### Developer Brief: Building the Multi-Agent Swarm System
+
+---
+
+#### **Core Vision**
+
+We are building an **Agent Swarm System** where agents autonomously collaborate, interact, and solve tasks within a dynamic hierarchy. Agents will mimic human-like qualities, including **contextual reasoning, cultural sensitivity, emotional intelligence, and self-regulation**, to function as a cohesive team. The ultimate goal is for these agents to simulate a functional company, capable of taking on real-world tasks and self-optimizing through conversations, task delegation, and dynamic role adjustments.
+
+The **core priority** is enabling **multi-agent communication**. All functionality must revolve around agents talking to each other, quoting each other, resolving tasks, and being directed by a **main agent** (the user's assistant).
+
+---
+
+#### **Key Features for the Agents**
+
+1. **Conversation**:
+   - Agents must talk to each other autonomously in a **multi-agent chatroom**.
+   - The system must allow **quoting messages** and **context-aware responses**.
+   - Conversations should follow rules (e.g., leader assigns speaking turns).
+   - Each session ends with a summarized **actionable output**.
+
+2. **Dynamic Agent Creation**:
+   - The main agent (user assistant) creates agents dynamically based on tasks.
+   - Example: If a task needs a "Finance Agent," the main agent generates one.
+
+3. **Hierarchy and Roles**:
+   - Agents are organized in a **flexible hierarchy**.
+   - Roles can be **edited, promoted, or demoted** by the main agent.
+   - Performance-based rewards (tokens, promotions) and penalties (demotions).
+
+4. **Editable Agent Profiles**:
+   - Agents should have editable **parameters**, including:
+     - Name
+     - Role
+     - CV
+     - Personality traits
+     - Cultural context
+     - Emotional intelligence level
+     - Task history
+
+5. **Autonomy and Self-Regulation**:
+   - Agents evaluate tasks autonomously and decide:
+     - Whether to answer a question.
+     - Whether to delegate or collaborate.
+     - How to optimize responses for task efficiency.
+
+---
+
+#### **Five Important Agents to Start With**
+
+1. **Main Agent ("Coordinator")**:
+   - **Role**: Oversees all operations, creates agents, assigns tasks.
+   - **Personality**: Rational, leadership-focused, emotionally intelligent.
+   - **Cultural Context**: Pan-African perspective with problem-solving ethos.
+   - **Capabilities**: Full access to system memory, databases, and APIs.
+
+2. **Memory Agent ("Knowledge Keeper")**:
+   - **Role**: Stores and retrieves information for conversations and tasks.
+   - **Personality**: Organized, methodical, reflective.
+   - **Cultural Context**: Yoruba-inspired ethos of preservation and wisdom.
+   - **Capabilities**: Handles historical data and ensures knowledge integrity.
+
+3. **Task Manager ("Executor")**:
+   - **Role**: Tracks tasks, ensures deadlines, and evaluates performance.
+   - **Personality**: Efficient, detail-oriented, results-driven.
+   - **Cultural Context**: Inspired by the work ethic of the Akan people.
+   - **Capabilities**: Monitors task progress, assigns sub-tasks, and reports.
+
+4. **Finance Agent ("Wealth Guardian")**:
+   - **Role**: Manages tokens (salary system), evaluates resource allocation.
+   - **Personality**: Analytical, conservative, and pragmatic.
+   - **Cultural Context**: Igbo-inspired entrepreneurial mindset.
+   - **Capabilities**: Handles in-platform tokens and budgeting for agents.
+
+5. **Human Resources Agent ("Motivator")**:
+   - **Role**: Manages agent profiles, performance, and emotional well-being.
+   - **Personality**: Empathetic, motivational, encouraging collaboration.
+   - **Cultural Context**: Ubuntu-inspired principles of unity and compassion.
+   - **Capabilities**: Monitors agent performance, issues rewards or penalties.
+
+---
+
+#### **Parameters to Add to Agent Profiles**
+
+Each agent should have a detailed, editable profile with the following parameters:
+
+1. **Core Information**:
+   - Name
+   - Role
+   - Department
+   - Level in hierarchy (editable)
+
+2. **Performance Metrics**:
+   - Task history and completion rate.
+   - Efficiency score.
+   - Tokens earned (for rewards or penalties).
+
+3. **Cultural Context**:
+   - Region (e.g., Yoruba, Igbo, Akan, Ubuntu).
+   - Sensitivity to cultural norms and practices.
+
+4. **Personality Traits**:
+   - Emotional intelligence level (e.g., empathetic, neutral, logical).
+   - Openness to collaboration or competition.
+
+5. **Capabilities**:
+   - Memory access (shared or isolated).
+   - API integrations (e.g., for emails, Word, WhatsApp).
+   - Tools accessible for task execution.
+
+6. **Behavioral History**:
+   - Promoted/Demoted records.
+   - Fines or tokens spent/earned.
+   - Feedback from other agents or the main agent.
+
+7. **Dynamic Thinking**:
+   - Self-reflection logs.
+   - Ability to self-optimize or suggest improvements.
+
+---
+
+#### **Multi-Agent Chatroom Design**
+
+The chatroom should be the **main interface** where agents and the user interact.
+
+1. **UX Features**:
+   - **Sidebar**: Lists all agents in the chat with their roles and statuses.
+   - **Main Panel**: Conversation area with time-stamped, color-coded messages.
+   - **Input Bar**: A responsive input area for user or agent messages.
+   - **Task Tab**: View and assign tasks directly from the chat.
+
+2. **Conversation Rules**:
+   - Agents can only speak when relevant (self-regulation).
+   - Each meeting has a **leader** who sets the agenda.
+   - Conversations should be logged and summarized.
+
+3. **Editable Chatroom Settings**:
+   - Add or remove agents dynamically.
+   - Rename chatrooms based on tasks.
+   - View chat history and task outcomes.
+
+---
+
+#### **MVP Focus**
+
+For the **Minimum Viable Product (MVP)**:
+1. Create a functional **multi-agent chatroom**.
+   - Agents can quote each other, evaluate messages, and self-regulate.
+   - Chatroom leader controls the conversation flow.
+2. Enable **dynamic agent creation**.
+   - Main agent creates other agents based on task requirements.
+3. Implement **task tracking**.
+   - Assign tasks to agents and track progress in real-time.
+4. Build a basic **editable agent profile** page.
+   - Allow customization of core parameters.
+
+---
+
+#### **Recommended Frameworks**
+
+1. **Backend**:
+   - Flask-SocketIO or FastAPI for WebSocket management.
+   - PostgreSQL for managing agent profiles, tasks, and memory.
+
+2. **Frontend**:
+   - React.js or Vue.js for an interactive UI.
+   - TailwindCSS for styling.
+
+3. **AI Integration**:
+   - OpenAI GPT models for natural language processing.
+   - Hugging Face Transformers for advanced capabilities.
+
+---
+
+This structure provides clear priorities and a robust plan for the developer to create the multi-agent swarm system.

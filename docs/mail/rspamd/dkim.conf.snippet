@@ -1,0 +1,13 @@
+# Minimal DKIM signing via Rspamd
+# Generate keys:
+#   rspamadm dkim_keygen -d boursedelor.com -s selector -k /var/lib/rspamd/dkim/selector.key > selector.pub
+# Publish selector.pub as:
+#   selector._domainkey.boursedelor.com TXT "<public key>"
+
+domain {
+  boursedelor.com {
+    path = "/var/lib/rspamd/dkim/$domain.$selector.key";
+    selector = "selector";
+  }
+}
+

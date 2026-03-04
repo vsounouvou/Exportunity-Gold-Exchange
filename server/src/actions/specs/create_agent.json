@@ -1,0 +1,24 @@
+{
+  "key": "CREATE_AGENT",
+  "entity": "agent",
+  "category": "DB_MUTATION",
+  "requiredParams": ["name", "role"],
+  "optionalParams": ["companyId", "departmentId", "runtimeModel", "toolsEnabled", "status"],
+  "allowedRoles": ["admin", "chairman", "chairman assistant", "dev_agent"],
+  "description": "Create an internal agent record in the agents table.",
+  "sideEffects": {
+    "tablesTouched": ["agents"],
+    "externalCalls": []
+  },
+  "validationRules": {
+    "paramSchemas": {
+      "name": { "type": "string", "minLength": 1 },
+      "role": { "type": "string", "minLength": 1 }
+    }
+  },
+  "receipts": {
+    "required": ["DB_MUTATION"],
+    "notes": "Must emit inserted agent id and affected_rows=1."
+  }
+}
+

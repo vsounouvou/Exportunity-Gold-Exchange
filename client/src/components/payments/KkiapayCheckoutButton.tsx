@@ -1,0 +1,295 @@
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useLocation } from "wouter";
+import { Loader2 } from "lucide-react";
+
+import { useScript } from "@/hooks/use-script";
+import { apiRequest } from "@/lib/queryClient";
+import { useSession } from "@/lib/session";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
+type KkiapayInitResponse = {
+  paymentId: string;
+  publicKey: string;
+  amount: number;
+  currency: string;
+  reference: string;
+  callbackUrl: string;
+  mode?: "SANDBOX" | "LIVE";
+};
+
+type KkiapayPushInitResponse = {
+  paymentId: string;
+  status: "PENDING" | "PAID" | "FAILED";
+  providerTransactionId?: string | null;
+};
+
+function KkiapayWidget(props: { init: KkiapayInitResponse; sandbox: boolean }) {
+  const widgetRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    const el = widgetRef.current;
+    if (!el) return;
+
+    el.setAttribute("amount", String(props.init.amount));
+    el.setAttribute("key", props.init.publicKey);
+    el.setAttribute("callback", props.init.callbackUrl);
+    el.setAttribute("data", JSON.stringify({ reference: props.init.reference }));
+
+    if (props.sandbox) el.setAttribute("sandbox", "true");
+    else el.removeAttribute("sandbox");
+  }, [props.init, props.sandbox]);
+
+  return <kkiapay-widget ref={widgetRef} />;
+}
+
+function digitsOnly(value: string) {
+  return value.replace(/\D/g, "");
+}
+
+function formatPhone(value: string) {
+  const digits = digitsOnly(value);
+  if (!digits) return "";
+  if (digits.startsWith("229") && digits.length > 3) {
+    const rest = digits.slice(3);
+    const groups = rest.match(/.{1,2}/g) ?? [];
+    return `229 ${groups.join(" ")}`.trim();
+  }
+  const groups = digits.match(/.{1,2}/g) ?? [];
+  return groups.join(" ");
+}
+
+export function KkiapayCheckoutButton(props: {
+  orderId: number;
+  buyerEmail: string;
+  label?: string;
+  autoOpen?: boolean;
+  onPaymentCreated?: (paymentId: string) => void;
+}) {
+  const [, navigate] = useLocation();
+  const session = useSession();
+
+  const [open, setOpen] = useState(false);
+  const [tab, setTab] = useState<"push" | "widget">(() => {
+    try {
+      const stored = String(localStorage.getItem("kkiapay_preferred_method") || "").trim().toUpperCase();
+      if (stored === "WIDGET") return "widget";
+      if (stored === "PUSH") return "push";
+    } catch {
+      // ignore
+    }
+    return "push";
+  });
+
+  const [widgetInit, setWidgetInit] = useState<KkiapayInitResponse | null>(null);
+  const [widgetLoading, setWidgetLoading] = useState(false);
+  const [widgetError, setWidgetError] = useState<string | null>(null);
+
+  const [pushPhone, setPushPhone] = useState("");
+  const [pushOperator, setPushOperator] = useState<string>("MTN_BJ");
+  const [pushLoading, setPushLoading] = useState(false);
+  const [pushError, setPushError] = useState<string | null>(null);
+
+  const shouldLoadScript = open && tab === "widget";
+  const { status: scriptStatus } = useScript(shouldLoadScript ? "https://cdn.kkiapay.me/k.js" : null);
+
+  const sandbox = useMemo(() => String(widgetInit?.mode || "").toUpperCase() === "SANDBOX", [widgetInit?.mode]);
+
+  useEffect(() => {
+    if (props.autoOpen) setOpen(true);
+  }, [props.autoOpen]);
+
+  useEffect(() => {
+    if (!open) return;
+    try {
+      localStorage.setItem("kkiapay_preferred_method", tab.toUpperCase());
+    } catch {
+      // ignore
+    }
+  }, [open, tab]);
+
+  const startWidget = async () => {
+    setWidgetError(null);
+    setWidgetLoading(true);
+    try {
+      const headers: Record<string, string> = {};
+      if (session.guestSessionId) headers["x-guest-session"] = session.guestSessionId;
+      const resp = await apiRequest("/api/payments/kkiapay/init", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ orderId: props.orderId, buyerEmail: props.buyerEmail }),
+      });
+      setWidgetInit(resp);
+      props.onPaymentCreated?.(resp.paymentId);
+    } catch (err: any) {
+      setWidgetError(err?.message || "Failed to start payment");
+    } finally {
+      setWidgetLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (open && tab === "widget" && !widgetInit && !widgetLoading) {
+      void startWidget();
+    }
+  }, [open, tab, widgetInit, widgetLoading]);
+
+  const submitPush = async () => {
+    setPushError(null);
+    setPushLoading(true);
+    try {
+      const headers: Record<string, string> = {};
+      if (session.guestSessionId) headers["x-guest-session"] = session.guestSessionId;
+
+      const resp = (await apiRequest("/api/payments/kkiapay/push/init", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          orderId: props.orderId,
+          buyerEmail: props.buyerEmail,
+          phone: pushPhone,
+          operator: pushOperator,
+        }),
+      })) as KkiapayPushInitResponse;
+
+      props.onPaymentCreated?.(resp.paymentId);
+
+      try {
+        localStorage.setItem("kkiapay_preferred_method", "PUSH");
+      } catch {
+        // ignore
+      }
+
+      setOpen(false);
+      navigate(`/pay/kkiapay/return?paymentId=${encodeURIComponent(String(resp.paymentId))}`);
+    } catch (err: any) {
+      setPushError(err?.message || "Failed to send payment request");
+    } finally {
+      setPushLoading(false);
+    }
+  };
+
+  const loading = widgetLoading || pushLoading;
+
+  return (
+    <>
+      <Button
+        className="bg-amber-500 hover:bg-amber-400 text-black font-semibold"
+        onClick={() => setOpen(true)}
+        disabled={loading}
+      >
+        {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+        {props.label ?? "Pay now"}
+      </Button>
+
+      <Dialog
+        open={open}
+        onOpenChange={(next) => {
+          setOpen(next);
+          if (!next) {
+            setWidgetError(null);
+            setPushError(null);
+          }
+        }}
+      >
+        <DialogContent className="max-w-2xl bg-black border-white/10 text-white">
+          <DialogHeader>
+            <DialogTitle className="text-white">Pay securely</DialogTitle>
+            <DialogDescription className="text-white/60">Choose the fastest option for your region.</DialogDescription>
+          </DialogHeader>
+
+          <Tabs value={tab} onValueChange={(v) => setTab(v === "widget" ? "widget" : "push")} className="w-full">
+            <TabsList className="w-full bg-white/5 border border-white/10">
+              <TabsTrigger
+                value="push"
+                className="flex-1 text-xs sm:text-sm data-[state=active]:bg-amber-500/20 data-[state=active]:text-amber-300"
+              >
+                Mobile Money Push
+              </TabsTrigger>
+              <TabsTrigger
+                value="widget"
+                className="flex-1 text-xs sm:text-sm data-[state=active]:bg-white/10 data-[state=active]:text-white"
+              >
+                Card / Other
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="push" className="mt-4 space-y-4">
+              {pushError ? <div className="text-sm text-rose-300">{pushError}</div> : null}
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label className="text-white/80">Phone number</Label>
+                  <Input
+                    type="tel"
+                    inputMode="numeric"
+                    autoComplete="tel"
+                    placeholder="229 61 00 00 00"
+                    className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
+                    value={formatPhone(pushPhone)}
+                    onChange={(e) => setPushPhone(digitsOnly(e.target.value))}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-white/80">Operator</Label>
+                  <Select value={pushOperator} onValueChange={setPushOperator}>
+                    <SelectTrigger className="bg-white/5 border-white/10 text-white">
+                      <SelectValue placeholder="Select operator" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-black border-white/10 text-white">
+                      <SelectItem value="MTN_BJ">MTN</SelectItem>
+                      <SelectItem value="MOOV_BJ">Moov</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <Button
+                className="w-full bg-amber-500 hover:bg-amber-400 text-black font-semibold"
+                onClick={submitPush}
+                disabled={!pushPhone || !pushOperator || pushLoading}
+              >
+                {pushLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+                Send payment request
+              </Button>
+
+              <div className="text-xs text-white/50">
+                Approve the payment on your phone. This usually takes a few seconds.
+              </div>
+            </TabsContent>
+
+            <TabsContent value="widget" className="mt-4 space-y-4">
+              {widgetError ? <div className="text-sm text-rose-300">{widgetError}</div> : null}
+
+              {!widgetInit ? (
+                <div className="flex items-center gap-3 text-sm text-white/60">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Preparing checkout...
+                </div>
+              ) : scriptStatus !== "ready" ? (
+                <div className="flex items-center gap-3 text-sm text-white/60">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Loading payment widget...
+                </div>
+              ) : (
+                <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+                  <KkiapayWidget init={widgetInit} sandbox={sandbox} />
+                </div>
+              )}
+
+              <div className="flex items-center justify-between text-xs text-white/50">
+                <div>Amount: {widgetInit ? `${widgetInit.amount} ${widgetInit.currency}` : "--"}</div>
+                <div>{sandbox ? "Sandbox" : null}</div>
+              </div>
+            </TabsContent>
+          </Tabs>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}

@@ -1,0 +1,65 @@
+services:
+  meet-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      PORT: 5000
+      MEET_PUBLIC_BASE_URL: ${MEET_PUBLIC_BASE_URL:-https://meet.exportunity.net}
+      MEET_INVITE_SECRET: ${MEET_INVITE_SECRET}
+      MEET_ANNOUNCED_IP: ${MEET_ANNOUNCED_IP}
+      MEET_RTC_MIN_PORT: ${MEET_RTC_MIN_PORT:-40000}
+      MEET_RTC_MAX_PORT: ${MEET_RTC_MAX_PORT:-49999}
+      TURN_URLS: ${TURN_URLS}
+      TURN_STATIC_USERNAME: ${TURN_STATIC_USERNAME}
+      TURN_STATIC_PASSWORD: ${TURN_STATIC_PASSWORD}
+      ASSET_BASE_PATH: ${ASSET_BASE_PATH:-/data/assets}
+      ASSET_PUBLIC_PATH: /assets
+    restart: unless-stopped
+    expose:
+      - "5000"
+    ports:
+      - "40000-49999:40000-49999/udp"
+    depends_on:
+      - redis
+    volumes:
+      - meet_assets:/data/assets
+    networks:
+      - meet_net
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - meet_redis:/data
+    networks:
+      - meet_net
+
+  coturn:
+    image: instrumentisto/coturn:4.6
+    restart: unless-stopped
+    command:
+      - "-c"
+      - "/etc/coturn/turnserver.conf"
+    volumes:
+      - ./deploy/meet/turnserver.conf:/etc/coturn/turnserver.conf:ro
+    ports:
+      - "3478:3478/tcp"
+      - "3478:3478/udp"
+      - "5349:5349/tcp"
+      - "5349:5349/udp"
+      - "49160-49200:49160-49200/udp"
+    networks:
+      - meet_net
+
+networks:
+  meet_net:
+    driver: bridge
+
+volumes:
+  meet_assets: {}
+  meet_redis: {}

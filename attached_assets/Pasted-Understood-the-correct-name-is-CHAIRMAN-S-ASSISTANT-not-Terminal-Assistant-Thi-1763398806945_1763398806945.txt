@@ -1,0 +1,332 @@
+Understood — the correct name is:
+
+# ⭐ **CHAIRMAN’S ASSISTANT**
+
+(not Chairman Assistant)
+
+This is the **main assistant**, the primary super-agent, and the default interface for the Chairman.
+
+Below is the corrected and complete specification **with this naming**, plus the new feature:
+✔ The Chairman can rename the Chairman’s Assistant
+✔ The Chairman can customize its personality
+✔ This customization lives inside the Agent Editing Area
+✔ The assistant’s name automatically updates everywhere on the platform
+
+I’ll deliver the full corrected spec now.
+
+---
+
+# 🔥 **THE CHAIRMAN’S ASSISTANT — FINAL FULL SPECIFICATION**
+
+*(This is the master document. You can give it directly to your builder agent.)*
+
+---
+
+# 1. **Identity & Role**
+
+The **Chairman’s Assistant** is:
+
+* The **main interface** for the user (the Chairman).
+* The **primary super-agent** of the entire platform.
+* The **default AI assistant** installed for every new Chairman.
+* The **boss agent** that organizes all other AI agents.
+* The **bridge** between the Chairman and the whole multi-agent company system.
+
+It is **always active**, always present, and always ready to respond.
+
+This is the AI that runs the company with the Chairman.
+
+---
+
+# 2. **Global Presence — Always Visible**
+
+### RULE:
+
+**The Chairman’s Assistant appears as a fixed bottom chat dock on EVERY page of the platform.**
+
+It follows the Chairman everywhere:
+
+* Homepage
+* Company Workspace
+* Agents & Hierarchy
+* Meetings
+* Performance
+* Tokens usage
+* Knowledge Base
+* Settings
+* Subsidiaries
+* Any future pages
+
+**It never disappears.
+It never resets.**
+Only the user can reset the chat.
+
+---
+
+# 3. **Behavior (Corrected with Chairman Assistant Logic)**
+
+### ✔ Always Active
+
+The Chairman’s Assistant is proactive:
+
+* Sends daily suggestions,
+* Proposes meetings,
+* Warns about risks,
+* Suggests improvements,
+* Summarizes company status,
+* Suggests creating new agents when needed,
+* Suggests reviewing documents.
+
+### ✔ Personal to the Chairman
+
+The assistant:
+
+* Uses the Chairman’s name,
+* Learns his preferences,
+* Learns his companies,
+* Learns his industries,
+* Learns his goals,
+* Adapts its tone and suggestions to the Chairman.
+
+### ✔ Context-Aware
+
+Knows:
+
+* What page the Chairman is on,
+* Which company he is looking at,
+* Which agents exist,
+* Existing documents,
+* Current tasks,
+* Risks, meetings, performance.
+
+### ✔ Company Builder
+
+The Chairman’s Assistant can:
+
+* Create companies,
+* Rename companies,
+* Propose subsidiaries,
+* Suggest expansions,
+* Generate strategies.
+
+### ✔ Agent Manager
+
+The Chairman’s Assistant can:
+
+* Create new agents,
+* Edit agents,
+* Change their personalities,
+* Assign tasks,
+* Set KPIs,
+* Activate/pause agents,
+* Create whole departments.
+
+### ✔ Knowledge Manager
+
+When the user uploads documents:
+
+* It organizes them,
+* Summaries them,
+* Classifies them,
+* Adds them to the knowledge base.
+
+### ✔ Meeting Organizer
+
+The assistant proposes:
+
+* Daily touch-base meetings,
+* Weekly reviews,
+* Strategy sessions,
+* Team syncs.
+
+If connected to Calendar:
+
+* Checks availability,
+* Schedules events,
+* Adds agenda,
+* Sends notifications.
+
+---
+
+# 4. **Rename & Personalize the Chairman’s Assistant (New Feature)**
+
+This is where your request applies.
+
+### 4.1 Where It Happens
+
+Inside the **Agents & Hierarchy** → Click the Chairman's Assistant → **Agent Profile / Customization**.
+
+This page must now include:
+
+### ✔ 1. **Name Customization**
+
+* Default: “Chairman’s Assistant”
+* Editable field:
+
+  * Example: “Aisha”, “Kwame”, “Oracle”, “Zogué”, “My Executive Assistant”
+* Once changed:
+
+  * The new name updates *across the entire platform*, including:
+
+    * The bottom dock chat header,
+    * Meeting invites,
+    * Agent interactions,
+    * The internal conversation logs.
+
+### ✔ 2. **Avatar / Icon**
+
+Allow selection from:
+
+* Generic avatars,
+* Minimalist symbols,
+* African-inspired icons (optional),
+* Or upload a custom image (future feature).
+
+### ✔ 3. **Personality Settings**
+
+Sliders or dropdowns:
+
+* **Tone Style**
+
+  * Direct & concise
+  * Formal corporate
+  * Friendly
+  * Diplomatic
+  * Analytical
+  * Visionary & strategic
+
+* **Initiative Level**
+
+  * Low: wait for Chairman’s instructions
+  * Medium: moderate suggestions
+  * High: proactive, always guiding
+
+* **Focus Areas**
+
+  * Sales & growth
+  * Finance & risk
+  * Operations & efficiency
+  * Strategy & innovation
+  * HR & agents
+  * All-rounder
+
+* **Knowledge Style**
+
+  * Long explanations
+  * Medium detail
+  * Short summaries
+
+These settings directly influence how the assistant speaks and behaves.
+
+### ✔ 4. **Meeting Frequency Preferences**
+
+Options:
+
+* Daily sync
+* Bi-weekly sync
+* Weekly sync
+* Only when needed
+
+### ✔ 5. **Customization Applies Instantly**
+
+When the user applies changes:
+
+* The assistant’s responses immediately adjust.
+* No refresh needed.
+
+---
+
+# 5. **Technical Implementation — Builder Agent Instructions**
+
+### 5.1 Data Model Change
+
+Add a new model:
+
+**`ChairmanAssistantProfile`**
+
+* `assistantName` (default “Chairman’s Assistant”)
+* `avatarUrl`
+* `toneStyle`
+* `initiativeLevel`
+* `focusAreas[]`
+* `knowledgeStyle`
+* `meetingFrequency`
+* `customCommands[]` (future)
+* `ownerUserId`
+
+### 5.2 UI Changes
+
+Inside Agent Profile page of Chairman’s Assistant:
+
+✔ “**Assistant Name**” (editable)
+✔ “**Assistant Personality**”
+✔ “**Tone**”
+✔ “**Initiative**”
+✔ “**Focus**”
+✔ “**Meeting Preferences**”
+✔ “Save Changes” button
+
+### 5.3 Frontend Logic
+
+Whenever the Chairman’s Assistant chat loads:
+
+* Read the ChairmanAssistantProfile
+* Display:
+
+  * New name
+  * New avatar
+  * New tone
+
+### 5.4 Backend Logic
+
+The system prompt must dynamically include:
+
+* The assistant’s name
+* The assistant’s tone
+* The assistant’s personality settings
+* The chairman’s preferences (BS Detail)
+
+---
+
+# 6. **Example Behavior After Renaming**
+
+If the Chairman renames the assistant to *Aisha*:
+
+### Chat Header:
+
+**Aisha — Chairman’s Assistant**
+
+### Meeting Invites:
+
+> “Aisha (Chairman’s Assistant) scheduled your daily sync for 9:30.”
+
+### AI Messages:
+
+> “Good morning Vital,
+> As your assistant Aisha, I suggest reviewing your Abidjan company today because…”
+
+---
+
+# 7. **Conclusion**
+
+This is the final, absolute version:
+
+### ✔ The name is **Chairman’s Assistant**, not Chairman Assistant.
+
+### ✔ It appears on the bottom of EVERY page.
+
+### ✔ It is the super-agent that runs the whole system.
+
+### ✔ It can be renamed and personalized inside the Agent Editing Area.
+
+### ✔ Its tone, avatar, and personality adapt instantly.
+
+### ✔ It becomes the Chairman’s digital right hand — always present, always active.
+
+---
+
+If you want, I can now write:
+
+👑 **The System Prompt for the Chairman’s Assistant**
+— the exact instructions the LLM will follow forever.
+

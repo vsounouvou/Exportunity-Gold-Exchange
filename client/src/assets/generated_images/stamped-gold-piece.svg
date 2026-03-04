@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0B0F14" />
+      <stop offset="1" stop-color="#05070A" />
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FDE68A" />
+      <stop offset="0.35" stop-color="#F59E0B" />
+      <stop offset="1" stop-color="#A16207" />
+    </linearGradient>
+    <linearGradient id="shine" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="rgba(255,255,255,0.0)" />
+      <stop offset="0.5" stop-color="rgba(255,255,255,0.22)" />
+      <stop offset="1" stop-color="rgba(255,255,255,0.0)" />
+    </linearGradient>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="18" stdDeviation="18" flood-color="#000000" flood-opacity="0.55" />
+    </filter>
+  </defs>
+
+  <rect width="512" height="512" rx="64" fill="url(#bg)" />
+
+  <g filter="url(#shadow)">
+    <rect x="72" y="150" width="368" height="212" rx="28" fill="url(#gold)" />
+    <rect x="92" y="170" width="328" height="172" rx="22" fill="rgba(0,0,0,0.10)" />
+
+    <path d="M92 210 C170 180, 250 180, 420 210" fill="none" stroke="rgba(255,255,255,0.18)" stroke-width="10" stroke-linecap="round" />
+    <rect x="110" y="176" width="48" height="160" rx="16" fill="rgba(255,255,255,0.10)" />
+
+    <rect x="72" y="150" width="368" height="212" rx="28" fill="url(#shine)" opacity="0.9" />
+
+    <g opacity="0.95">
+      <text x="120" y="250" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="46" font-weight="800" fill="rgba(0,0,0,0.55)">
+        Au
+      </text>
+      <text x="120" y="290" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="18" font-weight="700" letter-spacing="2" fill="rgba(0,0,0,0.45)">
+        STAMPED PIECE
+      </text>
+      <text x="360" y="290" text-anchor="end" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="18" font-weight="800" fill="rgba(0,0,0,0.45)">
+        10g+
+      </text>
+    </g>
+  </g>
+
+  <circle cx="420" cy="120" r="44" fill="rgba(245,158,11,0.12)" />
+  <circle cx="420" cy="120" r="24" fill="rgba(245,158,11,0.18)" />
+</svg>

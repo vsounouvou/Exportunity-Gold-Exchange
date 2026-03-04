@@ -1,0 +1,399 @@
+Here is **the fully rewritten, consolidated, corrected, expanded, and deeply thought-through version** that incorporates:
+
+* The **daily workflow + meeting system + triggers**
+* **Token-efficient orchestration**
+* **Client-triggered actions**
+* The **company knowledge base**
+* The **user knowledge base**
+* The **Work menu reorganization**
+* The **return of Agents tab + Agent Marketplace + Agent Editor + Hierarchy**
+* A UX that matches the long-term vision
+* All context preserved, nothing lost
+
+This is the **master specification** your builder agent must follow.
+
+---
+
+# 🔥 **MASTER SPECIFICATION: HOW THE PLATFORM SHOULD WORK (FINAL VERSION)**
+
+*(Rewritten with all your new requirements included.)*
+
+---
+
+# 🌍 1. CORE VISION
+
+Your platform is **a digital company**, where:
+
+* Agents work like real employees
+* The founder interacts with them like a CEO
+* Work is structured through **meetings**, **tasks**, **department cycles**, and **triggers**
+* The **AI Team page is the homepage** (ChatGPT-style), where everything comes alive
+* Data pages (Sales, Marketing, Work, Company) are **secondary**
+* Token consumption is controlled through a **central orchestrator**, not chaotic agent chatter
+
+This is a **real-time simulation** of a company — not just a chatbot interface.
+
+---
+
+# 🧠 2. THE ORCHESTRATOR IS THE BRAIN
+
+The orchestrator controls everything:
+
+### ✔ When agents act
+
+### ✔ Which agents act
+
+### ✔ In what order tasks execute
+
+### ✔ Which meetings run
+
+### ✔ How triggers fire
+
+### ✔ Agent cooldowns
+
+### ✔ Silence between tasks
+
+### ✔ Token conservation
+
+### ✔ Work dependency logic
+
+Agents never run freely.
+Agents work **only** when:
+
+1. In a meeting
+2. Assigned a task
+3. Triggered by an event (client message, new data, deadline)
+4. Directly invoked by the user
+
+Otherwise, they remain silent.
+
+---
+
+# 🕑 3. MEETINGS: THE HEART OF DAILY OPERATIONS
+
+## ⭐ 3.1. Daily Company Meetings (auto-created)
+
+### A. **Daily All-Hands** (8 AM default)
+
+* Orchestrator leads
+* Summary of yesterday
+* Today’s priorities
+* Department alignment
+* Generates the **Daily Master Task List**
+
+### B. **Daily Department Standups**
+
+1. Sales Standup
+2. Marketing Standup
+3. Operations Standup
+
+Each generates a mini-task list for the department.
+
+### C. Weekly Strategy Meeting
+
+### D. Monthly Review
+
+All meetings appear:
+
+* At the top of AI Team homepage
+* With “Join meeting” and summaries
+* With action items linked to Work → Actions
+
+---
+
+# 🔧 4. TASK ENGINE (THE TRUE WORK SYSTEM)
+
+Agents execute tasks in **priority order** defined by orchestrator.
+
+### 4.1 Task Types
+
+1. **Scheduled Tasks**
+   Daily scraping, daily posting, weekly reports, monthly analytics.
+
+2. **Dependent Tasks**
+   Lead scraping → qualification → outreach → follow-up
+   Content creation → scheduling → posting → metrics analysis
+
+3. **Event-Based Tasks**
+   Triggered by:
+
+   * WhatsApp message
+   * Website chat widget
+   * Form submission
+   * Deal stage change
+   * High-engagement social media post
+   * Payment event
+
+4. **Manual Tasks**
+   Assigned by CEO (user).
+   Orchestrator breaks complex tasks into subtasks & assigns agents.
+
+### 4.2 Execution Rules
+
+* Only **one department works at a time** unless tasks are independent
+* Silence outside meetings
+* No random chatter
+* No overlapping long tasks
+* Cooldowns
+* Orchestrator posts summary reports
+
+---
+
+# 💬 5. CLIENT MESSAGE TRIGGERS (EXTREMELY IMPORTANT)
+
+Every company gets:
+
+### ✔ A WhatsApp Business API number
+
+or
+
+### ✔ A website chat widget
+
+or
+
+### ✔ A generic Chat API webhook
+
+When a client sends a message:
+
+### 1. It appears inside AI Team feed
+
+### 2. Orchestrator creates a **client ticket**
+
+### 3. Assigns it to appropriate agents:
+
+Sales → Sales Rep + Manager
+Support → Customer Relations + Ops
+Billing → Finance
+Compliance → Compliance Agent
+
+### 4. A meeting may be triggered automatically
+
+### 5. The agents reply **inside AI Team feed**, NOT in Work
+
+---
+
+# 🏢 6. KNOWLEDGE BASE IS SPLIT INTO TWO LEVELS
+
+This is critical and now reflected in architecture.
+
+## 6.1 COMPANY KNOWLEDGE BASE
+
+Stored under **Company → Knowledge Base**
+Contains:
+
+* Company SOPs
+* Company data
+* Strategy docs
+* Historical summaries
+* Department-specific playbooks
+* Internal memories
+
+Agents read this to understand the company and perform tasks.
+
+## 6.2 USER KNOWLEDGE BASE
+
+Stored under **User Profile → Knowledge Base**
+Contains what the platform knows about **the user**:
+
+* Personal preferences
+* Founder instructions
+* Important personal context
+* Writing style
+* Long-term directives
+
+This is **NOT shared across companies**.
+
+### IMPORTANT:
+
+Remove “Knowledge Base” from **Work** menu.
+It now belongs only to:
+
+* **Company menu** (company KB)
+* **User profile** (user KB)
+
+Work → Knowledge should be removed.
+
+---
+
+# 📁 7. REVISED LEFT MENU STRUCTURE
+
+### FINAL NAVIGATION:
+
+```
+[LOGO]  [Company Switcher ▼]
+
+AI Team    Work    Sales    Marketing    Agents    Company    Settings
+```
+
+### ✔ AI TEAM
+
+Homepage.
+Chat + meetings + live activity + team overview.
+
+### ✔ WORK
+
+Only:
+
+* Actions (tasks)
+* Projects
+* Meetings (list/history)
+
+### ❌ Knowledge Base is removed from Work (moved to Company/User).
+
+### ✔ SALES
+
+Pipeline, leads, sequences, reports.
+
+### ✔ MARKETING
+
+Campaigns, content, calendar, ads, metrics.
+
+### ✔ AGENTS  (RESTORED)
+
+This section returns because it disappeared in your current UI.
+Here you get:
+
+* Agent list
+* Agent editor
+* Instructions editor
+* Personality/config
+* Skills configuration
+* Agent-level memory
+* Department assignment
+* Agent marketplace (hire new agents)
+* Clone creation
+* Agent hierarchy visualizer
+
+This must be a **full management console**.
+
+### ✔ COMPANY
+
+* Company profile
+* Company knowledge base
+* Integrations (WhatsApp, email, ads manager, etc)
+* Billing
+* Security
+* Departments
+
+### ✔ SETTINGS
+
+User settings
+User knowledge base
+API keys
+Preferences
+
+---
+
+# 🧱 8. HOW THE HOMEPAGE WORKS (AI TEAM)
+
+Always the homepage.
+
+Sections:
+
+### 8.1 Top = Meetings Panel
+
+Shows:
+
+* Ongoing meetings
+* Next recurring meetings
+* Button: Start meeting
+* Summaries
+
+### 8.2 Center = Slack-like Conversation Feed
+
+Contains:
+
+* User messages
+* Agent replies
+* Daily standups
+* Meeting summaries
+* Task result reports
+* Client inquiries (WhatsApp/API triggers)
+* Orchestrator decisions
+
+### 8.3 Bottom = Departments & Agents Grid (read-only)
+
+Click → opens Agent Editor in Agents menu.
+
+---
+
+# 🧠 9. AGENT EXECUTION & TOKEN OPTIMIZATION
+
+Agents do NOT act unless triggered.
+
+The orchestrator:
+
+1. Reviews pending tasks
+2. Chooses valid agent
+3. Sends them instructions
+4. Agent produces result
+5. Orchestrator validates
+6. Orchestrator triggers next item
+
+Other agents remain silent.
+This prevents token chaos.
+
+---
+
+# 🔥 10. DAILY COMPANY WORKFLOW (FINAL)
+
+### 08:00 — All-Hands Meeting
+
+### 08:10 — Department Standups
+
+### 08:30 — Work Cycle 1
+
+### 12:00 — Midday Report
+
+### 13:00 — Work Cycle 2
+
+### 17:00 — End-of-Day Summary
+
+---
+
+# 🎯 11. EVERYTHING IS NOW CONSISTENT
+
+This unifies:
+
+* The homepage
+* Agents
+* Meetings
+* Tasks
+* Triggers
+* Knowledge bases
+* Work cycles
+* Token optimization
+* Sales + Marketing operations
+* Client messaging integration
+* Company structure
+
+Nothing conflicts.
+Nothing is lost.
+Everything has a place.
+
+---
+
+# 🚀 READY FOR NEXT STEP
+
+I can now generate:
+
+### ✔ A Full Builder Document (copy/paste for your developers)
+
+### ✔ A File Structure & Database Schema
+
+### ✔ Orchestrator Pseudocode
+
+### ✔ Front-End Wireframes
+
+### ✔ Agent System Prompts
+
+### ✔ Department Templates
+
+### ✔ Meeting Templates
+
+### ✔ Task Lifecycle Map
+
+### ✔ Trigger Engine Logic
+
+Just say:
+**“Give me the builder doc.”**

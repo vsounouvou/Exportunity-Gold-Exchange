@@ -1,0 +1,11 @@
+# Core virtual mailbox setup (PostgreSQL-backed)
+virtual_mailbox_domains = pgsql:/etc/postfix/pgsql-virtual-mailbox-domains.cf
+virtual_mailbox_maps = pgsql:/etc/postfix/pgsql-virtual-mailbox-maps.cf
+virtual_alias_maps = pgsql:/etc/postfix/pgsql-virtual-alias-maps.cf
+
+# Deliver to Dovecot LMTP
+virtual_transport = lmtp:unix:private/dovecot-lmtp
+
+# Submission (587) should be restricted to platform IPs only
+# (configure master.cf + firewall accordingly)
+

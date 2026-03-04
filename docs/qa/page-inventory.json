@@ -1,0 +1,905 @@
+{
+  "generatedAt": "2026-02-02T02:39:26.434Z",
+  "source": "client/src/App.tsx",
+  "routes": [
+    {
+      "path": "/",
+      "component": "DefaultLanding",
+      "label": "Default Landing",
+      "authRequired": false,
+      "hiddenFromMenu": true,
+      "hiddenReason": "Primary entry route with automatic redirects.",
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/retail",
+      "component": "BuyerHomePage",
+      "label": "Retail Home",
+      "authRequired": false,
+      "hiddenFromMenu": true,
+      "hiddenReason": "Primary marketplace entry; access is handled by role/gateway routing and in-page mode controls.",
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/marketplace",
+      "component": "BuyerHomePage",
+      "label": "Marketplace Home",
+      "authRequired": false,
+      "hiddenFromMenu": true,
+      "hiddenReason": "Primary marketplace entry; access is handled by role/gateway routing and in-page mode controls.",
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/shop",
+      "component": "BuyerHomePage",
+      "label": "Marketplace Home",
+      "authRequired": false,
+      "hiddenFromMenu": true,
+      "hiddenReason": "Marketplace entry handled by CTA/role routing.",
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/gateway",
+      "component": "GatewayPage",
+      "label": "Gateway",
+      "authRequired": false,
+      "hiddenFromMenu": true,
+      "hiddenReason": "Primary role gateway entry.",
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/about",
+      "component": "GatewayPage",
+      "label": "About",
+      "authRequired": false,
+      "hiddenFromMenu": true,
+      "hiddenReason": "Marketing page reached from landing flows and contextual links (not part of the admin/agent menus).",
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/how-it-works",
+      "component": "GatewayPage",
+      "label": "How It Works",
+      "authRequired": false,
+      "hiddenFromMenu": true,
+      "hiddenReason": "Marketing page reached from landing flows and contextual links (not part of the admin/agent menus).",
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/orders",
+      "component": "MyOrdersPage",
+      "label": "Orders",
+      "authRequired": false,
+      "hiddenFromMenu": true,
+      "hiddenReason": "Orders view accessed from account/CTA.",
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/orders/:orderNumber",
+      "component": "MyOrdersPage",
+      "label": "Order Detail",
+      "authRequired": false,
+      "hiddenFromMenu": true,
+      "hiddenReason": "Detail page linked from orders list.",
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/delivery",
+      "component": "DeliveryHubPage",
+      "label": "Delivery Hub",
+      "authRequired": false,
+      "hiddenFromMenu": true,
+      "hiddenReason": "Delivery hub entry accessed from CTA.",
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/marketplace-old",
+      "component": "MarketplacePage",
+      "label": "Legacy Marketplace",
+      "authRequired": false,
+      "hiddenFromMenu": true,
+      "hiddenReason": "Legacy route kept for backwards compatibility.",
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/product/:id",
+      "component": "ProductPublicPage",
+      "label": "Product Detail",
+      "authRequired": false,
+      "hiddenFromMenu": true,
+      "hiddenReason": "Detail page linked from marketplace listings.",
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/verify/:serial",
+      "component": "StampedGoldVerifyPage",
+      "label": "Stamped Gold Verification",
+      "authRequired": false,
+      "hiddenFromMenu": true,
+      "hiddenReason": "Verification page reached via QR/deep links; not a navigation destination.",
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/login",
+      "component": "ECELoginPage",
+      "label": "Login",
+      "authRequired": false,
+      "hiddenFromMenu": true,
+      "hiddenReason": "Authentication entry screen.",
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/register",
+      "component": "ECELoginPage",
+      "label": "Register",
+      "authRequired": false,
+      "hiddenFromMenu": true,
+      "hiddenReason": "Authentication entry screen.",
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/account",
+      "component": "AccountPage",
+      "label": "Account",
+      "authRequired": false,
+      "hiddenFromMenu": true,
+      "hiddenReason": "Account entry accessed from user menu.",
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/app/login",
+      "component": "AppProLoginPage",
+      "label": "Pro App Login",
+      "authRequired": false,
+      "hiddenFromMenu": true,
+      "hiddenReason": "Professional app entry; accessed via deep links/CTA.",
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/app/join/:role",
+      "component": "AppProJoinPage",
+      "label": "Pro App Join",
+      "authRequired": false,
+      "hiddenFromMenu": true,
+      "hiddenReason": "Professional app onboarding flow.",
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/app",
+      "component": "AppProInboxPage",
+      "label": "Pro App",
+      "authRequired": false,
+      "hiddenFromMenu": true,
+      "hiddenReason": "Professional app home; entry is role-driven.",
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/app/room/:roomKey",
+      "component": "AppProRoomPage",
+      "label": "Pro App Room",
+      "authRequired": false,
+      "hiddenFromMenu": true,
+      "hiddenReason": "Professional app conversation room linked from pro inbox.",
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/app/equipment",
+      "component": "AppProEquipmentPage",
+      "label": "Pro App Equipment",
+      "authRequired": false,
+      "hiddenFromMenu": true,
+      "hiddenReason": "Professional equipment tools accessed from the pro app.",
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/app/:rest*",
+      "label": "Pro App Redirect",
+      "authRequired": false,
+      "redirectTo": "/app",
+      "hiddenFromMenu": true,
+      "hiddenReason": "Catch-all redirect for professional app deep links.",
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/inbox",
+      "component": "InboxPage",
+      "label": "Inbox",
+      "authRequired": false,
+      "hiddenFromMenu": true,
+      "hiddenReason": "Conversation hub accessed from contextual entry points (e.g. Wallet strip, buttons, notifications).",
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/inbox/:roomKey",
+      "component": "RoomPage",
+      "label": "Inbox Room",
+      "authRequired": false,
+      "hiddenFromMenu": true,
+      "hiddenReason": "Conversation room linked from inbox list.",
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/qa-mobile",
+      "component": "QAMobilePage",
+      "label": "QA Mobile Gate",
+      "authRequired": false,
+      "hiddenFromMenu": true,
+      "hiddenReason": "QA utility, not for production users.",
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/debug/location",
+      "component": "DebugLocationPage",
+      "label": "Debug Location",
+      "authRequired": false,
+      "hiddenFromMenu": true,
+      "hiddenReason": "Debug utility, not for production users.",
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/application-status",
+      "component": "ApplicationStatusPage",
+      "label": "Application Status",
+      "authRequired": false,
+      "hiddenFromMenu": true,
+      "hiddenReason": "Status deep link from email.",
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/apply/shop",
+      "component": "ShopApplicationPage",
+      "label": "Shop Application",
+      "authRequired": false,
+      "hiddenFromMenu": true,
+      "hiddenReason": "Application flow entry from CTA.",
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/apply/delivery",
+      "component": "DeliveryApplicationPage",
+      "label": "Delivery Application",
+      "authRequired": false,
+      "hiddenFromMenu": true,
+      "hiddenReason": "Application flow entry from CTA.",
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/cadre-conformite",
+      "component": "CompliancePage",
+      "label": "Compliance",
+      "authRequired": false,
+      "hiddenFromMenu": true,
+      "hiddenReason": "Legal/compliance footer link.",
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/terms",
+      "component": "TermsPage",
+      "label": "Terms",
+      "authRequired": false,
+      "hiddenFromMenu": true,
+      "hiddenReason": "Legal footer link.",
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/privacy",
+      "component": "PrivacyPage",
+      "label": "Privacy",
+      "authRequired": false,
+      "hiddenFromMenu": true,
+      "hiddenReason": "Legal footer link.",
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/install",
+      "component": "InstallAppPage",
+      "label": "Install App",
+      "authRequired": false,
+      "hiddenFromMenu": true,
+      "hiddenReason": "Install flow entry (PWA).",
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/pay/kkiapay/return",
+      "component": "KkiapayReturnPage",
+      "label": "Kkiapay Return",
+      "authRequired": false,
+      "hiddenFromMenu": true,
+      "hiddenReason": "Payment provider return URL.",
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/wallet/topup/return",
+      "component": "WalletTopupReturnPage",
+      "label": "Wallet Topup Return",
+      "authRequired": false,
+      "hiddenFromMenu": true,
+      "hiddenReason": "Top-up provider return URL.",
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/sellers",
+      "component": "SellerDirectoryPage",
+      "label": "Seller Directory",
+      "authRequired": false,
+      "hiddenFromMenu": true,
+      "hiddenReason": "Directory is accessed from marketplace CTAs and discovery flows.",
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/seller/topup",
+      "component": "SellerTopupPage",
+      "label": "Seller Topup",
+      "authRequired": false,
+      "hiddenFromMenu": true,
+      "hiddenReason": "Topup flow accessed from seller dashboard actions.",
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/switch",
+      "component": "SwitchSpacePage",
+      "label": "Switch Space",
+      "authRequired": false,
+      "hiddenFromMenu": true,
+      "hiddenReason": "Deep link used by space switcher.",
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/admin",
+      "component": "AdminLoginPage",
+      "label": "Admin Login",
+      "authRequired": false,
+      "hiddenFromMenu": true,
+      "hiddenReason": "Authentication entry screen.",
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/admin/password",
+      "component": "AdminPasswordChangePage",
+      "label": "Admin Password Reset",
+      "authRequired": false,
+      "hiddenFromMenu": true,
+      "hiddenReason": "Password change flow.",
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/dashboard",
+      "component": "AdminDashboardPage",
+      "label": "Dashboard",
+      "authRequired": true,
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/ai-team",
+      "component": "AITeamHubPage",
+      "label": "AI Team HQ",
+      "authRequired": true,
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/meetings",
+      "label": "Meetings Redirect",
+      "authRequired": false,
+      "redirectTo": "/ai-team",
+      "hiddenFromMenu": true,
+      "hiddenReason": "Legacy redirect to /ai-team.",
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/agents",
+      "component": "HierarchyPage",
+      "label": "Agents",
+      "authRequired": true,
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/agents/:agentId",
+      "component": "AgentDetailPage",
+      "label": "Agent Detail",
+      "authRequired": true,
+      "hiddenFromMenu": true,
+      "hiddenReason": "Detail page linked from Agents home.",
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/admin/agents",
+      "component": "AgentCommandCenterPage",
+      "label": "Agent Jobs (Legacy)",
+      "authRequired": true,
+      "hiddenFromMenu": true,
+      "hiddenReason": "Legacy task runner; daily work is agent-centric under /agents.",
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/admin/inbox",
+      "component": "AdminInboxPage",
+      "label": "Inbox",
+      "authRequired": true,
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/admin/email",
+      "component": "AdminEmailControlCenterPage",
+      "label": "Email Setup",
+      "authRequired": true,
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/hierarchy",
+      "label": "Hierarchy Redirect",
+      "authRequired": true,
+      "redirectTo": "/agents",
+      "hiddenFromMenu": true,
+      "hiddenReason": "Legacy redirect to /agents.",
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/tasks",
+      "component": "TasksPage",
+      "label": "Tasks",
+      "authRequired": true,
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/goals",
+      "component": "GoalsPage",
+      "label": "Objectives",
+      "authRequired": true,
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/actions",
+      "component": "ActionsPage",
+      "label": "Automations",
+      "authRequired": true,
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/finance",
+      "component": "FinancePage",
+      "label": "Finance",
+      "authRequired": true,
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/knowledge",
+      "component": "KnowledgeBasePage",
+      "label": "Knowledge Base",
+      "authRequired": true,
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/expert-clones",
+      "component": "ExpertClonesHubPage",
+      "label": "Expert Agents",
+      "authRequired": true,
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/companies",
+      "component": "CompanyListPage",
+      "label": "Companies",
+      "authRequired": true,
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/delivery/agent/:id",
+      "component": "DeliveryAgentDashboard",
+      "label": "Delivery Agent Detail",
+      "authRequired": true,
+      "hiddenFromMenu": true,
+      "hiddenReason": "Detail page linked from delivery admin list.",
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/delivery/admin",
+      "component": "DeliveryAdminDashboard",
+      "label": "Delivery",
+      "authRequired": true,
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/agent-economy",
+      "component": "AgentEconomyDashboard",
+      "label": "Wallets & Credits",
+      "authRequired": true,
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/seller-dashboard",
+      "component": "SellerDashboard",
+      "label": "Seller Dashboard",
+      "authRequired": true,
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/seller",
+      "label": "Seller Dashboard Alias",
+      "authRequired": true,
+      "redirectTo": "/seller-dashboard",
+      "hiddenFromMenu": true,
+      "hiddenReason": "Alias route for /seller-dashboard.",
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/marketplace/sellers",
+      "component": "SellerListPage",
+      "label": "Sellers",
+      "authRequired": true,
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/marketplace/sellers/:id",
+      "component": "MarketplaceSellerDetailPage",
+      "label": "Seller Detail",
+      "authRequired": true,
+      "hiddenFromMenu": true,
+      "hiddenReason": "Detail page linked from sellers list.",
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/profile",
+      "component": "UserProfilePage",
+      "label": "Profile",
+      "authRequired": true,
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/whatsapp",
+      "label": "WhatsApp Redirect",
+      "authRequired": true,
+      "redirectTo": "/admin/communications/whatsapp",
+      "hiddenFromMenu": true,
+      "hiddenReason": "Legacy redirect to /admin/communications/whatsapp.",
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/admin/communications/whatsapp",
+      "component": "WhatsAppConversationsPage",
+      "label": "WhatsApp",
+      "authRequired": true,
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/admin-users",
+      "component": "AdminUserManagementPage",
+      "label": "Users & Roles",
+      "authRequired": true,
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/subscription-plans",
+      "component": "SubscriptionPlansPage",
+      "label": "Plans",
+      "authRequired": true,
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/client-hunter",
+      "component": "ClientHunterPage",
+      "label": "Leads & Campaigns",
+      "authRequired": true,
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/marketing",
+      "component": "MarketingPage",
+      "label": "Marketing",
+      "authRequired": true,
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/sales",
+      "component": "SalesPage",
+      "label": "Sales",
+      "authRequired": true,
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/contracts/:contractId",
+      "component": "ContractDetailPage",
+      "label": "Contract Detail",
+      "authRequired": true,
+      "hiddenFromMenu": true,
+      "hiddenReason": "Detail page linked from contracts list.",
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/contracts",
+      "component": "ContractsPage",
+      "label": "Contracts",
+      "authRequired": true,
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/bureaus",
+      "component": "AuthorizedBureausPage",
+      "label": "Bureaus",
+      "authRequired": true,
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/admin/assets/images",
+      "label": "Admin Assets Redirect",
+      "authRequired": true,
+      "redirectTo": "/admin/media/assets",
+      "hiddenFromMenu": true,
+      "hiddenReason": "Legacy redirect to /admin/media/assets.",
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/admin/media/assets",
+      "component": "AdminAssetStudioPage",
+      "label": "Asset Studio",
+      "authRequired": true,
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/admin/media/images",
+      "label": "Image Studio Redirect",
+      "authRequired": true,
+      "redirectTo": "/admin/media/assets",
+      "hiddenFromMenu": true,
+      "hiddenReason": "Legacy redirect to /admin/media/assets.",
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/admin/media/debug",
+      "component": "AdminMediaDebugPage",
+      "label": "Media Debug",
+      "authRequired": true,
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/admin/website/landing-images",
+      "label": "Landing Images Redirect",
+      "authRequired": true,
+      "redirectTo": "/admin/media/assets?tab=presets&scope=landing",
+      "hiddenFromMenu": true,
+      "hiddenReason": "Legacy redirect to /admin/media/assets?tab=presets&scope=landing.",
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/admin/website/visits",
+      "component": "AdminVisitsIntelligencePage",
+      "label": "Visits Intelligence",
+      "authRequired": true,
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/admin/website/seo",
+      "component": "AdminSeoHealthPage",
+      "label": "SEO Health",
+      "authRequired": true,
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/admin/website/seo-autopilot",
+      "component": "AdminSeoAutopilotPage",
+      "label": "SEO Autopilot",
+      "authRequired": true,
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/admin/marketplace/products",
+      "component": "AdminMarketplaceProductsPage",
+      "label": "Products",
+      "authRequired": true,
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/admin/equipment-ops",
+      "label": "Equipment Ops Redirect",
+      "authRequired": true,
+      "redirectTo": "/admin/equipment-ops/fleet-map",
+      "hiddenFromMenu": true,
+      "hiddenReason": "Redirect entry to the default Equipment Ops view.",
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/admin/equipment-ops/fleet-map",
+      "component": "AdminEquipmentOpsFleetMapPage",
+      "label": "Fleet Map",
+      "authRequired": true,
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/admin/equipment-ops/listings",
+      "component": "AdminEquipmentOpsListingsPage",
+      "label": "Listings",
+      "authRequired": true,
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/admin/equipment-ops/contracts",
+      "component": "AdminEquipmentOpsContractsPage",
+      "label": "Contracts",
+      "authRequired": true,
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/admin/equipment-ops/maintenance",
+      "component": "AdminEquipmentOpsMaintenancePage",
+      "label": "Maintenance",
+      "authRequired": true,
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/admin/stamped-gold/skus",
+      "component": "AdminStampedGoldSkusPage",
+      "label": "SKUs",
+      "authRequired": true,
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/admin/stamped-gold/items",
+      "component": "AdminStampedGoldItemsPage",
+      "label": "Items",
+      "authRequired": true,
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/admin/stamped-gold/jewellers",
+      "component": "AdminStampedGoldJewellersPage",
+      "label": "Jewellers",
+      "authRequired": true,
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/admin/stamped-gold/scans",
+      "component": "AdminStampedGoldScansPage",
+      "label": "Scans",
+      "authRequired": true,
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/admin/stamped-gold/pickup",
+      "component": "AdminStampedGoldPickupPage",
+      "label": "Pickup",
+      "authRequired": true,
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/admin/marketplace/payments",
+      "component": "AdminMarketplacePaymentsPage",
+      "label": "Payments",
+      "authRequired": true,
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/admin/wallet",
+      "label": "Wallet OS Redirect",
+      "authRequired": true,
+      "redirectTo": "/admin/wallet/accounts",
+      "hiddenFromMenu": true,
+      "hiddenReason": "Redirect entry to the default Wallet OS view.",
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/admin/wallet/accounts",
+      "component": "AdminWalletAccountsPage",
+      "label": "Wallet Accounts",
+      "authRequired": true,
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/admin/wallet/ledger",
+      "component": "AdminWalletLedgerPage",
+      "label": "Ledger",
+      "authRequired": true,
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/admin/wallet/topups",
+      "component": "AdminWalletTopupsPage",
+      "label": "Topups",
+      "authRequired": true,
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/admin/wallet/payouts",
+      "component": "AdminWalletPayoutsPage",
+      "label": "Payouts",
+      "authRequired": true,
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/admin/wallet/vouchers",
+      "component": "AdminWalletVouchersPage",
+      "label": "Vouchers",
+      "authRequired": true,
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/admin/wallet/sellers",
+      "component": "AdminWalletSellersPage",
+      "label": "Sellers",
+      "authRequired": true,
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/admin/wallet/risk",
+      "component": "AdminWalletRiskPage",
+      "label": "Risk",
+      "authRequired": true,
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/admin/wallet/config",
+      "component": "AdminWalletConfigPage",
+      "label": "Config",
+      "authRequired": true,
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/admin/system/update",
+      "component": "AdminSystemUpdatePage",
+      "label": "Update / Reset",
+      "authRequired": true,
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/admin/ux-audit",
+      "component": "AdminUxAuditPage",
+      "label": "UX Audit",
+      "authRequired": true,
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/admin/settings/map",
+      "component": "AdminMapSettingsPage",
+      "label": "Map Settings",
+      "authRequired": true,
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/admin/settings/onboarding",
+      "component": "AdminOnboardingSettingsPage",
+      "label": "Onboarding & PWA",
+      "authRequired": true,
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/admin/territories",
+      "label": "Territories Redirect",
+      "authRequired": true,
+      "redirectTo": "/territories",
+      "hiddenFromMenu": true,
+      "hiddenReason": "Legacy redirect to /territories.",
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/admin/territories/:id",
+      "label": "Territory Hub Redirect",
+      "authRequired": true,
+      "hiddenFromMenu": true,
+      "hiddenReason": "Legacy redirect to /territories/:id.",
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/admin/gateway-images",
+      "label": "Gateway Images Redirect",
+      "authRequired": true,
+      "redirectTo": "/admin/media/assets",
+      "hiddenFromMenu": true,
+      "hiddenReason": "Legacy redirect to /admin/media/assets.",
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/territories",
+      "component": "TerritoryManagementPage",
+      "label": "Territories",
+      "authRequired": true,
+      "sourceFile": "client/src/App.tsx"
+    },
+    {
+      "path": "/territories/:id",
+      "component": "TerritoryDetailPage",
+      "label": "Territory Detail",
+      "authRequired": true,
+      "hiddenFromMenu": true,
+      "hiddenReason": "Detail page linked from territory list.",
+      "sourceFile": "client/src/App.tsx"
+    }
+  ]
+}

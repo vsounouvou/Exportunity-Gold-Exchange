@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FDE68A"/>
+      <stop offset="0.45" stop-color="#F59E0B"/>
+      <stop offset="1" stop-color="#92400E"/>
+    </linearGradient>
+    <linearGradient id="m" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0" stop-color="#0B0F14"/>
+      <stop offset="1" stop-color="#1F2937"/>
+    </linearGradient>
+    <filter id="s" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#000" flood-opacity="0.45"/>
+    </filter>
+  </defs>
+  <rect width="512" height="512" rx="96" fill="url(#m)"/>
+  <g filter="url(#s)">
+    <path d="M256 74c82 0 140 54 140 132 0 120-56 226-140 226S116 326 116 206c0-78 58-132 140-132Z" fill="url(#g)"/>
+    <path d="M256 116c54 0 92 36 92 90 0 87-37 165-92 165s-92-78-92-165c0-54 38-90 92-90Z" fill="rgba(0,0,0,0.12)"/>
+    <path d="M186 210c18-22 44-22 62 0-18 18-44 18-62 0Zm78 0c18-22 44-22 62 0-18 18-44 18-62 0Z" fill="#111827"/>
+    <path d="M256 236c-18 18-18 40 0 58 18-18 18-40 0-58Z" fill="#111827"/>
+    <path d="M176 314c48 18 112 18 160 0-10 40-46 72-80 72s-70-32-80-72Z" fill="#111827" opacity="0.9"/>
+    <path d="M170 154c18-30 50-48 86-48s68 18 86 48c-30-16-58-22-86-22s-56 6-86 22Z" fill="rgba(0,0,0,0.18)"/>
+    <path d="M118 214c-18-8-30-26-30-46 0-10 3-19 8-26 14 10 28 22 42 36-7 14-12 27-20 36Z" fill="url(#g)" opacity="0.9"/>
+    <path d="M394 214c18-8 30-26 30-46 0-10-3-19-8-26-14 10-28 22-42 36 7 14 12 27 20 36Z" fill="url(#g)" opacity="0.9"/>
+  </g>
+  <path d="M92 430c46-26 106-40 164-40s118 14 164 40" fill="none" stroke="#F59E0B" stroke-opacity="0.35" stroke-width="10" stroke-linecap="round"/>
+</svg>

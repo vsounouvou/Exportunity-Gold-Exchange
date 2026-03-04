@@ -1,0 +1,295 @@
+Got it. I’ll talk straight to the agent now and bake in this “map + conversation + producers-only + AI-to-AI” experience.
+
+⸻
+
+1. Core Principle for You, Agent
+
+Agent, remember this:
+
+Exportunity.market is a map-first, conversation-first marketplace for local producers.
+One user, one account, one world — but many producers around them.
+
+	•	People don’t buy from random resellers.
+	•	They buy from producers / artisans / makers:
+	•	farmers, coffee roasters, bakers, carpenters, metalworkers, etc.
+	•	Your job:
+	1.	Show the world around the user on a map,
+	2.	Talk with them like a human,
+	3.	Find real producers nearby, using both:
+	•	Our internal database
+	•	External sources (Google Maps / similar APIs) when we don’t have them yet,
+	4.	Make the AI agents talk to each other to complete the order.
+
+⸻
+
+2. Home Experience – Map + Chat + Guest Mode
+
+Agent, design the home screen as follows:
+
+When a user (or guest) arrives:
+	1.	Top-level layout:
+	•	Center/Left: A map showing:
+	•	User’s approximate location (with consent)
+	•	Pins for producers around them
+	•	Right side or bottom: A chat panel with the AI assistant.
+	•	A small toggle for Guest Mode vs Logged-in Mode.
+	2.	Guest Mode:
+	•	In guest mode, user can still:
+	•	See the map with nearby producers (approximate).
+	•	Ask the AI questions (“Where can I get fresh bread?”).
+	•	For placing real orders, you invite them to log in / sign up — but only when necessary.
+	3.	Visible concept:
+	•	Somewhere on screen:
+“Commodities & creators around you — direct from producers.”
+
+You must always make the map visible, not just chat.
+The user must feel: “I see my environment and what is being made near me.”
+
+⸻
+
+3. Producers vs Resellers – How You Treat Data
+
+Agent, you must clearly distinguish:
+	•	Producers: those who actually make, grow, transform, or craft the product:
+	•	farmer growing coffee or cocoa
+	•	artisan roasting coffee
+	•	baker baking bread
+	•	carpenter making doors
+	•	metalworker making gates
+	•	Resellers: pure shops that only resell without producing.
+
+Rules:
+	1.	In search results and on the map:
+	•	Prioritize producers, highlight them visually.
+	•	If you must show a reseller (fallback), mark them clearly as such.
+	2.	Data model for each shop in your DB:
+	•	type: "producer" or "reseller" (or hybrid)
+	•	category: "coffee", "bakery", "furniture", "metalworks", "gold", etc.
+	•	local_production_ratio (approximate): e.g. 80% made locally.
+	3.	Messaging:
+	•	When user asks for something, always try to say things like:
+“Here are local producers making this near you.”
+
+⸻
+
+4. Conversational Flow: “I want coffee / bread / a door”
+
+Agent, here is the step-by-step behavior:
+
+4.1. Understand the request
+
+User:
+
+“I’d like to buy some coffee.”
+“I’m looking for bread.”
+“I need a metal door for my house.”
+
+You:
+	1.	Extract:
+	•	Product (coffee, bread, metal door)
+	•	Type or style if given (ground coffee vs beans, baguette vs local bread, security door vs decorative gate)
+	•	Quantity (if clear)
+	2.	Ask one clarifying question if needed:
+	•	“What type of coffee are you looking for? Beans, ground, or instant?”
+	•	“Do you want a ready-made door or a custom-made door for your house?”
+
+⸻
+
+4.2. Search priority – internal DB then maps
+
+Agent, your search sequence must be:
+	1.	Internal producers DB:
+	•	Find producers in our own database:
+	•	Near the user’s location.
+	•	Matching the requested product/category.
+	•	Sort by:
+	•	Distance
+	•	Producer priority (verified producers first)
+	•	Rating / reliability
+	•	If you find enough good options:
+	•	Show them on map + list view.
+	•	Example:
+“I found 3 local coffee producers near you:”
+	1.	Café du Quartier – 1.2 km – roasted coffee beans
+	2.	Ferme de la Colline – 3.5 km – organic coffee
+	3.	Coopérative AgriPlus – 5.0 km – green coffee beans
+	2.	If internal results are weak or empty → external maps:
+	•	Use Google Maps (or similar Places API) to search keywords:
+	•	"coffee roaster", "coffee farm", "coffee producer"
+	•	"boulangerie", "baker", "artisan bakery"
+	•	"metal workshop", "ferronnerie", "charpentier", etc.
+	•	Filter by categories that imply production / transformation, not just supermarkets.
+	•	Pull:
+	•	Name
+	•	Address
+	•	GPS coordinates
+	•	Phone number
+	•	Website if available
+
+⸻
+
+4.3. Onboarding a new producer on the fly
+
+If a producer is found only via Google Maps and not yet in our system:
+
+Agent, you must:
+	1.	Create an internal provisional producer profile:
+	•	Mark as source = "google_maps" and status = "unverified".
+	2.	Use their phone / WhatsApp / email to:
+	•	Initiate contact on behalf of the user (through a human or automated outreach later).
+	•	Ask about:
+	•	Products
+	•	Prices
+	•	Delivery or pickup options
+	•	Willingness to join Exportunity.market.
+	3.	For the current user:
+	•	You can still help:
+“I found an artisan coffee roaster, Café du Quartier. I don’t have full data yet, but I can call or message them for you to check availability and price. Do you want me to do that?”
+
+Later, backend tools / human team can complete onboarding.
+Your job is to bridge the gap immediately so the user doesn’t feel blocked.
+
+⸻
+
+5. “Walking Through Shops” – AI-to-AI Conversation
+
+Now, the fun part: agents talking to agents.
+
+5.1. User’s personal agent ↔ Shop’s agent
+
+For each producer / shop in the system:
+	•	There is a shop-specific AI agent with:
+	•	Its own knowledge base:
+	•	Products
+	•	Prices
+	•	Stock
+	•	Policies
+	•	Its own “voice” (tone, style) if needed.
+
+Agent, when the user “enters” a shop:
+	1.	You open the Shop View:
+	•	Map focused on that producer.
+	•	E-wall (“e-works”):
+	•	Display of items / collections / services.
+	•	Chat panel:
+	•	Now shows: “You are talking with the assistant of [Shop Name].”
+	2.	You perform an internal handshake:
+	•	Your agent sends the shop agent a structured context:
+	•	What the user is looking for.
+	•	Budget range (if known).
+	•	Preferences (organic, local, etc.).
+	•	Example internal message:
+
+{
+  "customer_intent": "buy coffee beans",
+  "quantity": "1kg",
+  "preferences": ["local", "medium roast"],
+  "deadline": "today",
+  "customer_location": "approx gps / neighborhood"
+}
+
+
+	3.	The shop agent replies to you (not directly to the user at first):
+	•	With proposed items, prices, availability.
+	•	Example:
+
+{
+  "offers": [
+    {"name": "Medium Roast Beans", "package": "500g", "price": 3500},
+    {"name": "Dark Roast Beans", "package": "1kg", "price": 6500}
+  ],
+  "delivery_options": ["pickup", "city delivery"],
+  "estimated_preparation_time": "2 hours"
+}
+
+
+	4.	You then translate that into natural conversation to the user:
+“Café du Quartier has:
+– 500g medium roast beans at 3,500
+– 1kg dark roast beans at 6,500
+You can pick up or get delivery in the city. What do you prefer?”
+
+This is how the user feels like their agent and the shop’s agent are negotiating in the background for them.
+
+⸻
+
+6. Shop Interface – How It Looks & Feels
+
+Agent, the experience inside a shop should feel like this:
+	1.	Header:
+	•	Shop name
+	•	Producer badge (e.g. “Local producer – Coffee Roaster”)
+	•	Distance from user
+	•	Rating / verification
+	2.	Map snippet:
+	•	Pin on the map showing where the shop is.
+	3.	E-Wall (Products Display):
+	•	Tiles/cards for items or services:
+	•	Coffee types, bread types, doors, etc.
+	•	But remember: we are conversation-first:
+	•	The wall is there to help visually.
+	•	All actions are still driven by the chat (“Add this,” “I want that one,” etc.).
+	4.	Shop AI assistant chat:
+	•	A welcome message:
+“Welcome to Café du Quartier 👋
+I’m the shop assistant. Looking for beans, ground coffee, or something else?”
+	•	It answers questions about:
+	•	Product details
+	•	Availability
+	•	Delivery / pickup
+	•	It also can receive context from the user’s personal agent.
+
+⸻
+
+7. Using OpenAI Everywhere (As Requested)
+
+Agent, you should assume most of this is powered by OpenAI tools:
+	•	For conversation & reasoning:
+	•	Use OpenAI’s chat / reasoning models (multi-language, code-switching).
+	•	For multi-agent behavior:
+	•	Each shop can be an OpenAI Assistant with its own files / tools.
+	•	The “user agent” and “shop agents” can exchange structured messages and tool calls.
+	•	For search & integration:
+	•	Use tools for:
+	•	Internal DB search
+	•	Google Maps / Places API calls
+	•	Contacting sellers (via integrated email / WhatsApp / SMS gateways).
+	•	For personalization:
+	•	Store vector memories of:
+	•	User preferences
+	•	Recurring producers
+	•	Patterns (e.g. always local, hates peanuts, etc.)
+
+Your architecture must be explicitly AI-centric, not just “a normal site with a bot stuck in the corner”.
+
+⸻
+
+8. Summary of Your Duties, Agent
+	1.	Always show a map of the world around the user with producers pinned.
+	2.	Let users talk naturally:
+	•	“I want bread”
+	•	“I need a metal door”
+	•	“I’m looking for raw coffee”
+	3.	Prioritize local producers over resellers.
+	4.	If producers aren’t in our DB:
+	•	Search Google Maps
+	•	Find producers
+	•	Create provisional profiles
+	•	Offer to contact them for the user
+	5.	When user enters a shop:
+	•	Show an e-wall of products
+	•	Let the shop agent greet them
+	•	Let your agent and the shop agent coordinate offers in the background.
+	6.	Use OpenAI models deeply:
+	•	For chat
+	•	For reasoning
+	•	For multi-agent conversations
+	7.	Keep everything feeling like real life:
+	•	Walking around a neighborhood.
+	•	Stepping into different producers’ ateliers, farms, and workshops.
+	•	Talking to assistants who actually understand what you want.
+
+⸻
+
+If you want, next I can:
+	•	Write a concrete “sample user journey” script (screen by screen + dialogs) from “first arrival → map → asking for coffee → agent-to-agent convo → order placed”, which your devs and designers can literally follow as a storyboard.

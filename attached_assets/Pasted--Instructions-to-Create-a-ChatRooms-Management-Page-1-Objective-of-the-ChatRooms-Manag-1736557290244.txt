@@ -1,0 +1,91 @@
+### Instructions to Create a ChatRooms Management Page
+
+#### 1. **Objective of the ChatRooms Management Page**:
+   - Enable seamless management of chatrooms for agents.
+   - Allow creation, deletion, and organization of chatrooms.
+   - Assign specific agents to chatrooms.
+   - Display an overview of ongoing conversations in each chatroom.
+   - Support real-time updates and notifications.
+
+#### 2. **Core Features**:
+   - **Create New ChatRoom**:
+     - Provide a form for users to name the chatroom.
+     - Allow users to select agents from a list and assign them to the chatroom.
+   - **Manage Existing ChatRooms**:
+     - View a list of all chatrooms with the number of agents and ongoing conversations.
+     - Edit chatroom names and participants.
+     - Archive or delete inactive chatrooms.
+   - **Real-Time Overview**:
+     - Display the last message and timestamp for each chatroom.
+     - Show notifications for new messages or updates.
+   - **Assign Tasks to ChatRooms**:
+     - Link tasks to specific chatrooms for focused discussions.
+   - **Access Permissions**:
+     - Restrict certain chatrooms to specific roles or hierarchies (e.g., only managers or specific departments).
+   - **Search and Filter**:
+     - Allow searching chatrooms by name, participants, or tasks.
+
+---
+
+#### 3. **Suggested ChatRooms**:
+Here are five chatrooms to cover different organizational needs:
+
+1. **Management Meeting Room**:
+   - **Purpose**: High-level strategic discussions among top-tier agents (e.g., CEO Agent, Operations Manager Agent, Finance Manager Agent).
+   - **Participants**: CEO, Operations Manager, Finance Manager, Product Manager.
+   - **Features**: Summarized meeting minutes, decision tracking, and goal-setting.
+
+2. **Sales and Marketing Room**:
+   - **Purpose**: Collaboration between sales and marketing agents for campaign strategies and lead generation.
+   - **Participants**: Sales Manager, Marketing Agent, Data Analyst.
+   - **Features**: Real-time campaign updates, client leads tracking, and collaborative brainstorming.
+
+3. **Customer Support Hub**:
+   - **Purpose**: Handle customer issues and service requests collaboratively.
+   - **Participants**: Client Support Agent, IT Support Agent, Knowledge Manager Agent.
+   - **Features**: Quick problem-solving, resolution tracking, and knowledge base suggestions.
+
+4. **Product Development Room**:
+   - **Purpose**: Focused on product design, innovation, and development updates.
+   - **Participants**: Product Manager, Creative Director, Research and Development Agent, Data Analyst.
+   - **Features**: Task assignments, prototype feedback, and development milestones.
+
+5. **Automation and Optimization Room**:
+   - **Purpose**: Discuss and implement automation processes to improve efficiency.
+   - **Participants**: Automation Manager Agent, IT Support Agent, Operations Manager Agent.
+   - **Features**: Workflow automation suggestions, implementation tracking, and performance evaluation.
+
+---
+
+#### 4. **Implementation Steps**:
+1. **Database Schema**:
+   - Create a `chatrooms` table with the following columns:
+     - `id` (Primary Key).
+     - `name` (ChatRoom name).
+     - `participants` (List of assigned agents).
+     - `task_id` (Optional, for linked tasks).
+     - `last_updated` (Timestamp of the latest activity).
+
+2. **Frontend Design**:
+   - Use tabs or cards to represent different chatrooms.
+   - Implement real-time updates with Socket.IO or WebSocket for live conversations.
+
+3. **Backend Logic**:
+   - API endpoints for:
+     - Creating a chatroom.
+     - Assigning agents to a chatroom.
+     - Fetching chatroom details and messages.
+     - Archiving or deleting a chatroom.
+
+4. **Integration**:
+   - Ensure seamless integration with the multi-agent system to allow agents to join or leave chatrooms dynamically.
+   - Implement AI-driven features like automated meeting summaries.
+
+---
+
+#### 5. **Agent-Specific Enhancements**:
+- Ensure agents can self-regulate participation in chatrooms.
+- Provide functionality for agents to recommend chatrooms for specific tasks.
+- Allow chatrooms to function as dynamic brainstorming sessions where agents can self-organize.
+
+This structure ensures a robust and user-friendly ChatRooms management system.

@@ -1,0 +1,366 @@
+Got it – I’ll treat this as a **UX audit + redesign** of your whole platform, from the eyes of a *new founder* landing for the first time, and make sure the journey is simple, coherent, and powerful.
+
+I’ll do it in 3 passes (like you asked: going “back and forth” mentally):
+
+1. **High-level user journey & problems**
+2. **Information architecture & page-by-page redesign**
+3. **Micro-UX: wording, defaults, and flows**
+
+---
+
+## 1️⃣ From the eyes of a new founder: what’s confusing today?
+
+Persona:
+**“I’m a founder. I’ve just signed up. I want a ready-made AI team that actually does work for my company.”**
+
+From the screenshot + what you told me:
+
+* Top nav: `Home | Agents & Clones | Workspace | Management`
+* Inside Agents & Clones: tabs `Your Team | Discover | Expert Clones | Hierarchy`
+* Metrics: “14 Total Agents, 14 Active Agents, 0 Expert Clones, 1 Departments”
+* Company switcher: “Default Company”
+
+**Main cognitive problems for a first-time user:**
+
+1. **Too many concepts at once**
+   “Agents”, “Clones”, “Expert Clones”, “Hierarchy”, “Workspace”, “Management”, “Departments”… but I still don’t know:
+
+   * *What should I do first?*
+   * *How do these pieces work together?*
+
+2. **“Expert Clones” vs “Your Team” vs “Discover” is ambiguous**
+
+   * Am I hiring? configuring? browsing a marketplace? It’s not obvious.
+   * You already decided clones + marketplace are one thing; the UI must reflect that.
+
+3. **Workspace isn’t clearly about *doing work***
+   You mentioned: instead of just “Meetings, Knowledge base”, it should feel like:
+
+   * **Actions**
+   * **Tasks**
+   * **Things getting done for me by agents**
+
+4. **Onboarding is not guided**
+
+   * There is no visible “Start here” to:
+
+     1. Confirm my company
+     2. Meet my AI team
+     3. Give them their first mission
+     4. See a result
+
+5. **Homepage likely doesn’t tell a story**
+   It needs to say in one glance:
+
+   > “You now have a full AI team. Here’s what they’re doing for your company today.”
+
+---
+
+## 2️⃣ New Information Architecture & Pages (UX Redesign)
+
+### A. Top Navigation (simplified)
+
+**Proposed top bar:**
+
+1. **Home** – Overview & onboarding
+2. **AI Team** (replaces “Agents & Clones”)
+3. **Work** (replaces “Workspace”)
+4. **Company** (replaces “Management”)
+5. Company switcher: `Default Company ▼` (top-left or top-right)
+
+This already tells a story:
+
+> *Home → AI Team you have → Work they’re doing → Company settings*
+
+---
+
+### B. Home: “Your AI Company Control Room”
+
+**Goal:** in 10 seconds, user understands what they have and what to do.
+
+**Hero section:**
+
+* Title: **“Your AI team is ready to work.”**
+* Subtitle: **“12 specialists already assigned to your company. Give them a mission.”**
+* Primary CTA: **“Give them your first mission”** → opens a short 3-step wizard under *Work*.
+* Secondary CTA: **“Review your AI team”** → goes to *AI Team > Your Team*.
+
+**Below hero – 3 columns:**
+
+1. **AI Team snapshot**
+
+   * “12 Core Agents”
+   * Small chips: `Operations`, `Finance`, `Strategy`, `Support`, `Automation`…
+   * Link: **“View full team”**
+
+2. **Work in progress**
+
+   * “Today: 0 tasks running, 0 completed”
+   * Once active: list last 3 tasks.
+
+3. **Company setup**
+
+   * Checkmarks:
+
+     * ✅ Company created
+     * ⬜ Connect payment gateway
+     * ⬜ Invite human teammates (optional)
+
+Each item is clickable to complete.
+
+---
+
+### C. AI Team (ex “Agents & Clones”)
+
+Tabs redesigned + renamed for clarity:
+
+* **Your Team** – agents assigned to this company
+* **Marketplace** – discover new expert clones & templates
+* **Hierarchy** – org chart view, per company
+
+You already decided **expert clones + personal clones = one concept**. So:
+
+#### 1. Your Team
+
+Grid or list of the 12 core roles:
+
+* Card example:
+
+  * Title: **Head of Operations**
+  * Short line: “Turns strategy into repeatable workflows”
+  * Badges: `Execution`, `Processes`
+  * Buttons:
+
+    * **“Ask to design a workflow”**
+    * **“View role details”**
+
+On top of the page:
+
+* Short text:
+
+  > “This is your default AI team. Each role is already configured for **Default Company**. You can edit or deactivate them any time.”
+
+#### 2. Marketplace
+
+This replaces “Discover” + “Expert Clones” confusion:
+
+* Filters:
+
+  * `Role type` (Ops, Finance, Sales, Support, Product…)
+  * `Industry presets` (optional, later)
+* Card example:
+
+  * Title: “Sales Pipeline Coach”
+  * Use case: “Helps you design and improve your sales funnel.”
+  * Button: **“Add to my AI team”**
+
+When user adds one, it appears under **Your Team** for that company.
+
+#### 3. Hierarchy
+
+Simple org chart, **per company**:
+
+* Top: **Chief Orchestrator / Chief of Staff**
+* Below: **Ops / Finance / Strategy / Innovation**
+* Below them: rest of agents.
+
+Interactions:
+
+* Click an agent node → view their detail; toggle active/inactive for this company.
+* Option to switch view: `Roles view` / `Agent view`.
+
+---
+
+### D. Work (new Workspace)
+
+**Core idea:** this is where the user sees and controls **what’s being done**.
+
+Tabs inside Work:
+
+1. **Actions** (default)
+2. **Projects**
+3. **Meetings**
+4. **Knowledge**
+
+#### 1. Actions (default)
+
+This is the **main “to-do / done” screen**.
+
+* Table or cards listing:
+
+  * Action title (“Design onboarding workflow”, “Analyze last week’s payments”)
+  * Status: `Queued`, `In progress`, `Done`, `Needs Review`
+  * Owner: `Head of Operations`, `Data & Insights Analyst`, etc.
+  * Company: `Default Company` (useful later when multi-company)
+
+Top of page:
+
+* CTA: **“Create a new mission”**
+
+  * Wizard:
+
+    1. What do you want to achieve? (short text or pick template)
+    2. Which area? (Ops / Finance / Strategy / Support / etc.)
+    3. Output type? (Plan, Workflow, Analysis, Email, Document)
+
+  Orchestrator then:
+
+  * Assigns to appropriate agent,
+  * Creates 1–3 sub-actions automatically.
+
+#### 2. Projects
+
+Clusters of actions:
+
+* Each project has:
+
+  * Name, description
+  * Owner agent
+  * Progress bar (# tasks completed / total)
+* Example projects:
+
+  * “Set up payment gateway and reporting”
+  * “Design customer support flow”
+  * “Launch new product page”
+
+#### 3. Meetings
+
+**Per company**, as you required.
+
+List:
+
+* Upcoming meetings
+* Past meetings
+* Each has:
+
+  * Topic
+  * Participants (agents + humans)
+  * Summary & action items (linked back to **Actions**)
+
+Create Meeting flow:
+
+* “Why are you meeting?” (goal)
+* Suggest participants: Orchestrator proposes which agents are relevant.
+* After meeting: Coordination Manager auto-generates summary + tasks.
+
+#### 4. Knowledge
+
+Not a dead “knowledge base”; a **working memory**:
+
+* Split into:
+
+  * `Company docs`
+  * `Playbooks & SOPs` (created by Knowledge Curator)
+  * `Agent briefs` (what each agent learned for this company)
+
+From here:
+
+* User can upload docs → they’re tagged by company + suggested agents.
+* Agents show “Last used” for each doc.
+
+---
+
+### E. Company (ex “Management”)
+
+**Tabs:**
+
+1. **Profile & Branding**
+2. **Billing & Plans**
+3. **Integrations**
+4. **Access & Permissions**
+
+Short, standard, boring but clean.
+
+* Integrations: Payment gateways, CRMs, etc.
+* Access & Permissions: who can see what, including agent scopes per company.
+
+---
+
+## 3️⃣ Micro-UX: details that make it feel seamless
+
+### A. First-time onboarding flow (critical)
+
+**Step 1: Welcome**
+
+* Message:
+
+  > “You now have a full AI team. Let’s connect them to your company in 2 minutes.”
+
+* Choices:
+
+  * **“I’m just exploring”** (demo mode, pre-populated example data)
+  * **“I want to use this for my real company”**
+
+**Step 2: Company basics**
+
+* Ask:
+
+  * Company name
+  * Industry (optional)
+  * Main goal for the next 30 days (free text)
+
+Use that goal to auto-create:
+
+* 2–3 **starter projects** in Work.
+* Personalized text on Home.
+
+**Step 3: Meet your AI team**
+
+* Show a **horizontal carousel** of the 12 roles:
+
+  * Role title + 1-line explanation + example question.
+
+At end:
+
+* CTA: **“Give them your first mission”** → go to Work → “Create mission” with a pre-filled suggestion based on user’s goal.
+
+---
+
+### B. Language / wording cleanup
+
+* “Agents & Clones” → **AI Team**
+* “Expert Clones” / “Discover” → **Marketplace**
+* “Workspace” → **Work**
+* “Management” → **Company**
+* “Departments” → **Teams** (if you keep it; or hide until needed)
+
+Try to keep **one concept = one word**:
+
+* Team → roles
+* Work → tasks/actions
+* Meetings → specific, time-bound events
+* Knowledge → docs & playbooks
+* Company → settings & integrations
+
+---
+
+### C. Feedback & state
+
+* Every action triggered by user should show:
+
+  * **“Which agent is now working on it”**
+  * A **visible status chip** in Actions.
+* If something is not yet implemented technically:
+
+  * Use copy like: “Coming soon” but hide it by default; don’t show dead buttons.
+
+---
+
+### D. Safe defaults
+
+On first login, automatically:
+
+* Assign the 12 core roles to **Default Company**.
+* Create **one demo project** with 2 completed actions so the dashboard is not empty:
+
+  * “Example: Analyze last week’s performance”
+  * “Example: Draft a welcome email to new customers”
+
+Let users delete or turn off demo content later.
+
+---
+
+If you want, next I can:
+
+* Write **exact copy** for the Home page sections and CTAs,
+* Or design the **information schema** (routes, components) for your React/Next/Replit app so your dev can implement this nav and flows very quickly.

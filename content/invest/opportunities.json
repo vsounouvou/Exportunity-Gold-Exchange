@@ -1,0 +1,114 @@
+{
+  "items": [
+    {
+      "slug": "abidjan-omni-retail-inventory-bridge",
+      "type": "sme",
+      "title": "Abidjan Omni Retail Inventory Bridge",
+      "summary": "Working-capital bridge for a multi-channel retail operator with verified order and repeat-buyer activity on Exportunity.",
+      "country": "Côte d’Ivoire",
+      "trackRecordBadge": "Verified on platform",
+      "fundingGoalMin": 25000,
+      "fundingGoalMax": 60000,
+      "currency": "USD",
+      "useOfFunds": ["Inventory procurement", "Fulfillment operations", "Platform marketing credits"],
+      "contractDurationMonths": 9,
+      "trackedKpis": ["Weekly GMV", "Order fulfillment SLA", "Repeat-buyer rate", "Margin trend"],
+      "returnModel": "Revenue-share model tied to verified platform sales.",
+      "riskNotes": "Demand fluctuation and supplier lead-time volatility.",
+      "mitigations": "Milestone disbursement and approved-vendor procurement only.",
+      "narrative": "Capital is allocated to verified stock replenishment and monitored through order velocity, margin, and sell-through logs.",
+      "fundingPlan": {
+        "milestones": [
+          { "title": "Inventory lot A", "amount": 18000, "evidenceRequired": ["Invoice", "Delivery confirmation", "Stock receipt"] },
+          { "title": "Inventory lot B", "amount": 17000, "evidenceRequired": ["Invoice", "Delivery confirmation", "Stock receipt"] },
+          { "title": "Marketing credits", "amount": 8000, "evidenceRequired": ["Campaign allocation record", "Platform impression logs"] }
+        ]
+      },
+      "status": "published",
+      "featured": true,
+      "sortOrder": 10
+    },
+    {
+      "slug": "benin-gold-lot-traceability-rotation",
+      "type": "gold",
+      "title": "Benin Gold Lot Traceability Rotation",
+      "summary": "Commodity rotation contract for compliant gold lots with purchase-order evidence and settlement traceability.",
+      "country": "Benin",
+      "trackRecordBadge": "Verified on platform",
+      "fundingGoalMin": 75000,
+      "fundingGoalMax": 180000,
+      "currency": "USD",
+      "useOfFunds": ["Vendor-direct lot purchase", "Assay and compliance", "Insured logistics"],
+      "contractDurationMonths": 6,
+      "trackedKpis": ["Rotation cycle time", "Gross-to-net spread", "Compliance pass rate", "Settlement delays"],
+      "returnModel": "Rotation premium model with evidence-linked payouts.",
+      "riskNotes": "Commodity volatility and shipment timing risk.",
+      "mitigations": "Direct vendor settlement, milestone checks, and documentary controls.",
+      "narrative": "Each release is linked to validated purchase orders, compliance artifacts, and settlement events.",
+      "fundingPlan": {
+        "milestones": [
+          { "title": "Lot acquisition", "amount": 90000, "evidenceRequired": ["Purchase order", "Vendor KYC", "Assay"] },
+          { "title": "Compliance + logistics", "amount": 28000, "evidenceRequired": ["Export docs", "Transit evidence"] }
+        ]
+      },
+      "status": "published",
+      "featured": true,
+      "sortOrder": 20
+    },
+    {
+      "slug": "ghana-farm-inputs-yield-cycle",
+      "type": "farm",
+      "title": "Ghana Farm Inputs & Yield Cycle",
+      "summary": "Input-financing contract for production units with staged releases tied to agronomic and sales evidence.",
+      "country": "Ghana",
+      "trackRecordBadge": "Verified on platform",
+      "fundingGoalMin": 18000,
+      "fundingGoalMax": 52000,
+      "currency": "USD",
+      "useOfFunds": ["Seeds and inputs", "Irrigation consumables", "Harvest logistics"],
+      "contractDurationMonths": 12,
+      "trackedKpis": ["Input utilization", "Yield per hectare", "Harvest sell-through", "Revenue collection cycle"],
+      "returnModel": "Seasonal revenue-share with quarterly visibility checkpoints.",
+      "riskNotes": "Weather impact and seasonality.",
+      "mitigations": "Tranche release linked to verified input purchase and field logs.",
+      "narrative": "Investor capital is constrained to tracked input and logistics expenses captured on-platform.",
+      "fundingPlan": {
+        "milestones": [
+          { "title": "Input procurement", "amount": 15000, "evidenceRequired": ["Vendor invoice", "Delivery receipt"] },
+          { "title": "Mid-cycle operations", "amount": 12000, "evidenceRequired": ["Field update", "Spend log"] },
+          { "title": "Harvest logistics", "amount": 10000, "evidenceRequired": ["Transport contract", "Delivery confirmation"] }
+        ]
+      },
+      "status": "published",
+      "featured": false,
+      "sortOrder": 30
+    },
+    {
+      "slug": "uae-machinery-asset-backed-leasing",
+      "type": "machinery",
+      "title": "UAE Machinery Asset-Backed Leasing",
+      "summary": "Asset-backed machinery financing where capital release is tied to vendor payment and deployment evidence.",
+      "country": "UAE",
+      "trackRecordBadge": "Verified on platform",
+      "fundingGoalMin": 120000,
+      "fundingGoalMax": 280000,
+      "currency": "USD",
+      "useOfFunds": ["Machinery acquisition", "Installation", "Maintenance reserve"],
+      "contractDurationMonths": 18,
+      "trackedKpis": ["Utilization rate", "Downtime hours", "Lease payment coverage", "Service incidents"],
+      "returnModel": "Asset-backed model with periodic payout schedule.",
+      "riskNotes": "Utilization variance and maintenance cost spikes.",
+      "mitigations": "Vendor-direct disbursement and service-level evidence gates.",
+      "narrative": "Funds are released by milestone against equipment purchase and operational deployment proofs.",
+      "fundingPlan": {
+        "milestones": [
+          { "title": "Vendor purchase", "amount": 180000, "evidenceRequired": ["Vendor contract", "Invoice", "Payment confirmation"] },
+          { "title": "Deployment", "amount": 45000, "evidenceRequired": ["Install report", "Commissioning evidence"] }
+        ]
+      },
+      "status": "published",
+      "featured": false,
+      "sortOrder": 40
+    }
+  ]
+}

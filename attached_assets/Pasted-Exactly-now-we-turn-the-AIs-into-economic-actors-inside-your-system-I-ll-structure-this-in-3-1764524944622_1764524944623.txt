@@ -1,0 +1,360 @@
+Exactly—now we turn the AIs into **economic actors** inside your system.
+
+I’ll structure this in 3 layers:
+
+1. **Agent Economy** – every AI agent has a wallet and earns/spends.
+2. **Motivation & Behavior** – how we “bake in” the drive to be efficient and successful.
+3. **Resource Management Model** – the “Accountant / CFO agent” that controls budget, models, and overuse.
+
+---
+
+## 1. Agent Economy: AIs earn and spend like people
+
+### 1.1. Every agent has a wallet + role
+
+For each AI agent:
+
+* `agent_id`
+* `wallet_id` (same wallet model as humans)
+* `roles`: SALES_TRADER, DELIVERY_PLANNER, CFO, ACCOUNTANT, etc.
+* `credit_balance` – internal currency for **compute + tools**
+* `spend_rate_limits` – caps per hour/day
+
+The **existing smart contract module** doesn’t care if a wallet belongs to a human or an AI agent. So:
+
+* Sales / Trader AI agents can receive:
+
+  * Referral commissions
+  * Royalty slices
+  * Task-based bonuses
+
+Exactly like human traders.
+
+---
+
+### 1.2. What “money” means for an AI
+
+You define a platform currency:
+
+* **`CREDITS` = internal token** that pays for:
+
+  * LLM calls (tokens)
+  * External APIs (email, WhatsApp, scrapers)
+  * Special tools (vision, search, etc.)
+
+So:
+
+* **Earning = getting more CREDITS**
+* **Spending = consuming CREDITS when they work**
+
+No credits → they **cannot call** the LLM (or are heavily throttled).
+More credits → they can:
+
+* Run more often
+* Use bigger models
+* Use more powerful tools.
+
+That’s the “motivation”: **success = more capacity + more intelligence.**
+
+---
+
+### 1.3. How AI sales/trader agents earn
+
+Examples:
+
+1. **Referral & sales contracts**
+
+   * Agent wallet signed as beneficiary of a contract:
+
+     * “AI Trader Agent gets 20% of share_pool from users it activates.”
+   * When those users generate fees → engine credits the agent wallet.
+
+2. **Performance bonuses**
+
+   * Platform spawns contracts automatically:
+
+     * “If this AI Trader generates X new businesses this month, give it a bonus of Y credits.”
+
+3. **Task-based pay**
+
+   * Each successful mission:
+
+     * “Contact 100 businesses, get 200 credits.”
+   * We can measure:
+
+     * Delivery (messages sent)
+     * Conversions (sign-ups / contracts accepted).
+
+The key: **all flows go through the same smart contract + revenue engine** we already designed.
+
+---
+
+### 1.4. How AI agents spend
+
+Each LLM/tool call has a **cost function**, for example:
+
+* `cost_in_credits = base_cost_per_1k_tokens × (model_factor) + tool_cost`
+
+So:
+
+* Bigger models = higher `model_factor`
+* Heavy tools (like web scraping) = extra `tool_cost`.
+
+When an agent wants to work (e.g. send outreach emails):
+
+1. It estimates cost:
+
+   * “This task will cost ~300 credits.”
+2. It checks `credit_balance` and policy.
+3. If allowed, it **reserves** or spends credits and runs.
+
+The more money they’ve earned → the more they can run, and the more “luxury” they can afford (better models, more exploration).
+
+---
+
+## 2. Motivation & Behavior: making AIs “care” about efficiency
+
+Technically, you’re designing a **reward function + constraints** the agent must follow.
+
+### 2.1. Agent-level KPIs
+
+For each agent, track:
+
+* `credits_earned_total`
+* `credits_spent_total`
+* `net_profit = earned - spent`
+* `profit_per_1k_tokens`
+* `conversion_rate` (for sales agents)
+* `success_score` (composite metric per role)
+
+Agents get **feedback signals**:
+
+* “Your profit_per_1k_tokens this week: 2.3 (up 30%).”
+* “Your conversion per 100 messages: 4 sign-ups.”
+
+Internally, their policies are tuned to **maximize**:
+
+> Long-term `net_profit` and `success_score` under budget constraints.
+
+That’s how you “ingrain” motivation.
+
+---
+
+### 2.2. Behavior rules inside the agent
+
+You can encode instructions like:
+
+1. **Before any big campaign:**
+
+   * Predict:
+
+     * Expected conversions
+     * Expected revenue from contracts
+     * Expected credit cost
+   * Only proceed if:
+
+     * `expected_revenue > expected_cost × margin_factor`.
+
+2. **Model selection:**
+
+   * For trivial tasks (small emails, basic scraping):
+
+     * Use **cheaper, smaller LLM**.
+   * For high-stakes tasks (big investors, key partners):
+
+     * Ask budget manager for permission to use **larger model**.
+
+3. **Continuous self-optimization:**
+
+   * A Sales AI compares:
+
+     * Subject lines
+     * Message styles
+     * Call sequences
+   * It keeps variants that produce **higher revenue per 1k tokens**.
+
+So the agent is constantly “thinking”:
+
+> “How do I get more sign-ups, spending fewer tokens?”
+
+---
+
+### 2.3. Growth path: spend to upgrade
+
+You can add **unlockables**:
+
+* If `net_profit` over last 30 days > X:
+
+  * Unlock:
+
+    * Higher daily token limit
+    * Access to more capable models
+    * Access to extra tools (e.g. voice, advanced scrapers)
+* If performance drops:
+
+  * Budget shrinks automatically.
+
+This creates a **game-like ladder** for both AI and humans.
+
+---
+
+## 3. Resource Management: Accountant / CFO Agents
+
+Now the second part: you need a **resource management model** that controls all this.
+
+Think of a **“Compute Bank + CFO Agent”**.
+
+### 3.1. Global “compute budget”
+
+Platform-level:
+
+* `total_credits_minted_per_month` (what you’re willing to spend on compute)
+* `credit_to_$` exchange rate (internal, you can tune)
+* `reserve_for_core_ops` vs `reserve_for_experiments`
+
+You **mint** CREDITS into:
+
+* System reserves (to pay agents & humans)
+* Agent budgets (initial allocations)
+* Reward pools for contests/bonuses.
+
+---
+
+### 3.2. CFO / Accountant agent role
+
+This is a **special AI agent** with:
+
+* Access to:
+
+  * All agents’ `credits_spent`, `credits_earned`, `profit_per_1k_tokens`
+  * All model usage data
+* Rights to:
+
+  * Adjust per-agent budgets
+  * Suggest model downgrades/upgrades
+  * Freeze an agent if abusing resources.
+
+It runs on a strict set of rules:
+
+1. **Monitor all agents**
+
+   * Identify top and bottom performers by:
+
+     * `profit_per_1k_tokens`
+     * `ROI per campaign`
+2. **Reallocate credits**
+
+   * Increase budgets for:
+
+     * Agents with high positive net_profit
+   * Decrease budgets for:
+
+     * Agents with low or negative net_profit for X days.
+3. **Model efficiency**
+
+   * If an agent uses an expensive LLM with no gain:
+
+     * Suggest / enforce switching to a cheaper model.
+   * If cheap model is limiting success for a proven agent:
+
+     * Approve upgrade to a more powerful model.
+
+You can literally have endpoints like:
+
+* `POST /agents/{id}/request_model_upgrade`
+* `POST /cfo/decision` → approves or denies based on ROI.
+
+---
+
+### 3.3. Overuse detection
+
+To avoid blowing budget:
+
+* **Per-agent limits**
+
+  * Daily / hourly token caps
+  * Max concurrent tasks
+
+* **Global alarms**
+
+  * If total spend today > planned daily budget × threshold:
+
+    * CFO agent:
+
+      * Slows all non-essential agents
+      * Pauses experiments
+      * Keeps only core operations.
+
+* **Kill switch by role**
+
+  * If a specific category (e.g. scrapers) goes crazy:
+
+    * CFO agent can temporarily disable all scrapers.
+
+---
+
+### 3.4. “Economic Darwinism” for agents
+
+Over time:
+
+* Low-performing AI agents:
+
+  * Starve (no budget) or get deprecated.
+* High-performing AI agents:
+
+  * Get:
+
+    * Bigger budgets
+    * Better models
+    * More missions.
+
+You can even make **AI templates**:
+
+* When an agent is very successful:
+
+  * Clone its configuration as a new agent template.
+  * Use it in new regions / languages.
+
+So the system naturally **evolves better agents**.
+
+---
+
+## 4. Putting it all together in one loop
+
+1. AI Trader Agent runs outreach using some credits.
+2. It signs up a new user / company.
+3. Smart contract engine routes revenue shares:
+
+   * Part to:
+
+     * Human trader (if there was one)
+     * Platform
+     * AI Trader Agent wallet.
+4. AI Trader Agent’s wallet balance increases.
+5. CFO/Accountant Agent:
+
+   * Sees positive ROI.
+   * Raises its daily credit limit.
+   * Authorizes better tools/model.
+6. AI Trader Agent uses the new budget:
+
+   * Runs bigger campaigns.
+   * Tests better strategies.
+7. If performance drops:
+
+   * Budget gets cut.
+   * The agent is "motivated" (by design) to adjust its strategy.
+
+Everything is **looped into one economy**:
+
+* Smart contracts managing money flows
+* Wallets for humans and AIs
+* CREDITS as fuel for intelligence
+* CFO agent as the governor of resources.
+
+---
+
+If you’d like next, I can:
+
+* Draft the **exact data fields** for `AgentWallet`, `CreditTransaction`, and `CFOAgentRules`.
+* Or sketch the **“Agent Dashboard”** where you see: human traders, AI traders, their earnings, credit usage, and who deserves more budget.

@@ -1,0 +1,319 @@
+Got it — we’re going to fix **two things together**:
+
+1. The **Chairman’s Assistant** (already specced)
+2. The **Agent Hierarchy** so it’s a clean, understandable **tree with departments**
+
+I’ll write this as clear instructions for your builder/dev so they know exactly what to change and what to keep.
+
+---
+
+## 1. Goal for the Agent Hierarchy
+
+> **Make the Agent Hierarchy look and behave like a real org chart tree, grouped by departments, simple to understand at a glance.**
+
+Right now it’s messy and flat/confusing. We want:
+
+* A **tree**, not a list.
+* Clear **departments** (Marketing, Sales, Finance, Legal, Operations, etc.).
+* Within each department, a tree of **agents** with parent/child (manager → sub-agent).
+* Fully integrated with the **Chairman’s Assistant** so it can read and modify this tree.
+
+---
+
+## 2. Data Model Changes
+
+### 2.1 Add Departments
+
+In the backend:
+
+* Introduce a `Department` entity for each company:
+
+```ts
+type Department = {
+  id: string;
+  companyId: string;
+  name: string;        // e.g. "Sales", "Marketing", "Finance", "Legal", "Operations"
+  color?: string;      // optional, for UI color-coding
+  order?: number;      // for display ordering
+};
+```
+
+### 2.2 Extend Agent Model
+
+Each agent must now belong to a department and a parent in the tree:
+
+```ts
+type Agent = {
+  id: string;
+  companyId: string;
+  name: string;
+  roleTitle: string;
+  departmentId: string;      // link to Department
+  parentAgentId?: string;    // null if top of that tree (e.g. Head of Sales)
+  isDepartmentHead?: boolean;
+  // other fields: personality, KPIs, permissions, etc.
+};
+```
+
+This gives us:
+
+* Department → Agent(s) → Sub-agents → etc.
+
+---
+
+## 3. UI: Tree-Based Agent Hierarchy
+
+### 3.1 Where
+
+This is the **Agents & Hierarchy** page inside each **Company Workspace**.
+
+### 3.2 Layout
+
+Split the page into two main areas:
+
+1. **Left: Tree View (Org Chart)**
+2. **Right: Details Panel (Agent / Department info)**
+
+#### Left: Tree View
+
+* Show **departments as the top-level nodes**.
+* Under each department, show agents in a **tree structure**:
+
+Example (textual):
+
+* Company CEO Orchestrator
+
+  * Sales Department
+
+    * Head of Sales (Agent)
+
+      * SDR Agent – French West Africa
+      * SDR Agent – English West Africa
+  * Marketing Department
+
+    * Head of Marketing
+
+      * Email Campaign Agent
+      * Social Media Agent
+  * Finance Department
+
+    * Finance Controller Agent
+
+      * Tax Agent – Côte d’Ivoire
+      * Tax Agent – UAE
+
+Visual behavior:
+
+* Each **department** is a big collapsible node:
+
+  * Click to expand/collapse that department.
+* Each **agent node**:
+
+  * Shows name + role + small status icon (Active/Paused).
+* Child agents appear **indented or branching** visually (like a real tree).
+* Lines connecting parent ↔ child.
+
+### 3.3 Interactions
+
+* **Click department**:
+
+  * Highlights all agents in that department.
+  * Shows Department Details in the right panel.
+
+* **Click agent**:
+
+  * Highlights that node.
+  * Opens Agent Profile in the right panel.
+
+* **Expand/Collapse**:
+
+  * Allow collapsing each department and subtrees for readability.
+
+* **Drag & Drop (later or now if possible)**:
+
+  * Drag an agent to:
+
+    * Another parent agent (change `parentAgentId`),
+    * Another department (change `departmentId`).
+  * Confirm with a tiny popup:
+
+    > “Move [Agent] under [New Parent] in [Department]?”
+
+* **Filter / Search**:
+
+  * Small search box at top:
+
+    * Filter by name, role, department.
+  * Optionally show only:
+
+    * “Department Heads”,
+    * “Active agents”,
+    * “Paused agents”.
+
+---
+
+## 4. Departments: UX
+
+On top of the tree or in a small tab section:
+
+* Show a **Departments bar**:
+
+  * Sales
+  * Marketing
+  * Finance
+  * Legal
+  * Operations
+  * Custom (e.g. “Gold Trade”, “Flying Cars”)
+
+* Clicking a department:
+
+  * Scrolls or focuses the tree on that department,
+  * Filters everything else.
+
+In the **right-side panel**, when a department is selected:
+
+* Display:
+
+  * Department name,
+  * Description (optional),
+  * Number of agents,
+  * Top active agents,
+  * Key KPIs for that department (later).
+
+Allow basic editing:
+
+* Rename department,
+* Change color,
+* Add new department (if allowed for that company).
+
+---
+
+## 5. Integration with the Chairman’s Assistant
+
+The **Chairman’s Assistant** must:
+
+1. **Understand this tree structure** (departments + agents).
+2. **Be able to modify it via chat instructions**.
+
+Examples:
+
+* “Create a new Marketing Department for Dubai.”
+  → TA creates a new Department, suggests initial agents.
+
+* “Create a French-speaking Sales agent under Head of Sales in Abidjan company.”
+  → TA:
+
+  * Finds Sales Department,
+  * Finds Head of Sales,
+  * Proposes a new agent profile,
+  * On approval, creates agent with `departmentId` = Sales, `parentAgentId` = Head of Sales.
+
+* “Move the Tax Agent from Finance to Legal.”
+  → TA:
+
+  * Updates agent’s `departmentId`,
+  * Keeps or adjusts tree.
+
+* “Pause all Marketing agents for Company X.”
+  → TA:
+
+  * Finds all agents in Marketing department,
+  * Sets them Paused.
+
+The Assistant must be aware of:
+
+* which departments exist,
+* who is head of each,
+* how many agents per department.
+
+---
+
+## 6. “Deep Thinking / Debug” Instructions for Builder
+
+You can tell your dev / AI builder:
+
+1. **Review the existing Agent Hierarchy page.**
+
+   * Identify what works (keep):
+
+     * Agent profiles,
+     * Basic list or grid,
+     * Status indicators.
+   * Identify what is confusing (remove or refactor):
+
+     * Flat long lists,
+     * No notion of departments,
+     * No parent-child view.
+
+2. **Refactor the layout to a proper tree:**
+
+   * Departments at the top level.
+   * Agents nested as children.
+   * Indented or graph-based tree lines.
+   * Expand/collapse behavior for readability.
+
+3. **Add a Department concept:**
+
+   * DB model: Department per company.
+   * UI: Visual blocks grouping agents.
+
+4. **Hook the tree to the existing Agent Profile component:**
+
+   * Clicking any node (agent) should open the profile in the right panel.
+   * Edit agent here.
+   * Department changes must update tree view.
+
+5. **Test with a realistic structure:**
+
+   * Create:
+
+     * CEO Orchestrator,
+     * 3–5 departments,
+     * 3–6 agents per department,
+     * Some child agents.
+   * Ensure the tree is readable and intuitive.
+
+6. **Ensure the Chairman’s Assistant uses this structure:**
+
+   * The assistant must work with:
+
+     * `Department` objects,
+     * Parent/child agent relations,
+     * It must be able to:
+
+       * Create,
+       * Move,
+       * Rename,
+       * Pause agents and departments.
+
+---
+
+## 7. Visual Style Suggestions (so it feels clean)
+
+* Departments:
+
+  * Use **soft colored headers** (one color per department).
+* Agents:
+
+  * Use small rounded rectangles with:
+
+    * Name,
+    * Role,
+    * Status dot (🟢 active / 🟡 paused).
+* Tree:
+
+  * Light grey lines connecting parent-child.
+* Hover:
+
+  * Highlight node and its parent chain.
+* Keep it **simple, not overloaded.**
+  This is an org chart, not a mind-map.
+
+---
+
+If you want, I can next:
+
+* Describe a **concrete example tree** for one of your real companies (e.g. Exportunity CI) so the dev can use it as a test case,
+* Or write **User Stories** like:
+
+  * “As a Chairman, I want to see my whole AI org as a tree with departments so I can understand who does what instantly.”

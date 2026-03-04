@@ -1,0 +1,218 @@
+SUBJECT: Final Deep QA + Launch Readiness for AI Swarm Platform
+
+I need you to do a full deep-check of the entire platform and make sure it is production-ready. This is not a quick review – I want you to behave like a QA engineer + product owner combined.
+
+🔁 General Rule
+	•	You must not come back to me with a report until:
+	•	You have gone through every major screen, flow, and button at least 5 times.
+	•	Each pass you fix or suggest improvements, then re-test.
+	•	Each time you check something, you:
+	1.	Test it.
+	2.	Fix / improve (or document clearly what must be fixed).
+	3.	Test again.
+	4.	Repeat until it feels clean and logical.
+
+⸻
+
+1. Placeholders & Content
+	1.	Go through every page (web + mobile view):
+	•	Replace all placeholder text (“Lorem ipsum”, “coming soon”, “#placeholder#” etc.).
+	•	Replace all placeholder images/icons with final or at least neutral, acceptable ones.
+	2.	For every button, label, tooltip, and help text:
+	•	Make sure the wording is clear, simple, and consistent.
+	•	No dev jargon, no unfinished sentences.
+	3.	If any section is not used yet:
+	•	Either hide it completely or add a clean “Coming soon” with explanation.
+
+⸻
+
+2. Links & Navigation
+	1.	For each clickable element (button, link, icon):
+	•	Click it.
+	•	Confirm it leads to the correct page or action.
+	•	No dead links, no 404s, no “undefined route”.
+	2.	If a screen has a multi-step process (wizard, onboarding, flow):
+	•	Go through all steps to the end.
+	•	Try “next”, “back”, “cancel”, “save & exit”.
+	3.	Make sure the main navigation makes sense:
+	•	Dashboard
+	•	Agent Store / My Agents
+	•	Wallet / Credits
+	•	Settings / Profile
+	•	Admin / Company view (where applicable)
+	•	Login / Logout flows
+
+⸻
+
+3. Agents ↔ Companies / Users Logic
+
+We need to confirm the core model works in practice.
+	1.	Agent assignment
+	•	Confirm that one agent can be:
+	•	created by an expert,
+	•	listed in the marketplace,
+	•	hired by multiple companies.
+	•	Verify that hiring and assigning an agent:
+	•	creates the correct internal relationship (company–agent link).
+	•	shows correctly on:
+	•	the company’s “My Agents” view,
+	•	the expert’s “Where my agent is deployed” view (if implemented).
+	2.	Isolation
+	•	Make sure that when an agent is used in Company A vs. Company B:
+	•	conversations, data, and configs are not shared or mixed.
+	•	each company sees only its own data and settings.
+	3.	Views
+	•	For each role (platform admin, expert, company owner, company staff), verify:
+	•	The home/dashboard makes sense for that role.
+	•	They see only what they’re supposed to see.
+	•	There are no cross-role bugs (e.g., a company user seeing admin features).
+
+⸻
+
+4. Credits & Billing Flows
+	1.	Wallet
+	•	Make sure users can:
+	•	See their current credits clearly.
+	•	See daily credit burn based on active agents.
+	•	See a projection (e.g., “You have enough credits for ~X days”).
+	2.	Top-Up
+	•	Test payment top-up on staging:
+	•	Small amount
+	•	Medium amount
+	•	Make sure that after payment:
+	•	Credits are updated correctly.
+	•	Transactions are logged in a simple history (even minimal).
+	3.	Agent Cost
+	•	For each agent:
+	•	Show the cost (per day / month or per operation).
+	•	Confirm that when an agent is activated/deactivated:
+	•	The credit burn changes accordingly.
+	•	Make sure there is a low-credit warning:
+	•	User is warned before agents stop working.
+	•	The behavior is clear when credits reach 0.
+
+⸻
+
+5. Core Agent Flows (At Least One Example of Each)
+
+Pick at least one of each type and test thoroughly:
+	1.	Personal Clone Agent
+	•	Create a test user.
+	•	Go through:
+	•	uploading photo(s),
+	•	adding example social links,
+	•	basic setup (“who are you / what do you do?”).
+	•	Make sure the agent can:
+	•	respond in the test user’s style (even if basic for now).
+	•	be visible in their “My Agents” page.
+	•	be toggled ON/OFF.
+	2.	TikTok / Social Agent
+	•	Use a test TikTok or social account.
+	•	Connect it (or simulate connection if sandbox).
+	•	Verify:
+	•	account connection flow,
+	•	basic reading of content,
+	•	suggestion of posts or replies (even simple).
+	3.	Front Desk / Business Messages Agent
+	•	Connect any available chat channel (e.g., a dummy web chat or WhatsApp sandbox).
+	•	Check that:
+	•	messages arrive,
+	•	the agent replies,
+	•	conversations are stored,
+	•	basic structured data is saved (lead name, contact, interest).
+
+⸻
+
+6. Responsive Design (Web + Mobile)
+	1.	Test on:
+	•	Desktop (full HD).
+	•	Tablet width.
+	•	Small mobile width.
+	2.	For each breakpoint:
+	•	No broken layouts.
+	•	No overlapping text.
+	•	Buttons are reachable.
+	•	Tables scroll properly.
+	•	Modals and drawers behave correctly.
+
+⸻
+
+7. Error Handling & Edge Cases
+	1.	Try:
+	•	Wrong password.
+	•	Expired sessions.
+	•	No credits.
+	•	No agents active.
+	•	Invalid form input.
+	2.	Make sure:
+	•	Error messages are clear, in human language, and helpful.
+	•	There is always a safe way back (home/dashboard).
+
+⸻
+
+8. Test Accounts to Create (on Staging)
+
+Please create at least the following accounts and share credentials with me:
+	1.	Platform Admin
+	•	Can see global stats, users, agents, payments.
+	2.	Expert User
+	•	Creates and manages their own agent(s).
+	•	Sees where their agent is hired.
+	3.	Company Owner
+	•	Can buy credits, hire agents, assign to team.
+	4.	Company Staff
+	•	Can use agents, see conversations, but limited settings.
+
+Use realistic dummy names and share:
+	•	login URL,
+	•	email,
+	•	password,
+	•	which role each account has.
+
+⸻
+
+9. Final Report
+
+When all of this is done (after multiple passes), send me:
+	1.	A short summary:
+	•	“Platform is ready for first live users” OR
+	•	“Platform is 90% ready, here are the blockers.”
+	2.	A list of:
+	•	Critical bugs (must be fixed before launch).
+	•	Minor issues (can be fixed after launch).
+	•	UX improvements (nice-to-have).
+	3.	The credentials for all test users you created.
+
+⸻
+
+End of instructions.
+
+⸻
+
+2️⃣ Example test logins you can use (staging suggestion)
+
+You can ask your dev to create exactly these on the STAGING environment:
+	•	Admin
+	•	Email: admin@swarm-local.test
+	•	Password: Admin#2025!
+	•	Role: platform_admin
+	•	Expert – TikTok Coach
+	•	Email: coach.tiktok@swarm-local.test
+	•	Password: Coach#2025!
+	•	Role: expert
+	•	Expert – Business Consultant
+	•	Email: consultant.biz@swarm-local.test
+	•	Password: Consult#2025!
+	•	Role: expert
+	•	Company Owner – Small Business
+	•	Email: owner.smarthair@swarm-local.test
+	•	Password: Owner#2025!
+	•	Role: company_owner
+	•	Company Staff – Front Desk
+	•	Email: frontdesk@swarm-local.test
+	•	Password: Front#2025!
+	•	Role: company_staff
+
+You can tell them:
+
+“Create these logins on staging with the roles above so I can log in and test each view myself.”

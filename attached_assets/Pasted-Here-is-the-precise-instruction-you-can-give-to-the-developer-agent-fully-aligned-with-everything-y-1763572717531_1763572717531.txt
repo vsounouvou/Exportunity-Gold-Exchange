@@ -1,0 +1,334 @@
+Here is the precise instruction you can give to the developer-agent, fully aligned with everything you’ve built so far — now expanded to global neighborhood-level geolocation, phone-number identity, and QR-code identity mapping.
+
+No references to “chairman.”
+This instruction is clean, operational, and ready for implementation.
+
+⸻
+
+✅ **INSTRUCTION FOR THE DEVELOPER-AGENT
+
+(Global Neighborhood Geolocation + Phone Identity + QR Code System)**
+
+Do not return to the user until all tasks below are fully implemented, tested three times, and validated with realistic simulation data.
+Remain silent until done.
+
+⸻
+
+1. GLOBAL, MULTI-LAYER GEOLOCATION SYSTEM
+
+You must now redesign the geolocation layer to support the entire world at the neighborhood level.
+
+1.1 Geolocation Structure (Mandatory)
+
+Create a hierarchical structure:
+
+Country
+   → Region / State / Province
+       → City
+           → District / Commune
+               → Neighborhood
+                   → Exact GPS coordinates (lat/long)
+
+1.2 Required Data Sources
+
+You must prepare and integrate a global hierarchical database that includes:
+	•	All countries
+	•	All regions/states
+	•	All cities
+	•	All districts
+	•	All neighborhoods
+	•	All available GIS map boundaries
+	•	Option for custom neighborhood creation if unlisted
+
+Every company must be placed exactly at the neighborhood level + GPS point.
+
+⸻
+
+2. LOCATION-LINKED TRANSACTIONS
+
+Every transaction in the platform must now store:
+	•	Company Neighborhood
+	•	Company District
+	•	Company City
+	•	Company Region
+	•	Company Country
+	•	Buyer Neighborhood
+	•	GPS coordinate of transaction (where it originated)
+	•	Timezone
+	•	Local currency
+	•	Distance between buyer and seller (calculated automatically)
+
+This must be visible in:
+	•	Company Dashboard
+	•	Transaction history
+	•	Global map
+	•	Public marketplace view
+	•	Internal analytics
+
+⸻
+
+3. GLOBAL MAP EVOLUTION
+
+You must now expand the map:
+
+3.1 Cluster companies by neighborhood
+	•	Neighborhood view
+	•	City zoom
+	•	Region overview
+	•	Country view
+	•	World view
+	•	Auto-clustering on zoom out
+	•	Auto-expansion on zoom in
+
+3.2 Company pins must include:
+	•	Logo
+	•	Name
+	•	Sector
+	•	Local services
+	•	Phone number
+	•	QR code
+	•	Status (open, closed, busy)
+
+⸻
+
+4. PHONE NUMBER AS CORE IDENTITY
+
+Implement phone numbers as a primary identity layer.
+
+4.1 Required Fields
+
+When a user signs up or adds a company:
+	•	Full phone number with country code
+	•	SMS verification
+	•	WhatsApp verification (optional)
+	•	Ability to add multiple phone numbers per company
+	•	Verification badge once confirmed
+
+4.2 Phone-Linked Features
+	•	Company searches by phone
+	•	Public contact on marketplace
+	•	Agent outreach (via SMS or WhatsApp later)
+	•	Fraud prevention
+	•	Multi-factor authentication
+	•	Faster transactions
+
+⸻
+
+5. UNIVERSAL QR CODE ASSIGNMENT
+
+Every entity on the platform must receive a unique QR code:
+
+Entities that receive a QR Code:
+	•	Users
+	•	Companies
+	•	Individual products
+	•	Services
+	•	Physical locations
+	•	Orders
+	•	Invoices
+	•	Wallet addresses
+
+QR Code links to:
+	•	Public company page
+	•	Storefront or marketplace page
+	•	Product details
+	•	Service booking
+	•	Payment page
+	•	Geolocation page
+	•	Company contact page
+	•	Wallet top-up page
+
+QR Code Format:
+	•	PNG
+	•	SVG
+	•	Printable (high resolution)
+	•	Downloadable
+	•	Auto-regenerated if data changes
+
+QR Code Must Support:
+	•	Dynamic URLs
+	•	Deep linking
+	•	Payment triggers
+	•	Appointment booking
+	•	Product checkout
+	•	Authentication
+
+⸻
+
+6. USER FLOW UPDATES
+
+When a user creates or edits a company:
+
+They must fill:
+	•	Phone number (mandatory)
+	•	Country
+	•	Region
+	•	City
+	•	District
+	•	Neighborhood
+	•	Exact GPS location (via map click or address lookup)
+	•	Visibility (public/private)
+
+After saving:
+	•	System generates the company QR
+	•	System pins the company at the exact neighborhood
+	•	System syncs the neighborhood to the map
+	•	System creates a location-based index entry
+
+⸻
+
+7. MARKETPLACE UPDATE
+
+The public marketplace must now allow customers to search:
+
+By location:
+	•	Nearby businesses (radius search)
+	•	Neighborhood
+	•	City
+	•	Region
+	•	Country
+
+By phone:
+	•	Search directly through the phone number
+
+By QR:
+	•	Scan and go directly to the business
+
+By product/service:
+	•	Combined with geolocation filters
+
+By distance:
+	•	Filter businesses by km radius
+
+⸻
+
+8. DATA SIMULATION REQUIREMENTS
+
+After implementation, generate realistic simulation data:
+
+A. Global geolocation simulation
+
+At least:
+	•	20 countries
+	•	40 regions
+	•	100 cities
+	•	200 districts
+	•	500 neighborhoods
+	•	Companies placed inside them
+
+B. Companies with geolocated transactions
+
+Simulate:
+	•	Orders
+	•	Purchases
+	•	Service bookings
+	•	Customer locations
+	•	Distance calculations
+
+C. Phone numbers
+
+Simulate:
+	•	Verified numbers
+	•	Country codes
+	•	SMS logs
+
+D. QR Codes
+
+Generate:
+	•	Company QR
+	•	Product QR
+	•	Order QR
+	•	Wallet QR
+
+Make them functional placeholders (dummy URLs for now).
+
+⸻
+
+9. AGENT AWARENESS OF LOCATION + PHONE + QR
+
+Agents must be updated:
+
+Marketing Agent
+	•	Target customers in nearby neighborhoods
+	•	Create location-specific campaigns
+	•	Suggest expansions to new cities
+
+Sales Agent
+	•	Use phone numbers for outreach
+	•	Send proposals based on region
+
+Operations Agent
+	•	Understand distance for delivery
+	•	Track service areas
+
+Strategy Agent
+	•	Analyze map distribution
+	•	Identify hotspots
+
+Compliance Agent
+	•	Regional tax and legal rules
+
+User’s Assistant
+	•	Navigate by location
+	•	Summarize location stats
+	•	Manage phone identity
+	•	Access QR functions
+	•	Suggest location-based actions
+
+⸻
+
+10. THREE-STAGE TESTING
+
+You must run:
+
+✔ Three full functional tests
+
+✔ Three full UX tests
+
+✔ Three full stress tests
+
+Test:
+	•	Large geolocation datasets
+	•	Map performance
+	•	Phone validation
+	•	QR generation
+	•	Payment interactions per neighborhood
+	•	Search performance
+	•	API loads
+
+Fix and repeat until all tests pass.
+
+⸻
+
+11. RETURN CONDITION
+
+Return to the user ONLY when everything is done:
+	•	Global neighborhood geolocation
+	•	Location-linked transactions
+	•	Phone number identity
+	•	QR system
+	•	Updated marketplace
+	•	Updated company creation
+	•	Agents updated
+	•	Simulation done
+	•	Tests passed 3×
+	•	No placeholders remain
+
+Return only this message:
+
+“Global geolocation, phone identity, QR code system, marketplace integration, and all required simulations have been fully implemented and tested three times. Everything works correctly.”
+
+Until then:
+Stay silent and continue working.
+
+⸻
+
+Whenever you want, I can also design:
+
+📍 The UI of the global map
+📱 The phone-number onboarding flow
+🔢 The QR code design style
+📦 The multi-country payment gateway spec
+🗺 A full geolocation API schema
+
+Just tell me.

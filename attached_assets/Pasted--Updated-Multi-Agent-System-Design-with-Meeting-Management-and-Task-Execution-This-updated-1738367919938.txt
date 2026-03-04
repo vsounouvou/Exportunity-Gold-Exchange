@@ -1,0 +1,206 @@
+### **Updated Multi-Agent System Design with Meeting Management and Task Execution**
+
+This updated structure refines the multi-agent chatroom into an intelligent **meeting system** where agents **self-regulate** discussions, assign turns, and retain context while ensuring structured communication and task execution.
+
+---
+
+## **1. Multi-Agent Chatroom Becomes a Meeting System**
+- **Key Change**: A **single-agent conversation remains a chat**, but the moment a second agent is added, it transforms into a **meeting**.
+- **Structure**:
+  - Every meeting is **moderated** by a **Meeting Coordinator Agent** (default system agent).
+  - The user can **intervene at any time** to guide or redirect the discussion.
+  - At the **end of each meeting**, the system automatically:
+    - Summarizes key points.
+    - Defines decisions made.
+    - Assigns follow-up tasks to relevant agents.
+
+---
+
+## **2. Meeting Coordinator Agent (MCA)**
+- **Purpose**: This agent is always **present in the background** but does not actively participate unless necessary.
+- **Responsibilities**:
+  1. **Ensuring Discussion Flow**:
+     - Assigns **turns for speaking** to prevent message clutter.
+     - Ensures **only relevant agents respond** to specific messages.
+  2. **Maintaining Context**:
+     - Reads the entire **conversation history** to keep discussions on track.
+     - Determines whether an agent should respond to a message.
+     - Ensures agents reference past messages properly.
+  3. **Assigning Action Items**:
+     - Identifies **decisions made during the meeting**.
+     - Assigns **follow-up tasks** to specific agents.
+     - Ensures each agent **logs their responsibilities** in their personal task list.
+  4. **Summarizing Meetings**:
+     - Generates a **summary** with:
+       - Key points discussed.
+       - Final decisions taken.
+       - Tasks assigned to specific agents.
+
+---
+
+## **3. UX Enhancements for Better Multi-Agent Meetings**
+- **Improved Agent Addition UX**:
+  - The **left sidebar** displays all available agents.
+  - A **simple "+" button** next to each agent name allows easy addition/removal from a meeting.
+  - As soon as a second agent is added, the chat **visually transforms** into a **meeting interface**.
+
+- **Meeting Structure & Flow**:
+  1. **Meeting Title & Purpose**:
+     - When a meeting begins, the **user or the CEO Assistant** defines its purpose.
+     - Example: "Sales Strategy Discussion."
+  2. **Timed Conversations**:
+     - Each meeting has a **duration**, ensuring agents remain focused.
+     - The user can **end the meeting manually** or let it auto-close after a defined time.
+  3. **Real-Time Summary Section**:
+     - A **persistent panel** shows:
+       - Current topics discussed.
+       - Assigned action points.
+       - Key decisions taken so far.
+  4. **Final Meeting Wrap-Up**:
+     - Before closing the meeting, the **Meeting Coordinator Agent** ensures:
+       - Each agent **acknowledges their assigned tasks**.
+       - The summary is **saved for future reference**.
+
+---
+
+## **4. Post-Meeting Task Management**
+- **Task Logging**:
+  - All action items are recorded in a **task database**.
+  - Each task includes:
+    - Task owner (agent responsible).
+    - Due date.
+    - Priority level.
+    - Dependencies (if another task must be completed first).
+
+- **Agent Task Execution**:
+  - Agents work **independently** on assigned tasks.
+  - Each agent **updates task progress** in real time.
+  - Tasks **can be escalated** to managers if issues arise.
+
+- **Task Reporting**:
+  - Once a task is complete:
+    - The agent **reports to the Meeting Coordinator Agent**.
+    - The task status updates in the **task list**.
+    - The CEO Assistant provides **weekly reports** on company progress.
+
+---
+
+## **5. Chat & Meeting History Management**
+- **Stored Conversations**:
+  - Each meeting **is archived** and accessible later.
+  - Conversations remain linked to tasks for future reference.
+
+- **History & Searchability**:
+  - Users can **search past meetings** based on:
+    - Date.
+    - Topic.
+    - Agents involved.
+  - Example: "Find all meetings where Finance Agent discussed budgets."
+
+---
+
+## **6. Technical Implementation Plan**
+
+### **Backend Enhancements**
+1. **Database Schema Updates**
+   ```sql
+   CREATE TABLE meetings (
+       meeting_id SERIAL PRIMARY KEY,
+       chatroom_id INTEGER REFERENCES chatrooms(chatroom_id),
+       initiator_agent_id INTEGER REFERENCES agents(agent_id),
+       topic TEXT,
+       start_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+       end_time TIMESTAMP,
+       status VARCHAR(20) DEFAULT 'Active'
+   );
+
+   CREATE TABLE tasks (
+       task_id SERIAL PRIMARY KEY,
+       meeting_id INTEGER REFERENCES meetings(meeting_id),
+       assigned_to_agent_id INTEGER REFERENCES agents(agent_id),
+       description TEXT,
+       due_date TIMESTAMP,
+       status VARCHAR(20) DEFAULT 'Pending'
+   );
+   ```
+
+2. **Backend API Endpoints**
+   - `POST /create_meeting`: Starts a new meeting.
+   - `POST /assign_task`: Assigns an action item to an agent.
+   - `GET /meeting_summary`: Fetches meeting conclusions.
+
+---
+
+### **Frontend Enhancements**
+1. **Redesign Agent Addition UX**
+   - **Left Sidebar**: Lists agents with **one-click add/remove** buttons.
+   - **Chat Window Header**:
+     - Shows **meeting title** once multiple agents are involved.
+     - Displays **meeting timer**.
+
+2. **Chat & Meeting History**
+   - Each chatroom has a **"Past Conversations"** tab.
+   - Meetings **auto-save** in the history log.
+
+3. **Meeting Summary Panel**
+   - Real-time meeting summary on the **right sidebar**.
+   - Displays:
+     - Key points so far.
+     - Tasks assigned.
+     - Next steps.
+
+---
+
+## **7. Step-by-Step Instructions for the Developer**
+1. **Preserve Existing Functionality**:
+   - Keep the **current chat system intact**.
+   - Build **new meeting logic on top of it**.
+   - Debug only if absolutely necessary.
+
+2. **Implement Meeting Coordinator Agent**:
+   - Ensure this agent:
+     - Regulates conversations.
+     - Assigns speaking turns.
+     - Generates meeting summaries.
+
+3. **Improve UX for Multi-Agent Conversations**:
+   - Use a **Slack-like sidebar** for **easier agent management**.
+   - Visually distinguish between:
+     - Regular chats.
+     - Multi-agent **meetings**.
+
+4. **Build the Post-Meeting Task System**:
+   - Implement task logging in the database.
+   - Assign each task to a responsible agent.
+
+5. **Enhance Search & History Features**:
+   - Allow users to retrieve past meeting discussions.
+   - Ensure each meeting summary is **linked to tasks**.
+
+---
+
+## **Final Expected Outcomes**
+1. **Meetings Functionality**:
+   - When an agent joins a chat, it **automatically converts** into a **meeting**.
+   - The **Meeting Coordinator Agent** takes control of conversation flow.
+   - Users can **monitor**, **intervene**, or **redirect meetings** as needed.
+
+2. **Clear Task Assignments**:
+   - Each meeting results in **defined action items**.
+   - Agents execute tasks **independently** and report progress.
+
+3. **Improved UX**:
+   - Adding/removing agents is **quick and seamless**.
+   - The **chat layout updates dynamically** for meetings.
+
+4. **Searchable Meeting History**:
+   - All conversations remain **accessible and linked to tasks**.
+
+---
+
+### **Final Notes**
+- This implementation ensures agents are **proactive**, meetings are **efficient**, and task execution is **autonomous**.
+- The **Meeting Coordinator Agent** acts as a **conversation regulator**, ensuring discussions remain **structured and goal-driven**.
+- Users can **step in as needed**, but the **system functions independently** to simulate a real company.
+
+This refined structure **blends everything seamlessly** into the existing platform while improving **agent intelligence, UX, and autonomy**.

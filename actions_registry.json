@@ -1,0 +1,1375 @@
+{
+  "generatedAt": "2026-02-18T02:40:03.205Z",
+  "source": "scripts/generate-actions-registry.ts",
+  "totalActions": 53,
+  "permissionMatrix": {
+    "super_admin": {
+      "ACTION_APPROVE": true,
+      "ACTION_EXECUTE": true,
+      "ACTION_PROPOSE": true,
+      "AGENDA_EVENT_CREATE": true,
+      "AGENDA_EVENT_UPDATE": true,
+      "API_KEY_CREATE": true,
+      "AUDIT_EXPORT": true,
+      "AUTOMATION_CREATE": true,
+      "AUTOMATION_DISABLE": true,
+      "AUTOMATION_ENABLE": true,
+      "AUTOMATION_RUN_NOW": true,
+      "BACKGROUND_SESSION_CREATE": true,
+      "BRAINSTORM_EXTEND": true,
+      "BRAINSTORM_START": true,
+      "BRAINSTORM_STOP": true,
+      "CONTACT_CREATE": true,
+      "CONTACT_UPDATE": true,
+      "DECISION_APPROVE": true,
+      "DECISION_CREATE": true,
+      "EMERGENCY_STOP_DISABLE": true,
+      "EMERGENCY_STOP_ENABLE": true,
+      "FEATURE_FLAG_UPDATE": true,
+      "FILTER_APPLY": true,
+      "GENERATE_AGENT_IMAGE": true,
+      "MIGRATION_EXECUTE": true,
+      "OBJECTIVE_CLOSE": true,
+      "OBJECTIVE_CREATE": true,
+      "OBJECTIVE_UPDATE": true,
+      "PAGE_OPEN": true,
+      "PANEL_CLOSE": true,
+      "PANEL_EXPAND": true,
+      "PERMISSION_UPDATE": true,
+      "PRODUCT_CREATE": true,
+      "PRODUCT_LISTING_APPROVE": true,
+      "PRODUCT_UPDATE": true,
+      "REFUND_EXECUTE": true,
+      "SCHEDULE_BACKUP": true,
+      "SEARCH_QUERY": true,
+      "SEND_EMAIL": true,
+      "SEND_SMS": true,
+      "SEND_WHATSAPP": true,
+      "SETTLEMENT_EXECUTE": true,
+      "SHOP_CREATE": true,
+      "SHOP_UPDATE": true,
+      "SORT_CHANGE": true,
+      "SYSTEM_HEALTH_CHECK": true,
+      "TAB_SWITCH": true,
+      "TASK_CREATE": true,
+      "TASK_UPDATE_STATUS": true,
+      "TRANSCRIBE_VOICE_NOTE": true,
+      "VIEW_ENTITY": true,
+      "VIEW_LIST": true,
+      "WALLET_LOCK": true
+    },
+    "chairman": {
+      "ACTION_APPROVE": true,
+      "ACTION_EXECUTE": true,
+      "ACTION_PROPOSE": true,
+      "AGENDA_EVENT_CREATE": true,
+      "AGENDA_EVENT_UPDATE": true,
+      "API_KEY_CREATE": true,
+      "AUDIT_EXPORT": true,
+      "AUTOMATION_CREATE": true,
+      "AUTOMATION_DISABLE": true,
+      "AUTOMATION_ENABLE": true,
+      "AUTOMATION_RUN_NOW": true,
+      "BACKGROUND_SESSION_CREATE": true,
+      "BRAINSTORM_EXTEND": true,
+      "BRAINSTORM_START": true,
+      "BRAINSTORM_STOP": true,
+      "CONTACT_CREATE": true,
+      "CONTACT_UPDATE": true,
+      "DECISION_APPROVE": true,
+      "DECISION_CREATE": true,
+      "EMERGENCY_STOP_DISABLE": true,
+      "EMERGENCY_STOP_ENABLE": true,
+      "FEATURE_FLAG_UPDATE": true,
+      "FILTER_APPLY": true,
+      "GENERATE_AGENT_IMAGE": true,
+      "MIGRATION_EXECUTE": true,
+      "OBJECTIVE_CLOSE": true,
+      "OBJECTIVE_CREATE": true,
+      "OBJECTIVE_UPDATE": true,
+      "PAGE_OPEN": true,
+      "PANEL_CLOSE": true,
+      "PANEL_EXPAND": true,
+      "PERMISSION_UPDATE": true,
+      "PRODUCT_CREATE": true,
+      "PRODUCT_LISTING_APPROVE": true,
+      "PRODUCT_UPDATE": true,
+      "REFUND_EXECUTE": true,
+      "SCHEDULE_BACKUP": true,
+      "SEARCH_QUERY": true,
+      "SEND_EMAIL": true,
+      "SEND_SMS": true,
+      "SEND_WHATSAPP": true,
+      "SETTLEMENT_EXECUTE": true,
+      "SHOP_CREATE": true,
+      "SHOP_UPDATE": true,
+      "SORT_CHANGE": true,
+      "SYSTEM_HEALTH_CHECK": true,
+      "TAB_SWITCH": true,
+      "TASK_CREATE": true,
+      "TASK_UPDATE_STATUS": true,
+      "TRANSCRIBE_VOICE_NOTE": true,
+      "VIEW_ENTITY": true,
+      "VIEW_LIST": true,
+      "WALLET_LOCK": true
+    },
+    "admin": {
+      "ACTION_APPROVE": true,
+      "ACTION_EXECUTE": true,
+      "ACTION_PROPOSE": true,
+      "AGENDA_EVENT_CREATE": true,
+      "AGENDA_EVENT_UPDATE": true,
+      "API_KEY_CREATE": false,
+      "AUDIT_EXPORT": true,
+      "AUTOMATION_CREATE": true,
+      "AUTOMATION_DISABLE": true,
+      "AUTOMATION_ENABLE": true,
+      "AUTOMATION_RUN_NOW": true,
+      "BACKGROUND_SESSION_CREATE": true,
+      "BRAINSTORM_EXTEND": true,
+      "BRAINSTORM_START": true,
+      "BRAINSTORM_STOP": true,
+      "CONTACT_CREATE": true,
+      "CONTACT_UPDATE": true,
+      "DECISION_APPROVE": true,
+      "DECISION_CREATE": true,
+      "EMERGENCY_STOP_DISABLE": false,
+      "EMERGENCY_STOP_ENABLE": false,
+      "FEATURE_FLAG_UPDATE": true,
+      "FILTER_APPLY": true,
+      "GENERATE_AGENT_IMAGE": true,
+      "MIGRATION_EXECUTE": false,
+      "OBJECTIVE_CLOSE": true,
+      "OBJECTIVE_CREATE": true,
+      "OBJECTIVE_UPDATE": true,
+      "PAGE_OPEN": true,
+      "PANEL_CLOSE": true,
+      "PANEL_EXPAND": true,
+      "PERMISSION_UPDATE": false,
+      "PRODUCT_CREATE": true,
+      "PRODUCT_LISTING_APPROVE": true,
+      "PRODUCT_UPDATE": true,
+      "REFUND_EXECUTE": false,
+      "SCHEDULE_BACKUP": true,
+      "SEARCH_QUERY": true,
+      "SEND_EMAIL": true,
+      "SEND_SMS": true,
+      "SEND_WHATSAPP": true,
+      "SETTLEMENT_EXECUTE": false,
+      "SHOP_CREATE": true,
+      "SHOP_UPDATE": true,
+      "SORT_CHANGE": true,
+      "SYSTEM_HEALTH_CHECK": true,
+      "TAB_SWITCH": true,
+      "TASK_CREATE": true,
+      "TASK_UPDATE_STATUS": true,
+      "TRANSCRIBE_VOICE_NOTE": true,
+      "VIEW_ENTITY": true,
+      "VIEW_LIST": true,
+      "WALLET_LOCK": false
+    },
+    "operator": {
+      "ACTION_APPROVE": false,
+      "ACTION_EXECUTE": false,
+      "ACTION_PROPOSE": true,
+      "AGENDA_EVENT_CREATE": true,
+      "AGENDA_EVENT_UPDATE": true,
+      "API_KEY_CREATE": false,
+      "AUDIT_EXPORT": false,
+      "AUTOMATION_CREATE": false,
+      "AUTOMATION_DISABLE": true,
+      "AUTOMATION_ENABLE": true,
+      "AUTOMATION_RUN_NOW": false,
+      "BACKGROUND_SESSION_CREATE": true,
+      "BRAINSTORM_EXTEND": true,
+      "BRAINSTORM_START": true,
+      "BRAINSTORM_STOP": true,
+      "CONTACT_CREATE": true,
+      "CONTACT_UPDATE": true,
+      "DECISION_APPROVE": false,
+      "DECISION_CREATE": true,
+      "EMERGENCY_STOP_DISABLE": false,
+      "EMERGENCY_STOP_ENABLE": false,
+      "FEATURE_FLAG_UPDATE": false,
+      "FILTER_APPLY": true,
+      "GENERATE_AGENT_IMAGE": true,
+      "MIGRATION_EXECUTE": false,
+      "OBJECTIVE_CLOSE": true,
+      "OBJECTIVE_CREATE": true,
+      "OBJECTIVE_UPDATE": true,
+      "PAGE_OPEN": true,
+      "PANEL_CLOSE": true,
+      "PANEL_EXPAND": true,
+      "PERMISSION_UPDATE": false,
+      "PRODUCT_CREATE": true,
+      "PRODUCT_LISTING_APPROVE": false,
+      "PRODUCT_UPDATE": true,
+      "REFUND_EXECUTE": false,
+      "SCHEDULE_BACKUP": false,
+      "SEARCH_QUERY": true,
+      "SEND_EMAIL": true,
+      "SEND_SMS": true,
+      "SEND_WHATSAPP": true,
+      "SETTLEMENT_EXECUTE": false,
+      "SHOP_CREATE": true,
+      "SHOP_UPDATE": true,
+      "SORT_CHANGE": true,
+      "SYSTEM_HEALTH_CHECK": false,
+      "TAB_SWITCH": true,
+      "TASK_CREATE": true,
+      "TASK_UPDATE_STATUS": true,
+      "TRANSCRIBE_VOICE_NOTE": true,
+      "VIEW_ENTITY": true,
+      "VIEW_LIST": true,
+      "WALLET_LOCK": false
+    },
+    "viewer": {
+      "ACTION_APPROVE": false,
+      "ACTION_EXECUTE": false,
+      "ACTION_PROPOSE": false,
+      "AGENDA_EVENT_CREATE": false,
+      "AGENDA_EVENT_UPDATE": false,
+      "API_KEY_CREATE": false,
+      "AUDIT_EXPORT": false,
+      "AUTOMATION_CREATE": false,
+      "AUTOMATION_DISABLE": false,
+      "AUTOMATION_ENABLE": false,
+      "AUTOMATION_RUN_NOW": false,
+      "BACKGROUND_SESSION_CREATE": false,
+      "BRAINSTORM_EXTEND": false,
+      "BRAINSTORM_START": false,
+      "BRAINSTORM_STOP": false,
+      "CONTACT_CREATE": false,
+      "CONTACT_UPDATE": false,
+      "DECISION_APPROVE": false,
+      "DECISION_CREATE": false,
+      "EMERGENCY_STOP_DISABLE": false,
+      "EMERGENCY_STOP_ENABLE": false,
+      "FEATURE_FLAG_UPDATE": false,
+      "FILTER_APPLY": true,
+      "GENERATE_AGENT_IMAGE": false,
+      "MIGRATION_EXECUTE": false,
+      "OBJECTIVE_CLOSE": false,
+      "OBJECTIVE_CREATE": false,
+      "OBJECTIVE_UPDATE": false,
+      "PAGE_OPEN": true,
+      "PANEL_CLOSE": true,
+      "PANEL_EXPAND": true,
+      "PERMISSION_UPDATE": false,
+      "PRODUCT_CREATE": false,
+      "PRODUCT_LISTING_APPROVE": false,
+      "PRODUCT_UPDATE": false,
+      "REFUND_EXECUTE": false,
+      "SCHEDULE_BACKUP": false,
+      "SEARCH_QUERY": true,
+      "SEND_EMAIL": false,
+      "SEND_SMS": false,
+      "SEND_WHATSAPP": false,
+      "SETTLEMENT_EXECUTE": false,
+      "SHOP_CREATE": false,
+      "SHOP_UPDATE": false,
+      "SORT_CHANGE": true,
+      "SYSTEM_HEALTH_CHECK": true,
+      "TAB_SWITCH": true,
+      "TASK_CREATE": false,
+      "TASK_UPDATE_STATUS": false,
+      "TRANSCRIBE_VOICE_NOTE": false,
+      "VIEW_ENTITY": true,
+      "VIEW_LIST": true,
+      "WALLET_LOCK": false
+    }
+  },
+  "items": [
+    {
+      "actionKey": "ACTION_APPROVE",
+      "category": "APPROVAL",
+      "description": "Approve action",
+      "riskLevel": "HIGH",
+      "approvalRequired": true,
+      "requiredPermissions": [
+        "actions.action_approve"
+      ],
+      "requiresObjective": true,
+      "requiresSession": false,
+      "discoveredUsage": [
+        {
+          "file": "server/lib/actions/actionRegistry.ts",
+          "count": 1
+        }
+      ],
+      "usageCount": 1
+    },
+    {
+      "actionKey": "ACTION_EXECUTE",
+      "category": "EXECUTION",
+      "description": "Execute action",
+      "riskLevel": "HIGH",
+      "approvalRequired": true,
+      "requiredPermissions": [
+        "actions.action_execute"
+      ],
+      "requiresObjective": true,
+      "requiresSession": false,
+      "discoveredUsage": [
+        {
+          "file": "server/lib/actions/actionRegistry.ts",
+          "count": 1
+        }
+      ],
+      "usageCount": 1
+    },
+    {
+      "actionKey": "ACTION_PROPOSE",
+      "category": "CREATION",
+      "description": "Propose operational action",
+      "riskLevel": "MED",
+      "approvalRequired": false,
+      "requiredPermissions": [
+        "actions.action_propose"
+      ],
+      "requiresObjective": true,
+      "requiresSession": false,
+      "discoveredUsage": [
+        {
+          "file": "server/lib/actions/actionRegistry.ts",
+          "count": 1
+        }
+      ],
+      "usageCount": 1
+    },
+    {
+      "actionKey": "AGENDA_EVENT_CREATE",
+      "category": "CREATION",
+      "description": "Create agenda event",
+      "riskLevel": "MED",
+      "approvalRequired": false,
+      "requiredPermissions": [
+        "actions.agenda_event_create"
+      ],
+      "requiresObjective": true,
+      "requiresSession": false,
+      "discoveredUsage": [
+        {
+          "file": "server/lib/actions/actionRegistry.ts",
+          "count": 1
+        }
+      ],
+      "usageCount": 1
+    },
+    {
+      "actionKey": "AGENDA_EVENT_UPDATE",
+      "category": "UPDATE",
+      "description": "Update agenda event",
+      "riskLevel": "MED",
+      "approvalRequired": false,
+      "requiredPermissions": [
+        "actions.agenda_event_update"
+      ],
+      "requiresObjective": true,
+      "requiresSession": false,
+      "discoveredUsage": [
+        {
+          "file": "server/lib/actions/actionRegistry.ts",
+          "count": 1
+        }
+      ],
+      "usageCount": 1
+    },
+    {
+      "actionKey": "API_KEY_CREATE",
+      "category": "CREATION",
+      "description": "Create API key",
+      "riskLevel": "CRITICAL",
+      "approvalRequired": true,
+      "requiredPermissions": [
+        "actions.api_key_create"
+      ],
+      "requiresObjective": false,
+      "requiresSession": false,
+      "discoveredUsage": [
+        {
+          "file": "server/lib/actions/actionRegistry.ts",
+          "count": 1
+        }
+      ],
+      "usageCount": 1
+    },
+    {
+      "actionKey": "AUDIT_EXPORT",
+      "category": "SYSTEM",
+      "description": "Export audit logs",
+      "riskLevel": "HIGH",
+      "approvalRequired": true,
+      "requiredPermissions": [
+        "actions.audit_export"
+      ],
+      "requiresObjective": false,
+      "requiresSession": false,
+      "discoveredUsage": [
+        {
+          "file": "server/lib/actions/actionRegistry.ts",
+          "count": 1
+        }
+      ],
+      "usageCount": 1
+    },
+    {
+      "actionKey": "AUTOMATION_CREATE",
+      "category": "CREATION",
+      "description": "Create automation",
+      "riskLevel": "HIGH",
+      "approvalRequired": true,
+      "requiredPermissions": [
+        "actions.automation_create"
+      ],
+      "requiresObjective": true,
+      "requiresSession": false,
+      "discoveredUsage": [
+        {
+          "file": "server/lib/actions/actionRegistry.ts",
+          "count": 1
+        }
+      ],
+      "usageCount": 1
+    },
+    {
+      "actionKey": "AUTOMATION_DISABLE",
+      "category": "UPDATE",
+      "description": "Disable automation",
+      "riskLevel": "MED",
+      "approvalRequired": false,
+      "requiredPermissions": [
+        "actions.automation_disable"
+      ],
+      "requiresObjective": true,
+      "requiresSession": false,
+      "discoveredUsage": [
+        {
+          "file": "server/lib/actions/actionRegistry.ts",
+          "count": 1
+        }
+      ],
+      "usageCount": 1
+    },
+    {
+      "actionKey": "AUTOMATION_ENABLE",
+      "category": "UPDATE",
+      "description": "Enable automation",
+      "riskLevel": "MED",
+      "approvalRequired": false,
+      "requiredPermissions": [
+        "actions.automation_enable"
+      ],
+      "requiresObjective": true,
+      "requiresSession": false,
+      "discoveredUsage": [
+        {
+          "file": "server/lib/actions/actionRegistry.ts",
+          "count": 1
+        }
+      ],
+      "usageCount": 1
+    },
+    {
+      "actionKey": "AUTOMATION_RUN_NOW",
+      "category": "EXECUTION",
+      "description": "Run automation now",
+      "riskLevel": "HIGH",
+      "approvalRequired": true,
+      "requiredPermissions": [
+        "actions.automation_run_now"
+      ],
+      "requiresObjective": true,
+      "requiresSession": false,
+      "discoveredUsage": [
+        {
+          "file": "server/lib/actions/actionRegistry.ts",
+          "count": 1
+        }
+      ],
+      "usageCount": 1
+    },
+    {
+      "actionKey": "BACKGROUND_SESSION_CREATE",
+      "category": "CREATION",
+      "description": "Create background session",
+      "riskLevel": "MED",
+      "approvalRequired": false,
+      "requiredPermissions": [
+        "actions.background_session_create"
+      ],
+      "requiresObjective": true,
+      "requiresSession": true,
+      "discoveredUsage": [
+        {
+          "file": "server/lib/actions/actionRegistry.ts",
+          "count": 1
+        }
+      ],
+      "usageCount": 1
+    },
+    {
+      "actionKey": "BRAINSTORM_EXTEND",
+      "category": "EXECUTION",
+      "description": "Extend brainstorm session",
+      "riskLevel": "MED",
+      "approvalRequired": false,
+      "requiredPermissions": [
+        "actions.brainstorm_extend"
+      ],
+      "requiresObjective": false,
+      "requiresSession": true,
+      "discoveredUsage": [
+        {
+          "file": "server/lib/actions/actionRegistry.ts",
+          "count": 1
+        }
+      ],
+      "usageCount": 1
+    },
+    {
+      "actionKey": "BRAINSTORM_START",
+      "category": "EXECUTION",
+      "description": "Start brainstorm session",
+      "riskLevel": "MED",
+      "approvalRequired": false,
+      "requiredPermissions": [
+        "actions.brainstorm_start"
+      ],
+      "requiresObjective": true,
+      "requiresSession": true,
+      "discoveredUsage": [
+        {
+          "file": "server/lib/actions/actionRegistry.ts",
+          "count": 1
+        }
+      ],
+      "usageCount": 1
+    },
+    {
+      "actionKey": "BRAINSTORM_STOP",
+      "category": "EXECUTION",
+      "description": "Stop brainstorm session",
+      "riskLevel": "LOW",
+      "approvalRequired": false,
+      "requiredPermissions": [
+        "actions.brainstorm_stop"
+      ],
+      "requiresObjective": false,
+      "requiresSession": true,
+      "discoveredUsage": [
+        {
+          "file": "server/lib/actions/actionRegistry.ts",
+          "count": 1
+        }
+      ],
+      "usageCount": 1
+    },
+    {
+      "actionKey": "CONTACT_CREATE",
+      "category": "CREATION",
+      "description": "Create contact",
+      "riskLevel": "LOW",
+      "approvalRequired": false,
+      "requiredPermissions": [
+        "actions.contact_create"
+      ],
+      "requiresObjective": false,
+      "requiresSession": false,
+      "discoveredUsage": [
+        {
+          "file": "server/lib/actions/actionRegistry.ts",
+          "count": 1
+        }
+      ],
+      "usageCount": 1
+    },
+    {
+      "actionKey": "CONTACT_UPDATE",
+      "category": "UPDATE",
+      "description": "Update contact",
+      "riskLevel": "LOW",
+      "approvalRequired": false,
+      "requiredPermissions": [
+        "actions.contact_update"
+      ],
+      "requiresObjective": false,
+      "requiresSession": false,
+      "discoveredUsage": [
+        {
+          "file": "server/lib/actions/actionRegistry.ts",
+          "count": 1
+        }
+      ],
+      "usageCount": 1
+    },
+    {
+      "actionKey": "DECISION_APPROVE",
+      "category": "APPROVAL",
+      "description": "Approve decision",
+      "riskLevel": "HIGH",
+      "approvalRequired": true,
+      "requiredPermissions": [
+        "actions.decision_approve"
+      ],
+      "requiresObjective": true,
+      "requiresSession": false,
+      "discoveredUsage": [
+        {
+          "file": "server/lib/actions/actionRegistry.ts",
+          "count": 1
+        }
+      ],
+      "usageCount": 1
+    },
+    {
+      "actionKey": "DECISION_CREATE",
+      "category": "CREATION",
+      "description": "Create decision",
+      "riskLevel": "MED",
+      "approvalRequired": false,
+      "requiredPermissions": [
+        "actions.decision_create"
+      ],
+      "requiresObjective": true,
+      "requiresSession": true,
+      "discoveredUsage": [
+        {
+          "file": "server/lib/actions/actionRegistry.ts",
+          "count": 1
+        }
+      ],
+      "usageCount": 1
+    },
+    {
+      "actionKey": "EMERGENCY_STOP_DISABLE",
+      "category": "SYSTEM",
+      "description": "Disable emergency stop",
+      "riskLevel": "CRITICAL",
+      "approvalRequired": true,
+      "requiredPermissions": [
+        "actions.emergency_stop_disable"
+      ],
+      "requiresObjective": false,
+      "requiresSession": false,
+      "discoveredUsage": [
+        {
+          "file": "server/lib/actions/actionRegistry.ts",
+          "count": 1
+        }
+      ],
+      "usageCount": 1
+    },
+    {
+      "actionKey": "EMERGENCY_STOP_ENABLE",
+      "category": "SYSTEM",
+      "description": "Enable emergency stop",
+      "riskLevel": "CRITICAL",
+      "approvalRequired": true,
+      "requiredPermissions": [
+        "actions.emergency_stop_enable"
+      ],
+      "requiresObjective": false,
+      "requiresSession": false,
+      "discoveredUsage": [
+        {
+          "file": "server/lib/actions/actionRegistry.ts",
+          "count": 1
+        }
+      ],
+      "usageCount": 1
+    },
+    {
+      "actionKey": "FEATURE_FLAG_UPDATE",
+      "category": "UPDATE",
+      "description": "Update feature flag",
+      "riskLevel": "HIGH",
+      "approvalRequired": true,
+      "requiredPermissions": [
+        "actions.feature_flag_update"
+      ],
+      "requiresObjective": false,
+      "requiresSession": false,
+      "discoveredUsage": [
+        {
+          "file": "server/lib/actions/actionRegistry.ts",
+          "count": 1
+        }
+      ],
+      "usageCount": 1
+    },
+    {
+      "actionKey": "FILTER_APPLY",
+      "category": "NAVIGATION",
+      "description": "Apply filter",
+      "riskLevel": "LOW",
+      "approvalRequired": false,
+      "requiredPermissions": [
+        "actions.filter_apply"
+      ],
+      "requiresObjective": false,
+      "requiresSession": false,
+      "discoveredUsage": [
+        {
+          "file": "server/lib/actions/actionRegistry.ts",
+          "count": 1
+        }
+      ],
+      "usageCount": 1
+    },
+    {
+      "actionKey": "GENERATE_AGENT_IMAGE",
+      "category": "EXECUTION",
+      "description": "Generate agent profile image",
+      "riskLevel": "MED",
+      "approvalRequired": false,
+      "requiredPermissions": [
+        "actions.generate_agent_image"
+      ],
+      "requiresObjective": false,
+      "requiresSession": false,
+      "discoveredUsage": [
+        {
+          "file": "server/lib/actions/actionRegistry.ts",
+          "count": 1
+        }
+      ],
+      "usageCount": 1
+    },
+    {
+      "actionKey": "MIGRATION_EXECUTE",
+      "category": "EXECUTION",
+      "description": "Run migration",
+      "riskLevel": "CRITICAL",
+      "approvalRequired": true,
+      "requiredPermissions": [
+        "actions.migration_execute"
+      ],
+      "requiresObjective": false,
+      "requiresSession": false,
+      "discoveredUsage": [
+        {
+          "file": "server/lib/actions/actionRegistry.ts",
+          "count": 1
+        }
+      ],
+      "usageCount": 1
+    },
+    {
+      "actionKey": "OBJECTIVE_CLOSE",
+      "category": "UPDATE",
+      "description": "Close objective",
+      "riskLevel": "MED",
+      "approvalRequired": false,
+      "requiredPermissions": [
+        "actions.objective_close"
+      ],
+      "requiresObjective": true,
+      "requiresSession": false,
+      "discoveredUsage": [
+        {
+          "file": "server/lib/actions/actionRegistry.ts",
+          "count": 1
+        }
+      ],
+      "usageCount": 1
+    },
+    {
+      "actionKey": "OBJECTIVE_CREATE",
+      "category": "CREATION",
+      "description": "Create objective",
+      "riskLevel": "MED",
+      "approvalRequired": false,
+      "requiredPermissions": [
+        "actions.objective_create"
+      ],
+      "requiresObjective": false,
+      "requiresSession": false,
+      "discoveredUsage": [
+        {
+          "file": "server/lib/actions/actionRegistry.ts",
+          "count": 1
+        }
+      ],
+      "usageCount": 1
+    },
+    {
+      "actionKey": "OBJECTIVE_UPDATE",
+      "category": "UPDATE",
+      "description": "Update objective",
+      "riskLevel": "MED",
+      "approvalRequired": false,
+      "requiredPermissions": [
+        "actions.objective_update"
+      ],
+      "requiresObjective": true,
+      "requiresSession": false,
+      "discoveredUsage": [
+        {
+          "file": "server/lib/actions/actionRegistry.ts",
+          "count": 1
+        }
+      ],
+      "usageCount": 1
+    },
+    {
+      "actionKey": "PAGE_OPEN",
+      "category": "NAVIGATION",
+      "description": "Open page",
+      "riskLevel": "LOW",
+      "approvalRequired": false,
+      "requiredPermissions": [
+        "actions.page_open"
+      ],
+      "requiresObjective": false,
+      "requiresSession": false,
+      "discoveredUsage": [
+        {
+          "file": "server/lib/actions/actionRegistry.ts",
+          "count": 1
+        }
+      ],
+      "usageCount": 1
+    },
+    {
+      "actionKey": "PANEL_CLOSE",
+      "category": "NAVIGATION",
+      "description": "Close panel",
+      "riskLevel": "LOW",
+      "approvalRequired": false,
+      "requiredPermissions": [
+        "actions.panel_close"
+      ],
+      "requiresObjective": false,
+      "requiresSession": false,
+      "discoveredUsage": [
+        {
+          "file": "server/lib/actions/actionRegistry.ts",
+          "count": 1
+        }
+      ],
+      "usageCount": 1
+    },
+    {
+      "actionKey": "PANEL_EXPAND",
+      "category": "NAVIGATION",
+      "description": "Expand panel",
+      "riskLevel": "LOW",
+      "approvalRequired": false,
+      "requiredPermissions": [
+        "actions.panel_expand"
+      ],
+      "requiresObjective": false,
+      "requiresSession": false,
+      "discoveredUsage": [
+        {
+          "file": "server/lib/actions/actionRegistry.ts",
+          "count": 1
+        }
+      ],
+      "usageCount": 1
+    },
+    {
+      "actionKey": "PERMISSION_UPDATE",
+      "category": "UPDATE",
+      "description": "Update permissions",
+      "riskLevel": "CRITICAL",
+      "approvalRequired": true,
+      "requiredPermissions": [
+        "actions.permission_update"
+      ],
+      "requiresObjective": false,
+      "requiresSession": false,
+      "discoveredUsage": [
+        {
+          "file": "server/lib/actions/actionRegistry.ts",
+          "count": 1
+        }
+      ],
+      "usageCount": 1
+    },
+    {
+      "actionKey": "PRODUCT_CREATE",
+      "category": "CREATION",
+      "description": "Create product",
+      "riskLevel": "MED",
+      "approvalRequired": false,
+      "requiredPermissions": [
+        "actions.product_create"
+      ],
+      "requiresObjective": false,
+      "requiresSession": false,
+      "discoveredUsage": [
+        {
+          "file": "server/lib/actions/actionRegistry.ts",
+          "count": 1
+        }
+      ],
+      "usageCount": 1
+    },
+    {
+      "actionKey": "PRODUCT_LISTING_APPROVE",
+      "category": "APPROVAL",
+      "description": "Approve product listing",
+      "riskLevel": "HIGH",
+      "approvalRequired": true,
+      "requiredPermissions": [
+        "actions.product_listing_approve"
+      ],
+      "requiresObjective": false,
+      "requiresSession": false,
+      "discoveredUsage": [
+        {
+          "file": "server/lib/actions/actionRegistry.ts",
+          "count": 1
+        }
+      ],
+      "usageCount": 1
+    },
+    {
+      "actionKey": "PRODUCT_UPDATE",
+      "category": "UPDATE",
+      "description": "Update product",
+      "riskLevel": "MED",
+      "approvalRequired": false,
+      "requiredPermissions": [
+        "actions.product_update"
+      ],
+      "requiresObjective": false,
+      "requiresSession": false,
+      "discoveredUsage": [
+        {
+          "file": "server/lib/actions/actionRegistry.ts",
+          "count": 1
+        }
+      ],
+      "usageCount": 1
+    },
+    {
+      "actionKey": "REFUND_EXECUTE",
+      "category": "EXECUTION",
+      "description": "Execute refund",
+      "riskLevel": "CRITICAL",
+      "approvalRequired": true,
+      "requiredPermissions": [
+        "actions.refund_execute"
+      ],
+      "requiresObjective": false,
+      "requiresSession": false,
+      "discoveredUsage": [
+        {
+          "file": "server/lib/actions/actionRegistry.ts",
+          "count": 1
+        }
+      ],
+      "usageCount": 1
+    },
+    {
+      "actionKey": "SCHEDULE_BACKUP",
+      "category": "SYSTEM",
+      "description": "Schedule backup",
+      "riskLevel": "HIGH",
+      "approvalRequired": true,
+      "requiredPermissions": [
+        "actions.schedule_backup"
+      ],
+      "requiresObjective": false,
+      "requiresSession": false,
+      "discoveredUsage": [
+        {
+          "file": "server/lib/actions/actionRegistry.ts",
+          "count": 1
+        }
+      ],
+      "usageCount": 1
+    },
+    {
+      "actionKey": "SEARCH_QUERY",
+      "category": "NAVIGATION",
+      "description": "Execute search query",
+      "riskLevel": "LOW",
+      "approvalRequired": false,
+      "requiredPermissions": [
+        "actions.search_query"
+      ],
+      "requiresObjective": false,
+      "requiresSession": false,
+      "discoveredUsage": [
+        {
+          "file": "server/lib/actions/actionRegistry.ts",
+          "count": 1
+        }
+      ],
+      "usageCount": 1
+    },
+    {
+      "actionKey": "SEND_EMAIL",
+      "category": "EXECUTION",
+      "description": "Send email",
+      "riskLevel": "MED",
+      "approvalRequired": false,
+      "requiredPermissions": [
+        "actions.send_email"
+      ],
+      "requiresObjective": false,
+      "requiresSession": false,
+      "discoveredUsage": [
+        {
+          "file": "server/lib/actions/agentActionIntents.ts",
+          "count": 8
+        },
+        {
+          "file": "server/lib/actions/ActionRouter.ts",
+          "count": 4
+        },
+        {
+          "file": "server/routes/mail.ts",
+          "count": 3
+        },
+        {
+          "file": "client/src/pages/AITeamHubPage.tsx",
+          "count": 2
+        },
+        {
+          "file": "server/lib/actions/worker.ts",
+          "count": 2
+        },
+        {
+          "file": "server/lib/claude.ts",
+          "count": 2
+        },
+        {
+          "file": "server/lib/gemini.ts",
+          "count": 2
+        },
+        {
+          "file": "server/lib/openai.ts",
+          "count": 2
+        },
+        {
+          "file": "server/lib/actions/actionRegistry.ts",
+          "count": 1
+        },
+        {
+          "file": "server/lib/mail/indexer.ts",
+          "count": 1
+        },
+        {
+          "file": "server/lib/notifications.ts",
+          "count": 1
+        },
+        {
+          "file": "server/routes/email.ts",
+          "count": 1
+        }
+      ],
+      "usageCount": 29
+    },
+    {
+      "actionKey": "SEND_SMS",
+      "category": "EXECUTION",
+      "description": "Send SMS",
+      "riskLevel": "MED",
+      "approvalRequired": false,
+      "requiredPermissions": [
+        "actions.send_sms"
+      ],
+      "requiresObjective": false,
+      "requiresSession": false,
+      "discoveredUsage": [
+        {
+          "file": "server/lib/actions/agentActionIntents.ts",
+          "count": 5
+        },
+        {
+          "file": "server/lib/actions/worker.ts",
+          "count": 2
+        },
+        {
+          "file": "server/lib/actions/actionRegistry.ts",
+          "count": 1
+        },
+        {
+          "file": "server/lib/actions/ActionRouter.ts",
+          "count": 1
+        },
+        {
+          "file": "server/lib/notifications.ts",
+          "count": 1
+        }
+      ],
+      "usageCount": 10
+    },
+    {
+      "actionKey": "SEND_WHATSAPP",
+      "category": "EXECUTION",
+      "description": "Send WhatsApp",
+      "riskLevel": "MED",
+      "approvalRequired": false,
+      "requiredPermissions": [
+        "actions.send_whatsapp"
+      ],
+      "requiresObjective": false,
+      "requiresSession": false,
+      "discoveredUsage": [
+        {
+          "file": "server/lib/actions/agentActionIntents.ts",
+          "count": 5
+        },
+        {
+          "file": "server/lib/actions/actionRegistry.ts",
+          "count": 1
+        },
+        {
+          "file": "server/lib/actions/ActionRouter.ts",
+          "count": 1
+        },
+        {
+          "file": "server/lib/actions/worker.ts",
+          "count": 1
+        },
+        {
+          "file": "server/lib/notifications.ts",
+          "count": 1
+        }
+      ],
+      "usageCount": 9
+    },
+    {
+      "actionKey": "SETTLEMENT_EXECUTE",
+      "category": "EXECUTION",
+      "description": "Execute settlement",
+      "riskLevel": "CRITICAL",
+      "approvalRequired": true,
+      "requiredPermissions": [
+        "actions.settlement_execute"
+      ],
+      "requiresObjective": false,
+      "requiresSession": false,
+      "discoveredUsage": [
+        {
+          "file": "server/lib/actions/actionRegistry.ts",
+          "count": 1
+        }
+      ],
+      "usageCount": 1
+    },
+    {
+      "actionKey": "SHOP_CREATE",
+      "category": "CREATION",
+      "description": "Create shop",
+      "riskLevel": "MED",
+      "approvalRequired": false,
+      "requiredPermissions": [
+        "actions.shop_create"
+      ],
+      "requiresObjective": false,
+      "requiresSession": false,
+      "discoveredUsage": [
+        {
+          "file": "server/lib/actions/actionRegistry.ts",
+          "count": 1
+        }
+      ],
+      "usageCount": 1
+    },
+    {
+      "actionKey": "SHOP_UPDATE",
+      "category": "UPDATE",
+      "description": "Update shop",
+      "riskLevel": "MED",
+      "approvalRequired": false,
+      "requiredPermissions": [
+        "actions.shop_update"
+      ],
+      "requiresObjective": false,
+      "requiresSession": false,
+      "discoveredUsage": [
+        {
+          "file": "server/lib/actions/actionRegistry.ts",
+          "count": 1
+        }
+      ],
+      "usageCount": 1
+    },
+    {
+      "actionKey": "SORT_CHANGE",
+      "category": "NAVIGATION",
+      "description": "Change sort",
+      "riskLevel": "LOW",
+      "approvalRequired": false,
+      "requiredPermissions": [
+        "actions.sort_change"
+      ],
+      "requiresObjective": false,
+      "requiresSession": false,
+      "discoveredUsage": [
+        {
+          "file": "server/lib/actions/actionRegistry.ts",
+          "count": 1
+        }
+      ],
+      "usageCount": 1
+    },
+    {
+      "actionKey": "SYSTEM_HEALTH_CHECK",
+      "category": "SYSTEM",
+      "description": "Run health check",
+      "riskLevel": "LOW",
+      "approvalRequired": false,
+      "requiredPermissions": [
+        "actions.system_health_check"
+      ],
+      "requiresObjective": false,
+      "requiresSession": false,
+      "discoveredUsage": [
+        {
+          "file": "server/lib/actions/actionRegistry.ts",
+          "count": 1
+        }
+      ],
+      "usageCount": 1
+    },
+    {
+      "actionKey": "TAB_SWITCH",
+      "category": "NAVIGATION",
+      "description": "Switch tab",
+      "riskLevel": "LOW",
+      "approvalRequired": false,
+      "requiredPermissions": [
+        "actions.tab_switch"
+      ],
+      "requiresObjective": false,
+      "requiresSession": false,
+      "discoveredUsage": [
+        {
+          "file": "server/lib/actions/actionRegistry.ts",
+          "count": 1
+        }
+      ],
+      "usageCount": 1
+    },
+    {
+      "actionKey": "TASK_CREATE",
+      "category": "CREATION",
+      "description": "Create task",
+      "riskLevel": "MED",
+      "approvalRequired": false,
+      "requiredPermissions": [
+        "actions.task_create"
+      ],
+      "requiresObjective": true,
+      "requiresSession": false,
+      "discoveredUsage": [
+        {
+          "file": "server/lib/actions/actionRegistry.ts",
+          "count": 1
+        }
+      ],
+      "usageCount": 1
+    },
+    {
+      "actionKey": "TASK_UPDATE_STATUS",
+      "category": "UPDATE",
+      "description": "Update task status",
+      "riskLevel": "LOW",
+      "approvalRequired": false,
+      "requiredPermissions": [
+        "actions.task_update_status"
+      ],
+      "requiresObjective": true,
+      "requiresSession": false,
+      "discoveredUsage": [
+        {
+          "file": "server/lib/actions/actionRegistry.ts",
+          "count": 1
+        }
+      ],
+      "usageCount": 1
+    },
+    {
+      "actionKey": "TRANSCRIBE_VOICE_NOTE",
+      "category": "EXECUTION",
+      "description": "Transcribe voice note",
+      "riskLevel": "LOW",
+      "approvalRequired": false,
+      "requiredPermissions": [
+        "actions.transcribe_voice_note"
+      ],
+      "requiresObjective": false,
+      "requiresSession": false,
+      "discoveredUsage": [
+        {
+          "file": "server/lib/actions/actionRegistry.ts",
+          "count": 1
+        },
+        {
+          "file": "server/lib/actions/ActionRouter.ts",
+          "count": 1
+        },
+        {
+          "file": "server/lib/actions/worker.ts",
+          "count": 1
+        }
+      ],
+      "usageCount": 3
+    },
+    {
+      "actionKey": "VIEW_ENTITY",
+      "category": "NAVIGATION",
+      "description": "View single entity",
+      "riskLevel": "LOW",
+      "approvalRequired": false,
+      "requiredPermissions": [
+        "actions.view_entity"
+      ],
+      "requiresObjective": false,
+      "requiresSession": false,
+      "discoveredUsage": [
+        {
+          "file": "server/lib/actions/actionRegistry.ts",
+          "count": 1
+        }
+      ],
+      "usageCount": 1
+    },
+    {
+      "actionKey": "VIEW_LIST",
+      "category": "NAVIGATION",
+      "description": "View entity list",
+      "riskLevel": "LOW",
+      "approvalRequired": false,
+      "requiredPermissions": [
+        "actions.view_list"
+      ],
+      "requiresObjective": false,
+      "requiresSession": false,
+      "discoveredUsage": [
+        {
+          "file": "server/lib/actions/actionRegistry.ts",
+          "count": 1
+        }
+      ],
+      "usageCount": 1
+    },
+    {
+      "actionKey": "WALLET_LOCK",
+      "category": "UPDATE",
+      "description": "Lock wallet",
+      "riskLevel": "CRITICAL",
+      "approvalRequired": true,
+      "requiredPermissions": [
+        "actions.wallet_lock"
+      ],
+      "requiresObjective": false,
+      "requiresSession": false,
+      "discoveredUsage": [
+        {
+          "file": "server/lib/actions/actionRegistry.ts",
+          "count": 1
+        }
+      ],
+      "usageCount": 1
+    }
+  ]
+}

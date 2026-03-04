@@ -1,0 +1,144 @@
+Exactly, this is a classic UX trap: forcing login before value.
+Let’s flip it.
+
+I’ll write this as clear instructions for the builder agent so they know exactly what to change.
+
+⸻
+
+1. Core Rule
+
+Nobody should be blocked by a login wall just to see or use the platform.
+
+	•	Let users enter, play, talk to agents, and see the AI Team HQ without logging in.
+	•	Only ask for login / account when absolutely necessary (purchase, saving work, connecting integrations, etc.).
+
+⸻
+
+2. What to Remove / Change Right Now
+
+A. Remove the “forced login” wall
+	•	No more full-screen “Sign In / Sign Up” as the first thing.
+	•	No more separate “Buyer / Supplier / Shareholder / Admin” login buttons on the first screen.
+
+Instead:
+	•	Show the AI Team homepage directly.
+	•	If you really want login visible, use a small “Log in / Sign up” button in the top-right, not blocking anything.
+
+B. Keep the “Sign In” tab — but make it secondary
+	•	The “Sign In” form (email + password) still exists.
+	•	It’s only opened when:
+	•	User clicks “Log in” top-right
+	•	Or they try to do a restricted action (see below).
+
+⸻
+
+3. New Flow: “Guest First, Account Later”
+
+When a user lands on the platform:
+	1.	They automatically get a guest session:
+	•	session_id in localStorage/cookie.
+	•	No role yet (no buyer/supplier/shareholder/admin).
+	•	They can:
+	•	See AI Team interface
+	•	Talk to the AI Team (in a “demo / trial” mode)
+	•	See sample data for Work / Sales / Marketing (demo placeholders).
+	2.	Do not ask them to log in.
+	3.	Show a small banner or CTA:
+“Want to save your setup and come back later? Create an account.”
+
+⸻
+
+4. When Do We Require Login?
+
+Only when the user does something that must be tied to a real identity:
+
+A. Trying to purchase / place an order
+	•	When they click “Purchase”, “Confirm order”, or similar:
+	•	If guest → show soft wall:
+“To complete this purchase, please log in or create an account.”
+	•	Show Sign In / Sign Up form.
+
+B. Trying to save serious configuration
+
+Examples:
+	•	Saving their company profile
+	•	Connecting WhatsApp / payment gateway / other integrations
+	•	Saving a real supplier profile
+	•	Inviting team members
+
+At that moment:
+	•	Ask them to log in / sign up.
+
+C. When they want persistent access to their AI company
+	•	If they’ve used the guest mode and like it:
+	•	“Save this company and continue later” → triggers login/sign-up.
+
+⸻
+
+5. What About Roles (Buyer, Supplier, Shareholder, Admin)?
+
+These should NOT appear as big buttons on the home screen.
+
+Instead:
+	•	Role is decided after login or sign-up, inside the app.
+
+Suggested behavior:
+	•	On sign-up, ask:
+	•	“What best describes you?”
+	•	Buyer
+	•	Supplier
+	•	Shareholder
+	•	Admin / Operator
+	•	Internally, assign them the appropriate role and permissions.
+	•	But don’t confuse new users with all those role buttons on the very first screen.
+
+⸻
+
+6. UI Changes (Concrete for Builder)
+
+Before (current behavior):
+	•	User lands on page → sees:
+	•	Sign In / Sign Up
+	•	Buttons for Buyer / Supplier / Shareholder / Admin
+	•	Must log in to see anything.
+
+After (new behavior):
+
+Landing page = AI Team homepage, with:
+	•	AI conversation area
+	•	A few demo agent messages
+	•	Some fake/demo metrics in Work (if accessed as guest)
+	•	Top-right:
+	•	Log in
+	•	Sign up
+
+Sign in form (email + password) only appears when:
+	•	User clicks Log in
+	•	Or they hit a “restricted” action (checkout, saving, integrations).
+
+⸻
+
+7. Technical Notes for Builder Agent
+	1.	Implement guest sessions:
+	•	Create a guest_session with unique ID.
+	•	Store minimal state (conversation, temporary tasks, demo company).
+	2.	When user logs in or signs up:
+	•	Attach that guest session state to their real account where possible (optional).
+	3.	Make sure all main navigation items are visible in guest mode:
+	•	AI Team (full)
+	•	Work (with demo data or “locked sections” labelled clearly)
+	•	Agents (view-only, or demo agents)
+	•	Finance (demo or blurred, with CTA to sign up)
+	•	Company (read-only demo)
+	4.	Restricted actions show a modal:
+“To use this feature with real data, please log in or create an account.”
+
+⸻
+
+8. Summary in One Sentence
+
+Let people feel the power of the platform immediately as guests, and only ask them to log in when money, saving, or real configuration is involved.
+
+If you’d like, I can now:
+	•	Write exact copy for the modals and banners (“Continue as guest”, “You need to log in to complete this purchase”, etc.).
+	•	Or draft a short spec you can paste directly to your dev: “Task 1: Remove login wall… Task 2: Implement guest sessions…”

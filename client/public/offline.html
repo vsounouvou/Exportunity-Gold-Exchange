@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#0B0F19" />
+    <title>Offline</title>
+    <style>
+      :root { color-scheme: dark; }
+      html, body { height: 100%; }
+      body {
+        margin: 0;
+        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji",
+          "Segoe UI Emoji";
+        background: #0B0F19;
+        color: rgba(255, 255, 255, 0.92);
+        display: grid;
+        place-items: center;
+        padding: 24px;
+      }
+      .card {
+        width: min(520px, 100%);
+        border-radius: 16px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        background: rgba(255, 255, 255, 0.04);
+        padding: 18px 18px 16px;
+      }
+      h1 { font-size: 18px; margin: 0 0 8px; }
+      p { margin: 0 0 12px; color: rgba(255, 255, 255, 0.72); line-height: 1.35; }
+      button {
+        width: 100%;
+        height: 44px;
+        border: 0;
+        border-radius: 12px;
+        background: linear-gradient(90deg, #f59e0b, #d97706);
+        color: #111827;
+        font-weight: 700;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <h1>You are offline</h1>
+      <p><span id="brand-name">The platform</span> needs an internet connection for live prices, offers, and wallet operations.</p>
+      <button onclick="location.reload()">Retry</button>
+    </div>
+    <script>
+      (function () {
+        var host = (location.hostname || "").toLowerCase();
+        var isExportunity =
+          host === "exportunity.net" ||
+          host === "www.exportunity.net" ||
+          host === "exportunity.com" ||
+          host === "www.exportunity.com";
+        var brand = isExportunity ? "Zone" : "Bourse de l'Or by Exportunity";
+        document.title = brand + " - Offline";
+        var el = document.getElementById("brand-name");
+        if (el) el.textContent = brand;
+      })();
+    </script>
+  </body>
+</html>

@@ -1,0 +1,34 @@
+{
+  "include": ["client/src/**/*", "db/**/*", "server/**/*", "tenants/**/*"],
+  "exclude": ["node_modules", "build", "dist", "**/*.test.ts", "server/lib/seed-*.ts", "server/lib/seed*.ts"],
+  "compilerOptions": {
+    "incremental": true,
+    "tsBuildInfoFile": "./node_modules/typescript/tsbuildinfo",
+    "noEmit": true,
+    "module": "ESNext",
+    "target": "ES2020",
+    "downlevelIteration": true,
+    "strict": true,
+    "lib": ["esnext", "dom", "dom.iterable"],
+    "jsx": "preserve",
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "allowImportingTsExtensions": true,
+    "moduleResolution": "bundler",
+    "baseUrl": ".",
+    "types": ["node", "vite/client"],
+    "paths": {
+      "@db": ["./db/index.ts"],
+      "@db/*": ["./db/*"],
+      "@/*": ["./client/src/*"],
+      "@tenants": ["./tenants/index.ts"],
+      "@tenants/*": ["./tenants/*"],
+      "@platform/*": ["./client/src/platform/*"],
+      "@platform/telemetry": ["./client/src/platform/telemetry/index.ts"],
+      "@pkg/ui": ["./client/src/components/ui/index.ts"],
+      "@pkg/ui/*": ["./client/src/components/ui/*"],
+      "@pkg/branding": ["./client/src/components/branding/index.ts"],
+      "@pkg/branding/*": ["./client/src/components/branding/*"]
+    }
+  }
+}

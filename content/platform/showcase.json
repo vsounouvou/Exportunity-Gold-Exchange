@@ -1,0 +1,36 @@
+﻿{
+  "items": [
+    {
+      "id": "os-dashboard",
+      "title": "Exportunity OS Dashboard",
+      "description": "Multi-tenant operations cockpit for execution, risk, and team workflows.",
+      "screenshotLocal": "/assets/exportunity/2759c4ea629c90837245379ae826bfce6ed7401205fe4a975b45bda4553cd577.jpg",
+      "link": "https://exportunity.net",
+      "tags": ["Platform", "Operations", "Compliance"]
+    },
+    {
+      "id": "agents-actions",
+      "title": "AI Agents + Action Runner",
+      "description": "Agent hierarchy, action intents, approvals, and execution logs in one control center.",
+      "screenshotLocal": "/assets/exportunity/519f378b430f043d854a92e22300af362625c1982a1744d473515bb102e4cfdb.jpg",
+      "link": "https://exportunity.net",
+      "tags": ["Agents", "Automation", "Actions"]
+    },
+    {
+      "id": "gold-traceability",
+      "title": "Gold Traceability Workflows",
+      "description": "Batch-to-export pipeline with compliance checkpoints and auditable events.",
+      "screenshotLocal": "/assets/exportunity/4dd1123bec0102a35bcabbffebc6fdff7f1d433ff4a23c3e5afc8663d4c583a4.jpg",
+      "link": "https://exportunity.net",
+      "tags": ["Gold", "Commodities", "Traceability"]
+    },
+    {
+      "id": "communications-module",
+      "title": "Communications Orchestration",
+      "description": "Email, WhatsApp, and SMS orchestration with templates, approvals, and outcomes.",
+      "screenshotLocal": "/assets/exportunity/e6780893d266dc64e78172c490fc625f889e268db7469539847d3f94c7a592fc.jpg",
+      "link": "https://exportunity.net",
+      "tags": ["Communications", "WhatsApp", "Email"]
+    }
+  ]
+}

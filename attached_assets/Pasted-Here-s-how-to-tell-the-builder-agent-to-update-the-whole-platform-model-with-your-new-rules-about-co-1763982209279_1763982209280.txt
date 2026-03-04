@@ -1,0 +1,223 @@
+Here’s how to tell the builder agent to update the whole platform model with your new rules about companies, agents, meetings, knowledge, and “clones/experts”.
+
+You can copy-paste this as-is as an instruction.
+
+⸻
+
+🔧 UPDATE INSTRUCTION TO BUILDER AGENT
+
+Company Structure, Agents, Clones/Experts, Knowledge & Diagnostics
+
+You must update the platform architecture with the following rules.
+
+⸻
+
+1. “Personal Clones” + “Expert Marketplace” = ONE SINGLE FEATURE
+	1.	Treat “personal clones” (AI agents modeled after a person) and the “expert marketplace” (list of experts/agents users can hire) as ONE unified concept.
+	2.	Merge them into one feature name and one UX area.
+	•	For the rest of the spec, call it for example:
+“Expert Clones Hub” (you can choose another neutral name, but only one).
+	3.	In this unified Expert Clones Hub:
+	•	Each clone is an AI expert profile (with:
+	•	description, skills, domain, language, pricing if needed).
+	•	Users can:
+	•	Create their own clone,
+	•	Publish it to the marketplace (if allowed),
+	•	Or keep it private to their company.
+	4.	The same backend model and the same UI section must be used for:
+	•	Personal clones,
+	•	Public marketplace experts,
+	•	Company-internal experts.
+
+No separate “personal clones” page and “expert marketplace” page.
+One feature, one name, one data model.
+
+⸻
+
+2. Companies as First-Class Tenants
+
+You must treat each company as a tenant.
+	•	Every major feature must be scoped by company_id:
+	•	Meetings
+	•	Agents & agent hierarchy
+	•	Knowledge base
+	•	Performance/diagnostics views
+
+⸻
+
+3. Meetings: Always Categorized by Company
+	1.	A Meeting object must always have:
+	•	company_id
+	•	meeting_id
+	•	participants (users, agents)
+	•	topic
+	•	timestamp
+	•	duration
+	•	related_objects (e.g. tasks, workflows, docs)
+	2.	In the UI:
+	•	Meetings are listed per company:
+	•	Company dashboard → “Meetings” tab.
+	•	Within a company, you can filter by:
+	•	Date range
+	•	Participants (humans + agents)
+	•	Department/team (if modeled)
+	•	Meeting type (stand-up, review, client call, etc.)
+	3.	If the same agent participates in multiple companies’ meetings:
+	•	The agent is shared, but meeting records stay separate, each under its own company_id.
+
+⸻
+
+4. Agent Hierarchy: Per Company
+	1.	There is a global catalog of agents (the “Expert Clones Hub”), but:
+	•	Each company has its own agent hierarchy / org chart.
+	2.	For each company_id, maintain a CompanyAgentAssignment model:
+	•	company_id
+	•	agent_id
+	•	role_within_company (e.g. “Ops Assistant”, “Finance Analyst Agent”)
+	•	manager_agent_id (for hierarchy)
+	•	scope (what modules or data it can access)
+	•	status (active/inactive)
+	3.	This allows:
+	•	The same agent_id to be assigned to multiple companies with:
+	•	Different roles,
+	•	Different access scopes,
+	•	Different hierarchies.
+	4.	In the UI:
+	•	Company → “Agents” page shows that company’s agent hierarchy:
+	•	Tree view or org chart.
+	•	But the underlying system still knows that an agent may also be working for other companies.
+
+⸻
+
+5. Knowledge Base: Per Company AND Per Agent
+
+You must structure the knowledge system with three layers:
+	1.	Global Knowledge (optional)
+	•	General docs that can be used by many companies (e.g. generic guides).
+	•	Marked as scope = "GLOBAL".
+	2.	Company Knowledge Base
+	•	All knowledge that belongs to a specific company.
+	•	Each document or knowledge item has:
+	•	company_id
+	•	Optional tags: department, topic, etc.
+	•	Only agents and users with access to that company can read it.
+	3.	Agent-Specific Knowledge
+	•	Each agent has a personal knowledge profile, which consists of:
+	•	Pointers to global knowledge
+	•	Pointers to company knowledge
+	•	Private notes or fine-tuning for that agent.
+	•	Model it as:
+	•	AgentKnowledgeLink:
+	•	agent_id
+	•	knowledge_item_id
+	•	company_id (if company-specific)
+	•	role (how the agent uses this knowledge)
+
+Rules:
+	•	When an agent works for a specific company, it must prioritize:
+	1.	Knowledge tagged with that company_id.
+	2.	Then global knowledge.
+	•	When the same agent works in two companies, it can:
+	•	Use different subsets of the knowledge base,
+	•	Keep secrets/constraints separate per company.
+
+⸻
+
+6. Agents Are Cross-Company, but Context Is Company-Scoped
+	1.	An agent_id can be assigned to multiple companies (multi-tenant).
+	2.	For each company-agent pair, maintain specific configuration:
+	•	Access rights,
+	•	Tone, style,
+	•	Enabled modules,
+	•	Links to that company’s meetings, data, and knowledge.
+	3.	When the agent is invoked inside a company context:
+	•	Automatically inject:
+	•	company_id
+	•	That company’s knowledge scope
+	•	That company’s agent hierarchy
+	•	That company’s past meetings / tasks / workflows.
+	4.	The agent must never leak data across companies:
+	•	Use company_id as a hard boundary for knowledge, meetings, and diagnostics data.
+
+⸻
+
+7. Performance & Diagnostics (Mandatory)
+
+You must build Performance & Diagnostics as a core, first-class feature.
+
+7.1. Metrics Per Agent (Global and Per Company)
+For each agent_id and company_id combination, track at least:
+	•	Number of tasks handled
+	•	Success rate (tasks completed without errors)
+	•	Average response time
+	•	Escalations to humans
+	•	Usage by module (CRM, Finance, HR, etc. if modules exist)
+	•	Errors / exceptions per period
+
+Store this in a Metrics Store with:
+	•	agent_id
+	•	company_id
+	•	timestamp
+	•	metric_type
+	•	metric_value
+
+7.2. Diagnostics Dashboard
+For each company, provide a Diagnostics / Performance page that shows:
+	•	List of all agents assigned to that company.
+	•	For each agent:
+	•	Activity level (tasks/day, calls/day)
+	•	Performance trends (graphs)
+	•	Error logs / issues
+	•	Which meetings it attends
+	•	Ability for an admin to:
+	•	Enable/disable the agent for that company
+	•	Adjust its scope/permissions
+	•	Trigger a “health check” or test prompt
+
+Also provide a global diagnostics view (for platform operators) showing:
+	•	Top active agents across all companies
+	•	Problematic agents
+	•	Latency, failures, and resource usage
+
+⸻
+
+8. Meetings + Diagnostics + Knowledge: Combined
+
+Design the data so agent performance can be correlated with:
+	•	The meetings it attends (per company),
+	•	The knowledge it has access to,
+	•	The tasks/workflows it executes.
+
+This means:
+	•	Meetings must store which agents were present.
+	•	Tasks/workflows must store which agent executed them.
+	•	Knowledge access patterns (which documents were used) should be optionally logged.
+
+Then the Diagnostics feature can answer questions like:
+	•	“For Company X, which agent solves the most tasks?”
+	•	“Which agents regularly fail on tasks related to Department Y?”
+	•	“Does this agent need more knowledge (missing docs) based on repeated errors?”
+
+⸻
+
+9. Summary Requirement
+
+Restate to the builder agent:
+	1.	Merge “personal clones” and “expert marketplace” into one unified Expert Clones Hub (one name, one page, one data model).
+	2.	Make meetings always categorized and filterable per company.
+	3.	Make agent hierarchy defined per company, while allowing agents to be shared across companies.
+	4.	Make the knowledge base structured:
+	•	Global,
+	•	Per company,
+	•	Per agent.
+	5.	Ensure agents can be assigned to multiple companies with different roles and scopes.
+	6.	Implement a Performance & Diagnostics system that:
+	•	Tracks metrics per agent per company,
+	•	Has dashboards for each company,
+	•	Includes agent health, activity, and issues.
+
+⸻
+
+If you want, I can next:
+	•	Turn this into a data model sketch (tables & fields), or
+	•	A JSON/YAML config template for defining companies, agents, and assignments.

@@ -1,0 +1,99 @@
+{
+  "audit": "gold-stamping",
+  "timestamp": "2026-02-27T21:18:49.524Z",
+  "baseUrl": "https://boursedelor.com",
+  "tenantKey": "bdo",
+  "tag": "gold-audit-1772227127.19697-postfix",
+  "allowMutation": true,
+  "summary": {
+    "passCount": 12,
+    "failCount": 0,
+    "skipCount": 0
+  },
+  "checks": [
+    {
+      "id": "feature.gold_stamping",
+      "passed": true,
+      "details": "feature.gold_stamping=true",
+      "endpoint": "/api/admin/features",
+      "status": 200
+    },
+    {
+      "id": "sku.list",
+      "passed": true,
+      "details": "loaded 3 sku(s)",
+      "endpoint": "/api/stamped-gold/skus",
+      "status": 200
+    },
+    {
+      "id": "sku.counters",
+      "passed": true,
+      "details": "mintedTotal/inStock/reserved/delivered present",
+      "endpoint": "/api/stamped-gold/skus",
+      "status": 200
+    },
+    {
+      "id": "jewellers.public",
+      "passed": true,
+      "details": "loaded 1 active partner(s)",
+      "endpoint": "/api/stamped-gold/jewellers/public",
+      "status": 200
+    },
+    {
+      "id": "authorized.partner.lock",
+      "passed": true,
+      "details": "only authorized partner visible for BDO",
+      "endpoint": "/api/stamped-gold/jewellers/public",
+      "status": 200
+    },
+    {
+      "id": "item.list",
+      "passed": true,
+      "details": "loaded 20 item(s)",
+      "endpoint": "/api/stamped-gold/items?limit=20",
+      "status": 200
+    },
+    {
+      "id": "verify.serial",
+      "passed": true,
+      "details": "serial lookup valid=true",
+      "endpoint": "/api/stamped-gold/verify/QA-RP-20260227211409305",
+      "status": 200
+    },
+    {
+      "id": "verify.token.fallback",
+      "passed": true,
+      "details": "token endpoint resolves serial fallback",
+      "endpoint": "/api/stamped-gold/verify/token/QA-RP-20260227211409305",
+      "status": 200
+    },
+    {
+      "id": "verify.public.fallback",
+      "passed": true,
+      "details": "public verify resolves serial fallback",
+      "endpoint": "/public/verify/QA-RP-20260227211409305",
+      "status": 200
+    },
+    {
+      "id": "pickup.scan.match",
+      "passed": true,
+      "details": "pickup scanner resolved item",
+      "endpoint": "/api/pickup/scan",
+      "status": 200
+    },
+    {
+      "id": "mint.contract",
+      "passed": true,
+      "details": "minted=1",
+      "endpoint": "/api/stamped-gold/items/mint",
+      "status": 201
+    },
+    {
+      "id": "pickup.confirm.validation",
+      "passed": true,
+      "details": "rejects confirmation when idVerified=false",
+      "endpoint": "/api/pickup/confirm",
+      "status": 400
+    }
+  ]
+}

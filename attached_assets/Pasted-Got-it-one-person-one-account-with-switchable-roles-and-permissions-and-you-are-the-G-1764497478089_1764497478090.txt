@@ -1,0 +1,283 @@
+Got it, one person = one account, with **switchable roles** and **permissions**, and you are the **God User** for now.
+
+I’ll talk directly to the agent and bake this in.
+
+---
+
+## 1. Core Principle for the Agent
+
+**Agent, this is non-negotiable:**
+
+> Each human has **ONE account** on Exportunity.market.
+> That single account can operate in **different modes**: Buyer, Seller, and (if allowed) Admin.
+
+* No separate logins.
+* No duplicate accounts for different roles.
+* Roles = **permissions attached to the same identity**.
+
+---
+
+## 2. Account & Role Model
+
+**Agent, implement this structure:**
+
+For each user account, store:
+
+* `id`
+* `name`
+* `email`
+* `phone`
+* `auth_methods` (google, phone, email/password, etc.)
+* `roles`: list that can include:
+
+  * `"buyer"`
+  * `"seller"`
+  * `"admin"`
+* `permissions`: fine-grained capabilities (see below)
+* `status`: active / blocked / pending
+
+### 2.1. Role meanings
+
+* **Buyer**
+
+  * Can place orders, track orders, manage delivery addresses, manage payment methods.
+* **Seller**
+
+  * Can manage a shop: products, prices, stock, incoming orders, etc.
+* **Admin**
+
+  * Can access the **admin interface**, view and manage users, shops, settings, permissions, etc.
+
+---
+
+## 3. The “God User” (You)
+
+**Agent, you must seed one special user:**
+
+* This is the **founder / god user** (Vital).
+* This user has:
+
+  * `roles = ["buyer", "seller", "admin"]`
+  * `permissions = ["*"]` (full access to everything)
+
+Implementation detail:
+
+* In initial config / database seed, create:
+
+  * `GOD_USER_EMAIL` (and/or `GOD_USER_PHONE`)
+  * When this account logs in, automatically grant:
+
+    * Access to buyer UI
+    * Access to seller UI
+    * Access to admin UI
+    * Access to all management and future modules
+
+You must always allow the god user to see **all interfaces** and override any normal restriction.
+
+---
+
+## 4. Mode Switching (Buyer / Seller / Admin) – Same Account
+
+After login (one login), the user should **choose how to operate** for this session.
+
+**Agent, implement a “mode switcher”.**
+
+### 4.1. Mode Selector UI
+
+Right after login (for any user):
+
+* If they have more than one role, show:
+
+  > “What do you want to do now?”
+
+  * **[Use as Buyer]**
+  * **[Use as Seller]**
+  * *(If they are admin)* **[Open Admin Interface]**
+
+* For users with only one role, skip the selector and go straight there, but always keep a **small switcher** somewhere (e.g. in the header or menu) so they can change mode later if they get new roles.
+
+### 4.2. In-App Mode Switch
+
+In the top bar or menu, always show something like:
+
+* Current mode: `Buyer` / `Seller` / `Admin`
+* Clicking it opens:
+
+  * **[Switch to Buyer]**
+  * **[Switch to Seller]**
+  * **[Switch to Admin]** (only if allowed)
+
+For the god user (you), all three must always be visible.
+
+---
+
+## 5. Permissions & Admin Access Requests
+
+**Agent, here is how authorization must work:**
+
+### 5.1. Permissions model
+
+Each user has:
+
+* `roles` (high-level: buyer, seller, admin)
+* `permissions` (fine-grained, e.g.:
+
+  * `manage_products`
+  * `view_financials`
+  * `manage_users`
+  * `view_admin_dashboard`
+  * etc.)
+
+The **admin interface** is only visible if:
+
+* `roles` contains `"admin"` **AND**
+* `permissions` contains `"view_admin_dashboard"` (or `"*"` for god user).
+
+### 5.2. Requesting access
+
+Any logged-in user may **request extra access**.
+
+**Agent, create an access request flow:**
+
+* A menu option: **[Request admin access]** or **[Request seller access]**.
+* User selects what they want:
+
+  * “I want to become a seller.”
+  * “I need access to the admin interface.”
+
+They fill a short form:
+
+* Reason / description
+* Business type (if seller)
+* Any required details (to be defined later)
+
+You must:
+
+* Create an `access_request` record:
+
+  * `user_id`
+  * `requested_roles`
+  * `requested_permissions`
+  * `status` (pending, approved, rejected)
+  * `admin_comment`
+
+* Notify available admins (starting with god user).
+
+### 5.3. Admins decide
+
+Inside the admin interface:
+
+* Admins (you at first) see a list of pending access requests.
+* They can **approve / reject** and optionally:
+
+  * Add specific permissions.
+  * Add / remove roles.
+
+When approved:
+
+* The user’s account is updated.
+* Next time they open the mode switcher, they see new options (e.g. now they can open Admin).
+
+---
+
+## 6. Initial Behavior – While You’re the Only Admin
+
+**Agent, until other admins are configured:**
+
+* Only the **god user** has `role=admin` and full permissions.
+* New users:
+
+  * By default: `roles = ["buyer"]`
+  * They see only:
+
+    * Buyer mode
+    * Seller onboarding request (if you want to allow them to apply)
+* The admin interface:
+
+  * Exists, but only shows for the god user.
+
+This gives you full control to:
+
+* Promote users to seller role.
+* Grant admin privileges to trusted people later.
+* Fine-tune permissions for each role.
+
+---
+
+## 7. How to Keep It Simple for Users
+
+**Agent, user experience must stay ultra-simple:**
+
+* One login (Google / phone / email).
+
+* After login:
+
+  * If user is only buyer → just show the buyer interface with a simple phrase like:
+
+    > “You are logged in as a buyer. You can order and track products from here.”
+
+  * If user is also seller:
+
+    > “You have buyer and seller access. What do you want to do now?”
+
+    * Buttons: [Use as Buyer] / [Use as Seller]
+
+  * If user also has admin permissions:
+
+    > “You also have admin access. You can manage the platform from the admin interface.”
+
+    * Button: [Open Admin Interface]
+
+* No talk of “multiple accounts”. Everything is presented as **one identity, multiple powers**.
+
+---
+
+## 8. Development Mode (Still Needed)
+
+Even with this unified account model, **Agent, you must still keep dev shortcuts**:
+
+* On the very first page:
+
+  * **[Dev / Test Mode]** with:
+
+    * [Enter as Test Buyer]
+    * [Enter as Test Seller]
+    * [Enter as Test Admin]
+
+These bypass normal login and roles for quick testing & demo. In production, you can hide/remove them.
+
+---
+
+## 9. Technical Checklist for the Agent
+
+1. Ensure `User` entity supports:
+
+   * `roles[]`
+   * `permissions[]`
+2. Ensure login process:
+
+   * Always returns `roles` & `permissions` in the session/token.
+3. Ensure UI:
+
+   * Has a **mode switcher** that respects `roles` and `permissions`.
+   * Shows **Admin** only when appropriate.
+4. Seed the **God User** with:
+
+   * All three roles
+   * `permissions = ["*"]`
+5. Implement `AccessRequest` model & UI:
+
+   * Creation from user side
+   * Review and approval from admin side
+6. Log everything:
+
+   * Role changes
+   * Permission changes
+   * Admin approvals / rejections
+
+---
+
+If you want, next I can:
+
+* Write **exact database field definitions** (e.g. in SQL or Prisma schema) for `User`, `AccessRequest`, and `Role/Permission` tables, or
+* Script the **conversation the agent should have** when a new user logs in and wants to request seller or admin access.

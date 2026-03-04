@@ -1,0 +1,338 @@
+Got it 👍 — **Home = Global Dashboard**, without losing anything you already have there, and the **Chairman’s Assistant chat bar stays everywhere**.
+
+I’ll rewrite this cleanly so your dev can implement it directly.
+
+---
+
+## 1. Big Change: Home Page **is** the Dashboard
+
+* The old “Dashboard” page is now **merged into the Home page**.
+* **Do NOT remove** anything that is already on the Home page:
+
+  * Existing widgets, company list, quick-start elements, etc. must stay.
+* Instead, we **add** the Dashboard sections **on the Home page**.
+
+From now on:
+
+> **Home = Global Company Dashboard**
+> showing:
+>
+> * Revenue
+> * Meetings held
+> * Actions executed
+> * Decisions made
+> * Calendar
+> * “Active today” info
+> * Per-company performance snapshot
+
+…and still keeping your existing Home content.
+
+You can keep or remove the separate “Dashboard” menu item by:
+
+* Either removing it, or
+* Making it simply link to `/home`.
+
+---
+
+## 2. Home Page Structure (New Layout)
+
+Think of the Home page in **blocks**, from top to bottom.
+
+### 2.1 Top Bar (unchanged)
+
+Keep whatever you already have:
+
+* Logo
+* User info (Chairman name)
+* Main navigation (Home, Companies, Meetings, Agents & Hierarchy, Performance & Diagnostics, Settings, etc.)
+
+No need to change this, just keep it.
+
+---
+
+### 2.2 Company Selector + Global Snapshot
+
+Right under the top bar:
+
+**A. Company Selector**
+
+* A dropdown or pill bar:
+
+  * `All Companies`
+  * `Company A (Ex: Xportunity CI)`
+  * `Company B (Ex: Gold Trading UAE)`
+  * `Company C (Ex: Flying Cars Lab)`
+* When a company is selected:
+
+  * All dashboard widgets below **filter to that company**.
+* When `All Companies` is selected:
+
+  * Metrics show **aggregated performance** across all companies.
+
+**B. Global Snapshot Tiles (for selected company / all)**
+
+A row of tiles, e.g.:
+
+* **Revenue (period)**
+
+  * Example: `₣ 45,000,000` or `$ 75,000`
+* **Meetings Held**
+
+  * e.g. `12 meetings this week`
+* **Actions Executed**
+
+  * e.g. `68 actions (emails, tasks, follow-ups)`
+* **Decisions Made**
+
+  * e.g. `9 key decisions recorded`
+
+Add a **date range selector** to these tiles:
+
+* `Today / This week / This month / Custom`
+
+Clicking on each tile:
+
+* Takes the user to a more detailed view:
+
+  * Revenue → financial breakdown,
+  * Meetings → Meetings page filtered to that company,
+  * Actions/Decisions → list of conversations/actions.
+
+---
+
+### 2.3 Calendar Block (On Home)
+
+Under the snapshot tiles, add the **calendar that was previously on the Dashboard**:
+
+* Month view with highlighted days:
+
+  * Dots/marks for conversations/meetings,
+  * Color-coded per category if possible (sales, finance, ops).
+* Selecting a day updates the **“Today / Selected Day Activity”** section below.
+
+**Filters:**
+
+* Show:
+
+  * `All activity`,
+  * `Meetings only`,
+  * `Agent-only syncs`,
+  * etc.
+
+This calendar is **filtered by the company selection** at the top:
+
+* If `All Companies`:
+
+  * Show aggregate (e.g. + different color per company).
+* If `Company A`:
+
+  * Only show events of that company.
+
+---
+
+### 2.4 “Today / Selected Day” Activity Overview
+
+Right under the calendar:
+
+> **Section: “Today’s Activity” (or “Activity on [Selected Date]”)**
+
+For the selected date:
+
+Show grouped summaries (like the previous Dashboard):
+
+* **By category** (example groups):
+
+  * Strategy
+  * Sales / Business Development
+  * Marketing
+  * Finance
+  * Operations
+  * Compliance / Legal
+  * Agent-only syncs
+
+Under each category:
+
+* Show **cards** for each conversation/meeting that day:
+
+Example card:
+
+* Title: `Sales & Finance Weekly Sync`
+* Time: `10:00–10:45`
+* Participants: Chairman, Sales Agent, Finance Agent
+* **Decisions:**
+
+  * “Increase outreach budget by 15%.”
+  * “Focus leads on Côte d’Ivoire this week.”
+* **Actions executed / assigned:**
+
+  * “Sales Agent to send follow-ups to 20 leads.”
+  * “Finance Agent to update budget before Friday.”
+* **Money:**
+
+  * “Closed: $10,000”
+  * “Pipeline created: $30,000”
+
+Buttons:
+
+* `Open Conversation` → opens the full meeting room in **Meetings** page.
+* (Optionally) `View Summary` → shows the auto summary.
+
+---
+
+### 2.5 Companies Block (Keep Existing + Attach Metrics)
+
+You said Home should still show **different companies** and categorize things by company.
+
+So keep your existing “Companies” section, but **enhance it**:
+
+For each company card:
+
+* Name,
+* Country,
+* Sector,
+* **Mini KPIs for selected date range:**
+
+  * Revenue,
+  * Meetings this week,
+  * Actions executed,
+  * Key decisions.
+
+Example:
+
+> **Xportunity CI**
+> – Revenue this month: `₣ 30,000,000`
+> – 7 meetings, 35 actions
+> – 3 decisions this week
+> `[Open Company]`
+
+Clicking `Open Company`:
+
+* Takes you to a dedicated **Company Overview** (or filters the Home dashboard to that company).
+
+This way, **Home shows high-level cards for all companies** + the more detailed global dashboard sections above.
+
+---
+
+### 2.6 Quick Links Into Deeper Pages
+
+Under or around these blocks, keep / add:
+
+* Shortcuts like:
+
+  * `View All Meetings` → Meetings page, filtered by current company.
+  * `View Agent Performance` → Performance & Diagnostics, filtered by current company.
+  * `View Org Tree` → Agents & Hierarchy for that company.
+
+So from the Home/Dashboard, the Chairman can jump to deeper layers.
+
+---
+
+## 3. Chairman’s Assistant Chat Bar (Again, Very Clear)
+
+Per your request, re-stating clearly for the dev:
+
+> * The **Chairman’s Assistant chat bar** (the little panel at the bottom of the Home page)
+>   must appear at the **bottom of every single page** in the app:
+>
+>   * Home (Dashboard)
+>   * Companies
+>   * Meetings
+>   * Agents & Hierarchy
+>   * Performance & Diagnostics
+>   * Settings
+>   * Any other page now or later.
+> * The **design must remain exactly the same** as on the current Home page:
+>
+>   * Same style, same layout, same behavior.
+> * It is **global**:
+>
+>   * Same conversation (today’s) follows you wherever you go.
+>   * You can talk to the Chairman’s Assistant from any context (Home, Meetings, Agents, etc.).
+
+**Technical for dev:**
+
+* Implement the Chairman’s Assistant bar as a **global layout component**, rendered once in the root layout.
+* Page content scrolls **above** it.
+* The bar always uses:
+
+  * `currentUser`,
+  * today’s conversation,
+  * current company selection (so the assistant knows which company you’re looking at).
+
+---
+
+## 4. Per-Company Filtering Logic (Important)
+
+Everything on Home/Dashboard should depend on the **company selector** at the top.
+
+* If `All Companies`:
+
+  * KPI tiles show aggregated values.
+  * Calendar shows events from all companies (optionally with colors).
+  * “Today’s Activity” groups activities from all companies (maybe show company name on each card).
+  * Company cards at the bottom show individual mini-snapshots.
+
+* If a specific company (e.g. “Xportunity CI”):
+
+  * KPI tiles show only that company’s data.
+  * Calendar only highlights that company’s events.
+  * “Today’s Activity” only shows meetings/actions for that company.
+  * Company cards can either:
+
+    * Only highlight that company card, or
+    * Show all but visually highlight the selected one.
+
+---
+
+## 5. Concrete Instructions for the Dev / Agency
+
+You can give them this summary:
+
+1. **Home page becomes the global Dashboard.**
+
+   * Keep all existing Home content.
+   * Add:
+
+     * Company selector,
+     * KPI tiles,
+     * Calendar,
+     * “Today/Selected Day Activity”,
+     * Enhanced Companies block with metrics.
+
+2. **Remove separate “Dashboard” page, or make it redirect to Home.**
+
+3. **Company-based filtering:**
+
+   * Every metric, calendar entry, and activity list on Home must be filterable by:
+
+     * Global (`All Companies`),
+     * Specific company (from selector).
+
+4. **Integrate the Dashboard logic into Home:**
+
+   * After each conversation/meeting, store:
+
+     * Categories,
+     * Actions,
+     * Decisions,
+     * Money (revenue, budget movements, etc.).
+   * Aggregate these into:
+
+     * Home KPI tiles,
+     * Activity lists.
+
+5. **Keep the Chairman’s Assistant bar:**
+
+   * Exactly same design as now.
+   * Visible on **every** page.
+   * Implemented as a global layout component, not per-page.
+
+6. **No dead UI:**
+
+   * Calendar must filter content below.
+   * Clicking “Open Conversation” must open the meeting room.
+   * Company cards must open/activate that company context.
+
+---
+
+If you’d like, I can now **simulate a full Home/Dashboard screen** for a concrete example (say with 2–3 test companies and real-looking numbers and meetings) so the team has a very tangible target when they’re building.

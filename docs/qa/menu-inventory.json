@@ -1,0 +1,477 @@
+{
+  "generatedAt": "2026-02-02T02:39:26.438Z",
+  "items": [
+    {
+      "source": "adminNavRegistry",
+      "section": "Overview",
+      "label": "Dashboard",
+      "route": "/dashboard",
+      "requiredRole": "authenticated",
+      "visible": true
+    },
+    {
+      "source": "adminNavRegistry",
+      "section": "Overview",
+      "label": "Companies",
+      "route": "/companies",
+      "requiredRole": "authenticated",
+      "visible": true
+    },
+    {
+      "source": "adminNavRegistry",
+      "section": "Territories",
+      "label": "Territories",
+      "route": "/territories",
+      "requiredRole": "authenticated",
+      "visible": true
+    },
+    {
+      "source": "adminNavRegistry",
+      "section": "Operations",
+      "label": "AI Team HQ",
+      "route": "/ai-team",
+      "requiredRole": "authenticated",
+      "visible": true
+    },
+    {
+      "source": "adminNavRegistry",
+      "section": "Operations",
+      "label": "Agents",
+      "route": "/agents",
+      "requiredRole": "authenticated",
+      "visible": true
+    },
+    {
+      "source": "adminNavRegistry",
+      "section": "Operations",
+      "label": "Tasks",
+      "route": "/tasks",
+      "requiredRole": "authenticated",
+      "visible": true
+    },
+    {
+      "source": "adminNavRegistry",
+      "section": "Operations",
+      "label": "Objectives",
+      "route": "/goals",
+      "requiredRole": "authenticated",
+      "visible": true
+    },
+    {
+      "source": "adminNavRegistry",
+      "section": "Operations",
+      "label": "Knowledge Base",
+      "route": "/knowledge",
+      "requiredRole": "authenticated",
+      "visible": true
+    },
+    {
+      "source": "adminNavRegistry",
+      "section": "Operations",
+      "label": "Expert Agents",
+      "route": "/expert-clones",
+      "requiredRole": "authenticated",
+      "visible": true
+    },
+    {
+      "source": "adminNavRegistry",
+      "section": "Operations",
+      "label": "Automations",
+      "route": "/actions",
+      "requiredRole": "authenticated",
+      "visible": true
+    },
+    {
+      "source": "adminNavRegistry",
+      "section": "Communications",
+      "label": "Inbox",
+      "route": "/admin/inbox",
+      "requiredRole": "authenticated",
+      "visible": true
+    },
+    {
+      "source": "adminNavRegistry",
+      "section": "Communications",
+      "label": "WhatsApp",
+      "route": "/admin/communications/whatsapp",
+      "requiredRole": "authenticated",
+      "visible": true
+    },
+    {
+      "source": "adminNavRegistry",
+      "section": "Admin",
+      "label": "Email Setup",
+      "route": "/admin/email",
+      "requiredRole": "authenticated",
+      "visible": true
+    },
+    {
+      "source": "adminNavRegistry",
+      "section": "Marketplace",
+      "label": "Products",
+      "route": "/admin/marketplace/products",
+      "requiredRole": "authenticated",
+      "visible": true
+    },
+    {
+      "source": "adminNavRegistry",
+      "section": "Stamped Gold",
+      "label": "SKUs",
+      "route": "/admin/stamped-gold/skus",
+      "requiredRole": "authenticated",
+      "visible": true
+    },
+    {
+      "source": "adminNavRegistry",
+      "section": "Stamped Gold",
+      "label": "Items",
+      "route": "/admin/stamped-gold/items",
+      "requiredRole": "authenticated",
+      "visible": true
+    },
+    {
+      "source": "adminNavRegistry",
+      "section": "Stamped Gold",
+      "label": "Jewellers",
+      "route": "/admin/stamped-gold/jewellers",
+      "requiredRole": "authenticated",
+      "visible": true
+    },
+    {
+      "source": "adminNavRegistry",
+      "section": "Stamped Gold",
+      "label": "Scans",
+      "route": "/admin/stamped-gold/scans",
+      "requiredRole": "authenticated",
+      "visible": true
+    },
+    {
+      "source": "adminNavRegistry",
+      "section": "Stamped Gold",
+      "label": "Pickup",
+      "route": "/admin/stamped-gold/pickup",
+      "requiredRole": "authenticated",
+      "visible": true
+    },
+    {
+      "source": "adminNavRegistry",
+      "section": "Marketplace",
+      "label": "Map Settings",
+      "route": "/admin/settings/map",
+      "requiredRole": "authenticated",
+      "visible": true
+    },
+    {
+      "source": "adminNavRegistry",
+      "section": "Marketplace",
+      "label": "Onboarding & PWA",
+      "route": "/admin/settings/onboarding",
+      "requiredRole": "authenticated",
+      "visible": true
+    },
+    {
+      "source": "adminNavRegistry",
+      "section": "Marketplace",
+      "label": "Sellers",
+      "route": "/marketplace/sellers",
+      "requiredRole": "authenticated",
+      "visible": true
+    },
+    {
+      "source": "adminNavRegistry",
+      "section": "Marketplace",
+      "label": "Seller Dashboard",
+      "route": "/seller-dashboard",
+      "requiredRole": "authenticated",
+      "visible": true
+    },
+    {
+      "source": "adminNavRegistry",
+      "section": "Marketplace",
+      "label": "Bureaus",
+      "route": "/bureaus",
+      "requiredRole": "authenticated",
+      "visible": true
+    },
+    {
+      "source": "adminNavRegistry",
+      "section": "Marketplace",
+      "label": "Contracts",
+      "route": "/contracts",
+      "requiredRole": "authenticated",
+      "visible": true
+    },
+    {
+      "source": "adminNavRegistry",
+      "section": "Marketplace",
+      "label": "Delivery",
+      "route": "/delivery/admin",
+      "requiredRole": "authenticated",
+      "visible": true
+    },
+    {
+      "source": "adminNavRegistry",
+      "section": "Finance",
+      "label": "Finance",
+      "route": "/finance",
+      "requiredRole": "authenticated",
+      "visible": true
+    },
+    {
+      "source": "adminNavRegistry",
+      "section": "Finance",
+      "label": "Payments",
+      "route": "/admin/marketplace/payments",
+      "requiredRole": "authenticated",
+      "visible": true
+    },
+    {
+      "source": "adminNavRegistry",
+      "section": "Finance",
+      "label": "Wallets & Credits",
+      "route": "/agent-economy",
+      "requiredRole": "authenticated",
+      "visible": true
+    },
+    {
+      "source": "adminNavRegistry",
+      "section": "Media",
+      "label": "Asset Studio",
+      "route": "/admin/media/assets",
+      "requiredRole": "authenticated",
+      "visible": true
+    },
+    {
+      "source": "adminNavRegistry",
+      "section": "Media",
+      "label": "Media Debug",
+      "route": "/admin/media/debug",
+      "requiredRole": "authenticated",
+      "visible": true
+    },
+    {
+      "source": "adminNavRegistry",
+      "section": "Website",
+      "label": "Visits Intelligence",
+      "route": "/admin/website/visits",
+      "requiredRole": "authenticated",
+      "visible": true
+    },
+    {
+      "source": "adminNavRegistry",
+      "section": "Website",
+      "label": "SEO Health",
+      "route": "/admin/website/seo",
+      "requiredRole": "authenticated",
+      "visible": true
+    },
+    {
+      "source": "adminNavRegistry",
+      "section": "Website",
+      "label": "SEO Autopilot",
+      "route": "/admin/website/seo-autopilot",
+      "requiredRole": "authenticated",
+      "visible": true
+    },
+    {
+      "source": "adminNavRegistry",
+      "section": "Go-To-Market",
+      "label": "Marketing",
+      "route": "/marketing",
+      "requiredRole": "authenticated",
+      "visible": true
+    },
+    {
+      "source": "adminNavRegistry",
+      "section": "Go-To-Market",
+      "label": "Leads & Campaigns",
+      "route": "/client-hunter",
+      "requiredRole": "authenticated",
+      "visible": true
+    },
+    {
+      "source": "adminNavRegistry",
+      "section": "Go-To-Market",
+      "label": "Sales",
+      "route": "/sales",
+      "requiredRole": "authenticated",
+      "visible": true
+    },
+    {
+      "source": "adminNavRegistry",
+      "section": "Admin",
+      "label": "Users & Roles",
+      "route": "/admin-users",
+      "requiredRole": "authenticated",
+      "visible": true
+    },
+    {
+      "source": "adminNavRegistry",
+      "section": "Admin",
+      "label": "Plans",
+      "route": "/subscription-plans",
+      "requiredRole": "authenticated",
+      "visible": true
+    },
+    {
+      "source": "adminNavRegistry",
+      "section": "Admin",
+      "label": "Update / Reset",
+      "route": "/admin/system/update",
+      "requiredRole": "authenticated",
+      "visible": true
+    },
+    {
+      "source": "adminNavRegistry",
+      "section": "Admin",
+      "label": "UX Audit",
+      "route": "/admin/ux-audit",
+      "requiredRole": "authenticated",
+      "visible": true
+    },
+    {
+      "source": "adminNavRegistry",
+      "section": "Admin",
+      "label": "Profile",
+      "route": "/profile",
+      "requiredRole": "authenticated",
+      "visible": true
+    },
+    {
+      "source": "adminNavRegistry",
+      "section": "Wallet OS",
+      "label": "Wallet Accounts",
+      "route": "/admin/wallet/accounts",
+      "requiredRole": "authenticated",
+      "visible": true
+    },
+    {
+      "source": "adminNavRegistry",
+      "section": "Wallet OS",
+      "label": "Ledger",
+      "route": "/admin/wallet/ledger",
+      "requiredRole": "authenticated",
+      "visible": true
+    },
+    {
+      "source": "adminNavRegistry",
+      "section": "Wallet OS",
+      "label": "Topups",
+      "route": "/admin/wallet/topups",
+      "requiredRole": "authenticated",
+      "visible": true
+    },
+    {
+      "source": "adminNavRegistry",
+      "section": "Wallet OS",
+      "label": "Payouts",
+      "route": "/admin/wallet/payouts",
+      "requiredRole": "authenticated",
+      "visible": true
+    },
+    {
+      "source": "adminNavRegistry",
+      "section": "Wallet OS",
+      "label": "Vouchers",
+      "route": "/admin/wallet/vouchers",
+      "requiredRole": "authenticated",
+      "visible": true
+    },
+    {
+      "source": "adminNavRegistry",
+      "section": "Wallet OS",
+      "label": "Sellers",
+      "route": "/admin/wallet/sellers",
+      "requiredRole": "authenticated",
+      "visible": true
+    },
+    {
+      "source": "adminNavRegistry",
+      "section": "Wallet OS",
+      "label": "Risk",
+      "route": "/admin/wallet/risk",
+      "requiredRole": "authenticated",
+      "visible": true
+    },
+    {
+      "source": "adminNavRegistry",
+      "section": "Wallet OS",
+      "label": "Config",
+      "route": "/admin/wallet/config",
+      "requiredRole": "authenticated",
+      "visible": true
+    },
+    {
+      "source": "adminNavRegistry",
+      "section": "Equipment Ops",
+      "label": "Fleet Map",
+      "route": "/admin/equipment-ops/fleet-map",
+      "requiredRole": "authenticated",
+      "visible": true
+    },
+    {
+      "source": "adminNavRegistry",
+      "section": "Equipment Ops",
+      "label": "Listings",
+      "route": "/admin/equipment-ops/listings",
+      "requiredRole": "authenticated",
+      "visible": true
+    },
+    {
+      "source": "adminNavRegistry",
+      "section": "Equipment Ops",
+      "label": "Contracts",
+      "route": "/admin/equipment-ops/contracts",
+      "requiredRole": "authenticated",
+      "visible": true
+    },
+    {
+      "source": "adminNavRegistry",
+      "section": "Equipment Ops",
+      "label": "Maintenance",
+      "route": "/admin/equipment-ops/maintenance",
+      "requiredRole": "authenticated",
+      "visible": true
+    },
+    {
+      "source": "NavigationBar",
+      "section": "NavigationBar",
+      "label": "Dashboard",
+      "route": "/dashboard",
+      "requiredRole": "authenticated",
+      "visible": true
+    },
+    {
+      "source": "NavigationBar",
+      "section": "NavigationBar",
+      "label": "Operations Center",
+      "route": "/ai-team",
+      "requiredRole": "authenticated",
+      "visible": true
+    },
+    {
+      "source": "NavigationBar",
+      "section": "NavigationBar",
+      "label": "Tasks",
+      "route": "/tasks",
+      "requiredRole": "authenticated",
+      "visible": true
+    },
+    {
+      "source": "NavigationBar",
+      "section": "NavigationBar",
+      "label": "Wallets & Credits",
+      "route": "/agent-economy",
+      "requiredRole": "authenticated",
+      "visible": true
+    },
+    {
+      "source": "NavigationBar",
+      "section": "NavigationBar",
+      "label": "Ops Actions",
+      "route": "/actions",
+      "requiredRole": "authenticated",
+      "visible": true
+    }
+  ]
+}

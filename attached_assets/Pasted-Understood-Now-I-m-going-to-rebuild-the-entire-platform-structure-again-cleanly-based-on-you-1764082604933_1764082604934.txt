@@ -1,0 +1,366 @@
+Understood.
+Now I’m going to **rebuild the entire platform structure again**, cleanly, based on your latest corrections — especially:
+
+* **Sales & Marketing MUST live under Work** (not separate menu items)
+* **Finance/Accounting MUST be a main top-level menu item**
+* **Agent Marketplace + Agent Editing MUST be a dedicated place**
+* **Hierarchy MUST be per company**
+* **Company Knowledge Base ≠ User Knowledge Base**
+* **Homepage = AI Team**
+* **Every placeholder must exist on the platform (no conceptual pages that don’t map to screens)**
+
+Here is the **final corrected architecture** — simple, clean, powerful, scalable.
+This is the version your builder agent must implement.
+
+---
+
+# 🔥 **THE FINAL PLATFORM STRUCTURE (CORRECTED)**
+
+Below is the new menu — every item has one purpose only:
+
+```
+[LOGO]  [Company Switcher ▼]
+
+AI Team   Work   Agents   Finance   Company   User Profile
+```
+
+Now let’s detail *exactly* what each contains.
+
+---
+
+# 🟣 1. **AI TEAM (HOMEPAGE)**
+
+This is the **main screen**, day and night.
+Exactly like ChatGPT’s main interface.
+
+### The homepage must include:
+
+### **A. Conversation Feed (center)**
+
+* User messages
+* Agent replies
+* Meeting summaries
+* Daily standups
+* Alerts
+* Triggered events (WhatsApp messages etc.)
+
+### **B. Meetings Panel (top/right)**
+
+* Ongoing meeting
+* Upcoming meetings
+* Join / Schedule meeting
+
+### **C. Departments & Teams (bottom)**
+
+* Not editable here
+* Read-only visual overview
+* For editing → go to “Agents” tab
+
+**No other features here.
+Pure HQ.
+Pure conversation.
+Pure flow.**
+
+---
+
+# 🔵 2. **WORK**
+
+This is where ALL work of the company lives.
+
+When user clicks **Work**, they see 4 categories:
+
+```
+Actions
+Projects
+Sales
+Marketing
+```
+
+### **A. ACTIONS**
+
+* All tasks
+* Status
+* Deadlines
+* Assigned agents
+* Linked meetings
+
+### **B. PROJECTS**
+
+* Big initiatives
+* Grouping of actions
+* Department filter
+
+### **C. SALES** (ALL sales content lives here)
+
+This page includes:
+
+* Pipeline
+* Leads
+* Sequences
+* Deals
+* Reports
+* Daily summaries
+* Tasks related to sales
+
+One single unified **Sales Workspace**.
+
+### **D. MARKETING** (ALL marketing content lives here)
+
+This page includes:
+
+* Campaigns
+* Content assets
+* Posting calendar
+* Ads
+* Metrics reports
+* Marketing tasks
+
+One single unified **Marketing Workspace**.
+
+💡
+**This simplifies everything.
+No need for separate Sales/Marketing top-level menus.
+Everything is inside Work.**
+
+---
+
+# 🟡 3. **AGENTS**
+
+This is the missing part that disappeared — now restored **fully**.
+
+The Agents menu contains **all agent-related features**, including:
+
+### **A. Agent List**
+
+* Every agent (role) active for the company
+* Status: Active / Paused
+
+### **B. Agent Editor**
+
+Click any agent → open full configuration:
+
+* Title
+* Department
+* Personality
+* Behavior rules
+* Responsibilities
+* Memory (agent-specific memory)
+* Prompts
+* Cooldowns
+* Triggers
+
+### **C. Agent Hierarchy (PER COMPANY)**
+
+* Visual org chart
+* Drag & drop to reorder
+* Reporting lines (e.g., Sales Rep reports to Sales Manager)
+* Each company has its **own hierarchy**
+* Not global
+
+### **D. Agent Marketplace**
+
+Users can:
+
+* Add new agents
+* Upgrade agents
+* Remove agents
+* Browse categories (Sales, Ops, Finance, Marketing, Support, R&D…)
+* Preview roles
+
+This returns the feature you liked earlier.
+
+---
+
+# 🟢 4. **FINANCE**
+
+This is a new top-level item — **very important**.
+
+Finance is NOT inside Company, because Company is for admin.
+Finance is for **money**, so it gets its own menu.
+
+Inside Finance:
+
+### **A. Accounting dashboard**
+
+* Invoices
+* Client payments
+* Cashflow
+* Daily reports
+
+### **B. Wallets / Transactions**
+
+* Incoming payments
+* Outgoing payments
+* Reconciliation
+
+### **C. Payment Gateway Integration**
+
+* Flutterwave
+* Stripe
+* Paystack
+* Bank transfer integration
+
+### **D. Finance Agents Tasks**
+
+* Agent-generated reports
+* Cost analysis
+* Budgeting
+* Forecasting
+
+---
+
+# 🟤 5. **COMPANY**
+
+This menu contains **company-level admin only**:
+
+### **A. Company Profile**
+
+* Name, logo
+* Description
+* Industry, country
+
+### **B. COMPANY KNOWLEDGE BASE**
+
+Critical:
+This is the **company-level knowledge**, not user knowledge.
+
+Contains:
+
+* SOPs
+* Policies
+* Documents
+* Strategies
+* Department playbooks
+
+Agents read this during tasks.
+
+### **C. Integrations**
+
+* WhatsApp API
+* Email
+* Website chat
+* Ads accounts
+* CRM connections
+
+### **D. Billing**
+
+* Subscription
+* Plans
+* Invoices
+
+### **E. Security**
+
+* Access
+* Permissions
+* Team collaborators (human users)
+
+---
+
+# ⚪ 6. **USER PROFILE**
+
+This is **personal to the user**, not company-wide.
+
+It contains:
+
+### **A. USER KNOWLEDGE BASE**
+
+This is what the platform knows about **the founder**:
+
+* Personal preferences
+* Personal instructions
+* Writing style
+* Permanent directives
+
+Agents read both:
+
+* Company KB
+* User KB
+
+But separately.
+
+### **B. Profile Settings**
+
+* Name
+* Email
+* Language
+* Theme
+
+### **C. Notifications**
+
+* Push
+* Email
+* WhatsApp alerts
+
+### **D. API Keys**
+
+(optional)
+
+---
+
+# 🟥 7. THE PLACEHOLDERS **NOW MAP TO REAL SCREENS**
+
+Everything we discussed now appears as a **real page** in the structure:
+
+✔ AI Team → homepage
+✔ Work → all work (actions, projects, sales, marketing)
+✔ Agents → list, editor, marketplace, hierarchy
+✔ Finance → money
+✔ Company → company admin + company knowledge base
+✔ User Profile → personal knowledge base
+
+There are **no imaginary pages**.
+No confusion.
+No overlap.
+No duplication.
+No missing features.
+
+---
+
+# 🟣 8. KNOWLEDGE BASES ARE NOW 100% SEPARATED
+
+### Company KB → Under Company
+
+### User KB → Under User Profile
+
+Agents merge both contexts when thinking.
+But UI must keep them distinct.
+
+---
+
+# 🧠 9. Everything is now consistent with your long-term vision
+
+* Homepage = AI Team
+* True HQ experience
+* Departments working in cycles
+* Automatic meetings
+* Trigger engine
+* Task-first execution
+* Agent marketplace restored
+* Agent editing restored
+* Knowledge bases separated
+* Finance accessible
+* Sales/Marketing simplified inside Work
+
+This is a **real platform**, not a Frankenstein of pages.
+
+---
+
+# 🚀 Ready for next step?
+
+I can now generate:
+
+### ✔ Full UI wireframes (clean, modern layout)
+
+### ✔ Builder-ready spec with acceptance criteria
+
+### ✔ Database schema for all entities
+
+### ✔ Backend architecture for agents, tasks, triggers, meetings
+
+### ✔ Orchestrator logic (pseudocode or code)
+
+### ✔ Example agent responses and flows
+
+Just tell me:
+
+**“Give me the builder spec.”**

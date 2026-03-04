@@ -1,0 +1,863 @@
+{
+  "version": 1,
+  "generatedAt": "2026-01-17T00:00:00.000Z",
+  "items": [
+    {
+      "route": "/dashboard",
+      "pageTitle": "Dashboard",
+      "module": "Overview",
+      "capabilityTag": "admin_kpis_dashboard",
+      "apiEndpointsCalled": [
+        "/api/marketplace/dashboard/stats",
+        "/api/marketplace/sellers",
+        "/api/marketplace/admin/orders",
+        "/api/marketplace/gold-price",
+        "/api/marketplace/fx-rates",
+        "/api/ai/status",
+        "/api/ai/providers"
+      ],
+      "navEntryName": "Dashboard",
+      "icon": "LayoutDashboard",
+      "visibleInNav": true
+    },
+    {
+      "route": "/companies",
+      "pageTitle": "Companies",
+      "module": "Overview",
+      "capabilityTag": "admin_companies",
+      "apiEndpointsCalled": ["/api/companies"],
+      "navEntryName": "Companies",
+      "icon": "Building2",
+      "visibleInNav": true
+    },
+    {
+      "route": "/territories",
+      "pageTitle": "Territories",
+      "module": "Territories",
+      "capabilityTag": "admin_territories",
+      "apiEndpointsCalled": [
+        "/api/territories",
+        "/api/territories/boundaries/search",
+        "/api/territories/boundaries/lookup"
+      ],
+      "navEntryName": "Territories",
+      "icon": "MapPin",
+      "visibleInNav": true
+    },
+    {
+      "route": "/territories/:id",
+      "pageTitle": "Territory Hub",
+      "module": "Territories",
+      "capabilityTag": "admin_territories_hub",
+      "apiEndpointsCalled": [
+        "/api/territories/:id",
+        "/api/territories/:id/chat/messages",
+        "/api/territories/:id/chat/send"
+      ],
+      "navEntryName": null,
+      "icon": "MapPin",
+      "visibleInNav": false
+    },
+    {
+      "route": "/admin/agents",
+      "pageTitle": "Agent Jobs",
+      "module": "Operations",
+      "capabilityTag": "admin_agent_command_center",
+      "apiEndpointsCalled": [
+        "/api/admin/agent-tasks",
+        "/api/admin/agent-tasks/agents/status",
+        "/api/admin/agent-tasks/:id",
+        "/api/admin/agent-tasks/:id/pause",
+        "/api/admin/agent-tasks/:id/resume",
+        "/api/agent/actions/run"
+      ],
+      "navEntryName": "Agent Jobs",
+      "icon": "Brain",
+      "visibleInNav": false
+    },
+    {
+      "route": "/ai-team",
+      "pageTitle": "AI Team Headquarters",
+      "module": "Operations",
+      "capabilityTag": "admin_ai_teams",
+      "apiEndpointsCalled": ["/api/agents", "/api/companies", "/api/task-lifecycle"],
+      "navEntryName": "AI Team HQ",
+      "icon": "Users",
+      "visibleInNav": true
+    },
+    {
+      "route": "/agenda",
+      "pageTitle": "Agenda",
+      "module": "Operations",
+      "capabilityTag": "admin_agenda",
+      "apiEndpointsCalled": ["/api/agenda/events", "/api/meetings", "/api/messages/:conversationId"],
+      "navEntryName": "Agenda",
+      "icon": "Calendar",
+      "visibleInNav": true
+    },
+    {
+      "route": "/agents",
+      "pageTitle": "Agents",
+      "module": "Operations",
+      "capabilityTag": "admin_agents_home",
+      "apiEndpointsCalled": ["/api/agents", "/api/departments"],
+      "navEntryName": "Agents",
+      "icon": "Network",
+      "visibleInNav": true
+    },
+    {
+      "route": "/agents/:agentId",
+      "pageTitle": "Agent",
+      "module": "Operations",
+      "capabilityTag": "admin_agent_detail",
+      "apiEndpointsCalled": [
+        "/api/agents/:id",
+        "/api/tasks",
+        "/api/admin/tenants/:tenantId/agents/by-db-id/:agentId/mailbox",
+        "/api/admin/mailboxes/:mailboxId/threads",
+        "/api/admin/threads/:threadId/messages",
+        "/api/email/send"
+      ],
+      "navEntryName": null,
+      "icon": "User",
+      "visibleInNav": false
+    },
+    {
+      "route": "/hierarchy",
+      "pageTitle": "Org Chart",
+      "module": "Operations",
+      "capabilityTag": "admin_hierarchy",
+      "apiEndpointsCalled": ["/api/agents", "/api/departments"],
+      "navEntryName": null,
+      "icon": "Network",
+      "visibleInNav": false,
+      "redirectTo": "/agents"
+    },
+    {
+      "route": "/tasks",
+      "pageTitle": "Tasks",
+      "module": "Operations",
+      "capabilityTag": "admin_tasks",
+      "apiEndpointsCalled": ["/api/tasks", "/api/task-lifecycle"],
+      "navEntryName": "Tasks",
+      "icon": "ClipboardList",
+      "visibleInNav": true
+    },
+    {
+      "route": "/goals",
+      "pageTitle": "Objectives",
+      "module": "Operations",
+      "capabilityTag": "admin_goals",
+      "apiEndpointsCalled": ["/api/goals"],
+      "navEntryName": "Objectives",
+      "icon": "Target",
+      "visibleInNav": true
+    },
+    {
+      "route": "/knowledge",
+      "pageTitle": "Knowledge Base",
+      "module": "Operations",
+      "capabilityTag": "admin_knowledge_base",
+      "apiEndpointsCalled": ["/api/knowledge"],
+      "navEntryName": "Knowledge Base",
+      "icon": "BookOpen",
+      "visibleInNav": true
+    },
+    {
+      "route": "/expert-clones",
+      "pageTitle": "Expert Agents",
+      "module": "Operations",
+      "capabilityTag": "admin_expert_clones",
+      "apiEndpointsCalled": ["/api/expert-clones"],
+      "navEntryName": "Expert Agents",
+      "icon": "Brain",
+      "visibleInNav": true
+    },
+    {
+      "route": "/actions",
+      "pageTitle": "Automations",
+      "module": "Operations",
+      "capabilityTag": "admin_ops_actions",
+      "apiEndpointsCalled": ["/api/agent/actions/run", "/api/task-lifecycle"],
+      "navEntryName": "Automations",
+      "icon": "Zap",
+      "visibleInNav": true
+    },
+    {
+      "route": "/admin/workstations",
+      "pageTitle": "Workstations",
+      "module": "Operations",
+      "capabilityTag": "admin_workstations_monitoring",
+      "apiEndpointsCalled": [
+        "/api/admin/workstations",
+        "/api/workstations/:id",
+        "/api/workstations/:id/events",
+        "/api/workstations/:id/sessions",
+        "/api/workstations/:id/view-token",
+        "/api/workstations/:id/network-policy"
+      ],
+      "navEntryName": "Workstations",
+      "icon": "LayoutDashboard",
+      "visibleInNav": true
+    },
+    {
+      "route": "/admin/evidence",
+      "pageTitle": "Evidence",
+      "module": "Operations",
+      "capabilityTag": "admin_action_evidence",
+      "apiEndpointsCalled": [
+        "/api/admin/evidence",
+        "/api/admin/evidence/:id"
+      ],
+      "navEntryName": "Evidence",
+      "icon": "Search",
+      "visibleInNav": true
+    },
+    {
+      "route": "/admin/inbox",
+      "pageTitle": "Inbox",
+      "module": "Communications",
+      "capabilityTag": "admin_email_inbox",
+      "apiEndpointsCalled": [
+        "/api/admin/email/work-orders",
+        "/api/admin/mailboxes/:mailboxId/work-orders",
+        "/api/admin/mailboxes/:mailboxId/threads",
+        "/api/admin/threads/:threadId/messages",
+        "/api/email/send"
+      ],
+      "navEntryName": "Inbox",
+      "icon": "Mail",
+      "visibleInNav": true
+    },
+    {
+      "route": "/mail",
+      "pageTitle": "Mail",
+      "module": "Communications",
+      "capabilityTag": "mail_ui",
+      "apiEndpointsCalled": [
+        "/api/mail/threads",
+        "/api/mail/work-orders",
+        "/api/mail/send",
+        "/api/mail/message/:id/reply"
+      ],
+      "navEntryName": "Mail",
+      "icon": "Mail",
+      "visibleInNav": true
+    },
+    {
+      "route": "/app/email",
+      "pageTitle": "Webmail",
+      "module": "Communications",
+      "capabilityTag": "external_webmail",
+      "apiEndpointsCalled": [],
+      "navEntryName": "Webmail",
+      "icon": "Mail",
+      "visibleInNav": true
+    },
+    {
+      "route": "/admin/communications/whatsapp",
+      "pageTitle": "WhatsApp",
+      "module": "Communications",
+      "capabilityTag": "admin_whatsapp",
+      "apiEndpointsCalled": [
+        "/api/webhooks/whatsapp",
+        "/api/whatsapp/admin/status",
+        "/api/whatsapp/admin/templates",
+        "/api/whatsapp/admin/conversations",
+        "/api/whatsapp/admin/conversations/:id/messages",
+        "/api/whatsapp/send"
+      ],
+      "navEntryName": "WhatsApp",
+      "icon": "MessageSquare",
+      "visibleInNav": true
+    },
+    {
+      "route": "/admin/communications/twilio",
+      "pageTitle": "Twilio (SMS/WhatsApp)",
+      "module": "Communications",
+      "capabilityTag": "admin_twilio",
+      "apiEndpointsCalled": [
+        "/api/admin/twilio/status",
+        "/api/admin/twilio/routing",
+        "/api/admin/twilio/send-test",
+        "/api/admin/twilio/events",
+        "/api/webhooks/twilio/inbound",
+        "/api/webhooks/twilio/status"
+      ],
+      "navEntryName": "Twilio",
+      "icon": "MessageSquare",
+      "visibleInNav": true
+    },
+    {
+      "route": "/admin/settings/communications/twilio",
+      "pageTitle": "Twilio Setup",
+      "module": "Admin",
+      "capabilityTag": "admin_twilio",
+      "apiEndpointsCalled": [
+        "/api/admin/twilio/status",
+        "/api/admin/twilio/routing",
+        "/api/admin/twilio/agent-controls",
+        "/api/admin/twilio/send-test",
+        "/api/admin/twilio/events",
+        "/api/webhooks/twilio/whatsapp/inbound",
+        "/api/webhooks/twilio/sms/inbound",
+        "/api/webhooks/twilio/message/status",
+        "/api/webhooks/twilio/voice/inbound",
+        "/api/webhooks/twilio/voice/status"
+      ],
+      "navEntryName": "Twilio Setup",
+      "icon": "MessageSquare",
+      "visibleInNav": true
+    },
+    {
+      "route": "/admin/email",
+      "pageTitle": "Email Setup",
+      "module": "Admin",
+      "capabilityTag": "admin_email_control_center",
+      "apiEndpointsCalled": [
+        "/api/admin/email/status",
+        "/api/admin/email/agents",
+        "/api/admin/tenants/:tenantId/mailboxes",
+        "/api/admin/tenants/:tenantId/mailboxes/bulk-provision",
+        "/api/admin/tenants/:tenantId/agents/:agentId/mailbox",
+        "/api/admin/mailboxes/:mailboxId/disable",
+        "/api/admin/mailboxes/:mailboxId/threads",
+        "/api/admin/threads/:threadId/messages",
+        "/api/email/send"
+      ],
+      "navEntryName": "Email Setup",
+      "icon": "Mail",
+      "visibleInNav": true
+    },
+    {
+      "route": "/admin/marketplace/products",
+      "pageTitle": "Products",
+      "module": "Marketplace",
+      "capabilityTag": "admin_marketplace_products",
+      "apiEndpointsCalled": [
+        "/api/admin/marketplace/products",
+        "/api/admin/marketplace/categories",
+        "/api/admin/marketplace/sellers",
+        "/api/admin/products/:id/images"
+      ],
+      "navEntryName": "Products",
+      "icon": "ShoppingBag",
+      "visibleInNav": true
+    },
+    {
+      "route": "/admin/stamped-gold/skus",
+      "pageTitle": "Stamped Gold SKUs",
+      "module": "Stamped Gold",
+      "capabilityTag": "admin_stamped_gold_skus",
+      "apiEndpointsCalled": [
+        "/api/stamped-gold/skus",
+        "/api/stamped-gold/items/mint",
+        "/api/stamped-gold/jewellers",
+        "/api/admin/marketplace/categories",
+        "/api/admin/marketplace/products"
+      ],
+      "navEntryName": "SKUs",
+      "icon": "Coins",
+      "visibleInNav": true
+    },
+    {
+      "route": "/admin/stamped-gold/items",
+      "pageTitle": "Stamped Gold Items",
+      "module": "Stamped Gold",
+      "capabilityTag": "admin_stamped_gold_items",
+      "apiEndpointsCalled": ["/api/stamped-gold/items"],
+      "navEntryName": "Items",
+      "icon": "Coins",
+      "visibleInNav": true
+    },
+    {
+      "route": "/admin/stamped-gold/jewellers",
+      "pageTitle": "Partner Jewellers",
+      "module": "Stamped Gold",
+      "capabilityTag": "admin_stamped_gold_jewellers",
+      "apiEndpointsCalled": ["/api/stamped-gold/jewellers"],
+      "navEntryName": "Jewellers",
+      "icon": "Store",
+      "visibleInNav": true
+    },
+    {
+      "route": "/admin/stamped-gold/scans",
+      "pageTitle": "Verification Scans",
+      "module": "Stamped Gold",
+      "capabilityTag": "admin_stamped_gold_scans",
+      "apiEndpointsCalled": ["/api/stamped-gold/scans"],
+      "navEntryName": "Scans",
+      "icon": "ShieldCheck",
+      "visibleInNav": true
+    },
+    {
+      "route": "/admin/stamped-gold/pickup",
+      "pageTitle": "Jeweller Pickup",
+      "module": "Stamped Gold",
+      "capabilityTag": "admin_stamped_gold_pickup",
+      "apiEndpointsCalled": ["/api/pickup/scan", "/api/pickup/confirm", "/api/stamped-gold/jewellers"],
+      "navEntryName": "Pickup",
+      "icon": "Truck",
+      "visibleInNav": true
+    },
+    {
+      "route": "/admin/map-icons",
+      "pageTitle": "Map Icons",
+      "module": "Marketplace",
+      "capabilityTag": "admin_marketplace_map_settings",
+      "apiEndpointsCalled": ["/api/admin/marketplace/map-icons", "/api/admin/marketplace/map-icons/apply-categories"],
+      "navEntryName": "Map Icons",
+      "icon": "MapPin",
+      "visibleInNav": true
+    },
+    {
+      "route": "/admin/settings/onboarding",
+      "pageTitle": "Onboarding & PWA",
+      "module": "Marketplace",
+      "capabilityTag": "admin_marketplace_onboarding_settings",
+      "apiEndpointsCalled": ["/api/admin/settings", "/api/ece/onboarding/config"],
+      "navEntryName": "Onboarding & PWA",
+      "icon": "MessageSquare",
+      "visibleInNav": true
+    },
+    {
+      "route": "/marketplace/sellers",
+      "pageTitle": "Sellers",
+      "module": "Marketplace",
+      "capabilityTag": "admin_marketplace_sellers",
+      "apiEndpointsCalled": ["/api/marketplace/sellers"],
+      "navEntryName": "Sellers",
+      "icon": "Store",
+      "visibleInNav": true
+    },
+    {
+      "route": "/seller-dashboard",
+      "pageTitle": "Seller Dashboard",
+      "module": "Marketplace",
+      "capabilityTag": "admin_seller_dashboard",
+      "apiEndpointsCalled": ["/api/marketplace/seller"],
+      "navEntryName": "Seller Dashboard",
+      "icon": "Store",
+      "visibleInNav": true
+    },
+    {
+      "route": "/bureaus",
+      "pageTitle": "Bureaus",
+      "module": "Marketplace",
+      "capabilityTag": "admin_bureaus",
+      "apiEndpointsCalled": ["/api/gold-exchange/bureaus"],
+      "navEntryName": "Bureaus",
+      "icon": "ShieldCheck",
+      "visibleInNav": true
+    },
+    {
+      "route": "/contracts",
+      "pageTitle": "Contracts",
+      "module": "Marketplace",
+      "capabilityTag": "admin_contracts",
+      "apiEndpointsCalled": ["/api/digital-contracts"],
+      "navEntryName": "Contracts",
+      "icon": "FileSignature",
+      "visibleInNav": true
+    },
+    {
+      "route": "/delivery/admin",
+      "pageTitle": "Delivery",
+      "module": "Marketplace",
+      "capabilityTag": "admin_delivery",
+      "apiEndpointsCalled": ["/api/delivery"],
+      "navEntryName": "Delivery",
+      "icon": "Truck",
+      "visibleInNav": true
+    },
+    {
+      "route": "/finance",
+      "pageTitle": "Finance",
+      "module": "Finance",
+      "capabilityTag": "admin_finance",
+      "apiEndpointsCalled": ["/api/marketplace/wallet", "/api/marketplace/finance"],
+      "navEntryName": "Finance",
+      "icon": "Wallet",
+      "visibleInNav": true
+    },
+    {
+      "route": "/admin/marketplace/payments",
+      "pageTitle": "Payments",
+      "module": "Finance",
+      "capabilityTag": "admin_marketplace_payments",
+      "apiEndpointsCalled": ["/api/admin/marketplace/payments"],
+      "navEntryName": "Payments",
+      "icon": "DollarSign",
+      "visibleInNav": true
+    },
+    {
+      "route": "/agent-economy",
+      "pageTitle": "Wallets & Credits",
+      "module": "Finance",
+      "capabilityTag": "admin_agent_economy",
+      "apiEndpointsCalled": ["/api/agent-economy"],
+      "navEntryName": "Wallets & Credits",
+      "icon": "Coins",
+      "visibleInNav": true
+    },
+    {
+      "route": "/admin/media/assets",
+      "pageTitle": "Asset Studio",
+      "module": "Media",
+      "capabilityTag": "asset-studio",
+      "apiEndpointsCalled": ["/api/admin/assets", "/api/admin/assets/registry", "/api/admin/assets/:assetId"],
+      "navEntryName": "Asset Studio",
+      "icon": "ImageDown",
+      "visibleInNav": true
+    },
+    {
+      "route": "/admin/media/debug",
+      "pageTitle": "Media Debug",
+      "module": "Media",
+      "capabilityTag": "admin_media_debug",
+      "apiEndpointsCalled": ["/api/admin/assets/images/history"],
+      "navEntryName": "Media Debug",
+      "icon": "Image",
+      "visibleInNav": true
+    },
+    {
+      "route": "/admin/website/landing-images",
+      "pageTitle": "Landing Page Images",
+      "module": "Website",
+      "capabilityTag": "admin_website_landing_images",
+      "apiEndpointsCalled": ["/api/admin/website/landing-images"],
+      "navEntryName": "Landing Page Images",
+      "icon": "ImageDown",
+      "visibleInNav": false,
+      "redirectTo": "/admin/media/assets?tab=presets&scope=landing"
+    },
+    {
+      "route": "/admin/website/visits",
+      "pageTitle": "Visits Intelligence",
+      "module": "Website",
+      "capabilityTag": "admin_website_visits_intelligence",
+      "apiEndpointsCalled": ["/api/admin/telemetry/summary", "/api/admin/telemetry/sessions/recent"],
+      "navEntryName": "Visits Intelligence",
+      "icon": "BarChart3",
+      "visibleInNav": true
+    },
+    {
+      "route": "/admin/website/seo",
+      "pageTitle": "SEO Health",
+      "module": "Website",
+      "capabilityTag": "admin_website_seo_health",
+      "apiEndpointsCalled": ["/api/admin/seo/issues", "/api/admin/seo/snapshots", "/api/admin/seo/scan"],
+      "navEntryName": "SEO Health",
+      "icon": "Search",
+      "visibleInNav": true
+    },
+    {
+      "route": "/admin/website/seo-autopilot",
+      "pageTitle": "SEO Autopilot Queue",
+      "module": "Website",
+      "capabilityTag": "admin_website_seo_autopilot",
+      "apiEndpointsCalled": [
+        "/api/admin/seo/recommendations",
+        "/api/admin/seo/patches",
+        "/api/admin/seo/patches/:id/apply",
+        "/api/admin/seo/patches/:id/rollback"
+      ],
+      "navEntryName": "SEO Autopilot",
+      "icon": "Zap",
+      "visibleInNav": true
+    },
+    {
+      "route": "/marketing",
+      "pageTitle": "Marketing",
+      "module": "Go-To-Market",
+      "capabilityTag": "admin_marketing",
+      "apiEndpointsCalled": ["/api/agent/actions/run"],
+      "navEntryName": "Marketing",
+      "icon": "Megaphone",
+      "visibleInNav": true
+    },
+    {
+      "route": "/client-hunter",
+      "pageTitle": "Leads & Campaigns",
+      "module": "Go-To-Market",
+      "capabilityTag": "admin_client_hunter",
+      "apiEndpointsCalled": ["/api/agent/actions/run"],
+      "navEntryName": "Leads & Campaigns",
+      "icon": "Target",
+      "visibleInNav": true
+    },
+    {
+      "route": "/sales",
+      "pageTitle": "Sales",
+      "module": "Go-To-Market",
+      "capabilityTag": "admin_sales",
+      "apiEndpointsCalled": ["/api/agent/actions/run"],
+      "navEntryName": "Sales",
+      "icon": "DollarSign",
+      "visibleInNav": true
+    },
+    {
+      "route": "/admin/contacts",
+      "pageTitle": "Contacts",
+      "module": "Admin",
+      "capabilityTag": "admin_contacts",
+      "apiEndpointsCalled": [
+        "/api/admin/contacts",
+        "/api/admin/contacts/diagnostics",
+        "/api/admin/contacts/migrations/claim-legacy",
+        "/api/admin/contacts/imports",
+        "/api/admin/contacts/capture"
+      ],
+      "navEntryName": "Contacts",
+      "icon": "Users",
+      "visibleInNav": true
+    },
+    {
+      "route": "/admin-users",
+      "pageTitle": "Users & Roles",
+      "module": "Admin",
+      "capabilityTag": "admin_users_roles",
+      "apiEndpointsCalled": ["/api/admin/users"],
+      "navEntryName": "Users & Roles",
+      "icon": "Users",
+      "visibleInNav": true
+    },
+    {
+      "route": "/admin/pro-test-accounts",
+      "pageTitle": "Pro Test Accounts",
+      "module": "Admin",
+      "capabilityTag": "admin_pro_test_accounts",
+      "apiEndpointsCalled": [
+        "/api/admin/pro-test-accounts",
+        "/api/admin/pro-test-accounts/:userId/delete-demo-data"
+      ],
+      "navEntryName": "Pro Test Accounts",
+      "icon": "User",
+      "visibleInNav": true
+    },
+    {
+      "route": "/subscription-plans",
+      "pageTitle": "Plans",
+      "module": "Admin",
+      "capabilityTag": "admin_plans",
+      "apiEndpointsCalled": ["/api/subscription-plans"],
+      "navEntryName": "Plans",
+      "icon": "Wallet",
+      "visibleInNav": true
+    },
+    {
+      "route": "/admin/system/update",
+      "pageTitle": "Update / Reset",
+      "module": "Admin",
+      "capabilityTag": "admin_system_update",
+      "apiEndpointsCalled": ["/api/system/update"],
+      "navEntryName": "Update / Reset",
+      "icon": "RefreshCw",
+      "visibleInNav": true
+    },
+    {
+      "route": "/admin/agents/governance",
+      "pageTitle": "Agent Governance",
+      "module": "Admin",
+      "capabilityTag": "admin_agent_governance",
+      "apiEndpointsCalled": [
+        "/api/admin/agents/production",
+        "/api/admin/agents/production/seed",
+        "/api/admin/agents/production/upsert",
+        "/api/admin/agents/purge-limited"
+      ],
+      "navEntryName": "Agent Governance",
+      "icon": "ShieldCheck",
+      "visibleInNav": true
+    },
+    {
+      "route": "/admin/ux-audit",
+      "pageTitle": "UX Audit Runner",
+      "module": "Admin",
+      "capabilityTag": "admin_ux_audit",
+      "apiEndpointsCalled": ["/api/admin/ux-audit", "/api/admin/ia/pages-audit"],
+      "navEntryName": "UX Audit",
+      "icon": "ClipboardList",
+      "visibleInNav": true
+    },
+    {
+      "route": "/profile",
+      "pageTitle": "Profile",
+      "module": "Admin",
+      "capabilityTag": "admin_profile",
+      "apiEndpointsCalled": ["/api/account", "/api/users/me"],
+      "navEntryName": "Profile",
+      "icon": "User",
+      "visibleInNav": true
+    },
+    {
+      "route": "/admin/wallet/accounts",
+      "pageTitle": "Wallet Accounts",
+      "module": "Wallet OS",
+      "capabilityTag": "wallet_accounts",
+      "apiEndpointsCalled": ["/api/admin/wallet/accounts", "/api/admin/wallet/accounts/:walletId"],
+      "navEntryName": "Wallet Accounts",
+      "icon": "Wallet",
+      "visibleInNav": true
+    },
+    {
+      "route": "/admin/wallet/ledger",
+      "pageTitle": "Wallet Ledger",
+      "module": "Wallet OS",
+      "capabilityTag": "wallet_ledger",
+      "apiEndpointsCalled": ["/api/admin/wallet/ledger"],
+      "navEntryName": "Ledger",
+      "icon": "ClipboardList",
+      "visibleInNav": true
+    },
+    {
+      "route": "/admin/wallet/topups",
+      "pageTitle": "Wallet Topups",
+      "module": "Wallet OS",
+      "capabilityTag": "wallet_topups",
+      "apiEndpointsCalled": ["/api/admin/wallet/topups", "/api/admin/wallet/topups/:topupId/recheck"],
+      "navEntryName": "Topups",
+      "icon": "Coins",
+      "visibleInNav": true
+    },
+    {
+      "route": "/admin/wallet/payouts",
+      "pageTitle": "Wallet Payouts",
+      "module": "Wallet OS",
+      "capabilityTag": "wallet_payouts",
+      "apiEndpointsCalled": ["/api/admin/wallet/payouts", "/api/admin/wallet/payouts/:payoutId/reverse"],
+      "navEntryName": "Payouts",
+      "icon": "DollarSign",
+      "visibleInNav": true
+    },
+    {
+      "route": "/admin/wallet/vouchers",
+      "pageTitle": "Vouchers",
+      "module": "Wallet OS",
+      "capabilityTag": "wallet_vouchers",
+      "apiEndpointsCalled": [
+        "/api/admin/vouchers/batches",
+        "/api/admin/vouchers/batches/create",
+        "/api/admin/vouchers/batches/:batchId/issue",
+        "/api/admin/vouchers/batches/:batchId"
+      ],
+      "navEntryName": "Vouchers",
+      "icon": "Coins",
+      "visibleInNav": true
+    },
+    {
+      "route": "/admin/wallet/sellers",
+      "pageTitle": "Sellers",
+      "module": "Wallet OS",
+      "capabilityTag": "wallet_sellers",
+      "apiEndpointsCalled": ["/api/admin/sellers", "/api/admin/sellers/create"],
+      "navEntryName": "Sellers",
+      "icon": "Users",
+      "visibleInNav": true
+    },
+    {
+      "route": "/admin/wallet/risk",
+      "pageTitle": "Risk Alerts",
+      "module": "Wallet OS",
+      "capabilityTag": "wallet_risk",
+      "apiEndpointsCalled": ["/api/admin/risk/alerts"],
+      "navEntryName": "Risk",
+      "icon": "ShieldCheck",
+      "visibleInNav": true
+    },
+    {
+      "route": "/admin/wallet/config",
+      "pageTitle": "Wallet Config",
+      "module": "Wallet OS",
+      "capabilityTag": "wallet_config",
+      "apiEndpointsCalled": [],
+      "navEntryName": "Config",
+      "icon": "RefreshCw",
+      "visibleInNav": true
+    },
+    {
+      "route": "/whatsapp",
+      "pageTitle": "WhatsApp (Legacy)",
+      "module": "Communications",
+      "capabilityTag": "admin_whatsapp",
+      "apiEndpointsCalled": ["/api/whatsapp/admin/status", "/api/whatsapp/send"],
+      "navEntryName": null,
+      "icon": "MessageSquare",
+      "visibleInNav": false,
+      "redirectTo": "/admin/communications/whatsapp"
+    },
+    {
+      "route": "/admin/territories",
+      "pageTitle": "Territories (Legacy)",
+      "module": "Territories",
+      "capabilityTag": "admin_territories",
+      "apiEndpointsCalled": ["/api/territories"],
+      "navEntryName": null,
+      "icon": "MapPin",
+      "visibleInNav": false,
+      "redirectTo": "/territories"
+    },
+    {
+      "route": "/admin/territories/:id",
+      "pageTitle": "Territory Hub (Legacy)",
+      "module": "Territories",
+      "capabilityTag": "admin_territories_hub",
+      "apiEndpointsCalled": ["/api/territories/:id"],
+      "navEntryName": null,
+      "icon": "MapPin",
+      "visibleInNav": false,
+      "redirectTo": "/territories/:id"
+    },
+    {
+      "route": "/admin/equipment-ops/fleet-map",
+      "pageTitle": "Fleet Map",
+      "module": "Equipment Ops",
+      "capabilityTag": "admin_equipment_ops_fleet_map",
+      "apiEndpointsCalled": ["/api/equipment"],
+      "navEntryName": "Fleet Map",
+      "icon": "MapPin",
+      "visibleInNav": true
+    },
+    {
+      "route": "/admin/equipment-ops/listings",
+      "pageTitle": "Listings",
+      "module": "Equipment Ops",
+      "capabilityTag": "admin_equipment_ops_listings",
+      "apiEndpointsCalled": ["/api/equipment-listings"],
+      "navEntryName": "Listings",
+      "icon": "ClipboardList",
+      "visibleInNav": true
+    },
+    {
+      "route": "/admin/equipment-ops/contracts",
+      "pageTitle": "Contracts",
+      "module": "Equipment Ops",
+      "capabilityTag": "admin_equipment_ops_contracts",
+      "apiEndpointsCalled": ["/api/equipment-contracts", "/api/payments/escrow/hold", "/api/payments/escrow/release"],
+      "navEntryName": "Contracts",
+      "icon": "FileSignature",
+      "visibleInNav": true
+    },
+    {
+      "route": "/admin/equipment-ops/maintenance",
+      "pageTitle": "Maintenance Desk",
+      "module": "Equipment Ops",
+      "capabilityTag": "admin_equipment_ops_maintenance",
+      "apiEndpointsCalled": ["/api/maintenance-tickets"],
+      "navEntryName": "Maintenance",
+      "icon": "RefreshCw",
+      "visibleInNav": true
+    },
+    {
+      "route": "/seller",
+      "pageTitle": "Seller Dashboard (Legacy)",
+      "module": "Marketplace",
+      "capabilityTag": "admin_seller_dashboard",
+      "apiEndpointsCalled": ["/api/marketplace/seller"],
+      "navEntryName": null,
+      "icon": "Store",
+      "visibleInNav": false,
+      "redirectTo": "/seller-dashboard"
+    }
+  ]
+}

@@ -1,0 +1,131 @@
+### Instructions for Refining the Multi-Agent Platform with Focus on Clarity, UX, and Functionality
+
+#### **Core Objectives:**
+1. Ensure clear distinction between the **user's messages** and **agent responses** for easier tracking in conversations.
+2. Simplify the **UX for adding/removing agents** to/from conversations.
+3. Minimize unnecessary clutter, such as overly detailed agent analysis, and focus on clear and fluid interactions.
+4. Prioritize seamless multi-agent conversations where agents can talk to each other, quote one another, and collaborate efficiently.
+
+---
+
+### **Key Functional Improvements**
+
+#### **1. Message Distinction:**
+- **Goal**: Clearly identify messages sent by the user and differentiate them from agent responses.
+- **Implementation**:
+  1. Use visual indicators (e.g., labels, colors) for each message:
+     - **User Messages**:
+       - Label: "You" or the user's name.
+       - Chat bubble: Align to the right with a unique color (e.g., light blue).
+     - **Agent Messages**:
+       - Label: Agent name and role (e.g., "Marketing Agent").
+       - Chat bubble: Align to the left with a distinct color (e.g., light gray or green).
+  2. Include timestamps for every message to ensure conversational context.
+
+**Example**:
+```plaintext
+[You | 3:00 PM]: What’s the current task status?
+[Marketing Agent | 3:01 PM]: As Research Agent mentioned, we’re analyzing the trends.
+[Research Agent | 3:02 PM]: Completed data collection. Analysis is in progress.
+```
+
+---
+
+#### **2. Simplified Agent Management in Chatrooms:**
+- **Goal**: Make adding/removing agents to/from conversations intuitive and seamless.
+- **Implementation**:
+  1. **Agent List in Sidebar**:
+     - Display all available agents on the **left sidebar**.
+     - Next to each agent’s name, include:
+       - A **plus button** (`+`) to add the agent to the current conversation.
+       - A **remove button** (`x`) to remove the agent.
+  2. **Dynamic Agent Controls**:
+     - Agents can be dynamically added or removed from a chat without requiring a page reload.
+     - Changes to participants should reflect instantly in the conversation.
+  3. **Minimize Complexity**:
+     - Avoid dropdown menus or separate pages for adding agents. Keep all controls within the chat interface.
+  4. **Visual Feedback**:
+     - Display a small popup or notification when an agent is added or removed:
+       - “Marketing Agent has joined the conversation.”
+       - “Finance Agent has been removed from the conversation.”
+
+---
+
+#### **3. Reduce Clutter in Agent Analysis**
+- **Goal**: Focus the conversation on the **answers** while minimizing the visibility of pre-answer analysis.
+- **Implementation**:
+  1. **Hide Analysis by Default**:
+     - Display only the **final answer** prominently in the chat bubble.
+     - Include a small "See Analysis" link if the user wants to review the agent’s reasoning process.
+  2. **Compact Design for Analysis**:
+     - If analysis is shown, display it in a collapsible section below the answer.
+     - Example:
+       ```plaintext
+       Marketing Agent: The target audience for the campaign is adults aged 25-34.
+       [See Analysis] (Collapsible section with detailed reasoning)
+       ```
+  3. **Prioritize Fluidity**:
+     - Ensure conversations flow naturally without interruptions caused by long, verbose analysis sections.
+
+---
+
+#### **4. Improved Multi-Agent Collaboration**
+- **Goal**: Allow agents to talk to each other, quote one another, and collaborate dynamically in conversations.
+- **Implementation**:
+  1. **Quoting Other Agents**:
+     - Agents should be able to reference previous messages:
+       ```plaintext
+       Marketing Agent: As Research Agent mentioned earlier, the trend analysis is complete.
+       ```
+  2. **Turn-Based Collaboration**:
+     - Implement rules for turn-taking to avoid overlapping responses:
+       - Only one agent speaks at a time unless they are directly quoting another.
+  3. **Active Conversations**:
+     - Display a typing indicator for agents currently crafting a response:
+       - Example: "Finance Agent is typing…"
+  4. **Summarized Outcomes**:
+     - At the end of every meeting or task-specific discussion, automatically generate a summary of key decisions and assign action items to agents.
+
+---
+
+#### **5. Enhanced UX for Fluid Conversations**
+- **Goal**: Ensure that the interface feels natural and intuitive for the user.
+- **Implementation**:
+  1. **Streamlined Message Display**:
+     - Avoid verbose or redundant information in chat bubbles.
+     - Focus on concise, task-oriented responses.
+  2. **Floating Chat Panel**:
+     - Allow the chat interface to float on top of other pages for easier monitoring.
+  3. **Visual Enhancements**:
+     - Use subtle animations (e.g., fade-in for new messages) to improve the conversation experience.
+
+---
+
+### **Specific Instructions for the Developer**
+1. **Preserve Existing Functionalities**:
+   - Do not remove or overwrite components that are already functional.
+   - Test and debug only where necessary without disrupting working features.
+2. **Focus on Clarity in Conversations**:
+   - Clearly distinguish between user messages and agent responses.
+   - Highlight agent names, roles, and timestamps for better context.
+3. **Simplify Agent Management**:
+   - Implement an intuitive left sidebar with dynamic buttons for adding/removing agents.
+   - Avoid complex workflows for agent management.
+4. **Minimize Clutter**:
+   - Reduce the visibility of agent analysis unless explicitly requested.
+   - Focus on displaying concise and actionable responses.
+5. **Enable Multi-Agent Interactions**:
+   - Ensure agents can quote, reference, and collaborate seamlessly.
+   - Introduce turn-based logic to improve conversation flow.
+
+---
+
+### **Deliverables**
+1. A multi-agent chatroom where:
+   - User and agent messages are clearly distinguished.
+   - Agents can collaborate, quote each other, and reference past messages.
+2. A simplified agent management system with an intuitive sidebar for adding/removing agents.
+3. A compact, clutter-free interface where analysis is minimized, and answers are prioritized.
+4. An enhanced, fluid conversation experience with real-time updates and summaries.
+
+These refinements will ensure a smooth and intuitive platform for both the CEO and the agents, enabling effective multi-agent collaboration and company simulation.

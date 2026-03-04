@@ -1,0 +1,196 @@
+{
+  "timestamp": "2026-02-27T21:15:45.083Z",
+  "baseUrl": "https://boursedelor.com",
+  "checks": [
+    {
+      "id": "assistant.thread",
+      "ok": true,
+      "status": 200,
+      "url": "/api/assistant/thread",
+      "body": {
+        "thread": {
+          "id": 2,
+          "tenantId": 1,
+          "userId": 1,
+          "assistantAgentId": 18,
+          "assistantDisplayName": "Tassi Hangbé",
+          "assistantRole": "Chairman Assistant",
+          "status": "active",
+          "metadata": {},
+          "createdAt": "2026-02-27T13:45:12.908Z",
+          "updatedAt": "2026-02-27T21:10:35.016Z"
+        },
+        "assistant": {
+          "id": 18,
+          "tenantId": 1,
+          "companyId": 1,
+          "departmentId": 1,
+          "managerId": 1,
+          "env": "prod",
+          "isTest": false,
+          "isVisible": true,
+          "name": "Tassi Hangbé",
+          "displayName": "Tassi Hangbé",
+          "role": "Chairman Assistant",
+          "isDepartmentHead": false,
+          "status": "active",
+          "avatar": null,
+          "avatarUrl": null,
+          "isTerminalDefault": true,
+          "photoAssetId": null,
+          "photoPrompt": null,
+          "photoLocked": false,
+          "photoUpdatedAt": null,
+          "photoUpdatedBy": null,
+          "birthday": null,
+          "country": "Côte d’Ivoire",
+          "timezone": "Africa/Abidjan",
+          "languages": [],
+          "cv": null,
+          "skills": [
+            "Executive support",
+            "Decision briefs",
+            "Structured writing",
+            "Prioritization",
+            "Follow-ups"
+          ],
+          "industryFocus": [
+            "Marketplace operations",
+            "Gold trade",
+            "Company governance"
+          ],
+          "personality": {},
+          "mission": "Support the Chairman with daily decision briefs, structured follow-ups, and clear summaries across marketplace and gold exchange modules.",
+          "responsibilities": [
+            "Turn meetings and chats into action items and owners",
+            "Draft decision briefs (options, risks, recommendation)",
+            "Maintain a weekly priorities and follow-up cadence"
+          ],
+          "kpiTargets": {},
+          "permissions": {},
+          "autonomyLevel": "partial",
+          "approvalRules": {},
+          "roleLevel": 1,
+          "contextWindowTokens": 4000,
+          "decisionAuthority": "low",
+          "canApproveBelow": false,
+          "communicationStyle": {},
+          "hiredDate": "2025-12-18T19:13:12.024Z",
+          "promotedDate": null,
+          "capabilities": [],
+          "baseBudget": "100.00",
+          "budgetUsed": "0.01",
+          "budgetBonus": "0.00",
+          "metadata": {
+            "persona": {
+              "lifeStory": "Raised in West Africa, built a career supporting founders and executives by turning ambiguity into clear next actions. Calm, detail-oriented, and relentlessly organized.",
+              "personalGoals": "Help the Chairman operate at maximum leverage by keeping context, decisions, and follow-ups transparent and on time."
+            },
+            "tenantId": "1",
+            "systemKey": "chairman-assistant"
+          },
+          "createdAt": "2025-12-18T19:13:12.674Z",
+          "updatedAt": "2026-02-27T21:10:35.001Z"
+        }
+      }
+    },
+    {
+      "id": "assistant.attachment.upload",
+      "ok": true,
+      "status": 200,
+      "url": "/api/assistant/thread/2/attachments",
+      "body": {
+        "ok": true,
+        "threadId": 2,
+        "attachment": {
+          "id": "sha256:afd5196a3a9536432013b7dc829da0afd009b2456ba3610e97d7b00481ee56ca",
+          "name": "tmp_attachment_test.txt",
+          "type": "text/plain",
+          "size": 31,
+          "version": 1,
+          "url": "https://boursedelor.com/assets/chat-attachments/bdo/afd5196a3a9536432013b7dc829da0afd009b2456ba3610e97d7b00481ee56ca.txt"
+        }
+      }
+    },
+    {
+      "id": "assistant.message.with_attachment",
+      "ok": true,
+      "status": 200,
+      "url": "/api/assistant/message",
+      "body": {
+        "thread": {
+          "id": 2,
+          "tenantId": 1,
+          "userId": 1,
+          "assistantAgentId": 18,
+          "assistantDisplayName": "Tassi Hangbé",
+          "assistantRole": "Chairman Assistant",
+          "status": "active",
+          "metadata": {},
+          "createdAt": "2026-02-27T13:45:12.908Z",
+          "updatedAt": "2026-02-27T21:10:35.016Z"
+        },
+        "userMessage": {
+          "id": 58,
+          "tenantId": 1,
+          "threadId": 2,
+          "senderType": "user",
+          "senderUserId": 1,
+          "senderAgentId": null,
+          "senderName": "admin",
+          "content": "[smoke] attachment + message",
+          "metadata": {
+            "attachments": [
+              {
+                "id": "sha256:afd5196a3a9536432013b7dc829da0afd009b2456ba3610e97d7b00481ee56ca",
+                "url": "https://boursedelor.com/assets/chat-attachments/bdo/afd5196a3a9536432013b7dc829da0afd009b2456ba3610e97d7b00481ee56ca.txt",
+                "name": "tmp_attachment_test.txt",
+                "size": 31,
+                "type": "text/plain",
+                "version": 1
+              }
+            ]
+          },
+          "createdAt": "2026-02-27T21:15:44.996Z"
+        },
+        "assistantMessage": {
+          "id": 59,
+          "tenantId": 1,
+          "threadId": 2,
+          "senderType": "assistant",
+          "senderUserId": null,
+          "senderAgentId": 18,
+          "senderName": "Tassi Hangbé",
+          "content": "Smoke test with attachment and message acknowledged. System operational and standing by, Chairman.",
+          "metadata": {
+            "analysis": "Acknowledging smoke test with attachment and message.",
+            "rawResponse": "Smoke test with attachment and message acknowledged. System operational and standing by, Chairman."
+          },
+          "createdAt": "2026-02-27T21:15:49.631Z"
+        },
+        "actionRuns": {
+          "created": [],
+          "blocked": [],
+          "runIds": []
+        }
+      }
+    },
+    {
+      "id": "transcription.health",
+      "ok": true,
+      "status": 200,
+      "url": "/api/transcription/health",
+      "body": {
+        "ok": true,
+        "provider_primary": "whisper_service",
+        "provider_secondary": "browser_speech",
+        "provider_tertiary": "openai",
+        "openai_transcription_enabled": false,
+        "whisper_service_url": "http://transcription:8080/transcribe",
+        "whisper_service_status": "reachable",
+        "whisper_service_reachable": true,
+        "whisper_service_latency_ms": 12
+      }
+    }
+  ]
+}

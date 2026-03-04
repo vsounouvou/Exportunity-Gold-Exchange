@@ -1,0 +1,379 @@
+Below is the **full deep-thinking blueprint** for the *Company System* of your platform — how companies should be **created, edited, displayed, categorized, linked to sectors, budgets, agents, subsidiaries, legal structures, dashboards, AI vision integration, and autonomy**.
+
+This is the **exact specification** your developer needs to build a complete “Company Center” inside the platform.
+
+---
+
+# ✅ **1. THE COMPANY MODULE — THE CORE IDEA**
+
+Every user is a **Chairman** who can create, edit, and manage **multiple companies** inside one account.
+
+Each company has:
+
+### ✔️ A Profile
+
+(Name, mission, sector, country, bylaws, legal model…)
+
+### ✔️ A Vision
+
+(Long-term plan, short-term goals, KPIs, milestones…)
+
+### ✔️ A Structure
+
+(Departments, agents, org chart, subsidiaries…)
+
+### ✔️ A Budget
+
+(Fixed or dynamic — used by the AI to act)
+
+### ✔️ A Dashboard
+
+(Financials, activity, actions executed, meetings, performance, calendar…)
+
+### ✔️ A Knowledge Base
+
+(Documents, SOPs, strategy docs, reports…)
+
+### ✔️ A Legal & Compliance layer
+
+(Tax rules based on country, incorporation type, shareholders…)
+
+### ✔️ AI Behavior Settings
+
+(How autonomous agents behave inside this company)
+
+---
+
+# ✅ **2. COMPANY PAGE – WHAT INFORMATION MUST EXIST**
+
+When the user clicks on any company, they go to this page:
+
+---
+
+## **A. COMPANY HEADER**
+
+* **Company Name**
+* **Logo / Icon**
+* **Country of Registration**
+* **Legal Type**
+
+  * LLC / FZ-LLC / SA / SARL / FZE / etc.
+* **Created on (Date)**
+* **Status:** Active / Testing / Paused / Archived
+
+---
+
+## **B. COMPANY OVERVIEW BLOCK**
+
+This includes:
+
+### **1. Description / What the company does**
+
+Clear text field describing the company.
+
+### **2. Sector & Industry Category**
+
+Examples:
+
+* Trade & Export
+* Gold and Precious Metals
+* Education
+* Logistics
+* Construction
+* Architecture
+* Technology / AI
+* Retail / E-commerce
+* Media
+* Agriculture
+* Real Estate
+
+User can choose:
+
+* **Primary sector**
+* **Secondary sector**
+* **Industry tags**
+
+Agents will use this to adjust behavior.
+
+---
+
+## **C. VISION & STRATEGY BLOCK**
+
+### ✔️ Company Vision (Long-term)
+
+e.g.
+*"Become the leading gold export partner between West Africa and the UAE."*
+
+### ✔️ Current Goals (Short-term)
+
+e.g.
+
+* “Setup a procurement office in Abidjan”
+* “Sign 5 suppliers”
+* “Automate email outreach”
+
+### ✔️ KPIs
+
+* Revenue
+* Leads
+* Deals closed
+* Actions executed
+* Meetings held
+* Autonomous tasks completed
+
+Users can manually edit these — or the Chairman Assistant can auto-generate them.
+
+---
+
+## **D. BUDGET, FINANCE & OPERATIONS BLOCK**
+
+### ✔️ AI Operational Budget
+
+Amount the Chairman assigns.
+
+* Monthly budget
+* Daily cash burn target
+* Token usage limit
+* API cost controls
+* Spending categories (ads, email credits, research…)
+
+### ✔️ Revenue Tracking
+
+* Revenue generated
+* Profit
+* Expenses
+* AI-suggested optimizations
+
+### ✔️ Shareholding & Investors
+
+Table:
+
+| Shareholder | % | Role | Wallet/account | Distribution mode |
+
+Investors can be added directly.
+
+### ✔️ Auto-distribution Settings
+
+* Revenue → Split by shareholding
+* Expenses → Covered by Chairman or company wallet
+* Taxes → Based on company country
+
+---
+
+## **E. SUBSIDIARIES BLOCK**
+
+User can add:
+
+* Subsidiary name
+* Country
+* Purpose
+* Agents assigned
+* Separate or shared budget
+* Separate or shared knowledge base
+
+Agents can suggest:
+“Chairman, I recommend we create a Delaware entity for this product.”
+
+---
+
+## **F. AGENTS & ORGANIZATION BLOCK**
+
+This is the **company-specific hierarchy**.
+
+Includes:
+
+* Chairman Assistant (always present)
+* Core departments:
+
+  * Marketing
+  * Sales
+  * Legal & Compliance
+  * Finance
+  * Support
+  * HR
+  * Operations
+* Custom departments
+* Agents inside each department
+* Subsidiary agents
+* External integrations (APIs, email, CRM, LinkedIn)
+
+Inside this block:
+
+### “Add Agent” Button
+
+Chairman or Chairman Assistant can create:
+
+* Executive AI
+* Marketing AI
+* Sales AI
+* Research AI
+* Admin AI
+* Compliance AI
+
+Each with:
+
+* Name
+* Country of origin (for personality/cultural alignment)
+* Personality
+* Avatar
+* Skillset
+* Permissions (Action assignation)
+
+---
+
+## **G. KNOWLEDGE BASE BLOCK**
+
+Shows:
+
+* Company documents
+* SOPs
+* AI-generated reports
+* PDFs
+* Strategy files
+* Market research
+
+With:
+
+* Add document
+* Add web link
+* Add text note
+* Organize in collections
+
+---
+
+## **H. MEETINGS / COMMUNICATION BLOCK**
+
+Displays:
+
+* Meetings held today
+* Meetings scheduled
+* Agent-to-agent meetings
+* Meetings between Chairman Assistant & Chairman
+* Action logs
+* Daily diary view (day collapsible system)
+
+---
+
+## **I. COMPANY SETTINGS BLOCK**
+
+* Name change
+* Country change
+* Logo
+* Theme color
+* AI behavior configuration
+
+  * Autonomy level
+  * Risk appetite
+  * Creativity
+  * Strictness
+* Legal info
+* Billing info
+* API integrations (Google, LinkedIn, Email)
+
+---
+
+# ✅ **3. THE COMPANY LIST PAGE**
+
+Accessible from menu: **Companies**
+
+### Shows:
+
+#### **A. Grid of Companies you created**
+
+Each card shows:
+
+* Company name
+* Country flag
+* Sector icon
+* Today’s activity:
+
+  * Actions executed
+  * Meetings held
+  * Revenue
+  * Alerts
+* Last updated
+* Button: “Open Company”
+
+#### **B. “+ Add New Company” Button**
+
+Opens the same modal you showed.
+
+#### **C. Filters**
+
+* Sector
+* Country
+* Status
+* Revenue
+* Last activity
+
+#### **D. Global stats on top**
+
+* Total companies
+* Total revenue
+* Total agents
+* Total actions today
+
+---
+
+# ✅ **4. THE COMPANY PROFILE PAGE – UX LAYOUT**
+
+### Left-side navigation (inside company):
+
+* Overview
+* Dashboard
+* Agents & Departments
+* Knowledge Base
+* Meetings
+* Budget & Finance
+* Shareholding
+* Subsidiaries
+* Settings
+
+### Right side:
+
+The **Chairman Assistant** chat, always at the bottom of the page.
+
+---
+
+# ✅ **5. HOW THE CHAIRMAN ASSISTANT USES COMPANY DATA**
+
+The Chairman Assistant will:
+
+* Read the company's sector → adapt strategy
+* Read goals → create meetings & tasks
+* Read budget → plan agent actions within cost limits
+* Read vision → build multi-year plans
+* Read documents → update knowledge
+* Read shareholding → calculate distributions
+* Read country → enforce legal rules
+* Read subsidiaries → structure tasks
+
+When a company is created, it triggers:
+
+* Setup of departments
+* Setup of default agents
+* Creation of knowledge folders
+* Creation of first meeting with Chairman
+* Daily AI diary startup
+* Calendar entries (“morning briefing”, “evening summary”)
+
+---
+
+# 📌 If you want, I can now generate:
+
+### ✔️ The **exact UI layout** for the company page
+
+### ✔️ The **database schema** for companies
+
+### ✔️ The **API endpoints**
+
+### ✔️ The **default agents for each sector**
+
+### ✔️ The **full onboarding script** for company creation
+
+### ✔️ The **automated meetings flow** once a company is active
+
+### ✔️ Or a **visual diagram** of the company architecture
+
+Just tell me:
+**“Generate the full company architecture diagram”** or **“Give me the DB schema”** or **“Give me the UX layout”**.

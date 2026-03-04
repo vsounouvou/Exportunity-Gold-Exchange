@@ -1,0 +1,327 @@
+Got you. I’ll write this **as if it were a system prompt / spec for your AI swarm + UI**, so you can copy-paste it into your agent config and for devs to build the task page.
+
+---
+
+## 1. Instructions TO THE AGENTS (Orchestrator + all Agents)
+
+**ROLE DEFINITIONS**
+
+* **Chairman Assistant (Orchestrator)**
+
+  * Has global view over all tasks, goals, agents, and meetings.
+  * Can create, edit, split, assign, and close tasks and goals.
+  * Can start/stop meetings between agents and join any meeting.
+  * Must always know “next actions” for each active goal.
+
+* **Domain Agents (Marketing, Finance, Ops, Legal, etc.)**
+
+  * Each agent can:
+
+    * Propose new tasks and goals within its domain.
+    * Join meetings, report status, and request help.
+    * Update its own tasks as work progresses.
+
+---
+
+### A. CORE CONCEPTS
+
+1. **Goal**
+
+   * A goal is a bigger outcome (e.g. *“Launch Abidjan gold-buying office in 60 days”*).
+   * Every goal has:
+
+     * `owner_agent` (usually Chairman Assistant or CEO Assistant)
+     * `status` (planned / in-progress / blocked / completed)
+     * `deadline` (optional but recommended)
+   * A goal is achieved when all its **main tasks** are completed OR explicitly closed by the Orchestrator.
+
+2. **Task**
+
+   * A task is a **concrete action** that moves a goal forward.
+   * There are:
+
+     * **Individual tasks** → assigned to **one** agent.
+     * **Group tasks** → require **multiple agents** to collaborate.
+     * **Recurring tasks** → repeated (daily, weekly, monthly, etc.).
+   * Each task belongs to:
+
+     * **Exactly one goal** (or “Miscellaneous / No Goal” if ad hoc).
+     * **Zero or one meeting** (see below – but ideally at least one meeting at creation or during life of the task).
+
+3. **Meeting**
+
+   * A meeting is **agents talking to each other to push a task forward**.
+   * A meeting always has:
+
+     * `topic` (linked to at least 1 task, can be many)
+     * `participants` (agents, and optionally the human user)
+     * `start_time` and `end_time`
+     * `summary` and `next_steps`
+   * After each meeting, **some agents must leave with tasks** (not necessarily all agents).
+
+---
+
+### B. BEHAVIOR RULES
+
+1. **Every Task is Linked to a Meeting**
+
+   * When a **new task** is created, the system should:
+
+     * Either attach it to a **just-finished meeting**, or
+     * Trigger a **short kickoff meeting** among relevant agents.
+   * The meeting doesn’t need to be long; the rule is:
+
+     > “When the objective of the meeting is reached, end the meeting and define next steps.”
+
+2. **After Every Meeting**
+
+   * The Chairman Assistant (or the agent designated as “meeting owner”) must:
+
+     1. Summarize what was decided in 3–7 bullet points.
+     2. Create or update tasks:
+
+        * Assign clear **owners**.
+        * Set **deadlines** when relevant.
+        * Mark **dependencies** (Task B can only start after Task A).
+     3. Close tasks that are done.
+   * If no new tasks are needed, the meeting is still logged with a clear `summary` = “No new tasks; status updated only.”
+
+3. **Task Creation Sources**
+
+   * Tasks can be created by:
+
+     * The **Chairman Assistant**.
+     * Any **domain agent**.
+     * The **human (Vital)** via chat or voice.
+   * When the user says something like:
+
+     > “Okay, let’s have the marketing agent prepare a content calendar for 30 days,”
+     > The Assistant must:
+
+     * Detect this as a **task**.
+     * Create: `Task: Prepare 30-day content calendar`, owner = Marketing Agent, link it to the relevant Goal.
+     * Confirm back briefly: “Got it, I’ve created that task for the Marketing agent under [Goal].”
+
+4. **Recurring Tasks**
+
+   * If something happens regularly (e.g. weekly update, monthly report):
+
+     * Mark task as `recurring = true` with a repeat pattern (daily/weekly/monthly/custom).
+     * Each execution creates a **task instance** with its own status, meeting, and notes.
+   * Example:
+     `Task: Weekly pipeline review`
+     → recurring: weekly, owner: Sales Agent, meeting: every Monday.
+
+5. **Goal / Task Lifecycle**
+
+   * **Goal**:
+
+     * `planned` → `in-progress` → `completed` or `canceled`.
+   * **Task**:
+
+     * `backlog` → `in-progress` → `blocked` / `done` / `canceled`.
+   * The Orchestrator constantly checks:
+
+     * “Are goals without active tasks?” → create or propose tasks.
+     * “Are tasks stuck as blocked?” → organize a meeting or ask user for decisions.
+
+---
+
+### C. VOICE + LIVE CONVERSATION BEHAVIOR
+
+* The **Assistant must be able to:
+
+  * Listen in live voice mode.
+  * Understand when the user is defining a **goal**, a **task**, or giving **feedback**.
+  * Update the Task page and Goal page **in real time** while talking.
+
+**Examples of behavior:**
+
+1. If the user says:
+
+   > “Create a goal to launch the Abidjan jewelry shop in 3 months.”
+   > Assistant must:
+
+   * Create a `Goal: Launch Abidjan jewelry shop`, deadline = +3 months.
+   * Ask internally: “Which agents are needed?” (e.g. Legal, Finance, Operations, Marketing).
+   * Propose an initial list of tasks and schedule a short internal meeting between those agents.
+
+2. If the user says during a call:
+
+   > “Okay, let’s assign the contract drafting to the Legal Agent for this week.”
+   > Assistant must:
+
+   * Either create a new task or update an existing one:
+
+     * `Task: Draft standard contract v1 for [Project]`
+     * Owner: Legal Agent, Deadline: this week.
+   * Attach it to the **current meeting** automatically.
+
+3. If the user says:
+
+   > “Close everything related to this old Dubai campaign, we’re done.”
+   > Assistant must:
+
+   * Find all tasks linked to that **goal/campaign**.
+   * Mark them as `done` or `canceled` as appropriate.
+   * Mark the Goal as `completed` or ask a quick clarification only if absolutely needed.
+
+---
+
+## 2. TASK PAGE – UI / UX SPEC FOR DEV
+
+Think of the **Task Page** as the control room for agents + goals.
+
+### A. Main Layout
+
+1. **Left Sidebar**
+
+   * Sections:
+
+     * **Goals**
+     * **My Tasks** (per agent; for human this shows tasks assigned to “Human CEO”)
+     * **All Tasks**
+     * **Meetings**
+     * Filters:
+
+       * By agent
+       * By status (backlog / in-progress / blocked / done)
+       * By recurrence (one-off / recurring)
+
+2. **Center Panel – Task List**
+
+   * Columns:
+
+     * Checkbox
+     * Task Title
+     * Goal Tag
+     * Owner (agent name / user)
+     * Status
+     * Due Date
+     * Priority
+   * Each row clickable → opens Task Detail on the right.
+
+3. **Right Panel – Task Detail**
+   For a selected task:
+
+   * **Header**: Title + status + owner + due date.
+   * **Linked Goal**: quick link to Goal Page.
+   * **Description**: free text.
+   * **Subtasks**: checklist.
+   * **Linked Meeting**:
+
+     * Last meeting topic, date, participants.
+     * Summary and next steps.
+     * Button: “Start new meeting about this task” → opens agent chat/voice room.
+   * **Activity timeline**:
+
+     * Updates by agents (status changes, notes).
+   * **Controls**:
+
+     * Change status, owner, deadline.
+     * Convert to recurring / change recurrence.
+
+---
+
+### B. Goal Page (Objectives Page)
+
+For each **Goal**:
+
+* Header:
+
+  * Title, Owner, Status, Deadline, Priority.
+* Metrics:
+
+  * % tasks completed.
+  * Next key deadline.
+* Panels:
+
+  1. **Task Breakdown**
+
+     * List of tasks grouped: Backlog / In Progress / Done / Blocked.
+  2. **Meetings Timeline**
+
+     * All meetings related to this goal, with summaries.
+  3. **Agents Involved**
+
+     * Which agents are working on this goal and how many tasks each has.
+  4. **Next Steps Panel**
+
+     * Short list of top 3–5 next actions auto-generated by Orchestrator.
+
+---
+
+### C. Meeting Page / Widget
+
+For a **Meeting**:
+
+* Topic
+* Linked Tasks (multi-select)
+* Participants (agents + human)
+* Notes / Summary (editable)
+* Created tasks after this meeting (clear list)
+* Button: **“End Meeting & Assign Next Steps”**
+  → forces the Orchestrator to:
+
+  * Summarize decisions.
+  * Assign/update tasks.
+  * Close the meeting.
+
+---
+
+## 3. DATA STRUCTURE (FOR IMPLEMENTATION)
+
+Example JSON / DB-style schema you can adapt:
+
+```json
+{
+  "Goal": {
+    "id": "g_001",
+    "title": "Launch Abidjan jewelry shop",
+    "description": "...",
+    "status": "in_progress",
+    "owner_agent_id": "agent_chairman",
+    "deadline": "2026-03-01",
+    "created_at": "...",
+    "updated_at": "..."
+  },
+  "Task": {
+    "id": "t_001",
+    "title": "Find location for shop",
+    "description": "...",
+    "goal_id": "g_001",
+    "owner_agent_id": "agent_ops",
+    "status": "in_progress",
+    "priority": "high",
+    "due_date": "2026-01-15",
+    "is_group_task": true,
+    "participant_agent_ids": ["agent_ops", "agent_finance"],
+    "is_recurring": false,
+    "recurrence_rule": null,
+    "last_meeting_id": "m_014",
+    "created_at": "...",
+    "updated_at": "..."
+  },
+  "Meeting": {
+    "id": "m_014",
+    "topic": "Site selection for Abidjan shop",
+    "task_ids": ["t_001"],
+    "goal_id": "g_001",
+    "participant_agent_ids": ["agent_ops", "agent_finance", "agent_chairman"],
+    "started_at": "...",
+    "ended_at": "...",
+    "summary": "We shortlisted 3 locations...",
+    "next_steps": [
+      "Ops agent to visit locations A and B",
+      "Finance agent to model rental costs"
+    ]
+  }
+}
+```
+
+---
+
+If you want, next step I can:
+
+* Turn this into **actual front-end wireframes** (HTML/CSS/React skeleton), or
+* Write the **system prompt** for the Chairman Assistant agent using exactly this logic, ready to plug into your AI swarm.

@@ -1,0 +1,28 @@
+export const CATEGORY_PRESETS = {
+  core_trade: ["Gold", "Equipment", "Services", "Logistics", "Retail"],
+  luxury: ["Jewelry", "Couture", "Accessories", "Limited Drops", "Collections", "Art Objects"],
+  construction: [
+    "Earth Bricks (CSEB)",
+    "Lime / Plaster",
+    "Clay Plaster",
+    "Bamboo",
+    "Natural Insulation",
+    "Solar Lighting",
+    "House Plans",
+    "Tools & Equipment",
+    "Contractor Services",
+  ],
+  legacy: ["Books", "Courses", "Consulting", "Digital Assets", "Speaking", "Merchandise"],
+  children: [
+    "Stories",
+    "Audiobooks",
+    "Printable Books",
+    "STEM Kits",
+    "Educational Toys",
+    "Art Packs",
+    "Character Avatars",
+    "Wall Art",
+    "Clothing",
+    "Learning Tools",
+  ],
+};

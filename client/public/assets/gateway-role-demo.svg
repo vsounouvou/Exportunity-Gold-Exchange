@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="600" viewBox="0 0 900 600" role="img" aria-label="Demo mode">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0B1220"/>
+      <stop offset="100%" stop-color="#020617"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#F5D06A"/>
+      <stop offset="100%" stop-color="#D4A83B"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="65%" cy="35%" r="60%">
+      <stop offset="0%" stop-color="#D4A83B" stop-opacity="0.24"/>
+      <stop offset="100%" stop-color="#D4A83B" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="900" height="600" fill="url(#bg)"/>
+  <rect width="900" height="600" fill="url(#glow)"/>
+
+  <!-- Compass mark -->
+  <g transform="translate(255 150)" fill="none" stroke="url(#gold)" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" opacity="0.9">
+    <circle cx="195" cy="150" r="120"/>
+    <path d="M195 70L245 150L195 230L145 150Z"/>
+    <path d="M195 110L225 150L195 190L165 150Z" opacity="0.65"/>
+    <path d="M195 30V50"/>
+    <path d="M195 250V270"/>
+    <path d="M75 150H95"/>
+    <path d="M295 150H315"/>
+  </g>
+
+  <g opacity="0.22">
+    <rect x="90" y="430" width="720" height="24" rx="12" fill="#CBD5E1"/>
+    <rect x="90" y="468" width="480" height="16" rx="8" fill="#CBD5E1"/>
+  </g>
+</svg>

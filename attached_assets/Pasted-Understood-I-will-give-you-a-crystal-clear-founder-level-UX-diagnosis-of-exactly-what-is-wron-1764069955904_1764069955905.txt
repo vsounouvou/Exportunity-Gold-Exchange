@@ -1,0 +1,233 @@
+Understood.
+I will give you a **crystal-clear, founder-level UX diagnosis** of exactly what is wrong AND a **complete, corrected blueprint** for the AI Team page so your builder agent can fix it without guessing.
+
+This is the deep UX/comprehension problem:
+
+---
+
+# 🔥 **THE CORE ISSUE: THE AI TEAM PAGE IS TWO SEPARATE EXPERIENCES MIXED TOGETHER**
+
+Right now the page contains:
+
+1. **A team management view** (cards = agents)
+2. **A chat box** (Talk to All Team)
+3. **A meetings system** (another page)
+4. **A workspace sidebar (Actions, Meetings, Knowledge)**
+
+…and none of them are connected.
+
+### This causes three UX failures:
+
+### **1. You send a message in the "chat" but the agents’ answers appear somewhere else (Work → Actions or invisible).**
+
+The user feels the system is broken.
+
+### **2. You have TWO places where communication happens:**
+
+* The “Talk to All Team” chat
+* The “Meetings” interface
+  But they are not unified.
+
+### **3. The AI Team page feels like a shelf of agents, not a real HQ full of activity.**
+
+This contradicts the entire vision.
+
+---
+
+# 🔥 NOW I GIVE YOU THE FULL UX DEBUG + CORRECTION
+
+This is the corrected version your builder agent must follow EXACTLY.
+
+---
+
+# ✅ **THE AI TEAM PAGE SHOULD BE A SINGLE UNIFIED HEADQUARTERS**
+
+When the user clicks **AI Team**, they must see:
+
+### **1. Meeting Feed (top of page)**
+
+### **2. Conversation Feed (right under meetings)**
+
+### **3. Team & Departments (bottom)**
+
+No switching pages.
+No hiding answers.
+No fragments.
+
+---
+
+# ⭐ THE NEW STRUCTURE (THIS IS FINAL — GIVE THIS TO THE BUILDER)
+
+## === TOP SECTION: “HEADQUARTERS LIVE FEED” ===
+
+This section includes:
+
+### **A. LIVE MEETINGS PANEL (LEFT OR FULL WIDTH)**
+
+* A list of ongoing meetings
+* You click → enter the multi-agent “conversation meeting room”
+* If a meeting is active → it appears as a live panel on top
+* If no meeting is active → “Start a team meeting” button
+
+💡 **Meetings = specialized conversations between agents and you.**
+
+---
+
+### **B. TEAM COMMUNICATION FEED (RIGHT BELOW MEETINGS)**
+
+This is the Slack-like feed.
+
+It must show:
+
+* EVERYTHING that agents say
+* EVERYTHING the user says
+* Automatic updates:
+
+  * “Sales Manager found 12 prospects”
+  * “Marketing just scheduled 4 posts”
+  * “Finance completed the weekly report”
+
+📌 **This is where agent answers MUST appear.**
+Not in Actions.
+Not in Work.
+Not hidden.
+
+A single scrolling feed.
+
+Format:
+
+```
+[Agent avatar]  [Agent role]
+Message content…
+Actions created: 3
+Linked lead: #112
+Time: 10:32
+```
+
+---
+
+# === MIDDLE SECTION: “YOUR TEAM & DEPARTMENTS” ===
+
+Keep what you already have:
+Cards for:
+
+* Head of Operations
+* Data Analyst
+* Sales Manager
+* Marketing Content Creator
+* Automation Engineer
+
+Users can click:
+
+* View role details
+* Configure instructions
+* Pause agent
+
+This part is **correct** and should stay.
+
+---
+
+# === HIDDEN ERRORS THAT MUST BE FIXED ===
+
+### ❌ Problem 1: The chat box sends the message but the display feed does not show the agent answers.
+
+**Fix:**
+The “Talk to All Team” composer must write into **the same feed** where agents post their own messages.
+
+### ❌ Problem 2: Meetings appear on a different page and feel disconnected.
+
+**Fix:**
+Meetings must be displayed **directly inside AI Team** as a panel on top, just like Slack Huddles or Discord voice channels.
+
+### ❌ Problem 3: The feed shows nothing active → user thinks “nothing is working.”
+
+**Fix:**
+Seed the feed with:
+
+* Welcome message by Chief Orchestrator
+* Intro messages from each agent
+* A daily standup summary
+
+### ❌ Problem 4: The “Actions / Meetings / Knowledge” panels confuse the AI Team feed.
+
+**Fix:**
+These stay under **Work**, not inside AI Team.
+AI Team = conversations and meetings.
+Work = tasks and documents.
+
+---
+
+# 🔥 FINAL DESIGNED FLOW (THE REAL UX)
+
+User clicks **AI Team** → sees:
+
+---
+
+### TOP:
+
+## 🟣 **Live Meetings Panel**
+
+* “Team Sync – In Progress”
+* “Sales Review – 3 PM”
+
+---
+
+### MIDDLE:
+
+## 🔵 **AI Team Communication Feed**
+
+All agent replies appear here, like:
+
+**[Sales Manager]**
+“I analyzed your message and assigned 3 actions to the SDR.”
+
+**[Content Creator]**
+“Drafted 2 social posts for your review.”
+
+**[Automation Engineer]**
+“Integration with your payment gateway is ready.”
+
+---
+
+### BOTTOM:
+
+## 🟡 **Your Team & Departments**
+
+* Management
+* Sales
+* Marketing
+* Operations
+* Support
+
+---
+
+# 🔥 MOST IMPORTANT INSTRUCTION TO BUILDER
+
+### THIS IS NOW A HARD RULE:
+
+⭕ **All agent outputs (messages + summaries + decisions + updates) must be displayed inside the AI Team communication feed.**
+▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄
+❌ NOT inside Actions
+❌ NOT inside Work
+❌ NOT hidden
+❌ NOT in a different page
+▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄
+Slack-like feed = single source of truth.
+
+This fixes the UX completely.
+
+---
+
+# ⚡ READY FOR THE BUILDER
+
+If you want, I can now generate:
+
+### ✔ A UI wireframe (ASCII or component layout)
+
+### ✔ A React/Tailwind component structure
+
+### ✔ A full UX spec document in PDF
+
+### ✔ A dev task breakdown with acceptance criteria
+
+Just say **“Generate the wireframe”** or **“Give the builder tasks”**.

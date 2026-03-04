@@ -1,0 +1,7 @@
+<svg data-bbox="29.5 20 141 160" viewBox="0 0 200 200" height="200" width="200" xmlns="http://www.w3.org/2000/svg" data-type="color">
+    <g>
+        <path d="M102.897 49.398V180H170.5V20l-67.603 29.398zm48.479 64.699h-11.589v-11.566h11.589v11.566zm0-25.06h-11.589V77.471h11.589v11.566z" fill="#61C7C9" data-color="1"/>
+        <path d="M29.5 50.843l56.014 21.128V180H29.5V50.843z" fill="#383E45" data-color="2"/>
+        <path d="M66.199 104.218V180h56.014V89.398l-56.014 14.82zm33.961 48.198H88.803V140.75h11.357v11.666z" fill="#FF5200" data-color="3"/>
+    </g>
+</svg>

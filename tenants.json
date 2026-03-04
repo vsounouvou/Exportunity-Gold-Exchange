@@ -1,0 +1,54 @@
+[
+  {
+    "id": 1,
+    "slug": "bdo",
+    "name": "Bourse de l'Or",
+    "baseUrl": "https://boursedelor.com",
+    "envNamespace": "global",
+    "messagingProviderMode": "twilio",
+    "providerFlags": {
+      "sms": true,
+      "whatsappOtp": true,
+      "smsVia": "from_number"
+    }
+  },
+  {
+    "id": 2,
+    "slug": "exportunity",
+    "name": "Exportunity",
+    "baseUrl": "https://exportunity.net",
+    "envNamespace": "global",
+    "messagingProviderMode": "twilio",
+    "providerFlags": {
+      "sms": true,
+      "whatsappOtp": true,
+      "smsVia": "from_number"
+    }
+  },
+  {
+    "id": 970,
+    "slug": "zone",
+    "name": "Exportunity Zone",
+    "baseUrl": "https://exportunity.zone",
+    "envNamespace": "global",
+    "messagingProviderMode": "twilio",
+    "providerFlags": {
+      "sms": true,
+      "whatsappOtp": true,
+      "smsVia": "from_number"
+    }
+  },
+  {
+    "id": 971,
+    "slug": "mindbase",
+    "name": "MindBase",
+    "baseUrl": "https://mindbase.cloud",
+    "envNamespace": "global",
+    "messagingProviderMode": "twilio",
+    "providerFlags": {
+      "sms": true,
+      "whatsappOtp": true,
+      "smsVia": "from_number"
+    }
+  }
+]

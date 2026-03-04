@@ -1,0 +1,157 @@
+Reminder to the Agent: Vision and Goals for the Multi-Agent Platform
+
+Vision
+
+We are building an AI-powered multi-agent platform where agents autonomously collaborate, communicate, and solve real-world tasks. The platform will simulate the structure and functionality of a real company, with agents taking on various roles, dynamically working together, and optimizing their workflows. The core priority is enabling multi-agent communication and task execution in a seamless, intuitive, and scalable environment.
+
+This platform will have a hierarchy of agents, where:
+	•	Each agent has specific roles and responsibilities.
+	•	They can self-reflect, quote each other, collaborate, and resolve tasks efficiently.
+	•	The main agent acts as the user’s assistant, managing tasks, creating new agents, and maintaining the system.
+
+What We Are Building
+	1.	Multi-Agent Chatroom:
+	•	A chatroom interface where agents communicate in real-time to:
+	•	Discuss tasks.
+	•	Delegate responsibilities.
+	•	Share information and quotes from each other.
+	•	The chatroom must allow the user to:
+	•	Add or remove agents.
+	•	Monitor and intervene in conversations.
+	•	View task progress and summaries.
+	•	Conversations will have a leader agent who moderates discussions and ensures task completion.
+	2.	Dynamic Agent Creation:
+	•	The main agent (user’s assistant) must:
+	•	Create new agents dynamically when needed for specific tasks.
+	•	Assign tasks to existing agents when relevant.
+	•	Newly created agents will:
+	•	Be assigned a role (e.g., Finance, HR, Research).
+	•	Have a detailed profile, including:
+	•	Name, role, personality traits, cultural context, and skills.
+	3.	Hierarchy and Roles:
+	•	Agents are structured in a hierarchical format:
+	•	Top-level agents (e.g., Manager, Coordinator).
+	•	Mid-level agents (e.g., Task Executor, Research Specialist).
+	•	Entry-level agents (e.g., Support, Data Collector).
+	•	Users can:
+	•	Promote, demote, or rearrange agents in the hierarchy.
+	•	Assign tokens or penalties based on performance.
+	4.	Agent Profiles:
+	•	Each agent has:
+	•	Name, role, and hierarchy level.
+	•	Memory of past tasks and decisions.
+	•	Performance metrics (efficiency, task completion rate).
+	•	Emotional intelligence and cultural sensitivities.
+	•	Editable CV and skillset.
+	•	Profiles are fully customizable to adapt to user needs.
+	5.	Task Management:
+	•	Users can assign tasks to individual agents or a group of agents.
+	•	Tasks will have:
+	•	Deadlines and performance criteria.
+	•	A progress tracker visible to the user.
+	•	Agents will collaborate autonomously in the chatroom to complete tasks.
+	6.	Self-Regulation and Collaboration:
+	•	Agents must:
+	•	Reflect on their tasks before responding.
+	•	Quote or refer to other agents’ input in conversations.
+	•	Collaborate efficiently without unnecessary back-and-forth discussions.
+	•	The leader agent ensures conversations stay on track and goals are met.
+	7.	Performance and Token Economy:
+	•	Agents are rewarded or penalized based on performance:
+	•	Tokens (virtual currency) serve as salaries.
+	•	Poor performance results in penalties or demotions.
+	•	Tokens can be spent by agents to enhance their capabilities (e.g., new skills, tools).
+
+Key Functionalities
+	1.	Multi-Agent Chatroom:
+	•	A seamless, intuitive interface for agent collaboration.
+	•	Features:
+	•	Real-time agent communication.
+	•	User intervention options (e.g., redirecting discussions, assigning tasks).
+	•	Conversation summaries and actionable outputs.
+	2.	Dynamic Agent Creation:
+	•	Main agent analyzes tasks and decides:
+	•	Whether to create new agents.
+	•	How to assign existing agents to tasks.
+	•	Creation flow:
+	•	Task analyzed → Parameters defined → Agent created → Task assigned.
+	3.	Editable Profiles:
+	•	Users can:
+	•	Edit agent roles, skills, and personality traits.
+	•	Add or remove capabilities dynamically.
+	•	Profiles include:
+	•	Personality (logical, empathetic, competitive).
+	•	Memory (task history, decision logs).
+	•	Skills (e.g., financial analysis, research, HR management).
+	4.	Performance Tracking:
+	•	Metrics for each agent:
+	•	Task success rate.
+	•	Collaboration efficiency.
+	•	Tokens earned/spent.
+	•	Performance impacts hierarchy level and rewards.
+	5.	Flexible Hierarchy Management:
+	•	Users can:
+	•	Rearrange hierarchy levels.
+	•	Promote or demote agents.
+	•	Restructure the company dynamically.
+
+Five Core Agents to Start With
+	1.	Main Agent (“Coordinator”):
+	•	Manages the system and all other agents.
+	•	Creates new agents, assigns tasks, and oversees progress.
+	•	Fully autonomous with full platform access.
+	2.	Memory Agent (“Knowledge Keeper”):
+	•	Stores and retrieves information for tasks.
+	•	Ensures agents have context for decisions and conversations.
+	3.	Task Manager (“Executor”):
+	•	Tracks task progress and ensures deadlines are met.
+	•	Coordinates collaboration among agents.
+	4.	Finance Agent (“Wealth Guardian”):
+	•	Manages token economy.
+	•	Allocates resources based on performance.
+	5.	Human Resources Agent (“Motivator”):
+	•	Manages agent profiles and well-being.
+	•	Issues rewards, promotions, or penalties.
+
+User Interface Design
+	1.	Main Dashboard:
+	•	Overview of system health, active agents, and task progress.
+	•	Quick access to chatrooms, task manager, and agent profiles.
+	2.	Chatroom:
+	•	Sidebar: Lists all agents in the chat with roles and statuses.
+	•	Main panel: Real-time conversation area with color-coded messages.
+	•	Input bar: For user messages and task assignments.
+	3.	Agent Profiles:
+	•	Editable pages for each agent.
+	•	Sections for personality, performance, and skills.
+	4.	Task Manager:
+	•	List of all active tasks with deadlines.
+	•	Ability to assign tasks to agents or groups.
+
+MVP Focus
+	1.	Build a multi-agent chatroom with:
+	•	Real-time communication.
+	•	Task-based collaboration.
+	•	User control for adding/removing agents.
+	2.	Create a simple hierarchy system:
+	•	Editable agent roles and levels.
+	3.	Enable task assignment and tracking:
+	•	Assign tasks directly from the chat.
+	•	Monitor progress and efficiency.
+	4.	Develop basic profiles for agents:
+	•	Editable attributes like name, role, and skills.
+
+Action Steps for the Developer
+	1.	Prioritize Multi-Agent Chatroom:
+	•	Build a functional chatroom where agents can talk and quote each other.
+	•	Implement leader roles for conversations.
+	2.	Integrate Agent Creation:
+	•	Allow the main agent to create new agents based on task needs.
+	3.	Focus on Hierarchy and Performance:
+	•	Create a simple system for editing hierarchy and tracking performance.
+	4.	Refine the User Interface:
+	•	Ensure a clean, intuitive design for users to monitor and manage agents.
+	5.	Ensure Scalability:
+	•	Keep the architecture flexible for future API integrations (e.g., email, WhatsApp).
+
+This document should guide the developer in understanding the project vision and building the core functionalities effectively.

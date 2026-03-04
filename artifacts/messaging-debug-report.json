@@ -1,0 +1,181 @@
+{
+  "timestamp": "2026-02-27T18:02:30.798Z",
+  "commitHash": "95fb93a",
+  "scope": {
+    "mode": "env-filtered",
+    "includeAll": false,
+    "slugs": [
+      "bdo",
+      "exportunity",
+      "zone",
+      "mindbase"
+    ]
+  },
+  "summary": {
+    "total": 4,
+    "pass": 4,
+    "fail": 0
+  },
+  "tenants": [
+    {
+      "id": 1,
+      "slug": "bdo",
+      "name": "Bourse de l'Or",
+      "baseUrl": "https://boursedelor.com",
+      "envNamespace": "global",
+      "healthEndpoint": "https://boursedelor.com/api/health/messaging",
+      "health": {
+        "ok": true,
+        "status": 200,
+        "missing": [],
+        "warnings": [
+          "Twilio WhatsApp Sandbox mode"
+        ]
+      },
+      "tests": {
+        "sms": {
+          "attempted": true,
+          "ok": true,
+          "status": 200,
+          "sid": "SM75715468dee7c51ba39f75dc9a2291c4",
+          "code": null,
+          "message": "queued",
+          "requestId": "msg-health-1772215350539",
+          "endpoint": "https://boursedelor.com/api/health/messaging/test?channel=sms&phone=%2B18449812981"
+        },
+        "whatsappOtp": {
+          "attempted": true,
+          "ok": true,
+          "status": 200,
+          "sid": "VE2f8c2ce74afe48aec8b64abc06393071",
+          "code": null,
+          "message": "pending",
+          "requestId": "msg-health-1772215350977",
+          "endpoint": "https://boursedelor.com/api/health/messaging/test?channel=whatsappOtp&phone=%2B18449812981"
+        }
+      },
+      "notes": [],
+      "pass": true
+    },
+    {
+      "id": 2,
+      "slug": "exportunity",
+      "name": "Exportunity",
+      "baseUrl": "https://exportunity.net",
+      "envNamespace": "global",
+      "healthEndpoint": "https://exportunity.net/api/health/messaging",
+      "health": {
+        "ok": true,
+        "status": 200,
+        "missing": [],
+        "warnings": [
+          "Twilio WhatsApp Sandbox mode"
+        ]
+      },
+      "tests": {
+        "sms": {
+          "attempted": true,
+          "ok": true,
+          "status": 200,
+          "sid": "SM9cbf0844b462ed146b9340cec4cbce8b",
+          "code": null,
+          "message": "queued",
+          "requestId": "msg-health-1772215352128",
+          "endpoint": "https://exportunity.net/api/health/messaging/test?channel=sms&phone=%2B18449812981"
+        },
+        "whatsappOtp": {
+          "attempted": true,
+          "ok": true,
+          "status": 200,
+          "sid": "VE2f8c2ce74afe48aec8b64abc06393071",
+          "code": null,
+          "message": "pending",
+          "requestId": "msg-health-1772215352537",
+          "endpoint": "https://exportunity.net/api/health/messaging/test?channel=whatsappOtp&phone=%2B18449812981"
+        }
+      },
+      "notes": [],
+      "pass": true
+    },
+    {
+      "id": 970,
+      "slug": "zone",
+      "name": "Exportunity Zone",
+      "baseUrl": "https://exportunity.zone",
+      "envNamespace": "global",
+      "healthEndpoint": "https://exportunity.zone/api/health/messaging",
+      "health": {
+        "ok": true,
+        "status": 200,
+        "missing": [],
+        "warnings": [
+          "Twilio WhatsApp Sandbox mode"
+        ]
+      },
+      "tests": {
+        "sms": {
+          "attempted": true,
+          "ok": true,
+          "status": 200,
+          "sid": "SM7634f02203fef2962ba60f76d0764394",
+          "code": null,
+          "message": "queued",
+          "requestId": "msg-health-1772215353700",
+          "endpoint": "https://exportunity.zone/api/health/messaging/test?channel=sms&phone=%2B18449812981"
+        },
+        "whatsappOtp": {
+          "attempted": true,
+          "ok": true,
+          "status": 200,
+          "sid": "VE2f8c2ce74afe48aec8b64abc06393071",
+          "code": null,
+          "message": "pending",
+          "requestId": "msg-health-1772215354108",
+          "endpoint": "https://exportunity.zone/api/health/messaging/test?channel=whatsappOtp&phone=%2B18449812981"
+        }
+      },
+      "notes": [],
+      "pass": true
+    },
+    {
+      "id": 971,
+      "slug": "mindbase",
+      "name": "MindBase",
+      "baseUrl": "https://mindbase.cloud",
+      "envNamespace": "global",
+      "healthEndpoint": "https://mindbase.cloud/api/health/messaging",
+      "health": {
+        "ok": true,
+        "status": 200,
+        "missing": [],
+        "warnings": [
+          "Twilio WhatsApp Sandbox mode"
+        ]
+      },
+      "tests": {
+        "sms": {
+          "attempted": true,
+          "ok": true,
+          "status": 200,
+          "sid": "SM1c7e7166aa7710b09638c47093c48756",
+          "code": null,
+          "message": "queued",
+          "requestId": "msg-health-1772215355271",
+          "endpoint": "https://mindbase.cloud/api/health/messaging/test?channel=sms&phone=%2B18449812981"
+        },
+        "whatsappOtp": {
+          "attempted": true,
+          "ok": true,
+          "status": 200,
+          "sid": "VE2f8c2ce74afe48aec8b64abc06393071",
+          "code": null,
+          "message": "pending",
+          "requestId": "msg-health-1772215355673",
+          "endpoint": "https://mindbase.cloud/api/health/messaging/test?channel=whatsappOtp&phone=%2B18449812981"
+        }
+      },
+      "notes": [],
+      "pass": true
+    }
+  ]
+}

@@ -1,0 +1,121 @@
+Perfect — this is exactly what the **Chairman’s Assistant** must do:
+👉 **Onboard a brand-new client smoothly, intelligently, and without friction.**
+👉 Treat it like a human assistant welcoming a new founder into a platform.
+👉 Ask the right questions, suggest options, gather everything needed to create the company.
+
+Below is a **fully detailed, end-to-end onboarding workflow** the developer can implement **step-by-step**.
+
+---
+
+# ✅ **THE FIRST INTERACTION WORKFLOW (New User → No Company Yet)**
+
+### **“Chairman’s Assistant Onboarding Script”**
+
+This is the exact flow the Chairman’s Assistant must follow without the client feeling pressure. Smooth, simple, guided.
+
+---
+
+# **STEP 0 — Detect that the user has no company**
+
+When a new user opens the platform:
+
+* The system checks:
+
+  * No companies exist under this user.
+* The Chairman’s Assistant immediately appears and begins the onboarding dialog.
+
+---
+
+# **STEP 1 — Warm Welcome**
+
+### **Message 1 (Assistant)**
+
+> **“Hello! Welcome. I’m your Chairman’s Assistant.
+> To help you get started, let’s create your company together.
+> What would you like to call it?”**
+
+### Features here:
+
+* Friendly, concise.
+* Gives the user one simple action.
+* If user doesn’t know the name, the assistant helps.
+
+### If user says “I don’t know” or “Help me choose”:
+
+The assistant proposes options:
+
+> **“No problem!
+> Here are some strong names based on what you described earlier:
+> – NovaTrade
+> – Peak Systems
+> – Arka Dynamics
+> – Zogué Labs
+> If you want, I can generate more or we can build a name based on your vision, sector, and story.”**
+
+---
+
+# **STEP 2 — Ask three foundation questions (light, conversational)**
+
+After name is chosen:
+
+### **Message 2 (Assistant)**
+
+> “Great. Next, what sector are you operating in?
+> For example: trade, logistics, AI, education, real estate, fashion, consulting, etc.”
+
+### User answers → The assistant stores it.
+
+### **Message 3 (Assistant)**
+
+> “Perfect. And in which **country** will this company be based?”
+
+The assistant uses this info to set:
+
+* Tax model
+* Integration availability
+* Localized legal templates
+* Local API rules for email/calendar
+
+### **Message 4 (Assistant)**
+
+> “Finally, in one sentence, what is the mission of your company?
+> This helps me set your initial objectives and build your team.”
+
+---
+
+# **STEP 3 — Build a Summary and Confirm**
+
+Once the name + sector + country + mission are provided:
+
+### **Message 5 (Assistant)**
+
+> “Great. Here’s what I understood about your company:
+> **Name:** X
+> **Sector:** X
+> **Country:** X
+> **Mission:** X
+>
+> Shall I create the company profile now?”
+
+User: Yes → Company is created.
+
+---
+
+# **STEP 4 — Generate Departments + Default Agents**
+
+Behind the scenes:
+
+* Auto-generate the company’s:
+
+  * Default departments
+  * Default core agents
+  * Org tree
+  * Knowledge base folder
+  * Budget placeholder
+  * Performance dashboard skeleton
+* Assign the Chairman’s Assistant as the primary guide.
+
+### Assistant confirms:
+
+> **“Your company is now created!
+> I’ve prepared a basic organizational structure for you:

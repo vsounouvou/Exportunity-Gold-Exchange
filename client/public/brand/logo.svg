@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="240" viewBox="0 0 960 240">
+  <rect width="960" height="240" rx="28" fill="#0B0F14"/>
+  <g transform="translate(56 56)">
+    <rect x="0" y="32" width="48" height="96" rx="14" fill="#D9A441"/>
+    <rect x="72" y="0" width="48" height="128" rx="14" fill="#D9A441"/>
+    <rect x="144" y="-24" width="48" height="152" rx="14" fill="#D9A441"/>
+  </g>
+  <text x="280" y="132" fill="#FFFFFF" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial" font-size="72" font-weight="700" letter-spacing="-0.5">
+    Bourse de l'Or
+  </text>
+  <text x="282" y="176" fill="#98A2B3" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial" font-size="22" font-weight="500">
+    Plateforme de marché de l'or
+  </text>
+</svg>
+

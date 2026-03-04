@@ -1,0 +1,259 @@
+Nice, this is a beautiful idea: the Chairman’s Assistant as a **daily diary** of your work with it. I’ll talk to the “agency” / devs directly and make it very concrete.
+
+---
+
+## 1. Feedback + High-Level Behavior
+
+> **Feedback:**
+> The direction is excellent. Now we need to refine the **Chairman’s Assistant chat** to behave like a **daily diary**:
+>
+> * **One chat per day**, not random “sessions”.
+> * The assistant **remembers the past**, but the UI is organized **by day**.
+> * The Chairman can open any past day (like a diary page) and see what was discussed.
+
+Key rules:
+
+1. **Chats are associated with calendar days**, not with arbitrary sessions.
+2. A **new day = a new chat segment** (for that day).
+3. If there was **no conversation on a given day**, there is **no chat entry** for that day.
+4. The assistant **still keeps long-term memory and context**, even though the UI is segmented by date.
+
+---
+
+## 2. Data Model: Day-Based Chats
+
+Introduce a `ChatDay` concept:
+
+```ts
+type ChatDay = {
+  id: string;
+  userId: string;
+  date: string; // e.g. "2025-11-17"
+  messages: ChatMessage[];
+  companyId?: string | null; // optional, if context is company-specific
+};
+
+type ChatMessage = {
+  id: string;
+  sender: 'user' | 'assistant';
+  content: string;
+  timestamp: string; // full time
+};
+```
+
+Behavior:
+
+* When the Chairman sends the **first message of the day**:
+
+  * If there is no `ChatDay` for today yet → **create one**.
+* All messages for that date are appended into **that day’s `ChatDay.messages`**.
+* No messages → no `ChatDay` record.
+
+---
+
+## 3. UX in the Bottom Dock: Daily Diary View
+
+The Chairman’s Assistant dock keeps working on **every page** like now, but:
+
+### 3.1 Today’s Chat
+
+* By default, the dock shows **today’s chat**:
+
+  * Header:
+    `Chairman’s Assistant — Today (YYYY-MM-DD)`
+  * Messages show user vs assistant as already fixed (right/left).
+
+### 3.2 Day Sections (Collapsible)
+
+Inside the scrollable history:
+
+* Group messages by day and add **date headers**:
+
+Example:
+
+> **Today – 2025-11-17**
+> [messages…]
+>
+> **Yesterday – 2025-11-16** (collapsed)
+> [click to expand]
+>
+> **2025-11-14** (collapsed)
+> [click to expand]
+
+Behavior:
+
+* **Today’s section** is always expanded.
+* Older days are **collapsed by default** to keep the chat clean.
+* Clicking a date header:
+
+  * **Expands** that day’s messages (you see the full conversation for that day).
+  * Clicking again collapses them.
+
+So from the dock you can “scroll up” and literally **open/close days**, like pages in a diary.
+
+---
+
+## 4. Dedicated “Diary View” / History Page
+
+On top of the dock behavior, add a dedicated page:
+
+### Page: **Chairman’s Diary**
+
+* Accessible from:
+
+  * A button near the chat: “Open History” or “Diary”.
+* Shows:
+
+  * A **list of dates** where conversations happened.
+  * Possibly a **calendar view** with highlighted days.
+* Clicking a date:
+
+  * Opens that day’s full conversation:
+
+    * Same left/right bubble layout,
+    * No mixing with other days.
+
+This allows:
+
+> “If I want to know what I discussed with the agent 10 years ago, I click a day and see exactly what we said.”
+
+---
+
+## 5. Memory & Context Across Days
+
+Very important part:
+Even though the UI is **per day**, the assistant must still:
+
+* **Remember old information**,
+* Reuse important context in new conversations,
+* Decide what to store in its own memory.
+
+### 5.1 Daily Summary & Memory Engine
+
+Implement a **Daily Summary** layer:
+
+For each `ChatDay`:
+
+* After a conversation (e.g. at day end, or after inactivity), the system:
+
+  * Generates a **summary** of important points:
+
+    * Decisions,
+    * New preferences,
+    * Company changes,
+    * New objectives,
+    * Anything stable and reusable.
+  * Writes this into a `Memory` object separate from raw messages.
+
+```ts
+type DailySummary = {
+  chatDayId: string;
+  date: string;
+  summaryText: string;
+  extractedFacts: MemoryFact[];
+};
+
+type MemoryFact = {
+  type: 'preference' | 'goal' | 'company_update' | 'agent_update' | ...;
+  content: string;
+  importance: 'low' | 'medium' | 'high';
+};
+```
+
+Only **MemoryFacts** are used as **long-term context**.
+
+### 5.2 Context on a New Day
+
+When a **new day starts** and the Chairman sends the first message:
+
+* The backend:
+
+  * Loads:
+
+    * Today’s `ChatDay` (new or existing),
+    * The last N **DailySummaries** (e.g. last 7 days or last X important facts),
+    * The stable **Chairman Profile** & **Instance Profile** (BS Detail).
+
+LLM context for the Chairman’s Assistant includes:
+
+* Short summary of recent days,
+* Long-term facts (goals, preferences, key decisions),
+* The new message.
+
+So the assistant can say:
+
+> “Good morning, Chairman. Last time we decided to focus on the Abidjan sales pipeline and create a new outreach agent. I can update you on progress or we can define this week’s priorities.”
+
+**Even though** the UI is “new chat for today”, the **brain remembers everything important.**
+
+---
+
+## 6. Daily Flow Example
+
+**Day 1:**
+
+* User opens platform → sends “Hey”.
+* System:
+
+  * Creates `ChatDay` for 2025-11-17.
+* Assistant:
+
+  * Onboards company, agents, etc.
+* End of day:
+
+  * System summarizes:
+
+    * “Created Company X in Côte d’Ivoire, focus on trade.”
+    * “Set goal: 20 meetings/month.”
+    * “Chairman prefers concise answers.”
+
+**Day 5:**
+
+* User returns → first message: “Good morning.”
+* System:
+
+  * Creates `ChatDay` for 2025-11-21.
+  * Loads last 7 days summaries.
+* Assistant:
+
+  * “Good morning, Chairman. Since we last spoke, your sales agent has booked 3 meetings for Company X. Do you want a quick status review or should we define this week’s goals?”
+
+The Chairman can scroll up and collapse/un-collapse each day, and if he wants a very precise memory, he goes to **Diary → select date**.
+
+---
+
+## 7. Concrete Tasks for the Dev / Agency
+
+You can tell them:
+
+1. **Implement day-based chats for the Chairman’s Assistant:**
+
+   * Introduce a `ChatDay` model keyed by date + user.
+   * First message of each day → new `ChatDay` if none exists.
+
+2. **Group messages by date in the bottom dock:**
+
+   * Use date headers (`Today`, `Yesterday`, `YYYY-MM-DD`).
+   * Make each day section collapsible.
+
+3. **Create a “Chairman’s Diary” page:**
+
+   * List all dates where chats exist.
+   * Clicking a date shows that day’s full conversation.
+
+4. **Implement a daily summary + memory extractor:**
+
+   * For each `ChatDay`, generate a summary at end of day (or after inactivity).
+   * Extract important facts and store them in a structured memory store.
+   * DO NOT load the full raw history for context—just the summaries and memory facts.
+
+5. **On each new day’s first message:**
+
+   * Load recent DailySummaries + long-term memory.
+   * Use them in the LLM system/context so the assistant “remembers” and can connect today to the past.
+
+6. **Ensure that days with no conversation create no empty chat records.**
+
+---
+
+If you want, I can next help you **write the exact spec for the Daily Summary / Memory engine prompt**, i.e. how the model decides what to keep vs ignore from each day’s dialog.

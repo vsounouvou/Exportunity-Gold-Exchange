@@ -1,0 +1,567 @@
+Alright, let’s wire this module properly so your AI team can just *build*.
+
+I’ll break it into:
+
+1. **Architecture overview**
+2. **Data model (tables / entities)**
+3. **Workflows**
+
+   * Normal user → shop owner
+   * Normal user → delivery agent
+   * Subscription / plans
+4. **AI approval agent (deciding “good” or “not good”)**
+5. **Specialized AI: the “Client Hunter” agent**
+6. **How this plugs into your existing multi-agent / task system**
+
+I’ll keep everything modular so you don’t create duplicate workflows, only reuse existing ones (your “modular platform for disruption” logic).  
+
+---
+
+## 1. Architecture overview
+
+**Core services/modules**
+
+* `auth-service`
+
+  * Handles login/signup, JWT/session, basic user profile.
+* `user-management-service` (ADMIN module you’re asking for)
+
+  * User list, roles, permissions, KYC status, subscription status.
+  * Assigns AI agents to users/companies.
+* `workflow-engine`
+
+  * Generic engine that runs multi-step workflows (shop application, delivery agent application, etc.).
+  * Before creating a new flow, it checks if a workflow with that `type` already exists.
+* `subscription-service`
+
+  * Handles plans (free/paid), billing, plan limits.
+* `ai-decision-service`
+
+  * “Approval Agents”: evaluates applications and returns decisions + explanations.
+* `agent-swarm-service`
+
+  * Manages specialized agents (Client Hunter, etc.), their tasks and external integrations.
+* `notification-service`
+
+  * Email, SMS, WhatsApp, in-app notifications for each decision.
+
+Everything should be **API-first** so your AI can call endpoints like:
+
+* `POST /applications/shop`
+* `POST /applications/delivery`
+* `POST /ai/decide`
+* `POST /agents/client-hunter/tasks`
+
+---
+
+## 2. Data model (simplified)
+
+You can adapt names, but the logic should stay.
+
+### 2.1. Users & roles
+
+**Table: `users`**
+
+* `id` (PK)
+* `email`
+* `phone`
+* `password_hash`
+* `full_name`
+* `country`
+* `city`
+* `created_at`, `updated_at`
+* `status` (`active`, `suspended`, `pending_verification`)
+
+**Table: `roles`**
+
+* `id`
+* `name` (`user`, `shop_owner`, `delivery_agent`, `admin`, `super_admin`, etc.)
+
+**Table: `user_roles`**
+
+* `user_id`
+* `role_id`
+
+### 2.2. Shops
+
+**Table: `shops`**
+
+* `id`
+* `owner_user_id`
+* `display_name`
+* `legal_name`
+* `country`
+* `city`
+* `address`
+* `geo_lat`, `geo_lng`
+* `status` (`pending`, `approved`, `rejected`, `suspended`)
+* `subscription_plan_id`
+* `created_at`, `updated_at`
+
+**Table: `shop_applications`**
+
+* `id`
+* `user_id`
+* `application_data` (JSON with all answers to AI questions)
+* `workflow_id`
+* `ai_score` (0–100)
+* `ai_decision` (`approved`, `rejected`, `needs_review`)
+* `ai_decision_reason` (text)
+* `status` (`in_progress`, `submitted`, `decided`)
+* `created_at`, `updated_at`
+
+### 2.3. Delivery agents
+
+**Table: `delivery_agents`**
+
+* `id`
+* `user_id`
+* `vehicle_type` (`bike`, `scooter`, `car`, etc.)
+* `coverage_radius_km`
+* `base_area_city`
+* `verified` (bool)
+* `status` (`pending`, `approved`, `rejected`, `suspended`)
+* `security_deposit_balance`
+* `insurance_status` (e.g. `not_required`, `required`, `verified`)
+* `created_at`, `updated_at`
+
+**Table: `delivery_applications`**
+
+* `id`
+* `user_id`
+* `application_data` (JSON)
+* `workflow_id`
+* `ai_score`
+* `ai_decision`
+* `ai_decision_reason`
+* `status`
+* `created_at`, `updated_at`
+
+### 2.4. Subscription plans
+
+**Table: `subscription_plans`**
+
+* `id`
+* `name` (`Free`, `Starter`, `Pro`, `Enterprise`)
+* `price_per_month`
+* `currency`
+* `max_products`
+* `max_orders_per_month`
+* `max_ai_actions_per_month` (number of AI-generated tasks / messages)
+* `features` (JSON: flags for analytics, AI agents access, etc.)
+* `type` (`shop`, `delivery_agent`, `mixed`)
+* `created_at`, `updated_at`
+
+**Table: `user_subscriptions`**
+
+* `id`
+* `user_id`
+* `plan_id`
+* `status` (`trial`, `active`, `past_due`, `canceled`)
+* `start_date`
+* `end_date`
+* `external_billing_id` (Stripe/Flutterwave/etc.)
+
+### 2.5. Workflows (so you don’t recreate them)
+
+**Table: `workflows`**
+
+* `id`
+* `type` (`shop_application`, `delivery_application`)
+* `version`
+* `definition` (JSON – list of steps & required questions)
+* `is_active`
+
+**Table: `workflow_steps`** (optional if not in JSON)
+
+* `id`
+* `workflow_id`
+* `step_order`
+* `step_type` (`question`, `document_upload`, `ai_review`, `manual_review`)
+* `config` (JSON: question text, validation rules, etc.)
+
+---
+
+## 3. Workflows
+
+### 3.1. Normal user → request to open a shop
+
+**Trigger**: Logged-in user clicks “Open a Shop”.
+
+1. **Check existing workflow**
+
+   * `GET /workflows?type=shop_application&is_active=true`
+   * If exists → use that definition.
+   * If not → fallback to default template (but save it as the workflow so next time it’s reused).
+
+2. **AI-driven Q&A (front-end flow)**
+
+   * The AI agent (Shop Onboarding Assistant) asks:
+
+     * Type of business (producer, manufacturer, artisan, service provider, etc.).
+     * Product categories.
+     * Production capacity per week/month.
+     * Location & delivery options.
+     * Legal status (registered/unregistered).
+     * Documents: ID, company registration, maybe proof of production (photos, website, socials).
+   * All answers stored in `shop_applications.application_data`.
+
+3. **AI pre-validation**
+
+   * `POST /ai/decide` with payload:
+
+     ```json
+     {
+       "type": "shop_application",
+       "application_id": "UUID",
+       "data": { ...application_data... },
+       "user_profile": { ... }
+     }
+     ```
+   * AI returns:
+
+     ```json
+     {
+       "decision": "approved" | "rejected" | "needs_review",
+       "score": 0-100,
+       "reasons": ["Low information about production", "Strong online presence", ...],
+       "recommended_plan_id": "plan_id_or_null"
+     }
+     ```
+
+4. **Decision mapping**
+
+   * If `approved` and score >= threshold:
+
+     * Auto-create `shop` record.
+     * Assign `shop_owner` role to user.
+     * Assign a default or recommended subscription plan.
+   * If `needs_review`:
+
+     * Create a manual review task for a human admin + show AI’s reasons.
+   * If `rejected`:
+
+     * Notify user with *simple explanation* (high-level, no internal scoring).
+
+5. **Subscription selection**
+
+   * After approval, redirect to subscription page:
+
+     * Show available plans.
+     * User selects plan & enters payment details (if paid).
+     * On successful payment:
+
+       * `user_subscriptions` updated.
+       * Shop becomes fully active (`status = approved`).
+
+### 3.2. Normal user → request to become a delivery agent
+
+**Trigger**: User clicks “Become a Delivery Agent”.
+
+1. **Check existing workflow**
+
+   * `GET /workflows?type=delivery_application&is_active=true`.
+   * Reuse existing if present.
+
+2. **AI-driven Q&A**
+
+   * Questions:
+
+     * Do you have your own vehicle? (type, brand, age).
+     * Delivery zones (cities/neighborhoods).
+     * Daily availability (hours).
+     * Previous experience (food delivery, courier, etc.).
+     * Upload driving license.
+     * Upload ID.
+     * Bank details or wallet where they will be paid.
+   * All stored in `delivery_applications.application_data`.
+
+3. **Deposit & insurance logic (linked to your earlier deposit idea)**
+
+   * Compute minimum required deposit based on:
+
+     * Max order value they’re allowed to handle.
+     * Whether they have insurance.
+   * Example:
+
+     * `min_deposit = max_order_limit * 0.5` (or similar).
+   * Show them:
+
+     * Required deposit.
+     * Whether insurance is mandatory or optional.
+
+4. **AI decision**
+
+   * `POST /ai/decide` with:
+
+     ```json
+     {
+       "type": "delivery_application",
+       "application_id": "...",
+       "data": {...},
+       "user_profile": {...}
+     }
+     ```
+   * AI returns decision + score + recommended `max_order_value` and `coverage_radius`.
+
+5. **Decision mapping**
+
+   * If `approved`:
+
+     * Ask user to pay deposit (top-up delivery wallet).
+     * Mark insurance as `required` or `optional` according to AI policy.
+     * Once deposit received:
+
+       * Create `delivery_agents` record.
+       * Assign `delivery_agent` role.
+   * If `needs_review`:
+
+     * Manual review task.
+   * If `rejected`:
+
+     * Notify with generic reasons & possibly invite them to reapply later.
+
+6. **Link to subscription plans**
+
+   * Optional: paid “Pro Delivery Agent” plans:
+
+     * Lower commission fees.
+     * Priority access to high-value orders.
+     * Accident insurance included, etc.
+
+---
+
+## 4. AI Approval Agent: how it decides
+
+Treat this as a **dedicated AI agent** type called `ApprovalAgent`.
+
+### 4.1. Inputs
+
+For **shop applications**:
+
+* Business category, products.
+* Location & proximity to demand.
+* Online presence links.
+* Document completeness (ID, registration).
+* Production capacity & consistency.
+* Historical platform data (if they already bought/sold before).
+
+For **delivery agents**:
+
+* Age of user account.
+* Completeness of KYC.
+* Driving license validity.
+* Vehicle type & age.
+* Area (urban, rural, risky zones).
+* Prior negative flags (late deliveries, cancellations, complaints).
+
+### 4.2. Decision logic (hybrid rules + AI)
+
+1. **Hard rules first** (pre-filters)
+
+   * If ID missing → `auto_reject` or `needs_review`.
+   * If underage or invalid license → reject.
+   * If location not supported yet → `needs_review`.
+
+2. **AI scoring**
+
+   * AI evaluates trust & potential value:
+
+     * 0–30 → likely reject.
+     * 31–69 → manual review.
+     * 70–100 → auto-approve.
+
+3. **Explainable output**
+
+   * Always store:
+
+     * `confidence_score`
+     * 2–5 bullet points of reasons.
+   * Example reasons:
+
+     * “Multiple social profiles showing real products.”
+     * “Production capacity declared but no proof provided.”
+
+4. **Human override**
+
+   * Admin can:
+
+     * Override decision.
+     * Add a note (`override_reason`).
+   * This is important for training & compliance.
+
+---
+
+## 5. Specialized AI: the “Client Hunter” Agent
+
+This is a separate agent type whose job is:
+
+> Find potential clients everywhere online and start *conversations* that invite them to your platform.
+
+### 5.1. High-level responsibilities
+
+* Scan the web for leads (Google, B2B directories, social platforms, etc.).
+* Apply filters aligned with your focus (e.g., African producers, logistics companies, etc.).
+* Enrich leads (company info, website, contact channels).
+* Prioritize leads by relevance & potential value.
+* Draft *personalized outreach messages*.
+* **Important**: respect each platform’s API/ToS and anti-spam policies. The system must be able to throttle and require human approval if needed.
+
+### 5.2. Data model for leads
+
+**Table: `leads`**
+
+* `id`
+* `source` (`google`, `instagram`, `tiktok`, `directory`, `referral`)
+* `source_link`
+* `company_name`
+* `contact_name`
+* `contact_email`
+* `contact_social_handle`
+* `country`, `city`
+* `category` (`producer`, `retailer`, `logistics`, etc.)
+* `score` (0–100)
+* `status` (`new`, `contacted`, `responded`, `converted`, `disqualified`)
+* `owner_agent_id` (which AI/human is responsible)
+* `notes` (text)
+
+**Table: `lead_messages`**
+
+* `id`
+* `lead_id`
+* `channel` (`email`, `instagram_dm`, `tiktok_dm`, `whatsapp`, etc.)
+* `message_direction` (`outbound`, `inbound`)
+* `message_content`
+* `sent_by` (`client_hunter_agent`, `human`)
+* `sent_at`
+* `status` (`pending_approval`, `sent`, `failed`, `read`, `replied`)
+
+### 5.3. Client Hunter workflow
+
+1. **Define targeting rules (per campaign)**
+
+   * Example “campaign” entity:
+
+     * `target_country = "Côte d’Ivoire"`
+     * `target_category = "local producers"`
+     * Keywords: “made in [city]”, “artisan”, “cooperative”.
+     * Minimum team size, etc.
+
+2. **Lead discovery**
+
+   * For each campaign, the Client Hunter:
+
+     * Uses search APIs + scraping (where allowed).
+     * Grabs candidate companies / profiles.
+     * Extracts:
+
+       * Name, website, socials, email (if public).
+     * Creates/updates `leads` with `status = "new"`.
+
+3. **Lead scoring**
+
+   * AI evaluates:
+
+     * Are they real producers or just resellers?
+     * Do they seem active (recent posts, updated website)?
+     * Do they match desired sectors (food, crafts, etc.)?
+   * Assigns `score` and priority.
+
+4. **Message drafting**
+
+   * For each high-priority lead, AI prepares a short, personalized message:
+
+     * Introduce the platform.
+     * Highlight relevant benefits (for producers vs. delivery companies).
+     * Include a clear, simple call to action (book a call, sign up, reply).
+   * Save in `lead_messages` with `status = "pending_approval"` (at least in the early phase).
+
+5. **Human approval (optional)**
+
+   * Admin or sales person reviews and approves batches of messages.
+   * Once approved, system uses channel-specific bots/integrations to send:
+
+     * Email via SMTP / SendGrid.
+     * Social DMs via legal APIs.
+   * Update `status = "sent"`.
+
+6. **Follow-up logic**
+
+   * If no reply after X days:
+
+     * AI drafts follow-up #1, #2 (max N).
+   * If they reply positively:
+
+     * Update `status = "responded"` or `converted`.
+     * Trigger:
+
+       * Invite to call.
+       * Send sign-up link.
+       * Assign “Onboarding Agent” (another AI/human).
+
+7. **Integration with your main platform**
+
+   * When a lead signs up on your platform:
+
+     * Link `users` entry to `lead` so you can attribute acquisition to the Client Hunter.
+
+### 5.4. Guardrails for the Client Hunter
+
+You should embed **guardrails** in the agent prompt & policy:
+
+* Respect rate limits per channel.
+* Avoid sending identical messages (rotate templates).
+* Never send sensitive / spammy content.
+* For new markets or languages → require human approval.
+* Always log:
+
+  * Which agent sent what, where, and when.
+
+---
+
+## 6. How this fits your multi-agent / task system
+
+You already have the idea of agents, tasks, and meetings.
+
+For this module:
+
+### Agent types
+
+* `ApprovalAgent`
+
+  * Runs shop and delivery application evaluations.
+  * Produces structured decision payloads.
+* `OnboardingAgent`
+
+  * Chats with new users to collect information (Q&A).
+* `ClientHunterAgent`
+
+  * Runs lead campaigns, discovers leads, drafts outreach.
+* `SupportAgent`
+
+  * Answers user questions about plans, account status, decisions.
+
+### Typical task definitions
+
+* `Task: "Review shop application #XYZ"`
+
+  * Assigned to: `ApprovalAgent`, then optionally a human admin.
+* `Task: "Run client acquisition campaign in Abidjan"`
+
+  * Assigned to: `ClientHunterAgent`.
+* `Task: "Contact delivery applicant to request missing docs"`
+
+  * Assigned to: `OnboardingAgent` or Support.
+
+Each task:
+
+* Has a **goal**.
+* Has **inputs** (IDs of user, application, lead, etc.).
+* Produces **outputs** (decision, messages, updated records).
+
+---
+
+If you want, next step I can:
+
+* Turn this into **explicit API specs** (endpoint-by-endpoint).
+* Or draft the **exact JSON schema** for workflows so your AI builder just fills definitions and connects them.

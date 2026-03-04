@@ -1,0 +1,9 @@
+driver = pgsql
+connect = host=127.0.0.1 dbname=mail user=mailuser password=mailpass
+
+default_pass_scheme = BLF-CRYPT
+
+password_query = SELECT email as user, password_hash as password FROM virtual_users WHERE email='%u' AND is_enabled=true
+
+user_query = SELECT maildir as home, 5000 as uid, 5000 as gid FROM virtual_users WHERE email='%u' AND is_enabled=true
+

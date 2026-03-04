@@ -1,0 +1,516 @@
+Build the Platform Payment Gateway (with Optional Gold Conversion)
+
+You are to design and implement a payment gateway that:
+
+Is visible publicly as a normal payment gateway (like Stripe/Flutterwave/Paystack).
+
+Lets people pay with cards, bank transfers, mobile money, QR codes, etc.
+
+Is natively linked to a company-management platform (each company has its dashboard, balance, transactions, analytics).
+
+Optionally gives payers a “Convert to Gold” feature after payment, where they can use their balance to buy real gold at a secured price.
+
+The gold logic is secondary and handled by an internal gold service; the payment gateway remains generic.
+
+Do not design crypto or tokens.
+This is a fiat payment system with an optional post-payment gold purchase action.
+
+1. Public Face: What Users See
+1.1. Merchants / Companies (Your Clients)
+
+For companies using the platform, they see:
+
+A “Payment Gateway” section in their dashboard where they can:
+
+Generate payment links and checkout buttons.
+
+Create and print QR codes to receive payments.
+
+View incoming payments, statuses, refunds, and settlements.
+
+See a “Platform Balance” where funds accumulate before being withdrawn to their bank or used for other actions.
+
+1.2. Payers / End Customers
+
+End customers see:
+
+A clean payment page (hosted by the platform) with:
+
+Company name/logo
+
+Amount and currency
+
+Payment methods (card, bank, mobile money, etc.)
+
+Option to scan or show a QR code for in-person payments.
+
+After successful payment, they see:
+
+A success screen with receipt details.
+
+Option (if enabled by the merchant/platform) to:
+
+“Use this balance to buy gold at today’s secured price.”
+
+If they choose gold, the system triggers the gold module (described later).
+
+2. Core Architecture of the Payment Gateway
+
+Build the payment gateway as a set of services:
+
+Checkout Service
+
+QR & Link Service
+
+Payment Orchestrator
+
+Provider Connectors (Flutterwave + others)
+
+Merchant Account & Balance Service
+
+Transaction Ledger
+
+Integration Hooks to:
+
+Company Management System
+
+Optional Gold Conversion Service
+
+3. Main Services in Detail
+3.1. Checkout Service
+
+Mission:
+Handle everything related to creating and running a payment session.
+
+Responsibilities:
+
+Receive requests from:
+
+Companies: to generate a payment session or link.
+
+Other modules: to charge a specific client.
+
+Create a Checkout Session with:
+
+company_id
+
+amount
+
+currency
+
+description
+
+metadata (e.g. invoice id, order id)
+
+Call the Payment Orchestrator to get a payment URL or inline payment options.
+
+Handle redirects (success/cancel).
+
+Show final status to payer.
+
+Key endpoints (example):
+
+POST /checkout/sessions
+
+GET /checkout/sessions/{id}
+
+GET /checkout/pay/{session_id} (public payment page)
+
+3.2. QR & Link Service
+
+Mission:
+Allow companies to collect payments via QR codes and simple URLs.
+
+Responsibilities:
+
+Generate a payment URL for:
+
+Fixed amount (e.g. 10,000 XOF charge).
+
+Variable amount (enter amount at checkout, useful for counter/paydesk).
+
+Encode that URL into a QR code image.
+
+Provide these to the merchant (download or embed).
+
+Behavior:
+
+When a QR is scanned:
+
+Redirect to GET /checkout/pay/{session_or_link_id}
+
+Checkout Service then manages the flow.
+
+3.3. Payment Orchestrator
+
+Mission:
+Be the single interface between your platform and all external payment providers.
+
+Responsibilities:
+
+Accept a request like:
+
+CreatePaymentIntent(companyId, amount, currency, payerDetails, metadata)
+
+Decide which provider to use based on:
+
+Country / currency
+
+Available methods (card, mobile money, etc.)
+
+Call the specific Provider Connector (Flutterwave etc.).
+
+Return:
+
+payment_url
+
+provider_reference
+
+status
+
+Handle webhooks from providers:
+
+Validate signatures.
+
+Map provider statuses to internal statuses.
+
+Notify the Merchant Account Service and Checkout Service.
+
+Key endpoints (internal):
+
+POST /payments/intents
+
+POST /payments/webhook/{provider}
+
+GET /payments/{id}
+
+3.4. Provider Connectors (Flutterwave + Others)
+
+Implement a generic interface:
+
+interface PaymentProvider {
+  createPaymentIntent(...)
+  handleWebhook(...)
+  getTransactionStatus(...)
+  createPayout(...)  // for sending money out
+}
+
+3.4.1. FlutterwaveConnector
+
+Use Flutterwave for:
+
+Card payments
+
+Mobile money
+
+Bank transfers, where available
+
+Must handle:
+
+createPaymentIntent():
+
+Calls Flutterwave API to create payment.
+
+Returns payment link or payment parameters.
+
+handleWebhook():
+
+Validate Flutterwave signature.
+
+Extract:
+
+provider transaction id
+
+amount
+
+currency
+
+status (success/failed)
+
+Return a normalized event to the Payment Orchestrator.
+
+createPayout():
+
+For future: sending money from your platform to company bank/mobile.
+
+3.4.2. OtherGatewaysConnector
+
+Implement other African-friendly gateways using the same interface.
+
+Orchestrator uses them interchangeably.
+
+3.5. Merchant Account & Balance Service
+
+Mission:
+Manage money on the platform for each company.
+
+Responsibilities:
+
+Maintain for each company_id:
+
+available_balance (money that can be withdrawn)
+
+pending_balance (not yet settled, pending provider confirmation)
+
+currency (or multi-currency if needed)
+
+When a payment is successful:
+
+Add to pending_balance or directly to available_balance depending on rules.
+
+When money is payout/withdrawn:
+
+Decrease available_balance.
+
+Create a payout record.
+
+Integration with company management:
+
+Expose APIs / events for the company-management system to:
+
+Display balances,
+
+Show latest transactions,
+
+Trigger payouts,
+
+Run internal reports (per branch, per service, etc.).
+
+Key endpoints (internal):
+
+GET /companies/{companyId}/balance
+
+GET /companies/{companyId}/transactions
+
+POST /companies/{companyId}/payouts
+
+3.6. Transaction Ledger
+
+Mission:
+Keep an immutable record of all transactions.
+
+Responsibilities:
+
+Log every:
+
+Payment attempt
+
+Successful payment
+
+Refund
+
+Payout
+
+Adjustment
+
+Store:
+
+transaction_id
+
+company_id
+
+payer_identifier (masked)
+
+amount
+
+currency
+
+provider
+
+status
+
+type (payment, refund, payout, fee)
+
+linked_checkout_session_id
+
+timestamps
+
+This ledger feeds:
+
+Analytics
+
+Company dashboards
+
+Export for accounting
+
+AI agents for analysis
+
+4. Integration with the Company Management System
+
+The payment gateway is tightly integrated into the platform that helps companies manage their operations.
+
+4.1. Events & Hooks
+
+Whenever something happens, the gateway emits events, e.g.:
+
+PAYMENT_SUCCEEDED
+
+PAYMENT_FAILED
+
+PAYOUT_REQUESTED
+
+PAYOUT_COMPLETED
+
+Each event includes:
+
+company_id
+
+amount
+
+currency
+
+transaction_id
+
+metadata (e.g. invoice id, order id, department, branch)
+
+timestamp
+
+The company-management system subscribes to these events to:
+
+Update internal ledgers
+
+Trigger AI analytics
+
+Adjust company KPIs
+
+Power dashboards (per department, per location, etc.)
+
+5. Optional Gold Conversion (Keep It Light)
+
+Gold is an option, not the core of the gateway.
+
+5.1. UX
+
+After payment is successfully completed (or from their balance), users can see:
+
+“You can use part or all of this value to buy physical gold at today’s secured rate.”
+
+If they click this option:
+
+They select amount (e.g. “Use 20%” or “Use 100 USD worth”).
+
+System calls the Gold Conversion Service.
+
+5.2. Gold Conversion Service (Internal)
+
+Create a separate internal microservice, e.g. GoldConversionService, with very simple responsibilities:
+
+Receive:
+
+customer_id (or external reference)
+
+company_id (if relevant)
+
+fiat_amount
+
+currency
+
+payment_reference or balance reference
+
+Do:
+
+Look up current gold price and fees.
+
+Lock in a gold price at that moment (quote).
+
+Convert fiat amount → corresponding grams.
+
+Deduct that amount from the customer’s platform balance (or mark it as used for gold).
+
+Create a record like:
+
+GoldAllocation with:
+
+user reference
+
+grams
+
+price
+
+timestamp
+
+status (IN_CUSTODY, PENDING_DELIVERY, etc.)
+
+Let another internal gold-trade agent handle:
+
+Sourcing/hedging,
+
+Physical allocation,
+
+Delivery options.
+
+You do NOT need to detail this here.
+
+Key point:
+For the payment gateway, gold is just:
+
+“A post-payment option where we send value + context to a gold service, and that service takes responsibility for gold allocation.”
+
+6. Security & Reliability Basics
+
+Secrets & Keys:
+
+Store API keys (Flutterwave, others) safely.
+
+Webhooks:
+
+Validate signatures, prevent replay.
+
+Idempotency:
+
+Payment confirmation must not cause double-crediting.
+
+Error Handling:
+
+If provider timeout or unclear status, mark payments as PENDING and let a reconciliation job fix later.
+
+Logs & Analytics:
+
+Every action logged.
+
+Feed data to the analytics/AI layer.
+
+7. Deliverables for This Agent
+
+You must produce:
+
+Service architecture diagram:
+
+Checkout → Orchestrator → Providers → Ledger → Company Accounts → Events.
+
+API specification (OpenAPI/Swagger-like) for:
+
+Checkout sessions
+
+Payment intents
+
+Webhooks
+
+Company balance & transactions
+
+QR generation.
+
+Data models:
+
+CompanyAccount
+
+PaymentIntent
+
+Transaction
+
+Payout
+
+CheckoutSession
+
+Provider connector interface and Flutterwave implementation.
+
+Event schema for integration with the company-management system.
+
+Simple Gold Conversion hook:
+
+A minimal API:
+
+POST /gold/convert that receives fiat value and forwards to gold module.
+
+Focus your effort on the payment gateway and company integration.
+Treat gold as a clean, optional add-on triggered after payment, via a simple internal API.

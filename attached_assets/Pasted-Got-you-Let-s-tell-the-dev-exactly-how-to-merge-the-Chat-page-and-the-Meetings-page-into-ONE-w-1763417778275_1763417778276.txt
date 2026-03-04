@@ -1,0 +1,284 @@
+Got you. Let’s tell the dev exactly how to **merge the Chat page and the Meetings page into ONE**, while:
+
+* Keeping the **Diary page** as a separate view, and
+* Making sure **meetings are linked to the calendar**,
+* And the **Chairman’s Assistant dock stays identical everywhere.**
+
+You can paste this to your agency as-is.
+
+---
+
+## 1. High-Level Change
+
+> **Instruction:**
+> Replace the separate **Chat page** and **Meetings page** with **one unified page**:
+>
+> **New name (example):** `Chat & Meetings`
+>
+> This page shows:
+>
+> * Live conversations (chats)
+> * Scheduled meetings
+> * Their link to the calendar
+
+The **Diary page stays**.
+Diary = historical view by days.
+Chat & Meetings = operational view (what we’re talking now + what’s coming next).
+
+---
+
+## 2. Mental Model
+
+We keep the model we started:
+
+* A **Chat** is a type of **Meeting/Conversation** (instant or ongoing).
+* A **Meeting** is a **scheduled conversation** connected to the calendar.
+* Both are represented as a **Conversation** under the hood.
+
+But **UX-wise** we give the user **one page** where they can:
+
+* Talk in real time (chat),
+* See upcoming meetings,
+* Create new meetings from that chat,
+* Jump into any already-scheduled meeting.
+
+---
+
+## 3. New `Chat & Meetings` Page – Layout
+
+### 3.1 Split Layout
+
+**On desktop:**
+
+* **Left side:** Active Chat
+* **Right side:** Meetings & Calendar
+
+**On mobile:**
+
+* Tabs or toggle:
+
+  * `Chat`
+  * `Meetings`
+
+---
+
+### 3.2 Left: Active Chat Area
+
+This is the **main conversation area**.
+
+* By default:
+
+  * Show the **Chairman’s Assistant conversation for today**.
+* UI:
+
+  * Header:
+
+    * Assistant name (customizable, e.g. “Chairman’s Assistant / Aisha”)
+    * Context (global or specific company)
+  * Messages:
+
+    * User messages on the **right**,
+    * Assistant on the **left**.
+  * Input:
+
+    * Text box,
+    * Send button,
+    * File upload button.
+
+This is the **same content as the bottom dock**, just full-screen.
+
+**Important:**
+
+* On `Chat & Meetings` page:
+
+  * The central chat is **synchronized with the dock**.
+* From here, we add meeting-related controls.
+
+#### Actions in the Chat Area
+
+Add small buttons near the input or header, for example:
+
+* `Create Meeting from this Chat`
+* `Schedule Follow-Up`
+* `Add to Calendar`
+
+These will use the current chat context to create a **scheduled meeting**.
+
+---
+
+### 3.3 Right: Meetings & Calendar Panel
+
+On the right side, we mix the **Meetings page content** into a clean panel:
+
+#### 3.3.1 Upcoming Meetings List
+
+* List of **upcoming meetings** (for this company or globally):
+
+  * Each item:
+
+    * Title,
+    * Date & time,
+    * Participants,
+    * Status (planned/ongoing/completed),
+    * Icon for type (video, chat, in-person).
+* Clicking a meeting:
+
+  * Opens the **meeting details**:
+
+    * Title,
+    * Time,
+    * Participants,
+    * Link to full conversation (chat log / notes),
+    * Buttons: `Join / Open Conversation`, `Reschedule`, `Cancel`.
+
+#### 3.3.2 Calendar Linkage
+
+Add a **small calendar widget** above or below the list:
+
+* Shows month view with:
+
+  * Dots/badges on days that have meetings.
+* Clicking a day:
+
+  * Filters the meeting list to:
+
+    * Meetings on that day,
+    * And (optionally) opens the corresponding conversations.
+
+For calendar-connected users (Google etc.):
+
+* Show whether the meeting is synced:
+
+  * “Synced to Google Calendar”
+  * Or “Not synced yet” with a button to sync.
+
+---
+
+## 4. How Chat & Meetings Interact
+
+### 4.1 Turning a Chat Into a Meeting
+
+From the chat area:
+
+User says:
+
+> “Let’s schedule a meeting about this tomorrow at 10:00.”
+
+The Chairman’s Assistant:
+
+1. Detects intent to schedule.
+2. Proposes a meeting:
+
+   > “Okay, I’ll create a **Strategy Review** meeting tomorrow at 10:00 with you and [participants]. Confirm?”
+3. On confirmation:
+
+   * Create a **Meeting** (Conversation of type `scheduled`):
+
+     * Link it to the **calendar** (if connected),
+     * Pre-fill the **description** using the **chat history** or a summary.
+   * Show it in the **Upcoming Meetings list** on the right.
+
+### 4.2 Joining / Opening a Meeting
+
+From the **Upcoming Meetings list**:
+
+* Clicking a meeting:
+
+  * Opens its **Conversation** in the left chat area:
+
+    * If it’s happening now:
+
+      * It’s like a live meeting room (chat + possibly future video).
+    * If it’s in the past:
+
+      * Show the chat log / transcript / notes.
+
+This way, **Chat & Meetings are literally the same UI**, only with different metadata.
+
+---
+
+## 5. Relationship with Diary Page
+
+We **keep the Diary page**, but clarify the roles:
+
+* **Chat & Meetings page**:
+
+  * Operational,
+  * For today and near future,
+  * Place to talk and schedule.
+
+* **Diary page**:
+
+  * Historical,
+  * Organized by **date**,
+  * Shows all conversations (including:
+
+    * daily chats,
+    * meetings,
+    * agent-only syncs).
+  * Day-based grouping with collapse/expand,
+  * “Click a day → see all conversations from that day.”
+
+The diary page will read from the same `Conversation` model, but grouped by day instead of “upcoming vs active”.
+
+---
+
+## 6. Chairman’s Assistant Dock – Rule Reminder
+
+Tell the dev clearly:
+
+> The **Chairman’s Assistant dock** at the bottom of the screen must:
+>
+> * Look **exactly the same** on **all pages** (Home, Company Overview, Agents & Hierarchy, Performance & Diagnostics, Chat & Meetings, Diary, Settings, etc.).
+> * Always reflect **today’s conversation** with the Chairman’s Assistant.
+> * When on `Chat & Meetings` page, the **main chat area** shows the same stream as the dock, just in larger format.
+
+So:
+
+* Dock = mini view,
+* Chat & Meetings left panel = full view.
+
+---
+
+## 7. Concrete Tasks for the Dev / Agency
+
+You can summarize like this:
+
+1. **Unify Chat page + Meetings page into one `Chat & Meetings` page.**
+
+   * Left: chat area (Chairman’s Assistant / or selected conversation).
+   * Right: upcoming meetings list + mini calendar.
+
+2. **Keep the Diary page separate.**
+
+   * It becomes the historical view by day, showing all conversations and meetings per date.
+
+3. **Make all chats and meetings use the same underlying `Conversation` model.**
+
+   * Meetings are simply conversations with:
+
+     * date + startTime (+ endTime),
+     * type `'scheduled'`,
+     * calendar link if synced.
+
+4. **Allow creating meetings directly from the chat area.**
+
+   * Via assistant suggestions or buttons.
+   * New meeting must appear immediately in the meetings list and in the user’s calendar (if connected).
+
+5. **When a meeting is selected from the right panel, open its conversation in the left chat area.**
+
+   * Same UI as a chat, with meeting metadata at the top.
+
+6. **Keep the Chairman’s Assistant dock identical across all pages**, including this new combined page.
+
+---
+
+If you want, next I can help you define:
+
+* The **exact structure of the Meeting card UI**, or
+* The **API endpoints** for:
+
+  * `GET /conversations?companyId=&date=`,
+  * `GET /upcoming-meetings`,
+  * `POST /conversations/:id/schedule`.

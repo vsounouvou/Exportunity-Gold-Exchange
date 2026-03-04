@@ -1,0 +1,87 @@
+﻿{
+  "brandName": "Exportunity",
+  "tagline": "Coverage for trade operations, wallets, contracts, approvals, and reporting.",
+  "oneLiner": "Run governed execution with clear audit trails and operator control.",
+  "platformLink": "https://exportunity.net/app",
+  "memberLoginLink": "https://exportunity.net/login",
+  "primaryCTAs": [
+    { "label": "Platform", "href": "/platform" },
+    { "label": "Solutions", "href": "/solutions" },
+    { "label": "Journey", "href": "/journey" },
+    { "label": "Media", "href": "/media" },
+    { "label": "Talk", "href": "/talk" }
+  ],
+  "trustPillars": [
+    "Approval gates",
+    "Audit logs",
+    "Evidence capture"
+  ],
+  "images": {
+    "hero": "/assets/exportunity/2759c4ea629c90837245379ae826bfce6ed7401205fe4a975b45bda4553cd577.jpg",
+    "journey": "/assets/exportunity/c9e35995dee9a785a5ac2ef1da6cd584809263f9bf0eba15a702bdbe775b2d1f.jpg",
+    "solutions": "/assets/exportunity/0cec61a9c702ba53d25fb2dd90d9ccb4b867cd529d1b0aef910e9d770429670a.jpg",
+    "platform": "/assets/exportunity/519f378b430f043d854a92e22300af362625c1982a1744d473515bb102e4cfdb.jpg",
+    "contact": "/assets/exportunity/e6780893d266dc64e78172c490fc625f889e268db7469539847d3f94c7a592fc.jpg",
+    "invest": "/assets/exportunity/4dd1123bec0102a35bcabbffebc6fdff7f1d433ff4a23c3e5afc8663d4c583a4.jpg"
+  },
+  "invest": {
+    "headline": "Invest directly into verified operations — with tracked execution.",
+    "subtext": "Exportunity enables investors to fund real businesses operating on the platform. Capital is tied to a digital contract, released by milestones, and spent through platform-native purchases so execution and returns remain visible.",
+    "disclaimer": "Returns are modeled, not guaranteed. Investments involve risk.",
+    "trustStrip": ["Escrow", "Audit trail", "Milestones", "Verified purchases"],
+    "opportunitiesHeadline": "Investment opportunities",
+    "opportunitiesLead": "Explore SMEs, farms, production units, machinery projects, and commodity workflows with contract-level controls and reporting."
+  },
+  "pillars": [
+    {
+      "title": "Trade Execution (commodities)",
+      "description": "Sourcing, counterparties, routing, settlement discipline, and documentation designed for operational reliability."
+    },
+    {
+      "title": "Compliance & Traceability",
+      "description": "Structured workflows, audit trails, KYC/KYB support, and origin tracking across execution flows."
+    },
+    {
+      "title": "AI-Managed Operations",
+      "description": "AI agents handle outreach, follow-ups, documentation, reporting, and communications."
+    }
+  ],
+  "products": [
+    "Exportunity OS (multi-tenant operating system for trade & operations)",
+    "Gold & precious metals platform (traceable batches/ingots/jewelry, origin-to-export pipeline)",
+    "AI Agents (hire agents, assign tasks, connect to email/SMS/WhatsApp, execute actions)",
+    "Marketplace / B2B trade (multi-tenant commerce and supplier discovery)",
+    "Communications layer (email independence plus WhatsApp/SMS orchestration)",
+    "Analytics and SEO automation module"
+  ],
+  "timeline": [
+    { "year": "2012", "label": "Founded", "details": "Foundations for global trade support." },
+    { "year": "2015", "label": "Marketplace + delivery points", "details": "Scaled distribution and operations." },
+    { "year": "2017", "label": "XportCARD + UBA", "details": "Fintech rails enabling access and payments." },
+    { "year": "2020–2024", "label": "Platform reinvention", "details": "Multi-tenant OS and automation." },
+    { "year": "Today", "label": "Exportunity OS", "details": "Gold/commodities workflows and AI execution infrastructure." }
+  ],
+  "mission": "Built to scale African trade and global execution — from West Africa to UAE and beyond, with operational excellence, trust, and visibility.",
+  "sections": {
+    "aiManagedOperations": {
+      "title": "AI-managed operations",
+      "description": "Autonomous agents coordinate workflows, escalation, and execution tasks across trade operations."
+    },
+    "multiTenantPlatform": {
+      "title": "Multi-tenant platform",
+      "description": "One operating system for SMEs, exporters, miners, and partners, each with role-aware workspaces."
+    },
+    "goldAndCommodities": {
+      "title": "Gold and commodities execution",
+      "description": "Compliance, traceability, and settlement workflows built for real-world trade execution."
+    },
+    "communicationsStack": {
+      "title": "Communications stack",
+      "description": "Email, SMS, and WhatsApp agents drive outreach, follow-up, and operational messaging."
+    },
+    "complianceModules": {
+      "title": "Tax vault and compliance modules",
+      "description": "Structured controls for fiscal documentation, audits, and policy-aware approvals."
+    }
+  }
+}

@@ -1,0 +1,268 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer utilities {
+  .safe-area-top {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .pt-safe {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  .ops-chat-scroll-area [data-radix-scroll-area-scrollbar][data-orientation="vertical"] {
+    width: 12px;
+    padding: 2px;
+    background: rgba(15, 23, 42, 0.55);
+  }
+  .ops-chat-scroll-area [data-radix-scroll-area-thumb] {
+    border-radius: 9999px;
+    background: linear-gradient(180deg, rgba(59, 130, 246, 0.85), rgba(37, 99, 235, 0.9));
+    border: 1px solid rgba(59, 130, 246, 0.35);
+  }
+  .ops-chat-scroll-area [data-radix-scroll-area-thumb]:hover {
+    background: linear-gradient(180deg, rgba(96, 165, 250, 0.95), rgba(59, 130, 246, 0.95));
+  }
+
+  .ops-team-scroll-area [data-radix-scroll-area-viewport] {
+    padding-right: 12px;
+    scrollbar-gutter: stable both-edges;
+    overflow-x: hidden;
+  }
+  .ops-team-scroll-area [data-radix-scroll-area-viewport] > div {
+    min-width: 0;
+  }
+  .ops-team-scroll-area [data-radix-scroll-area-scrollbar][data-orientation="vertical"] {
+    width: 10px;
+  }
+
+  .ops-card-interactive {
+    transition:
+      transform 180ms cubic-bezier(0.22, 1, 0.36, 1),
+      box-shadow 180ms ease,
+      border-color 180ms ease,
+      background-color 180ms ease;
+    will-change: transform;
+  }
+
+  .ops-card-interactive:hover {
+    transform: translateY(-1px);
+  }
+
+  .ops-card-interactive:active {
+    transform: translateY(0) scale(0.996);
+  }
+
+  .ops-row-interactive {
+    transition:
+      background-color 160ms ease,
+      transform 160ms ease,
+      opacity 160ms ease;
+  }
+
+  .ops-row-interactive:hover {
+    transform: translateY(-1px);
+  }
+
+  .ops-pressable {
+    transition:
+      transform 120ms ease,
+      filter 140ms ease,
+      box-shadow 140ms ease;
+  }
+
+  .ops-pressable:hover {
+    filter: brightness(1.06);
+  }
+
+  .ops-pressable:active {
+    transform: scale(0.98);
+  }
+
+  .ops-message-enter {
+    animation: opsMessageIn 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .ops-live-chip {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .ops-live-chip::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(110deg, transparent 0%, rgba(255, 255, 255, 0.26) 48%, transparent 100%);
+    transform: translateX(-140%);
+    animation: opsLiveSheen 2.8s ease-in-out infinite;
+    pointer-events: none;
+  }
+
+  .ops-live-dot {
+    animation: opsDotPulse 1.8s ease-in-out infinite;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    @apply font-sans antialiased bg-gray-950 text-gray-100 overflow-x-hidden;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Keep Leaflet panes/controls below the app header & overlays */
+  .leaflet-pane {
+    z-index: 10 !important;
+  }
+  .leaflet-top,
+  .leaflet-bottom {
+    z-index: 20 !important;
+  }
+  .leaflet-control {
+    z-index: 20 !important;
+  }
+  .leaflet-tooltip-pane,
+  .leaflet-popup-pane {
+    z-index: 30 !important;
+  }
+
+  .leaflet-interactive.map-pulse-circle {
+    animation: mapPulse 1.35s ease-out infinite;
+  }
+
+  .leaflet-interactive.territory-selected-glow {
+    filter: drop-shadow(0 0 10px rgba(245, 158, 11, 0.35)) drop-shadow(0 0 18px rgba(245, 158, 11, 0.2));
+  }
+
+  @keyframes mapPulse {
+    0% {
+      stroke-opacity: 0.9;
+      fill-opacity: 0.25;
+    }
+    70% {
+      stroke-opacity: 0;
+      fill-opacity: 0;
+    }
+    100% {
+      stroke-opacity: 0;
+      fill-opacity: 0;
+    }
+  }
+
+  @keyframes opsMessageIn {
+    from {
+      opacity: 0;
+      transform: translateY(8px) scale(0.995);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  @keyframes opsLiveSheen {
+    0% {
+      transform: translateX(-140%);
+    }
+    35%,
+    100% {
+      transform: translateX(150%);
+    }
+  }
+
+  @keyframes opsDotPulse {
+    0%,
+    100% {
+      opacity: 0.9;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.45;
+      transform: scale(0.86);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ops-card-interactive,
+    .ops-row-interactive,
+    .ops-pressable,
+    .ops-message-enter,
+    .ops-live-chip::after,
+    .ops-live-dot {
+      animation: none !important;
+      transition: none !important;
+      transform: none !important;
+    }
+  }
+
+  :root {
+    --background: 240 10% 3.9%;
+    --foreground: 0 0% 98%;
+    --card: 240 10% 7%;
+    --card-foreground: 0 0% 98%;
+    --popover: 240 10% 7%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 38 85% 52%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 240 4% 16%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 240 4% 16%;
+    --muted-foreground: 240 5% 65%;
+    --accent: 240 4% 16%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 63% 31%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 4% 16%;
+    --input: 240 4% 16%;
+    --ring: 38 85% 52%;
+    --bottom-nav-height: 64px;
+    --mode-switch-height: 0px;
+    --bottom-stack-height: calc(var(--bottom-nav-height) + var(--mode-switch-height) + env(safe-area-inset-bottom, 0px));
+    --layer-bottom-nav: 1060;
+    --layer-concierge: 1080;
+    --layer-sheet: 1095;
+    --layer-alert: 1110;
+
+    /* MindBase UI tokens (light, high-contrast) */
+    --bg: #F8FAFC;
+    --card: #FFFFFF;
+    --border: #E2E8F0;
+    --text: #0F172A;
+    --muted: #475569;
+    --primary: #2563EB;
+    --primaryHover: #1D4ED8;
+    --chipBg: #F1F5F9;
+    --chipText: #334155;
+    --chipActiveBg: #E0F2FE;
+    --chipActiveText: #0369A1;
+  }
+
+  @media (min-width: 768px) {
+    :root {
+      --bottom-nav-height: 0px;
+      --mode-switch-height: 0px;
+    }
+  }
+}

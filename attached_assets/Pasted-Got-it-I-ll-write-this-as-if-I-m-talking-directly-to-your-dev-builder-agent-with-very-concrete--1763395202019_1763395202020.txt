@@ -1,0 +1,470 @@
+Got it. I’ll write this as if I’m talking directly to your dev / “builder agent” with very concrete instructions: **what the homepage must look like, how the chat behaves, and what needs to be debugged so every page and button actually works.**
+
+You can literally paste this into your dev task / agent prompt.
+
+---
+
+## 1. Global Directive to the Builder Agent
+
+> **Goal:**
+> Build and debug a fully functional **App Home / Dashboard** where:
+>
+> * The **chat with the Chairman’s personal assistant** is always visible at the bottom,
+> * All key **metrics and company info** are visible around it,
+> * The user (Chairman) can:
+>
+>   * See their profile (name, account type),
+>   * Create companies,
+>   * Click a company and inspect its data,
+>   * Access meetings & agent performance pages,
+> * Every button on every page is wired and works.
+
+You must **test and fix** all navigation and actions so there are **no dead buttons**.
+
+---
+
+## 2. Logged-In Homepage UX (App Home) – FINAL SPEC
+
+### 2.1 Layout Overview
+
+When a user (Chairman) opens the app after login, they land on **App Home**.
+
+**Layout (desktop):**
+
+* **Top Bar (Header)**
+
+  * Left: App logo / name (AI SWARM).
+  * Center: “Home” label + current context (e.g. “Chairman Dashboard”).
+  * Right: User mini-profile (name, account type) + a small dropdown.
+
+* **Main Content Area (Above Chat)**
+  Split into **three horizontal zones**:
+
+  1. **Left Column – Companies & Quick Actions**
+  2. **Center Column – Metrics Dashboard**
+  3. **Right Column – Activity & Shortcuts**
+
+* **Bottom Dock – Chat**
+
+  * A **persistent chat box** with the **Chairman’s personal assistant**.
+  * This chat is always visible on the homepage, taking the full width at the bottom.
+
+#### 2.1.1 Top Bar Details
+
+* **User Profile snippet** (top right):
+
+  * Shows:
+
+    * Display Name (e.g. “Vital Sounouvou”),
+    * Account type (e.g. “Chairman”, later maybe “Chairman & Investor”),
+  * Dropdown options:
+
+    * My Profile (opens a simple modal with:
+
+      * Name,
+      * Account type,
+      * Email/ID,
+      * Language, timezone),
+    * Logout (can be a placeholder for now).
+
+> **Important:** Do **not** implement passwords yet. Use a very simple user concept (e.g. in dev, one default user or a “Create temporary profile” modal).
+
+---
+
+### 2.2 Left Column – Company Area
+
+This is the **first place** where the Chairman sees and interacts with their companies.
+
+**Sections:**
+
+1. **“Your Companies” header**
+
+   * With a small “+ Create Company” button.
+
+2. **Company List / Cards**
+
+   * For each company:
+
+     * Company name,
+     * Jurisdiction flag (country code / icon),
+     * Status (Building / Live / Paused),
+     * 1–2 key KPIs:
+
+       * Meetings this month,
+       * Revenue (if any),
+     * Clickable area → opens **Company Workspace** for that company.
+
+3. **Empty State**
+
+   * If no company exists:
+
+     * Show a friendly message:
+
+       > “You don’t have any companies yet. Let’s create your first company.”
+     * Big button “Create your first company” → triggers **Create Company modal** (see below).
+
+---
+
+### 2.3 Center Column – Metrics Around the Chat
+
+This is where **“every matrix has to show”** (we’ll call them metrics).
+
+We show metrics that reflect the overall “group” at a glance.
+
+**Cards you MUST implement for v1:**
+
+1. **Total Companies**
+
+   * Count of companies created by this Chairman.
+
+2. **Total Active Agents**
+
+   * Number of agents currently active across all companies.
+
+3. **Total Meetings (Last 30 days)**
+
+   * Sum of meetings booked (AI + human, plus important AI-only syncs if we track them).
+
+4. **Upcoming Meetings (Next 7 days)**
+
+   * Count + a “View all meetings” link (goes to Meetings page).
+
+5. **Agent Performance Summary**
+
+   * One small panel:
+
+     * “Top Agent this week: [Agent Name] – [KPI]”
+     * “Click to see Agent Performance dashboard.”
+     * Clicking this goes to **Agent Performance page** (company/global depending on current context).
+
+6. **Token Usage Snapshot**
+
+   * Panel:
+
+     * “Tokens this week: X”
+     * “Estimated cost: $Y”
+     * “Click for Token Dashboard.”
+   * Clicking goes to the **Token/Usage page**.
+
+> Make each panel clickable, always taking you to the relevant **detail page**.
+
+---
+
+### 2.4 Right Column – Activity & Shortcuts
+
+Here we show:
+
+1. **Recent Activity Feed**
+
+   * Global list of notable events:
+
+     * “Sales Agent (Exportunity CI) booked a meeting with Client X.”
+     * “Legal Agent (UAE Company) created a new compliance checklist.”
+     * “Finance Agent (Company B) closed month and proposed a distribution.”
+
+2. **Quick Shortcuts**
+
+   * Buttons:
+
+     * “Create Company”
+     * “Invite Investor” (future)
+     * “Open Internal Conversations” (for a selected company)
+     * “Open Agent Performance”
+
+3. **Context Switcher (optional for v1)**
+
+   * A dropdown to set “current focus company,” which informs:
+
+     * What metrics appear in center,
+     * Which company context the chat uses.
+
+For v1, you can keep the metrics global and add per-company later.
+
+---
+
+### 2.5 Bottom – Chat Dock
+
+At the **bottom of the entire homepage**, full width:
+
+**Chat with the Chairman Assistant (Personal Assistant / Co-Agent)**
+
+**Behavior:**
+
+* The chat panel is always visible on the home page (like a dock).
+* Components:
+
+  * Message history area.
+  * Input box “Talk to your assistant…”.
+  * Send button.
+* The **assistant:**
+
+  * Always addresses the user by their **name** (from user profile).
+  * Understands:
+
+    * User’s role = Chairman,
+    * Current companies,
+    * Current metrics.
+  * Can answer things like:
+
+    * “What should we focus on this week?”
+    * “Create a new company for logistics in Benin.”
+    * “Which agent is doing best right now?”
+    * “Show me meetings today.”
+
+**VERY IMPORTANT – State & Persona:**
+
+* You MUST maintain a **User Profile object** in the backend with at least:
+
+  * `user_id`
+  * `display_name` (e.g. Vital)
+  * `role` = Chairman
+  * Languages, timezone, preferences.
+* The system prompt for this assistant must always receive:
+
+  * The `display_name`,
+  * A short description of the Chairman’s vision (if stored),
+  * The list of companies and current metrics summary.
+
+> **Goal:** The orchestrator and Chairman Assistant should **learn the Chairman’s preferences over time** and implement his vision:
+>
+> * The more the user chats, the more the system logs:
+>
+>   * Preferred markets,
+>   * Preferred style,
+>   * Risk appetite,
+>   * Key projects.
+> * This goes into **Chairman Memory**.
+
+---
+
+## 3. Company & Agent Flows from the Homepage
+
+### 3.1 Create Company – From Homepage
+
+From **homepage**, “Create Company” can be triggered from:
+
+* Left column “+ Create Company” near companies list.
+* Right column “Quick Shortcut”.
+
+**Create Company Modal (v1 simple):**
+
+* Step 1: Company name.
+* Step 2: Country / jurisdiction.
+* Step 3: Sector / tags (e.g. “logistics, trade”).
+* Step 4: Initial budget (optional placeholder).
+* Confirm → create Company record.
+
+**Result:**
+
+* A default set of agents is created for this company (CEO Orchestrator + 2–3 core agents).
+* Company is added to the list in Left Column.
+* User can click it to open **Company Workspace**.
+
+---
+
+### 3.2 Opening a Company
+
+Click on a company card in Left Column:
+
+* Navigate to **Company Workspace Overview** for that company (the pages we already defined: Overview, Agents & Hierarchy, Meetings, Performance, etc.).
+* The top bar should change context:
+
+  * Show company name + icon.
+* The **chat dock at bottom** can now either:
+
+  * Show the **Company CEO Orchestrator chat**, or
+  * Stay with Chairman Assistant but with this company set as **current focus**.
+* For v1: it’s okay to switch to “company CEO chat” when inside a company.
+
+---
+
+## 4. Agent Management (Create/Edit) – Access from Homepage
+
+From the homepage, the user must be able to reach **agent pages** for each company:
+
+* Option 1:
+
+  * User clicks a company card → goes into Company Workspace →
+  * From there, opens `Agents & Hierarchy` and `Agent Performance`.
+
+* Option 2 (shortcut on homepage):
+
+  * On a company card, small icon: “Agents”.
+  * Clicking jumps directly into the Agents & Hierarchy page for that company.
+
+On **Agents & Hierarchy**, ensure:
+
+* The user can:
+
+  * Click any agent to open full **Agent Profile**.
+  * Edit agent:
+
+    * Name,
+    * Role,
+    * Personality,
+    * Permissions,
+    * KPIs.
+  * Create new agents using “Create Agent” wizard.
+
+---
+
+## 5. Meetings & Performance – MUST WORK
+
+You mentioned:
+
+> “agent performance is not showing up. … meeting page not showing…”
+
+### 5.1 Required Functional Pages
+
+1. **Meetings Page (per company)**
+   Path: inside Company Workspace → `Meetings & Calendar`.
+
+   Must show:
+
+   * List of meetings (even if test data) sorted by date.
+   * At least:
+
+     * Title,
+     * Date/time,
+     * Participants (agents/humans),
+     * Status.
+   * Clicking a meeting opens detail view with:
+
+     * Summary (can be simple placeholder),
+     * Link to related conversation thread (if any).
+
+2. **Agent Performance Page (per company)**
+
+   * Must show:
+
+     * A table of agents with 1–2 test KPIs,
+     * At least:
+
+       * Agent name,
+       * Role,
+       * Number of tasks completed,
+       * Dummy “score” (until real metrics are wired),
+     * Clicking an agent opens the Agent Profile.
+
+3. **Token Usage / System Usage Page (per company or global)**
+
+   * Show basic numbers:
+
+     * Total tokens,
+     * Per agent breakdown.
+   * Even if using placeholder sample values for now.
+
+---
+
+## 6. QA: You MUST Test and Debug Every Button
+
+For the builder agent / dev, here is a **checklist**:
+
+### 6.1 Homepage Buttons & Clicks
+
+* [ ] User profile in top bar opens Profile modal.
+* [ ] “Create Company” (left and right column) opens the company creation modal.
+* [ ] Submitting “Create Company”:
+
+  * [ ] Creates a new company in state.
+  * [ ] Shows it immediately in the company list (no refresh needed).
+* [ ] Clicking a company card:
+
+  * [ ] Navigates to Company Workspace Overview.
+* [ ] Metrics cards (Meetings / Agents / Tokens):
+
+  * [ ] Clicking on “Meetings” metric → opens Meetings page.
+  * [ ] Clicking on “Agent Performance” summary → opens Agent Performance page.
+  * [ ] Clicking on “Token Snapshot” → opens Token Usage page.
+* [ ] Activity feed items (if clickable):
+
+  * [ ] Each relevant item takes the user to either:
+
+    * The company,
+    * The conversation,
+    * Or the “Meetings” page.
+
+### 6.2 Company Workspace Buttons
+
+* [ ] Side nav links:
+
+  * [ ] Overview → loads Overview content.
+  * [ ] Agents & Hierarchy → loads tree.
+  * [ ] Meetings & Calendar → loads meetings list.
+  * [ ] Agent Performance → loads performance table.
+  * [ ] Knowledge & Memory → loads doc/memory UI.
+* [ ] In Agents & Hierarchy:
+
+  * [ ] Clicking an agent node opens its profile.
+  * [ ] “Create Agent” button opens the agent creation wizard.
+* [ ] Meetings page:
+
+  * [ ] “View details” of a meeting opens its detail view.
+* [ ] Performance page:
+
+  * [ ] Clicking an agent opens the same Agent Profile component as in the hierarchy.
+
+### 6.3 Chat Dock
+
+* [ ] Chat appears at bottom of homepage.
+* [ ] User can type and send a message.
+* [ ] Response appears from Assistant.
+* [ ] Assistant uses user’s name (“Vital” or whatever is stored).
+* [ ] When a company is selected (e.g. user is inside a company workspace), the assistant knows which company you’re talking about.
+
+> The builder agent **must manually click through** these flows (or write automated tests) and ensure there are **no console errors, no dead clicks, no 404s.**
+
+---
+
+## 7. Implementation Notes for the Builder Agent
+
+1. **User System (MVP)**
+
+   * Use simple in-memory or local storage user:
+
+     * `user_id`,
+     * `name`,
+     * `account_type` = Chairman,
+   * Provide a simple “Set My Name” flow somewhere if needed.
+
+2. **State Management**
+
+   * App-wide:
+
+     * `current_user`,
+     * `companies[]`,
+     * `current_company_id` (if on a company page),
+     * `metrics` (global and per company).
+   * Chat:
+
+     * `chairman_chat_history` per user.
+     * Pass `current_company_id` into LLM context when available.
+
+3. **Navigation**
+
+   * Use a router with clear routes:
+
+     * `/home` – homepage,
+     * `/company/:companyId` – company workspace,
+     * `/company/:companyId/meetings`,
+     * `/company/:companyId/agents`,
+     * etc.
+
+4. **Styling**
+
+   * Keep the UI **simple & clean**:
+
+     * Cards for metrics,
+     * Clear headings,
+     * Chat dock with fixed position bottom.
+
+---
+
+If you want, next I can:
+
+* Turn this into a **formal “Developer Story / Ticket Pack”** (User stories + acceptance criteria), or
+* Write the **system prompt** for the Chairman Assistant so it always:
+
+  * Personalizes to the Chairman,
+  * Respects his vision,
+  * Uses the company & metrics context correctly.

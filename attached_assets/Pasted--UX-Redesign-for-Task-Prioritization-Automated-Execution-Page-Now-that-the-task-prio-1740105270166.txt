@@ -1,0 +1,122 @@
+### **UX Redesign for Task Prioritization & Automated Execution Page**  
+
+Now that the **task prioritization system** is being implemented, we need to **completely redesign the UX** to be **more intuitive, user-friendly, and visually clear**.  
+
+---
+
+## **1️⃣ Core UX Issues to Fix**
+🔴 **Current Problems in the Design**:
+- **Clunky UI for Task Prioritization** → The priority levels are not visually intuitive.  
+- **Difficult Task Management** → Users should easily adjust priorities and delegate tasks.  
+- **Confusing Task Execution View** → Users should clearly see which tasks are automated vs. require AI intervention.  
+- **Lack of Workflow Transparency** → Needs better visualization for pending, in-progress, and completed tasks.  
+
+---
+
+## **2️⃣ UX Goals for the New Page**
+✅ **Simplified Task Management** → Users should see all tasks in an easy-to-navigate layout.  
+✅ **One-Click Prioritization** → Drag-and-drop or simple sliders to adjust task urgency.  
+✅ **Visual Workflow Tracking** → Show task progress from start to completion.  
+✅ **Agent Workload Overview** → See which agents are busy and which are free.  
+✅ **Clear API vs. Automated Execution** → Mark tasks that require OpenAI API vs. those that use automated scripts.  
+
+---
+
+## **3️⃣ Page Structure (Redesigned Layout)**  
+
+### **🔹 A. Left Sidebar - Agent Workload Overview**  
+📌 **Purpose** → Show which agents are busy with tasks & their workload distribution.  
+
+✅ **Design**:  
+- List all **agents** with task counts.  
+- Show their **current status**:  
+  - 🟢 **Active** (Working on a task).  
+  - 🟡 **Pending** (Waiting for input).  
+  - 🔴 **Overloaded** (Too many tasks assigned).  
+- **One-click agent reassignment** for tasks.  
+
+---
+
+### **🔹 B. Main Panel - Task Prioritization Dashboard**  
+📌 **Purpose** → Users should see all tasks in an **interactive, easy-to-use format**.  
+
+✅ **Design**:  
+1. **Kanban Board View (Drag & Drop Tasks)**  
+   - 📌 **Columns:**
+     - 🟡 **Pending Tasks**
+     - 🔄 **In Progress**
+     - ✅ **Completed**
+     - ⏳ **Waiting for Input**  
+
+   - **Drag tasks between columns** to change status.  
+
+2. **Task Priority Control (Slider & Automation Toggle)**  
+   - **Each task card includes**:  
+     - **Priority Level** (Adjustable with a **slider**).  
+     - **Execution Type** → API Call or Automated Action (Switch Toggle).  
+     - **Assigned Agent** (Dropdown to change the responsible agent).  
+     - **Dependency Indicator** (Shows if a task is blocked by another).  
+
+3. **Task Details Panel (Right-Side Pop-Up)**  
+   - Clicking a task opens a **side panel** with:
+     - Full **task description**.
+     - **Agent comments** on the task.
+     - **Task dependencies** (if another task must be completed first).
+     - **Task execution history & logs**.  
+
+---
+
+### **🔹 C. Top Bar - Quick Actions & Filtering**  
+📌 **Purpose** → Allow users to **quickly manage tasks & view history**.  
+
+✅ **Design**:  
+- **🔍 Search Bar** → Find a specific task.  
+- **🔽 Filters** → Sort tasks by priority, agent, or status.  
+- **📅 Scheduled Execution** → See which tasks are queued for later.  
+- **⚙️ Settings Icon** → Modify task automation rules.  
+
+---
+
+## **4️⃣ Interactive UI Features to Add**  
+
+✅ **🔥 Drag-and-Drop Task Prioritization**  
+- Move tasks between **priority levels** visually.  
+
+✅ **📌 Task Execution Visibility**  
+- Use **colored labels** to differentiate:  
+  - AI-Powered Tasks **(Blue Label)** → Needs OpenAI API.  
+  - Automated Tasks **(Green Label)** → Uses a predefined script.  
+
+✅ **📂 Task Archive for Completed Items**  
+- Completed tasks should **auto-move to a history tab**.  
+
+✅ **📢 Real-Time Notifications**  
+- Show a **toast notification** when:  
+  - A new task is created.  
+  - A task is reassigned.  
+  - An agent completes a task.  
+
+---
+
+## **5️⃣ Final Summary of the New UX**  
+
+🚀 **Key UX Improvements**:
+- 🏗️ **Kanban-Style Drag-and-Drop Task Management.**  
+- 🎚️ **Easy Priority Control with Sliders.**  
+- 🖥️ **Agent Workload Panel for Quick Overview.**  
+- 🛠️ **Toggle Between Automated vs. AI-Powered Tasks.**  
+- 📌 **Task Dependency Visualization for Better Execution.**  
+- 🔔 **Real-Time Notifications & Task Logs.**  
+
+---
+
+## **6️⃣ Next Steps for the Developer**
+✅ **Redesign the page using the new layout.**  
+✅ **Implement a drag-and-drop task board.**  
+✅ **Build the API toggle & execution mode switch.**  
+✅ **Ensure that the UX is smooth and requires minimal clicks.**  
+✅ **Test the UI with sample tasks before deploying.**  
+
+---
+
+This new UX will **significantly improve efficiency** and make it **much easier for users to manage AI-driven tasks** in a structured way! 🚀

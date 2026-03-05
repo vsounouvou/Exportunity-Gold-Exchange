@@ -9,19 +9,19 @@ const RETAIL_LABEL_BY_TENANT: Record<TenantKey, string> = {
   mindbase: "Marketplace",
   met: "Materials",
   vs: "Studio",
-  hoz: "Marketplace",
+  hoz: "Collections",
   zogueland: "Marketplace",
   rayon1km: "Nearby",
 };
 
 const PLATFORM_LABEL_BY_TENANT: Record<TenantKey, string> = {
   bdo: "Bourse de l'Or Retail",
-  exportunity: "Exportunity Marketplace",
-  zone: "Exportunity Marketplace",
+  exportunity: "Global Export Marketplace",
+  zone: "Global Export Marketplace",
   mindbase: "MindBase Intelligence Marketplace",
-  met: "Maison en Terre Materials",
+  met: "Materials Marketplace",
   vs: "Vital Sounouvou Studio",
-  hoz: "House of Zogue Marketplace",
+  hoz: "Collections",
   zogueland: "Zogueland Marketplace",
   rayon1km: "Rayon 1km",
 };

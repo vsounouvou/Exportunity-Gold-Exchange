@@ -42,7 +42,7 @@ export const zoneTenantConfig: TenantConfig = {
     },
   },
   storefrontIdentity: {
-    platformLabel: "Exportunity Marketplace",
+    platformLabel: "Global Export Marketplace",
     retailModeLabel: "Marketplace",
     sections: [
       { slug: "nearby", title: "Nearby Retail", subtitle: "Local catalog and quick checkout", limit: 24 },

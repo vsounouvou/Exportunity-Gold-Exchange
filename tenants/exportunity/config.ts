@@ -49,7 +49,7 @@ export const exportunityTenantConfig: TenantConfig = {
     },
   },
   storefrontIdentity: {
-    platformLabel: "Exportunity Marketplace",
+    platformLabel: "Global Export Marketplace",
     retailModeLabel: "Marketplace",
     sections: [
       { slug: "export-ready", title: "Export Ready Products", subtitle: "Cross-border compliant listings", limit: 24 },

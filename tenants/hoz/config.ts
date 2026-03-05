@@ -42,8 +42,8 @@ export const hozTenantConfig: TenantConfig = {
     },
   },
   storefrontIdentity: {
-    platformLabel: "House of Zogue Marketplace",
-    retailModeLabel: "Marketplace",
+    platformLabel: "Collections",
+    retailModeLabel: "Collections",
     sections: [
       { slug: "jewelry", title: "Jewelry", subtitle: "Signature pieces and ateliers", limit: 24 },
       { slug: "luxury-drops", title: "Limited Drops", subtitle: "Curated luxury capsules", limit: 24 },

@@ -47,7 +47,7 @@ export const metTenantConfig: TenantConfig = {
     },
   },
   storefrontIdentity: {
-    platformLabel: "Maison en Terre Materials",
+    platformLabel: "Materials Marketplace",
     retailModeLabel: "Materials",
     sections: [
       { slug: "earth-bricks", title: "Earth Bricks", subtitle: "CSEB and BTC blocks", limit: 24 },

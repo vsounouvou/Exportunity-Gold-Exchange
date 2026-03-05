@@ -1152,6 +1152,15 @@ export function BuyerHomePage({
   const { formatCurrency, formatAmount, t, language, currency, setLanguage, setCurrency, applyAutoLocaleFromCountry } = useLocale();
   const formatMoney = (amount: number, fromCurrency: unknown, suffix?: string) =>
     formatAmount(amount, normalizeCurrencyCode(fromCurrency), suffix);
+  const retailPanelTitle = isGoldTenant ? t("buyer.panel.retailGold.title") : tenantIdentity.platformLabel;
+  const retailPanelSubtitle = isGoldTenant
+    ? t("buyer.panel.retailGold.subtitle")
+    : String(effectiveStorefrontHero?.subtitle || "").trim() || t("buyer.panel.retailNearby.subtitle");
+  const noProductsTitle = isGoldTenant
+    ? t("buyer.noProducts.titleGold")
+    : useProximityRadius
+      ? t("buyer.noProducts.titleGeneral")
+      : t("buyer.noProducts.titleGlobal");
 
 
   type GeoCountry = { id: number; code: string; name: string };
@@ -6467,7 +6476,7 @@ export function BuyerHomePage({
             ) : (
               <div className="h-full flex items-center justify-center text-white/70">
                 <div className="text-center">
-                  <p className="text-sm font-semibold">{t(isGoldTenant ? "buyer.noProducts.titleGold" : "buyer.noProducts.titleGeneral")}</p>
+                  <p className="text-sm font-semibold">{noProductsTitle}</p>
                   <p className="text-xs text-white/50 mt-1">
                     {t(isGoldTenant ? "buyer.feed.expandingGold" : "buyer.feed.expandingGeneral")}
                   </p>
@@ -6922,9 +6931,7 @@ export function BuyerHomePage({
                       : isGoldTenant
                         ? t("buyer.panel.wholesaleDore.title")
                         : t("buyer.panel.wholesaleMarketplace.title"))
-                    : isGoldTenant
-                      ? t("buyer.panel.retailGold.title")
-                      : t("buyer.panel.retailNearby.title")}
+                    : retailPanelTitle}
                  </h3>
                  <p className="text-[10px] text-white/50">
                    {buyerMode === "wholesale"
@@ -6933,9 +6940,7 @@ export function BuyerHomePage({
                        : isGoldTenant
                         ? t("sections.doreLots.subtitle")
                         : t("buyer.panel.wholesaleMarketplace.subtitle"))
-                     : isGoldTenant
-                      ? t("buyer.panel.retailGold.subtitle")
-                      : t("buyer.panel.retailNearby.subtitle")}
+                     : retailPanelSubtitle}
                  </p>
               </div>
             </div>
@@ -7226,7 +7231,7 @@ export function BuyerHomePage({
                       const hasLoadError = Boolean((nearbyData as any)?.__error || (feedData as any)?.__error);
                       const sellerCount = shops.length;
                       const sellersWithProducts = shops.filter((s: any) => (s?.products?.length ?? 0) > 0).length;
-                      const title = t(isGoldTenant ? "buyer.noProducts.titleGold" : "buyer.noProducts.titleGeneral");
+                      const title = noProductsTitle;
                       const description = hasLoadError
                         ? t("buyer.noProducts.desc.loadError")
                         : selectedCategory
@@ -7303,17 +7308,19 @@ export function BuyerHomePage({
                               >
                                 {t("common.clearFilter")}
                               </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="border-white/15 text-white/80 hover:bg-white/10"
-                                onClick={() => {
-                                  setLocationPromptMode("prompt");
-                                  setLocationPromptOpen(true);
-                                }}
-                              >
-                                {t("location.set")}
-                              </Button>
+                              {useProximityRadius ? (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="border-white/15 text-white/80 hover:bg-white/10"
+                                  onClick={() => {
+                                    setLocationPromptMode("prompt");
+                                    setLocationPromptOpen(true);
+                                  }}
+                                >
+                                  {t("location.set")}
+                                </Button>
+                              ) : null}
                               {hasLoadError ? (
                                 <Button
                                   size="sm"
@@ -7373,7 +7380,7 @@ export function BuyerHomePage({
                                   <p className="text-sm font-semibold text-white">
                                     {showLoading
                                       ? t("common.loading")
-                                      : t(isGoldTenant ? "buyer.noProducts.titleGold" : "buyer.noProducts.titleGeneral")}
+                                      : noProductsTitle}
                                   </p>
                                   <p className="mt-1 text-[11px] text-white/60">
                                     {showLoading
@@ -7780,7 +7787,7 @@ export function BuyerHomePage({
                           </div>
                           <div className="mt-2 rounded-xl border border-white/10 bg-white/5 p-3">
                             <div className="text-sm text-white/80 font-medium">
-                              {t(isGoldTenant ? "buyer.noProducts.titleGold" : "buyer.noProducts.titleGeneral")}
+                              {noProductsTitle}
                             </div>
                             <div className="text-[11px] text-white/60 mt-1">
                               {isAdminUser ? t("admin.noProducts.desc.addProduct") : t("buyer.noProducts.desc.category")}
@@ -9137,7 +9144,7 @@ export function BuyerHomePage({
                 : "Bulk purchasing, RFQs, and supplier coordination."
               : isGoldTenant
                 ? "Stamped gold retail units"
-                : t("buyer.panel.retailNearby.subtitle")}
+                : retailPanelSubtitle}
           </p>
         </div>
         

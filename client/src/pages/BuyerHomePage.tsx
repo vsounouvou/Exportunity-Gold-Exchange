@@ -4886,17 +4886,48 @@ export function BuyerHomePage({
         const orderedWithItems = allowedCategories.filter((slug) => slugsWithItems.includes(slug));
         const baseSlugs = orderedWithItems.length ? orderedWithItems : slugsWithItems.length ? slugsWithItems : allowedCategories;
         const slugs = effectiveCategoryFilter ? [effectiveCategoryFilter] : baseSlugs;
+        const sectionCandidates = Array.from(new Set([...allowedCategories, ...slugsWithItems, ...Object.keys(retailDisplayByCategoryResolved)]));
+        const normalizedCandidateMap = new Map<string, string>();
+        for (const candidate of sectionCandidates) {
+          const normalized = normalizeCategorySlug(candidate);
+          if (normalized && !normalizedCandidateMap.has(normalized)) {
+            normalizedCandidateMap.set(normalized, candidate);
+          }
+        }
+        const resolveSectionSlug = (rawSlug: string): string | null => {
+          const direct = sectionCandidates.find((candidate) => candidate === rawSlug);
+          if (direct) return direct;
+          const normalized = normalizeCategorySlug(rawSlug);
+          if (!normalized) return null;
+          const exactNormalized = normalizedCandidateMap.get(normalized);
+          if (exactNormalized) return exactNormalized;
+          const compact = normalized.replace(/-/g, "");
+          for (const [key, candidate] of normalizedCandidateMap.entries()) {
+            if (key.replace(/-/g, "") === compact) return candidate;
+          }
+          return null;
+        };
 
         if (!effectiveCategoryFilter && tenantIdentity.sections.length > 0) {
-          return tenantIdentity.sections.map((section) => {
-            const meta = getCategoryMeta(section.slug);
-            return {
-              slug: section.slug,
-              title: section.title || meta.label,
-              subtitle: section.subtitle || "",
-              limit: Number.isFinite(section.limit) ? Number(section.limit) : Number.MAX_SAFE_INTEGER,
-            };
-          });
+          const configuredSections = tenantIdentity.sections
+            .map((section) => {
+              const resolvedSlug = resolveSectionSlug(section.slug);
+              if (!resolvedSlug) return null;
+              const hasItems = (retailDisplayByCategoryResolved[resolvedSlug] || []).length > 0;
+              if (!hasItems) return null;
+              const meta = getCategoryMeta(resolvedSlug);
+              return {
+                slug: resolvedSlug,
+                title: section.title || meta.label,
+                subtitle: section.subtitle || "",
+                limit: Number.isFinite(section.limit) ? Number(section.limit) : Number.MAX_SAFE_INTEGER,
+              };
+            })
+            .filter(Boolean) as Array<{ slug: string; title: string; subtitle: string; limit: number }>;
+
+          if (configuredSections.length > 0) {
+            return configuredSections;
+          }
         }
 
         return slugs.map((slug) => {

@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1350" role="img" aria-label="Bamboo">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#e5f0d5"/>
+      <stop offset="100%" stop-color="#6b8e23"/>
+    </linearGradient>
+  </defs>
+  <rect width="1080" height="1350" fill="url(#bg)"/>
+  <g stroke="#456115" stroke-width="20" stroke-linecap="round">
+    <line x1="220" y1="180" x2="220" y2="1180"/>
+    <line x1="420" y1="160" x2="420" y2="1190"/>
+    <line x1="640" y1="190" x2="640" y2="1170"/>
+    <line x1="840" y1="170" x2="840" y2="1180"/>
+  </g>
+  <g stroke="#5d7f1d" stroke-width="8">
+    <line x1="180" y1="360" x2="260" y2="360"/>
+    <line x1="380" y1="520" x2="460" y2="520"/>
+    <line x1="600" y1="700" x2="680" y2="700"/>
+    <line x1="800" y1="860" x2="880" y2="860"/>
+  </g>
+  <text x="120" y="120" fill="#2c430f" font-family="Arial, sans-serif" font-size="62" font-weight="700">BAMBOO</text>
+  <text x="120" y="1160" fill="#1f2e0e" font-family="Arial, sans-serif" font-size="36">Structural and decorative natural bamboo</text>
+</svg>

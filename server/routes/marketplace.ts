@@ -5093,6 +5093,7 @@ router.get("/gold-mines", async (req, res) => {
 
 const goldPriceCache = new Map<string, { data: any; timestamp: number }>();
 const CACHE_DURATION = 60000;
+const TROY_OZ_TO_GRAM = 31.1034768;
 
 async function fetchJsonWithTimeout(url: string, timeoutMs: number) {
   const controller = new AbortController();
@@ -5104,6 +5105,75 @@ async function fetchJsonWithTimeout(url: string, timeoutMs: number) {
   } finally {
     clearTimeout(timeout);
   }
+}
+
+function buildGoldPricePayload(input: {
+  fx: Awaited<ReturnType<typeof getFxSnapshot>> | null;
+  spotUSDPerOz: number;
+  percentChange?: number;
+  source: string;
+  isStale?: boolean;
+}) {
+  const fxRates = input.fx?.effectiveRates ?? {
+    USD: 1,
+    EUR: 0.92,
+    GBP: 0.79,
+    XOF: 615,
+    GHS: 12.5,
+    NGN: 1500,
+    KES: 128,
+    AED: 3.67,
+  };
+  const USD_TO_XOF = getUsdConversionRateForCurrency(fxRates, "XOF");
+  const percentChange = Number.isFinite(input.percentChange) ? Number(input.percentChange) : 0;
+  const isUp = percentChange >= 0;
+  const purePerGramUSD = input.spotUSDPerOz / TROY_OZ_TO_GRAM;
+  const purePerGramXOF = purePerGramUSD * USD_TO_XOF;
+  const refined22KPriceXOF = purePerGramXOF * 0.9167;
+  const refined18KPriceXOF = purePerGramXOF * 0.75;
+  const localPremiumPercentEnv = Number(process.env.LOCAL_PREMIUM_PERCENT || "0");
+  const localPremium = Number.isFinite(localPremiumPercentEnv) ? localPremiumPercentEnv / 100 : 0;
+  const local22KPriceXOF = refined22KPriceXOF * (1 + localPremium);
+  const local18KPriceXOF = refined18KPriceXOF * (1 + localPremium);
+
+  return {
+    timestamp: new Date().toISOString(),
+    source: input.source,
+    isStale: !!input.isStale,
+    lbma: {
+      priceUSD: input.spotUSDPerOz.toFixed(3),
+      change24h: percentChange.toFixed(2),
+      isUp,
+    },
+    international: {
+      dore: { priceXOF: "0", label: "Dore (quote)", purityRange: "assay-based" },
+      refined22K: { priceXOF: refined22KPriceXOF.toFixed(0), label: "Refined 22K", purity: "91.67%" },
+      refined18K: { priceXOF: refined18KPriceXOF.toFixed(0), label: "Refined 18K", purity: "75.00%" },
+    },
+    local: {
+      market: "Cote d'Ivoire",
+      dore: { priceXOF: "0", label: "Local Dore (quote)" },
+      refined22K: { priceXOF: local22KPriceXOF.toFixed(0), label: "Local 22K" },
+      refined18K: { priceXOF: local18KPriceXOF.toFixed(0), label: "Local 18K" },
+      premiumPercent: (localPremium * 100).toFixed(1),
+    },
+    fxRates: input.fx?.effectiveRates ?? fxRates,
+    fxMeta: input.fx
+      ? {
+          updatedAt: input.fx.updatedAt,
+          providerTimestamp: input.fx.providerTimestamp,
+          isStale: input.fx.isStale,
+          source: input.fx.source,
+          overrideApplied: input.fx.overrideApplied,
+        }
+      : {
+          updatedAt: null,
+          providerTimestamp: null,
+          isStale: true,
+          source: "fallback",
+          overrideApplied: false,
+        },
+  };
 }
 
 router.get("/fx-rates", async (req, res) => {
@@ -5129,17 +5199,14 @@ router.get("/fx-rates", async (req, res) => {
 });
 
 router.get("/gold-price", async (req, res) => {
+  const scope = tenantFxScopeFromRequest(req);
+  const cached = goldPriceCache.get(scope);
   try {
-    const scope = tenantFxScopeFromRequest(req);
-    const cached = goldPriceCache.get(scope);
     if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
       return res.json(cached.data);
     }
 
     const fx = await getFxSnapshot(scope);
-    const USD_TO_XOF = getUsdConversionRateForCurrency(fx.effectiveRates, "XOF");
-    const TROY_OZ_TO_GRAM = 31.1034768;
-
     const spot = await fetchJsonWithTimeout("https://data-asg.goldprice.org/dbXRates/USD", 6000);
     const item = spot?.items?.[0];
     const spotUSDPerOz = Number(item?.xauPrice);
@@ -5147,54 +5214,45 @@ router.get("/gold-price", async (req, res) => {
       throw new Error("Invalid spot gold price");
     }
 
-    const percentChange = Number(item?.pcXau);
-    const isUp = Number.isFinite(percentChange) ? percentChange >= 0 : true;
-
-    const purePerGramUSD = spotUSDPerOz / TROY_OZ_TO_GRAM;
-    const purePerGramXOF = purePerGramUSD * USD_TO_XOF;
-
-    const refined22KPriceXOF = purePerGramXOF * 0.9167;
-    const refined18KPriceXOF = purePerGramXOF * 0.75;
-
-    const localPremiumPercentEnv = Number(process.env.LOCAL_PREMIUM_PERCENT || "0");
-    const localPremium = Number.isFinite(localPremiumPercentEnv) ? localPremiumPercentEnv / 100 : 0;
-    const local22KPriceXOF = refined22KPriceXOF * (1 + localPremium);
-    const local18KPriceXOF = refined18KPriceXOF * (1 + localPremium);
-
-    const priceData = {
-      timestamp: new Date().toISOString(),
-      lbma: {
-        priceUSD: spotUSDPerOz.toFixed(3),
-        change24h: Number.isFinite(percentChange) ? percentChange.toFixed(2) : "0.00",
-        isUp,
-      },
-      international: {
-        dore: { priceXOF: "0", label: "Doré (quote)", purityRange: "assay-based" },
-        refined22K: { priceXOF: refined22KPriceXOF.toFixed(0), label: "Refined 22K", purity: "91.67%" },
-        refined18K: { priceXOF: refined18KPriceXOF.toFixed(0), label: "Refined 18K", purity: "75.00%" },
-      },
-      local: {
-        market: "Côte d'Ivoire",
-        dore: { priceXOF: "0", label: "Local Doré (quote)" },
-        refined22K: { priceXOF: local22KPriceXOF.toFixed(0), label: "Local 22K" },
-        refined18K: { priceXOF: local18KPriceXOF.toFixed(0), label: "Local 18K" },
-        premiumPercent: (localPremium * 100).toFixed(1),
-      },
-      fxRates: fx?.effectiveRates,
-      fxMeta: {
-        updatedAt: fx.updatedAt,
-        providerTimestamp: fx.providerTimestamp,
-        isStale: fx.isStale,
-        source: fx.source,
-        overrideApplied: fx.overrideApplied,
-      },
-    };
+    const priceData = buildGoldPricePayload({
+      fx,
+      spotUSDPerOz,
+      percentChange: Number(item?.pcXau),
+      source: "live",
+      isStale: false,
+    });
 
     goldPriceCache.set(scope, { data: priceData, timestamp: Date.now() });
-    res.json(priceData);
+    return res.json(priceData);
   } catch (error: any) {
     console.error("[Gold Price] Error fetching price:", error);
-    res.status(500).json({ error: "Failed to fetch gold prices" });
+    if (cached?.data) {
+      return res.json({
+        ...cached.data,
+        timestamp: new Date().toISOString(),
+        source: "cached-fallback",
+        isStale: true,
+      });
+    }
+
+    let fx: Awaited<ReturnType<typeof getFxSnapshot>> | null = null;
+    try {
+      fx = await getFxSnapshot(scope);
+    } catch {}
+
+    const fallbackSpotUsdPerOz = Number(
+      process.env.GOLD_PRICE_FALLBACK_USD_PER_OZ || process.env.STAMPED_GOLD_FALLBACK_XAU_USD || "2900",
+    );
+    const fallbackData = buildGoldPricePayload({
+      fx,
+      spotUSDPerOz:
+        Number.isFinite(fallbackSpotUsdPerOz) && fallbackSpotUsdPerOz > 0 ? fallbackSpotUsdPerOz : 2900,
+      percentChange: Number(process.env.GOLD_PRICE_FALLBACK_CHANGE_PCT || "0"),
+      source: "static-fallback",
+      isStale: true,
+    });
+    goldPriceCache.set(scope, { data: fallbackData, timestamp: Date.now() });
+    return res.json(fallbackData);
   }
 });
 

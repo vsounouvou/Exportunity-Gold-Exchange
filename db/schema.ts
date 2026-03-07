@@ -133,6 +133,8 @@ export * from "./schema/agent-tasks";
 
 // Export governed intelligence hierarchy tables (policy matrix + cron army + audit ledger)
 export * from "./schema/intelligence-governance";
+// Export model gateway tables (local/external model routing + policy + logs + evals)
+export * from "./schema/model-gateway";
 
 // Message type enum and values
 const MESSAGE_TYPES = ['chat', 'system', 'notification', 'thought'] as const;

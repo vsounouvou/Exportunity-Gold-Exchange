@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1350" role="img" aria-label="Contractor services">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f0e5d6"/>
+      <stop offset="100%" stop-color="#8b5e34"/>
+    </linearGradient>
+  </defs>
+  <rect width="1080" height="1350" fill="url(#bg)"/>
+  <rect x="180" y="260" width="720" height="760" rx="32" fill="#111827" opacity="0.88"/>
+  <path d="M360 430h360v80H360zM360 560h360v80H360zM360 690h360v80H360z" fill="#f59e0b"/>
+  <circle cx="320" cy="470" r="24" fill="#10b981"/>
+  <circle cx="320" cy="600" r="24" fill="#10b981"/>
+  <circle cx="320" cy="730" r="24" fill="#10b981"/>
+  <text x="120" y="120" fill="#4b2a13" font-family="Arial, sans-serif" font-size="62" font-weight="700">CONTRACTOR SERVICES</text>
+  <text x="120" y="1160" fill="#fff7ed" font-family="Arial, sans-serif" font-size="36">Verified teams for build, delivery, and install</text>
+</svg>

@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1200" viewBox="0 0 1200 1200" fill="none">
+  <defs>
+    <radialGradient id="bg" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(600 600) rotate(90) scale(520)">
+      <stop offset="0%" stop-color="#fff3d3"/>
+      <stop offset="44%" stop-color="#ddb56a"/>
+      <stop offset="76%" stop-color="#a57321"/>
+      <stop offset="100%" stop-color="#5e431d"/>
+    </radialGradient>
+    <radialGradient id="inner" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(600 480) rotate(90) scale(440)">
+      <stop offset="0%" stop-color="#fff5d8"/>
+      <stop offset="100%" stop-color="#7f5a22"/>
+    </radialGradient>
+    <filter id="shadow" x="120" y="120" width="960" height="960" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="22" stdDeviation="36" flood-color="#140d04" flood-opacity=".5"/>
+    </filter>
+  </defs>
+  <rect width="1200" height="1200" fill="#d7d0c7"/>
+  <ellipse cx="600" cy="600" rx="520" ry="520" fill="#9b7a42" opacity=".12"/>
+  <g filter="url(#shadow)">
+    <circle cx="600" cy="600" r="380" fill="url(#bg)"/>
+    <circle cx="600" cy="600" r="344" stroke="#fff4d2" stroke-opacity=".72" stroke-width="14"/>
+    <circle cx="600" cy="600" r="300" fill="url(#inner)"/>
+    <circle cx="600" cy="600" r="268" stroke="#8c6426" stroke-opacity=".42" stroke-width="6"/>
+    <circle cx="600" cy="600" r="212" stroke="#fff7de" stroke-opacity=".26" stroke-width="4" stroke-dasharray="8 14"/>
+    <ellipse cx="600" cy="478" rx="184" ry="108" fill="#fff6db" opacity=".18"/>
+  </g>
+</svg>

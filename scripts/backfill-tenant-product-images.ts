@@ -41,11 +41,22 @@ const TENANT_POOLS: Record<TenantKey, TenantImagePool> = {
     },
   },
   met: {
-    default: ["/tenants/met/placeholder-product.svg", "/tenants/met/hero-1.svg"],
+    default: [
+      "/tenants/met/material-earth-bricks.svg",
+      "/tenants/met/material-lime-plaster.svg",
+      "/tenants/met/material-bamboo.svg",
+      "/tenants/met/material-solar-lighting.svg",
+      "/tenants/met/material-contractor-services.svg",
+    ],
     byCategory: {
-      "earth-bricks": ["/tenants/met/placeholder-product.svg"],
-      "house-plans": ["/tenants/met/placeholder-product.svg"],
-      "contractor-services": ["/tenants/met/placeholder-product.svg"],
+      "earth-bricks": ["/tenants/met/material-earth-bricks.svg"],
+      lime: ["/tenants/met/material-lime-plaster.svg"],
+      "lime-plaster": ["/tenants/met/material-lime-plaster.svg"],
+      "clay-plaster": ["/tenants/met/material-lime-plaster.svg"],
+      bamboo: ["/tenants/met/material-bamboo.svg"],
+      "solar-lighting": ["/tenants/met/material-solar-lighting.svg"],
+      "house-plans": ["/tenants/met/material-contractor-services.svg"],
+      "contractor-services": ["/tenants/met/material-contractor-services.svg"],
     },
   },
   vs: {

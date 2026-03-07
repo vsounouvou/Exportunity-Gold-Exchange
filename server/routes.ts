@@ -126,6 +126,8 @@ import chairmanConsoleRouter from "./routes/chairman-console";
 import notificationsRouter from "./routes/notifications";
 import healthRouter from "./routes/health";
 import systemRouter from "./routes/system";
+import newsRouter from "./routes/news";
+import bdoProRouter from "./routes/bdo-pro";
 import debugRouter from "./routes/debug";
 import telemetryRouter from "./routes/telemetry";
 import adminMarketingRouter from "./routes/admin-marketing";
@@ -1082,6 +1084,8 @@ export function registerRoutes(app: Express): Server {
   // Version + cache reset helpers (bypasses SW by using /api/* path)
   app.use("/api/health", healthRouter);
   app.use("/api/system", systemRouter);
+  app.use("/api/news", newsRouter);
+  app.use("/api/v2", bdoProRouter);
   app.use("/api/debug", debugRouter);
   app.get("/api/version", (_req, res) => {
     const build = readBuildMeta();
@@ -1090,6 +1094,7 @@ export function registerRoutes(app: Express): Server {
       ok: true,
       commit: build.gitSha || null,
       gitSha: build.gitSha || null,
+      build: build.buildId || null,
       buildId: build.buildId || null,
       builtAt: build.builtAt || null,
       source: build.source,

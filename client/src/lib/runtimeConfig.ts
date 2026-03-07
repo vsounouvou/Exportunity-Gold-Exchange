@@ -10,11 +10,13 @@ type RuntimeConfig = {
   buildId?: string;
   builtAt?: string;
   gitSha?: string;
+  versionGuardEnabled?: string | boolean;
 };
 
 declare global {
   interface Window {
     __EXPORTUNITY_CONFIG__?: RuntimeConfig;
+    __BUILD_ID__?: string;
   }
 }
 

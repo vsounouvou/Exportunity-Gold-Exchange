@@ -68,6 +68,7 @@ async function ensureSystemUser(apply: boolean) {
 
 async function ensureCategoryForTenant(args: {
   tenantId: number;
+  tenantKey: string;
   slug: string;
   apply: boolean;
 }) {
@@ -80,13 +81,46 @@ async function ensureCategoryForTenant(args: {
     where: eq(productCategories.slug, args.slug),
     columns: { id: true, tenantId: true, slug: true, name: true },
   });
-  if (slugOwner) {
-    throw new Error(
-      `Cannot use category '${args.slug}' for tenantId=${args.tenantId}: slug is already used by tenantId=${slugOwner.tenantId} (category id=${slugOwner.id}).`,
-    );
+  const fallbackSlug = `${String(args.tenantKey || "tenant").toLowerCase()}-${args.slug}`.replace(/[^a-z0-9-]+/g, "-");
+  const existingFallback = await db.query.productCategories.findFirst({
+    where: and(eq(productCategories.tenantId, args.tenantId), eq(productCategories.slug, fallbackSlug)),
+  });
+  if (existingFallback) return existingFallback;
+
+  const categoryName = args.slug === "gold-art" ? "Gold Art" : "Jewelry";
+  const targetSlug = slugOwner ? fallbackSlug : args.slug;
+  if (!args.apply) {
+    return {
+      id: -Math.floor(Math.random() * 1000000) - 1,
+      tenantId: args.tenantId,
+      slug: targetSlug,
+      name: categoryName,
+      description: null,
+      icon: null,
+      color: null,
+      mapMarkerKey: null,
+      parentId: null,
+      sortOrder: args.slug === "gold-art" ? 60 : 50,
+      isActive: true,
+      createdAt: new Date(),
+    } as any;
   }
 
-  throw new Error(`Missing category '${args.slug}' for tenantId=${args.tenantId}. Seed categories first.`);
+  const [created] = await db
+    .insert(productCategories)
+    .values({
+      tenantId: args.tenantId,
+      name: categoryName,
+      slug: targetSlug,
+      description: `${categoryName} catalog seeded for ${args.tenantKey.toUpperCase()}.`,
+      sortOrder: args.slug === "gold-art" ? 60 : 50,
+      isActive: true,
+      color: args.slug === "gold-art" ? "#f59e0b" : "#a855f7",
+      icon: args.slug === "gold-art" ? "palette" : "gem",
+    } as any)
+    .returning();
+
+  return created;
 }
 
 type ProductTemplate = {
@@ -173,10 +207,10 @@ const PRODUCT_TEMPLATES: ProductTemplate[] = [
   },
 ];
 
-async function ensureJewelerSeller(args: { tenantId: number; userId: number; index: number; apply: boolean }) {
+async function ensureJewelerSeller(args: { tenantId: number; tenantKey: string; userId: number; index: number; apply: boolean }) {
   const neighborhood = ABIDJAN_NEIGHBORHOODS[args.index % ABIDJAN_NEIGHBORHOODS.length];
   const shopName = `Atelier Abidjan Gold ${String(args.index + 1).padStart(2, "0")}`;
-  const slug = `abidjan-jeweler-${String(args.index + 1).padStart(2, "0")}`;
+  const slug = `${String(args.tenantKey || "tenant").toLowerCase()}-abidjan-jeweler-${String(args.index + 1).padStart(2, "0")}`.slice(0, 190);
 
   const existing = await db.query.sellers.findFirst({
     where: and(eq(sellers.tenantId, args.tenantId), eq(sellers.slug, slug)),
@@ -279,15 +313,15 @@ async function main() {
     return;
   }
 
-  const jewelryCategory = await ensureCategoryForTenant({ tenantId: tenant.id, slug: "jewelry", apply });
-  const goldArtCategory = await ensureCategoryForTenant({ tenantId: tenant.id, slug: "gold-art", apply });
+  const jewelryCategory = await ensureCategoryForTenant({ tenantId: tenant.id, tenantKey, slug: "jewelry", apply });
+  const goldArtCategory = await ensureCategoryForTenant({ tenantId: tenant.id, tenantKey, slug: "gold-art", apply });
 
   let sellersCreated = 0;
   let productsCreated = 0;
 
   for (let i = 0; i < count; i++) {
     // eslint-disable-next-line no-await-in-loop
-    const result = await ensureJewelerSeller({ tenantId: tenant.id, userId: systemUser.id, index: i, apply });
+    const result = await ensureJewelerSeller({ tenantId: tenant.id, tenantKey, userId: systemUser.id, index: i, apply });
     if (!result) continue;
     if (result.created) sellersCreated += 1;
 

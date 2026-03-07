@@ -138,71 +138,81 @@ async function seedVaultUnits(args: {
 
   const now = new Date();
   const units = [
-    {
-      label: "Starter unit (50g)",
-      unitSizeGrams: 50,
-      status: "stored",
-      deliveryStatus: "created",
-      lockupEndDate: null as Date | null,
-    },
-    {
-      label: "Locked unit (100g)",
-      unitSizeGrams: 100,
-      status: "stored",
-      deliveryStatus: "created",
-      lockupEndDate: new Date(Date.now() + 45 * 24 * 60 * 60 * 1000),
-    },
-    {
-      label: "Delivered unit (1kg)",
-      unitSizeGrams: 1000,
-      status: "delivered",
-      deliveryStatus: "delivered",
-      lockupEndDate: null as Date | null,
-    },
+    { label: "5g 18K Standard", unitSizeGrams: 5, count: 10, karat: 18, edition: "Standard", kind: "ingot" as const, deliveryStatus: "created", lockupDays: 0 },
+    { label: "10g 18K Standard", unitSizeGrams: 10, count: 8, karat: 18, edition: "Standard", kind: "ingot" as const, deliveryStatus: "created", lockupDays: 0 },
+    { label: "20g 18K Investor", unitSizeGrams: 20, count: 5, karat: 18, edition: "Investor", kind: "ingot" as const, deliveryStatus: "created", lockupDays: 14 },
+    { label: "50g 18K Heritage", unitSizeGrams: 50, count: 4, karat: 18, edition: "Heritage", kind: "ingot" as const, deliveryStatus: "created", lockupDays: 30 },
+    { label: "100g 24K Dubai", unitSizeGrams: 100, count: 2, karat: 24, edition: "Dubai", kind: "ingot" as const, deliveryStatus: "created", lockupDays: 45 },
+    { label: "10g Collector Coin", unitSizeGrams: 10, count: 6, karat: 18, edition: "Collector Coin", kind: "coin" as const, deliveryStatus: "created", lockupDays: 0 },
   ];
 
   let created = 0;
   for (const u of units) {
-    const totalPrice = u.unitSizeGrams * args.pricePerGram;
+    for (let index = 0; index < u.count; index++) {
+      const lockupEndDate =
+        u.lockupDays > 0 ? new Date(Date.now() + u.lockupDays * 24 * 60 * 60 * 1000) : null;
+      const totalPrice = u.unitSizeGrams * args.pricePerGram;
 
-    const [acq] = await db
-      .insert(bdoGoldAcquisitionRecords)
-      .values({
-        userId: args.userId,
-        unitSizeGrams: u.unitSizeGrams,
-        purity: "0.9950",
-        timestamp: now,
-        pricePerGram: args.pricePerGram.toFixed(6),
-        totalPrice: totalPrice.toFixed(4),
-        currency: normalizeWalletCurrency(args.currency),
-        pricingSnapshotId: null,
-        allocatedLotIds: [],
-        proofDocs: [],
-        custodyLocation: "virtual_vault",
-        lockupEndDate: u.lockupEndDate,
-        status: u.status,
-        metadata: { seed: true, seedId: args.seedId, label: u.label, createdBy: "ux_demo_seed" },
-        createdAt: now,
-      } as any)
-      .returning();
+      const [acq] = await db
+        .insert(bdoGoldAcquisitionRecords)
+        .values({
+          userId: args.userId,
+          unitSizeGrams: u.unitSizeGrams,
+          purity: u.karat === 24 ? "0.9999" : "0.7500",
+          timestamp: now,
+          pricePerGram: args.pricePerGram.toFixed(6),
+          totalPrice: totalPrice.toFixed(4),
+          currency: normalizeWalletCurrency(args.currency),
+          pricingSnapshotId: null,
+          allocatedLotIds: [],
+          proofDocs: [],
+          custodyLocation: "virtual_vault",
+          lockupEndDate,
+          status: "stored",
+          metadata: {
+            seed: true,
+            seedId: args.seedId,
+            label: u.label,
+            createdBy: "ux_demo_seed",
+            karat: u.karat,
+            editionType: u.edition,
+            productType: u.kind,
+            unitIndex: index + 1,
+            jewelryConversionEligible: u.kind === "ingot",
+            vaultEligible: true,
+          },
+          createdAt: now,
+        } as any)
+        .returning();
 
-    await db
-      .insert(bdoVaultGoldUnits)
-      .values({
-        vaultId: args.vaultId,
-        acquisitionId: acq?.id ?? null,
-        unitSizeGrams: u.unitSizeGrams,
-        purity: "0.9950",
-        status: u.status,
-        lockupEndDate: u.lockupEndDate,
-        deliveryStatus: u.deliveryStatus,
-        metadata: { seed: true, seedId: args.seedId, label: u.label, createdBy: "ux_demo_seed" },
-        createdAt: now,
-        updatedAt: now,
-      } as any)
-      .returning();
+      await db
+        .insert(bdoVaultGoldUnits)
+        .values({
+          vaultId: args.vaultId,
+          acquisitionId: acq?.id ?? null,
+          unitSizeGrams: u.unitSizeGrams,
+          purity: u.karat === 24 ? "0.9999" : "0.7500",
+          status: "stored",
+          lockupEndDate,
+          deliveryStatus: u.deliveryStatus,
+          metadata: {
+            seed: true,
+            seedId: args.seedId,
+            label: `${u.label} #${index + 1}`,
+            createdBy: "ux_demo_seed",
+            karat: u.karat,
+            editionType: u.edition,
+            productType: u.kind,
+            jewelryConversionEligible: u.kind === "ingot",
+            vaultEligible: true,
+          },
+          createdAt: now,
+          updatedAt: now,
+        } as any)
+        .returning();
 
-    created++;
+      created++;
+    }
   }
 
   console.log(`[seed-bdo-ux-demo] Seeded ${created} vault units.`);
@@ -278,4 +288,3 @@ main().catch((err) => {
   console.error("[seed-bdo-ux-demo] Failed:", err);
   process.exit(1);
 });
-

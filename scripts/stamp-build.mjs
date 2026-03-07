@@ -124,8 +124,10 @@ function updateConfig(configPath, build) {
     "window.__EXPORTUNITY_CONFIG__ = window.__EXPORTUNITY_CONFIG__ || {};",
     `window.__EXPORTUNITY_CONFIG__.app = "${sanitizeId(APP_NAME)}";`,
     `window.__EXPORTUNITY_CONFIG__.buildId = "${build.buildId}";`,
+    `window.__BUILD_ID__ = "${build.buildId}";`,
     `window.__EXPORTUNITY_CONFIG__.builtAt = "${build.builtAt}";`,
     `window.__EXPORTUNITY_CONFIG__.gitSha = "${build.gitSha}";`,
+    `window.__EXPORTUNITY_CONFIG__.versionGuardEnabled = "${String(process.env.VERSION_GUARD_ENABLED || "true")}";`,
     "",
   ].join("\n");
 
@@ -160,6 +162,7 @@ function writeBuildJson(publicDir, build) {
 
   const payload = {
     app: sanitizeId(APP_NAME),
+    build: build.buildId,
     buildId: build.buildId,
     gitSha: build.gitSha,
     builtAt: build.builtAt,

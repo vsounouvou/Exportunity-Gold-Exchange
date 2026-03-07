@@ -851,6 +851,24 @@ router.post("/skus", ensureTenantAdmin, async (req: any, res) => {
     const serialPrefix = String(req.body?.serialPrefix || "").trim();
     if (!serialPrefix) return res.status(400).json({ message: "serialPrefix is required" });
 
+    const designCode = String(req.body?.designCode || "").trim() || null;
+    const editionType = String(req.body?.editionType || "").trim() || null;
+    const originCountry = String(req.body?.originCountry || "").trim() || null;
+    const originMine = String(req.body?.originMine || "").trim() || null;
+    const traceabilityEnabled = req.body?.traceabilityEnabled == null ? true : Boolean(req.body.traceabilityEnabled);
+    const qrEnabled = req.body?.qrEnabled == null ? true : Boolean(req.body.qrEnabled);
+    const serialEnabled = req.body?.serialEnabled == null ? true : Boolean(req.body.serialEnabled);
+    const personalizationEnabled =
+      req.body?.personalizationEnabled == null ? false : Boolean(req.body.personalizationEnabled);
+    const vaultEligible = req.body?.vaultEligible == null ? true : Boolean(req.body.vaultEligible);
+    const jewelryConversionEligible =
+      req.body?.jewelryConversionEligible == null ? false : Boolean(req.body.jewelryConversionEligible);
+    const imageTemplateMode = String(req.body?.imageTemplateMode || "ingot_blank").trim() || "ingot_blank";
+    const displayPriority = toInt(req.body?.displayPriority) ?? 0;
+    const previewDefaults =
+      req.body?.previewDefaults && typeof req.body.previewDefaults === "object" && !Array.isArray(req.body.previewDefaults)
+        ? req.body.previewDefaults
+        : {};
     const year = toInt(req.body?.year) ?? new Date().getUTCFullYear();
     const skuCode = String(req.body?.skuCode || "").trim() || normalizeSkuCode({ type: stampedType, weightGrams, purity });
 
@@ -880,9 +898,22 @@ router.post("/skus", ensureTenantAdmin, async (req: any, res) => {
       brandText,
       hallmarkText,
       serialPrefix,
+      designCode,
+      editionType,
+      originCountry,
+      originMine,
       year,
       skuCode,
       requiresLegalStamp: true,
+      traceabilityEnabled,
+      qrEnabled,
+      serialEnabled,
+      personalizationEnabled,
+      vaultEligible,
+      jewelryConversionEligible,
+      imageTemplateMode,
+      displayPriority,
+      previewDefaults,
       isActive: req.body?.isActive == null ? true : Boolean(req.body.isActive),
       updatedAt: now,
     } as const;
@@ -936,6 +967,10 @@ router.post("/items/mint", ensureTenantAdmin, async (req: any, res) => {
 
     const locationType = String(req.body?.locationType || "VAULT").trim().toUpperCase();
     const locationId = toUuid(req.body?.locationId);
+    const mintingSpec =
+      req.body?.mintingSpec && typeof req.body.mintingSpec === "object" && !Array.isArray(req.body.mintingSpec)
+        ? req.body.mintingSpec
+        : {};
 
     if (locationType === "JEWELLER_PARTNER" && !locationId) {
       return res.status(400).json({ message: "locationId is required when locationType is JEWELLER_PARTNER" });
@@ -1002,6 +1037,7 @@ router.post("/items/mint", ensureTenantAdmin, async (req: any, res) => {
               mintedAt: now,
               mintedBy,
               orderId: orderId ?? null,
+              mintingSpec,
               createdAt: now,
               updatedAt: now,
             })

@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm";
-import { boolean, decimal, integer, pgEnum, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { boolean, decimal, integer, jsonb, pgEnum, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 import { tenants } from "./tenants";
 import { marketplaceOrderItems, marketplaceOrders, sellerProducts } from "./marketplace";
 
@@ -73,12 +73,25 @@ export const stampedGoldSkus = pgTable("stamped_gold_skus", {
   weightG: decimal("weight_g", { precision: 10, scale: 3 }),
   purity: text("purity").notNull(),
   karat: integer("karat"),
+  designCode: text("design_code"),
+  editionType: text("edition_type"),
+  originCountry: text("origin_country"),
+  originMine: text("origin_mine"),
   metal: text("metal").notNull().default("FINE GOLD"),
   brandText: text("brand_text").notNull().default("BOURSE DE L'OR"),
   serialPrefix: text("serial_prefix").notNull(),
   hallmarkText: text("hallmark_text").notNull(),
   year: integer("year"),
   requiresLegalStamp: boolean("requires_legal_stamp").notNull().default(true),
+  traceabilityEnabled: boolean("traceability_enabled").notNull().default(true),
+  qrEnabled: boolean("qr_enabled").notNull().default(true),
+  serialEnabled: boolean("serial_enabled").notNull().default(true),
+  personalizationEnabled: boolean("personalization_enabled").notNull().default(false),
+  vaultEligible: boolean("vault_eligible").notNull().default(true),
+  jewelryConversionEligible: boolean("jewelry_conversion_eligible").notNull().default(false),
+  imageTemplateMode: text("image_template_mode").notNull().default("ingot_blank"),
+  displayPriority: integer("display_priority").notNull().default(0),
+  previewDefaults: jsonb("preview_defaults").$type<Record<string, unknown>>().default({}),
   skuCode: text("sku_code").notNull().unique(),
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -114,6 +127,7 @@ export const stampedGoldItems = pgTable("stamped_gold_items", {
   pickupIdVerified: boolean("pickup_id_verified").notNull().default(false),
   pickupIdVerifiedAt: timestamp("pickup_id_verified_at", { withTimezone: true }),
   pickupIdVerifiedBy: integer("pickup_id_verified_by"),
+  mintingSpec: jsonb("minting_spec").$type<Record<string, unknown>>().default({}),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });

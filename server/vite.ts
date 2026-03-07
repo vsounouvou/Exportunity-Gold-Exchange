@@ -91,6 +91,18 @@ export function serveStatic(app: Express) {
   // HARD RULE: Production server must not start without a valid build.json.
   app.locals.clientBuild = requireClientBuild(distPath);
 
+  // Explicit alias for browsers/third-party defaults that request /service-worker.js.
+  app.get("/service-worker.js", (_req, res) => {
+    const swPath = path.join(distPath, "sw.js");
+    if (!fs.existsSync(swPath)) {
+      res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
+      return res.status(404).type("text/plain").send("service worker missing");
+    }
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
+    res.setHeader("Service-Worker-Allowed", "/");
+    return res.sendFile(swPath);
+  });
+
   app.use(
     express.static(distPath, {
       setHeaders: (res, filePath) => {

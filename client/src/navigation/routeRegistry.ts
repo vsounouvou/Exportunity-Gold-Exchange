@@ -372,6 +372,13 @@ const OVERRIDES: Record<string, Partial<RouteDef>> = {
     icon: "Coins",
     order: 10,
   },
+  "/admin/stamped-gold/minting-studio": {
+    title: "Atelier de frappe",
+    group: "assets",
+    subgroup: "Gold Stamping",
+    icon: "Zap",
+    order: 15,
+  },
   "/admin/stamped-gold/items": {
     title: "Stamped Gold Items",
     group: "assets",

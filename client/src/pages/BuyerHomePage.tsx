@@ -1,4 +1,4 @@
-import { Fragment, useState, useEffect, useRef, useCallback, useMemo, type WheelEvent, type PointerEvent as ReactPointerEvent } from "react";
+﻿import { Fragment, useState, useEffect, useRef, useCallback, useMemo, type WheelEvent, type PointerEvent as ReactPointerEvent } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation, Link } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,7 @@ import { MARKETPLACE_REFRESH_EVENT, MARKETPLACE_REFRESH_STORAGE_KEY } from "@/li
 	import { resolveApiUrl } from "@/lib/runtimeConfig";
 	import { absolutizePublicUrl } from "@/lib/assets";
 import { getCategoryVisual, getRetailLabel, getTenantIdentity, getTenantPlaceholderProductImage } from "@/lib/storefrontIdentity";
+import { getTenantUXConfig } from "@/config/tenantUX";
 	import { useSession } from "@/lib/session";
 	import { useTenant } from "@/lib/tenant";
 import { getTenantConfigByKey, hasTenantModule, type TenantStorefrontHero } from "../../../tenants/index";
@@ -89,6 +90,8 @@ import {
 
 import { SendMoney } from "@/components/marketplace/SendMoney";
 import { MobileBottomNav } from "@/components/marketplace/MobileBottomNav";
+import { GoldQuotesPanel } from "@/components/bdo/GoldQuotesPanel";
+import { GoldNewsBanner } from "@/components/bdo/GoldNewsBanner";
 import { useLocale, type Currency, type Language, languageNames, currencyNames } from "@/contexts/LocaleContext";
 import {
   getCachedLocation as getCachedBdoLocation,
@@ -103,14 +106,15 @@ import {
   type LocationResult,
 } from "@/services/location";
 
-const goldDoreImage = "/product-images/dore-nuggets-01.png";
-const stampedGoldImage = "/product-images/stamped-piece-01.png";
-const heritageGoldImage = "/product-images/art-bust.png";
-const refinedGoldBarsImage = "/product-images/stamped-bar-01.png";
-const jewelryImage = "/product-images/jewelry-chain.png";
+const goldDoreImage = "/product-images/gold-coin.svg";
+const stampedGoldImage = "/product-images/gold-card.svg";
+const heritageGoldImage = "/product-images/art-bust.svg";
+const refinedGoldBarsImage = "/product-images/art-medallion.svg";
+const jewelryImage = "/product-images/jewelry-chain.svg";
 
 type BuyerMode = "wholesale" | "retail";
 type GoldCategorySlug = "dore" | "stamped" | "jewelry" | "gold-art";
+type BdoBrowseView = "lingots" | "pieces" | "collection";
 
 type CategoryMeta = { label: string; icon: string; image: string; accent: string };
 
@@ -147,17 +151,17 @@ type CadastreOpportunityApiItem = {
 };
 
 const CATEGORY_META: Record<string, CategoryMeta> = {
-  dore: { label: "Doré (Raw Gold)", icon: "🪨", image: goldDoreImage, accent: "#EA580C" },
-  stamped: { label: "Stamped bars (10g+)", icon: "🪙", image: refinedGoldBarsImage, accent: "#10B981" },
-  jewelry: { label: "Gold Art & Heritage", icon: "🎭", image: heritageGoldImage, accent: "#EAB308" },
+  dore: { label: "DorÃ© (Raw Gold)", icon: "ðŸª¨", image: goldDoreImage, accent: "#EA580C" },
+  stamped: { label: "Or Estampille (10g+)", icon: "ðŸª™", image: refinedGoldBarsImage, accent: "#10B981" },
+  jewelry: { label: "Gold Art & Heritage", icon: "ðŸŽ­", image: heritageGoldImage, accent: "#EAB308" },
 };
 
 const GOLD_CATEGORY_META: Record<string, CategoryMeta> = {
   ...CATEGORY_META,
-  dore: { ...CATEGORY_META.dore, label: "Doré (Raw Gold)", image: goldDoreImage, accent: "#EA580C" },
+  dore: { ...CATEGORY_META.dore, label: "DorÃ© (Raw Gold)", image: goldDoreImage, accent: "#EA580C" },
   stamped: {
     ...CATEGORY_META.stamped,
-    label: "Stamped Gold",
+    label: "Or Estampille",
     image: refinedGoldBarsImage,
     accent: "#10B981",
   },
@@ -177,7 +181,7 @@ const GOLD_CATEGORY_META: Record<string, CategoryMeta> = {
 
 const MODE_CATEGORIES: Record<BuyerMode, GoldCategorySlug[]> = {
   wholesale: ["dore"],
-  retail: ["stamped"],
+  retail: ["stamped", "jewelry", "gold-art"],
 };
 
 const LOCATION_PROMPT_DONE_KEY = "bdo_location_prompt_done_v1";
@@ -186,29 +190,29 @@ const MANUAL_LOCATION_PRESETS = [
   DEFAULT_MANUAL_LOCATION,
   { lat: 6.366, lon: 2.433, label: "Cotonou" },
   { lat: 6.496, lon: 2.604, label: "Porto-Novo" },
-  { lat: 6.137, lon: 1.212, label: "Lomé" },
+  { lat: 6.137, lon: 1.212, label: "LomÃ©" },
   { lat: 5.603, lon: -0.187, label: "Accra" },
   { lat: 14.716, lon: -17.467, label: "Dakar" },
 ] as const;
 
 const categoryIcons: Record<string, string> = {
-  dore: "🪨",
-  stamped: "🪙",
-  "food-produce": "🍃",
-  "food & produce": "🍃",
-  handcrafts: "🎨",
-  "textiles-clothing": "👗",
-  "textiles & clothing": "👗",
-  "beauty-cosmetics": "✨",
-  "beauty & cosmetics": "✨",
-  "art-decor": "🖼️",
-  "art & decor": "🖼️",
-  jewelry: "💎",
-  agriculture: "🌾",
-  beverages: "🍵",
-  gold: "🥇",
-  minerals: "💎",
-  default: "📦"
+  dore: "ðŸª¨",
+  stamped: "ðŸª™",
+  "food-produce": "ðŸƒ",
+  "food & produce": "ðŸƒ",
+  handcrafts: "ðŸŽ¨",
+  "textiles-clothing": "ðŸ‘—",
+  "textiles & clothing": "ðŸ‘—",
+  "beauty-cosmetics": "âœ¨",
+  "beauty & cosmetics": "âœ¨",
+  "art-decor": "ðŸ–¼ï¸",
+  "art & decor": "ðŸ–¼ï¸",
+  jewelry: "ðŸ’Ž",
+  agriculture: "ðŸŒ¾",
+  beverages: "ðŸµ",
+  gold: "ðŸ¥‡",
+  minerals: "ðŸ’Ž",
+  default: "ðŸ“¦"
 };
 
 const categoryColors: Record<string, string> = {
@@ -545,6 +549,19 @@ function getMarketplaceCategory(product: any): string | null {
   );
 }
 
+function parseProductAttributes(product: any): Record<string, any> | null {
+  const raw = product?.attributes;
+  if (!raw) return null;
+  if (typeof raw === "object") return raw as Record<string, any>;
+  if (typeof raw !== "string") return null;
+  try {
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" ? (parsed as Record<string, any>) : null;
+  } catch {
+    return null;
+  }
+}
+
 function getGoldCategory(product: any): GoldCategorySlug | null {
   const rawSlug = normalizeForMatch(product?.categorySlug);
   const canonical = rawSlug ? rawSlug.replace(/[\s_]+/g, "-") : "";
@@ -618,11 +635,107 @@ function toNumber(value: unknown): number {
 }
 
 function getProductWeightGrams(product: any): number {
-  const weight = toNumber(product?.weight);
-  if (!weight) return 0;
-  const unit = normalizeForMatch(product?.weightUnit);
-  if (unit === "kg" || unit === "kilogram" || unit === "kilograms") return weight * 1000;
-  return weight;
+  const attrs = parseProductAttributes(product);
+  const directCandidates = [
+    product?.weightGrams,
+    product?.weight_grams,
+    product?.grams,
+    attrs?.weightGrams,
+    attrs?.weight_grams,
+    attrs?.grams,
+  ];
+  for (const candidate of directCandidates) {
+    const grams = toNumber(candidate);
+    if (grams > 0) return grams;
+  }
+
+  const weight = toNumber(product?.weight ?? attrs?.weight);
+  if (weight > 0) {
+    const unit = normalizeForMatch(product?.weightUnit ?? attrs?.weightUnit ?? attrs?.weight_unit);
+    if (unit === "kg" || unit === "kilogram" || unit === "kilograms") return weight * 1000;
+    return weight;
+  }
+
+  const haystack = `${product?.name || ""} ${product?.description || ""} ${product?.categoryName || ""}`;
+  const match = haystack.match(/(\d+(?:[.,]\d+)?)\s*(kg|g)\b/i);
+  if (!match) return 0;
+  const value = Number.parseFloat(match[1].replace(",", "."));
+  if (!Number.isFinite(value) || value <= 0) return 0;
+  return match[2].toLowerCase() === "kg" ? value * 1000 : value;
+}
+
+function getProductKaratValue(product: any): number | null {
+  const attrs = parseProductAttributes(product);
+  const directCandidates = [product?.karat, product?.carat, attrs?.karat, attrs?.carat];
+  for (const candidate of directCandidates) {
+    const value = Number(candidate);
+    if (Number.isFinite(value) && value > 0) return value;
+  }
+  const haystack = `${product?.name || ""} ${product?.description || ""}`;
+  const match = haystack.match(/\b(18|22|24)\s*k\b/i);
+  if (!match) return null;
+  const value = Number.parseInt(match[1], 10);
+  return Number.isFinite(value) ? value : null;
+}
+
+function formatGoldWeightLabel(weightGrams: number | null | undefined) {
+  if (!weightGrams || !Number.isFinite(weightGrams)) return "";
+  if (weightGrams >= 1000 && weightGrams % 1000 === 0) return `${weightGrams / 1000}kg`;
+  return `${weightGrams}g`;
+}
+
+function getBdoProductKind(product: any): "ingot" | "coin" | "collector" {
+  const attrs = parseProductAttributes(product);
+  const explicitType = normalizeForMatch(
+    product?.productType ||
+      product?.type ||
+      attrs?.productType ||
+      attrs?.type ||
+      attrs?.collectorType ||
+      attrs?.inventoryType,
+  );
+  const stampedType = normalizeForMatch(
+    product?.stampedType || product?.stamped_type || attrs?.stampedType || attrs?.stamped_type,
+  );
+  if (/(coin|coinseries)/.test(explicitType) || stampedType === "coin") return "coin";
+  if (/(collector|collectible|collection|commemorative)/.test(explicitType)) return "collector";
+  if (/(ingot|bar|bullion|lingot)/.test(explicitType) || stampedType === "bar" || stampedType === "ingot") {
+    return "ingot";
+  }
+
+  const goldCategory = getGoldCategory(product);
+  const weightGrams = getProductWeightGrams(product);
+
+  const haystack = normalizeForMatch(
+    [
+      product?.name,
+      product?.description,
+      product?.categoryName,
+      attrs?.editionType,
+      attrs?.seriesName,
+      attrs?.collectionTitle,
+    ]
+      .filter(Boolean)
+      .join(" "),
+  );
+
+  const hasExplicitCoinSignal = /\b(coin|medallion|medaillon)\b/.test(haystack);
+  const hasExplicitIngotSignal = /\b(bar|bullion|ingot|lingot|lingotin)\b/.test(haystack);
+  const hasCollectorSignal = /\b(collector|collectible|collection|commemorative|royaume|amazone|faune|anniversaire|limited)\b/.test(
+    haystack,
+  );
+
+  if (goldCategory === "gold-art") return hasExplicitCoinSignal ? "coin" : "collector";
+  if (goldCategory === "jewelry") return hasExplicitCoinSignal ? "coin" : "collector";
+  if (goldCategory === "stamped") {
+    if (hasExplicitCoinSignal) return "coin";
+    if (hasExplicitIngotSignal || weightGrams > 0) return "ingot";
+    return hasCollectorSignal ? "collector" : "ingot";
+  }
+  if (hasExplicitIngotSignal) return "ingot";
+  if (hasExplicitCoinSignal) return "coin";
+  if (hasCollectorSignal) return "collector";
+  return weightGrams > 0 ? "ingot" : "collector";
 }
 
 function hashString(input: string) {
@@ -696,14 +809,14 @@ function formatKgAsHuman(kg: number): string {
 function formatKgRangeAsHuman(minKg: number, maxKg: number): string {
   const a = Math.min(minKg, maxKg);
   const b = Math.max(minKg, maxKg);
-  if (!Number.isFinite(a) || !Number.isFinite(b) || b <= 0) return "—";
+  if (!Number.isFinite(a) || !Number.isFinite(b) || b <= 0) return "â€”";
   const fmtKg = (kg: number) => {
     const decimals = kg < 2 ? 2 : 1;
     return `${kg.toFixed(decimals)} kg`;
   };
-  if (b < 1) return `${Math.round(a * 1000)}–${Math.round(b * 1000)} g`;
-  if (a < 1) return `${Math.round(a * 1000)} g–${fmtKg(b)}`;
-  return `${fmtKg(a)}–${fmtKg(b)}`;
+  if (b < 1) return `${Math.round(a * 1000)}â€“${Math.round(b * 1000)} g`;
+  if (a < 1) return `${Math.round(a * 1000)} gâ€“${fmtKg(b)}`;
+  return `${fmtKg(a)}â€“${fmtKg(b)}`;
 }
 
 function createGoldShopIconLegacy(L: any, products?: any[]) {
@@ -711,14 +824,14 @@ function createGoldShopIconLegacy(L: any, products?: any[]) {
   const stockKg = (totalStock / 1000).toFixed(0);
   const hasStock = totalStock > 0;
   
-  const hasDore = products?.some(p => p.name?.toLowerCase().includes('doré') || p.name?.toLowerCase().includes('dore'));
-  const hasRefined = products?.some(p => !p.name?.toLowerCase().includes('doré') && !p.name?.toLowerCase().includes('dore'));
+  const hasDore = products?.some(p => p.name?.toLowerCase().includes('dorÃ©') || p.name?.toLowerCase().includes('dore'));
+  const hasRefined = products?.some(p => !p.name?.toLowerCase().includes('dorÃ©') && !p.name?.toLowerCase().includes('dore'));
   
   let borderColor = '#F59E0B';
   let typeLabel = 'GOLD';
   if (hasDore && !hasRefined) {
     borderColor = '#EA580C';
-    typeLabel = 'DORÉ';
+    typeLabel = 'DORÃ‰';
   } else if (hasRefined && !hasDore) {
     borderColor = '#10B981';
     typeLabel = 'REFINED';
@@ -835,7 +948,7 @@ function createGoldShopIcon(
   const typeLabel = isMixed
     ? "MIXED"
     : primaryCategory === "dore"
-      ? "DORÉ"
+      ? "DORÃ‰"
       : primaryCategory === "stamped"
         ? "STAMPED"
         : "MAKER";
@@ -853,7 +966,7 @@ function createGoldShopIcon(
     return `${Math.round(totalStock)} g`;
   })();
   const markerPrimary = isPureDore ? dorePrimaryLabel : hasStock ? typeLabel : "SOLD";
-  const markerSecondary = isPureDore && hasDoreLots ? (doreLots > 1 ? `${typeLabel} · ${doreLots} lots` : typeLabel) : null;
+  const markerSecondary = isPureDore && hasDoreLots ? (doreLots > 1 ? `${typeLabel} Â· ${doreLots} lots` : typeLabel) : null;
   const badgeActive = hasStock || isPureDore;
 
   return L.divIcon({
@@ -935,16 +1048,16 @@ function createShopIcon(
   const rawIconValue = String(markerStyle?.iconValue || "").trim();
   const lucideName = rawIconValue.toLowerCase().replace(/[^a-z0-9]+/g, "-");
   const lucideEmojiMap: Record<string, string> = {
-    "shopping-cart": "🛒",
-    "store": "🏪",
-    "shirt": "👗",
-    "sparkles": "🧴",
-    "tv": "📺",
-    "smartphone": "📱",
-    "house": "🏠",
-    "pill": "💊",
-    "hammer": "🧱",
-    "car": "🚗",
+    "shopping-cart": "ðŸ›’",
+    "store": "ðŸª",
+    "shirt": "ðŸ‘—",
+    "sparkles": "ðŸ§´",
+    "tv": "ðŸ“º",
+    "smartphone": "ðŸ“±",
+    "house": "ðŸ ",
+    "pill": "ðŸ’Š",
+    "hammer": "ðŸ§±",
+    "car": "ðŸš—",
   };
   const resolvedEmoji =
     iconType === "emoji" && rawIconValue
@@ -1018,7 +1131,7 @@ function createMachineryIcon(L: any, item: { status: string }) {
       justify-content: center;
       font-size: 18px;
     ">
-      ⚙️
+      âš™ï¸
       <div style="
         position: absolute;
         bottom: -6px;
@@ -1058,7 +1171,7 @@ function createOpportunityIcon(L: any, item: { mineVerificationStatus?: string }
       justify-content: center;
       font-size: 18px;
     ">
-      ⛏️
+      â›ï¸
       <div style="
         position: absolute;
         bottom: -6px;
@@ -1084,6 +1197,8 @@ type BuyerHomePageProps = {
   mapEnabled?: boolean;
   defaultRadiusKm?: number;
   storefrontHero?: TenantStorefrontHero | null;
+  showGoldChart?: boolean;
+  showNewsBanner?: boolean;
   uiMarker?: string;
 };
 
@@ -1091,6 +1206,8 @@ export function BuyerHomePage({
   mapEnabled: mapEnabledProp,
   defaultRadiusKm,
   storefrontHero,
+  showGoldChart,
+  showNewsBanner,
   uiMarker,
 }: BuyerHomePageProps = {}) {
   const [location, navigate] = useLocation();
@@ -1099,14 +1216,26 @@ export function BuyerHomePage({
   const isMobile = useIsMobile();
   const { tenant, brand } = useTenant();
   const tenantConfig = useMemo(() => getTenantConfigByKey(tenant.key), [tenant.key]);
+  const storefrontTheme = tenantConfig?.storefrontTheme;
+  const tenantMarketplaceDefaults = tenantConfig?.marketplaceDefaults;
+  const tenantUx = useMemo(() => getTenantUXConfig(tenant.key), [tenant.key]);
   const tenantIdentity = useMemo(() => getTenantIdentity(tenant.key), [tenant.key]);
   const retailModeLabel = tenantIdentity.retailModeLabel;
   const tenantPlaceholderProductImage = getTenantPlaceholderProductImage(tenant.key);
-  const mapEnabled = mapEnabledProp ?? hasTenantModule(tenant.key, "map");
-  const effectiveStorefrontHero = storefrontHero ?? tenantConfig?.storefrontHero ?? null;
+  const mapEnabled = tenantUx.showMap && (mapEnabledProp ?? hasTenantModule(tenant.key, "map"));
+  const effectiveStorefrontHero =
+    storefrontHero === undefined ? (tenantConfig?.storefrontHero ?? null) : storefrontHero;
   const isGoldTenant = tenant.key === "bdo";
   const storefrontMarketType = tenantConfig?.storefrontMarketType || (isGoldTenant ? "PROXIMITY" : "ALL");
   const useProximityRadius = isGoldTenant || storefrontMarketType === "PROXIMITY";
+  const useNonMapFlowLayout = tenantUx.nonMapFlowLayout && !mapEnabled;
+  const adaptiveRailThreshold = Math.max(1, tenantUx.adaptiveRailThreshold || 4);
+  const showBdoGoldQuotes = !!showGoldChart && isGoldTenant && useNonMapFlowLayout;
+  const showBdoNewsBanner = !!showNewsBanner && isGoldTenant && useNonMapFlowLayout;
+  const showBdoCampaignHero = isGoldTenant && useNonMapFlowLayout && tenantUx.heroMode === "BANNER";
+  const showBdoTopPanels = showBdoGoldQuotes;
+  const showBdoSecondaryNews = showBdoNewsBanner;
+  const isMaterialsTenant = tenant.key === "met" || tenantUx.storeMode === "MATERIALS";
   const hasZoguelandStoryGenerator =
     tenant.key === "zogueland" &&
     (hasTenantModule(tenant.key, "stories") || hasTenantModule(tenant.key, "safe_ai_chat"));
@@ -1156,11 +1285,26 @@ export function BuyerHomePage({
   const retailPanelSubtitle = isGoldTenant
     ? t("buyer.panel.retailGold.subtitle")
     : String(effectiveStorefrontHero?.subtitle || "").trim() || t("buyer.panel.retailNearby.subtitle");
+  const bdoHeroTitle =
+    language === "ar"
+      ? "ذهب إفريقي معتمد من المناجم الإفريقية حتى بابك"
+      : "Or africain certifié, des mines africaines jusqu'à votre porte";
+  const bdoHeroSubtitle =
+    language === "ar"
+      ? "ذهب متتبع ومطابق ومعتمد، مصدره إفريقيا ويجهز عند الطلب لتسليم آمن."
+      : "Or tracé, conforme et certifié, provenant d'Afrique et préparé à la demande pour livraison sécurisée.";
+  const bdoTrustBadges = language === "ar"
+    ? ["ذهب متتبع", "مطابق", "معتمد", "تسليم آمن"]
+    : ["Or tracé", "Conforme", "Certifié", "Livraison sécurisée"];
   const noProductsTitle = isGoldTenant
     ? t("buyer.noProducts.titleGold")
     : useProximityRadius
       ? t("buyer.noProducts.titleGeneral")
       : t("buyer.noProducts.titleGlobal");
+  const materialsPrimaryColor = storefrontTheme?.colors?.primary || "#7a3e12";
+  const materialsAccentColor = storefrontTheme?.colors?.accent || "#0f6b4e";
+  const materialsTextColor = storefrontTheme?.colors?.text || "#1f2937";
+  const materialsSubtitle = brand.subtitle || brand.tagline || "Briques BTC/CEB, maison modele et livraison chantier";
 
 
   type GeoCountry = { id: number; code: string; name: string };
@@ -1312,7 +1456,12 @@ export function BuyerHomePage({
     }
     return "marketplace";
   });
+  const isMaterialsCatalogGrid =
+    isMaterialsTenant && useNonMapFlowLayout && buyerMode === "retail" && marketMode === "marketplace";
   const isFeedMode = marketMode === "marketplace" || marketMode === "dore";
+  const [bdoBrowseView, setBdoBrowseView] = useState<BdoBrowseView>("lingots");
+  const [bdoWeightFilter, setBdoWeightFilter] = useState<number | null>(null);
+  const [bdoShowAllCatalog, setBdoShowAllCatalog] = useState(false);
 
   useEffect(() => {
     if (!radiusCustomized) return;
@@ -1339,6 +1488,25 @@ export function BuyerHomePage({
           : 100;
     setRadiusKm(next);
   }, [locationSource, radiusCustomized, buyerMode, useProximityRadius]);
+
+  useEffect(() => {
+    if (!isGoldTenant) return;
+    setBdoShowAllCatalog(false);
+    if (bdoBrowseView !== "lingots") setBdoWeightFilter(null);
+  }, [bdoBrowseView, isGoldTenant]);
+
+  useEffect(() => {
+    if (!isGoldTenant) return;
+    if (location.startsWith("/pieces")) {
+      setBdoBrowseView("pieces");
+      return;
+    }
+    if (location.startsWith("/collections")) {
+      setBdoBrowseView("collection");
+      return;
+    }
+    setBdoBrowseView("lingots");
+  }, [isGoldTenant, location]);
 
   useEffect(() => {
     if (!locationPromptOpen) return;
@@ -1446,7 +1614,7 @@ export function BuyerHomePage({
   const railScrollRafRef = useRef<number | null>(null);
   const retailAutoLoadRef = useRef<number>(0);
   const [railScrollUi, setRailScrollUi] = useState<
-    Record<string, { atStart: boolean; atEnd: boolean; progress: number; thumbPct: number }>
+    Record<string, { atStart: boolean; atEnd: boolean; progress: number; thumbPct: number; overflow: boolean }>
   >({});
   const railScrollbarTrackRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const railScrollbarDragRef = useRef<{
@@ -1489,7 +1657,7 @@ export function BuyerHomePage({
         const result = await apiRequest("/api/admin/seed/jewelers", "POST", { count });
         toast({
           title: "Seeded marketplace inventory",
-          description: `${Number(result?.sellersCreated ?? 0)} sellers • ${Number(result?.productsCreated ?? 0)} products`,
+          description: `${Number(result?.sellersCreated ?? 0)} sellers â€¢ ${Number(result?.productsCreated ?? 0)} products`,
         });
         queryClient.invalidateQueries({ queryKey: ["/api/marketplace/buyer/nearby"] });
         queryClient.invalidateQueries({ queryKey: ["/api/marketplace/buyer/feed"] });
@@ -1821,7 +1989,7 @@ export function BuyerHomePage({
           <p>Capacity: {a.targetCapacity}</p>
           <p>Power: {a.powerSource}</p>
           <p>
-            Budget: {a.budgetMin}–{a.budgetMax} {a.budgetCurrency}
+            Budget: {a.budgetMin}â€“{a.budgetMax} {a.budgetCurrency}
           </p>
           <p>
             Delivery: {[a.deliveryCountry, a.deliveryCityRegion].filter(Boolean).join(", ")}
@@ -1951,8 +2119,8 @@ export function BuyerHomePage({
           <p>Mine: {a.legalName}</p>
           <p>Location: {[a.country, a.region].filter(Boolean).join(", ")}</p>
           <p>GPS: {a.lat}, {a.lng}</p>
-          <p>License: {a.licenseType} · {a.licenseNumber}</p>
-          <p>Issued: {a.licenseIssuedDate} · Expires: {a.licenseExpiryDate}</p>
+          <p>License: {a.licenseType} Â· {a.licenseNumber}</p>
+          <p>Issued: {a.licenseIssuedDate} Â· Expires: {a.licenseExpiryDate}</p>
           <p>Holder: {a.licenseHolderName}</p>
           <p>Operations start: {a.operationsStartDate}</p>
           <p>Method: {a.miningMethod}</p>
@@ -1989,7 +2157,7 @@ export function BuyerHomePage({
 
 	  useEffect(() => {
 	    safeLocalStorageSet("buyer_mode", buyerMode);
-    // Doré is wholesale-only (compliance). Machinery/Investments are informational modules and can be used in retail.
+    // DorÃ© is wholesale-only (compliance). Machinery/Investments are informational modules and can be used in retail.
     if (buyerMode === "retail" && marketMode === "dore") {
       safeLocalStorageSet("market_mode", "marketplace");
       setMarketMode("marketplace");
@@ -2039,6 +2207,74 @@ export function BuyerHomePage({
     enabled: !isGoldTenant,
   });
 
+  const normalizeTenantToken = useCallback((value: unknown) => {
+    return String(value || "")
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "");
+  }, []);
+
+  const currentTenantTokens = useMemo(() => {
+    const values = new Set<string>();
+    const push = (value: unknown) => {
+      const normalized = normalizeTenantToken(value);
+      if (normalized) values.add(normalized);
+    };
+    push(tenant.key);
+    push(tenant.name);
+    push(tenantConfig?.slug);
+    push(tenantConfig?.brandName);
+    return values;
+  }, [normalizeTenantToken, tenant.key, tenant.name, tenantConfig?.slug, tenantConfig?.brandName]);
+
+  const recordBelongsToCurrentTenant = useCallback(
+    (record: any) => {
+      if (!record || typeof record !== "object") return false;
+
+      const currentTenantId = Number(tenant.id);
+      const tenantIds = [
+        record?.tenantId,
+        record?.tenant_id,
+        record?.shopTenantId,
+        record?.shop_tenant_id,
+        record?.shop?.tenantId,
+        record?.shop?.tenant_id,
+      ]
+        .map((value) => Number(value))
+        .filter((value) => Number.isFinite(value));
+
+      if (Number.isFinite(currentTenantId) && tenantIds.length > 0) {
+        return tenantIds.some((value) => value === currentTenantId);
+      }
+
+      const tenantKeys = [
+        record?.tenantKey,
+        record?.tenant_key,
+        record?.tenantSlug,
+        record?.tenant_slug,
+        record?.shopTenantKey,
+        record?.shop_tenant_key,
+        record?.shopTenantSlug,
+        record?.shop_tenant_slug,
+        record?.shop?.tenantKey,
+        record?.shop?.tenant_key,
+        record?.shop?.tenantSlug,
+        record?.shop?.tenant_slug,
+      ]
+        .map((value) => normalizeTenantToken(value))
+        .filter(Boolean);
+
+      if (tenantKeys.length === 0) return true;
+      return tenantKeys.some((value) => currentTenantTokens.has(value));
+    },
+    [currentTenantTokens, normalizeTenantToken, tenant.id],
+  );
+
+  const scopedMarketplaceCategories = useMemo(
+    () => (marketplaceCategories as Array<any>).filter((cat) => recordBelongsToCurrentTenant(cat)),
+    [marketplaceCategories, recordBelongsToCurrentTenant],
+  );
+
   const categoryMetaMap: Record<string, CategoryMeta> = isGoldTenant
     ? {
         ...GOLD_CATEGORY_META,
@@ -2052,7 +2288,7 @@ export function BuyerHomePage({
         const fallbackVisual = getCategoryVisual(tenant.key, "default");
         const fallbackImage = fallbackVisual?.image || tenantPlaceholderProductImage;
         const map: Record<string, CategoryMeta> = {};
-        for (const cat of marketplaceCategories as Array<any>) {
+        for (const cat of scopedMarketplaceCategories) {
           const slug = String(cat?.slug || "").trim();
           if (!slug) continue;
           const visual = getCategoryVisual(tenant.key, slug);
@@ -2291,6 +2527,7 @@ export function BuyerHomePage({
       if (!res.ok) return null;
       return res.json();
     },
+    enabled: isGoldTenant,
     refetchInterval: 60000,
     staleTime: 30000
   });
@@ -2321,6 +2558,7 @@ export function BuyerHomePage({
       if (investmentFilters.region !== "all") qs.set("region", investmentFilters.region);
       return apiRequest(`/api/cadastre/map?${qs.toString()}`);
     },
+    enabled: isGoldTenant && marketMode === "investments",
     staleTime: 60_000,
   });
 
@@ -2340,6 +2578,7 @@ export function BuyerHomePage({
       if (investmentFilters.region !== "all") qs.set("region", investmentFilters.region);
       return apiRequest(`/api/cadastre/opportunities?${qs.toString()}`);
     },
+    enabled: isGoldTenant && marketMode === "investments",
     staleTime: 60_000,
   });
 
@@ -2685,7 +2924,11 @@ export function BuyerHomePage({
 
   useEffect(() => {
     if (tenant.key === "exportunity") {
-      document.title = `${retailModeLabel} — Exportunity`;
+      document.title = `${retailModeLabel} â€” Exportunity`;
+      return;
+    }
+    if (tenant.key === "met") {
+      document.title = brand.name;
       return;
     }
     document.title = formatPageTitle(retailModeLabel || t("nav.marketplace"), brand);
@@ -3566,20 +3809,34 @@ export function BuyerHomePage({
     }
     return result;
   };
+  const tenantEnabledCategorySlugs = (tenantMarketplaceDefaults?.enabledCategories || [])
+    .map((slug) => normalizeCategorySlug(slug))
+    .filter(Boolean) as string[];
   const availableCategorySlugs = isGoldTenant
     ? MODE_CATEGORIES[buyerMode]
-    : ((marketplaceCategories as Array<any>)
+    : (scopedMarketplaceCategories
         .map((cat) => String(cat?.slug || "").trim())
-        .filter(Boolean) as string[]);
-  const allowedCategories = availableCategorySlugs.length ? availableCategorySlugs : Object.keys(categoryMetaMap);
+        .filter(Boolean)
+        .filter((slug) => {
+          if (!tenantEnabledCategorySlugs.length) return true;
+          const normalized = normalizeCategorySlug(slug);
+          return normalized ? tenantEnabledCategorySlugs.includes(normalized) : false;
+        }) as string[]);
+  const allowedCategories = availableCategorySlugs.length
+    ? availableCategorySlugs
+    : tenantEnabledCategorySlugs.length
+      ? tenantEnabledCategorySlugs
+      : Object.keys(categoryMetaMap);
   const allowedCategorySet = new Set<string>(allowedCategories);
 
   const isAllowedProduct = (p: any) => {
+    if (!recordBelongsToCurrentTenant(p)) return false;
     if (!isGoldTenant) return true;
     const category = getGoldCategory(p);
     return category !== null && allowedCategorySet.has(category);
   };
   const isAllowedShop = (shop: any) => {
+    if (!recordBelongsToCurrentTenant(shop)) return false;
     if (buyerMode === "retail" && MODE_CATEGORIES.retail.includes("jewelry")) {
       const isJeweler =
         shop?.sellerType === "jeweler" || shop?.productionType === "jewelry_manufacturing";
@@ -3600,7 +3857,7 @@ export function BuyerHomePage({
       slug: "preview-ci",
       latitude: "7.55",
       longitude: "-5.55",
-      streetAddress: "Côte d'Ivoire (Regional)",
+      streetAddress: "CÃ´te d'Ivoire (Regional)",
       status: "approved",
       products: [
         {
@@ -3664,7 +3921,7 @@ export function BuyerHomePage({
 
 	  const nearbyShops = Array.isArray(nearbyData?.shops) ? nearbyData.shops : [];
 	  const allShops = isWholesalePreview ? previewShops : nearbyShops;
-	  const shops = allShops.filter(isAllowedShop).map((shop: any) => ({
+  const shops = allShops.filter(isAllowedShop).map((shop: any) => ({
 	    ...shop,
 	    products: shop.products?.filter(isAllowedProduct) || []
 	  }));
@@ -3800,6 +4057,7 @@ export function BuyerHomePage({
   const feedSections = Array.isArray(feedData?.sections) ? feedData.sections : [];
   const allSections = isWholesalePreview ? previewSections : feedSections;
   const sections = allSections
+    .filter((section: any) => recordBelongsToCurrentTenant(section))
     .map((section: any) => {
       const id = typeof section?.id === "string" ? section.id : null;
       const labelKeys = id ? feedSectionI18n[id] : undefined;
@@ -3895,6 +4153,10 @@ export function BuyerHomePage({
       setCartOpen(true);
       setVaultOpen(false);
     }
+    const categoryParam = params.get("cat") || params.get("category");
+    if (categoryParam) {
+      setSelectedCategory(categoryParam);
+    }
     if (mapEnabled && panel === "map") {
       setMapOverlayOpen(true);
     }
@@ -3930,6 +4192,20 @@ export function BuyerHomePage({
     }
   }, [marketMode]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const url = new URL(window.location.href);
+    const current = url.searchParams.get("cat");
+    const next = selectedCategory || null;
+    if (current === next) return;
+    if (next) {
+      url.searchParams.set("cat", next);
+    } else {
+      url.searchParams.delete("cat");
+    }
+    window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
+  }, [selectedCategory]);
+
   const placeholderPalette = [
     { bg: "#0f172a", accent: "#f59e0b" },
     { bg: "#111827", accent: "#10b981" },
@@ -3964,28 +4240,66 @@ export function BuyerHomePage({
     return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
   };
 
+  const LEGACY_IMAGE_ALIASES: Record<string, string> = {
+    "/product-images/dore-nuggets-01.png": goldDoreImage,
+    "/product-images/stamped-piece-01.png": stampedGoldImage,
+    "/product-images/art-bust.png": heritageGoldImage,
+    "/product-images/stamped-bar-01.png": refinedGoldBarsImage,
+    "/product-images/jewelry-chain.png": jewelryImage,
+  };
+
+  const isPlaceholderAsset = (value: string): boolean => {
+    const url = value.toLowerCase();
+    return (
+      url.startsWith("data:image/") ||
+      url.includes("placeholder") ||
+      url.includes("catalog-item") ||
+      url.includes("catalog%20item") ||
+      url.includes("/tenant-identity-placeholder")
+    );
+  };
+
+  const normalizeProductImageUrl = (value: string): string => {
+    const raw = String(value || "").trim();
+    if (!raw) return "";
+    const normalizedPath = raw.toLowerCase().split("?")[0];
+    const alias = LEGACY_IMAGE_ALIASES[normalizedPath];
+    return absolutizePublicUrl(alias || raw);
+  };
+
   const collectProductImages = (product: any): string[] => {
     const images: string[] = [];
     const directImage = product?.image;
-    if (typeof directImage === "string" && directImage) images.push(absolutizePublicUrl(directImage));
+    if (typeof directImage === "string" && directImage) {
+      const normalized = normalizeProductImageUrl(directImage);
+      if (normalized && !isPlaceholderAsset(normalized)) images.push(normalized);
+    }
 
     const rawImages = product?.images;
     if (Array.isArray(rawImages)) {
       rawImages.forEach((img) => {
-        if (typeof img === "string" && img) images.push(absolutizePublicUrl(img));
+        if (typeof img === "string" && img) {
+          const normalized = normalizeProductImageUrl(img);
+          if (normalized && !isPlaceholderAsset(normalized)) images.push(normalized);
+        }
       });
     } else if (typeof rawImages === "string" && rawImages) {
       try {
         const parsed = JSON.parse(rawImages);
         if (Array.isArray(parsed)) {
           parsed.forEach((img) => {
-            if (typeof img === "string" && img) images.push(absolutizePublicUrl(img));
+            if (typeof img === "string" && img) {
+              const normalized = normalizeProductImageUrl(img);
+              if (normalized && !isPlaceholderAsset(normalized)) images.push(normalized);
+            }
           });
         } else if (typeof parsed === "string" && parsed) {
-          images.push(absolutizePublicUrl(parsed));
+          const normalized = normalizeProductImageUrl(parsed);
+          if (normalized && !isPlaceholderAsset(normalized)) images.push(normalized);
         }
       } catch {
-        images.push(absolutizePublicUrl(rawImages));
+        const normalized = normalizeProductImageUrl(rawImages);
+        if (normalized && !isPlaceholderAsset(normalized)) images.push(normalized);
       }
     }
 
@@ -4006,7 +4320,10 @@ export function BuyerHomePage({
       const gallery = (attrs as any)?.images || (attrs as any)?.gallery || (attrs as any)?.photos;
       if (Array.isArray(gallery)) {
         gallery.forEach((img) => {
-          if (typeof img === "string" && img) images.push(absolutizePublicUrl(img));
+          if (typeof img === "string" && img) {
+            const normalized = normalizeProductImageUrl(img);
+            if (normalized && !isPlaceholderAsset(normalized)) images.push(normalized);
+          }
         });
       }
     }
@@ -4021,7 +4338,11 @@ export function BuyerHomePage({
 
     const category = getCategory(product);
     const meta = getCategoryMeta(category);
-    if (meta?.image) return [meta.image];
+    const categoryImage = meta?.image ? normalizeProductImageUrl(meta.image) : "";
+    if (categoryImage && !isPlaceholderAsset(categoryImage)) return [categoryImage];
+
+    const tenantFallback = normalizeProductImageUrl(tenantPlaceholderProductImage);
+    if (tenantFallback) return [tenantFallback];
 
     return [buildProductPlaceholder(product, 0)];
   };
@@ -4058,10 +4379,10 @@ export function BuyerHomePage({
 
   const getMixedGoldProducts = (products: any[]) => {
     const doreProducts = products.filter((p: any) => 
-      p.name?.toLowerCase().includes('doré') || p.name?.toLowerCase().includes('dore')
+      p.name?.toLowerCase().includes('dorÃ©') || p.name?.toLowerCase().includes('dore')
     );
     const refinedProducts = products.filter((p: any) => 
-      !(p.name?.toLowerCase().includes('doré') || p.name?.toLowerCase().includes('dore'))
+      !(p.name?.toLowerCase().includes('dorÃ©') || p.name?.toLowerCase().includes('dore'))
     );
     
     const mixed: any[] = [];
@@ -4136,7 +4457,7 @@ export function BuyerHomePage({
   
   const getGoldTypeLabel = (product: any) => {
     const nameLower = product?.name?.toLowerCase() || '';
-    if (nameLower.includes("doré") || nameLower.includes("dore")) {
+    if (nameLower.includes("dorÃ©") || nameLower.includes("dore")) {
       return { label: t("product.dore").toUpperCase(), color: "bg-orange-500/20 text-orange-400 border-orange-500/30" };
     }
     if (nameLower.includes("18k") || nameLower.includes("18 karat") || nameLower.includes("750")) {
@@ -4227,25 +4548,73 @@ export function BuyerHomePage({
     if (isWholesalePreview) return { text: "PREVIEW", inStock: false };
     if (!isGoldTenant) {
       const qty = toNumber(product?.stockQuantity);
+      if (isMaterialsTenant) {
+        return { text: qty > 0 ? (language === "fr" ? "PRET A COMMANDER" : "READY TO ORDER") : (language === "fr" ? "SUR DEMANDE" : "ON REQUEST"), inStock: true };
+      }
       if (!qty) return { text: "OUT", inStock: false };
       return { text: `${qty} in stock`, inStock: true };
     }
     const category = getGoldCategory(product);
-    const qty = toNumber(product?.stockQuantity);
-    if (!category || qty <= 0) return { text: 'SOLD', inStock: false };
-    if (category === 'dore') return { text: `${(qty / 1000).toFixed(1)}kg AVAIL`, inStock: true };
+    const qty = Math.max(0, toNumber(product?.stockQuantity));
+    if (category === "stamped") return { text: "MINTED ON DEMAND", inStock: true };
+    if (category === "jewelry" || category === "gold-art") return { text: "MADE TO ORDER", inStock: true };
+    if (category === "dore") {
+      if (qty <= 0) return { text: "ON REQUEST", inStock: true };
+      return { text: `${(qty / 1000).toFixed(1)}kg AVAIL`, inStock: true };
+    }
+    return { text: "ON REQUEST", inStock: true };
+  };
 
-    const weightG = getProductWeightGrams(product);
-    const totalKg = weightG ? (qty * weightG) / 1000 : 0;
-    const totalKgText = totalKg ? ` (~${totalKg.toFixed(1)}kg)` : '';
-    return { text: `${qty} pcs${totalKgText} AVAIL`, inStock: true };
+  const getMaterialsUnitSuffix = (product: any) => {
+    const rawAttrs = product?.attributes;
+    const attrs =
+      rawAttrs && typeof rawAttrs === "object"
+        ? rawAttrs
+        : typeof rawAttrs === "string"
+          ? (() => {
+              try {
+                return JSON.parse(rawAttrs);
+              } catch {
+                return null;
+              }
+            })()
+          : null;
+
+    const directUnit = [
+      product?.unitLabel,
+      product?.unit,
+      product?.priceUnit,
+      product?.salesUnit,
+      attrs?.unitLabel,
+      attrs?.unit,
+      attrs?.salesUnit,
+      attrs?.pricingUnit,
+    ].find((value) => typeof value === "string" && String(value).trim().length > 0);
+
+    if (typeof directUnit === "string") {
+      const normalizedUnit = String(directUnit).trim();
+      return normalizedUnit.startsWith("/") ? ` ${normalizedUnit}` : ` / ${normalizedUnit}`;
+    }
+
+    const haystack = `${product?.name || ""} ${product?.description || ""} ${product?.categoryName || ""}`.toLowerCase();
+    if (/(btc|cseb|brique|brick|bloc)/.test(haystack)) return " / brique";
+    if (/(palette|pallet)/.test(haystack)) return " / palette";
+    if (/(25kg|sac|lime|chaux|platre|plaster|enduit|argile|clay)/.test(haystack)) return " / sac 25kg";
+    if (/(bambou|bamboo)/.test(haystack)) return " / piece";
+    if (/(solar|eclairage|lighting|kit)/.test(haystack)) return " / kit";
+    if (/(plan|maison modele|model house)/.test(haystack)) return " / projet";
+    return "";
   };
 
   const getProductPriceDisplay = (product: any) => {
     const price = toNumber(product?.price);
     const fromCurrency = normalizeCurrencyCode(product?.currency);
     if (!isGoldTenant) {
-      return { primary: formatAmount(price, fromCurrency) };
+      const suffix = isMaterialsTenant ? getMaterialsUnitSuffix(product) : undefined;
+      if (isMaterialsTenant && (!Number.isFinite(price) || price <= 0)) {
+        return { primary: language === "fr" ? "Sur devis" : "Quote on request" };
+      }
+      return { primary: formatAmount(price, fromCurrency, suffix) };
     }
     const category = getGoldCategory(product);
     if (category === 'dore') {
@@ -4316,6 +4685,11 @@ export function BuyerHomePage({
   const formatDistanceAway = (distanceKm: number | null) => {
     if (distanceKm == null || !Number.isFinite(distanceKm)) return null;
     const km = Math.max(0, distanceKm);
+    if (language === "fr") {
+      if (km < 1) return `à ${Math.max(1, Math.round(km * 1000))} m`;
+      if (km < 10) return `à ${km.toFixed(1)} km`;
+      return `à ${Math.round(km)} km`;
+    }
     if (km < 1) return `${Math.max(1, Math.round(km * 1000))} m away`;
     if (km < 10) return `${km.toFixed(1)} km away`;
     return `${Math.round(km)} km away`;
@@ -4495,10 +4869,11 @@ export function BuyerHomePage({
       })),
     );
     const q = String(searchQuery || "").trim();
-    const filtered = q ? flat.filter((product: any) => matchesSearch(product, q)) : flat;
+    const tenantScoped = flat.filter((product: any) => recordBelongsToCurrentTenant(product));
+    const filtered = q ? tenantScoped.filter((product: any) => matchesSearch(product, q)) : tenantScoped;
     const byCategory = getProductsByCategory(filtered);
     return (byCategory["gold-art"] || []).slice(0, 24);
-  }, [goldArtFallbackData, goldArtNeedsFallback, matchesSearch, searchQuery]);
+  }, [goldArtFallbackData, goldArtNeedsFallback, matchesSearch, recordBelongsToCurrentTenant, searchQuery]);
 
   const retailDisplayByCategoryResolved =
     goldArtNeedsFallback && goldArtFallbackItems.length > 0
@@ -4562,6 +4937,7 @@ export function BuyerHomePage({
     const progress = maxScroll > 0 ? rail.scrollLeft / maxScroll : 0;
     const rawThumbPct = rail.scrollWidth > 0 ? (rail.clientWidth / rail.scrollWidth) * 100 : 100;
     const thumbPct = maxScroll > 0 ? Math.max(10, Math.min(60, rawThumbPct)) : 100;
+    const overflow = maxScroll > 1;
     const atStart = rail.scrollLeft <= 1;
     const atEnd = rail.scrollLeft + rail.clientWidth >= rail.scrollWidth - 1;
 
@@ -4572,11 +4948,13 @@ export function BuyerHomePage({
         atEnd,
         progress: Math.max(0, Math.min(1, Number.isFinite(progress) ? progress : 0)),
         thumbPct: Math.max(1, Math.min(100, Number.isFinite(thumbPct) ? thumbPct : 100)),
+        overflow,
       };
       if (
         current &&
         current.atStart === next.atStart &&
         current.atEnd === next.atEnd &&
+        current.overflow === next.overflow &&
         Math.abs(current.progress - next.progress) < 0.01 &&
         Math.abs(current.thumbPct - next.thumbPct) < 0.5
       ) {
@@ -4592,6 +4970,16 @@ export function BuyerHomePage({
     const rail = railRefs.current[slug];
     if (!rail) return;
     if (!productsCount || productsCount <= 2) {
+      setRailScrollUi((prev) => ({
+        ...prev,
+        [slug]: {
+          atStart: true,
+          atEnd: true,
+          progress: 0,
+          thumbPct: 100,
+          overflow: false,
+        },
+      }));
       railInitializedRef.current.add(slug);
       return;
     }
@@ -4960,6 +5348,172 @@ export function BuyerHomePage({
     return sortedPanelSourceProducts;
   })();
   const panelPreviewTrimmed = panelPreviewProducts.slice(0, 12);
+  const materialsCatalogProducts = useMemo(() => {
+    if (!isMaterialsCatalogGrid) return [];
+    const source = showFallbackProducts
+      ? sortedPanelAllProducts
+      : sortedShopRailProducts.length > 0
+        ? sortedShopRailProducts
+        : sortedPanelSourceProducts;
+    const seen = new Set<string>();
+    return source.filter((product: any) => {
+      const key = String(product?.id ?? "");
+      if (!key) return false;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }, [
+    isMaterialsCatalogGrid,
+    showFallbackProducts,
+    sortedPanelAllProducts,
+    sortedPanelSourceProducts,
+    sortedShopRailProducts,
+  ]);
+  const materialsCatalogMeta = getCategoryMeta(selectedCategory || "earth-bricks");
+  const materialsGridClass = "grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr))]";
+  const materialsPreviewLimit = isMobile ? 2 : 4;
+  const materialsSectionBlocks = useMemo(
+    () =>
+      !isMaterialsCatalogGrid || selectedCategory
+        ? []
+        : panelSections
+            .map((section) => {
+              const sectionProducts = retailDisplayByCategoryResolved[section.slug] || [];
+              if (!sectionProducts.length) return null;
+              return {
+                ...section,
+                total: sectionProducts.length,
+                products: sectionProducts.slice(0, Math.min(section.limit || materialsPreviewLimit, materialsPreviewLimit)),
+              };
+            })
+            .filter(Boolean) as Array<{
+            slug: string;
+            title: string;
+            subtitle: string;
+            limit: number;
+            total: number;
+            products: any[];
+          }>,
+    [isMaterialsCatalogGrid, materialsPreviewLimit, panelSections, retailDisplayByCategoryResolved, selectedCategory],
+  );
+  const materialsCountLabel = selectedCategory
+    ? `${materialsCatalogProducts.length} article${materialsCatalogProducts.length > 1 ? "s" : ""}`
+    : `${materialsCatalogProducts.length} produit${materialsCatalogProducts.length > 1 ? "s" : ""} Maison en Terre`;
+  const useBdoInstitutionalLayout =
+    isGoldTenant && useNonMapFlowLayout && buyerMode === "retail" && marketMode === "marketplace";
+  const bdoBrowseSourceProducts = useMemo(() => {
+    if (!isGoldTenant) return [];
+    const mergedSource = [...panelSourceProducts, ...shopRailSourceProducts].filter((product: any) =>
+      recordBelongsToCurrentTenant(product),
+    );
+    const source = sortProducts(mergedSource);
+    const seen = new Set<string>();
+    const query = String(searchQuery || "").trim();
+    return source.filter((product: any) => {
+      const key = String(product?.id ?? "");
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return !query || matchesSearch(product, query);
+    });
+  }, [isGoldTenant, panelSourceProducts, recordBelongsToCurrentTenant, searchQuery, shopRailSourceProducts]);
+  const bdoCatalogProducts = useMemo(() => {
+    return bdoBrowseSourceProducts.map((product: any) => {
+      const attrs = parseProductAttributes(product);
+      const weightGrams = getProductWeightGrams(product);
+      const karat = getProductKaratValue(product);
+      const kind = getBdoProductKind(product);
+      const goldCategory = getGoldCategory(product);
+      const edition =
+        attrs?.editionType ||
+        attrs?.edition ||
+        attrs?.seriesName ||
+        attrs?.collectionTitle ||
+        (kind === "collector" ? "Édition collector" : kind === "coin" ? "Pièce premium" : "Édition standard");
+      const tagSource = [
+        ...(Array.isArray(product?.tags) ? product.tags : []),
+        ...(Array.isArray(attrs?.tags) ? attrs.tags : []),
+      ]
+        .map((tag) => String(tag || "").trim())
+        .filter(Boolean);
+
+      return {
+        ...product,
+        bdoKind: kind,
+        bdoGoldCategory: goldCategory,
+        bdoWeightGrams: weightGrams,
+        bdoWeightLabel: formatGoldWeightLabel(weightGrams) || "Sur mesure",
+        bdoKarat: karat,
+        bdoEdition: String(edition || "").trim() || null,
+        bdoOriginCountry: String(attrs?.originCountry || product?.originCountry || "Cote d'Ivoire"),
+        bdoOriginMine: String(attrs?.originMine || product?.originMine || "Reseau partenaire"),
+        bdoVaultEligible: Boolean(attrs?.vaultEligible ?? product?.vaultEligible ?? kind === "ingot"),
+        bdoJewelryConversionEligible: Boolean(
+          attrs?.jewelryConversionEligible ?? product?.jewelryConversionEligible ?? kind === "ingot",
+        ),
+        bdoPersonalizationEnabled: Boolean(
+          attrs?.personalizationEnabled ?? product?.personalizationEnabled ?? /personnalis|gift|cadeau/i.test(String(product?.name || "")),
+        ),
+        bdoTraceabilityEnabled: Boolean(attrs?.traceabilityEnabled ?? product?.traceabilityEnabled ?? true),
+        bdoTags: tagSource,
+      };
+    });
+  }, [bdoBrowseSourceProducts]);
+  const bdoWeightOptions = useMemo(() => {
+    const weights = Array.from(
+      new Set(
+        bdoCatalogProducts
+          .filter((product: any) => product.bdoKind === "ingot" && Number(product.bdoWeightGrams) > 0)
+          .map((product: any) => Number(product.bdoWeightGrams)),
+      ),
+    ).sort((a, b) => a - b);
+    return weights.length ? weights : [5, 10, 20, 50, 100];
+  }, [bdoCatalogProducts]);
+  const bdoCategoryTiles = useMemo(() => {
+    const groups: Record<BdoBrowseView, any[]> = {
+      lingots: bdoCatalogProducts.filter((product: any) => product.bdoKind === "ingot"),
+      pieces: bdoCatalogProducts.filter((product: any) => product.bdoKind === "coin"),
+      collection: bdoCatalogProducts.filter((product: any) => product.bdoKind === "collector"),
+    };
+    return ([
+      {
+        key: "lingots",
+        label: "Lingots",
+        subtitle: "Lingots d'investissement par poids et édition",
+      },
+      {
+        key: "pieces",
+        label: "Pièces",
+        subtitle: "Pièces et séries en or pour achat patrimonial",
+      },
+      {
+        key: "collection",
+        label: "Collection",
+        subtitle: "Éditions collector, héritage et objets d'exception",
+      },
+    ] as Array<{ key: BdoBrowseView; label: string; subtitle: string }>).map((tile) => {
+      const products = groups[tile.key];
+      const first = products[0];
+      return {
+        ...tile,
+        count: products.length,
+        fromPrice: first ? getProductPriceDisplay(first).primary : null,
+      };
+    });
+  }, [bdoCatalogProducts]);
+  const bdoVisibleProducts = useMemo(() => {
+    const filtered = bdoCatalogProducts.filter((product: any) => {
+      if (bdoBrowseView === "lingots") {
+        if (product.bdoKind !== "ingot") return false;
+        if (bdoWeightFilter && Number(product.bdoWeightGrams) !== bdoWeightFilter) return false;
+        return true;
+      }
+      if (bdoBrowseView === "pieces") return product.bdoKind === "coin";
+      return product.bdoKind === "collector";
+    });
+    return bdoShowAllCatalog ? filtered : filtered.slice(0, 6);
+  }, [bdoBrowseView, bdoCatalogProducts, bdoShowAllCatalog, bdoWeightFilter]);
+  const bdoSelectedTile = bdoCategoryTiles.find((tile) => tile.key === bdoBrowseView) ?? bdoCategoryTiles[0];
 
   const selectedProductPrice = selectedProduct ? getProductPriceDisplay(selectedProduct) : null;
   const selectedProductStock = selectedProduct ? getProductStockLabel(selectedProduct) : { text: "", inStock: false };
@@ -4970,7 +5524,13 @@ export function BuyerHomePage({
       selectedShop.streetAddress ||
       DEFAULT_COUNTRY
     : DEFAULT_COUNTRY;
-  const selectedShopDistanceLabel = selectedShop?.distanceText ? `${selectedShop.distanceText} away` : null;
+  const selectedShopDistanceLabel = selectedShop
+    ? formatDistanceAway(
+        parseFiniteNumber(selectedShop?.distance) ??
+          parseFiniteNumber(selectedShop?.distanceKm) ??
+          parseFiniteNumber(selectedShop?.distance_km),
+      )
+    : null;
   const selectedShopIsJeweler =
     !!selectedShop &&
     (selectedShop.sellerType === "jeweler" || selectedShop.productionType === "jewelry_manufacturing");
@@ -4988,6 +5548,289 @@ export function BuyerHomePage({
   const selectedProductPrimaryImage =
     selectedProductImages[Math.min(selectedProductImageIndex, Math.max(selectedProductImages.length - 1, 0))] || null;
   const selectedProductTags = selectedProduct ? getSecondaryTags(selectedProduct) : [];
+  const selectedProductAttrs = selectedProduct ? parseProductAttributes(selectedProduct) : null;
+  const selectedProductVaultEligible = selectedProduct
+    ? Boolean(
+        selectedProductAttrs?.vaultEligible ??
+          (selectedProduct as any)?.vaultEligible ??
+          (isGoldTenant && getBdoProductKind(selectedProduct) === "ingot"),
+      )
+    : false;
+  const selectedProductJewelryConversionEligible = selectedProduct
+    ? Boolean(
+        selectedProductAttrs?.jewelryConversionEligible ??
+          (selectedProduct as any)?.jewelryConversionEligible ??
+          (isGoldTenant && getBdoProductKind(selectedProduct) === "ingot"),
+      )
+    : false;
+
+  const renderMaterialsCatalogCard = (product: any, idx: number) => {
+    const category = getCategory(product);
+    const meta = getCategoryMeta(category);
+    const badge = getCategoryBadge(product);
+    const stock = getProductStockLabel(product);
+    const price = getProductPriceDisplay(product);
+    const isAvailable = stock.inStock;
+    const shopId = Number(product?.shopId ?? product?.sellerId ?? product?.seller_id);
+    const distanceLabel = formatDistanceAway(getProductDistanceKm(product));
+    const hasRealImages = collectProductImages(product).length > 0;
+    const sellerLabel = String(product?.shopName || product?.sellerName || brand.name || "").trim() || brand.name;
+    const subtitle = [sellerLabel, distanceLabel].filter(Boolean).join(" • ") || meta.label;
+    const imageSrc = hasRealImages
+      ? getCommodityImage(product)
+      : normalizeProductImageUrl(tenantPlaceholderProductImage) || buildProductPlaceholder(product, idx);
+
+    return (
+      <article
+        key={`materials-grid-${product.id}`}
+        data-shop-id={Number.isFinite(shopId) ? String(shopId) : undefined}
+        className={`group flex h-full min-w-0 flex-col overflow-hidden rounded-[26px] border transition-all duration-200 ${
+          isAvailable ? "cursor-pointer hover:-translate-y-0.5" : "opacity-70"
+        }`}
+        style={{
+          background: "linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(245,239,228,0.98) 100%)",
+          borderColor: "rgba(122,62,18,0.14)",
+          boxShadow: "0 18px 48px rgba(48,29,12,0.10)",
+        }}
+      >
+        <button type="button" className="flex h-full w-full flex-col text-left" onClick={() => setSelectedProduct(product)}>
+          <div className="relative aspect-[4/3] overflow-hidden bg-[#efe5d3]">
+            <img
+              src={imageSrc}
+              alt={product.name}
+              className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+              onError={(e) => {
+                e.currentTarget.onerror = null;
+                e.currentTarget.src = normalizeProductImageUrl(tenantPlaceholderProductImage) || buildProductPlaceholder(product, idx);
+              }}
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
+            {!hasRealImages ? (
+              <div className="absolute inset-0 flex items-center justify-center p-4">
+                <div
+                  className="rounded-[22px] border border-white/25 px-5 py-4 text-center text-white shadow-xl"
+                  style={{ background: `linear-gradient(135deg, ${meta.accent} 0%, ${materialsPrimaryColor} 100%)` }}
+                >
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-white/80">{meta.icon || "MET"}</div>
+                  <div className="mt-2 text-sm font-semibold text-white">{meta.label}</div>
+                  <div className="mt-1 text-[11px] text-white/70">{brand.name}</div>
+                </div>
+              </div>
+            ) : null}
+
+            <div className="absolute left-3 top-3 flex gap-1">
+              <Badge className={`text-[9px] px-2 py-0.5 ${badge.className}`}>{badge.label}</Badge>
+            </div>
+            <div className="absolute right-3 top-3">
+              <Badge
+                className={`border text-[9px] px-2 py-0.5 ${
+                  isAvailable
+                    ? "border-emerald-600/20 bg-emerald-600/85 text-white"
+                    : "border-stone-500/30 bg-stone-500/75 text-white"
+                }`}
+              >
+                {stock.text}
+              </Badge>
+            </div>
+          </div>
+
+          <div className="flex flex-1 flex-col gap-4 p-4">
+            <div className="space-y-2">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <h4 className="truncate text-sm font-semibold" style={{ color: materialsTextColor }}>{product.name}</h4>
+                  <p className="mt-1 truncate text-[12px]" style={{ color: "#6b5b4b" }}>{subtitle}</p>
+                </div>
+                <div className="flex-shrink-0 text-right">
+                  <p className="text-base font-semibold" style={{ color: materialsPrimaryColor }}>{price.primary}</p>
+                  <p className="mt-1 text-[10px] uppercase tracking-[0.18em]" style={{ color: "#92765b" }}>{meta.label}</p>
+                </div>
+              </div>
+              {product?.shortDescription ? (
+                <p className="truncate text-[11px]" style={{ color: "#7a6756" }}>{product.shortDescription}</p>
+              ) : null}
+            </div>
+          </div>
+        </button>
+
+        <div className="mt-auto flex items-center gap-2 border-t px-4 py-3" style={{ borderColor: "rgba(122,62,18,0.12)" }}>
+          <Button
+            size="sm"
+            className="flex-1 text-white hover:brightness-110"
+            style={{ backgroundColor: materialsPrimaryColor }}
+            onClick={(e) => {
+              e.stopPropagation();
+              setSelectedProduct(product);
+            }}
+          >
+            Voir
+          </Button>
+          <Button
+            size="icon"
+            className="h-9 w-9 rounded-full text-white hover:brightness-110"
+            style={{
+              backgroundColor: isAvailable ? materialsAccentColor : "#d7cec2",
+              color: isAvailable ? "#ffffff" : "#77665a",
+            }}
+            disabled={!isAvailable}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (isAvailable) addToCart(product, null);
+            }}
+          >
+            <Plus className="h-4 w-4" />
+          </Button>
+        </div>
+      </article>
+    );
+  };
+
+  const renderMaterialsCatalogSection = (section: {
+    slug: string;
+    title: string;
+    subtitle: string;
+    total: number;
+    products: any[];
+  }) => {
+    const meta = getCategoryMeta(section.slug);
+    return (
+      <section key={`materials-section-${section.slug}`} className="space-y-3">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.22em]" style={{ color: meta.accent }}>
+              {section.title}
+            </p>
+            <p className="mt-1 text-[12px]" style={{ color: "#6b5b4b" }}>
+              {section.subtitle || `${section.total} article${section.total > 1 ? "s" : ""}`}
+            </p>
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            className="border-[#7a3e12]/20 bg-white/75 text-[#7a3e12] hover:bg-[#f4eadc]"
+            onClick={() => setSelectedCategory(section.slug)}
+          >
+            Voir tout
+          </Button>
+        </div>
+        <div className={materialsGridClass}>
+          {section.products.map((product: any, idx: number) => renderMaterialsCatalogCard(product, idx))}
+        </div>
+      </section>
+    );
+  };
+
+  const scrollToBdoSection = (sectionId: string) => {
+    if (typeof window === "undefined") return;
+    document.getElementById(sectionId)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  const renderBdoInstitutionalCard = (product: any, idx: number) => {
+    const price = getProductPriceDisplay(product);
+    const image = getCommodityImage(product);
+    const weightLabel = product.bdoWeightLabel || formatGoldWeightLabel(product.bdoWeightGrams);
+    const karatLabel = product.bdoKarat ? `${product.bdoKarat}K` : product?.purity || "Certifie";
+    const descriptor =
+      product.bdoKind === "collector"
+        ? product.bdoEdition || "Édition collector"
+        : product.bdoKind === "coin"
+          ? product.bdoEdition || "Pièce patrimoniale"
+          : product.bdoEdition || "Lingot d'investissement";
+    const actionLabel = product.bdoKind === "collector" ? "Voir les détails" : "Acheter";
+    const tags = [
+      product.bdoVaultEligible ? "Coffre" : null,
+      product.bdoPersonalizationEnabled ? "Personnalisable" : null,
+      product.bdoJewelryConversionEligible ? "Transformer en bijou" : null,
+    ].filter(Boolean) as string[];
+
+    return (
+      <article
+        key={`bdo-card-${product.id}`}
+        className="group flex h-full flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#08101d]/90 transition-colors hover:border-amber-500/30 hover:bg-[#0a1526]"
+      >
+        <button type="button" className="flex h-full w-full flex-col text-left" onClick={() => setSelectedProduct(product)}>
+          <div className="relative aspect-[4/3] overflow-hidden">
+            <img
+              src={image}
+              alt={product.name}
+              className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+              onError={(e) => {
+                e.currentTarget.onerror = null;
+                e.currentTarget.src = buildProductPlaceholder(product, idx);
+              }}
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black via-black/30 to-transparent" />
+            <div className="absolute left-3 top-3 flex flex-wrap gap-1.5">
+              <Badge className="border-amber-500/40 bg-emerald-500/85 text-[9px] text-white">Frappé à la demande</Badge>
+              {weightLabel ? (
+                <Badge variant="outline" className="border-white/15 bg-black/35 text-[9px] text-white/85">
+                  {weightLabel}
+                </Badge>
+              ) : null}
+            </div>
+          </div>
+
+          <div className="flex flex-1 flex-col space-y-3 p-3.5">
+            <div className="space-y-1.5">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <h4 className="truncate text-sm font-semibold text-white">{product.name}</h4>
+                  <p className="truncate text-[11px] text-white/55">{descriptor}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-base font-semibold text-amber-300">{price.primary}</p>
+                  <p className="text-[10px] text-white/45">{language === "fr" ? "Prix indicatif basé sur le cours de l’or" : "Indicative gold quote"}</p>
+                </div>
+              </div>
+              <div className="flex flex-wrap items-center gap-2 text-[11px] text-white/65">
+                <span>{karatLabel}</span>
+                <span className="text-white/30">•</span>
+                <span>{product.bdoOriginCountry}</span>
+                {product.bdoTraceabilityEnabled ? (
+                  <>
+                    <span className="text-white/30">•</span>
+                    <span>Traçabilite</span>
+                  </>
+                ) : null}
+              </div>
+            </div>
+
+            {tags.length ? (
+              <div className="mt-auto flex flex-wrap gap-2">
+                {tags.map((tag) => (
+                  <Badge
+                    key={`${product.id}-${normalizeForMatch(tag)}`}
+                    variant="outline"
+                    className="border-white/10 bg-white/5 text-[10px] text-white/70"
+                  >
+                    {tag}
+                  </Badge>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        </button>
+
+        <div className="mt-auto flex items-center gap-2 border-t border-white/10 px-3.5 py-3">
+          <Button
+            size="sm"
+            variant="secondary"
+            className="flex-1 bg-white/10 text-white hover:bg-white/15"
+            onClick={() => setSelectedProduct(product)}
+          >
+            {actionLabel}
+          </Button>
+          <Button
+            size="icon"
+            className="h-9 w-9 rounded-full bg-amber-500/95 text-black hover:bg-amber-400"
+            onClick={() => addToCart(product, null)}
+          >
+            <Plus className="h-4 w-4" />
+          </Button>
+        </div>
+      </article>
+    );
+  };
 
   useEffect(() => {
     setSelectedProductImageIndex(0);
@@ -5259,6 +6102,7 @@ export function BuyerHomePage({
     session.hasRole("verified_investor") || session.hasRole("shareholder") || session.hasRole("admin");
   const isOperator = session.hasRole("operator") || session.hasRole("admin");
   const isDesktopViewport = typeof window !== "undefined" ? window.innerWidth >= 768 : !isMobile;
+  const useWrappedMaterialsChips = isMaterialsCatalogGrid && isDesktopViewport;
   const isDesktopRetail = isDesktopViewport && buyerMode === "retail";
   const isDesktopRetailBrowse = isDesktopRetail && marketMode === "marketplace";
   const showFeedView = isFeedMode && !isDesktopViewport && (!mapEnabled || !mapOverlayOpen);
@@ -5667,7 +6511,6 @@ export function BuyerHomePage({
       return false;
     }
   })();
-  const storefrontTheme = tenantConfig?.storefrontTheme;
   const heroGradientStyle = useMemo(() => {
     const from = storefrontTheme?.heroBanner?.gradientFrom;
     const to = storefrontTheme?.heroBanner?.gradientTo;
@@ -5683,7 +6526,11 @@ export function BuyerHomePage({
     <div
       data-ui={uiMarker}
       data-tenant={tenant.key}
-      className="relative h-[100dvh] w-full overflow-hidden"
+      className={
+        useNonMapFlowLayout
+          ? "relative min-h-screen w-full overflow-x-hidden overflow-y-auto"
+          : "relative h-[100dvh] w-full overflow-hidden"
+      }
       style={{
         background: storefrontTheme?.background,
         color: storefrontTheme?.colors?.text,
@@ -5697,20 +6544,20 @@ export function BuyerHomePage({
           <div className="font-semibold text-white">Debug (admin)</div>
           <div className="mt-1 space-y-1 text-white/70">
             <div>
-              Tenant: <span className="text-white/90">{tenant.key}</span> • Mode:{" "}
+              Tenant: <span className="text-white/90">{tenant.key}</span> â€¢ Mode:{" "}
               <span className="text-white/90">{buyerMode}</span>/<span className="text-white/90">{marketMode}</span>
             </div>
             <div>
-              Location: <span className="text-white/90">{activeLocationLabel || "—"}</span>
+              Location: <span className="text-white/90">{activeLocationLabel || "â€”"}</span>
             </div>
             <div>
-              Source: <span className="text-white/90">{locationSource}</span> • Permission:{" "}
+              Source: <span className="text-white/90">{locationSource}</span> â€¢ Permission:{" "}
               <span className="text-white/90">{locationPermissionState}</span>
-              {locationUsedFallback ? <span className="text-white/50"> • fallback</span> : null}
+              {locationUsedFallback ? <span className="text-white/50"> â€¢ fallback</span> : null}
             </div>
             <div>
               Coords:{" "}
-              <span className="text-white/90">{formatCoordsLabel(userPosition[0], userPosition[1], 5) || "—"}</span>
+              <span className="text-white/90">{formatCoordsLabel(userPosition[0], userPosition[1], 5) || "â€”"}</span>
             </div>
             {locationLastError ? (
               <div className="text-rose-200">
@@ -5718,11 +6565,11 @@ export function BuyerHomePage({
               </div>
             ) : null}
             <div>
-              Category: <span className="text-white/90">{selectedCategory || "all"}</span> • Radius:{" "}
+              Category: <span className="text-white/90">{selectedCategory || "all"}</span> â€¢ Radius:{" "}
               <span className="text-white/90">{radiusKm}km</span>
             </div>
             <div>
-              Shops: <span className="text-white/90">{shops.length}</span> • Nearby products:{" "}
+              Shops: <span className="text-white/90">{shops.length}</span> â€¢ Nearby products:{" "}
               <span className="text-white/90">{sortedPanelSourceProducts.length}</span>
             </div>
             <div className="pt-1">
@@ -5768,11 +6615,11 @@ export function BuyerHomePage({
                   <div className="font-semibold text-white">Current</div>
                   <div className="text-white/60">{locationSource.toUpperCase()}</div>
                 </div>
-                <div className="mt-1 text-white/80">{activeLocationLabel || "—"}</div>
+                <div className="mt-1 text-white/80">{activeLocationLabel || "â€”"}</div>
                 <div className="mt-2 flex items-center justify-between gap-2 text-[11px] text-white/55">
                   <div>
                     Permission: <span className="text-white/70">{locationPermissionState}</span>
-                    {locationUsedFallback ? <span className="text-white/40"> • fallback</span> : null}
+                    {locationUsedFallback ? <span className="text-white/40"> â€¢ fallback</span> : null}
                   </div>
                   <Link href="/debug/location" className="text-amber-300 hover:text-amber-200 underline">
                     Debug
@@ -5842,19 +6689,40 @@ export function BuyerHomePage({
         </div>
       )}
 
-      {effectiveStorefrontHero ? (
-        <div className="pointer-events-none relative z-[32] px-4 md:px-6 lg:px-8 pt-2 md:pt-3">
+      {effectiveStorefrontHero && !showBdoCampaignHero ? (
+        <div className="pointer-events-none relative z-[32] px-4 md:px-6 lg:px-8 pt-1 md:pt-2">
           <div
-            className="mx-auto max-w-7xl rounded-2xl border border-white/10 bg-gradient-to-r from-[#0b1324] via-[#15263f] to-[#1f3b5f] p-4 md:p-5 shadow-xl"
+            className={`mx-auto max-w-7xl rounded-2xl border p-4 shadow-xl ${
+              isMaterialsCatalogGrid
+                ? "border-[#7a3e12]/15 bg-gradient-to-r from-[#3a2414] via-[#6a3b19] to-[#8d5425] md:p-4"
+                : "border-white/10 bg-gradient-to-r from-[#0b1324] via-[#15263f] to-[#1f3b5f] md:p-5"
+            }`}
             style={heroGradientStyle}
           >
-            {effectiveStorefrontHero.eyebrow ? (
-              <p className="mb-1 text-[10px] uppercase tracking-[0.24em] text-white/70 md:text-[11px]">
-                {effectiveStorefrontHero.eyebrow}
-              </p>
-            ) : null}
-            <h1 className="text-lg font-bold text-white md:text-2xl">{effectiveStorefrontHero.title}</h1>
-            <p className="mt-1 text-xs text-white/75 md:text-sm">{effectiveStorefrontHero.subtitle}</p>
+            {isMaterialsCatalogGrid ? (
+              <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+                <div className="min-w-0">
+                  {effectiveStorefrontHero.eyebrow ? (
+                    <p className="mb-1 text-[10px] uppercase tracking-[0.24em] text-white/70 md:text-[11px]">
+                      {effectiveStorefrontHero.eyebrow}
+                    </p>
+                  ) : null}
+                  <h1 className="text-xl font-bold text-white md:text-2xl">{brand.name}</h1>
+                  <p className="mt-1 text-sm text-white/80 md:text-[15px]">{materialsSubtitle}</p>
+                </div>
+                <p className="max-w-2xl text-xs text-white/72 md:text-sm">{effectiveStorefrontHero.title}</p>
+              </div>
+            ) : (
+              <>
+                {effectiveStorefrontHero.eyebrow ? (
+                  <p className="mb-1 text-[10px] uppercase tracking-[0.24em] text-white/70 md:text-[11px]">
+                    {effectiveStorefrontHero.eyebrow}
+                  </p>
+                ) : null}
+                <h1 className="text-lg font-bold text-white md:text-2xl">{effectiveStorefrontHero.title}</h1>
+                <p className="mt-1 text-xs text-white/75 md:text-sm">{effectiveStorefrontHero.subtitle}</p>
+              </>
+            )}
           </div>
         </div>
       ) : null}
@@ -5948,7 +6816,7 @@ export function BuyerHomePage({
           <div className="h-full w-full overflow-hidden">
             {!leafletDeps ? (
               <div className="h-full w-full bg-slate-950/60 flex items-center justify-center">
-                <div className="text-xs text-white/60">Loading map…</div>
+                <div className="text-xs text-white/60">Loading mapâ€¦</div>
               </div>
             ) : (
               (() => {
@@ -6223,7 +7091,7 @@ export function BuyerHomePage({
                     const meta = getCategoryMeta(category);
                     const badgeLabel = isGoldTenant
                       ? category === "dore"
-                        ? "DORÉ"
+                        ? "DORÃ‰"
                         : category === "stamped"
                           ? "STAMPED"
                           : category === "gold-art"
@@ -6310,7 +7178,7 @@ export function BuyerHomePage({
                     <div className="min-w-0">
                       <strong className="text-sm text-white block truncate">{item.name}</strong>
                       <span className="text-[10px] text-white/60">
-                        {formatMachineryCategory(item.category, t)} • {formatMachineryCondition(item.condition, t)}
+                        {formatMachineryCategory(item.category, t)} â€¢ {formatMachineryCondition(item.condition, t)}
                       </span>
                     </div>
                     <Badge className="text-[10px] bg-blue-500/15 text-blue-200 border-blue-400/30">
@@ -6319,14 +7187,14 @@ export function BuyerHomePage({
                   </div>
                   <div className="mt-2 flex items-center justify-between text-xs text-white/70">
                     <span>
-                      {item.location.country} • {item.location.region}
+                      {item.location.country} â€¢ {item.location.region}
                     </span>
                     <span className="font-semibold text-amber-400">
                       {item.price
                         ? formatMoney(item.price.amount, item.price.currency)
                         : item.financingAvailable
                           ? t("machinery.financingAvailable")
-                          : "—"}
+                          : "â€”"}
                     </span>
                   </div>
                   <Button
@@ -6361,8 +7229,8 @@ export function BuyerHomePage({
 	                      const cadastreOk = isCadastrePermitValid(cadastrePermit);
 	                      const cadastreSource = mine ? getCadastreSourceForCountry(mine.country) : null;
                       const regionLabel = mine
-                        ? `${mine.country} • ${mine.region}`
-                        : `${op.location.country} • ${op.location.region}`;
+                        ? `${mine.country} â€¢ ${mine.region}`
+                        : `${op.location.country} â€¢ ${op.location.region}`;
                     return (
                       <>
                         <div className="min-w-0">
@@ -6389,24 +7257,24 @@ export function BuyerHomePage({
                         <div className="mt-2 grid grid-cols-2 gap-2 text-[11px] text-white/70">
                           <div>
                             <div className="text-white/45">Active since</div>
-                            <div className="font-semibold text-white">{mine?.licenseActiveSinceYear ?? "—"}</div>
+                            <div className="font-semibold text-white">{mine?.licenseActiveSinceYear ?? "â€”"}</div>
                           </div>
                           <div>
                             <div className="text-white/45">Capacity</div>
                             <div className="font-semibold text-white">
-                              {mine ? `${mine.currentCapacityKgPerMonth} kg/mo` : "—"}
+                              {mine ? `${mine.currentCapacityKgPerMonth} kg/mo` : "â€”"}
                             </div>
                           </div>
                           <div className="col-span-2">
                             <div className="text-white/45">Production (12m)</div>
                             <div className="font-semibold text-white">
-                              {mine ? `${mine.historicalProductionLast12MonthsKg} kg` : "—"}
+                              {mine ? `${mine.historicalProductionLast12MonthsKg} kg` : "â€”"}
                             </div>
                           </div>
                         <div className="col-span-2">
                             <div className="text-white/45">{t("investments.field.remainingPotential")}</div>
                             <div className="font-semibold text-white">
-                              {mine?.remainingPotential ? t(`investments.potential.${mine.remainingPotential}`) : "—"}
+                              {mine?.remainingPotential ? t(`investments.potential.${mine.remainingPotential}`) : "â€”"}
                             </div>
                           </div>
                         </div>
@@ -6594,7 +7462,7 @@ export function BuyerHomePage({
               variant="ghost"
               className="min-h-[44px] min-w-[44px] md:h-9 md:w-9 text-gray-200 hover:text-white hover:bg-white/10"
               onClick={() => navigate("/orders")}
-              aria-label="Orders"
+              aria-label={t("nav.orders")}
             >
               <Package className="h-5 w-5 md:h-4 md:w-4" />
             </Button>
@@ -6609,7 +7477,7 @@ export function BuyerHomePage({
                 }
                 navigate("/contracts");
               }}
-              aria-label="Contracts"
+              aria-label={t("nav.contracts")}
             >
               <ClipboardList className="h-5 w-5 md:h-4 md:w-4" />
             </Button>
@@ -6690,7 +7558,7 @@ export function BuyerHomePage({
                   title={
                     isWholesaleAuthorized
                       ? t("nav.machinery")
-                      : `${t("nav.machinery")} — Requires approved wholesale access`
+                      : `${t("nav.machinery")} â€” Requires approved wholesale access`
                   }
                   onClick={() => setWholesaleMode("machinery")}
                 >
@@ -6909,7 +7777,7 @@ export function BuyerHomePage({
           </div>
         </div>
 
-        {tickerItems && (
+        {false && tickerItems && (
           <div className="bg-gradient-to-r from-black/90 via-black/80 to-black/90 backdrop-blur-sm border-t border-white/10 overflow-x-auto scrollbar-hide">
             <div className="w-full px-4 md:px-6 lg:px-8">
               <div className="min-w-full flex justify-center py-1.5">
@@ -6920,7 +7788,51 @@ export function BuyerHomePage({
         )}
       </header>
 
-      {!isMobile ? (
+      {showBdoCampaignHero ? (
+        <div className="relative z-40 mt-[calc(env(safe-area-inset-top,0px)+108px)] mx-3 mb-2">
+          <div className="rounded-2xl border border-amber-500/25 bg-gradient-to-r from-[#1f1408] via-[#3b2a10] to-[#5e4a1e] px-4 py-4 shadow-xl">
+            <p className="text-[10px] uppercase tracking-[0.24em] text-amber-100/90 md:text-[11px]">Bourse de l'Or</p>
+            <h1 className="mt-2 text-lg font-semibold text-white md:text-2xl">{bdoHeroTitle}</h1>
+            <p className="mt-2 text-xs text-amber-50/90 md:text-sm">{bdoHeroSubtitle}</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {bdoTrustBadges.map((badge) => (
+                <span
+                  key={badge}
+                  className="rounded-full border border-amber-300/35 bg-black/25 px-3 py-1 text-[11px] font-medium text-amber-100"
+                >
+                  {badge}
+                </span>
+              ))}
+            </div>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Button className="bg-amber-500 text-black hover:bg-amber-400" onClick={() => scrollToBdoSection("bdo-buy")}>
+                Acheter de l'or
+              </Button>
+              <Button
+                variant="outline"
+                className="border-amber-200/30 bg-black/15 text-white hover:bg-black/25"
+                onClick={() => scrollToBdoSection("bdo-market")}
+              >
+                Voir le marche
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {showBdoTopPanels ? (
+        <div id="bdo-market" className={`relative z-40 mx-3 mb-2 ${showBdoCampaignHero ? "mt-2" : "mt-[calc(env(safe-area-inset-top,0px)+108px)]"}`}>
+          <div className="grid gap-2 grid-cols-1">
+            {showBdoGoldQuotes ? (
+              <div>
+                <GoldQuotesPanel />
+              </div>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+
+      {!isMobile && !useNonMapFlowLayout ? (
         <div className="hidden md:block fixed bottom-4 left-4 z-[55] rounded-2xl border border-white/10 bg-black/55 backdrop-blur-xl p-3 shadow-2xl">
           <div className="text-xs font-semibold text-white">{t("pro.app.title")}</div>
           <div className="mt-2 flex items-center gap-3">
@@ -6939,165 +7851,604 @@ export function BuyerHomePage({
         </div>
       ) : null}
 
-      {!isMobile && showProducts && (marketMode === "marketplace" || (!isWholesalePreview && marketMode === "dore")) && (
-        <div
-          className={`absolute bottom-0 left-0 right-0 md:top-[calc(env(safe-area-inset-top,0px)+132px)] lg:top-[calc(env(safe-area-inset-top,0px)+116px)] z-40 w-full bg-gradient-to-t from-black/95 via-black/80 to-transparent md:backdrop-blur-xl md:rounded-2xl md:border safe-area-bottom ${
-            buyerMode === "wholesale"
-              ? "md:bg-black/75 md:border-orange-500/20"
-              : "md:bg-black/55 md:border-white/10"
-          } ${
-            isDesktopRetail
-              ? `${mapOverlayOpen ? "md:left-[384px]" : "md:left-3"} md:right-3 md:bottom-3 md:flex md:flex-col`
-              : "md:bottom-auto md:right-3 md:left-auto md:w-[340px]"
-          }`}
-        >
-          <div className="flex items-center justify-between px-4 pt-3 pb-2">
-            <div className="flex items-center gap-2">
-              <div className="w-1 h-8 bg-amber-500 rounded-full hidden md:block" />
-              <div>
-                <h3 className="text-sm font-semibold text-white">
-                  {buyerMode === "wholesale"
-                    ? (isWholesalePreview
-                      ? t("wholesale.preview.title")
-                      : isGoldTenant
-                        ? t("buyer.panel.wholesaleDore.title")
-                        : t("buyer.panel.wholesaleMarketplace.title"))
-                    : retailPanelTitle}
-                 </h3>
-                 <p className="text-[10px] text-white/50">
-                   {buyerMode === "wholesale"
-                     ? (isWholesalePreview
-                       ? t("wholesale.preview.subtitle")
-                       : isGoldTenant
-                        ? t("sections.doreLots.subtitle")
-                        : t("buyer.panel.wholesaleMarketplace.subtitle"))
-                     : retailPanelSubtitle}
-                 </p>
+      {useBdoInstitutionalLayout && showProducts ? (
+        <div className="relative z-40 mx-3 mb-4 mt-2 space-y-4">
+          <section className="rounded-2xl border border-white/10 bg-[#07101d]/90 p-4 shadow-xl backdrop-blur">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div className="min-w-0">
+                <p className="text-[11px] uppercase tracking-[0.24em] text-amber-300/80">Bourse de l'Or</p>
+                <h2 className="mt-1 text-xl font-semibold text-white">Marché, achat, coffre et intelligence aurifère</h2>
+                <p className="mt-2 max-w-3xl text-sm text-white/65">
+                  Accédez aux données du marché, aux produits d’investissement, au coffre digital et à l’espace professionnel.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { id: "bdo-market", label: "Marché de l'or" },
+                  { id: "bdo-buy", label: "Acheter de l'or" },
+                  { id: "bdo-vault", label: "Votre coffre" },
+                  { id: "bdo-news", label: "Actualités & réglementation" },
+                  { id: "bdo-pro", label: "Espace Pro" },
+                ].map((item) => (
+                  <Button
+                    key={item.id}
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="border-white/15 bg-white/5 text-white/80 hover:bg-white/10"
+                    onClick={() => scrollToBdoSection(item.id)}
+                  >
+                    {item.label}
+                  </Button>
+                ))}
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              {buyerMode === "retail" && categories.length > 0 ? (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 px-3 text-[11px] text-white/70 hover:text-white hover:bg-white/10 rounded-full"
-                  onClick={() => setCategoriesSheetOpen(true)}
-                >
-                  <Package className="h-4 w-4 mr-2" />
-                  {t("common.categories")}
-                </Button>
-              ) : null}
-              {!isDesktopRetail && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 text-white/60 hover:text-white hover:bg-white/10 rounded-full"
-                  onClick={() => setShowProducts(false)}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              )}
+          </section>
+
+          <div className="grid items-start gap-4 xl:grid-cols-[380px_minmax(0,1fr)] 2xl:grid-cols-[400px_minmax(0,1fr)]">
+            <div className="space-y-4 xl:sticky xl:top-24">
+              <div className="rounded-2xl border border-white/10 bg-[#09111f]/90 p-4 shadow-xl backdrop-blur">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-[11px] uppercase tracking-[0.24em] text-amber-300/80">Acheter de l'or</p>
+                    <h3 className="mt-1 text-lg font-semibold text-white">Explorez par categorie</h3>
+                  </div>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="border-amber-500/25 text-amber-200 hover:bg-amber-500/10"
+                    onClick={() => navigate("/stamped-gold")}
+                  >
+                    Catalogue complet
+                  </Button>
+                </div>
+                <div className="mt-4 grid gap-3 md:grid-cols-3 xl:grid-cols-1">
+                  {bdoCategoryTiles.map((tile) => (
+                    <button
+                      key={tile.key}
+                      type="button"
+                      onClick={() => setBdoBrowseView(tile.key)}
+                      className={`rounded-2xl border p-4 text-left transition-colors ${
+                        bdoBrowseView === tile.key
+                          ? "border-amber-500/40 bg-amber-500/10"
+                          : "border-white/10 bg-white/5 hover:bg-white/10"
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-semibold text-white">{tile.label}</p>
+                          <p className="mt-1 text-[11px] text-white/60">{tile.subtitle}</p>
+                        </div>
+                        <Badge variant="outline" className="border-white/10 text-[10px] text-white/70">
+                          {tile.count}
+                        </Badge>
+                      </div>
+                      {tile.fromPrice ? (
+                        <p className="mt-3 text-[11px] text-amber-300">A partir de {tile.fromPrice}</p>
+                      ) : null}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div id="bdo-vault" className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4 shadow-xl backdrop-blur">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-[11px] uppercase tracking-[0.24em] text-emerald-300/80">Votre coffre</p>
+                    <h3 className="mt-1 text-lg font-semibold text-white">Achetez, réservez, transformez</h3>
+                  </div>
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="bg-emerald-500 text-black hover:bg-emerald-400"
+                    onClick={() => {
+                      setVaultPane("vault");
+                      setVaultOpen(true);
+                    }}
+                  >
+                    Ouvrir le coffre
+                  </Button>
+                </div>
+                <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                  <div className="rounded-xl border border-white/10 bg-black/25 p-3">
+                    <p className="text-[10px] uppercase tracking-[0.2em] text-white/45">Or réservé</p>
+                    <p className="mt-2 text-xl font-semibold text-white">
+                      {vaultLoading ? "..." : `${Number(vaultData?.totalGrams || 0)} g`}
+                    </p>
+                  </div>
+                  <div className="rounded-xl border border-white/10 bg-black/25 p-3">
+                    <p className="text-[10px] uppercase tracking-[0.2em] text-white/45">Unites en coffre</p>
+                    <p className="mt-2 text-xl font-semibold text-white">
+                      {vaultLoading ? "..." : Number(vaultData?.units?.length || 0)}
+                    </p>
+                  </div>
+                  <div className="rounded-xl border border-white/10 bg-black/25 p-3">
+                    <p className="text-[10px] uppercase tracking-[0.2em] text-white/45">Trésorerie</p>
+                    <p className="mt-2 text-xl font-semibold text-white">
+                      {walletSummaryLoading
+                        ? "..."
+                        : formatMoney(Number(walletSummary?.wallet?.balance || 0), walletSummary?.wallet?.currency || "XOF")}
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <Button
+                    size="sm"
+                    className="bg-amber-500 text-black hover:bg-amber-400"
+                    onClick={() => {
+                      setVaultPane("wallet");
+                      setVaultOpen(true);
+                    }}
+                  >
+                    Alimenter le portefeuille
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="border-white/15 text-white/80 hover:bg-white/10"
+                    onClick={() => navigate("/admin/stamped-gold/minting-studio")}
+                  >
+                    Atelier de frappe
+                  </Button>
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-blue-500/20 bg-[#08111f]/90 p-4 shadow-xl backdrop-blur">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-[11px] uppercase tracking-[0.24em] text-blue-300/80">Carte professionnelle</p>
+                    <h3 className="mt-1 text-lg font-semibold text-white">Contreparties et sourcing verifies</h3>
+                  </div>
+                  <Badge variant="outline" className="border-blue-400/25 bg-blue-500/10 text-blue-100">
+                    Pro
+                  </Badge>
+                </div>
+                <p className="mt-2 text-sm text-white/65">
+                  Accédez à la cartographie des bureaux d'achat vérifiés, exportateurs et zones de sourcing aurifère.
+                </p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <Button className="bg-amber-500 text-black hover:bg-amber-400" onClick={() => navigate("/pro/map")}>
+                    Ouvrir la carte
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="border-white/15 text-white/80 hover:bg-white/10"
+                    onClick={() => navigate("/pro/bureaux-achat")}
+                  >
+                    Voir les contreparties
+                  </Button>
+                </div>
+              </div>
             </div>
+
+            <div className="space-y-4">
+            <section id="bdo-buy" className="self-start rounded-2xl border border-white/10 bg-[#07101d]/90 p-4 shadow-xl backdrop-blur">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+                <div className="min-w-0">
+                  <p className="text-[11px] uppercase tracking-[0.24em] text-amber-300/80">{bdoSelectedTile?.label || "Lingots"}</p>
+                  <h3 className="mt-1 text-lg font-semibold text-white">
+                    {bdoBrowseView === "lingots"
+                      ? "Lingots d'investissement par poids"
+                      : bdoBrowseView === "pieces"
+                        ? "Pièces et séries patrimoniales"
+                        : "Collections et editions speciales"}
+                  </h3>
+                  <p className="mt-1 text-sm text-white/60">
+                    {bdoBrowseView === "lingots"
+                      ? "Le poids devient votre entrée principale, puis l'édition, le carat et les options de personnalisation."
+                      : bdoBrowseView === "pieces"
+                        ? "Découvrez les pièces premium et les séries structurées pour achat patrimonial ou cadeau."
+                        : "Une couche collector premium reliant héritage africain, éditions limitées et objets de collection."}
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {bdoBrowseView === "lingots"
+                    ? (
+                      <>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant={bdoWeightFilter == null ? "default" : "outline"}
+                          className={bdoWeightFilter == null ? "bg-amber-500 text-black hover:bg-amber-400" : "border-white/15 text-white/80 hover:bg-white/10"}
+                          onClick={() => setBdoWeightFilter(null)}
+                        >
+                          Tous
+                        </Button>
+                        {bdoWeightOptions.map((weight) => (
+                          <Button
+                            key={weight}
+                            type="button"
+                            size="sm"
+                            variant={bdoWeightFilter === weight ? "default" : "outline"}
+                            className={bdoWeightFilter === weight ? "bg-amber-500 text-black hover:bg-amber-400" : "border-white/15 text-white/80 hover:bg-white/10"}
+                            onClick={() => setBdoWeightFilter(weight)}
+                          >
+                            {formatGoldWeightLabel(weight)}
+                          </Button>
+                        ))}
+                      </>
+                    )
+                    : null}
+                </div>
+              </div>
+
+              {bdoVisibleProducts.length ? (
+                <>
+                  <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+                    {bdoVisibleProducts.map((product: any, idx: number) => renderBdoInstitutionalCard(product, idx))}
+                  </div>
+                  <div className="mt-4 flex items-center justify-between gap-3">
+                    <p className="text-[11px] text-white/45">
+                      {bdoShowAllCatalog
+                        ? `${bdoCatalogProducts.filter((product: any) => {
+                            if (bdoBrowseView === "lingots") {
+                              if (product.bdoKind !== "ingot") return false;
+                              return bdoWeightFilter ? Number(product.bdoWeightGrams) === bdoWeightFilter : true;
+                            }
+                            return bdoBrowseView === "pieces" ? product.bdoKind === "coin" : product.bdoKind === "collector";
+                          }).length} références visibles`
+                        : `${bdoVisibleProducts.length} références affichées`}
+                    </p>
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="border-white/15 text-white/80 hover:bg-white/10"
+                        onClick={() => navigate(bdoBrowseView === "lingots" ? "/stamped-gold" : "/collections")}
+                      >
+                        Voir tout
+                      </Button>
+                      {!bdoShowAllCatalog ? (
+                        <Button
+                          type="button"
+                          size="sm"
+                          className="bg-amber-500 text-black hover:bg-amber-400"
+                          onClick={() => setBdoShowAllCatalog(true)}
+                        >
+                          Charger plus
+                        </Button>
+                      ) : null}
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-6 text-center">
+                  <p className="text-sm font-semibold text-white">Aucune reference disponible pour cette vue.</p>
+                  <p className="mt-1 text-[12px] text-white/55">
+                    Ajustez les filtres ou revenez a la vue complete du catalogue.
+                  </p>
+                </div>
+              )}
+            </section>
+
+          <section id="bdo-news" className="grid gap-4 xl:grid-cols-[1.4fr_minmax(0,1fr)]">
+            <div className="space-y-4">
+              <div id="bdo-market" className="rounded-2xl border border-white/10 bg-[#07101d]/90 p-4 shadow-xl backdrop-blur">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-[11px] uppercase tracking-[0.24em] text-amber-300/80">Actualités & réglementation</p>
+                    <h3 className="mt-1 text-lg font-semibold text-white">Intelligence de marche et veille reglementaire</h3>
+                  </div>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="border-white/15 text-white/80 hover:bg-white/10"
+                    onClick={() => navigate("/actualites")}
+                  >
+                    Voir tout
+                  </Button>
+                </div>
+                {showBdoNewsBanner ? (
+                  <div className="mt-4">
+                    <GoldNewsBanner />
+                  </div>
+                ) : null}
+              </div>
+            </div>
+
+            <div id="bdo-pro" className="space-y-4">
+              <div className="rounded-2xl border border-blue-500/20 bg-[#08111f]/90 p-4 shadow-xl backdrop-blur">
+                <p className="text-[11px] uppercase tracking-[0.24em] text-blue-300/80">Industrie & conformité</p>
+                <h3 className="mt-1 text-lg font-semibold text-white">Actualités, réglementation et chaîne de confiance</h3>
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  {[
+                    { label: "Mines d'or en Cote d'Ivoire", href: "/industrie-miniere" },
+                    { label: "Cadre legal de l'or", href: "/reglementation" },
+                    { label: "Traçabilite et conformite", href: "/reglementation" },
+                    { label: "Exportation d'or", href: "/espace-pro" },
+                  ].map((card) => (
+                    <button
+                      key={card.label}
+                      type="button"
+                      className="rounded-xl border border-white/10 bg-white/5 p-3 text-left transition-colors hover:bg-white/10"
+                      onClick={() => navigate(card.href)}
+                    >
+                      <p className="text-sm font-semibold text-white">{card.label}</p>
+                      <p className="mt-1 text-[11px] text-white/55">Ressources, doctrine et parcours professionnel associe.</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-amber-500/25 bg-[#140d05]/90 p-4 shadow-xl backdrop-blur">
+                <p className="text-[11px] uppercase tracking-[0.24em] text-amber-300/80">Espace Pro</p>
+                <h3 className="mt-1 text-lg font-semibold text-white">Un espace dedie a l'ecosysteme aurifere africain</h3>
+                <p className="mt-2 text-sm text-white/65">
+                  Pour mineurs, affineurs, négociants, exportateurs, investisseurs et institutions recherchant sourcing, certification, cartographie professionnelle et flux verifies.
+                </p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <Button className="bg-amber-500 text-black hover:bg-amber-400" onClick={() => navigate("/espace-pro")}>
+                    Accéder à l'espace Pro
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="border-white/15 text-white/80 hover:bg-white/10"
+                    onClick={() => navigate("/pro/map")}
+                  >
+                    Ouvrir la carte
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="border-white/15 text-white/80 hover:bg-white/10"
+                    onClick={() => navigate("/pro/intelligence")}
+                  >
+                    Intelligence Pro
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </section>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {!useBdoInstitutionalLayout && !isMobile && showProducts && (marketMode === "marketplace" || (!isWholesalePreview && marketMode === "dore")) && (
+        <div
+          className={`${
+            useNonMapFlowLayout
+              ? isMaterialsCatalogGrid
+                ? "relative z-40 mt-2 mx-3 mb-4 w-auto md:flex md:flex-col safe-area-bottom"
+                : `relative z-40 ${
+                    showBdoTopPanels || showBdoCampaignHero ? "mt-2" : "mt-[calc(env(safe-area-inset-top,0px)+116px)]"
+                  } mx-3 mb-3 w-auto md:flex md:flex-col bg-gradient-to-t from-black/95 via-black/80 to-transparent md:backdrop-blur-xl md:rounded-2xl md:border safe-area-bottom`
+              : "absolute bottom-0 left-0 right-0 md:top-[calc(env(safe-area-inset-top,0px)+132px)] lg:top-[calc(env(safe-area-inset-top,0px)+116px)] z-40 w-full bg-gradient-to-t from-black/95 via-black/80 to-transparent md:backdrop-blur-xl md:rounded-2xl md:border safe-area-bottom"
+          } ${
+            isMaterialsCatalogGrid
+              ? ""
+              : buyerMode === "wholesale"
+                ? "md:bg-black/75 md:border-orange-500/20"
+                : "md:bg-black/55 md:border-white/10"
+          } ${
+            !useNonMapFlowLayout && isDesktopRetail
+              ? `${mapOverlayOpen ? "md:left-[384px]" : "md:left-3"} md:right-3 md:bottom-3 md:flex md:flex-col`
+              : useNonMapFlowLayout
+                ? ""
+                : "md:bottom-auto md:right-3 md:left-auto md:w-[340px]"
+          }`}
+        >
+          <div
+            className={isMaterialsCatalogGrid ? "rounded-[28px] border p-4 md:p-5" : "flex items-center justify-between px-4 pt-3 pb-2"}
+            style={
+              isMaterialsCatalogGrid
+                ? {
+                    background: "linear-gradient(180deg, rgba(255,255,255,0.92) 0%, rgba(248,242,233,0.96) 100%)",
+                    borderColor: "rgba(122,62,18,0.14)",
+                    boxShadow: "0 22px 52px rgba(48,29,12,0.08)",
+                  }
+                : undefined
+            }
+          >
+            {isMaterialsCatalogGrid ? (
+              <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+                <div className="min-w-0">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.24em]" style={{ color: materialsPrimaryColor }}>
+                    Maison en Terre
+                  </p>
+                  <h2 className="mt-1 text-xl font-semibold md:text-2xl" style={{ color: materialsTextColor }}>
+                    {selectedCategory ? materialsCatalogMeta.label : "Catalogue materiaux"}
+                  </h2>
+                  <p className="mt-2 max-w-3xl text-sm" style={{ color: "#6b5b4b" }}>
+                    {selectedCategory ? materialsCountLabel : materialsSubtitle}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  {selectedCategory ? (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="border-[#7a3e12]/20 bg-white/80 text-[#7a3e12] hover:bg-[#f4eadc]"
+                      onClick={() => setSelectedCategory(null)}
+                    >
+                      Voir tout
+                    </Button>
+                  ) : null}
+                  {categories.length > 0 ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="border-[#0f6b4e]/20 bg-white/80 text-[#0f6b4e] hover:bg-[#ecf6f1]"
+                      onClick={() => setCategoriesSheetOpen(true)}
+                    >
+                      <Package className="mr-2 h-4 w-4" />
+                      Catégories
+                    </Button>
+                  ) : null}
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="flex items-center gap-2">
+                  <div className="w-1 h-8 bg-amber-500 rounded-full hidden md:block" />
+                  <div>
+                    <h3 className="text-sm font-semibold text-white">
+                      {buyerMode === "wholesale"
+                        ? (isWholesalePreview
+                          ? t("wholesale.preview.title")
+                          : isGoldTenant
+                            ? t("buyer.panel.wholesaleDore.title")
+                            : t("buyer.panel.wholesaleMarketplace.title"))
+                        : retailPanelTitle}
+                    </h3>
+                    <p className="text-[10px] text-white/50">
+                      {buyerMode === "wholesale"
+                        ? (isWholesalePreview
+                          ? t("wholesale.preview.subtitle")
+                          : isGoldTenant
+                            ? t("sections.doreLots.subtitle")
+                            : t("buyer.panel.wholesaleMarketplace.subtitle"))
+                        : retailPanelSubtitle}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {buyerMode === "retail" && categories.length > 0 ? (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 px-3 text-[11px] text-white/70 hover:text-white hover:bg-white/10 rounded-full"
+                      onClick={() => setCategoriesSheetOpen(true)}
+                    >
+                      <Package className="h-4 w-4 mr-2" />
+                      {t("common.categories")}
+                    </Button>
+                  ) : null}
+                  {!isDesktopRetail ? (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-white/60 hover:text-white hover:bg-white/10 rounded-full"
+                      onClick={() => setShowProducts(false)}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  ) : null}
+                </div>
+              </>
+            )}
           </div>
 
           {buyerMode === "retail" && categories.length > 0 ? (
-            <div className="px-4 pb-2">
+            <div className={isMaterialsCatalogGrid ? "px-0 pb-3 pt-3" : "px-4 pb-2"}>
               <div className="relative">
-              <div
-                ref={categoryChipsRef}
-                className={`flex items-center gap-2 overflow-x-auto scrollbar-hide scroll-smooth ${
-                  categoryChipsUi.overflow ? "pr-20" : "pr-2"
-                }`}
-                style={{ paddingBottom: "2px" }}
-              >
-                <button
-                  type="button"
-                  className={`flex items-center gap-1.5 px-3 py-2 rounded-full text-xs border transition-colors whitespace-nowrap ${
-                    !selectedCategory
-                      ? "bg-amber-500/25 border-amber-500/40 text-amber-200"
-                      : "bg-black/30 border-white/10 text-white/70 hover:text-white hover:border-white/20"
+                <div
+                  ref={categoryChipsRef}
+                  className={`flex items-center gap-2 scrollbar-hide scroll-smooth ${
+                    isMaterialsCatalogGrid
+                      ? `overflow-x-auto ${useWrappedMaterialsChips ? "md:flex-wrap md:overflow-visible" : ""} ${categoryChipsUi.overflow ? "pr-20 md:pr-0" : "pr-2 md:pr-0"}`
+                      : `overflow-x-auto ${categoryChipsUi.overflow ? "pr-20" : "pr-2"}`
                   }`}
-                  onClick={() => setSelectedCategory(null)}
+                  style={{ paddingBottom: "2px" }}
                 >
-                  <span className="drop-shadow-md">{t("common.all")}</span>
-                </button>
-                {categories.map((cat: any) => (
                   <button
-                    key={`chip-${cat.id}`}
                     type="button"
-                    data-category-slug={cat.slug}
-                    className={`flex items-center gap-1.5 px-3 py-2 rounded-full text-xs border transition-colors whitespace-nowrap ${
-                      selectedCategory === cat.slug
-                        ? "bg-amber-500/25 border-amber-500/40 text-amber-200"
-                        : "bg-black/30 border-white/10 text-white/70 hover:text-white hover:border-white/20"
+                    className={`flex items-center gap-1.5 rounded-full border px-3 py-2 text-xs transition-colors whitespace-nowrap ${
+                      isMaterialsCatalogGrid
+                        ? !selectedCategory
+                          ? "border-[#7a3e12] bg-[#7a3e12] text-white"
+                          : "border-[#d6c6b4] bg-white/85 text-[#5b4635] hover:border-[#7a3e12]/40 hover:text-[#7a3e12]"
+                        : !selectedCategory
+                          ? "bg-amber-500/25 border-amber-500/40 text-amber-200"
+                          : "bg-black/30 border-white/10 text-white/70 hover:text-white hover:border-white/20"
                     }`}
-                    onClick={() => setSelectedCategory(selectedCategory === cat.slug ? null : cat.slug)}
-                    title={cat.name}
+                    onClick={() => setSelectedCategory(null)}
                   >
-                    <span className="drop-shadow-md">{cat.icon || categoryIcons[cat.slug] || "•"}</span>
-                    <span className="max-w-[170px] truncate">{getCategoryChipLabel(cat.name)}</span>
+                    <span className="drop-shadow-md">{t("common.all")}</span>
                   </button>
-                ))}
-              </div>
+                  {categories.map((cat: any) => (
+                    <button
+                      key={`chip-${cat.id}`}
+                      type="button"
+                      data-category-slug={cat.slug}
+                      className={`flex items-center gap-1.5 rounded-full border px-3 py-2 text-xs transition-colors whitespace-nowrap ${
+                        isMaterialsCatalogGrid
+                          ? selectedCategory === cat.slug
+                            ? "border-[#7a3e12] bg-[#7a3e12] text-white"
+                            : "border-[#d6c6b4] bg-white/85 text-[#5b4635] hover:border-[#7a3e12]/40 hover:text-[#7a3e12]"
+                          : selectedCategory === cat.slug
+                            ? "bg-amber-500/25 border-amber-500/40 text-amber-200"
+                            : "bg-black/30 border-white/10 text-white/70 hover:text-white hover:border-white/20"
+                      }`}
+                      onClick={() => setSelectedCategory(selectedCategory === cat.slug ? null : cat.slug)}
+                      title={cat.name}
+                    >
+                      <span className="drop-shadow-md">{cat.icon || categoryIcons[cat.slug] || "â€¢"}</span>
+                      <span className="max-w-[170px] truncate">{getCategoryChipLabel(cat.name)}</span>
+                    </button>
+                  ))}
+                </div>
 
-              {categoryChipsUi.overflow && !categoryChipsUi.atStart ? (
-                <div className="pointer-events-none absolute inset-y-0 left-0 w-10 bg-gradient-to-r from-black/70 to-transparent" />
-              ) : null}
-              {categoryChipsUi.overflow && !categoryChipsUi.atEnd ? (
-                <div className="pointer-events-none absolute inset-y-0 right-0 w-16 bg-gradient-to-l from-black/70 to-transparent" />
-              ) : null}
+                {categoryChipsUi.overflow && !categoryChipsUi.atStart && !useWrappedMaterialsChips ? (
+                  <div className="pointer-events-none absolute inset-y-0 left-0 w-10 bg-gradient-to-r from-black/70 to-transparent" />
+                ) : null}
+                {categoryChipsUi.overflow && !categoryChipsUi.atEnd && !useWrappedMaterialsChips ? (
+                  <div className="pointer-events-none absolute inset-y-0 right-0 w-16 bg-gradient-to-l from-black/70 to-transparent" />
+                ) : null}
 
-              {categoryChipsUi.overflow && !categoryChipsUi.atStart ? (
-                <button
-                  type="button"
-                  className="absolute left-0 top-1/2 -translate-y-1/2 h-7 w-7 rounded-full bg-black/55 border border-white/10 text-white/80 hover:text-white hover:bg-black/75 backdrop-blur flex items-center justify-center"
-                  onClick={() => scrollCategoryChipsBy(-1)}
-                  aria-label={t("buyer.categories.scrollLeft")}
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </button>
-              ) : null}
-              {categoryChipsUi.overflow && !categoryChipsUi.atEnd ? (
-                <button
-                  type="button"
-                  className="absolute right-10 top-1/2 -translate-y-1/2 h-7 w-7 rounded-full bg-black/55 border border-white/10 text-white/80 hover:text-white hover:bg-black/75 backdrop-blur flex items-center justify-center"
-                  onClick={() => scrollCategoryChipsBy(1)}
-                  aria-label={t("buyer.categories.scrollRight")}
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </button>
-              ) : null}
+                {categoryChipsUi.overflow && !categoryChipsUi.atStart && !useWrappedMaterialsChips ? (
+                  <button
+                    type="button"
+                    className="absolute left-0 top-1/2 -translate-y-1/2 h-7 w-7 rounded-full bg-black/55 border border-white/10 text-white/80 hover:text-white hover:bg-black/75 backdrop-blur flex items-center justify-center"
+                    onClick={() => scrollCategoryChipsBy(-1)}
+                    aria-label={t("buyer.categories.scrollLeft")}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </button>
+                ) : null}
+                {categoryChipsUi.overflow && !categoryChipsUi.atEnd && !useWrappedMaterialsChips ? (
+                  <button
+                    type="button"
+                    className="absolute right-10 top-1/2 -translate-y-1/2 h-7 w-7 rounded-full bg-black/55 border border-white/10 text-white/80 hover:text-white hover:bg-black/75 backdrop-blur flex items-center justify-center"
+                    onClick={() => scrollCategoryChipsBy(1)}
+                    aria-label={t("buyer.categories.scrollRight")}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                ) : null}
 
-              {categoryChipsUi.overflow ? (
-                <button
-                  type="button"
-                  className="absolute right-0 top-1/2 -translate-y-1/2 h-7 w-9 rounded-full bg-black/55 border border-white/10 text-white/80 hover:text-white hover:bg-black/75 backdrop-blur flex items-center justify-center"
-                  onClick={() => setCategoriesSheetOpen(true)}
-                  aria-label={t("common.allCategories")}
-                >
-                  <MoreVertical className="h-4 w-4" />
-                </button>
-              ) : null}
+                {categoryChipsUi.overflow && !useWrappedMaterialsChips ? (
+                  <button
+                    type="button"
+                    className="absolute right-0 top-1/2 -translate-y-1/2 h-7 w-9 rounded-full bg-black/55 border border-white/10 text-white/80 hover:text-white hover:bg-black/75 backdrop-blur flex items-center justify-center"
+                    onClick={() => setCategoriesSheetOpen(true)}
+                    aria-label={t("common.allCategories")}
+                  >
+                    <MoreVertical className="h-4 w-4" />
+                  </button>
+                ) : null}
               </div>
               {nearbyFallbackUsed ? (
-                <div className="mt-1 text-[10px] text-amber-200/70">
+                <div className={`mt-1 text-[10px] ${isMaterialsCatalogGrid ? "text-[#7a3e12]" : "text-amber-200/70"}`}>
                   {t("buyer.categories.showingClosestItems")
                     .replace("{radiusKm}", String(radiusKm))
                     .replace("{unit}", t("units.km"))}
                 </div>
               ) : categoryChipsUi.overflow ? (
-                <div className="mt-1 text-[10px] text-white/45">{t("buyer.categories.scrollForMore")}</div>
+                <div className={`mt-1 text-[10px] ${isMaterialsCatalogGrid ? "text-[#7b6958]" : "text-white/45"}`}>{t("buyer.categories.scrollForMore")}</div>
               ) : null}
               {showFallbackProducts ? (
-                <div className="mt-2 flex items-center justify-between gap-3 rounded-xl border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-100">
+                <div
+                  className={`mt-2 flex items-center justify-between gap-3 rounded-xl border px-3 py-2 text-[11px] ${
+                    isMaterialsCatalogGrid
+                      ? "border-[#7a3e12]/20 bg-[#f6ecdf] text-[#7a3e12]"
+                      : "border-amber-500/25 bg-amber-500/10 text-amber-100"
+                  }`}
+                >
                   <span className="min-w-0 truncate">{t("buyer.categories.noItemsFallback")}</span>
                   <Button
                     size="sm"
                     variant="outline"
-                    className="h-7 px-3 border-amber-500/30 text-amber-100 hover:bg-amber-500/10"
+                    className={`h-7 px-3 ${
+                      isMaterialsCatalogGrid
+                        ? "border-[#7a3e12]/20 bg-white text-[#7a3e12] hover:bg-[#f4eadc]"
+                        : "border-amber-500/30 text-amber-100 hover:bg-amber-500/10"
+                    }`}
                     onClick={() => setSelectedCategory(null)}
                   >
-                    Show all
+                    Voir tout
                   </Button>
                 </div>
               ) : null}
@@ -7110,93 +8461,128 @@ export function BuyerHomePage({
             </div>
           ) : (
             <>
-              <div className="md:hidden overflow-x-auto pb-[calc(var(--bottom-stack-height)+16px)] px-3 scrollbar-hide">
-                <div className="flex gap-3" style={{ width: 'max-content' }}>
-                  {panelPreviewTrimmed.map((product: any) => {
-                    const badge = getCategoryBadge(product);
-                    const isAdminUser = session.user?.currentMode === "admin" || session.hasRole?.("admin" as any);
-                    const hasRealImages = collectProductImages(product).length > 0;
-                    return (
-                      <div
-                        key={product.id}
-                        className="w-36 flex-shrink-0 rounded-xl overflow-hidden cursor-pointer group shadow-lg active:scale-[0.98]"
-                        onClick={() => setSelectedProduct(product)}
-                      >
-                        <div className="aspect-square overflow-hidden relative">
-                          <img
-                            src={getCommodityImage(product)}
-                            alt={product.name}
-                            className="w-full h-full object-cover"
-                            onError={(e) => {
-                              e.currentTarget.onerror = null;
-                              e.currentTarget.src = buildProductPlaceholder(product, 0);
-                            }}
-                          />
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-                          <div className="absolute top-1.5 left-1.5 flex gap-1">
-                            <Badge className={`text-[7px] px-1 py-0 ${badge.className}`}>
-                              {badge.label}
-                            </Badge>
-                            {isAdminUser && !hasRealImages ? (
-                              <button
-                                type="button"
-                                className="h-5 w-5 rounded-full bg-black/55 border border-amber-500/30 text-amber-200 hover:bg-black/75 flex items-center justify-center"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  navigate(`/admin/marketplace/products?images=${encodeURIComponent(String(product.id))}`);
-                                }}
-                                title="Edit product images"
-                                aria-label="Edit product images"
-                              >
-                                <Wrench className="h-3 w-3" />
-                              </button>
-                            ) : null}
+              {isMaterialsCatalogGrid ? (
+                <div className="md:hidden px-3 pb-[calc(var(--bottom-stack-height)+16px)]">
+                  {productsLoading && materialsCatalogProducts.length === 0 ? (
+                    <div className={materialsGridClass}>
+                      {Array.from({ length: 4 }, (_, idx) => (
+                        <div
+                          key={`met-mobile-skeleton-${idx}`}
+                          className="overflow-hidden rounded-[24px] border bg-white/85"
+                          style={{ borderColor: "rgba(122,62,18,0.12)" }}
+                        >
+                          <div className="aspect-[4/3] animate-pulse bg-[#eadfcd]" />
+                          <div className="space-y-2 p-4">
+                            <div className="h-4 w-3/4 animate-pulse rounded bg-[#eadfcd]" />
+                            <div className="h-3 w-1/2 animate-pulse rounded bg-[#eadfcd]" />
+                            <div className="h-10 w-full animate-pulse rounded bg-[#eadfcd]" />
                           </div>
-                          <div className="absolute top-1.5 right-1.5">
-                            <Badge className={`text-[6px] px-1 py-0 animate-pulse ${
-                              (product.stockQuantity || 0) > 0
-                                ? 'bg-emerald-500/90 text-white border-emerald-400/50'
-                                : 'bg-rose-500/90 text-white border-rose-400/50'
-                            }`}>
-                              {getProductStockLabel(product).text}
-                            </Badge>
-                          </div>
-                          <div className="absolute bottom-0 left-0 right-0 p-2">
-                            <p className="text-xs font-medium text-white truncate drop-shadow-lg">{product.name}</p>
-                            <p className="text-[9px] text-white/50 flex items-center gap-1 truncate drop-shadow-md">
-                              <MapPin className="h-3 w-3 flex-shrink-0" />
-                              <span className="flex-shrink-0">
-                                {formatDistanceAway(getProductDistanceKm(product)) ?? t("location.setToSeeDistance")}
-                              </span>
-                              <span className="text-white/35 flex-shrink-0">•</span>
-                              <span className="truncate text-white/60">{product.shopName}</span>
-                            </p>
-                            <div className="flex items-center justify-between mt-1">
-                              <p className="text-amber-400 font-bold text-[11px] drop-shadow-lg">
-                                {getProductPriceDisplay(product).primary}
+                        </div>
+                      ))}
+                    </div>
+                  ) : selectedCategory ? (
+                    <div className={materialsGridClass}>
+                      {materialsCatalogProducts.map((product: any, idx: number) => renderMaterialsCatalogCard(product, idx))}
+                    </div>
+                  ) : (
+                    <div className="space-y-6">
+                      {materialsSectionBlocks.map((section) => renderMaterialsCatalogSection(section))}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="md:hidden overflow-x-auto pb-[calc(var(--bottom-stack-height)+16px)] px-3 scrollbar-hide">
+                  <div className="flex gap-3" style={{ width: 'max-content' }}>
+                    {panelPreviewTrimmed.map((product: any) => {
+                      const badge = getCategoryBadge(product);
+                      const isAdminUser = session.user?.currentMode === "admin" || session.hasRole?.("admin" as any);
+                      const hasRealImages = collectProductImages(product).length > 0;
+                      return (
+                        <div
+                          key={product.id}
+                          className="w-36 flex-shrink-0 rounded-xl overflow-hidden cursor-pointer group shadow-lg active:scale-[0.98]"
+                          onClick={() => setSelectedProduct(product)}
+                        >
+                          <div className="aspect-square overflow-hidden relative">
+                            <img
+                              src={getCommodityImage(product)}
+                              alt={product.name}
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                e.currentTarget.onerror = null;
+                                e.currentTarget.src = buildProductPlaceholder(product, 0);
+                              }}
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                            <div className="absolute top-1.5 left-1.5 flex gap-1">
+                              <Badge className={`text-[7px] px-1 py-0 ${badge.className}`}>
+                                {badge.label}
+                              </Badge>
+                              {isAdminUser && !hasRealImages ? (
+                                <button
+                                  type="button"
+                                  className="h-5 w-5 rounded-full bg-black/55 border border-amber-500/30 text-amber-200 hover:bg-black/75 flex items-center justify-center"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    navigate(`/admin/marketplace/products?images=${encodeURIComponent(String(product.id))}`);
+                                  }}
+                                  title="Edit product images"
+                                  aria-label="Edit product images"
+                                >
+                                  <Wrench className="h-3 w-3" />
+                                </button>
+                              ) : null}
+                            </div>
+                            <div className="absolute top-1.5 right-1.5">
+                              <Badge className={`text-[6px] px-1 py-0 animate-pulse ${
+                                (product.stockQuantity || 0) > 0
+                                  ? 'bg-emerald-500/90 text-white border-emerald-400/50'
+                                  : 'bg-rose-500/90 text-white border-rose-400/50'
+                              }`}>
+                                {getProductStockLabel(product).text}
+                              </Badge>
+                            </div>
+                            <div className="absolute bottom-0 left-0 right-0 p-2">
+                              <p className="text-xs font-medium text-white truncate drop-shadow-lg">{product.name}</p>
+                              <p className="text-[9px] text-white/50 flex items-center gap-1 truncate drop-shadow-md">
+                                <MapPin className="h-3 w-3 flex-shrink-0" />
+                                <span className="flex-shrink-0">
+                                  {formatDistanceAway(getProductDistanceKm(product)) ?? t("location.setToSeeDistance")}
+                                </span>
+                                <span className="text-white/35 flex-shrink-0">â€¢</span>
+                                <span className="truncate text-white/60">{product.shopName}</span>
                               </p>
-                              <Button
-                                size="icon"
-                                className={`h-6 w-6 rounded-full ${(product.stockQuantity || 0) > 0 ? 'bg-amber-500/90 hover:bg-amber-500 text-black' : 'bg-gray-600/50 text-gray-400 cursor-not-allowed'}`}
-                                disabled={(product.stockQuantity || 0) <= 0}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  if ((product.stockQuantity || 0) > 0) addToCart(product, null);
-                                }}
-                              >
-                                <Plus className="h-3 w-3" />
-                              </Button>
+                              <div className="flex items-center justify-between mt-1">
+                                <p className="text-amber-400 font-bold text-[11px] drop-shadow-lg">
+                                  {getProductPriceDisplay(product).primary}
+                                </p>
+                                <Button
+                                  size="icon"
+                                  className={`h-6 w-6 rounded-full ${(product.stockQuantity || 0) > 0 ? 'bg-amber-500/90 hover:bg-amber-500 text-black' : 'bg-gray-600/50 text-gray-400 cursor-not-allowed'}`}
+                                  disabled={(product.stockQuantity || 0) <= 0}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if ((product.stockQuantity || 0) > 0) addToCart(product, null);
+                                  }}
+                                >
+                                  <Plus className="h-3 w-3" />
+                                </Button>
+                              </div>
                             </div>
                           </div>
                         </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
+              )}
               <div
                 className={`hidden md:block ${
-                  isDesktopRetail ? "flex-1 overflow-y-auto px-4 pb-4" : "h-[65vh] overflow-y-auto px-3 pb-4"
+                  useNonMapFlowLayout
+                    ? "flex-1 overflow-visible px-4 pb-4"
+                    : isDesktopRetail
+                      ? "flex-1 overflow-y-auto px-4 pb-4"
+                      : "h-[65vh] overflow-y-auto px-3 pb-4"
                 }`}
               >
                 {isDesktopRetail ? (
@@ -7205,6 +8591,82 @@ export function BuyerHomePage({
                         const items = retailDisplayByCategoryResolved[section.slug] || [];
                         return sum + items.length;
                       }, 0);
+
+                    if (isMaterialsCatalogGrid) {
+                      if (productsLoading && materialsCatalogProducts.length === 0) {
+                        return (
+                          <div className="space-y-4">
+                            <div className={materialsGridClass}>
+                              {Array.from({ length: 8 }, (_, idx) => (
+                                <div
+                                  key={`met-grid-skeleton-${idx}`}
+                                  className="overflow-hidden rounded-[24px] border bg-white/85"
+                                  style={{ borderColor: "rgba(122,62,18,0.12)" }}
+                                >
+                                  <div className="aspect-[4/3] animate-pulse bg-[#eadfcd]" />
+                                  <div className="space-y-2 p-4">
+                                    <div className="h-4 w-3/4 animate-pulse rounded bg-[#eadfcd]" />
+                                    <div className="h-3 w-1/2 animate-pulse rounded bg-[#eadfcd]" />
+                                    <div className="h-10 w-full animate-pulse rounded bg-[#eadfcd]" />
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      if (!materialsCatalogProducts.length) {
+                        const isAdminUser = session.user?.currentMode === "admin" || session.hasRole?.("admin" as any);
+                        return (
+                          <div className="flex h-full items-center justify-center px-4">
+                            <div className="w-full max-w-lg rounded-2xl border border-white/10 bg-white/5 p-6 text-center backdrop-blur-md shadow-[0_0_30px_rgba(0,0,0,0.45)]">
+                              <div className="mx-auto mb-3 h-12 w-12 rounded-full bg-amber-500/15 border border-amber-500/25 flex items-center justify-center">
+                                <Package className="h-5 w-5 text-amber-300" />
+                              </div>
+                              <p className="text-base font-semibold text-white">{noProductsTitle}</p>
+                              <p className="mt-1 text-[12px] text-white/60">
+                                {selectedCategory
+                                  ? t("buyer.noProducts.desc.category")
+                                  : t("buyer.noProducts.desc.generic")}
+                              </p>
+                              <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+                                {isAdminUser ? (
+                                  <Button
+                                    size="sm"
+                                    className="bg-amber-500 hover:bg-amber-600 text-black font-semibold"
+                                    onClick={() => navigate("/admin/marketplace/products")}
+                                  >
+                                    {t("admin.addProduct")}
+                                  </Button>
+                                ) : null}
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="border-white/15 text-white/80 hover:bg-white/10"
+                                  onClick={() => setSelectedCategory(null)}
+                                  disabled={!selectedCategory}
+                                >
+                                  {t("common.clearFilter")}
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div className="space-y-6">
+                          {selectedCategory ? (
+                            <div className={materialsGridClass}>
+                              {materialsCatalogProducts.map((product: any, idx: number) => renderMaterialsCatalogCard(product, idx))}
+                            </div>
+                          ) : (
+                            materialsSectionBlocks.map((section) => renderMaterialsCatalogSection(section))
+                          )}
+                        </div>
+                      );
+                    }
 
                     if (productsLoading && total === 0) {
                       const placeholders = Array.from({ length: 6 }, (_, idx) => idx);
@@ -7223,7 +8685,9 @@ export function BuyerHomePage({
                                       <p className="text-[10px] text-white/45 truncate">{section.subtitle}</p>
                                     ) : null}
                                   </div>
-                                  <span className="text-[10px] text-white/35">Closer &larr; &rarr; Farther</span>
+                                  {useProximityRadius && mapEnabled && !useNonMapFlowLayout ? (
+                                  <span className="text-[10px] text-white/35">Closer \u2190 \u2192 Farther</span>
+                                  ) : null}
                                 </div>
                                 <div
                                   className="mt-1 flex gap-3 overflow-x-auto scrollbar-hide"
@@ -7284,7 +8748,7 @@ export function BuyerHomePage({
                               <span>{sellerCount} sellers</span>
                               {useProximityRadius ? (
                                 <>
-                                  <span className="text-white/25">•</span>
+                                  <span className="text-white/25">â€¢</span>
                                   <span>{radiusKm} km radius</span>
                                 </>
                               ) : null}
@@ -7373,7 +8837,7 @@ export function BuyerHomePage({
                             ) : null}
                             <p className="mt-2 text-[10px] text-white/45">
                               {useProximityRadius
-                                ? `${activeLocationLabel ? `Location: ${activeLocationLabel}` : "Location: not set"} • Radius: ${radiusKm}km`
+                                ? `${activeLocationLabel ? `Location: ${activeLocationLabel}` : "Location: not set"} â€¢ Radius: ${radiusKm}km`
                                 : "Catalog scope: global inventory"}
                             </p>
                           </div>
@@ -7465,18 +8929,36 @@ export function BuyerHomePage({
 
                           const ui = railScrollUi[section.slug];
                           const atStart = ui?.atStart ?? true;
-                           const atEnd = ui?.atEnd ?? false;
-                           const progress = ui?.progress ?? 0;
-                           const thumbPct = ui?.thumbPct ?? 35;
-                           const showHint = retailScrollHintState !== "hidden" && sectionIdx === 0;
-                           const pulseRight = showHint && !atEnd ? "animate-pulse" : "";
-                           const showRailControls = isDesktopRetail || activeRailSlug === section.slug || showHint;
-                           const showLeftControl = showRailControls;
-                           const showRightControl = showRailControls;
+                          const atEnd = ui?.atEnd ?? true;
+                          const progress = ui?.progress ?? 0;
+                          const thumbPct = ui?.thumbPct ?? 35;
+                          const hasOverflow = ui?.overflow ?? false;
+                          const useCompactGrid =
+                            (isMaterialsTenant && useNonMapFlowLayout) ||
+                            (!mapEnabled && products.length <= adaptiveRailThreshold);
+                          const renderAsCompactGrid = useCompactGrid || !hasOverflow;
+                          const compactCardWidthClass =
+                            products.length <= 1
+                              ? "w-full sm:max-w-[360px]"
+                              : products.length === 2
+                                ? "w-full sm:w-[calc(50%-0.375rem)]"
+                                : products.length === 3
+                                  ? "w-full sm:w-[calc(50%-0.375rem)] xl:w-[calc(33.333%-0.5rem)]"
+                                  : "w-full sm:w-[calc(50%-0.375rem)] xl:w-[calc(33.333%-0.5rem)] 2xl:w-[calc(25%-0.5625rem)]";
+                          const showDirectionHint = useProximityRadius && mapEnabled && !useNonMapFlowLayout;
+                          const showHint = !renderAsCompactGrid && retailScrollHintState !== "hidden" && sectionIdx === 0;
+                          const pulseRight = showHint && !atEnd ? "animate-pulse" : "";
+                          const showRailControls =
+                            !renderAsCompactGrid &&
+                            hasOverflow &&
+                            (isDesktopRetail || activeRailSlug === section.slug || showHint);
+                          const showLeftControl = showRailControls;
+                          const showRightControl = showRailControls;
+                          const sectionIsSelected = selectedCategory === section.slug;
 
                            return (
-                             <div key={section.slug}>
-                               <div className="flex items-start justify-between gap-2 px-1">
+                             <div key={section.slug} className="space-y-2">
+                               <div className="flex items-start justify-between gap-3 px-4">
                                  <div className="min-w-0">
                                    <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: meta.accent }}>
                                      {section.title}
@@ -7485,15 +8967,25 @@ export function BuyerHomePage({
                                      <p className="text-[10px] text-white/45 truncate">{section.subtitle}</p>
                                    ) : null}
                                  </div>
-                                 <div className="flex items-center gap-2 text-[10px] text-white/45 whitespace-nowrap">
-                                   <span>{products.length}</span>
-                                   <span className="text-white/25">•</span>
-                                   <span className="hidden lg:inline">Closer &larr; &rarr; Farther</span>
+                                 <div className="flex items-center gap-2 text-[10px] whitespace-nowrap">
+                                   <span className="text-white/45">{products.length}</span>
+                                   {showDirectionHint ? (
+                                     <>
+                                       <span className="text-white/25">•</span>
+                                       <span className="hidden lg:inline">Closer \u2190 \u2192 Farther</span>
+                                     </>
+                                   ) : null}
+                                 <button
+                                     type="button"
+                                     className="text-amber-300/90 hover:text-amber-200 transition-colors"
+                                     onClick={() => setSelectedCategory(sectionIsSelected ? null : section.slug)}
+                                   >
+                                     {sectionIsSelected ? t("common.clear") : t("common.browse")}
+                                   </button>
                                  </div>
                                </div>
-
-                              <div className="relative mt-0.5">
-                                <div
+                               <div className="relative">
+                               <div
                                   ref={(el) => {
                                     railRefs.current[section.slug] = el;
                                     if (!el) return;
@@ -7502,15 +8994,19 @@ export function BuyerHomePage({
                                       initRetailRailScroll(section.slug, products.length);
                                     });
                                   }}
-                                  className="flex gap-3 overflow-x-auto scrollbar-hide snap-x snap-mandatory scroll-smooth cursor-grab active:cursor-grabbing select-none"
-                                  style={{ paddingLeft: "16px", paddingRight: "16px", touchAction: "pan-y" }}
-                                  onScroll={() => handleRetailRailScroll(section.slug)}
+                                  className={
+                                    renderAsCompactGrid
+                                      ? "mt-1 flex flex-wrap items-stretch gap-3 px-4"
+                                      : "flex gap-3 overflow-x-auto scrollbar-hide snap-x snap-mandatory scroll-smooth cursor-grab active:cursor-grabbing select-none"
+                                  }
+                                  style={renderAsCompactGrid ? undefined : { paddingLeft: "16px", paddingRight: "16px", touchAction: "pan-y" }}
+                                  onScroll={renderAsCompactGrid ? undefined : () => handleRetailRailScroll(section.slug)}
                                   onMouseEnter={() => setActiveRailSlug(section.slug)}
-                                  onWheel={(e) => handleRetailRailWheel(section.slug, e)}
-                                  onPointerDown={(e) => startRetailRailPointerDrag(section.slug, e)}
-                                  onPointerMove={(e) => handleRetailRailPointerMove(section.slug, e)}
-                                  onPointerUp={(e) => stopRetailRailPointerDrag(section.slug, e)}
-                                  onPointerCancel={(e) => stopRetailRailPointerDrag(section.slug, e)}
+                                  onWheel={renderAsCompactGrid ? undefined : (e) => handleRetailRailWheel(section.slug, e)}
+                                  onPointerDown={renderAsCompactGrid ? undefined : (e) => startRetailRailPointerDrag(section.slug, e)}
+                                  onPointerMove={renderAsCompactGrid ? undefined : (e) => handleRetailRailPointerMove(section.slug, e)}
+                                  onPointerUp={renderAsCompactGrid ? undefined : (e) => stopRetailRailPointerDrag(section.slug, e)}
+                                  onPointerCancel={renderAsCompactGrid ? undefined : (e) => stopRetailRailPointerDrag(section.slug, e)}
                                 >
                                   {products.map((product: any, idx: number) => {
                                   const badge = getCategoryBadge(product);
@@ -7526,7 +9022,7 @@ export function BuyerHomePage({
                                     <div
                                       key={`${section.slug}-${product.id}`}
                                       data-shop-id={Number.isFinite(shopId) ? String(shopId) : undefined}
-                                      className={`group w-[280px] flex-shrink-0 snap-center rounded-2xl overflow-hidden border bg-white/5 transition-colors cursor-pointer ${
+                                      className={`group ${renderAsCompactGrid ? `${compactCardWidthClass} min-w-0 flex-none` : "w-[280px] flex-shrink-0 snap-center"} rounded-2xl overflow-hidden border bg-white/5 transition-colors cursor-pointer ${
                                         isAvailable ? "border-white/10 hover:border-amber-500/25 hover:bg-white/7" : "border-white/10 opacity-60"
                                       }`}
                                       onMouseEnter={() => setHoveredRailShopId(Number.isFinite(shopId) ? shopId : null)}
@@ -7548,10 +9044,20 @@ export function BuyerHomePage({
                                           className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                                           onError={(e) => {
                                             e.currentTarget.onerror = null;
-                                            e.currentTarget.src = buildProductPlaceholder(product, idx);
+                                            e.currentTarget.src =
+                                              normalizeProductImageUrl(tenantPlaceholderProductImage) || buildProductPlaceholder(product, idx);
                                           }}
                                         />
                                         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                                        {!hasRealImages ? (
+                                          <div className="absolute inset-0 flex items-center justify-center p-4">
+                                            <div className="rounded-2xl border border-white/10 bg-black/35 px-4 py-3 text-center backdrop-blur-sm shadow-lg">
+                                              <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-white/75">{meta.icon || "MET"}</div>
+                                              <div className="mt-2 text-sm font-semibold text-white">{section.title}</div>
+                                              <div className="mt-1 text-[11px] text-white/55">{brand.name}</div>
+                                            </div>
+                                          </div>
+                                        ) : null}
 
                                         <div className="absolute top-2 left-2 flex gap-1">
                                           <Badge className={`text-[9px] px-2 py-0.5 ${badge.className}`}>{badge.label}</Badge>
@@ -7589,7 +9095,7 @@ export function BuyerHomePage({
                                               <div className="text-[11px] text-white/70 flex items-center gap-1 min-w-0 drop-shadow">
                                                 <MapPin className="h-3 w-3 flex-shrink-0" />
                                                 <span className="flex-shrink-0">{distanceLabel}</span>
-                                                <span className="text-white/35 flex-shrink-0">•</span>
+                                                <span className="text-white/35 flex-shrink-0">â€¢</span>
                                                 <span className="min-w-0 truncate text-white/60">{product.shopName}</span>
                                               </div>
                                             </div>
@@ -7636,16 +9142,20 @@ export function BuyerHomePage({
                                   })}
                                 </div>
 
-                                <div
-                                  className={`pointer-events-none absolute inset-y-0 left-0 w-14 bg-gradient-to-r from-black/75 to-transparent transition-opacity duration-200 ${
-                                    atStart ? "opacity-0" : "opacity-100"
-                                  }`}
-                                />
-                                <div
-                                  className={`pointer-events-none absolute inset-y-0 right-0 w-14 bg-gradient-to-l from-black/75 to-transparent transition-opacity duration-200 ${
-                                    atEnd ? "opacity-0" : "opacity-100"
-                                  }`}
-                                />
+                                {!renderAsCompactGrid ? (
+                                  <>
+                                    <div
+                                      className={`pointer-events-none absolute inset-y-0 left-0 w-14 bg-gradient-to-r from-black/75 to-transparent transition-opacity duration-200 ${
+                                        atStart ? "opacity-0" : "opacity-100"
+                                      }`}
+                                    />
+                                    <div
+                                      className={`pointer-events-none absolute inset-y-0 right-0 w-14 bg-gradient-to-l from-black/75 to-transparent transition-opacity duration-200 ${
+                                        atEnd ? "opacity-0" : "opacity-100"
+                                      }`}
+                                    />
+                                  </>
+                                ) : null}
 
                                 {showHint ? (
                                   <div
@@ -7659,6 +9169,7 @@ export function BuyerHomePage({
                                   </div>
                                 ) : null}
 
+                                {!renderAsCompactGrid ? (
                                   <button
                                     type="button"
                                     aria-label="Scroll left"
@@ -7690,7 +9201,9 @@ export function BuyerHomePage({
                                       <ChevronLeft className="h-8 w-8" />
                                     </div>
                                   </button>
+                                ) : null}
 
+                                {!renderAsCompactGrid ? (
                                   <button
                                     type="button"
                                     aria-label="Scroll right"
@@ -7722,37 +9235,40 @@ export function BuyerHomePage({
                                       <ChevronRight className="h-8 w-8" />
                                     </div>
                                   </button>
-                                </div>
+                                ) : null}
+                               </div>
 
-                                <div className="mt-2 px-1">
-                                  <div
-                                    ref={(el) => {
-                                      railScrollbarTrackRefs.current[section.slug] = el;
-                                    }}
-                                    className={`relative h-3 rounded-full bg-black/35 border border-white/10 overflow-hidden cursor-grab active:cursor-grabbing ${
-                                      atStart && atEnd ? "opacity-40" : "opacity-100"
-                                    }`}
-                                    style={{ touchAction: "none" }}
-                                    onPointerDown={(e) => startRetailRailScrubberDrag(section.slug, e)}
-                                    onPointerMove={(e) => handleRetailRailScrubberMove(section.slug, e)}
-                                    onPointerUp={(e) => stopRetailRailScrubberDrag(section.slug, e)}
-                                    onPointerCancel={(e) => stopRetailRailScrubberDrag(section.slug, e)}
-                                  >
-                                    <div className="absolute inset-0 pointer-events-none bg-gradient-to-r from-transparent via-white/5 to-transparent" />
+                                {!renderAsCompactGrid ? (
+                                  <div className="mt-2 px-1">
                                     <div
-                                      className="absolute top-1/2 -translate-y-1/2 h-3 rounded-full bg-amber-500/85 border border-amber-300/60 shadow-[0_0_10px_rgba(245,158,11,0.28)] pointer-events-none transition-[left] duration-100 ease-out"
-                                      style={{ width: `${thumbPct}%`, left: `${progress * (100 - thumbPct)}%` }}
+                                      ref={(el) => {
+                                        railScrollbarTrackRefs.current[section.slug] = el;
+                                      }}
+                                      className={`relative h-3 rounded-full bg-black/35 border border-white/10 overflow-hidden cursor-grab active:cursor-grabbing ${
+                                        atStart && atEnd ? "opacity-40" : "opacity-100"
+                                      }`}
+                                      style={{ touchAction: "none" }}
+                                      onPointerDown={(e) => startRetailRailScrubberDrag(section.slug, e)}
+                                      onPointerMove={(e) => handleRetailRailScrubberMove(section.slug, e)}
+                                      onPointerUp={(e) => stopRetailRailScrubberDrag(section.slug, e)}
+                                      onPointerCancel={(e) => stopRetailRailScrubberDrag(section.slug, e)}
                                     >
-                                      <div className="h-full w-full flex items-center justify-center">
-                                        <div className="h-full w-full flex items-center justify-center gap-1 px-2">
-                                          <ChevronLeft className="h-3 w-3 text-black/45" />
-                                          <div className="h-2 w-10 rounded-full bg-black/20 border border-white/15" />
-                                          <ChevronRight className="h-3 w-3 text-black/45" />
+                                      <div className="absolute inset-0 pointer-events-none bg-gradient-to-r from-transparent via-white/5 to-transparent" />
+                                      <div
+                                        className="absolute top-1/2 -translate-y-1/2 h-3 rounded-full bg-amber-500/85 border border-amber-300/60 shadow-[0_0_10px_rgba(245,158,11,0.28)] pointer-events-none transition-[left] duration-100 ease-out"
+                                        style={{ width: `${thumbPct}%`, left: `${progress * (100 - thumbPct)}%` }}
+                                      >
+                                        <div className="h-full w-full flex items-center justify-center">
+                                          <div className="h-full w-full flex items-center justify-center gap-1 px-2">
+                                            <ChevronLeft className="h-3 w-3 text-black/45" />
+                                            <div className="h-2 w-10 rounded-full bg-black/20 border border-white/15" />
+                                            <ChevronRight className="h-3 w-3 text-black/45" />
+                                          </div>
                                         </div>
                                       </div>
                                     </div>
                                   </div>
-                                </div>
+                                ) : null}
                             </div>
                           );
                         })}
@@ -7790,7 +9306,7 @@ export function BuyerHomePage({
                                   }`}
                                   onClick={() => setSelectedCategory(selectedCategory === cat.slug ? null : cat.slug)}
                                 >
-                                  <span className="drop-shadow-md">{cat.icon || categoryIcons[cat.slug] || "•"}</span>
+                                  <span className="drop-shadow-md">{cat.icon || categoryIcons[cat.slug] || "â€¢"}</span>
                                   <span className="drop-shadow-lg font-medium">{cat.name}</span>
                                 </button>
                               ))}
@@ -7957,12 +9473,38 @@ export function BuyerHomePage({
         </div>
       )}
 
+      {showBdoSecondaryNews && useNonMapFlowLayout && !useBdoInstitutionalLayout ? (
+        <div className={`relative z-40 mx-3 mb-3 ${showProducts ? "mt-1" : "mt-[calc(env(safe-area-inset-top,0px)+116px)]"}`}>
+          <div className="grid gap-2 xl:grid-cols-12">
+            <div className="xl:col-span-8">
+              <GoldNewsBanner />
+            </div>
+            <section className="xl:col-span-4 rounded-2xl border border-amber-500/25 bg-[#0a0f1a]/90 p-4 shadow-xl backdrop-blur">
+              <h3 className="text-sm font-semibold text-amber-200">{language === "fr" ? "Espace Pro" : "Pro Space"}</h3>
+              <p className="mt-2 text-xs text-white/70">
+                {language === "fr"
+                  ? "L'espace dedie aux professionnels de l'or : mines, negociants, maisons, investisseurs et acheteurs en gros."
+                  : "Dedicated flow for mines, traders, maisons, investors, and institutional buyers."}
+              </p>
+              <div className="mt-3">
+                <Button
+                  className="h-8 bg-amber-500 text-black hover:bg-amber-400"
+                  onClick={() => navigate("/espace-pro")}
+                >
+                  {language === "fr" ? "Acceder a l'Espace Pro" : "Open Pro Space"}
+                </Button>
+              </div>
+            </section>
+          </div>
+        </div>
+      ) : null}
+
       {showProducts && !isWholesalePreview && marketMode === "machinery" && (
         <div className="absolute bottom-0 left-0 right-0 md:bottom-auto md:top-[calc(env(safe-area-inset-top,0px)+132px)] lg:top-[calc(env(safe-area-inset-top,0px)+116px)] md:right-3 md:left-auto z-40 w-full md:w-[360px] bg-black/70 md:bg-black/55 md:backdrop-blur-xl md:rounded-2xl md:border md:border-sky-500/20 safe-area-bottom">
           <div className="flex items-center justify-between px-4 pt-3 pb-2 border-b border-white/10">
             <div className="min-w-0">
               <h3 className="text-sm font-semibold text-white">{t("nav.machinery")}</h3>
-              <p className="text-[10px] text-white/50">Equipment catalog • buy, request, deploy</p>
+              <p className="text-[10px] text-white/50">Equipment catalog â€¢ buy, request, deploy</p>
             </div>
             <Button
               variant="ghost"
@@ -8072,7 +9614,7 @@ export function BuyerHomePage({
                           <div className="min-w-0">
                             <p className="text-sm font-semibold text-white truncate">{item.name}</p>
                             <p className="text-[11px] text-white/60 truncate">
-                              {formatMachineryCategory(item.category, t)} • {formatMachineryCondition(item.condition, t)} •{" "}
+                              {formatMachineryCategory(item.category, t)} â€¢ {formatMachineryCondition(item.condition, t)} â€¢{" "}
                               {item.location.country}
                             </p>
                             <p className="text-[10px] text-white/45 truncate mt-0.5">
@@ -8086,7 +9628,7 @@ export function BuyerHomePage({
                         <div className="mt-2 flex items-center justify-between">
                           <div className="text-[11px] text-white/60 truncate">{item.location.region}</div>
                           <div className="text-[12px] font-semibold text-amber-400">
-                            {item.price ? formatMoney(item.price.amount, item.price.currency) : "—"}
+                            {item.price ? formatMoney(item.price.amount, item.price.currency) : "â€”"}
                           </div>
                         </div>
                       </div>
@@ -8136,7 +9678,7 @@ export function BuyerHomePage({
                           <div className="min-w-0">
                             <p className="text-sm font-semibold text-white truncate">{item.name}</p>
                             <p className="text-[11px] text-white/60">
-                              {formatMachineryCategory(item.category, t)} • {formatMachineryCondition(item.condition, t)} •{" "}
+                              {formatMachineryCategory(item.category, t)} â€¢ {formatMachineryCondition(item.condition, t)} â€¢{" "}
                               {item.location.country}
                             </p>
                             <p className="text-[10px] text-white/45 truncate mt-0.5">
@@ -8159,7 +9701,7 @@ export function BuyerHomePage({
                         ) : null}
                       </div>
                       <div className="text-[12px] font-semibold text-amber-400">
-                        {item.price ? formatMoney(item.price.amount, item.price.currency) : "—"}
+                        {item.price ? formatMoney(item.price.amount, item.price.currency) : "â€”"}
                       </div>
                     </div>
                     <div className="mt-3 flex gap-2">
@@ -8291,8 +9833,8 @@ export function BuyerHomePage({
                       const cadastreOk = isCadastrePermitValid(cadastrePermit);
                       const cadastreSource = mine ? getCadastreSourceForCountry(mine.country) : null;
                       const regionLabel = mine
-                        ? `${mine.country} • ${mine.region}`
-                        : `${op.location.country} • ${op.location.region}`;
+                        ? `${mine.country} â€¢ ${mine.region}`
+                        : `${op.location.country} â€¢ ${op.location.region}`;
                       return (
                         <>
                           <div className="min-w-0">
@@ -8319,28 +9861,28 @@ export function BuyerHomePage({
                           <div className="mt-2 grid grid-cols-2 gap-2 text-[11px] text-white/70">
                             <div>
                               <div className="text-white/45">{t("investments.field.licenseActiveSince")}</div>
-                              <div className="font-semibold text-white">{mine?.licenseActiveSinceYear ?? "—"}</div>
+                              <div className="font-semibold text-white">{mine?.licenseActiveSinceYear ?? "â€”"}</div>
                             </div>
                             <div>
                               <div className="text-white/45">{t("investments.field.currentCapacity")}</div>
                               <div className="font-semibold text-white">
-                                {mine ? `${mine.currentCapacityKgPerMonth} ${t("units.kgPerMonth")}` : "—"}
+                                {mine ? `${mine.currentCapacityKgPerMonth} ${t("units.kgPerMonth")}` : "â€”"}
                               </div>
                             </div>
                             <div className="col-span-2">
                               <div className="text-white/45">{t("investments.field.historicalProduction")}</div>
                               <div className="font-semibold text-white">
                                 {mine
-                                  ? `${mine.historicalProductionTotalKg} ${t("units.kg")} ${t("investments.historical.totalSuffix")} • ${mine.historicalProductionLast12MonthsKg} ${t("units.kg")} (${t("investments.historical.last12m")})`
-                                  : "—"}
+                                  ? `${mine.historicalProductionTotalKg} ${t("units.kg")} ${t("investments.historical.totalSuffix")} â€¢ ${mine.historicalProductionLast12MonthsKg} ${t("units.kg")} (${t("investments.historical.last12m")})`
+                                  : "â€”"}
                               </div>
                             </div>
                             <div className="col-span-2">
                               <div className="text-white/45">{t("investments.field.remainingPotential")}</div>
                               <div className="font-semibold text-white">
-                                {mine?.remainingPotential ? t(`investments.potential.${mine.remainingPotential}`) : "—"}
+                                {mine?.remainingPotential ? t(`investments.potential.${mine.remainingPotential}`) : "â€”"}
                                 {mine?.remainingLifeYearsAtCurrentRate
-                                  ? ` • ~${mine.remainingLifeYearsAtCurrentRate} ${
+                                  ? ` â€¢ ~${mine.remainingLifeYearsAtCurrentRate} ${
                                       mine.remainingLifeYearsAtCurrentRate === 1 ? t("units.year") : t("units.years")
                                     } ${t("investments.atCurrentRate")}`
                                   : ""}
@@ -8401,7 +9943,7 @@ export function BuyerHomePage({
                       const cadastrePermit = getCadastrePermitForMine(mine);
                       const cadastreOk = isCadastrePermitValid(cadastrePermit);
                       const cadastreSource = mine ? getCadastreSourceForCountry(mine.country) : null;
-                      const regionLabel = mine ? `${mine.country} – ${mine.region}` : `${op.location.country} – ${op.location.region}`;
+                      const regionLabel = mine ? `${mine.country} â€“ ${mine.region}` : `${op.location.country} â€“ ${op.location.region}`;
                       return (
                         <>
                           <div className="min-w-0">
@@ -8428,28 +9970,28 @@ export function BuyerHomePage({
                           <div className="mt-2 grid grid-cols-2 gap-2 text-[11px] text-white/70">
                             <div>
                               <div className="text-white/45">{t("investments.field.licenseActiveSince")}</div>
-                              <div className="font-semibold text-white">{mine?.licenseActiveSinceYear ?? "—"}</div>
+                              <div className="font-semibold text-white">{mine?.licenseActiveSinceYear ?? "â€”"}</div>
                             </div>
                             <div>
                               <div className="text-white/45">{t("investments.field.currentCapacity")}</div>
                               <div className="font-semibold text-white">
-                                {mine ? `${mine.currentCapacityKgPerMonth} ${t("units.kgPerMonth")}` : "—"}
+                                {mine ? `${mine.currentCapacityKgPerMonth} ${t("units.kgPerMonth")}` : "â€”"}
                               </div>
                             </div>
                             <div className="col-span-2">
                               <div className="text-white/45">{t("investments.field.historicalProduction")}</div>
                               <div className="font-semibold text-white">
                                 {mine
-                                  ? `${mine.historicalProductionTotalKg} ${t("units.kg")} ${t("investments.historical.totalSuffix")} • ${mine.historicalProductionLast12MonthsKg} ${t("units.kg")} (${t("investments.historical.last12m")})`
-                                  : "—"}
+                                  ? `${mine.historicalProductionTotalKg} ${t("units.kg")} ${t("investments.historical.totalSuffix")} â€¢ ${mine.historicalProductionLast12MonthsKg} ${t("units.kg")} (${t("investments.historical.last12m")})`
+                                  : "â€”"}
                               </div>
                             </div>
                             <div className="col-span-2">
                               <div className="text-white/45">{t("investments.field.remainingPotential")}</div>
                               <div className="font-semibold text-white">
-                                {mine?.remainingPotential ? t(`investments.potential.${mine.remainingPotential}`) : "—"}
+                                {mine?.remainingPotential ? t(`investments.potential.${mine.remainingPotential}`) : "â€”"}
                                 {mine?.remainingLifeYearsAtCurrentRate
-                                  ? ` • ~${mine.remainingLifeYearsAtCurrentRate} ${
+                                  ? ` â€¢ ~${mine.remainingLifeYearsAtCurrentRate} ${
                                       mine.remainingLifeYearsAtCurrentRate === 1 ? t("units.year") : t("units.years")
                                     } ${t("investments.atCurrentRate")}`
                                   : ""}
@@ -8623,6 +10165,21 @@ export function BuyerHomePage({
                 </div>
               ) : null}
 
+              {isGoldTenant && (selectedProductVaultEligible || selectedProductJewelryConversionEligible) ? (
+                <div className="flex flex-wrap gap-2">
+                  {selectedProductVaultEligible ? (
+                    <Badge variant="outline" className="text-[10px] border-emerald-500/30 text-emerald-300">
+                      Disponible dans le coffre
+                    </Badge>
+                  ) : null}
+                  {selectedProductJewelryConversionEligible ? (
+                    <Badge variant="outline" className="text-[10px] border-amber-500/30 text-amber-300">
+                      Transformer en bijou
+                    </Badge>
+                  ) : null}
+                </div>
+              ) : null}
+
               <div className="flex flex-wrap gap-2">
                 <Badge variant="outline" className="text-[10px] border-amber-500/30 text-amber-400">
                   {t("badge.govLicensed")}
@@ -8669,21 +10226,39 @@ export function BuyerHomePage({
                   {selectedProductPrice?.primary}
                 </div>
               </div>
-              <Button
-                className={`min-h-[44px] px-4 font-semibold ${
-                  selectedProductStock.inStock
-                    ? "bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-black"
-                    : "bg-white/10 text-white/40 cursor-not-allowed"
-                }`}
-                disabled={!selectedProductStock.inStock}
-                onClick={() => {
-                  addToCart(selectedProduct, null);
-                  toast({ title: t("product.addedToOrder"), description: selectedProduct.name });
-                }}
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                {t("button.addToOrder")}
-              </Button>
+              <div className="flex items-center gap-2">
+                {selectedProductJewelryConversionEligible ? (
+                  <Button
+                    variant="outline"
+                    className="min-h-[44px] border-white/15 text-white/80 hover:bg-white/10"
+                    onClick={() => {
+                      setVaultPane("vault");
+                      setVaultOpen(true);
+                      toast({
+                        title: "Transformation disponible",
+                        description: "Le parcours de transformation en bijou est prepare depuis le coffre.",
+                      });
+                    }}
+                  >
+                    Transformer en bijou
+                  </Button>
+                ) : null}
+                <Button
+                  className={`min-h-[44px] px-4 font-semibold ${
+                    selectedProductStock.inStock
+                      ? "bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-black"
+                      : "bg-white/10 text-white/40 cursor-not-allowed"
+                  }`}
+                  disabled={!selectedProductStock.inStock}
+                  onClick={() => {
+                    addToCart(selectedProduct, null);
+                    toast({ title: t("product.addedToOrder"), description: selectedProduct.name });
+                  }}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  {t("button.addToOrder")}
+                </Button>
+              </div>
             </div>
           </div>
         </div>
@@ -8871,7 +10446,7 @@ export function BuyerHomePage({
                         <p className="text-xs text-white/50 mb-2">Pickup location (required for Stamped Gold)</p>
                         {pickupPartnersLoading ? (
                           <div className="flex items-center gap-2 text-xs text-white/60">
-                            <Loader2 className="h-3 w-3 animate-spin" /> Loading partners…
+                            <Loader2 className="h-3 w-3 animate-spin" /> Loading partnersâ€¦
                           </div>
                         ) : (
                           <select
@@ -8879,7 +10454,7 @@ export function BuyerHomePage({
                             onChange={(e) => setPickupPartnerId(e.target.value)}
                             className="w-full bg-white/10 border border-white/10 text-white rounded-lg px-3 py-2 text-sm"
                           >
-                            <option value="">Select a partner jeweller…</option>
+                            <option value="">Select a partner jewellerâ€¦</option>
                             {pickupPartners.map((p) => (
                               <option key={p.id} value={p.id}>
                                 {p.name}
@@ -9160,7 +10735,7 @@ export function BuyerHomePage({
         </div>
       )}
 
-      {(marketMode === "marketplace" || (!isWholesalePreview && marketMode === "dore")) && (
+      {!useNonMapFlowLayout && (marketMode === "marketplace" || (!isWholesalePreview && marketMode === "dore")) && (
       <div className="absolute top-[calc(env(safe-area-inset-top,0px)+132px)] md:top-[calc(env(safe-area-inset-top,0px)+132px)] lg:top-[calc(env(safe-area-inset-top,0px)+116px)] left-0 md:left-3 z-40 w-full md:w-auto pointer-events-none">
         <div className="hidden md:block mb-2 px-3 md:px-0 pointer-events-auto">
           <p className="text-white text-xs font-medium drop-shadow-lg">
@@ -9191,7 +10766,7 @@ export function BuyerHomePage({
                 }`}
                 onClick={() => setSelectedCategory(selectedCategory === cat.slug ? null : cat.slug)}
               >
-                <span>{cat.icon || categoryIcons[cat.slug] || "📦"}</span>
+                <span>{cat.icon || categoryIcons[cat.slug] || "ðŸ“¦"}</span>
                 <span className="font-medium whitespace-nowrap">{cat.name}</span>
               </button>
             ))}
@@ -9211,7 +10786,7 @@ export function BuyerHomePage({
                 }`}
                 onClick={() => setSelectedCategory(selectedCategory === cat.slug ? null : cat.slug)}
               >
-                <span className="drop-shadow-md">{cat.icon || categoryIcons[cat.slug] || "📦"}</span>
+                <span className="drop-shadow-md">{cat.icon || categoryIcons[cat.slug] || "ðŸ“¦"}</span>
                 <span className="drop-shadow-lg font-medium">{cat.name}</span>
               </button>
             ))}
@@ -9237,8 +10812,8 @@ export function BuyerHomePage({
                   <div className="min-w-0">
                     <p className="text-left text-lg font-bold truncate">{selectedMachinery.name}</p>
                     <p className="text-[11px] text-white/60">
-                      {formatMachineryCategory(selectedMachinery.category, t)} •{" "}
-                      {formatMachineryCondition(selectedMachinery.condition, t)} •{" "}
+                      {formatMachineryCategory(selectedMachinery.category, t)} â€¢{" "}
+                      {formatMachineryCondition(selectedMachinery.condition, t)} â€¢{" "}
                       {selectedMachinery.location.country}
                     </p>
                   </div>
@@ -9314,7 +10889,7 @@ export function BuyerHomePage({
                       <Button
                         variant="outline"
                         className="border-white/15 text-white/80 hover:bg-white/10"
-                        onClick={() => toast({ title: "Financing request", description: "We’ll contact you shortly." })}
+                        onClick={() => toast({ title: "Financing request", description: "Weâ€™ll contact you shortly." })}
                       >
                         Request Financing
                       </Button>
@@ -9364,7 +10939,7 @@ export function BuyerHomePage({
                     {t("cadastre.badgeVerified")}
                   </Badge>
                   <Badge variant="outline" className="text-[10px] border-white/15 text-white/70">
-                    {selectedOpportunity.location.country} • {selectedOpportunity.location.region}
+                    {selectedOpportunity.location.country} â€¢ {selectedOpportunity.location.region}
                   </Badge>
                 </div>
 
@@ -9374,19 +10949,19 @@ export function BuyerHomePage({
                     <div className="mt-2 grid grid-cols-2 gap-3 text-[12px] text-white/80">
                       <div>
                         <p className="text-[11px] text-white/45">{t("cadastre.permitId")}</p>
-                        <p className="font-semibold text-white">{selectedCadastrePermit?.permitId ?? "â€”"}</p>
+                        <p className="font-semibold text-white">{selectedCadastrePermit?.permitId ?? "Ã¢â‚¬â€"}</p>
                       </div>
                       <div>
                         <p className="text-[11px] text-white/45">{t("cadastre.permitStatus")}</p>
-                        <p className="font-semibold text-white">{selectedCadastrePermit?.permitStatus ?? "â€”"}</p>
+                        <p className="font-semibold text-white">{selectedCadastrePermit?.permitStatus ?? "Ã¢â‚¬â€"}</p>
                       </div>
                       <div>
                         <p className="text-[11px] text-white/45">{t("cadastre.permitType")}</p>
-                        <p className="font-semibold text-white">{selectedCadastrePermit?.permitType ?? "â€”"}</p>
+                        <p className="font-semibold text-white">{selectedCadastrePermit?.permitType ?? "Ã¢â‚¬â€"}</p>
                       </div>
                       <div>
                         <p className="text-[11px] text-white/45">{t("cadastre.commodity")}</p>
-                        <p className="font-semibold text-white">{selectedCadastrePermit?.commodity ?? "â€”"}</p>
+                        <p className="font-semibold text-white">{selectedCadastrePermit?.commodity ?? "Ã¢â‚¬â€"}</p>
                       </div>
                     </div>
                     {selectedCadastreSource?.sourceUrl ? (
@@ -9414,28 +10989,28 @@ export function BuyerHomePage({
                       <div className="mt-2 grid grid-cols-2 gap-3">
                         <div>
                           <p className="text-[11px] text-white/45">{t("investments.field.licenseActiveSince")}</p>
-                          <p className="text-sm font-semibold text-white">{mine?.licenseActiveSinceYear ?? "—"}</p>
+                          <p className="text-sm font-semibold text-white">{mine?.licenseActiveSinceYear ?? "â€”"}</p>
                         </div>
                         <div>
                           <p className="text-[11px] text-white/45">{t("investments.field.currentCapacity")}</p>
                           <p className="text-sm font-semibold text-white">
-                            {mine ? `${mine.currentCapacityKgPerMonth} ${t("units.kgPerMonth")}` : "—"}
+                            {mine ? `${mine.currentCapacityKgPerMonth} ${t("units.kgPerMonth")}` : "â€”"}
                           </p>
                         </div>
                         <div className="col-span-2">
                           <p className="text-[11px] text-white/45">{t("investments.field.historicalProduction")}</p>
                           <p className="text-sm font-semibold text-white">
                             {mine
-                              ? `${mine.historicalProductionTotalKg} ${t("units.kg")} ${t("investments.historical.totalSuffix")} • ${mine.historicalProductionLast12MonthsKg} ${t("units.kg")} (${t("investments.historical.last12m")})`
-                              : "—"}
+                              ? `${mine.historicalProductionTotalKg} ${t("units.kg")} ${t("investments.historical.totalSuffix")} â€¢ ${mine.historicalProductionLast12MonthsKg} ${t("units.kg")} (${t("investments.historical.last12m")})`
+                              : "â€”"}
                           </p>
                         </div>
                         <div className="col-span-2">
                           <p className="text-[11px] text-white/45">{t("investments.field.remainingPotential")}</p>
                           <p className="text-sm font-semibold text-white">
-                            {mine?.remainingPotential ? t(`investments.potential.${mine.remainingPotential}`) : "—"}
+                            {mine?.remainingPotential ? t(`investments.potential.${mine.remainingPotential}`) : "â€”"}
                             {mine?.remainingLifeYearsAtCurrentRate
-                              ? ` • ~${mine.remainingLifeYearsAtCurrentRate} ${
+                              ? ` â€¢ ~${mine.remainingLifeYearsAtCurrentRate} ${
                                   mine.remainingLifeYearsAtCurrentRate === 1 ? t("units.year") : t("units.years")
                                 } ${t("investments.atCurrentRate")}`
                               : ""}
@@ -9652,9 +11227,9 @@ export function BuyerHomePage({
             <pre className="whitespace-pre-wrap text-[12px] text-white/80 leading-relaxed">
 {`DIGITALLY MANAGED CONTRACT (Preview)
 
-Mine reference: ${selectedOpportunity?.mineId || "—"}
-Cadastre permit: ${selectedCadastrePermit?.permitId || "—"}
-Authorized Bureau d’Achat: (selected during participation)
+Mine reference: ${selectedOpportunity?.mineId || "â€”"}
+Cadastre permit: ${selectedCadastrePermit?.permitId || "â€”"}
+Authorized Bureau dâ€™Achat: (selected during participation)
 
 Start date: (on activation)
 End date: (time-bound)
@@ -9672,7 +11247,7 @@ Only authorized buyers can execute purchase orders via the platform.
 Signatures
 - Party A: Mine (owner/licensed entity)
 - Party B: Investor
-- Party C (optional): Authorized Bureau d’Achat`}
+- Party C (optional): Authorized Bureau dâ€™Achat`}
             </pre>
           </div>
         </DialogContent>
@@ -9751,7 +11326,7 @@ Signatures
 
               {participateStep === 2 && (
                 <div className="space-y-3">
-                  <p className="text-sm text-white/80">Select an authorized Bureau d’Achat (recommended)</p>
+                  <p className="text-sm text-white/80">Select an authorized Bureau dâ€™Achat (recommended)</p>
                   <p className="text-[12px] text-white/60">
                     Only authorized buyers can execute purchase orders via the platform.
                   </p>
@@ -9774,7 +11349,7 @@ Signatures
                           </Badge>
                         </div>
                         <p className="text-[11px] text-white/60 truncate">
-                          {b.country} • {b.region || b.city} • License {b.licenseNumber || b.authorizationNumber || "—"}
+                          {b.country} â€¢ {b.region || b.city} â€¢ License {b.licenseNumber || b.authorizationNumber || "â€”"}
                         </p>
                       </button>
                     ))}
@@ -9825,7 +11400,7 @@ Signatures
                       Template:{" "}
                       {participateTemplateKey === "revenue_share" ? "Revenue share (time-bound)" : "Return per rotation (indicative)"}
                     </div>
-                    <div>Bureau: #{participateBureauId || "—"}</div>
+                    <div>Bureau: #{participateBureauId || "â€”"}</div>
                   </div>
                   <div className="flex justify-between gap-2">
                     <Button
@@ -9850,7 +11425,7 @@ Signatures
                           return;
                         }
                         if (!participateBureauId) {
-                          toast({ title: "Sélection requise", description: "Choisissez un Bureau d'Achat autorisé pour continuer." });
+                          toast({ title: "SÃ©lection requise", description: "Choisissez un Bureau d'Achat autorisÃ© pour continuer." });
                           return;
                         }
                         setParticipateSubmitting(true);
@@ -9974,7 +11549,7 @@ Signatures
                     <div className="flex items-center gap-3 mt-1 flex-wrap">
                       <p className="text-[12px] font-normal text-amber-400/80">
                         <MapPin className="h-3 w-3 inline mr-1" />
-                        {selectedShopDistanceLabel ?? "Distance unknown"}
+                        {selectedShopDistanceLabel ?? (language === "fr" ? "Distance non disponible" : "Distance unknown")}
                       </p>
                       <p className="text-[11px] text-white/50 truncate max-w-[240px]">{selectedShopLocationLabel}</p>
                       <Badge
@@ -10018,7 +11593,7 @@ Signatures
                     ) as string[];
 
                     const options: { key: string; label: string }[] = [
-                      { key: "all", label: "All" },
+                      { key: "all", label: isMaterialsTenant || language === "fr" ? t("common.all") : "All" },
                       ...categoriesInShop.map((cat) => ({
                         key: cat,
                         label: getCategoryMeta(cat)?.label ?? cat,
@@ -10155,7 +11730,7 @@ Signatures
                               }}
                             >
                               <Plus className="h-3.5 w-3.5 mr-1" />
-                              Add
+                              {isMaterialsTenant || language === "fr" ? "Ajouter" : "Add"}
                             </Button>
                           </div>
                         </CardContent>
@@ -10167,7 +11742,9 @@ Signatures
                 <div className="mt-6 p-4 bg-amber-500/5 rounded-xl border border-amber-500/20">
                   <div className="flex items-center gap-2 mb-2">
                     <Activity className="h-4 w-4 text-amber-400" />
-                    <p className="text-sm font-semibold text-white">Supplier Certifications</p>
+                    <p className="text-sm font-semibold text-white">
+                      {isMaterialsTenant || language === "fr" ? "Certifications fournisseur" : "Supplier Certifications"}
+                    </p>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <Badge variant="outline" className="text-[10px] border-amber-500/30 text-amber-400">{t("badge.govLicensed")}</Badge>
@@ -10204,7 +11781,7 @@ Signatures
                 }}
                 disabled={!selectedCategory}
               >
-                Clear
+                {t("common.clear")}
               </button>
             </SheetTitle>
           </SheetHeader>
@@ -10240,7 +11817,7 @@ Signatures
                     setCategoriesSheetOpen(false);
                   }}
                 >
-                  <span className="drop-shadow-md">{cat.icon || categoryIcons[cat.slug] || "★"}</span>
+                  <span className="drop-shadow-md">{cat.icon || categoryIcons[cat.slug] || "â˜…"}</span>
                   <span className="truncate">{cat.name}</span>
                 </button>
               ))}
@@ -10303,7 +11880,7 @@ Signatures
                           <p className="text-sm font-semibold text-white truncate">{item.name}</p>
                           <p className="text-[11px] text-white/60 truncate">{item.shopName}</p>
                           <p className="mt-1 text-[11px] text-amber-300">
-                            {formatMoney(item.price, "XOF")} × {item.quantity}
+                            {formatMoney(item.price, "XOF")} Ã— {item.quantity}
                           </p>
                         </div>
                         <div className="text-sm font-semibold text-amber-300 whitespace-nowrap">
@@ -10358,16 +11935,16 @@ Signatures
                     <Button
                       variant="outline"
                       className="border-white/15 text-white/80 hover:bg-white/10"
-                      onClick={() => setCart([])}
-                    >
-                      Clear
+                    onClick={() => setCart([])}
+                  >
+                      {t("common.clear")}
                     </Button>
                     <Button
                       className="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-black font-semibold"
                       disabled={orderMutation.isPending}
                       onClick={handlePlaceOrder}
                     >
-                      {orderMutation.isPending ? "Placing…" : t("cart.checkout")}
+                      {orderMutation.isPending ? "Placingâ€¦" : t("cart.checkout")}
                     </Button>
                   </div>
                 </div>
@@ -10908,7 +12485,7 @@ Signatures
               <Input
                 value={customEquipmentForm.name}
                 onChange={(e) => setCustomEquipmentForm((p) => ({ ...p, name: e.target.value }))}
-                placeholder="e.g., Trommel 2m, Crusher jaw plate…"
+                placeholder="e.g., Trommel 2m, Crusher jaw plateâ€¦"
                 className="bg-black/30 border-white/10 text-white placeholder:text-white/40"
               />
             </div>
@@ -10919,7 +12496,7 @@ Signatures
                 <Input
                   value={customEquipmentForm.targetCapacity}
                   onChange={(e) => setCustomEquipmentForm((p) => ({ ...p, targetCapacity: e.target.value }))}
-                  placeholder="e.g., 20 t/h, 250 kVA…"
+                  placeholder="e.g., 20 t/h, 250 kVAâ€¦"
                   className="bg-black/30 border-white/10 text-white placeholder:text-white/40"
                 />
               </div>
@@ -11007,7 +12584,7 @@ Signatures
                 value={customEquipmentForm.notes}
                 onChange={(e) => setCustomEquipmentForm((p) => ({ ...p, notes: e.target.value }))}
                 className="w-full min-h-[88px] rounded-md bg-black/30 border border-white/10 text-white/80 text-[12px] p-2 outline-none"
-                placeholder="Add any specs or constraints…"
+                placeholder="Add any specs or constraintsâ€¦"
               />
             </div>
 
@@ -11118,7 +12695,7 @@ Signatures
                         </Badge>
                       </div>
                       <div className="mt-1 text-[11px] text-white/60">
-                        {permit.country} • {permit.region} • {permit.permitType}
+                        {permit.country} â€¢ {permit.region} â€¢ {permit.permitType}
                       </div>
                     </button>
                   ))
@@ -11134,10 +12711,10 @@ Signatures
                   <p className="text-[11px] text-white/60 uppercase tracking-wider">{t("cadastre.selectedPermit")}</p>
                   <p className="text-sm text-white font-semibold">{cadastreSelectedPermit.permitId}</p>
                   <p className="text-[11px] text-white/60">
-                    {cadastreSelectedPermit.holderName} • {cadastreSelectedPermit.permitType} • {cadastreSelectedPermit.permitStatus}
+                    {cadastreSelectedPermit.holderName} â€¢ {cadastreSelectedPermit.permitType} â€¢ {cadastreSelectedPermit.permitStatus}
                   </p>
                   <p className="text-[11px] text-white/60">
-                    {cadastreSelectedPermit.country} • {cadastreSelectedPermit.region} • {cadastreSelectedPermit.commodity}
+                    {cadastreSelectedPermit.country} â€¢ {cadastreSelectedPermit.region} â€¢ {cadastreSelectedPermit.commodity}
                   </p>
                   {getCadastreSourceForCountry(cadastreSelectedPermit.country)?.sourceUrl ? (
                     <a
@@ -11362,7 +12939,7 @@ Signatures
                     <Input
                       value={mineListingForm.equipmentList}
                       onChange={(e) => setMineListingForm((p) => ({ ...p, equipmentList: e.target.value }))}
-                      placeholder="e.g., Trommel, Generator…"
+                      placeholder="e.g., Trommel, Generatorâ€¦"
                       className="bg-black/30 border-white/10 text-white placeholder:text-white/40"
                     />
                   </div>
@@ -11455,7 +13032,7 @@ Signatures
                     value={mineListingForm.notes}
                     onChange={(e) => setMineListingForm((p) => ({ ...p, notes: e.target.value }))}
                     className="w-full min-h-[88px] rounded-md bg-black/30 border border-white/10 text-white/80 text-[12px] p-2 outline-none"
-                    placeholder="Add context or documentation notes…"
+                    placeholder="Add context or documentation notesâ€¦"
                   />
                 </div>
                 <p className="text-[11px] text-white/45 mt-3">
@@ -11522,7 +13099,7 @@ Signatures
         activeKey={navActiveKey}
         items={[
           {
-            key: "browse",
+            key: "browse" as const,
             label: t("common.browse"),
             icon: <Store className="h-4 w-4" />,
             onPress: () => {
@@ -11535,7 +13112,7 @@ Signatures
           ...(mapEnabled
             ? [
                 {
-                  key: "map",
+                  key: "map" as const,
                   label: t("nav.map"),
                   icon: <MapPin className="h-4 w-4" />,
                   onPress: () => {
@@ -11547,7 +13124,7 @@ Signatures
               ]
             : []),
           {
-            key: "wallet",
+            key: "wallet" as const,
             label: t("nav.wallet"),
             icon: <Wallet className="h-4 w-4" />,
             primary: true,
@@ -11558,7 +13135,7 @@ Signatures
             },
           },
           {
-            key: "vault",
+            key: "vault" as const,
             label: t("nav.vault"),
             icon: <ShieldCheck className="h-4 w-4" />,
             onPress: () => {

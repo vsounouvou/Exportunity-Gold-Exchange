@@ -8,6 +8,7 @@ import { syncDemoModeFromUrl } from "@/lib/demoMode";
 import { telemetry } from "@platform/telemetry";
 import { getTenantConfigByKey, getTenantHomeRoute } from "../../tenants/index";
 import {
+  isBdoHost,
   isExportunityMarketingHost,
   isHozHost,
   isMetHost,
@@ -311,6 +312,15 @@ const HozAdminMediaPage = lazyPage(() => import("@/pages/hoz/HozAdminPages"), "H
 const HozAdminInboxPage = lazyPage(() => import("@/pages/hoz/HozAdminPages"), "HozAdminInboxPage");
 const HozAdminWebsitePage = lazyPage(() => import("@/pages/hoz/HozAdminPages"), "HozAdminWebsitePage");
 const HozAdminSettingsPage = lazyPage(() => import("@/pages/hoz/HozAdminPages"), "HozAdminSettingsPage");
+const BdoActualitesPage = lazyPage(() => import("@/pages/bdo/BdoAuthorityPages"), "BdoActualitesPage");
+const BdoReglementationPage = lazyPage(() => import("@/pages/bdo/BdoAuthorityPages"), "BdoReglementationPage");
+const BdoIndustrieMinierePage = lazyPage(() => import("@/pages/bdo/BdoAuthorityPages"), "BdoIndustrieMinierePage");
+const BdoEspaceProDashboardPage = lazyPage(() => import("@/pages/bdo/BdoProPages"), "BdoEspaceProDashboardPage");
+const BdoProMapPage = lazyPage(() => import("@/pages/bdo/BdoProPages"), "BdoProMapPage");
+const BdoProIntelligencePage = lazyPage(() => import("@/pages/bdo/BdoProPages"), "BdoProIntelligencePage");
+const BdoProBureauxPage = lazyPage(() => import("@/pages/bdo/BdoProPages"), "BdoProBureauxPage");
+const BdoProBuyersPage = lazyPage(() => import("@/pages/bdo/BdoProPages"), "BdoProBuyersPage");
+const BdoProExportersPage = lazyPage(() => import("@/pages/bdo/BdoProPages"), "BdoProExportersPage");
 const AdminMarketingPostsPage = lazyPage(() => import("@/pages/AdminMarketingPostsPage"));
 const AdminMarketingPressPage = lazyPage(() => import("@/pages/AdminMarketingPressPage"));
 const AdminMarketingLibraryPage = lazyPage(() => import("@/pages/AdminMarketingLibraryPage"));
@@ -409,6 +419,7 @@ const AdminStampedGoldItemsPage = lazyPage(() => import("@/pages/AdminStampedGol
 const AdminStampedGoldJewellersPage = lazyPage(() => import("@/pages/AdminStampedGoldJewellersPage"));
 const AdminStampedGoldScansPage = lazyPage(() => import("@/pages/AdminStampedGoldScansPage"));
 const AdminStampedGoldPickupPage = lazyPage(() => import("@/pages/AdminStampedGoldPickupPage"));
+const AdminStampedGoldMintingStudioPage = lazyPage(() => import("@/pages/AdminStampedGoldMintingStudioPage"));
 const AdminEquipmentOpsFleetMapPage = lazyPage(() => import("@/pages/AdminEquipmentOpsFleetMapPage"));
 const AdminEquipmentOpsListingsPage = lazyPage(() => import("@/pages/AdminEquipmentOpsListingsPage"));
 const AdminEquipmentOpsContractsPage = lazyPage(() => import("@/pages/AdminEquipmentOpsContractsPage"));
@@ -674,6 +685,8 @@ function App() {
           {/* Public routes */}
           <Route path="/" component={RootPublicRoute} />
           <Route path="/store" component={StoreRoute} />
+          <Route path="/stamped-gold" component={StoreRoute} />
+          <Route path="/pieces" component={StoreRoute} />
           <Route path="/collections" component={CollectionsRoute} />
           <Route path="/collections/:slug">
             {(params) => <StoreCollectionPage slug={String((params as any).slug || "")} />}
@@ -761,6 +774,15 @@ function App() {
           <Route path="/marketplace" component={StoreRoute} />
           <Route path="/shop" component={StoreRoute} />
           <Route path="/gateway" component={GatewayPage} />
+          <Route path="/actualites" component={() => (isBdoHost() ? <BdoActualitesPage /> : <Redirect to="/store" />)} />
+          <Route path="/reglementation" component={() => (isBdoHost() ? <BdoReglementationPage /> : <Redirect to="/store" />)} />
+          <Route path="/industrie-miniere" component={() => (isBdoHost() ? <BdoIndustrieMinierePage /> : <Redirect to="/store" />)} />
+          <Route path="/espace-pro" component={() => (isBdoHost() ? <BdoEspaceProDashboardPage /> : <Redirect to="/store" />)} />
+          <Route path="/pro/map" component={() => (isBdoHost() ? <BdoProMapPage /> : <Redirect to="/store" />)} />
+          <Route path="/pro/intelligence" component={() => (isBdoHost() ? <BdoProIntelligencePage /> : <Redirect to="/store" />)} />
+          <Route path="/pro/bureaux-achat" component={() => (isBdoHost() ? <BdoProBureauxPage /> : <Redirect to="/store" />)} />
+          <Route path="/pro/buyers" component={() => (isBdoHost() ? <BdoProBuyersPage /> : <Redirect to="/store" />)} />
+          <Route path="/pro/exportateurs-verifies" component={() => (isBdoHost() ? <BdoProExportersPage /> : <Redirect to="/store" />)} />
           <Route path="/about" component={MarketingAwareAboutRoute} />
           <Route path="/press" component={() => (isVsHost() ? <VsPressPage /> : <MarketingRedirect to="/media" />)} />
           <Route path="/portfolio" component={() => (isVsHost() ? <VsPortfolioPage /> : <Redirect to="/zone" />)} />
@@ -1693,6 +1715,12 @@ function App() {
         <Route path="/admin/stamped-gold/skus">
           <ProtectedRoute>
             <AdminStampedGoldSkusPage />
+          </ProtectedRoute>
+        </Route>
+
+        <Route path="/admin/stamped-gold/minting-studio">
+          <ProtectedRoute>
+            <AdminStampedGoldMintingStudioPage />
           </ProtectedRoute>
         </Route>
 

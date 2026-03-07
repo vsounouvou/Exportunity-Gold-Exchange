@@ -91,9 +91,22 @@ router.get("/product/:slug", async (req: any, res) => {
     const slug = String(req.params?.slug || "").trim();
     if (!slug) return res.status(400).json({ message: "slug is required" });
     const marketTypeFilter = resolveMarketTypeFilterSql(req?.tenant?.key);
+    const numericId = Number(slug);
 
     const row = await db.query.sellerProducts.findFirst({
-      where: and(eq(sellerProducts.tenantId, tenantId), eq(sellerProducts.slug, slug), marketTypeFilter),
+      where: Number.isFinite(numericId) && numericId > 0
+        ? and(
+            eq(sellerProducts.tenantId, tenantId),
+            eq(sellerProducts.id, numericId),
+            eq(sellerProducts.status, "active" as any),
+            marketTypeFilter,
+          )
+        : and(
+            eq(sellerProducts.tenantId, tenantId),
+            eq(sellerProducts.slug, slug),
+            eq(sellerProducts.status, "active" as any),
+            marketTypeFilter,
+          ),
     });
 
     if (!row) return res.status(404).json({ message: "Product not found" });

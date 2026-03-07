@@ -103,6 +103,13 @@ export type TenantThemeModel = {
   };
 };
 
+export type TenantMarketplaceDefaults = {
+  defaultCurrency?: "USD" | "EUR" | "GBP" | "XOF" | "GHS" | "NGN" | "KES" | "AED";
+  distanceUnit?: "km";
+  deliveryRadiusKm?: number;
+  enabledCategories?: string[];
+};
+
 export type TenantConfig = {
   slug: TenantSlug;
   brandName: string;
@@ -123,6 +130,7 @@ export type TenantConfig = {
   storefrontHero?: TenantStorefrontHero;
   storefrontTheme?: TenantThemeModel;
   storefrontIdentity?: TenantStorefrontIdentity;
+  marketplaceDefaults?: TenantMarketplaceDefaults;
   assets?: TenantBrandAssets;
   navOverrides?: Record<string, unknown>;
 };

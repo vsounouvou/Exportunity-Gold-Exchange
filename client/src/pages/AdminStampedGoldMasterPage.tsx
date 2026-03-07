@@ -74,7 +74,7 @@ function parseQueryString(location: string, key: string): string | null {
 export default function AdminStampedGoldMasterPage() {
   const { tenant } = useTenant();
   const { token } = useSession();
-  const [location] = useLocation();
+  const [location, navigate] = useLocation();
   const { toast } = useToast();
   const isBourseTenant = tenant.key === "bdo";
   const tenantKey = useMemo(() => parseQueryString(location, "tenantKey") || "", [location]);
@@ -246,10 +246,20 @@ export default function AdminStampedGoldMasterPage() {
             Everything is visible on this page: SKUs, items, partner jewellers, scans, and pickup.
           </p>
         </div>
-        <Button variant="outline" className="border-gray-700" onClick={loadAll} disabled={loading}>
-          {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <RefreshCw className="h-4 w-4 mr-2" />}
-          Refresh all
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            className="border-amber-700/40 text-amber-200 hover:bg-amber-500/10"
+            onClick={() => navigate(`/admin/stamped-gold/minting-studio${tenantKey ? `?tenantKey=${encodeURIComponent(tenantKey)}` : ""}`)}
+          >
+            <Coins className="h-4 w-4 mr-2" />
+            Atelier de frappe
+          </Button>
+          <Button variant="outline" className="border-gray-700" onClick={loadAll} disabled={loading}>
+            {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <RefreshCw className="h-4 w-4 mr-2" />}
+            Refresh all
+          </Button>
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">

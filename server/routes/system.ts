@@ -59,6 +59,14 @@ function truthyEnv(value: unknown) {
   return ["1", "true", "yes", "y", "on"].includes(String(value || "").trim().toLowerCase());
 }
 
+function parseFlag(value: unknown, defaultValue: boolean) {
+  const normalized = String(value ?? "").trim().toLowerCase();
+  if (!normalized) return defaultValue;
+  if (["1", "true", "yes", "y", "on"].includes(normalized)) return true;
+  if (["0", "false", "no", "n", "off"].includes(normalized)) return false;
+  return defaultValue;
+}
+
 function findClientPublicDir(): string | null {
   const candidates = [
     path.resolve(process.cwd(), "dist", "public"),
@@ -204,6 +212,7 @@ router.get("/version", (req, res) => {
   // build metadata even when .git is not present in the container build context.
   const serverGitSha = String(readGitSha() || clientBuild?.gitSha || "unknown");
   const serverBuildId = String(pickBuildId() || clientBuild?.buildId || "unknown");
+  const versionGuardEnabled = parseFlag(process.env.VERSION_GUARD_ENABLED, true);
   const serverBundle = readServerBundleFingerprint();
   const buildTime =
     (serverBundle as any)?.ok && (serverBundle as any)?.mtime
@@ -217,7 +226,9 @@ router.get("/version", (req, res) => {
     nodeEnv: process.env.NODE_ENV || "unknown",
     nodeVersion: process.version,
     gitSha: serverGitSha,
+    build: serverBuildId,
     buildId: serverBuildId,
+    versionGuardEnabled,
     cacheBuster,
     serverBundle,
     client,
@@ -274,6 +285,9 @@ router.get("/cache-reset", (req, res) => {
   }
 
   const nextBuster = bumpCacheBuster();
+  const mode = String(req.query?.mode || "").trim().toLowerCase();
+  const from = String(req.query?.from || "").trim().toLowerCase();
+  const preserveStorage = mode === "soft" || from === "version-guard";
 
   res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
   res.setHeader("Pragma", "no-cache");
@@ -283,10 +297,19 @@ router.get("/cache-reset", (req, res) => {
   const accept = String(req.get("accept") || "").toLowerCase();
   const wantsHtml = accept.includes("text/html") && !accept.includes("application/json");
   if (!wantsHtml) {
-    return res.json({ ok: true, cacheBuster: nextBuster, serverTime: new Date().toISOString() });
+    return res.json({
+      ok: true,
+      mode: preserveStorage ? "soft" : "hard",
+      cacheBuster: nextBuster,
+      serverTime: new Date().toISOString(),
+    });
   }
 
-  res.setHeader("Clear-Site-Data", "\"cache\", \"cookies\", \"storage\", \"executionContexts\"");
+  if (preserveStorage) {
+    res.setHeader("Clear-Site-Data", "\"cache\", \"executionContexts\"");
+  } else {
+    res.setHeader("Clear-Site-Data", "\"cache\", \"cookies\", \"storage\", \"executionContexts\"");
+  }
   res.setHeader("Content-Type", "text/html; charset=utf-8");
 
   res.send(`<!doctype html>
@@ -322,6 +345,7 @@ router.get("/cache-reset", (req, res) => {
     </div>
     <script>
       (function(){
+        const preserveStorage = ${preserveStorage ? "true" : "false"};
         const logEl = document.getElementById("log");
         const log = (msg) => {
           try { logEl.textContent += "\\n" + msg; } catch {}
@@ -334,9 +358,13 @@ router.get("/cache-reset", (req, res) => {
         };
         (async () => {
           try {
-            log("clear local/session storage");
-            try { localStorage.clear(); } catch {}
-            try { sessionStorage.clear(); } catch {}
+            if (preserveStorage) {
+              log("preserve local/session storage (soft mode)");
+            } else {
+              log("clear local/session storage");
+              try { localStorage.clear(); } catch {}
+              try { sessionStorage.clear(); } catch {}
+            }
 
             log("unregister service workers");
             try {

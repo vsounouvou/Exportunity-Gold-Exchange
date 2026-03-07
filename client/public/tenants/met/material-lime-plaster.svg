@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1350" role="img" aria-label="Lime plaster">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#f7f0e5"/>
+      <stop offset="100%" stop-color="#c49d74"/>
+    </linearGradient>
+  </defs>
+  <rect width="1080" height="1350" fill="url(#bg)"/>
+  <rect x="100" y="220" width="880" height="860" rx="36" fill="#f8efe0" stroke="#8a5a2f" stroke-width="12"/>
+  <path d="M180 530c120-120 220 120 360 0s220 120 340 0" fill="none" stroke="#d6b48f" stroke-width="24"/>
+  <path d="M180 670c120-120 220 120 360 0s220 120 340 0" fill="none" stroke="#c48d63" stroke-width="24"/>
+  <path d="M180 810c120-120 220 120 360 0s220 120 340 0" fill="none" stroke="#b57a4e" stroke-width="24"/>
+  <text x="120" y="120" fill="#603715" font-family="Arial, sans-serif" font-size="62" font-weight="700">LIME / PLASTER</text>
+  <text x="120" y="1160" fill="#603715" font-family="Arial, sans-serif" font-size="36">Natural finish and breathable coating</text>
+</svg>

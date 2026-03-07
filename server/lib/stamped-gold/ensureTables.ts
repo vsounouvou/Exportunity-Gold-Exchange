@@ -93,12 +93,25 @@ export async function ensureStampedGoldTables() {
         weight_g numeric(10, 3),
         purity text not null default '999.9',
         karat integer,
+        design_code text,
+        edition_type text,
+        origin_country text,
+        origin_mine text,
         metal text not null default 'FINE GOLD',
         brand_text text not null default 'BOURSE DE L''OR',
         serial_prefix text not null default 'BDO',
         hallmark_text text not null default 'HALLMARK',
         year integer,
         requires_legal_stamp boolean not null default true,
+        traceability_enabled boolean not null default true,
+        qr_enabled boolean not null default true,
+        serial_enabled boolean not null default true,
+        personalization_enabled boolean not null default false,
+        vault_eligible boolean not null default true,
+        jewelry_conversion_eligible boolean not null default false,
+        image_template_mode text not null default 'ingot_blank',
+        display_priority integer not null default 0,
+        preview_defaults jsonb not null default '{}'::jsonb,
         is_active boolean not null default true,
         created_at timestamptz not null default now(),
         updated_at timestamptz not null default now()
@@ -108,6 +121,19 @@ export async function ensureStampedGoldTables() {
     await db.execute(sql`alter table stamped_gold_skus add column if not exists product_type text check (product_type in ('BAR', 'COIN'));`);
     await db.execute(sql`alter table stamped_gold_skus add column if not exists weight_g numeric(10, 3);`);
     await db.execute(sql`alter table stamped_gold_skus add column if not exists karat integer;`);
+    await db.execute(sql`alter table stamped_gold_skus add column if not exists design_code text;`);
+    await db.execute(sql`alter table stamped_gold_skus add column if not exists edition_type text;`);
+    await db.execute(sql`alter table stamped_gold_skus add column if not exists origin_country text;`);
+    await db.execute(sql`alter table stamped_gold_skus add column if not exists origin_mine text;`);
+    await db.execute(sql`alter table stamped_gold_skus add column if not exists traceability_enabled boolean not null default true;`);
+    await db.execute(sql`alter table stamped_gold_skus add column if not exists qr_enabled boolean not null default true;`);
+    await db.execute(sql`alter table stamped_gold_skus add column if not exists serial_enabled boolean not null default true;`);
+    await db.execute(sql`alter table stamped_gold_skus add column if not exists personalization_enabled boolean not null default false;`);
+    await db.execute(sql`alter table stamped_gold_skus add column if not exists vault_eligible boolean not null default true;`);
+    await db.execute(sql`alter table stamped_gold_skus add column if not exists jewelry_conversion_eligible boolean not null default false;`);
+    await db.execute(sql`alter table stamped_gold_skus add column if not exists image_template_mode text not null default 'ingot_blank';`);
+    await db.execute(sql`alter table stamped_gold_skus add column if not exists display_priority integer not null default 0;`);
+    await db.execute(sql`alter table stamped_gold_skus add column if not exists preview_defaults jsonb not null default '{}'::jsonb;`);
     await db.execute(sql`alter table stamped_gold_skus add column if not exists is_active boolean not null default true;`);
     await db.execute(sql`create index if not exists stamped_gold_skus_tenant_idx on stamped_gold_skus (tenant_id);`);
     await db.execute(sql`create index if not exists stamped_gold_skus_tenant_active_idx on stamped_gold_skus (tenant_id, is_active);`);
@@ -143,6 +169,7 @@ export async function ensureStampedGoldTables() {
         sold_at timestamptz,
         delivered_at timestamptz,
         voided_at timestamptz,
+        minting_spec jsonb not null default '{}'::jsonb,
         created_at timestamptz not null default now(),
         updated_at timestamptz not null default now()
       );
@@ -152,6 +179,7 @@ export async function ensureStampedGoldTables() {
     await db.execute(sql`alter table stamped_gold_items add column if not exists certificate_id uuid;`);
     await db.execute(sql`alter table stamped_gold_items add column if not exists qr_token text;`);
     await db.execute(sql`alter table stamped_gold_items add column if not exists expert_user_id integer references ece_users(id) on delete set null;`);
+    await db.execute(sql`alter table stamped_gold_items add column if not exists minting_spec jsonb not null default '{}'::jsonb;`);
     await db.execute(sql`create index if not exists stamped_gold_items_tenant_idx on stamped_gold_items (tenant_id);`);
     await db.execute(sql`create index if not exists stamped_gold_items_tenant_partner_idx on stamped_gold_items (tenant_id, partner_jeweller_id);`);
     await db.execute(sql`create index if not exists stamped_gold_items_tenant_status_idx on stamped_gold_items (tenant_id, status);`);

@@ -19,6 +19,10 @@ export function isMindbaseHost() {
   return isHostForTenant("mindbase");
 }
 
+export function isBdoHost() {
+  return isHostForTenant("bdo");
+}
+
 export function isZoneHost() {
   return isHostForTenant("zone");
 }

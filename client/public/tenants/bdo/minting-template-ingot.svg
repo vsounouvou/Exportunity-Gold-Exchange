@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1000" viewBox="0 0 1600 1000" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#d8c29b"/>
+      <stop offset="48%" stop-color="#b58b45"/>
+      <stop offset="100%" stop-color="#5f431e"/>
+    </linearGradient>
+    <linearGradient id="ingot" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f8edd0"/>
+      <stop offset="28%" stop-color="#e9cf8f"/>
+      <stop offset="62%" stop-color="#b9862d"/>
+      <stop offset="100%" stop-color="#5f431e"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(800 500) rotate(90) scale(360 520)">
+      <stop offset="0%" stop-color="#fff5d6" stop-opacity=".65"/>
+      <stop offset="100%" stop-color="#fff5d6" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="shadow" x="280" y="130" width="1040" height="740" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="24" stdDeviation="40" flood-color="#140d04" flood-opacity=".55"/>
+    </filter>
+  </defs>
+  <rect width="1600" height="1000" fill="#d6d1c8"/>
+  <rect width="1600" height="1000" fill="url(#bg)" opacity=".14"/>
+  <ellipse cx="1170" cy="200" rx="260" ry="140" fill="#f1d79d" opacity=".18"/>
+  <ellipse cx="380" cy="820" rx="280" ry="180" fill="#8a6731" opacity=".14"/>
+  <g filter="url(#shadow)">
+    <path d="M503 186H1097L1205 362V724L1090 812H510L395 724V362L503 186Z" fill="url(#ingot)"/>
+    <path d="M503 186H1097L1205 362H395L503 186Z" fill="#fff0c6" opacity=".75"/>
+    <path d="M1097 186L1205 362V724L1090 812V362L1097 186Z" fill="#8a6323" opacity=".72"/>
+    <path d="M395 362L510 812V362H395Z" fill="#f7e2af" opacity=".38"/>
+    <path d="M510 298H1093L1144 390V676L1086 746H517L456 676V390L510 298Z" stroke="#fdf2cf" stroke-opacity=".52" stroke-width="6"/>
+    <path d="M540 316H1060L1098 388V650L1050 714H548L498 650V388L540 316Z" stroke="#8d6528" stroke-opacity=".35" stroke-width="4"/>
+    <ellipse cx="800" cy="495" rx="365" ry="265" fill="url(#glow)"/>
+  </g>
+</svg>

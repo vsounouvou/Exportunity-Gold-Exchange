@@ -39,8 +39,8 @@ export const BRAND_MAP: Record<TenantKey, BrandInfo> = {
     metaDescription:
       "Wallet-centric gold platform focused on verified supply, virtual vaulting, and compliant settlement.",
     complianceNotice: "Access subject to applicable compliance requirements.",
-    tagline: "By Exportunity",
-    subtitle: "By Exportunity",
+    tagline: "Or africain certifie, des mines africaines jusqu'a votre porte",
+    subtitle: "Or trace, conforme et certifie",
     productScope: "GOLD_ONLY",
     conciergeScope: "GOLD_ONLY",
     landing: "map-first",
@@ -111,9 +111,9 @@ export const BRAND_MAP: Record<TenantKey, BrandInfo> = {
     metaDescription:
       "Maison en Terre concoit, construit et fournit des briques BTC/CEB pour des maisons durables en Afrique.",
     complianceNotice: "Devis et commandes soumis a validation technique et logistique.",
-    tagline: "Construction en terre, technique et durable",
+    tagline: "Briques BTC/CEB, maison modele et livraison chantier",
     subtitle: "Briques BTC/CEB, maison modele et livraison chantier",
-    faviconPath: "/met/favicon.ico",
+    faviconPath: "/tenants/met/favicon.ico",
     productScope: "MULTI_CATEGORY",
     conciergeScope: "MULTI_CATEGORY",
     landing: "browse-first",

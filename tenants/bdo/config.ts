@@ -5,7 +5,7 @@ import { bdoThemeTokens } from "./theme";
 export const bdoTenantConfig: TenantConfig = {
   slug: "bdo",
   brandName: "Bourse de l'Or",
-  tagline: "Gold operations platform",
+  tagline: "Or africain certifié, des mines africaines jusqu'à votre porte",
   primaryDomain: "boursedelor.com",
   domains: ["boursedelor.com", "www.boursedelor.com"],
   defaultLocale: "fr",
@@ -18,11 +18,12 @@ export const bdoTenantConfig: TenantConfig = {
   modulesDisabled: bdoModulesDisabled,
   themeTokens: bdoThemeTokens,
   storefrontHero: {
-    eyebrow: "Gold operations network",
-    title: "Source, verify, and execute gold flows",
-    subtitle: "Structured rails for stamped gold, operations, logistics, and buyer execution.",
-    ctaPrimary: { label: "Open Store", href: "/store" },
-    ctaSecondary: { label: "Operations", href: "/ai-team" },
+    eyebrow: "Bourse de l'Or",
+    title: "Or africain certifié, des mines africaines jusqu'à votre porte",
+    subtitle:
+      "Or tracé, conforme et certifié, provenant d'Afrique et préparé à la demande pour livraison sécurisée.",
+    ctaPrimary: { label: "Or Estampillé", href: "/store" },
+    ctaSecondary: { label: "Espace Pro", href: "/espace-pro" },
     backgroundStyle: "from-[#1f1408] via-[#3b2a10] to-[#5e4a1e]",
   },
   storefrontTheme: {
@@ -42,15 +43,18 @@ export const bdoTenantConfig: TenantConfig = {
     },
   },
   storefrontIdentity: {
-    platformLabel: "Bourse de l'Or Retail",
-    retailModeLabel: "Retail",
+    platformLabel: "Bourse de l'Or - Or Estampillé",
+    retailModeLabel: "Or Estampillé",
     sections: [
-      { slug: "stamped", title: "Stamped Gold", subtitle: "Retail-ready stamped units", limit: 40 },
-      { slug: "verified", title: "Verified Inventory", subtitle: "Hallmarked and traceable", limit: 40 },
+      { slug: "stamped", title: "Or Estampillé", subtitle: "Pièces et lingots certifiés, frappés à la demande", limit: 40 },
+      { slug: "jewelry", title: "Bijoux en or", subtitle: "Pièces certifiées, réalisées sur commande", limit: 40 },
+      { slug: "gold-art", title: "Or d'art", subtitle: "Créations patrimoniales et pièces de collection", limit: 24 },
     ],
     categoryVisuals: [
-      { slug: "dore", label: "Doré", icon: "🪨", accent: "#EA580C", image: "/product-images/dore-nuggets-01.png" },
-      { slug: "stamped", label: "Stamped Gold", icon: "🪙", accent: "#10B981", image: "/product-images/stamped-bar-01.png" },
+      { slug: "dore", label: "Doré", icon: "gem", accent: "#EA580C", image: "/product-images/dore-nuggets-01.png" },
+      { slug: "stamped", label: "Or Estampillé", icon: "shield", accent: "#10B981", image: "/product-images/stamped-bar-01.png" },
+      { slug: "jewelry", label: "Bijoux en or", icon: "sparkles", accent: "#A855F7", image: "/product-images/jewelry-chain.png" },
+      { slug: "gold-art", label: "Or d'art", icon: "palette", accent: "#F97316", image: "/product-images/art-medallion.png" },
     ],
   },
   assets: {

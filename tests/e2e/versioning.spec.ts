@@ -2,6 +2,7 @@ import { test, expect } from "@playwright/test";
 import { loginAsAdmin } from "./utils";
 
 type BuildJson = {
+  build?: string | null;
   buildId?: string | null;
   gitSha?: string | null;
   builtAt?: string | null;
@@ -12,6 +13,7 @@ type BuildJson = {
 
 type VersionJson = {
   ok?: boolean;
+  build?: string | null;
   buildId?: string | null;
   gitSha?: string | null;
   cacheBuster?: string | null;
@@ -56,14 +58,17 @@ test("versioning forever: parity + cache headers + critical routes", async ({ re
   const build = await getJson<BuildJson>(request, `/build.json?v=${now}`);
 
   expect(version.ok).toBeTruthy();
+  expect(isNonEmptyString(version.build), "server build must be non-null").toBeTruthy();
   expect(isNonEmptyString(version.buildId), "server buildId must be non-null").toBeTruthy();
   expect(isNonEmptyString(version.gitSha), "server gitSha must be non-null").toBeTruthy();
   expect(version.clientBuild, "server must expose clientBuild").toBeTruthy();
   expect(isNonEmptyString(version.clientBuild?.buildId), "clientBuild.buildId must be non-null").toBeTruthy();
   expect(isNonEmptyString(version.clientBuild?.gitSha), "clientBuild.gitSha must be non-null").toBeTruthy();
 
+  expect(version.build).toBe(version.buildId);
   expect(version.buildId).toBe(version.clientBuild?.buildId);
   expect(version.gitSha).toBe(version.clientBuild?.gitSha);
+  expect(build.build).toBe(version.build);
   expect(build.buildId).toBe(version.buildId);
   expect(build.gitSha).toBe(version.gitSha);
 
@@ -159,6 +164,14 @@ test("versioning forever: parity + cache headers + critical routes", async ({ re
       .toBe(true);
   }
   await shot(publicPage, "retail");
+
+  // Stale UI guardrails on canonical storefront.
+  await publicPage.goto(`/store?v=${now}`, { waitUntil: "domcontentloaded" });
+  await expect(publicPage.locator("text=404 Page Not Found")).toHaveCount(0);
+  await expect(publicPage.locator('img[src^="data:image/"]')).toHaveCount(0);
+  await expect(publicPage.getByText(/catalog item/i)).toHaveCount(0);
+  await expect(publicPage.getByText(/published/i)).toHaveCount(0);
+  await shot(publicPage, "store-stale-guards");
 
   await publicPage.goto(`/debug/location?v=${now}`, { waitUntil: "domcontentloaded" });
   await expect(publicPage.locator("text=404 Page Not Found")).toHaveCount(0);

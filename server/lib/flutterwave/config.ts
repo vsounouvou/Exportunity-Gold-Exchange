@@ -3,6 +3,21 @@ import crypto from "crypto";
 import type { TenantKey } from "../tenants";
 
 export type FlutterwaveMode = "SANDBOX" | "LIVE";
+export type FlutterwaveApiVersion = "v3" | "v4";
+
+const TENANT_SUFFIX_ALIASES: Record<TenantKey, string[]> = {
+  bdo: ["BDO", "BOURSE"],
+  exportunity: ["EXPO", "EXPORTUNITY"],
+  zone: ["ZONE"],
+  mindbase: ["MINDBASE"],
+  met: ["MET", "MAISONENTERRE", "MAISON_EN_TERRE"],
+  vs: ["VS", "VITALSOUNOUVOU", "VITAL_SOUNOUVOU"],
+  hoz: ["HOZ", "HOUSEOFZOGUE", "HOUSE_OF_ZOGUE"],
+  zogueland: ["ZOGUELAND"],
+  rayon1km: ["RAYON1KM", "RAYON"],
+};
+
+const SHARED_FLUTTERWAVE_SUFFIXES = ["EXPO", "EXPORTUNITY"];
 
 function normalizeMode(value: string | null | undefined): FlutterwaveMode {
   const normalized = String(value ?? "").trim().toLowerCase();
@@ -29,8 +44,10 @@ function firstEnv(...names: string[]): string | null {
 }
 
 function suffixesForTenant(tenantKey: TenantKey): string[] {
-  if (tenantKey === "bdo") return ["BDO", "BOURSE"];
-  return ["EXPO", "EXPORTUNITY"];
+  return uniqueStrings([
+    ...(TENANT_SUFFIX_ALIASES[tenantKey] || []),
+    ...SHARED_FLUTTERWAVE_SUFFIXES,
+  ]);
 }
 
 function keyForMode(base: string, mode: FlutterwaveMode) {
@@ -83,6 +100,10 @@ export function getFlutterwaveMode(tenantKey: TenantKey, modeOverride?: string |
 
 export function getFlutterwaveKeyEnvVarNames(tenantKey: TenantKey, mode: FlutterwaveMode) {
   return {
+    clientId: envCandidates("FLW_CLIENT_ID", tenantKey, mode).concat(envCandidates("FLUTTERWAVE_CLIENT_ID", tenantKey, mode)),
+    clientSecret: envCandidates("FLW_CLIENT_SECRET", tenantKey, mode).concat(
+      envCandidates("FLUTTERWAVE_CLIENT_SECRET", tenantKey, mode),
+    ),
     publicKey: envCandidates("FLW_PUBLIC_KEY", tenantKey, mode).concat(envCandidates("FLUTTERWAVE_PUBLIC_KEY", tenantKey, mode)),
     secretKey: envCandidates("FLW_SECRET_KEY", tenantKey, mode).concat(envCandidates("FLUTTERWAVE_SECRET_KEY", tenantKey, mode)),
     encryptionKey: envCandidates("FLW_ENCRYPTION_KEY", tenantKey, mode).concat(envCandidates("FLUTTERWAVE_ENCRYPTION_KEY", tenantKey, mode)),
@@ -94,18 +115,28 @@ export function getFlutterwaveKeys(tenantKey: TenantKey, modeOverride?: string |
   const mode = getFlutterwaveMode(tenantKey, modeOverride);
   const names = getFlutterwaveKeyEnvVarNames(tenantKey, mode);
 
+  const clientId = firstEnv(...names.clientId) ?? "";
+  const clientSecret = firstEnv(...names.clientSecret) ?? "";
   const publicKey = firstEnv(...names.publicKey) ?? "";
   const secretKey = firstEnv(...names.secretKey) ?? "";
   const encryptionKey = firstEnv(...names.encryptionKey);
   const webhookHash = firstEnv(...names.webhookHash);
+  const version: FlutterwaveApiVersion = clientId || clientSecret || encryptionKey ? "v4" : "v3";
+  const configured =
+    version === "v4"
+      ? Boolean(clientId && clientSecret && encryptionKey)
+      : Boolean(secretKey);
 
   return {
     mode,
+    version,
+    clientId,
+    clientSecret,
     publicKey,
     secretKey,
     encryptionKey,
     webhookHash,
-    configured: Boolean(publicKey && secretKey),
+    configured,
     envVarNames: names,
   };
 }
@@ -121,6 +152,34 @@ export function verifyFlutterwaveWebhookHash(input: {
   if (!expected || !received) return false;
 
   const expectedBuf = Buffer.from(expected);
+  const receivedBuf = Buffer.from(received);
+  if (expectedBuf.length !== receivedBuf.length) return false;
+  return crypto.timingSafeEqual(expectedBuf, receivedBuf);
+}
+
+export function verifyFlutterwaveWebhookSignature(input: {
+  version: FlutterwaveApiVersion;
+  rawBody: Buffer | string | undefined;
+  headerValue: string | string[] | undefined;
+  expectedHash: string | null | undefined;
+}) {
+  if (input.version === "v3") {
+    return verifyFlutterwaveWebhookHash({
+      headerValue: input.headerValue,
+      expectedHash: input.expectedHash,
+    });
+  }
+
+  const expected = String(input.expectedHash || "").trim();
+  const headerRaw = Array.isArray(input.headerValue) ? input.headerValue[0] : input.headerValue;
+  const received = String(headerRaw || "").trim();
+  const rawBody =
+    typeof input.rawBody === "string" ? Buffer.from(input.rawBody) : Buffer.isBuffer(input.rawBody) ? input.rawBody : null;
+
+  if (!expected || !received || !rawBody?.length) return false;
+
+  const digest = crypto.createHmac("sha256", expected).update(rawBody).digest("base64");
+  const expectedBuf = Buffer.from(digest);
   const receivedBuf = Buffer.from(received);
   if (expectedBuf.length !== receivedBuf.length) return false;
   return crypto.timingSafeEqual(expectedBuf, receivedBuf);

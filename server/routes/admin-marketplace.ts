@@ -12,6 +12,8 @@ import { getFlutterwaveKeys } from "../lib/flutterwave/config";
 import { flutterwaveVerifyTransaction } from "../lib/flutterwave/service";
 import { LEGACY_DEFAULT_MAP_MARKER_STYLE_KEYS, normalizeMarkerStyleKey, upsertDefaultMapMarkerStyles } from "../lib/marketplace/mapMarkers";
 import { reverseTopupCredit } from "../lib/wallet/topups";
+import type { TenantKey } from "../lib/tenants";
+import { normalizeTenantKey } from "../../tenants/registry";
 
 const router = Router();
 
@@ -278,8 +280,8 @@ router.post("/payments/:paymentId/recheck", async (req, res) => {
     if (!row) return res.status(404).json({ message: "Payment not found" });
 
     if (String(row.provider || "").toLowerCase() === "flutterwave") {
-      const keys = getFlutterwaveKeys(tenantKey === "exportunity" ? "exportunity" : "bdo");
-      if (!keys.secretKey) {
+      const keys = getFlutterwaveKeys((normalizeTenantKey(tenantKey) || "exportunity") as TenantKey);
+      if (!keys.configured) {
         return res.status(503).json({ message: "Flutterwave is not configured for this tenant" });
       }
 

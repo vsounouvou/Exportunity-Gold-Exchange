@@ -8,13 +8,15 @@ import { applyTopupPaid } from "../lib/wallet/topups";
 import { reversePayout } from "../lib/wallet/payouts";
 import { getFlutterwaveKeys } from "../lib/flutterwave/config";
 import { flutterwaveVerifyTransaction } from "../lib/flutterwave/service";
+import type { TenantKey } from "../lib/tenants";
+import { normalizeTenantKey } from "../../tenants/registry";
 
 const router = Router();
 
 router.use(ensureTenantAdmin);
 
-function getTenantKey(tenant: any) {
-  return tenant?.key === "exportunity" ? "exportunity" : "bdo";
+function getTenantKey(tenant: any): TenantKey {
+  return (normalizeTenantKey(String(tenant?.key || "")) || "exportunity") as TenantKey;
 }
 
 async function writeWalletAuditLog(req: any, action: string, payload: Record<string, unknown>) {
@@ -202,7 +204,7 @@ router.post("/topups/:topupId/recheck", async (req, res) => {
     if (String(paymentRow.provider || "").toLowerCase() === "flutterwave") {
       const tenant = req.tenant;
       const keys = getFlutterwaveKeys(getTenantKey(tenant));
-      if (!keys.secretKey) {
+      if (!keys.configured) {
         return res.status(503).json({ message: "Flutterwave not configured for this tenant" });
       }
 

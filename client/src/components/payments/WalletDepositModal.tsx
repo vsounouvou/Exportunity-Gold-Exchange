@@ -36,10 +36,27 @@ type FlutterwaveInitResponse = {
   ok: true;
   paymentId: string;
   tx_ref: string;
-  checkout: {
-    type: "redirect";
-    link: string;
-  };
+  checkout:
+    | {
+        type: "redirect";
+        link: string;
+      }
+    | {
+        type: "otp" | "pin";
+        chargeId: string | null;
+        returnPath: string;
+        message?: string | null;
+      }
+    | {
+        type: "status";
+        returnPath: string;
+      };
+};
+
+type FlutterwaveAuthorizeResponse = {
+  ok: true;
+  paymentId: string;
+  checkout: FlutterwaveInitResponse["checkout"];
 };
 
 type QrTokenResponse = {
@@ -72,6 +89,19 @@ function toRelativePath(value: string) {
 
 function digitsOnly(value: string) {
   return value.replace(/\D/g, "");
+}
+
+function formatCardNumber(value: string) {
+  const digits = digitsOnly(value).slice(0, 19);
+  return digits.replace(/(.{4})/g, "$1 ").trim();
+}
+
+function formatExpiryMonth(value: string) {
+  return digitsOnly(value).slice(0, 2);
+}
+
+function formatExpiryYear(value: string) {
+  return digitsOnly(value).slice(0, 4);
 }
 
 function formatMoney(amount: number, currency = "XOF") {
@@ -149,13 +179,42 @@ export function WalletDepositModal(props: {
   const [widgetError, setWidgetError] = useState<string | null>(null);
   const pendingWidgetOpenRef = useRef<KkiapayWidgetInit | null>(null);
 
+  const [flutterwaveCard, setFlutterwaveCard] = useState({
+    cardNumber: "",
+    expiryMonth: "",
+    expiryYear: "",
+    cvv: "",
+  });
   const [flutterwaveLoading, setFlutterwaveLoading] = useState(false);
   const [flutterwaveError, setFlutterwaveError] = useState<string | null>(null);
-  const [flutterwaveStage, setFlutterwaveStage] = useState<"idle" | "securing" | "redirecting">("idle");
+  const [flutterwaveStage, setFlutterwaveStage] = useState<"idle" | "securing" | "authorizing" | "redirecting">("idle");
+  const [flutterwaveChallenge, setFlutterwaveChallenge] = useState<{
+    paymentId: string;
+    chargeId: string | null;
+    type: "otp" | "pin";
+    returnPath: string;
+    message: string | null;
+    value: string;
+  } | null>(null);
 
   const shouldLoadScript = open && step === "online" && onlineProvider === "kkiapay";
   const { status: scriptStatus, error: scriptError } = useScript(shouldLoadScript ? "https://cdn.kkiapay.me/k.js" : null);
   const sandbox = useMemo(() => String(widgetInit?.mode || "").toUpperCase() === "SANDBOX", [widgetInit?.mode]);
+  const flutterwaveCardValid = useMemo(() => {
+    const cardDigits = digitsOnly(flutterwaveCard.cardNumber);
+    const month = Number.parseInt(flutterwaveCard.expiryMonth || "0", 10);
+    const yearDigits = digitsOnly(flutterwaveCard.expiryYear);
+    const cvvDigits = digitsOnly(flutterwaveCard.cvv);
+    return (
+      cardDigits.length >= 12 &&
+      cardDigits.length <= 19 &&
+      month >= 1 &&
+      month <= 12 &&
+      (yearDigits.length === 2 || yearDigits.length === 4) &&
+      cvvDigits.length >= 3 &&
+      cvvDigits.length <= 4
+    );
+  }, [flutterwaveCard]);
 
   const [qrUrl, setQrUrl] = useState<string | null>(null);
   const [qrExpiresAt, setQrExpiresAt] = useState<string | null>(null);
@@ -170,6 +229,9 @@ export function WalletDepositModal(props: {
   useEffect(() => {
     if (!open) return;
     setStep("choose");
+    setFlutterwaveChallenge(null);
+    setFlutterwaveError(null);
+    setFlutterwaveStage("idle");
     try {
       localStorage.setItem("wallet_online_provider", onlineProvider);
     } catch {
@@ -187,6 +249,13 @@ export function WalletDepositModal(props: {
     setFlutterwaveError(null);
     setFlutterwaveLoading(false);
     setFlutterwaveStage("idle");
+    setFlutterwaveChallenge(null);
+    setFlutterwaveCard({
+      cardNumber: "",
+      expiryMonth: "",
+      expiryYear: "",
+      cvv: "",
+    });
     setQrUrl(null);
     setQrExpiresAt(null);
     setQrImageUrl(null);
@@ -244,9 +313,40 @@ export function WalletDepositModal(props: {
     }
   };
 
+  const handleFlutterwaveCheckout = (paymentId: string, checkout: FlutterwaveInitResponse["checkout"]) => {
+    if (checkout.type === "redirect") {
+      const checkoutLink = String(checkout.link || "").trim();
+      if (!checkoutLink) throw new Error("Flutterwave checkout link missing");
+      setFlutterwaveStage("redirecting");
+      window.location.assign(checkoutLink);
+      return;
+    }
+
+    if (checkout.type === "otp" || checkout.type === "pin") {
+      setFlutterwaveChallenge({
+        paymentId,
+        chargeId: checkout.chargeId || null,
+        type: checkout.type,
+        returnPath: checkout.returnPath,
+        message: checkout.message || null,
+        value: "",
+      });
+      setFlutterwaveStage("idle");
+      return;
+    }
+
+    setFlutterwaveStage("idle");
+    setOpen(false);
+    navigate(toRelativePath(checkout.returnPath || `/wallet/topup/flutterwave/return?paymentId=${encodeURIComponent(paymentId)}`));
+  };
+
   const openFlutterwaveCheckout = async () => {
     if (!amountValid) {
       toast({ title: "Montant invalide", description: `Minimum: ${minAmount} XOF`, variant: "destructive" });
+      return;
+    }
+    if (!flutterwaveCardValid) {
+      toast({ title: "Carte invalide", description: "Renseignez une carte valide pour Flutterwave.", variant: "destructive" });
       return;
     }
 
@@ -265,16 +365,62 @@ export function WalletDepositModal(props: {
           amount: parsedAmount,
           currency: "XOF",
           returnUrl: props.next || null,
+          paymentMethod: {
+            type: "card",
+            card: {
+              cardNumber: digitsOnly(flutterwaveCard.cardNumber),
+              cvv: digitsOnly(flutterwaveCard.cvv),
+              expiryMonth: flutterwaveCard.expiryMonth,
+              expiryYear: flutterwaveCard.expiryYear,
+            },
+          },
         }),
       })) as FlutterwaveInitResponse;
 
-      const checkoutLink = String(resp?.checkout?.link || "").trim();
-      if (!checkoutLink) throw new Error("Flutterwave checkout link missing");
-
-      setFlutterwaveStage("redirecting");
-      window.location.assign(checkoutLink);
+      handleFlutterwaveCheckout(resp.paymentId, resp.checkout);
     } catch (err: any) {
       const message = err?.message || "Impossible d'ouvrir Flutterwave";
+      if (looksLikeAuthError(message)) {
+        const currentPath = `${window.location.pathname}${window.location.search}`;
+        navigate(`/login?next=${encodeURIComponent(currentPath)}`);
+        return;
+      }
+      setFlutterwaveError(message);
+      setFlutterwaveStage("idle");
+    } finally {
+      setFlutterwaveLoading(false);
+    }
+  };
+
+  const submitFlutterwaveChallenge = async () => {
+    if (!flutterwaveChallenge) return;
+    if (!digitsOnly(flutterwaveChallenge.value)) {
+      setFlutterwaveError(flutterwaveChallenge.type === "otp" ? "Code OTP requis." : "Code PIN requis.");
+      return;
+    }
+
+    setFlutterwaveError(null);
+    setFlutterwaveLoading(true);
+    setFlutterwaveStage("authorizing");
+    try {
+      const headers: Record<string, string> = {};
+      if (session.token) headers["Authorization"] = `Bearer ${session.token}`;
+
+      const resp = (await apiRequest("/api/payments/flutterwave/authorize", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          paymentId: flutterwaveChallenge.paymentId,
+          chargeId: flutterwaveChallenge.chargeId,
+          next: props.next || null,
+          type: flutterwaveChallenge.type,
+          [flutterwaveChallenge.type]: digitsOnly(flutterwaveChallenge.value),
+        }),
+      })) as FlutterwaveAuthorizeResponse;
+
+      handleFlutterwaveCheckout(resp.paymentId, resp.checkout);
+    } catch (err: any) {
+      const message = err?.message || "Impossible de confirmer la carte";
       if (looksLikeAuthError(message)) {
         const currentPath = `${window.location.pathname}${window.location.search}`;
         navigate(`/login?next=${encodeURIComponent(currentPath)}`);
@@ -439,7 +585,7 @@ export function WalletDepositModal(props: {
                   onClick={() => setOnlineProvider("flutterwave")}
                 >
                   <div className="text-sm font-semibold">Flutterwave</div>
-                  <div className="text-[11px] opacity-80">Card / Mobile Money</div>
+                  <div className="text-[11px] opacity-80">Carte bancaire v4</div>
                 </button>
                 <button
                   type="button"
@@ -469,25 +615,125 @@ export function WalletDepositModal(props: {
                 <div className={cn("text-xs", amountValid ? "text-white/50" : "text-rose-300")}>Minimum: {minAmount} XOF</div>
               </div>
 
+              {onlineProvider === "flutterwave" ? (
+                <div className="space-y-3 rounded-xl border border-white/10 bg-white/5 p-3">
+                  <div className="text-xs text-white/60">
+                    Flutterwave v4: carte bancaire. Pour Mobile Money, utilisez plutot KKiaPay.
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-white/80">Numero de carte</Label>
+                    <Input
+                      inputMode="numeric"
+                      autoComplete="cc-number"
+                      placeholder="4242 4242 4242 4242"
+                      className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
+                      value={flutterwaveCard.cardNumber}
+                      onChange={(e) => setFlutterwaveCard((prev) => ({ ...prev, cardNumber: formatCardNumber(e.target.value) }))}
+                    />
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    <div className="space-y-2">
+                      <Label className="text-white/80">Mois</Label>
+                      <Input
+                        inputMode="numeric"
+                        autoComplete="cc-exp-month"
+                        placeholder="09"
+                        className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
+                        value={flutterwaveCard.expiryMonth}
+                        onChange={(e) => setFlutterwaveCard((prev) => ({ ...prev, expiryMonth: formatExpiryMonth(e.target.value) }))}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-white/80">Annee</Label>
+                      <Input
+                        inputMode="numeric"
+                        autoComplete="cc-exp-year"
+                        placeholder="29"
+                        className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
+                        value={flutterwaveCard.expiryYear}
+                        onChange={(e) => setFlutterwaveCard((prev) => ({ ...prev, expiryYear: formatExpiryYear(e.target.value) }))}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-white/80">CVV</Label>
+                      <Input
+                        inputMode="numeric"
+                        autoComplete="cc-csc"
+                        placeholder="123"
+                        className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
+                        value={flutterwaveCard.cvv}
+                        onChange={(e) => setFlutterwaveCard((prev) => ({ ...prev, cvv: digitsOnly(e.target.value).slice(0, 4) }))}
+                      />
+                    </div>
+                  </div>
+                  <div className={cn("text-xs", flutterwaveCardValid ? "text-white/50" : "text-rose-300")}>
+                    Saisissez une carte valide pour lancer la charge Flutterwave.
+                  </div>
+                </div>
+              ) : null}
+
               {onlineProvider === "flutterwave" && flutterwaveError ? <div className="text-sm text-rose-300">{flutterwaveError}</div> : null}
               {onlineProvider === "kkiapay" && widgetError ? <div className="text-sm text-rose-300">{widgetError}</div> : null}
               {onlineProvider === "kkiapay" && scriptError ? <div className="text-sm text-rose-300">{scriptError}</div> : null}
 
               {onlineProvider === "flutterwave" && flutterwaveStage !== "idle" ? (
                 <div className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-white/70">
-                  {flutterwaveStage === "securing" ? "Securing payment..." : "Redirecting to payment..."}
+                  {flutterwaveStage === "securing"
+                    ? "Creation de la charge..."
+                    : flutterwaveStage === "authorizing"
+                      ? "Validation de l'autorisation..."
+                      : "Redirection vers Flutterwave..."}
+                </div>
+              ) : null}
+
+              {onlineProvider === "flutterwave" && flutterwaveChallenge ? (
+                <div className="space-y-3 rounded-xl border border-emerald-400/20 bg-emerald-500/10 p-3">
+                  <div className="text-sm font-semibold text-emerald-100">
+                    {flutterwaveChallenge.type === "otp" ? "Code OTP requis" : "Code PIN requis"}
+                  </div>
+                  {flutterwaveChallenge.message ? <div className="text-xs text-emerald-100/80">{flutterwaveChallenge.message}</div> : null}
+                  <div className="space-y-2">
+                    <Label className="text-white/80">{flutterwaveChallenge.type === "otp" ? "Code OTP" : "Code PIN"}</Label>
+                    <Input
+                      inputMode="numeric"
+                      className="bg-black/20 border-emerald-300/20 text-white placeholder:text-white/30"
+                      placeholder={flutterwaveChallenge.type === "otp" ? "Entrez le code OTP" : "Entrez le code PIN"}
+                      value={flutterwaveChallenge.value}
+                      onChange={(e) =>
+                        setFlutterwaveChallenge((prev) => (prev ? { ...prev, value: digitsOnly(e.target.value).slice(0, 8) } : prev))
+                      }
+                    />
+                  </div>
                 </div>
               ) : null}
 
               <Button
                 className="w-full bg-amber-500 hover:bg-amber-400 text-black font-semibold"
-                onClick={onlineProvider === "flutterwave" ? openFlutterwaveCheckout : openKkiapayOnlineCheckout}
-                disabled={!amountValid || flutterwaveLoading || widgetLoading || (onlineProvider === "kkiapay" && scriptStatus === "loading")}
+                onClick={
+                  onlineProvider === "flutterwave"
+                    ? flutterwaveChallenge
+                      ? submitFlutterwaveChallenge
+                      : openFlutterwaveCheckout
+                    : openKkiapayOnlineCheckout
+                }
+                disabled={
+                  !amountValid ||
+                  flutterwaveLoading ||
+                  widgetLoading ||
+                  (onlineProvider === "kkiapay" && scriptStatus === "loading") ||
+                  (onlineProvider === "flutterwave" && !flutterwaveChallenge && !flutterwaveCardValid)
+                }
               >
                 {flutterwaveLoading || widgetLoading || (onlineProvider === "kkiapay" && scriptStatus === "loading") ? (
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                 ) : null}
-                {onlineProvider === "flutterwave" ? "Payer avec Flutterwave" : "Ouvrir KKiaPay"}
+                {onlineProvider === "flutterwave"
+                  ? flutterwaveChallenge
+                    ? flutterwaveChallenge.type === "otp"
+                      ? "Valider le code OTP"
+                      : "Valider le code PIN"
+                    : "Payer avec Flutterwave"
+                  : "Ouvrir KKiaPay"}
               </Button>
 
               {onlineProvider === "kkiapay" && scriptStatus !== "ready" ? <div className="text-xs text-white/60">Chargement du module de paiement...</div> : null}
@@ -511,7 +757,10 @@ export function WalletDepositModal(props: {
 
               <div className="flex items-center justify-between text-xs text-white/50">
                 <div>Montant: {parsedAmount ? formatMoney(parsedAmount, "XOF") : "--"}</div>
-                <div>{onlineProvider === "kkiapay" && sandbox ? "Sandbox" : null}</div>
+                <div>
+                  {onlineProvider === "flutterwave" && flutterwaveChallenge ? `Etape: ${flutterwaveChallenge.type.toUpperCase()}` : null}
+                  {onlineProvider === "kkiapay" && sandbox ? "Sandbox" : null}
+                </div>
               </div>
             </div>
           ) : null}

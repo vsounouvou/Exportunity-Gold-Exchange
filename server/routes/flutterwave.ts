@@ -2,13 +2,23 @@ import { Router } from "express";
 import { db } from "@db";
 import { and, eq } from "drizzle-orm";
 
-import { eceSessions, eceUsers, marketplaceOrders, payments, walletAccounts, walletTopups } from "@db/schema";
+import { eceSessions, eceUsers, marketplaceOrders, payments, tenants, walletAccounts, walletTopups } from "@db/schema";
 import type { TenantKey } from "../lib/tenants";
 import { getRequestOrigin } from "../lib/kkiapay/config";
-import { getFlutterwaveKeys, verifyFlutterwaveWebhookHash } from "../lib/flutterwave/config";
+import { getFlutterwaveKeys, verifyFlutterwaveWebhookSignature } from "../lib/flutterwave/config";
 import { buildFlutterwaveTxRef, flutterwaveInitPayment, flutterwaveVerifyTransaction } from "../lib/flutterwave/service";
+import {
+  flutterwaveV4AuthorizeCharge,
+  flutterwaveV4CreateCardPaymentMethod,
+  flutterwaveV4CreateCharge,
+  flutterwaveV4CreateCustomer,
+  flutterwaveV4GetCharge,
+  normalizeFlutterwaveV4ChargePayload,
+  type FlutterwaveV4Charge,
+} from "../lib/flutterwave/v4";
 import { applyTopupPaid, initWalletTopup } from "../lib/wallet/topups";
 import { getOrCreateWalletAccount } from "../lib/wallet/wallet";
+import { normalizeTenantKey } from "../../tenants/registry";
 
 const router = Router();
 
@@ -40,6 +50,15 @@ function requireTenant(req: any, res: any) {
   return tenant;
 }
 
+async function resolveTenantKeyForPayment(paymentRow: typeof payments.$inferSelect | null | undefined): Promise<TenantKey | null> {
+  const tenantId = Number((paymentRow as any)?.tenantId || 0);
+  if (!Number.isFinite(tenantId) || tenantId <= 0) return null;
+
+  const tenantRow = await db.query.tenants.findFirst({ where: eq(tenants.id, tenantId) });
+  const normalized = normalizeTenantKey(tenantRow?.key ?? null);
+  return normalized as TenantKey | null;
+}
+
 function parseAmount(input: unknown) {
   const parsed = typeof input === "number" ? input : Number(String(input ?? "").trim());
   if (!Number.isFinite(parsed)) return null;
@@ -66,8 +85,78 @@ function normalizeNext(value: unknown): string | null {
   return raw;
 }
 
+function digitsOnly(value: unknown) {
+  return String(value ?? "").replace(/\D/g, "");
+}
+
+function normalizeCardNumber(value: unknown) {
+  const digits = digitsOnly(value);
+  return digits.length >= 12 && digits.length <= 19 ? digits : null;
+}
+
+function normalizeCardCvv(value: unknown) {
+  const digits = digitsOnly(value);
+  return digits.length >= 3 && digits.length <= 4 ? digits : null;
+}
+
+function normalizeExpiryMonth(value: unknown) {
+  const digits = digitsOnly(value);
+  const month = Number.parseInt(digits, 10);
+  if (!Number.isFinite(month) || month < 1 || month > 12) return null;
+  return String(month).padStart(2, "0");
+}
+
+function normalizeExpiryYear(value: unknown) {
+  const digits = digitsOnly(value);
+  if (digits.length === 2) return digits;
+  if (digits.length === 4) return digits.slice(-2);
+  return null;
+}
+
+function parseFlutterwaveCardDetails(input: any) {
+  const cardNumber = normalizeCardNumber(input?.cardNumber);
+  const cvv = normalizeCardCvv(input?.cvv);
+  const expiryMonth = normalizeExpiryMonth(input?.expiryMonth);
+  const expiryYear = normalizeExpiryYear(input?.expiryYear);
+
+  if (!cardNumber || !cvv || !expiryMonth || !expiryYear) return null;
+  return {
+    cardNumber,
+    cvv,
+    expiryMonth,
+    expiryYear,
+  };
+}
+
+function parseFlutterwaveChargeUpdate(input: any) {
+  const out: Record<string, unknown> = {};
+  const type = String(input?.type || "").trim().toLowerCase();
+  if (type === "otp" || type === "pin") out.type = type;
+
+  const otp = digitsOnly(input?.otp);
+  const pin = digitsOnly(input?.pin);
+  if (otp) out.otp = otp;
+  if (pin) out.pin = pin;
+
+  const textFields: Array<[string, unknown]> = [
+    ["first_name", input?.firstName ?? input?.first_name],
+    ["last_name", input?.lastName ?? input?.last_name],
+    ["address", input?.address],
+    ["city", input?.city],
+    ["state", input?.state],
+    ["zip", input?.zip],
+    ["country", input?.country],
+  ];
+  for (const [key, value] of textFields) {
+    const normalized = String(value ?? "").trim();
+    if (normalized) out[key] = normalized;
+  }
+
+  return Object.keys(out).length > 0 ? out : null;
+}
+
 function getTenantKey(tenant: any): TenantKey {
-  return tenant.key === "exportunity" ? "exportunity" : "bdo";
+  return (normalizeTenantKey(String(tenant?.key || "")) || "exportunity") as TenantKey;
 }
 
 function isAdminUser(user: AuthedUser) {
@@ -197,6 +286,119 @@ async function markTopupFromPaymentStatus(paymentRow: typeof payments.$inferSele
 
   await db.update(walletTopups).set({ status, updatedAt: new Date() }).where(eq(walletTopups.id, topup.id));
   return db.query.walletTopups.findFirst({ where: eq(walletTopups.id, topup.id) });
+}
+
+async function syncFlutterwaveCharge(input: {
+  tenantId: number;
+  paymentRow: typeof payments.$inferSelect;
+  charge: FlutterwaveV4Charge;
+  sourcePayload?: any;
+}) {
+  const expectedAmount = Number((input.paymentRow as any).amount || 0);
+  const expectedCurrency = String((input.paymentRow as any).currency || "XOF").toUpperCase();
+  const amountOk = input.charge.amount === null || Number(input.charge.amount) === expectedAmount;
+  const currencyOk = !input.charge.currency || String(input.charge.currency).toUpperCase() === expectedCurrency;
+
+  const paymentStatus =
+    input.charge.normalizedStatus === "succeeded"
+      ? "succeeded"
+      : input.charge.normalizedStatus === "failed"
+        ? "failed"
+        : input.charge.normalizedStatus === "cancelled"
+          ? "cancelled"
+          : input.charge.normalizedStatus === "processing"
+            ? "processing"
+            : "pending";
+
+  const mergedMetadata = {
+    ...(typeof (input.paymentRow as any).metadata === "object" && (input.paymentRow as any).metadata ? (input.paymentRow as any).metadata : {}),
+    reason: !amountOk ? "amount_mismatch" : !currencyOk ? "currency_mismatch" : undefined,
+    flutterwaveStatus: input.charge.rawStatus || input.charge.normalizedStatus,
+    flutterwaveVersion: "v4",
+    flutterwaveNextActionType: input.charge.nextAction?.type || null,
+  };
+
+  if (!amountOk || !currencyOk) {
+    await db
+      .update(payments)
+      .set({
+        status: "failed",
+        providerTransactionId: input.charge.id || (input.paymentRow as any).providerTransactionId || null,
+        providerTransactionRef: input.charge.reference || (input.paymentRow as any).providerTransactionRef || null,
+        providerPayload: {
+          charge: input.charge.raw ?? null,
+          webhook: input.sourcePayload ?? null,
+        },
+        metadata: mergedMetadata,
+        updatedAt: new Date(),
+      })
+      .where(and(eq(payments.id, input.paymentRow.id), eq(payments.tenantId, input.tenantId)));
+
+    await markTopupFromPaymentStatus(input.paymentRow, "FAILED");
+    return {
+      paymentStatus: "failed" as const,
+      topupStatus: "FAILED" as const,
+    };
+  }
+
+  await db
+    .update(payments)
+    .set({
+      status: paymentStatus as any,
+      providerTransactionId: input.charge.id || (input.paymentRow as any).providerTransactionId || null,
+      providerTransactionRef: input.charge.reference || (input.paymentRow as any).providerTransactionRef || null,
+      providerPayload: {
+        charge: input.charge.raw ?? null,
+        webhook: input.sourcePayload ?? null,
+      },
+      metadata: mergedMetadata,
+      updatedAt: new Date(),
+    })
+    .where(and(eq(payments.id, input.paymentRow.id), eq(payments.tenantId, input.tenantId)));
+
+  const purpose = String((input.paymentRow as any).purpose || "").trim().toUpperCase();
+  if (paymentStatus === "succeeded" && purpose === "ORDER_PAYMENT" && (input.paymentRow as any).orderId) {
+    await db
+      .update(marketplaceOrders)
+      .set({
+        status: "confirmed",
+        paidAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(and(eq(marketplaceOrders.id, (input.paymentRow as any).orderId), eq(marketplaceOrders.tenantId, input.tenantId)));
+  }
+
+  if (paymentStatus === "succeeded" && purpose === "WALLET_TOPUP") {
+    const topupId = String((input.paymentRow as any).targetId || "").trim();
+    if (topupId) {
+      await applyTopupPaid({
+        topupId,
+        externalRef: input.charge.id || input.charge.reference || null,
+        providerPayload: input.charge.raw ?? null,
+      });
+      await db
+        .update(payments)
+        .set({ creditedAt: new Date(), updatedAt: new Date() })
+        .where(and(eq(payments.id, input.paymentRow.id), eq(payments.tenantId, input.tenantId)));
+    }
+    return {
+      paymentStatus: "succeeded" as const,
+      topupStatus: "PAID" as const,
+    };
+  }
+
+  if (purpose === "WALLET_TOPUP" && (paymentStatus === "failed" || paymentStatus === "cancelled")) {
+    await markTopupFromPaymentStatus(input.paymentRow, paymentStatus === "failed" ? "FAILED" : "CANCELLED");
+    return {
+      paymentStatus: paymentStatus as "failed" | "cancelled",
+      topupStatus: paymentStatus === "failed" ? ("FAILED" as const) : ("CANCELLED" as const),
+    };
+  }
+
+  return {
+    paymentStatus,
+    topupStatus: null,
+  };
 }
 
 async function verifyAndSyncFlutterwavePayment(input: {
@@ -370,9 +572,18 @@ router.post("/init", async (req, res) => {
     if (!keys.configured) {
       return res.status(503).json({
         error: "Flutterwave is not configured for this tenant",
-        missing: {
-          publicKey: keys.envVarNames.publicKey,
-          secretKey: keys.envVarNames.secretKey,
+        required:
+          keys.version === "v4"
+            ? {
+                clientId: keys.envVarNames.clientId,
+                clientSecret: keys.envVarNames.clientSecret,
+                encryptionKey: keys.envVarNames.encryptionKey,
+              }
+            : {
+                secretKey: keys.envVarNames.secretKey,
+              },
+        recommended: {
+          webhookHash: keys.envVarNames.webhookHash,
         },
       });
     }
@@ -449,6 +660,103 @@ router.post("/init", async (req, res) => {
     if (next) callbackQs.set("next", next);
     const redirectPath = `/wallet/topup/flutterwave/return?${callbackQs.toString()}`;
     const redirectUrl = origin ? `${origin}${redirectPath}` : redirectPath;
+    const paymentMetadata = {
+      ...(typeof (paymentRow as any).metadata === "object" && (paymentRow as any).metadata ? (paymentRow as any).metadata : {}),
+      reason: type === "WALLET_TOPUP" ? "wallet_topup" : "order_payment",
+      flutterwaveVersion: keys.version,
+    };
+
+    if (keys.version === "v4") {
+      const cardDetails = parseFlutterwaveCardDetails(req.body?.paymentMethod?.card || req.body?.card);
+      if (!cardDetails) {
+        return res.status(400).json({
+          error: "card_details_required",
+          fields: ["paymentMethod.card.cardNumber", "paymentMethod.card.cvv", "paymentMethod.card.expiryMonth", "paymentMethod.card.expiryYear"],
+        });
+      }
+
+      const customer = await flutterwaveV4CreateCustomer({
+        mode: keys.mode,
+        clientId: keys.clientId,
+        clientSecret: keys.clientSecret,
+        customer: {
+          email: buyerEmail,
+          name: buyerName,
+          phone: user.phone,
+        },
+      });
+      const paymentMethod = await flutterwaveV4CreateCardPaymentMethod({
+        mode: keys.mode,
+        clientId: keys.clientId,
+        clientSecret: keys.clientSecret,
+        encryptionKey: String(keys.encryptionKey || ""),
+        card: cardDetails,
+      });
+      const charge = await flutterwaveV4CreateCharge({
+        mode: keys.mode,
+        clientId: keys.clientId,
+        clientSecret: keys.clientSecret,
+        amount,
+        currency,
+        redirectUrl,
+        customerId: customer.id,
+        paymentMethodId: paymentMethod.id,
+        reference: txRef,
+        meta: {
+          paymentId: paymentRow.id,
+          tenantKey,
+          type,
+          reason: type === "WALLET_TOPUP" ? "wallet_topup" : "order_payment",
+        },
+      });
+
+      if (createdTopupId) {
+        await db.update(walletTopups).set({ status: "PENDING", updatedAt: new Date() }).where(eq(walletTopups.id, createdTopupId as any));
+      }
+
+      await syncFlutterwaveCharge({
+        tenantId: tenant.id,
+        paymentRow,
+        charge,
+      });
+
+      res.setHeader("Cache-Control", "no-store");
+      if (charge.nextAction?.type === "redirect_url" && charge.nextAction.redirectUrl) {
+        return res.json({
+          ok: true,
+          paymentId: paymentRow.id,
+          tx_ref: txRef,
+          checkout: {
+            type: "redirect",
+            link: charge.nextAction.redirectUrl,
+          },
+        });
+      }
+
+      if (charge.nextAction?.type === "otp" || charge.nextAction?.type === "pin") {
+        return res.json({
+          ok: true,
+          paymentId: paymentRow.id,
+          tx_ref: txRef,
+          checkout: {
+            type: charge.nextAction.type,
+            chargeId: charge.id,
+            returnPath: redirectPath,
+            message: charge.nextAction.message,
+          },
+        });
+      }
+
+      return res.json({
+        ok: true,
+        paymentId: paymentRow.id,
+        tx_ref: txRef,
+        checkout: {
+          type: "status",
+          returnPath: redirectPath,
+        },
+      });
+    }
 
     const init = await flutterwaveInitPayment({
       mode: keys.mode,
@@ -481,10 +789,7 @@ router.post("/init", async (req, res) => {
         providerTransactionRef: txRef,
         providerTransactionId: init.transactionId || (paymentRow as any).providerTransactionId || null,
         providerPayload: init.raw ?? null,
-        metadata: {
-          ...(typeof (paymentRow as any).metadata === "object" && (paymentRow as any).metadata ? (paymentRow as any).metadata : {}),
-          reason: type === "WALLET_TOPUP" ? "wallet_topup" : "order_payment",
-        },
+        metadata: paymentMetadata,
         updatedAt: new Date(),
       })
       .where(and(eq(payments.id, paymentRow.id), eq(payments.tenantId, tenant.id)));
@@ -527,6 +832,95 @@ router.post("/init", async (req, res) => {
   }
 });
 
+router.post("/authorize", async (req, res) => {
+  try {
+    const tenant = requireTenant(req, res);
+    if (!tenant) return;
+
+    const user = await requireAuthenticatedUser(req, res);
+    if (!user) return;
+
+    const paymentId = String(req.body?.paymentId || "").trim();
+    const chargeIdFromBody = String(req.body?.chargeId || "").trim();
+    const updateDetails = parseFlutterwaveChargeUpdate(req.body);
+    const next = normalizeNext(req.body?.next);
+
+    if (!paymentId) return res.status(400).json({ error: "paymentId is required" });
+    if (!updateDetails) return res.status(400).json({ error: "authorization_details_required" });
+
+    const paymentRow = await db.query.payments.findFirst({
+      where: and(eq(payments.id, paymentId as any), eq(payments.tenantId, tenant.id), eq(payments.provider, "flutterwave")),
+    });
+    if (!paymentRow) return res.status(404).json({ error: "Payment not found" });
+
+    const allowed = await canAccessPayment({ payment: paymentRow, user });
+    if (!allowed) return res.status(403).json({ error: "Forbidden" });
+
+    const tenantKey = getTenantKey(tenant);
+    const keys = getFlutterwaveKeys(tenantKey);
+    if (keys.version !== "v4" || !keys.configured) {
+      return res.status(503).json({ error: "Flutterwave v4 is not configured for this tenant" });
+    }
+
+    const chargeId = chargeIdFromBody || String((paymentRow as any).providerTransactionId || "").trim();
+    if (!chargeId) return res.status(400).json({ error: "chargeId is required" });
+
+    const charge = await flutterwaveV4AuthorizeCharge({
+      mode: keys.mode,
+      clientId: keys.clientId,
+      clientSecret: keys.clientSecret,
+      chargeId,
+      details: updateDetails,
+    });
+
+    await syncFlutterwaveCharge({
+      tenantId: tenant.id,
+      paymentRow,
+      charge,
+    });
+
+    const callbackQs = new URLSearchParams({ paymentId: String(paymentRow.id) });
+    if (next) callbackQs.set("next", next);
+    const returnPath = `/wallet/topup/flutterwave/return?${callbackQs.toString()}`;
+
+    if (charge.nextAction?.type === "redirect_url" && charge.nextAction.redirectUrl) {
+      return res.json({
+        ok: true,
+        paymentId: paymentRow.id,
+        checkout: {
+          type: "redirect",
+          link: charge.nextAction.redirectUrl,
+        },
+      });
+    }
+
+    if (charge.nextAction?.type === "otp" || charge.nextAction?.type === "pin") {
+      return res.json({
+        ok: true,
+        paymentId: paymentRow.id,
+        checkout: {
+          type: charge.nextAction.type,
+          chargeId: charge.id,
+          returnPath,
+          message: charge.nextAction.message,
+        },
+      });
+    }
+
+    return res.json({
+      ok: true,
+      paymentId: paymentRow.id,
+      checkout: {
+        type: "status",
+        returnPath,
+      },
+    });
+  } catch (error: any) {
+    console.error("[Flutterwave] authorize error:", error);
+    return res.status(500).json({ error: error?.message || "Failed to authorize Flutterwave charge" });
+  }
+});
+
 router.get("/status", async (req, res) => {
   try {
     const tenant = requireTenant(req, res);
@@ -548,15 +942,37 @@ router.get("/status", async (req, res) => {
 
     const statusRaw = String((paymentRow as any).status || "").toLowerCase();
     const queryIds = extractFlutterwaveQueryIds(req.query);
+    const tenantKey = getTenantKey(tenant);
+    const keys = getFlutterwaveKeys(tenantKey);
     if (statusRaw !== "succeeded" && statusRaw !== "failed" && statusRaw !== "cancelled") {
       try {
-        await verifyAndSyncFlutterwavePayment({
-          tenantId: tenant.id,
-          tenantKey: getTenantKey(tenant),
-          paymentRow,
-          transactionId: queryIds.transactionId,
-          txRef: queryIds.txRef,
-        });
+        if (keys.version === "v4" && keys.configured) {
+          const chargeId =
+            queryIds.transactionId ||
+            String((paymentRow as any).providerTransactionId || "").trim() ||
+            null;
+          if (chargeId) {
+            const charge = await flutterwaveV4GetCharge({
+              mode: keys.mode,
+              clientId: keys.clientId,
+              clientSecret: keys.clientSecret,
+              chargeId,
+            });
+            await syncFlutterwaveCharge({
+              tenantId: tenant.id,
+              paymentRow,
+              charge,
+            });
+          }
+        } else {
+          await verifyAndSyncFlutterwavePayment({
+            tenantId: tenant.id,
+            tenantKey,
+            paymentRow,
+            transactionId: queryIds.transactionId,
+            txRef: queryIds.txRef,
+          });
+        }
       } catch (error) {
         // keep local state if remote verification cannot complete yet
       }
@@ -603,55 +1019,60 @@ router.get("/status", async (req, res) => {
 });
 
 export async function flutterwaveWebhook(req: any, res: any) {
-  const tenant = requireTenant(req, res);
-  if (!tenant) return;
-
-  const tenantKey = getTenantKey(tenant);
-  const keys = getFlutterwaveKeys(tenantKey);
-  const signatureOk = verifyFlutterwaveWebhookHash({
-    headerValue: req.headers?.["verif-hash"],
-    expectedHash: keys.webhookHash || null,
-  });
-  if (!signatureOk) return res.status(401).json({ error: "Invalid webhook hash" });
-
   try {
     const payload = req.body || {};
-    const txRef = String(payload?.data?.tx_ref || payload?.tx_ref || "").trim();
+    const txRef = String(payload?.data?.reference || payload?.data?.tx_ref || payload?.tx_ref || "").trim();
     const transactionId = String(payload?.data?.id || payload?.id || "").trim();
+    const paymentIdFromMeta = String(payload?.data?.meta?.paymentId || payload?.data?.meta?.payment_id || "").trim();
 
     const paymentRow =
+      (paymentIdFromMeta
+        ? await db.query.payments.findFirst({
+            where: and(eq(payments.id, paymentIdFromMeta as any), eq(payments.provider, "flutterwave")),
+          })
+        : null) ||
       (txRef
         ? await db.query.payments.findFirst({
-            where: and(
-              eq(payments.tenantId, tenant.id),
-              eq(payments.provider, "flutterwave"),
-              eq(payments.providerTransactionRef, txRef),
-            ),
+            where: and(eq(payments.provider, "flutterwave"), eq(payments.providerTransactionRef, txRef)),
           })
         : null) ||
       (transactionId
         ? await db.query.payments.findFirst({
-            where: and(
-              eq(payments.tenantId, tenant.id),
-              eq(payments.provider, "flutterwave"),
-              eq(payments.providerTransactionId, transactionId),
-            ),
+            where: and(eq(payments.provider, "flutterwave"), eq(payments.providerTransactionId, transactionId)),
           })
         : null);
+
+    const tenantKey = (await resolveTenantKeyForPayment(paymentRow)) || ("exportunity" as TenantKey);
+    const keys = getFlutterwaveKeys(tenantKey);
+    const signatureOk = verifyFlutterwaveWebhookSignature({
+      version: keys.version,
+      rawBody: req.rawBody,
+      headerValue: keys.version === "v4" ? req.headers?.["flutterwave-signature"] : req.headers?.["verif-hash"],
+      expectedHash: keys.webhookHash || null,
+    });
+    if (!signatureOk) return res.status(401).json({ error: "Invalid webhook signature" });
 
     if (!paymentRow) return res.status(200).json({ ok: true, ignored: true, reason: "payment_not_found" });
     if (String((paymentRow as any).status).toLowerCase() === "succeeded" && (paymentRow as any).creditedAt) {
       return res.status(200).json({ ok: true, ignored: true, reason: "already_processed" });
     }
 
-    const synced = await verifyAndSyncFlutterwavePayment({
-      tenantId: tenant.id,
-      tenantKey,
-      paymentRow,
-      transactionId: transactionId || null,
-      txRef: txRef || null,
-      sourcePayload: payload,
-    });
+    const synced =
+      keys.version === "v4"
+        ? await syncFlutterwaveCharge({
+            tenantId: Number((paymentRow as any).tenantId),
+            paymentRow,
+            charge: normalizeFlutterwaveV4ChargePayload(payload?.data || {}),
+            sourcePayload: payload,
+          })
+        : await verifyAndSyncFlutterwavePayment({
+            tenantId: Number((paymentRow as any).tenantId),
+            tenantKey,
+            paymentRow,
+            transactionId: transactionId || null,
+            txRef: txRef || null,
+            sourcePayload: payload,
+          });
 
     return res.status(200).json({
       ok: true,

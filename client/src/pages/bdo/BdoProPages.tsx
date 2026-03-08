@@ -818,3 +818,84 @@ export function BdoProBuyersPage() {
     </ProShell>
   );
 }
+
+export function BdoProCounterpartiesPage() {
+  return <BdoProBuyersPage />;
+}
+
+export function BdoProMembershipPage() {
+  const plans = [
+    {
+      title: "Pro Buyer Basic",
+      price: "$49 / mois",
+      copy: "Accès annuaire, vues contreparties limitées et demandes d’offre.",
+    },
+    {
+      title: "Pro Buyer Pro",
+      price: "$199 / mois",
+      copy: "Carte complète, exportateurs vérifiés, sourcing structuré et intelligence renforcée.",
+    },
+    {
+      title: "Enterprise",
+      price: "Sur mesure",
+      copy: "Onboarding dédié, flux institutionnels et accès personnalisé aux contreparties.",
+    },
+  ];
+
+  return (
+    <ProShell
+      title="Espace Pro — Intelligence aurifère africaine"
+      subtitle="Un espace dédié aux mines, bureaux d’achat, négociants et investisseurs."
+    >
+      <div className="grid gap-4 xl:grid-cols-[1.05fr_0.95fr]">
+        <Card className="border-white/10 bg-[#07101d]/95">
+          <CardContent className="p-5">
+            <p className="text-[11px] uppercase tracking-[0.24em] text-amber-300/80">Accès Pro</p>
+            <h2 className="mt-2 text-xl font-semibold text-white">Carte, contreparties et sourcing vérifié</h2>
+            <p className="mt-2 text-sm text-white/65">
+              Les associations, mineurs et bureaux d’achat vérifiés peuvent obtenir un accès gratuit ou partenaire. Les
+              acheteurs internationaux et investisseurs sont soumis à un accès abonnement selon le niveau demandé.
+            </p>
+            <div className="mt-4 grid gap-3 md:grid-cols-3">
+              {plans.map((plan) => (
+                <div key={plan.title} className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                  <p className="text-sm font-semibold text-white">{plan.title}</p>
+                  <p className="mt-2 text-lg font-semibold text-amber-300">{plan.price}</p>
+                  <p className="mt-2 text-sm text-white/60">{plan.copy}</p>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="border-white/10 bg-[#07101d]/95">
+          <CardContent className="p-5">
+            <p className="text-[11px] uppercase tracking-[0.24em] text-blue-300/80">Eligibilité</p>
+            <div className="mt-4 space-y-3">
+              {[
+                "Associations : accès gratuit vérifié",
+                "Mineurs : accès gratuit vérifié",
+                "Bureaux d’achat : accès partenaire / vérifié",
+                "Acheteurs internationaux : abonnement requis",
+                "Investisseurs : accès tieré selon profil et abonnement",
+              ].map((item) => (
+                <div key={item} className="rounded-xl border border-white/10 bg-white/5 p-3 text-sm text-white/70">
+                  {item}
+                </div>
+              ))}
+            </div>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Link href="/pro/map">
+                <Button className="bg-amber-500 text-black hover:bg-amber-400">Ouvrir la carte</Button>
+              </Link>
+              <Link href="/espace-pro">
+                <Button variant="outline" className="border-white/15 text-white hover:bg-white/10">
+                  Voir l’espace Pro
+                </Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </ProShell>
+  );
+}

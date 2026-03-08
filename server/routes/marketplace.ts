@@ -45,6 +45,7 @@ import { isChairmanAssistantUser } from "./utils/auth";
 import { demoCompanyName, demoPersonName, isDemoModeRequest } from "./utils/demo-mode";
 import { getSetting } from "../lib/settings";
 import { getFxSnapshot, getUsdConversionRateForCurrency, tenantFxScopeFromRequest } from "../lib/fx";
+import { BDO_COMMERCE_DEFAULTS, getBdoCommerceSettings } from "../lib/bdo-commerce";
 import { generateAndStoreImage } from "../lib/imageGen/service";
 import { buildProductPrompt, getProductPrimaryAssetKey, inferProductImagePreset as inferProductImagePresetByCategory } from "../lib/imageGen/productPrompt";
 import { buildAnglePreset, ensureProductSlots, syncProductImagesArray } from "../lib/imageGen/productImages";
@@ -3369,6 +3370,9 @@ router.get("/buyer/nearby", async (req, res) => {
     const tenantId = dataTenant.id;
     const lang = getRequestLanguage(req);
     const goldOnly = isGoldTenantKey(dataTenant.key);
+    const goldPricingData = goldOnly
+      ? await getGoldPricePayloadForScope(resolveTenantPricingScope(dataTenant, req), String(dataTenant.key || "").trim().toLowerCase())
+      : null;
     const token = req.headers.authorization?.replace("Bearer ", "");
     const viewer = token ? await verifySession(token) : null;
     const isAdminViewer = isEceAdmin(viewer);
@@ -3614,6 +3618,9 @@ router.get("/buyer/nearby", async (req, res) => {
           mapMarkerStyle: resolvedMarkerStyle,
           products: visibleProducts.map((p) => {
             const localized = localizeSellerProduct((p.product as any) ?? {}, lang);
+            const dynamicPricing = goldPricingData
+              ? resolveGoldDynamicPricing(localized, p.category?.slug ?? null, goldPricingData)
+              : null;
             return {
               ...localized,
               images: absolutizeImageArray(req, (localized as any).images),
@@ -3629,6 +3636,7 @@ router.get("/buyer/nearby", async (req, res) => {
                       typeof (localized as any).attributes.videos[0] === "string"
                     ? (localized as any).attributes.videos[0]
                     : null,
+              dynamicPricing,
             };
           }),
         };
@@ -3721,6 +3729,9 @@ router.get("/buyer/feed", async (req, res) => {
     const tenantId = dataTenant.id;
     const lang = getRequestLanguage(req);
     const goldOnly = isGoldTenantKey(dataTenant.key);
+    const goldPricingData = goldOnly
+      ? await getGoldPricePayloadForScope(resolveTenantPricingScope(dataTenant, req), String(dataTenant.key || "").trim().toLowerCase())
+      : null;
     const token = req.headers.authorization?.replace("Bearer ", "");
     const viewer = token ? await verifySession(token) : null;
     const isAdminViewer = isEceAdmin(viewer);
@@ -3849,6 +3860,9 @@ router.get("/buyer/feed", async (req, res) => {
         pickFirstImageUrl(normalizedImages) ||
         (Number.isFinite(Number((localizedProduct as any)?.id)) ? fallbackById.get(Number((localizedProduct as any).id)) : null) ||
         null;
+      const dynamicPricing = goldPricingData
+        ? resolveGoldDynamicPricing(localizedProduct, item.category?.slug ?? null, goldPricingData)
+        : null;
       
       return {
         id: (localizedProduct as any).id,
@@ -3878,6 +3892,7 @@ router.get("/buyer/feed", async (req, res) => {
         distanceText: distance ? `${distance.toFixed(1)} km` : null,
         deliveryEta: distance ? `~${Math.round(20 + distance * 3)} min` : null,
         isVerifiedSeller: !!item.seller?.verifiedAt,
+        dynamicPricing,
         stockQuantity: item.product.stockQuantity || 0,
         inStock: (item.product.stockQuantity || 0) > 0,
       };
@@ -4493,6 +4508,9 @@ router.post("/buyer/orders", async (req, res) => {
     if (!tenant) return;
     const dataTenant = await resolveMarketplaceDataTenant(tenant);
     const marketplaceTenantId = Number(dataTenant.id);
+    const goldPricingData = isGoldTenantKey(dataTenant.key)
+      ? await getGoldPricePayloadForScope(resolveTenantPricingScope(dataTenant, req), String(dataTenant.key || "").trim().toLowerCase())
+      : null;
 
     const {
       items,
@@ -4544,12 +4562,10 @@ router.post("/buyer/orders", async (req, res) => {
       const quantity = Math.floor(toFiniteNumber(item.quantity));
       if (quantity <= 0) continue;
       
+      const dynamicPricing = goldPricingData ? resolveGoldDynamicPricing(product, categorySlug ?? null, goldPricingData) : null;
       const price = toFiniteNumber(product.price);
-
-      let unitPrice = price;
+      const unitPrice = dynamicPricing?.unitPrice ?? price;
       if (categorySlug === "stamped") {
-        const weightGrams = toWeightGrams(product.weight, product.weightUnit);
-        unitPrice = weightGrams ? price * weightGrams : price;
         stampedQtyByProductId.set(product.id, (stampedQtyByProductId.get(product.id) ?? 0) + quantity);
       }
 
@@ -4563,6 +4579,7 @@ router.post("/buyer/orders", async (req, res) => {
         quantity,
         unitPrice: unitPrice.toFixed(2),
         subtotal: itemTotal.toFixed(2),
+        dynamicPricing,
       });
     }
     
@@ -5095,6 +5112,40 @@ const goldPriceCache = new Map<string, { data: any; timestamp: number }>();
 const CACHE_DURATION = 60000;
 const TROY_OZ_TO_GRAM = 31.1034768;
 
+function resolveTenantPricingScope(tenantLike: { key?: string | null; id?: number | null } | null | undefined, req?: any) {
+  const tenantKey = String(tenantLike?.key || req?.tenant?.key || "")
+    .trim()
+    .toLowerCase();
+  if (tenantKey) return `tenant:${tenantKey}`;
+  return tenantFxScopeFromRequest(req);
+}
+
+function normalizeGoldMarginPercent(value: unknown, fallback: number) {
+  const raw = Number(value);
+  if (!Number.isFinite(raw)) return fallback;
+  const normalized = raw > 1 ? raw / 100 : raw;
+  return Math.min(Math.max(normalized, 0), 1);
+}
+
+async function getPlatformGoldMarginPercent(scope: string, tenantKey?: string | null) {
+  const normalizedTenantKey = String(tenantKey || "").trim().toLowerCase();
+  if (normalizedTenantKey === "bdo") {
+    const settings = await getBdoCommerceSettings(scope).catch(() => BDO_COMMERCE_DEFAULTS);
+    return settings.platformGoldMarginPercent;
+  }
+  const fallback = normalizedTenantKey === "bdo" ? 0.05 : 0;
+  const raw = await getSetting<any>(scope, "platform_gold_margin_percent", fallback).catch(() => fallback);
+  if (raw && typeof raw === "object") {
+    const candidate =
+      (raw as any).percent ??
+      (raw as any).value ??
+      (raw as any).margin ??
+      (raw as any).platform_gold_margin_percent;
+    return normalizeGoldMarginPercent(candidate, fallback);
+  }
+  return normalizeGoldMarginPercent(raw, fallback);
+}
+
 async function fetchJsonWithTimeout(url: string, timeoutMs: number) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
@@ -5113,6 +5164,9 @@ function buildGoldPricePayload(input: {
   percentChange?: number;
   source: string;
   isStale?: boolean;
+  marginPercent?: number;
+  mintFeeFixed?: number;
+  dynamicPricingEnabled?: boolean;
 }) {
   const fxRates = input.fx?.effectiveRates ?? {
     USD: 1,
@@ -5129,12 +5183,14 @@ function buildGoldPricePayload(input: {
   const isUp = percentChange >= 0;
   const purePerGramUSD = input.spotUSDPerOz / TROY_OZ_TO_GRAM;
   const purePerGramXOF = purePerGramUSD * USD_TO_XOF;
+  const purePerOunceXOF = input.spotUSDPerOz * USD_TO_XOF;
   const refined22KPriceXOF = purePerGramXOF * 0.9167;
   const refined18KPriceXOF = purePerGramXOF * 0.75;
-  const localPremiumPercentEnv = Number(process.env.LOCAL_PREMIUM_PERCENT || "0");
-  const localPremium = Number.isFinite(localPremiumPercentEnv) ? localPremiumPercentEnv / 100 : 0;
-  const local22KPriceXOF = refined22KPriceXOF * (1 + localPremium);
-  const local18KPriceXOF = refined18KPriceXOF * (1 + localPremium);
+  const marginPercent = normalizeGoldMarginPercent(input.marginPercent, 0);
+  const platformPurePerGramXOF = purePerGramXOF * (1 + marginPercent);
+  const platformPurePerOunceXOF = purePerOunceXOF * (1 + marginPercent);
+  const local22KPriceXOF = refined22KPriceXOF * (1 + marginPercent);
+  const local18KPriceXOF = refined18KPriceXOF * (1 + marginPercent);
 
   return {
     timestamp: new Date().toISOString(),
@@ -5144,6 +5200,20 @@ function buildGoldPricePayload(input: {
       priceUSD: input.spotUSDPerOz.toFixed(3),
       change24h: percentChange.toFixed(2),
       isUp,
+    },
+    market: {
+      spotUSDPerOz: input.spotUSDPerOz.toFixed(3),
+      pure24KPerGramXOF: purePerGramXOF.toFixed(0),
+      pure24KPerOunceXOF: purePerOunceXOF.toFixed(0),
+    },
+    platform: {
+      marginPercent: marginPercent.toFixed(4),
+      mintFeeFixed: Math.max(0, Math.round(Number(input.mintFeeFixed || 0))),
+      dynamicPricingEnabled: input.dynamicPricingEnabled !== false,
+      pure24KPerGramXOF: platformPurePerGramXOF.toFixed(0),
+      pure24KPerOunceXOF: platformPurePerOunceXOF.toFixed(0),
+      refined22KPerGramXOF: local22KPriceXOF.toFixed(0),
+      refined18KPerGramXOF: local18KPriceXOF.toFixed(0),
     },
     international: {
       dore: { priceXOF: "0", label: "Dore (quote)", purityRange: "assay-based" },
@@ -5155,7 +5225,7 @@ function buildGoldPricePayload(input: {
       dore: { priceXOF: "0", label: "Local Dore (quote)" },
       refined22K: { priceXOF: local22KPriceXOF.toFixed(0), label: "Local 22K" },
       refined18K: { priceXOF: local18KPriceXOF.toFixed(0), label: "Local 18K" },
-      premiumPercent: (localPremium * 100).toFixed(1),
+      premiumPercent: (marginPercent * 100).toFixed(1),
     },
     fxRates: input.fx?.effectiveRates ?? fxRates,
     fxMeta: input.fx
@@ -5174,6 +5244,217 @@ function buildGoldPricePayload(input: {
           overrideApplied: false,
         },
   };
+}
+
+async function getGoldPricePayloadForScope(scope: string, tenantKey?: string | null) {
+  const normalizedTenantKey = String(tenantKey || "").trim().toLowerCase();
+  const commerceSettings =
+    normalizedTenantKey === "bdo" ? await getBdoCommerceSettings(scope).catch(() => BDO_COMMERCE_DEFAULTS) : null;
+  const marginPercent = commerceSettings?.platformGoldMarginPercent ?? (await getPlatformGoldMarginPercent(scope, tenantKey));
+  const cacheKey = `${scope}:margin:${marginPercent.toFixed(4)}:mint:${Number(
+    commerceSettings?.stampedGoldMintFeeFixed || 0,
+  )}:dyn:${commerceSettings?.dynamicPricingEnabled !== false}`;
+  const cached = goldPriceCache.get(cacheKey);
+  if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+    return cached.data;
+  }
+
+  try {
+    const fx = await getFxSnapshot(scope);
+    const spot = await fetchJsonWithTimeout("https://data-asg.goldprice.org/dbXRates/USD", 6000);
+    const item = spot?.items?.[0];
+    const spotUSDPerOz = Number(item?.xauPrice);
+    if (!Number.isFinite(spotUSDPerOz) || spotUSDPerOz <= 0) {
+      throw new Error("Invalid spot gold price");
+    }
+
+    const priceData = buildGoldPricePayload({
+      fx,
+      spotUSDPerOz,
+      percentChange: Number(item?.pcXau),
+      source: "live",
+      isStale: false,
+      marginPercent,
+      mintFeeFixed: commerceSettings?.stampedGoldMintFeeFixed || 0,
+      dynamicPricingEnabled: commerceSettings?.dynamicPricingEnabled ?? true,
+    });
+
+    goldPriceCache.set(cacheKey, { data: priceData, timestamp: Date.now() });
+    return priceData;
+  } catch (error) {
+    if (cached?.data) {
+      return {
+        ...cached.data,
+        timestamp: new Date().toISOString(),
+        source: "cached-fallback",
+        isStale: true,
+      };
+    }
+
+    let fx: Awaited<ReturnType<typeof getFxSnapshot>> | null = null;
+    try {
+      fx = await getFxSnapshot(scope);
+    } catch {
+      // ignore and fall through to static payload
+    }
+
+    const fallbackSpotUsdPerOz = Number(
+      process.env.GOLD_PRICE_FALLBACK_USD_PER_OZ || process.env.STAMPED_GOLD_FALLBACK_XAU_USD || "2900",
+    );
+    const fallbackData = buildGoldPricePayload({
+      fx,
+      spotUSDPerOz:
+        Number.isFinite(fallbackSpotUsdPerOz) && fallbackSpotUsdPerOz > 0 ? fallbackSpotUsdPerOz : 2900,
+      percentChange: Number(process.env.GOLD_PRICE_FALLBACK_CHANGE_PCT || "0"),
+      source: "static-fallback",
+      isStale: true,
+      marginPercent,
+      mintFeeFixed: commerceSettings?.stampedGoldMintFeeFixed || 0,
+      dynamicPricingEnabled: commerceSettings?.dynamicPricingEnabled ?? true,
+    });
+    goldPriceCache.set(cacheKey, { data: fallbackData, timestamp: Date.now() });
+    return fallbackData;
+  }
+}
+
+function parseProductAttributesForPricing(product: any) {
+  const raw = product?.attributes;
+  if (raw && typeof raw === "object" && !Array.isArray(raw)) return raw as Record<string, unknown>;
+  if (typeof raw === "string") {
+    try {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) return parsed as Record<string, unknown>;
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
+function toFiniteNumber(value: any) {
+  const parsed = typeof value === "number" ? value : parseFloat(String(value));
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function toWeightGrams(value: any, unitValue: any) {
+  const weight = toFiniteNumber(value);
+  if (!weight) return 0;
+  const unit = String(unitValue || "").toLowerCase();
+  if (unit === "g" || unit === "gram" || unit === "grams") return weight;
+  if (unit === "kg" || unit === "kilogram" || unit === "kilograms") return weight * 1000;
+  if (unit === "mg") return weight / 1000;
+  if (unit === "oz" || unit === "ounce" || unit === "ounces") return weight * 28.349523125;
+  return weight;
+}
+
+function resolveGoldPurityFactor(product: any, categorySlug: string | null | undefined) {
+  const attrs = parseProductAttributesForPricing(product);
+  const candidates = [
+    attrs?.karat,
+    attrs?.bdoKarat,
+    product?.karat,
+    (product as any)?.bdoKarat,
+  ];
+  for (const candidate of candidates) {
+    const karat = Number(candidate);
+    if (Number.isFinite(karat) && karat > 0 && karat <= 24) return karat / 24;
+  }
+
+  const purityCandidates = [attrs?.purity, product?.purity];
+  for (const candidate of purityCandidates) {
+    const raw = String(candidate || "").trim().toLowerCase();
+    if (!raw) continue;
+    const pctMatch = raw.match(/(\d+(?:\.\d+)?)\s*%/);
+    if (pctMatch) {
+      const pct = Number(pctMatch[1]);
+      if (Number.isFinite(pct) && pct > 0) return Math.min(Math.max(pct / 100, 0), 1);
+    }
+    const karatMatch = raw.match(/(\d+(?:\.\d+)?)\s*k/);
+    if (karatMatch) {
+      const karat = Number(karatMatch[1]);
+      if (Number.isFinite(karat) && karat > 0 && karat <= 24) return karat / 24;
+    }
+  }
+
+  const normalizedCategory = String(categorySlug || "").trim().toLowerCase();
+  if (normalizedCategory === "jewelry") return 18 / 24;
+  if (normalizedCategory === "stamped" || normalizedCategory === "gold-art" || normalizedCategory === "dore") return 1;
+  return 1;
+}
+
+function resolveGoldDynamicPricing(product: any, categorySlug: string | null | undefined, goldPriceData: any) {
+  if (!goldPriceData?.platform) return null;
+  const dynamicPricingEnabled = goldPriceData.platform?.dynamicPricingEnabled !== false;
+
+  const platformPerGram = Number(goldPriceData.platform?.pure24KPerGramXOF || 0);
+  if (!Number.isFinite(platformPerGram) || platformPerGram <= 0) return null;
+
+  const attrs = parseProductAttributesForPricing(product);
+  const purityFactor = resolveGoldPurityFactor(product, categorySlug);
+  const perGramPrice = platformPerGram * purityFactor;
+  const weightGrams =
+    toWeightGrams(product?.weight, product?.weightUnit) ||
+    toFiniteNumber(attrs?.weightGrams) ||
+    toFiniteNumber(attrs?.weight_g);
+  const marginPercent = Number(goldPriceData.platform?.marginPercent || 0);
+  const mintFeeFixed = Math.max(0, Number(goldPriceData.platform?.mintFeeFixed || 0));
+  const fallbackRawPrice = toFiniteNumber(product?.price);
+  const fallbackCurrency = String(product?.currency || "XOF").trim().toUpperCase() || "XOF";
+  const normalizedCategory = String(categorySlug || "").trim().toLowerCase();
+
+  if (!dynamicPricingEnabled) {
+    if (fallbackRawPrice > 0) {
+      return {
+        currency: fallbackCurrency,
+        pricingModel: "fallback",
+        unitPrice: fallbackRawPrice,
+        perGramPrice: null,
+        weightGrams: null,
+        purityFactor,
+        marginPercent,
+      };
+    }
+    return null;
+  }
+
+  if (normalizedCategory === "dore") {
+    return {
+      currency: "XOF",
+      pricingModel: "per_gram",
+      unitPrice: perGramPrice,
+      perGramPrice,
+      weightGrams: null,
+      purityFactor,
+      marginPercent,
+    };
+  }
+
+  if (weightGrams > 0) {
+    return {
+      currency: "XOF",
+      pricingModel: "per_piece",
+      unitPrice: perGramPrice * weightGrams + mintFeeFixed,
+      perGramPrice,
+      weightGrams,
+      purityFactor,
+      marginPercent,
+      mintFeeFixed,
+    };
+  }
+
+  if (fallbackRawPrice > 0) {
+    return {
+      currency: fallbackCurrency,
+      pricingModel: "fallback",
+      unitPrice: fallbackRawPrice,
+      perGramPrice: null,
+      weightGrams: null,
+      purityFactor,
+      marginPercent,
+    };
+  }
+
+  return null;
 }
 
 router.get("/fx-rates", async (req, res) => {
@@ -5200,59 +5481,12 @@ router.get("/fx-rates", async (req, res) => {
 
 router.get("/gold-price", async (req, res) => {
   const scope = tenantFxScopeFromRequest(req);
-  const cached = goldPriceCache.get(scope);
   try {
-    if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
-      return res.json(cached.data);
-    }
-
-    const fx = await getFxSnapshot(scope);
-    const spot = await fetchJsonWithTimeout("https://data-asg.goldprice.org/dbXRates/USD", 6000);
-    const item = spot?.items?.[0];
-    const spotUSDPerOz = Number(item?.xauPrice);
-    if (!Number.isFinite(spotUSDPerOz) || spotUSDPerOz <= 0) {
-      throw new Error("Invalid spot gold price");
-    }
-
-    const priceData = buildGoldPricePayload({
-      fx,
-      spotUSDPerOz,
-      percentChange: Number(item?.pcXau),
-      source: "live",
-      isStale: false,
-    });
-
-    goldPriceCache.set(scope, { data: priceData, timestamp: Date.now() });
-    return res.json(priceData);
+    const data = await getGoldPricePayloadForScope(scope, String(req?.tenant?.key || "").trim().toLowerCase());
+    return res.json(data);
   } catch (error: any) {
     console.error("[Gold Price] Error fetching price:", error);
-    if (cached?.data) {
-      return res.json({
-        ...cached.data,
-        timestamp: new Date().toISOString(),
-        source: "cached-fallback",
-        isStale: true,
-      });
-    }
-
-    let fx: Awaited<ReturnType<typeof getFxSnapshot>> | null = null;
-    try {
-      fx = await getFxSnapshot(scope);
-    } catch {}
-
-    const fallbackSpotUsdPerOz = Number(
-      process.env.GOLD_PRICE_FALLBACK_USD_PER_OZ || process.env.STAMPED_GOLD_FALLBACK_XAU_USD || "2900",
-    );
-    const fallbackData = buildGoldPricePayload({
-      fx,
-      spotUSDPerOz:
-        Number.isFinite(fallbackSpotUsdPerOz) && fallbackSpotUsdPerOz > 0 ? fallbackSpotUsdPerOz : 2900,
-      percentChange: Number(process.env.GOLD_PRICE_FALLBACK_CHANGE_PCT || "0"),
-      source: "static-fallback",
-      isStale: true,
-    });
-    goldPriceCache.set(scope, { data: fallbackData, timestamp: Date.now() });
-    return res.json(fallbackData);
+    res.status(500).json({ error: "Failed to fetch gold price" });
   }
 });
 

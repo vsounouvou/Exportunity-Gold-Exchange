@@ -35,3 +35,13 @@ test("resolveTwilioProviderErrorMessage: maps known Twilio error code", () => {
   assert.match(String(out), /sandbox/i);
   assert.match(String(out), /join/i);
 });
+
+test("resolveTwilioProviderErrorMessage: maps sandbox recipient not joined code", () => {
+  process.env.TWILIO_SANDBOX_MODE = "true";
+  process.env.TWILIO_WHATSAPP_FROM = "whatsapp:+14155238886";
+
+  const out = resolveTwilioProviderErrorMessage("63015", null);
+  assert.equal(typeof out, "string");
+  assert.match(String(out), /sandbox/i);
+  assert.match(String(out), /join/i);
+});

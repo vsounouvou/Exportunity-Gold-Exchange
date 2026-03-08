@@ -1,5 +1,6 @@
 import { db } from "@db";
 import { sql } from "drizzle-orm";
+import { seedTenantCommunicationProfiles } from "./sender-resolution";
 
 export async function ensureCommunicationsTables() {
   await db.execute(sql`
@@ -195,4 +196,151 @@ export async function ensureCommunicationsTables() {
     create index if not exists communications_events_provider_event_idx
       on communications_events (provider, event_at desc);
   `);
+
+  await db.execute(sql`
+    create table if not exists tenant_communication_profiles (
+      id serial primary key,
+      tenant_id int not null references tenants(id) on delete cascade,
+      is_active boolean not null default true,
+      default_channel text not null default 'sms',
+      sms_from text,
+      whatsapp_from text,
+      verify_service_sid text,
+      sender_label text,
+      default_signature text,
+      messaging_service_sid text,
+      whatsapp_sender_status text,
+      use_sandbox_for_dev boolean not null default false,
+      metadata jsonb not null default '{}'::jsonb,
+      created_at timestamptz not null default now(),
+      updated_at timestamptz not null default now()
+    );
+  `);
+
+  await db.execute(sql`
+    create unique index if not exists tenant_communication_profiles_tenant_idx
+      on tenant_communication_profiles (tenant_id);
+  `);
+
+  await db.execute(sql`
+    create index if not exists tenant_communication_profiles_tenant_updated_idx
+      on tenant_communication_profiles (tenant_id, updated_at desc);
+  `);
+
+  await db.execute(sql`
+    create index if not exists tenant_communication_profiles_tenant_active_idx
+      on tenant_communication_profiles (tenant_id, is_active);
+  `);
+
+  await db.execute(sql`
+    create table if not exists agent_sender_profiles (
+      id serial primary key,
+      tenant_id int not null references tenants(id) on delete cascade,
+      agent_id int not null references agents(id) on delete cascade,
+      is_active boolean not null default true,
+      display_name text,
+      signature text,
+      allowed_channels jsonb not null default '["sms","whatsapp"]'::jsonb,
+      sms_from text,
+      whatsapp_from text,
+      fallback_to_tenant_default boolean not null default true,
+      metadata jsonb not null default '{}'::jsonb,
+      created_at timestamptz not null default now(),
+      updated_at timestamptz not null default now()
+    );
+  `);
+
+  await db.execute(sql`
+    create unique index if not exists agent_sender_profiles_tenant_agent_idx
+      on agent_sender_profiles (tenant_id, agent_id);
+  `);
+
+  await db.execute(sql`
+    create index if not exists agent_sender_profiles_tenant_idx
+      on agent_sender_profiles (tenant_id, created_at desc);
+  `);
+
+  await db.execute(sql`
+    create index if not exists agent_sender_profiles_agent_updated_idx
+      on agent_sender_profiles (agent_id, updated_at desc);
+  `);
+
+  await db.execute(sql`
+    create table if not exists outbound_message_logs (
+      id serial primary key,
+      tenant_id int not null references tenants(id) on delete cascade,
+      agent_id int references agents(id) on delete set null,
+      channel text not null,
+      from_address text,
+      to_address text not null,
+      body text,
+      template_name text,
+      template_payload jsonb,
+      twilio_message_sid text,
+      twilio_status text,
+      provider_error_code text,
+      provider_error_message text,
+      provider_response jsonb,
+      status text not null default 'queued',
+      created_at timestamptz not null default now(),
+      updated_at timestamptz not null default now()
+    );
+  `);
+
+  await db.execute(sql`
+    create index if not exists outbound_message_logs_tenant_created_idx
+      on outbound_message_logs (tenant_id, created_at desc);
+  `);
+
+  await db.execute(sql`
+    create index if not exists outbound_message_logs_agent_created_idx
+      on outbound_message_logs (agent_id, created_at desc);
+  `);
+
+  await db.execute(sql`
+    create index if not exists outbound_message_logs_twilio_sid_idx
+      on outbound_message_logs (twilio_message_sid);
+  `);
+
+  await db.execute(sql`
+    create index if not exists outbound_message_logs_status_created_idx
+      on outbound_message_logs (status, created_at desc);
+  `);
+
+  await db.execute(sql`
+    create table if not exists inbound_message_logs (
+      id serial primary key,
+      tenant_id int references tenants(id) on delete set null,
+      agent_id int references agents(id) on delete set null,
+      from_address text not null,
+      to_address text not null,
+      body text,
+      channel text not null,
+      twilio_message_sid text,
+      raw_payload jsonb not null default '{}'::jsonb,
+      created_at timestamptz not null default now()
+    );
+  `);
+
+  await db.execute(sql`
+    create index if not exists inbound_message_logs_tenant_created_idx
+      on inbound_message_logs (tenant_id, created_at desc);
+  `);
+
+  await db.execute(sql`
+    create index if not exists inbound_message_logs_agent_created_idx
+      on inbound_message_logs (agent_id, created_at desc);
+  `);
+
+  await db.execute(sql`
+    create index if not exists inbound_message_logs_twilio_sid_idx
+      on inbound_message_logs (twilio_message_sid);
+  `);
+
+  await db.execute(sql`
+    create index if not exists inbound_message_logs_created_idx
+      on inbound_message_logs (created_at desc);
+  `);
+
+  await seedTenantCommunicationProfiles();
 }

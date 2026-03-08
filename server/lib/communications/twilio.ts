@@ -1,5 +1,16 @@
 import crypto from "crypto";
 import twilio from "twilio";
+import {
+  createOutboundMessageLog,
+  finalizeOutboundMessageLog,
+} from "./message-logs";
+import {
+  isSandboxWhatsAppSender,
+  resolveSender,
+  type ResolvableTwilioChannel,
+  type ResolvedSender,
+  type SenderResolutionSource,
+} from "./sender-resolution";
 import { getMessagingHealth, resolveMessagingEnv, validateMessagingEnvAtBoot } from "../messaging/config";
 
 export type TwilioChannel = "sms" | "whatsapp";
@@ -23,7 +34,74 @@ export type TwilioSendResult = {
   raw: Record<string, unknown> | null;
 };
 
-export function resolveTwilioProviderErrorMessage(errorCode: string | null | undefined, errorMessage: string | null | undefined) {
+export type SendTenantMessageInput = {
+  tenantId: number;
+  agentId?: number | null;
+  agentKey?: string | null;
+  to: string;
+  body?: string | null;
+  channel: ResolvableTwilioChannel;
+  templateName?: string | null;
+  templatePayload?: Record<string, unknown> | null;
+  metadata?: Record<string, unknown> | null;
+  mediaUrls?: string[] | null;
+  statusCallbackUrl?: string | null;
+};
+
+export type SendTenantMessageResult = TwilioSendResult & {
+  channel: ResolvableTwilioChannel;
+  outboundLogId: number | null;
+  finalBody: string | null;
+  fromAddress: string | null;
+  resolutionSource: SenderResolutionSource | null;
+  isSandbox: boolean;
+  verifyServiceSid: string | null;
+  messagingServiceSid: string | null;
+};
+
+type TwilioErrorContext = {
+  sandboxMode?: boolean;
+  sandboxFrom?: string | null;
+};
+
+type TwilioResolvedSendParams = {
+  channel: TwilioChannel;
+  toE164: string;
+  body?: string | null;
+  fromAddress?: string | null;
+  messagingServiceSid?: string | null;
+  contentSid?: string | null;
+  contentVariables?: Record<string, string> | null;
+  mediaUrls?: string[] | null;
+  statusCallbackUrl?: string | null;
+};
+
+type ResolvedTemplateDispatch = {
+  templateName: string | null;
+  contentSid: string | null;
+  contentVariables: Record<string, string> | null;
+  language: string | null;
+};
+
+export class TenantMessageError extends Error {
+  status: number;
+  code: string;
+  providerErrorCode: string | null;
+
+  constructor(message: string, code: string, status = 400, providerErrorCode: string | null = null) {
+    super(message);
+    this.name = "TenantMessageError";
+    this.status = status;
+    this.code = code;
+    this.providerErrorCode = providerErrorCode;
+  }
+}
+
+export function resolveTwilioProviderErrorMessage(
+  errorCode: string | null | undefined,
+  errorMessage: string | null | undefined,
+  context?: TwilioErrorContext,
+) {
   const direct = String(errorMessage || "").trim();
   if (direct) return direct;
 
@@ -31,15 +109,23 @@ export function resolveTwilioProviderErrorMessage(errorCode: string | null | und
   if (!code) return null;
 
   const sandboxModeRaw = String(process.env.TWILIO_SANDBOX_MODE || "").trim().toLowerCase();
-  const sandboxMode = ["1", "true", "yes", "y", "on"].includes(sandboxModeRaw);
-  const sandboxFrom = String(process.env.TWILIO_WHATSAPP_FROM || "whatsapp:+14155238886").trim();
+  const sandboxMode =
+    typeof context?.sandboxMode === "boolean"
+      ? context.sandboxMode
+      : ["1", "true", "yes", "y", "on"].includes(sandboxModeRaw);
+  const sandboxFrom = String(context?.sandboxFrom || process.env.TWILIO_WHATSAPP_FROM || "").trim();
 
   const hints: Record<string, string> = {
-    "63016": sandboxMode
-      ? `WhatsApp delivery blocked (Twilio Sandbox + no active user session). Ask the recipient to join your sandbox first, then retry, or use a pre-approved template. Sender: ${sandboxFrom}.`
-      : "WhatsApp delivery blocked (outside 24-hour customer care window or no active user-initiated session). Send a pre-approved template or wait for an inbound user message.",
+    "21211": "Invalid destination number. Use a real E.164 phone number (example: +2250100000229).",
     "21608": "Trial Twilio account can only message verified recipient numbers. Verify the destination number in Twilio Console.",
     "20003": "Twilio authentication failed. Verify TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN.",
+    "20404": "Twilio resource not found. Check the sender, messaging service, or verify service configuration.",
+    "63015": sandboxMode
+      ? `WhatsApp delivery blocked because the recipient has not joined your Twilio WhatsApp Sandbox yet. Ask them to join the sandbox first, then retry. Sender: ${sandboxFrom}.`
+      : "WhatsApp delivery blocked because the destination cannot receive this business-initiated WhatsApp message yet. Configure an approved production WhatsApp sender and use an approved template when required.",
+    "63016": sandboxMode
+      ? `WhatsApp delivery blocked because there is no active Twilio WhatsApp Sandbox session. Ask the recipient to join the sandbox first, then retry, or use a template. Sender: ${sandboxFrom}.`
+      : "WhatsApp delivery blocked because there is no active 24-hour session. Use an approved WhatsApp template or wait for an inbound customer message.",
   };
 
   return hints[code] || null;
@@ -168,17 +254,14 @@ export function getTwilioConfig() {
     String(process.env.TWILIO_STATUS_CALLBACK_BASE_URL || process.env.PUBLIC_BASE_URL || process.env.TWILIO_APP_BASE_URL || "").trim() ||
     null;
   const sandboxModeRaw = String(process.env.TWILIO_SANDBOX_MODE || "").trim().toLowerCase();
-  const sandboxMode =
-    sandboxModeRaw
-      ? ["1", "true", "yes", "y", "on"].includes(sandboxModeRaw)
-      : whatsappFrom.toLowerCase() === "whatsapp:+14155238886";
+  const sandboxMode = ["1", "true", "yes", "y", "on"].includes(sandboxModeRaw);
 
   return {
     accountSid: accountSid || null,
     accountSidLooksValid: /^AC[a-z0-9]{32}$/i.test(accountSid),
     authTokenPresent: !!authToken,
     authTokenLength: authToken.length,
-    authTokenLooksValid: authToken.length === 32,
+    authTokenLooksValid: authToken.length >= 24,
     whatsappFrom: whatsappFrom || null,
     smsFrom: smsFrom || null,
     messagingServiceSid: messagingServiceSid || null,
@@ -216,21 +299,125 @@ function normalizeMediaUrls(value: unknown): string[] | null {
   return urls;
 }
 
-export async function sendTwilioMessage(params: TwilioSendParams): Promise<TwilioSendResult> {
+function normalizeContentVariables(value: unknown): Record<string, string> | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  return Object.fromEntries(
+    Object.entries(value as Record<string, unknown>)
+      .slice(0, 25)
+      .map(([k, v]) => [String(k), String(v)]),
+  );
+}
+
+function appendSignature(body: string | null, signature: string | null) {
+  const normalizedBody = String(body || "").trim();
+  const normalizedSignature = String(signature || "").trim();
+  if (!normalizedSignature) return normalizedBody || null;
+  if (!normalizedBody) return normalizedSignature;
+  if (normalizedBody.includes(normalizedSignature)) return normalizedBody;
+  return `${normalizedBody}\n\n${normalizedSignature}`;
+}
+
+export function resolveTemplateDispatch(input: {
+  templateName?: string | null;
+  templatePayload?: Record<string, unknown> | null;
+  metadata?: Record<string, unknown> | null;
+}) {
+  const templatePayload = input.templatePayload ?? null;
+  const metadata = input.metadata ?? null;
+
+  const directTemplateName = String(input.templateName || templatePayload?.templateName || templatePayload?.name || "").trim() || null;
+  const directContentSid =
+    String(
+      templatePayload?.contentSid ||
+        templatePayload?.content_sid ||
+        metadata?.contentSid ||
+        metadata?.content_sid ||
+        "",
+    ).trim() || null;
+
+  const inferredContentSid =
+    directContentSid ||
+    (directTemplateName && /^H[XW][a-z0-9]{8,}$/i.test(directTemplateName) ? directTemplateName : null);
+
+  const directVariables =
+    normalizeContentVariables(templatePayload?.contentVariables) ||
+    normalizeContentVariables(templatePayload?.content_variables) ||
+    normalizeContentVariables(templatePayload?.variables) ||
+    normalizeContentVariables(metadata?.contentVariables) ||
+    normalizeContentVariables(metadata?.content_variables);
+
+  const language = String(templatePayload?.language || metadata?.language || "").trim() || null;
+
+  return {
+    templateName: directTemplateName,
+    contentSid: inferredContentSid,
+    contentVariables: directVariables,
+    language,
+  } satisfies ResolvedTemplateDispatch;
+}
+
+export function assertResolvedSenderForChannel(channel: ResolvableTwilioChannel, resolvedSender: ResolvedSender) {
+  if (channel === "verify_sms" || channel === "verify_whatsapp") {
+    if (!resolvedSender.verifyServiceSid) {
+      throw new TenantMessageError("Verify Service SID is missing for this tenant", "missing_verify_service_sid", 409);
+    }
+    return;
+  }
+
+  if (channel === "sms") {
+    if (!resolvedSender.messagingServiceSid && !resolvedSender.fromAddress) {
+      throw new TenantMessageError(
+        "SMS sender is not configured for this tenant",
+        "missing_sms_sender",
+        409,
+      );
+    }
+    return;
+  }
+
+  const status = String(resolvedSender.whatsappSenderStatus || "").trim().toLowerCase();
+  const activeSenderStatuses = new Set(["approved", "active", "connected", "verified", "live", "configured"]);
+  if (resolvedSender.isSandbox) return;
+  if (!resolvedSender.fromAddress) {
+    throw new TenantMessageError(
+      "Missing production WhatsApp sender for this tenant",
+      "missing_production_whatsapp_sender",
+      409,
+    );
+  }
+  if (isSandboxWhatsAppSender(resolvedSender.fromAddress) && !resolvedSender.useSandboxForDev) {
+    throw new TenantMessageError(
+      "Missing production WhatsApp sender for this tenant",
+      "missing_production_whatsapp_sender",
+      409,
+    );
+  }
+  if (status && !activeSenderStatuses.has(status)) {
+    throw new TenantMessageError(
+      "WhatsApp sender is not yet approved or active for this tenant",
+      "whatsapp_sender_not_active",
+      409,
+    );
+  }
+}
+
+async function sendResolvedTwilioMessage(params: TwilioResolvedSendParams): Promise<TwilioSendResult> {
   try {
     const toE164 = normalizeE164(params.toE164);
-    if (!toE164) return { ok: false, providerMessageId: null, status: null, errorCode: "invalid_to", errorMessage: "Invalid E.164 number", raw: null };
+    if (!toE164) {
+      return {
+        ok: false,
+        providerMessageId: null,
+        status: null,
+        errorCode: "invalid_destination_number",
+        errorMessage: "Invalid destination number. Use a real E.164 phone number (example: +2250100000229).",
+        raw: null,
+      };
+    }
 
     const body = String(params.body ?? "").trim();
     const contentSid = String(params.contentSid ?? "").trim() || null;
-    const contentVariables =
-      params.contentVariables && typeof params.contentVariables === "object"
-        ? Object.fromEntries(
-            Object.entries(params.contentVariables)
-              .slice(0, 25)
-              .map(([k, v]) => [String(k), String(v)]),
-          )
-        : null;
+    const contentVariables = normalizeContentVariables(params.contentVariables);
 
     if (!contentSid && !body) {
       return { ok: false, providerMessageId: null, status: null, errorCode: "empty_body", errorMessage: "Message body is required", raw: null };
@@ -244,7 +431,6 @@ export async function sendTwilioMessage(params: TwilioSendParams): Promise<Twili
       return { ok: false, providerMessageId: null, status: null, errorCode: "invalid_media", errorMessage: "Invalid media URLs", raw: null };
     }
 
-    const cfg = getTwilioConfig();
     const health = getMessagingHealth();
     if (!health.configured) {
       return {
@@ -256,103 +442,38 @@ export async function sendTwilioMessage(params: TwilioSendParams): Promise<Twili
         raw: null,
       };
     }
-    const statusCallback = params.statusCallbackUrl ?? resolveTwilioStatusCallbackUrl();
+
+    const client = getTwilioClient();
+    const payload: Record<string, unknown> = {
+      ...(params.channel === "whatsapp" ? { to: toWhatsAppAddress(toE164) } : { to: toE164 }),
+      ...(params.statusCallbackUrl ? { statusCallback: params.statusCallbackUrl } : {}),
+      ...(mediaUrls ? { mediaUrl: mediaUrls } : {}),
+    };
 
     if (params.channel === "whatsapp") {
-      const from = String(cfg.whatsappFrom || "").trim();
-      if (!from) {
-        return {
-          ok: false,
-          providerMessageId: null,
-          status: null,
-          errorCode: "whatsapp_not_configured",
-          errorMessage: "WhatsApp sending disabled (set TWILIO_WHATSAPP_FROM)",
-          raw: null,
-        };
-      }
-      const client = getTwilioClient();
-
-      const msg = await callTwilioWithRetry(() =>
-        client.messages.create({
-          to: toWhatsAppAddress(toE164),
-          from,
-          ...(contentSid
-            ? {
-                contentSid,
-                ...(contentVariables ? { contentVariables: JSON.stringify(contentVariables) } : {}),
-                ...(body ? { body } : {}),
-              }
-            : { body }),
-          ...(mediaUrls ? { mediaUrl: mediaUrls } : {}),
-          ...(statusCallback ? { statusCallback } : {}),
-        }),
-      );
-
-      const status = msg?.status ? String(msg.status).toLowerCase() : null;
-      const errorCode = msg?.errorCode != null ? String(msg.errorCode) : null;
-      const errorMessage = resolveTwilioProviderErrorMessage(
-        errorCode,
-        msg?.errorMessage != null ? String(msg.errorMessage) : null,
-      );
-      const providerRejected = !!errorCode || status === "failed" || status === "undelivered" || status === "canceled";
-
-      return {
-        ok: !providerRejected,
-        providerMessageId: msg?.sid ? String(msg.sid) : null,
-        status,
-        errorCode,
-        errorMessage,
-        raw: {
-          sid: msg?.sid,
-          status,
-          to: msg?.to,
-          from: msg?.from,
-          contentSid,
-          contentVariables,
-          errorCode,
-          errorMessage,
-          price: msg?.price,
-          priceUnit: msg?.priceUnit,
-        },
-      };
+      payload.from = params.fromAddress;
+    } else if (params.messagingServiceSid) {
+      payload.messagingServiceSid = params.messagingServiceSid;
+    } else {
+      payload.from = params.fromAddress;
     }
 
-    const messagingServiceSid = String(cfg.messagingServiceSid || "").trim();
-    const smsFrom = String(cfg.smsFrom || "").trim();
-    if (!messagingServiceSid && !smsFrom) {
-      return {
-        ok: false,
-        providerMessageId: null,
-        status: null,
-        errorCode: "sms_not_configured",
-        errorMessage: "SMS sending disabled (set TWILIO_SMS_FROM or TWILIO_MESSAGING_SERVICE_SID)",
-        raw: null,
-      };
+    if (contentSid) {
+      // Twilio content-template sends must not include Body or MediaUrl.
+      payload.contentSid = contentSid;
+      if (contentVariables) payload.contentVariables = JSON.stringify(contentVariables);
+      delete payload.mediaUrl;
+    } else {
+      payload.body = body;
     }
-    const client = getTwilioClient();
 
-    const msg = await callTwilioWithRetry(() =>
-      client.messages.create({
-        to: toE164,
-        ...(messagingServiceSid ? { messagingServiceSid } : { from: smsFrom }),
-        ...(contentSid
-          ? {
-              contentSid,
-              ...(contentVariables ? { contentVariables: JSON.stringify(contentVariables) } : {}),
-              ...(body ? { body } : {}),
-            }
-          : { body }),
-        ...(mediaUrls ? { mediaUrl: mediaUrls } : {}),
-        ...(statusCallback ? { statusCallback } : {}),
-      }),
-    );
-
+    const msg = await callTwilioWithRetry(() => client.messages.create(payload as any));
     const status = msg?.status ? String(msg.status).toLowerCase() : null;
     const errorCode = msg?.errorCode != null ? String(msg.errorCode) : null;
-    const errorMessage = resolveTwilioProviderErrorMessage(
-      errorCode,
-      msg?.errorMessage != null ? String(msg.errorMessage) : null,
-    );
+    const errorMessage = resolveTwilioProviderErrorMessage(errorCode, msg?.errorMessage != null ? String(msg.errorMessage) : null, {
+      sandboxMode: params.channel === "whatsapp" ? isSandboxWhatsAppSender(params.fromAddress) : false,
+      sandboxFrom: params.fromAddress ?? null,
+    });
     const providerRejected = !!errorCode || status === "failed" || status === "undelivered" || status === "canceled";
 
     return {
@@ -366,6 +487,7 @@ export async function sendTwilioMessage(params: TwilioSendParams): Promise<Twili
         status,
         to: msg?.to,
         from: msg?.from,
+        messagingServiceSid: msg?.messagingServiceSid,
         contentSid,
         contentVariables,
         errorCode,
@@ -375,23 +497,269 @@ export async function sendTwilioMessage(params: TwilioSendParams): Promise<Twili
       },
     };
   } catch (err: any) {
+    const errorCode = String(err?.code || "twilio_error");
+    const errorMessage =
+      resolveTwilioProviderErrorMessage(errorCode, String(err?.message || "Twilio send failed"), {
+        sandboxMode: params.channel === "whatsapp" ? isSandboxWhatsAppSender(params.fromAddress) : false,
+        sandboxFrom: params.fromAddress ?? null,
+      }) || String(err?.message || "Twilio send failed");
     return {
       ok: false,
       providerMessageId: null,
       status: null,
-      errorCode: String(err?.code || "twilio_error"),
-      errorMessage: String(err?.message || "Twilio send failed"),
+      errorCode,
+      errorMessage,
       raw: null,
     };
   }
+}
+
+export async function sendTwilioMessage(params: TwilioSendParams): Promise<TwilioSendResult> {
+  const cfg = getTwilioConfig();
+  return await sendResolvedTwilioMessage({
+    channel: params.channel,
+    toE164: params.toE164,
+    body: params.body ?? null,
+    fromAddress: params.channel === "whatsapp" ? cfg.whatsappFrom : cfg.smsFrom,
+    messagingServiceSid: params.channel === "sms" ? cfg.messagingServiceSid : null,
+    contentSid: params.contentSid ?? null,
+    contentVariables: params.contentVariables ?? null,
+    mediaUrls: params.mediaUrls ?? null,
+    statusCallbackUrl: params.statusCallbackUrl ?? resolveTwilioStatusCallbackUrl(),
+  });
+}
+
+export async function sendTenantMessage(input: SendTenantMessageInput): Promise<SendTenantMessageResult> {
+  const parsedTo = normalizeTwilioAddress(input.to);
+  const toE164 = parsedTo?.addressE164 || normalizeE164(input.to);
+  if (!toE164) {
+    throw new TenantMessageError(
+      "Invalid destination number. Use a real E.164 phone number (example: +2250100000229).",
+      "invalid_destination_number",
+      400,
+    );
+  }
+
+  const metadata = input.metadata ?? null;
+  const template = resolveTemplateDispatch({
+    templateName: input.templateName ?? null,
+    templatePayload: input.templatePayload ?? null,
+    metadata,
+  });
+
+  const resolvedSender = await resolveSender({
+    tenantId: input.tenantId,
+    agentId: input.agentId ?? null,
+    agentKey: input.agentKey ?? null,
+    channel: input.channel,
+  });
+
+  assertResolvedSenderForChannel(input.channel, resolvedSender);
+
+  const finalBody =
+    template.contentSid
+      ? null
+      : (
+    input.channel === "verify_sms" || input.channel === "verify_whatsapp"
+      ? String(input.body || "").trim() || null
+      : appendSignature(String(input.body || "").trim() || null, resolvedSender.signature)
+        );
+
+  const businessInitiated =
+    Boolean(metadata?.businessInitiated) || Boolean(metadata?.business_initiated) || Boolean(metadata?.requiresTemplate);
+
+  if (input.channel === "whatsapp" && businessInitiated && !template.contentSid) {
+    throw new TenantMessageError(
+      "Approved WhatsApp template required for business-initiated messages",
+      "template_required_for_business_whatsapp",
+      409,
+    );
+  }
+
+  if (input.channel === "whatsapp" && !resolvedSender.isSandbox && !resolvedSender.fromAddress) {
+    throw new TenantMessageError(
+      "Missing production WhatsApp sender for this tenant",
+      "missing_production_whatsapp_sender",
+      409,
+    );
+  }
+
+  const outboundLog = await createOutboundMessageLog({
+    tenantId: input.tenantId,
+    agentId: resolvedSender.agentId,
+    channel: input.channel,
+    fromAddress: resolvedSender.fromAddress,
+    toAddress: input.channel === "sms" || input.channel === "verify_sms" ? toE164 : toWhatsAppAddress(toE164),
+    body: finalBody,
+    templateName: template.templateName,
+    templatePayload:
+      template.contentSid || template.contentVariables || template.language
+        ? {
+            ...(template.contentSid ? { contentSid: template.contentSid } : {}),
+            ...(template.contentVariables ? { contentVariables: template.contentVariables } : {}),
+            ...(template.language ? { language: template.language } : {}),
+            ...(input.templatePayload ?? {}),
+          }
+        : input.templatePayload ?? null,
+  });
+
+  const statusCallbackUrl = input.statusCallbackUrl ?? resolveTwilioStatusCallbackUrl();
+
+  if (input.channel === "verify_sms" || input.channel === "verify_whatsapp") {
+    try {
+      const verifyServiceSid = String(resolvedSender.verifyServiceSid || "").trim();
+      const service = getTwilioClient().verify.v2.services(verifyServiceSid);
+      const channel = input.channel === "verify_whatsapp" ? "whatsapp" : "sms";
+      const verification = await callTwilioWithRetry(() =>
+        service.verifications.create({
+          to: channel === "whatsapp" ? `whatsapp:${toE164}` : toE164,
+          channel,
+        } as any),
+      );
+
+      const result = {
+        ok: true,
+        providerMessageId: String(verification?.sid || ""),
+        status: String(verification?.status || "pending").toLowerCase(),
+        errorCode: null,
+        errorMessage: null,
+        raw: {
+          sid: verification?.sid,
+          status: verification?.status,
+          to: verification?.to,
+          channel,
+        } as Record<string, unknown>,
+      };
+
+      await finalizeOutboundMessageLog(outboundLog.id, {
+        twilioMessageSid: result.providerMessageId,
+        status: result.status,
+        twilioStatus: result.status,
+        providerResponse: result.raw,
+      });
+
+      return {
+        ...result,
+        channel: input.channel,
+        outboundLogId: outboundLog.id,
+        finalBody,
+        fromAddress: resolvedSender.fromAddress,
+        resolutionSource: resolvedSender.resolutionSource,
+        isSandbox: resolvedSender.isSandbox,
+        verifyServiceSid: resolvedSender.verifyServiceSid,
+        messagingServiceSid: resolvedSender.messagingServiceSid,
+      };
+    } catch (error: any) {
+      const errorCode = String(error?.code || "twilio_verify_error");
+      const errorMessage =
+        resolveTwilioProviderErrorMessage(errorCode, String(error?.message || "Twilio Verify send failed"), {
+          sandboxMode: resolvedSender.isSandbox,
+          sandboxFrom: resolvedSender.fromAddress,
+        }) || String(error?.message || "Twilio Verify send failed");
+
+      await finalizeOutboundMessageLog(outboundLog.id, {
+        status: "failed",
+        twilioStatus: "failed",
+        providerErrorCode: errorCode,
+        providerErrorMessage: errorMessage,
+      });
+
+      throw new TenantMessageError(errorMessage, errorCode, Number(error?.status) || 502, errorCode);
+    }
+  }
+
+  const transport = await sendResolvedTwilioMessage({
+    channel: input.channel === "sms" ? "sms" : "whatsapp",
+    toE164,
+    body: finalBody,
+    fromAddress: resolvedSender.fromAddress,
+    messagingServiceSid: input.channel === "sms" ? resolvedSender.messagingServiceSid : null,
+    contentSid: template.contentSid,
+    contentVariables: template.contentVariables,
+    mediaUrls: input.mediaUrls ?? null,
+    statusCallbackUrl,
+  });
+
+  await finalizeOutboundMessageLog(outboundLog.id, {
+    twilioMessageSid: transport.providerMessageId,
+    status: transport.status || (transport.ok ? "sent" : "failed"),
+    twilioStatus: transport.status,
+    providerErrorCode: transport.errorCode,
+    providerErrorMessage: transport.errorMessage,
+    providerResponse: transport.raw,
+  });
+
+  if (!transport.ok) {
+    throw new TenantMessageError(
+      transport.errorMessage || "Twilio send failed",
+      transport.errorCode || "twilio_send_failed",
+      502,
+      transport.errorCode,
+    );
+  }
+
+  return {
+    ...transport,
+    channel: input.channel,
+    outboundLogId: outboundLog.id,
+    finalBody,
+    fromAddress: resolvedSender.fromAddress,
+    resolutionSource: resolvedSender.resolutionSource,
+    isSandbox: resolvedSender.isSandbox,
+    verifyServiceSid: resolvedSender.verifyServiceSid,
+    messagingServiceSid: resolvedSender.messagingServiceSid,
+  };
+}
+
+export async function sendSms(input: Omit<SendTenantMessageInput, "channel">) {
+  return await sendTenantMessage({ ...input, channel: "sms" });
+}
+
+export async function sendWhatsApp(input: Omit<SendTenantMessageInput, "channel">) {
+  return await sendTenantMessage({ ...input, channel: "whatsapp" });
+}
+
+export async function sendTemplateWhatsApp(input: {
+  tenantId: number;
+  agentId?: number | null;
+  agentKey?: string | null;
+  to: string;
+  templateName?: string | null;
+  templatePayload?: Record<string, unknown> | null;
+  body?: string | null;
+  metadata?: Record<string, unknown> | null;
+  mediaUrls?: string[] | null;
+}) {
+  return await sendTenantMessage({
+    ...input,
+    channel: "whatsapp",
+    metadata: { ...(input.metadata ?? {}), businessInitiated: true },
+  });
+}
+
+export async function sendVerifyCode(input: {
+  tenantId: number;
+  agentId?: number | null;
+  agentKey?: string | null;
+  to: string;
+  channel: "verify_sms" | "verify_whatsapp";
+  metadata?: Record<string, unknown> | null;
+}) {
+  return await sendTenantMessage({
+    tenantId: input.tenantId,
+    agentId: input.agentId ?? null,
+    agentKey: input.agentKey ?? null,
+    to: input.to,
+    channel: input.channel,
+    body: null,
+    metadata: input.metadata ?? null,
+  });
 }
 
 export function validateTwilioEnv() {
   validateMessagingEnvAtBoot();
 }
 
-// --- Webhook signature validation (Twilio)
-// Twilio signs the full URL + form params (sorted). Signature is base64(HMAC-SHA1(token, data)).
 export function computeTwilioSignature(params: { url: string; body: Record<string, any>; authToken: string }) {
   const keys = Object.keys(params.body || {}).sort();
   let data = params.url;

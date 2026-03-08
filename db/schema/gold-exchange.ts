@@ -387,6 +387,17 @@ export const bdoSecondaryMarketTradeStatusEnum = pgEnum("bdo_secondary_market_tr
   "cancelled",
 ]);
 
+export const goldGoalStatusEnum = pgEnum("gold_goal_status", [
+  "accumulating",
+  "ready_to_confirm",
+  "confirmed",
+  "cancelled",
+  "converted",
+  "refunded",
+]);
+
+export const goldGoalTxTypeEnum = pgEnum("gold_goal_tx_type", ["fund", "refund", "adjust", "convert"]);
+
 export const bdoGoldUnitDefinitions = pgTable("bdo_gold_unit_definitions", {
   id: serial("id").primaryKey(),
   tenantId: integer("tenant_id").references(() => tenants.id).notNull(),
@@ -408,6 +419,46 @@ export const bdoPricingSnapshots = pgTable("bdo_pricing_snapshots", {
   pricingMethodId: text("pricing_method_id").notNull().default("internal"),
   sourceMeta: jsonb("source_meta").default({}),
   createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const goldGoals = pgTable("gold_goals", {
+  id: serial("id").primaryKey(),
+  tenantId: integer("tenant_id").references(() => tenants.id).notNull(),
+  userId: integer("user_id").references(() => eceUsers.id, { onDelete: "cascade" }).notNull(),
+  productId: integer("product_id"),
+  selectedWeightGrams: integer("selected_weight_grams").notNull(),
+  selectedVariantId: text("selected_variant_id"),
+  createdReferencePriceMinor: integer("created_reference_price_minor").notNull(),
+  currentTargetPriceMinor: integer("current_target_price_minor").notNull(),
+  amountFundedMinor: integer("amount_funded_minor").notNull().default(0),
+  currencyCode: text("currency_code").notNull().default("XOF"),
+  status: goldGoalStatusEnum("status").notNull().default("accumulating"),
+  lockPriceMinor: integer("lock_price_minor"),
+  lockedAt: timestamp("locked_at"),
+  purchaseConfirmedAt: timestamp("purchase_confirmed_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  metadata: jsonb("metadata").$type<Record<string, any>>().default({}),
+});
+
+export const goldGoalTransactions = pgTable("gold_goal_transactions", {
+  id: serial("id").primaryKey(),
+  goalId: integer("goal_id").references(() => goldGoals.id, { onDelete: "cascade" }).notNull(),
+  paymentTxId: text("payment_tx_id"),
+  amountMinor: integer("amount_minor").notNull(),
+  txType: goldGoalTxTypeEnum("tx_type").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  metadata: jsonb("metadata").$type<Record<string, any>>().default({}),
+});
+
+export const goldGoalSnapshots = pgTable("gold_goal_snapshots", {
+  id: serial("id").primaryKey(),
+  goalId: integer("goal_id").references(() => goldGoals.id, { onDelete: "cascade" }).notNull(),
+  referenceSpotPerGramMinor: integer("reference_spot_per_gram_minor").notNull(),
+  computedTargetPriceMinor: integer("computed_target_price_minor").notNull(),
+  marginPercent: decimal("margin_percent", { precision: 8, scale: 6 }).notNull().default("0.050000"),
+  createdAt: timestamp("created_at").defaultNow(),
+  metadata: jsonb("metadata").$type<Record<string, any>>().default({}),
 });
 
 export const bdoInventoryLots = pgTable("bdo_inventory_lots", {
@@ -573,6 +624,29 @@ export const goldWalletTransactionsRelations = relations(goldWalletTransactions,
     fields: [goldWalletTransactions.walletId],
     references: [traderWallets.id]
   })
+}));
+
+export const goldGoalsRelations = relations(goldGoals, ({ one, many }) => ({
+  user: one(eceUsers, {
+    fields: [goldGoals.userId],
+    references: [eceUsers.id],
+  }),
+  transactions: many(goldGoalTransactions),
+  snapshots: many(goldGoalSnapshots),
+}));
+
+export const goldGoalTransactionsRelations = relations(goldGoalTransactions, ({ one }) => ({
+  goal: one(goldGoals, {
+    fields: [goldGoalTransactions.goalId],
+    references: [goldGoals.id],
+  }),
+}));
+
+export const goldGoalSnapshotsRelations = relations(goldGoalSnapshots, ({ one }) => ({
+  goal: one(goldGoals, {
+    fields: [goldGoalSnapshots.goalId],
+    references: [goldGoals.id],
+  }),
 }));
 
 export const goldGroupagesRelations = relations(goldGroupages, ({ one, many }) => ({

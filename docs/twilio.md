@@ -1,118 +1,79 @@
-# Twilio integration (SMS / WhatsApp / Voice / Verify)
+# Twilio production messaging
 
-This repo supports Twilio end-to-end for:
+This repo now treats Twilio as a shared production communications layer for every tenant.
 
-- Messaging: SMS + WhatsApp (inbound/outbound + status callbacks + media metadata)
-- Voice: inbound TwiML + outbound calls + status callbacks + optional recordings
-- Verify (OTP): WhatsApp or SMS OTP for login (separate from agent messaging)
+## Sender resolution
 
-Security: never hardcode `TWILIO_AUTH_TOKEN` in code or commit it to git. Use environment variables only.
+Outbound sends resolve in this order:
 
-## 1) Server environment variables
+1. `agent_sender_profiles`
+2. `tenant_communication_profiles`
+3. global env fallback
 
-Set these on the server only (never in the frontend):
+The result determines:
+
+- `fromAddress`
+- `messagingServiceSid`
+- `verifyServiceSid`
+- sender label
+- appended signature
+- whether WhatsApp is explicitly sandbox-only for that tenant
+
+Agent profiles can override sender identity and signature. If `fallback_to_tenant_default=true`, an agent can keep its own signature while still using the tenant sender.
+
+## Global env fallback
+
+These env vars remain supported as shared fallbacks only:
 
 ```env
-# Twilio core
-TWILIO_ACCOUNT_SID=ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-TWILIO_AUTH_TOKEN=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-
-# Public base URL used for webhook signature validation + callback URL generation
-# (Either PUBLIC_BASE_URL or TWILIO_APP_BASE_URL is required for callbacks.)
-PUBLIC_BASE_URL=https://your-domain.com
-# TWILIO_APP_BASE_URL=https://your-domain.com
-
-# Messaging senders
-TWILIO_WHATSAPP_FROM=whatsapp:+14155238886
-TWILIO_SMS_FROM=+1XXXXXXXXXX
-TWILIO_MESSAGING_SERVICE_SID=MGxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-
-# Voice sender + optional fallback destination (if a route/agent doesn't specify one)
-TWILIO_VOICE_FROM=+1XXXXXXXXXX
-TWILIO_VOICE_FORWARD_TO=+1XXXXXXXXXX
-TWILIO_VOICE_VOICEMAIL_ENABLED=true
-
-# Verify (OTP) - optional but recommended
-TWILIO_VERIFY_SERVICE_SID=VAxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-
-# Webhook signing secret override (optional). Fallbacks: TWILIO_WEBHOOK_SECRET, then TWILIO_AUTH_TOKEN.
-TWILIO_WEBHOOK_SIGNING_SECRET=
-TWILIO_WEBHOOK_SECRET=
-
-# Optional routing defaults
-TWILIO_DEFAULT_AGENT_KEY=support
-TWILIO_AUTO_REPLY=true
-
-# Optional: comma-separated VIP numbers (E.164) for shorter SLA dueAt
-TWILIO_VIP_PHONES=+2250100000229,+1XXXXXXXXXX
+TWILIO_ACCOUNT_SID=
+TWILIO_AUTH_TOKEN=
+TWILIO_SMS_FROM=
+TWILIO_WHATSAPP_FROM=
+TWILIO_VERIFY_SERVICE_SID=
+TWILIO_MESSAGING_SERVICE_SID=
 ```
 
-Notes:
-- If `TWILIO_SMS_FROM` and `TWILIO_MESSAGING_SERVICE_SID` are both empty, SMS sending is disabled.
-- If you set any Twilio config, the server will fail boot if `TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN` are missing.
+## SMS sender vs Messaging Service vs WhatsApp sender
 
-## 2) Webhook URLs (Twilio Console)
+- `TWILIO_SMS_FROM` or tenant `sms_from`: direct SMS sender number
+- `TWILIO_MESSAGING_SERVICE_SID` or tenant `messaging_service_sid`: Twilio Messaging Service for SMS routing and sender pooling
+- tenant `whatsapp_from`: approved WhatsApp sender for production WhatsApp traffic
 
-All webhooks verify `X-Twilio-Signature`. The URL Twilio uses must match your `PUBLIC_BASE_URL` (or `TWILIO_APP_BASE_URL`) host.
+Do not assume a Messaging Service replaces WhatsApp sender approval. Production WhatsApp still needs a real approved sender.
 
-Configure Twilio to call these endpoints (HTTP POST):
+## Sandbox
 
-Messaging
-- Inbound SMS: `PUBLIC_BASE_URL/api/webhooks/twilio/sms/inbound`
-- Inbound WhatsApp: `PUBLIC_BASE_URL/api/webhooks/twilio/whatsapp/inbound`
-- Message status callback: `PUBLIC_BASE_URL/api/webhooks/twilio/message/status`
+Sandbox is optional only.
 
-Voice
-- Inbound voice (TwiML): `PUBLIC_BASE_URL/api/webhooks/twilio/voice/inbound`
-- Voice status callback: `PUBLIC_BASE_URL/api/webhooks/twilio/voice/status`
-- Recording callback: `PUBLIC_BASE_URL/api/webhooks/twilio/voice/recording`
+- `use_sandbox_for_dev=true` on a tenant profile explicitly enables sandbox fallback for that tenant
+- without that flag, sandbox numbers are not treated as a valid production path
+- the default production flow must not assume `whatsapp:+14155238886`
 
-Legacy aliases still work (backward compatibility):
-- Inbound messages: `.../api/webhooks/twilio/inbound`
-- Message status: `.../api/webhooks/twilio/status`
+## Webhooks
 
-## 3) WhatsApp sandbox (trial)
+Configure Twilio to post to:
 
-If you're using the Twilio WhatsApp Sandbox:
+- inbound SMS: `/api/webhooks/twilio/sms/inbound`
+- inbound WhatsApp: `/api/webhooks/twilio/whatsapp/inbound`
+- message status: `/api/webhooks/twilio/status`
 
-1. Twilio Console -> Messaging -> Try it out -> Send a WhatsApp message.
-2. Join the sandbox from your phone (Twilio provides a `join ...` code).
-3. Use the platform UI to send a test message.
+The webhook layer validates `X-Twilio-Signature`, persists inbound/outbound status logs, and links status callbacks to `outbound_message_logs` via Twilio SID.
 
-Twilio trial constraints:
-- SMS and voice often work only with verified destination numbers.
-- WhatsApp sandbox requires the recipient to join before you can message them.
+## Manual Twilio console work
 
-## 4) Multi-tenant + agent routing (To -> agent)
+The platform code cannot do these Twilio console steps for you:
 
-Inbound webhooks resolve:
+1. buy or connect the SMS sender / Messaging Service
+2. register and approve the production WhatsApp sender
+3. create the Verify Service
+4. configure webhook URLs in Twilio Console
+5. create and approve WhatsApp content templates
 
-- Tenant: by Host header (your tenant domain).
-- Agent: by routing rules (`communications_routing_map`) using `To` + `channel`.
+## Moving a tenant from sandbox/dev to production
 
-UI:
-- Inbox: `/admin/communications/twilio`
-- Settings -> Communications -> Twilio: `/admin/settings/communications/twilio`
-
-Example routing rule:
-- Channel: `whatsapp`
-- To address: `+14155238886`
-- Agent key: `support`
-
-Voice routing can optionally include a dial target (agent phone) in the route metadata.
-
-## 5) Per-agent controls (limits + enable flags)
-
-Per-tenant/per-agent controls are stored in `communications_agent_controls` and enforced for non-admin staff:
-- Enable/disable SMS, WhatsApp, Voice per agent key
-- Daily outbound limits per channel (0 = unlimited)
-- `voiceDialToE164` default destination for outbound voice calls
-
-Admin API:
-- `GET /api/admin/twilio/agent-controls`
-- `POST /api/admin/twilio/agent-controls`
-
-## 6) Observability
-
-The platform stores webhook events in `communications_events` (provider=`twilio`).
-You can view recent events in the Twilio settings page.
+1. approve the tenant WhatsApp sender in Twilio
+2. save the tenant profile with `whatsapp_from` and `whatsapp_sender_status=approved`
+3. turn `use_sandbox_for_dev` off
+4. keep `verify_service_sid` set if OTP is needed
+5. optionally add agent sender profiles for tenant-specific signatures or sender overrides

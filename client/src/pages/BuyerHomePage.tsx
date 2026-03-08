@@ -2150,10 +2150,8 @@ export function BuyerHomePage({
   const [vaultPane, setVaultPane] = useState<"wallet" | "vault">("wallet");
   const [bdoPurchaseOpen, setBdoPurchaseOpen] = useState(false);
   const [bdoSecondaryOpen, setBdoSecondaryOpen] = useState(false);
-	  const [bdoPurchaseUnitSize, setBdoPurchaseUnitSize] = useState<number>(20);
-	  const [bdoPurchaseDeliveryNow, setBdoPurchaseDeliveryNow] = useState(false);
-	  const [bdoPurchaseLockupEndDate, setBdoPurchaseLockupEndDate] = useState("");
-	  const [walletTopupAutoOpen, setWalletTopupAutoOpen] = useState(false);
+  const [bdoPurchaseUnitSize, setBdoPurchaseUnitSize] = useState<number>(20);
+  const [walletTopupAutoOpen, setWalletTopupAutoOpen] = useState(false);
 
 	  useEffect(() => {
 	    safeLocalStorageSet("buyer_mode", buyerMode);
@@ -2400,30 +2398,52 @@ export function BuyerHomePage({
     retry: 1,
   });
 
-	  const bdoPurchaseMutation = useMutation({
+  const { data: bdoGoalsData, isLoading: bdoGoalsLoading } = useQuery({
+    queryKey: ["/api/gold-exchange/bdo/goals", session.token, session.guestSessionId],
+    enabled: !!session.token && session.isAuthenticated && !session.isGuest,
+    staleTime: 10_000,
+    retry: 1,
+    queryFn: async () => {
+      if (!session.token) return null;
+      return apiRequest("/api/gold-exchange/bdo/goals", {
+        headers: { Authorization: `Bearer ${session.token}` },
+      });
+    },
+  });
+	
+  const bdoCreateGoalMutation = useMutation({
 	    mutationFn: async () => {
 	      if (!session.token) throw new Error("Authentication required");
-	      const lockupEndDate = bdoPurchaseLockupEndDate ? new Date(bdoPurchaseLockupEndDate) : null;
-      return apiRequest("/api/gold-exchange/bdo/purchase", {
+      return apiRequest("/api/gold-exchange/bdo/goals", {
         method: "POST",
         headers: { Authorization: `Bearer ${session.token}` },
         body: JSON.stringify({
-          unitSizeGrams: bdoPurchaseUnitSize,
-          currency: "XOF",
-          deliveryNow: bdoPurchaseDeliveryNow,
-          lockupEndDate: lockupEndDate ? lockupEndDate.toISOString() : null,
-          destination: {},
+          productId: selectedProduct?.id ?? null,
+          productName: selectedProduct?.name ?? null,
+          selectedWeightGrams: bdoPurchaseUnitSize,
+          selectedVariantId: null,
         }),
       });
     },
-	    onSuccess: () => {
-	      toast({ title: t("vault.purchaseSuccess"), description: t("vault.purchaseSuccessDetail") });
+	    onSuccess: (result: any) => {
+	      toast({
+          title: language === "fr" ? "Objectif créé" : "Goal created",
+          description:
+            language === "fr"
+              ? "Votre objectif d’or est prêt. Ajoutez des fonds puis confirmez l’achat quand le montant est atteint."
+              : "Your gold goal is ready. Add funds and confirm the purchase once it is fully funded.",
+        });
 	      setBdoPurchaseOpen(false);
-	      queryClient.invalidateQueries({ queryKey: ["/api/gold-exchange/bdo/vault"] });
+	      queryClient.invalidateQueries({ queryKey: ["/api/gold-exchange/bdo/goals"] });
 	      queryClient.invalidateQueries({ queryKey: ["/api/wallet/summary"] });
+        if (result?.item?.id) navigate(`/objectif/${result.item.id}`);
 	    },
     onError: (error: any) => {
-      toast({ title: t("common.error"), description: error?.message || t("vault.purchaseFailed"), variant: "destructive" });
+      toast({
+        title: t("common.error"),
+        description: error?.message || (language === "fr" ? "Impossible de créer cet objectif." : "Failed to create goal"),
+        variant: "destructive",
+      });
     },
   });
 
@@ -4606,6 +4626,27 @@ export function BuyerHomePage({
     return "";
   };
 
+  const getGoldDynamicPricing = (product: any) => {
+    const raw = product?.dynamicPricing;
+    if (!raw || typeof raw !== "object") return null;
+
+    const unitPrice = toNumber((raw as any).unitPrice);
+    if (!Number.isFinite(unitPrice) || unitPrice <= 0) return null;
+
+    const perGramPrice = toNumber((raw as any).perGramPrice);
+    const weightGrams = toNumber((raw as any).weightGrams);
+    const marginPercent = toNumber((raw as any).marginPercent);
+
+    return {
+      unitPrice,
+      perGramPrice: Number.isFinite(perGramPrice) && perGramPrice > 0 ? perGramPrice : null,
+      weightGrams: Number.isFinite(weightGrams) && weightGrams > 0 ? weightGrams : null,
+      marginPercent: Number.isFinite(marginPercent) && marginPercent >= 0 ? marginPercent : null,
+      currency: normalizeCurrencyCode((raw as any).currency || "XOF"),
+      pricingModel: String((raw as any).pricingModel || "").trim().toLowerCase(),
+    };
+  };
+
   const getProductPriceDisplay = (product: any) => {
     const price = toNumber(product?.price);
     const fromCurrency = normalizeCurrencyCode(product?.currency);
@@ -4617,6 +4658,28 @@ export function BuyerHomePage({
       return { primary: formatAmount(price, fromCurrency, suffix) };
     }
     const category = getGoldCategory(product);
+    const dynamicPricing = getGoldDynamicPricing(product);
+    if (dynamicPricing) {
+      if (category === "dore") {
+        return {
+          primary: formatAmount(dynamicPricing.perGramPrice || dynamicPricing.unitPrice, dynamicPricing.currency, "/g"),
+          secondary:
+            dynamicPricing.marginPercent != null && dynamicPricing.marginPercent > 0
+              ? `${language === "fr" ? "Cours spot + marge" : "Spot + margin"} ${Math.round(dynamicPricing.marginPercent * 100)}%`
+              : undefined,
+        };
+      }
+
+      return {
+        primary: formatAmount(dynamicPricing.unitPrice, dynamicPricing.currency),
+        secondary: dynamicPricing.perGramPrice
+          ? formatAmount(dynamicPricing.perGramPrice, dynamicPricing.currency, "/g")
+          : dynamicPricing.marginPercent != null && dynamicPricing.marginPercent > 0
+            ? `${language === "fr" ? "Cours spot + marge" : "Spot + margin"} ${Math.round(dynamicPricing.marginPercent * 100)}%`
+            : undefined,
+      };
+    }
+
     if (category === 'dore') {
       return { primary: formatAmount(price, fromCurrency, '/g') };
     }
@@ -4631,6 +4694,8 @@ export function BuyerHomePage({
   const getCartUnitPrice = (product: any) => {
     const price = toNumber(product?.price);
     if (!isGoldTenant) return price;
+    const dynamicPricing = getGoldDynamicPricing(product);
+    if (dynamicPricing) return dynamicPricing.unitPrice;
     const category = getGoldCategory(product);
     if (category === 'stamped') {
       const weightG = getProductWeightGrams(product);
@@ -5514,8 +5579,103 @@ export function BuyerHomePage({
     return bdoShowAllCatalog ? filtered : filtered.slice(0, 6);
   }, [bdoBrowseView, bdoCatalogProducts, bdoShowAllCatalog, bdoWeightFilter]);
   const bdoSelectedTile = bdoCategoryTiles.find((tile) => tile.key === bdoBrowseView) ?? bdoCategoryTiles[0];
+  const activeBdoGoals = useMemo(
+    () =>
+      Array.isArray((bdoGoalsData as any)?.items)
+        ? (bdoGoalsData as any).items.filter((goal: any) => ["accumulating", "ready_to_confirm"].includes(String(goal?.status || "")))
+        : [],
+    [bdoGoalsData],
+  );
+  const bdoGoalsByProductId = useMemo(() => {
+    const map = new Map<number, any>();
+    for (const goal of activeBdoGoals) {
+      const productId = Number(goal?.productId || 0);
+      if (productId > 0 && !map.has(productId)) map.set(productId, goal);
+    }
+    return map;
+  }, [activeBdoGoals]);
+  const bdoGoalsByWeight = useMemo(() => {
+    const map = new Map<number, any>();
+    for (const goal of activeBdoGoals) {
+      const weight = Number(goal?.selectedWeightGrams || 0);
+      if (weight > 0 && !map.has(weight)) map.set(weight, goal);
+    }
+    return map;
+  }, [activeBdoGoals]);
+
+  const getBdoGoalForProduct = useCallback(
+    (product: any) => {
+      const productId = Number(product?.id || 0);
+      if (productId > 0 && bdoGoalsByProductId.has(productId)) return bdoGoalsByProductId.get(productId);
+      const weight = Number(product?.bdoWeightGrams || 0);
+      if (weight > 0 && bdoGoalsByWeight.has(weight)) return bdoGoalsByWeight.get(weight);
+      return null;
+    },
+    [bdoGoalsByProductId, bdoGoalsByWeight],
+  );
+
+  const openBdoGoalComposer = useCallback(
+    (product: any) => {
+      if (!session.token || session.isGuest) {
+        navigate(`/login?next=${encodeURIComponent("/store")}`);
+        return;
+      }
+      setSelectedProduct(product);
+      const suggestedWeight = Number(product?.bdoWeightGrams || product?.weight || 0);
+      if (Number.isFinite(suggestedWeight) && suggestedWeight > 0) {
+        setBdoPurchaseUnitSize(Math.round(suggestedWeight));
+      }
+      setBdoPurchaseOpen(true);
+    },
+    [navigate, session.isGuest, session.token],
+  );
+
+  const handleBdoPrimaryAction = useCallback(
+    (product: any) => {
+      const goal = getBdoGoalForProduct(product);
+      if (goal?.id) {
+        navigate(`/objectif/${goal.id}`);
+        return;
+      }
+      openBdoGoalComposer(product);
+    },
+    [getBdoGoalForProduct, navigate, openBdoGoalComposer],
+  );
 
   const selectedProductPrice = selectedProduct ? getProductPriceDisplay(selectedProduct) : null;
+  const selectedBdoGoalEstimate = useMemo(() => {
+    if (!useBdoInstitutionalLayout || !selectedProduct || !Number.isFinite(bdoPurchaseUnitSize) || bdoPurchaseUnitSize <= 0) {
+      return null;
+    }
+
+    const dynamicPricing = getGoldDynamicPricing(selectedProduct);
+    const fallbackCurrency = normalizeCurrencyCode(dynamicPricing?.currency || selectedProduct?.currency || "XOF");
+    const productWeight = getProductWeightGrams(selectedProduct);
+    const rawPrice = toNumber(selectedProduct?.price);
+
+    const unitEstimate =
+      dynamicPricing?.perGramPrice && dynamicPricing.perGramPrice > 0
+        ? dynamicPricing.perGramPrice * bdoPurchaseUnitSize
+        : dynamicPricing?.weightGrams && dynamicPricing?.unitPrice
+          ? (dynamicPricing.unitPrice / dynamicPricing.weightGrams) * bdoPurchaseUnitSize
+          : productWeight > 0 && rawPrice > 0
+            ? (rawPrice / productWeight) * bdoPurchaseUnitSize
+            : rawPrice;
+
+    if (!Number.isFinite(unitEstimate) || unitEstimate <= 0) return null;
+
+    return {
+      amountMinor: Math.round(unitEstimate),
+      currencyCode: fallbackCurrency,
+      marginPercent: dynamicPricing?.marginPercent ?? null,
+      perGramMinor:
+        dynamicPricing?.perGramPrice && dynamicPricing.perGramPrice > 0
+          ? Math.round(dynamicPricing.perGramPrice)
+          : productWeight > 0 && rawPrice > 0
+            ? Math.round(rawPrice / productWeight)
+            : null,
+    };
+  }, [bdoPurchaseUnitSize, selectedProduct, useBdoInstitutionalLayout]);
   const selectedProductStock = selectedProduct ? getProductStockLabel(selectedProduct) : { text: "", inStock: false };
   const selectedShopCategory = selectedShop ? getShopPrimaryCategory(selectedShop) : null;
   const selectedShopCategoryMeta = selectedShopCategory ? getCategoryMeta(selectedShopCategory) : null;
@@ -5732,7 +5892,9 @@ export function BuyerHomePage({
 
   const renderBdoInstitutionalCard = (product: any, idx: number) => {
     const price = getProductPriceDisplay(product);
+    const dynamicPricing = getGoldDynamicPricing(product);
     const image = getCommodityImage(product);
+    const goal = getBdoGoalForProduct(product);
     const weightLabel = product.bdoWeightLabel || formatGoldWeightLabel(product.bdoWeightGrams);
     const karatLabel = product.bdoKarat ? `${product.bdoKarat}K` : product?.purity || "Certifie";
     const descriptor =
@@ -5741,23 +5903,37 @@ export function BuyerHomePage({
         : product.bdoKind === "coin"
           ? product.bdoEdition || "Pièce patrimoniale"
           : product.bdoEdition || "Lingot d'investissement";
-    const actionLabel = product.bdoKind === "collector" ? "Voir les détails" : "Acheter";
-    const tags = [
-      product.bdoVaultEligible ? "Coffre" : null,
-      product.bdoPersonalizationEnabled ? "Personnalisable" : null,
-      product.bdoJewelryConversionEligible ? "Transformer en bijou" : null,
-    ].filter(Boolean) as string[];
+    const actionLabel =
+      goal?.status === "ready_to_confirm"
+        ? "Confirmer l'achat"
+        : goal
+          ? "Continuer cet objectif"
+          : product.bdoKind === "collector"
+            ? "Voir les détails"
+            : "Démarrer un objectif";
+    const metaLine = [karatLabel, product.bdoOriginCountry, product.bdoTraceabilityEnabled ? "Traçabilité" : null]
+      .filter(Boolean)
+      .join(" • ");
+    const priceCaption =
+      dynamicPricing?.marginPercent != null && dynamicPricing.marginPercent > 0
+        ? language === "fr"
+          ? `Prix indicatif ajusté au cours actuel`
+          : `Spot + ${Math.round(dynamicPricing.marginPercent * 100)}% margin`
+        : language === "fr"
+          ? "Prix indicatif ajusté au cours actuel"
+          : "Indicative gold quote";
 
     return (
       <article
         key={`bdo-card-${product.id}`}
-        className="group flex h-full flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#08101d]/90 transition-colors hover:border-amber-500/30 hover:bg-[#0a1526]"
+        className="group flex h-full flex-col overflow-hidden rounded-[20px] border border-white/10 bg-[#08101d]/90 transition-colors hover:border-amber-500/30 hover:bg-[#0a1526]"
       >
         <button type="button" className="flex h-full w-full flex-col text-left" onClick={() => setSelectedProduct(product)}>
-          <div className="relative aspect-[4/3] overflow-hidden">
+          <div className="relative h-[208px] overflow-hidden">
             <img
               src={image}
               alt={product.name}
+              loading="lazy"
               className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
               onError={(e) => {
                 e.currentTarget.onerror = null;
@@ -5766,71 +5942,65 @@ export function BuyerHomePage({
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black via-black/30 to-transparent" />
             <div className="absolute left-3 top-3 flex flex-wrap gap-1.5">
-              <Badge className="border-amber-500/40 bg-emerald-500/85 text-[9px] text-white">Frappé à la demande</Badge>
+              <Badge className="border-amber-500/40 bg-emerald-500/85 px-2 py-0.5 text-[9px] text-white">Frappé à la demande</Badge>
               {weightLabel ? (
-                <Badge variant="outline" className="border-white/15 bg-black/35 text-[9px] text-white/85">
+                <Badge variant="outline" className="border-white/15 bg-black/35 px-2 py-0.5 text-[9px] text-white/85">
                   {weightLabel}
                 </Badge>
               ) : null}
             </div>
           </div>
 
-          <div className="flex flex-1 flex-col space-y-3 p-3.5">
+          <div className="flex flex-1 flex-col gap-2 p-3">
             <div className="space-y-1.5">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <h4 className="truncate text-sm font-semibold text-white">{product.name}</h4>
                   <p className="truncate text-[11px] text-white/55">{descriptor}</p>
+                  <p className="mt-0.5 truncate text-[11px] text-white/50">{metaLine}</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-base font-semibold text-amber-300">{price.primary}</p>
-                  <p className="text-[10px] text-white/45">{language === "fr" ? "Prix indicatif basé sur le cours de l’or" : "Indicative gold quote"}</p>
+                  <p className="text-lg font-semibold text-amber-300">{price.primary}</p>
+                  <p className="text-[10px] text-white/45">{price.secondary || priceCaption}</p>
                 </div>
-              </div>
-              <div className="flex flex-wrap items-center gap-2 text-[11px] text-white/65">
-                <span>{karatLabel}</span>
-                <span className="text-white/30">•</span>
-                <span>{product.bdoOriginCountry}</span>
-                {product.bdoTraceabilityEnabled ? (
-                  <>
-                    <span className="text-white/30">•</span>
-                    <span>Traçabilite</span>
-                  </>
-                ) : null}
               </div>
             </div>
 
-            {tags.length ? (
-              <div className="mt-auto flex flex-wrap gap-2">
-                {tags.map((tag) => (
-                  <Badge
-                    key={`${product.id}-${normalizeForMatch(tag)}`}
-                    variant="outline"
-                    className="border-white/10 bg-white/5 text-[10px] text-white/70"
-                  >
-                    {tag}
-                  </Badge>
-                ))}
+            {goal ? (
+              <div className="mt-auto rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-3 py-2">
+                <div className="flex items-center justify-between gap-3 text-[11px] text-emerald-100">
+                  <span>Objectif disponible</span>
+                  <span>{goal.progressPercent || 0}%</span>
+                </div>
+                <div className="mt-2 h-1.5 rounded-full bg-white/10">
+                  <div
+                    className="h-full rounded-full bg-emerald-400"
+                    style={{ width: `${Math.max(6, Math.min(100, Number(goal.progressPercent || 0)))}%` }}
+                  />
+                </div>
+                <p className="mt-2 text-[10px] text-emerald-50/80">
+                  {formatMoney(Number(goal.amountFundedMinor || 0), "XOF")} financés • reste {formatMoney(Number(goal.remainingMinor || 0), "XOF")}
+                </p>
               </div>
             ) : null}
           </div>
         </button>
 
-        <div className="mt-auto flex items-center gap-2 border-t border-white/10 px-3.5 py-3">
+        <div className="mt-auto flex items-center gap-2 border-t border-white/10 px-3 py-2.5">
           <Button
             size="sm"
-            variant="secondary"
-            className="flex-1 bg-white/10 text-white hover:bg-white/15"
+            variant="outline"
+            className="h-8 flex-1 border-white/15 bg-white/5 px-3 text-white hover:bg-white/10"
             onClick={() => setSelectedProduct(product)}
           >
-            {actionLabel}
+            Voir
           </Button>
           <Button
-            size="icon"
-            className="h-9 w-9 rounded-full bg-amber-500/95 text-black hover:bg-amber-400"
-            onClick={() => addToCart(product, null)}
+            size="sm"
+            className="h-8 flex-[1.2] bg-amber-500/95 px-3 text-black hover:bg-amber-400"
+            onClick={() => handleBdoPrimaryAction(product)}
           >
-            <Plus className="h-4 w-4" />
+            {actionLabel}
           </Button>
         </div>
       </article>
@@ -7491,14 +7661,18 @@ export function BuyerHomePage({
               variant="ghost"
               className="hidden md:inline-flex min-h-[44px] min-w-[44px] md:h-9 md:px-3 text-gray-200 hover:text-white hover:bg-white/10"
               onClick={() => {
+                if (useBdoInstitutionalLayout) {
+                  navigate("/coffre");
+                  return;
+                }
                 setVaultPane("wallet");
                 setVaultOpen(true);
               }}
-              aria-label={t("wallet.title")}
+              aria-label={useBdoInstitutionalLayout ? "Mon coffre d'or" : t("wallet.title")}
             >
               <Wallet className="h-5 w-5 md:h-4 md:w-4 md:mr-2" />
               <span className="hidden md:inline text-[11px] font-semibold text-amber-200">
-                {walletBalanceLabel || t("wallet.title")}
+                {walletBalanceLabel || (useBdoInstitutionalLayout ? "Mon coffre d'or" : t("wallet.title"))}
               </span>
             </Button>
 
@@ -7794,28 +7968,28 @@ export function BuyerHomePage({
       </header>
 
       {showBdoCampaignHero ? (
-        <div className="relative z-40 mt-[calc(env(safe-area-inset-top,0px)+108px)] mx-3 mb-2">
-          <div className="rounded-2xl border border-amber-500/25 bg-gradient-to-r from-[#1f1408] via-[#3b2a10] to-[#5e4a1e] px-4 py-4 shadow-xl">
+        <div className="relative z-40 mt-[calc(env(safe-area-inset-top,0px)+104px)] mx-3 mb-1.5">
+          <div className="rounded-2xl border border-amber-500/25 bg-gradient-to-r from-[#1f1408] via-[#3b2a10] to-[#5e4a1e] px-4 py-3 shadow-xl">
             <p className="text-[10px] uppercase tracking-[0.24em] text-amber-100/90 md:text-[11px]">Bourse de l'Or</p>
-            <h1 className="mt-2 text-lg font-semibold text-white md:text-2xl">{bdoHeroTitle}</h1>
-            <p className="mt-2 text-xs text-amber-50/90 md:text-sm">{bdoHeroSubtitle}</p>
-            <div className="mt-3 flex flex-wrap gap-2">
+            <h1 className="mt-1.5 text-lg font-semibold text-white md:text-[26px]">{bdoHeroTitle}</h1>
+            <p className="mt-1.5 text-xs text-amber-50/90 md:text-sm">{bdoHeroSubtitle}</p>
+            <div className="mt-2.5 flex flex-wrap gap-1.5">
               {bdoTrustBadges.map((badge) => (
                 <span
                   key={badge}
-                  className="rounded-full border border-amber-300/35 bg-black/25 px-3 py-1 text-[11px] font-medium text-amber-100"
+                  className="rounded-full border border-amber-300/35 bg-black/25 px-2.5 py-0.5 text-[10px] font-medium text-amber-100"
                 >
                   {badge}
                 </span>
               ))}
             </div>
-            <div className="mt-4 flex flex-wrap gap-2">
-              <Button className="bg-amber-500 text-black hover:bg-amber-400" onClick={() => scrollToBdoSection("bdo-buy")}>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Button className="h-8 bg-amber-500 px-3 text-black hover:bg-amber-400" onClick={() => scrollToBdoSection("bdo-buy")}>
                 Acheter de l'or
               </Button>
               <Button
                 variant="outline"
-                className="border-amber-200/30 bg-black/15 text-white hover:bg-black/25"
+                className="h-8 border-amber-200/30 bg-black/15 px-3 text-white hover:bg-black/25"
                 onClick={() => scrollToBdoSection("bdo-market")}
               >
                 Voir le marche
@@ -7837,7 +8011,7 @@ export function BuyerHomePage({
         </div>
       ) : null}
 
-      {!isMobile && !useNonMapFlowLayout ? (
+      {!isMobile && !useNonMapFlowLayout && !useBdoInstitutionalLayout ? (
         <div className="hidden md:block fixed bottom-4 left-4 z-[55] rounded-2xl border border-white/10 bg-black/55 backdrop-blur-xl p-3 shadow-2xl">
           <div className="text-xs font-semibold text-white">{t("pro.app.title")}</div>
           <div className="mt-2 flex items-center gap-3">
@@ -7857,14 +8031,14 @@ export function BuyerHomePage({
       ) : null}
 
       {useBdoInstitutionalLayout && showProducts ? (
-        <div className="relative z-40 mx-3 mb-4 mt-2 space-y-4">
-          <section className="rounded-2xl border border-white/10 bg-[#07101d]/90 p-4 shadow-xl backdrop-blur">
+        <div className="relative z-40 mx-3 mb-4 mt-1.5 space-y-2.5">
+          <section className="rounded-2xl border border-white/10 bg-[#07101d]/90 p-3 shadow-xl backdrop-blur">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
               <div className="min-w-0">
                 <p className="text-[11px] uppercase tracking-[0.24em] text-amber-300/80">Bourse de l'Or</p>
-                <h2 className="mt-1 text-xl font-semibold text-white">Marché, achat, coffre et intelligence aurifère</h2>
-                <p className="mt-2 max-w-3xl text-sm text-white/65">
-                  Accédez aux données du marché, aux produits d’investissement, au coffre digital et à l’espace professionnel.
+                <h2 className="mt-1 text-xl font-semibold text-white">Marché, coffre d&apos;or et intelligence aurifère</h2>
+                <p className="mt-1.5 max-w-3xl text-sm text-white/65">
+                  Suivez le cours, démarrez un objectif vers un lingot et accédez aux parcours Pro vérifiés sans revenir à une logique retail classique.
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -7880,7 +8054,7 @@ export function BuyerHomePage({
                     type="button"
                     size="sm"
                     variant="outline"
-                    className="border-white/15 bg-white/5 text-white/80 hover:bg-white/10"
+                    className="h-8 border-white/15 bg-white/5 px-3 text-white/80 hover:bg-white/10"
                     onClick={() => scrollToBdoSection(item.id)}
                   >
                     {item.label}
@@ -7890,31 +8064,31 @@ export function BuyerHomePage({
             </div>
           </section>
 
-          <div className="grid items-start gap-4 xl:grid-cols-[380px_minmax(0,1fr)] 2xl:grid-cols-[400px_minmax(0,1fr)]">
-            <div className="space-y-4 xl:sticky xl:top-24">
-              <div className="rounded-2xl border border-white/10 bg-[#09111f]/90 p-4 shadow-xl backdrop-blur">
+          <div className="grid items-start gap-2.5 xl:grid-cols-[300px_minmax(0,1fr)] 2xl:grid-cols-[320px_minmax(0,1fr)]">
+            <div className="space-y-3 xl:sticky xl:top-24">
+              <div className="rounded-2xl border border-white/10 bg-[#09111f]/90 p-3 shadow-xl backdrop-blur">
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <p className="text-[11px] uppercase tracking-[0.24em] text-amber-300/80">Acheter de l'or</p>
-                    <h3 className="mt-1 text-lg font-semibold text-white">Explorez par categorie</h3>
+                    <h3 className="mt-1 text-base font-semibold text-white">Explorez par catégorie</h3>
                   </div>
                   <Button
                     type="button"
                     size="sm"
                     variant="outline"
-                    className="border-amber-500/25 text-amber-200 hover:bg-amber-500/10"
+                    className="h-7 border-amber-500/25 px-2.5 text-amber-200 hover:bg-amber-500/10"
                     onClick={() => navigate("/stamped-gold")}
                   >
                     Catalogue complet
                   </Button>
                 </div>
-                <div className="mt-4 grid gap-3 md:grid-cols-3 xl:grid-cols-1">
+                <div className="mt-3 grid gap-2.5 md:grid-cols-3 xl:grid-cols-1">
                   {bdoCategoryTiles.map((tile) => (
                     <button
                       key={tile.key}
                       type="button"
                       onClick={() => setBdoBrowseView(tile.key)}
-                      className={`rounded-2xl border p-4 text-left transition-colors ${
+                      className={`min-h-[70px] rounded-2xl border p-2.5 text-left transition-colors ${
                         bdoBrowseView === tile.key
                           ? "border-amber-500/40 bg-amber-500/10"
                           : "border-white/10 bg-white/5 hover:bg-white/10"
@@ -7922,54 +8096,54 @@ export function BuyerHomePage({
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div>
-                          <p className="text-sm font-semibold text-white">{tile.label}</p>
-                          <p className="mt-1 text-[11px] text-white/60">{tile.subtitle}</p>
+                          <p className="text-[13px] font-semibold text-white">{tile.label}</p>
+                          <p className="mt-1 text-[10px] text-white/60">{tile.subtitle}</p>
                         </div>
                         <Badge variant="outline" className="border-white/10 text-[10px] text-white/70">
                           {tile.count}
                         </Badge>
                       </div>
                       {tile.fromPrice ? (
-                        <p className="mt-3 text-[11px] text-amber-300">A partir de {tile.fromPrice}</p>
+                        <p className="mt-1.5 text-[10px] text-amber-300">À partir de {tile.fromPrice}</p>
                       ) : null}
                     </button>
                   ))}
                 </div>
               </div>
 
-              <div id="bdo-vault" className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4 shadow-xl backdrop-blur">
+              <div id="bdo-vault" className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-3 shadow-xl backdrop-blur">
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <p className="text-[11px] uppercase tracking-[0.24em] text-emerald-300/80">Votre coffre</p>
-                    <h3 className="mt-1 text-lg font-semibold text-white">Achetez, réservez, transformez</h3>
+                    <p className="text-[11px] uppercase tracking-[0.24em] text-emerald-300/80">Votre coffre d'or</p>
+                    <h3 className="mt-1 text-base font-semibold text-white">Achetez, réservez, accumulez</h3>
                   </div>
                   <Button
                     type="button"
                     size="sm"
-                    className="bg-emerald-500 text-black hover:bg-emerald-400"
-                    onClick={() => {
-                      setVaultPane("vault");
-                      setVaultOpen(true);
-                    }}
+                    className="h-7 bg-emerald-500 px-2.5 text-black hover:bg-emerald-400"
+                    onClick={() => navigate("/coffre")}
                   >
-                    Ouvrir le coffre
+                    Voir le coffre
                   </Button>
                 </div>
-                <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                <p className="mt-2 text-sm text-white/65">
+                  Alimentez votre coffre, financez un objectif précis, puis confirmez l&apos;achat lorsque le montant visé est atteint.
+                </p>
+                <div className="mt-3 grid gap-3 sm:grid-cols-3">
                   <div className="rounded-xl border border-white/10 bg-black/25 p-3">
-                    <p className="text-[10px] uppercase tracking-[0.2em] text-white/45">Or réservé</p>
+                    <p className="text-[10px] uppercase tracking-[0.2em] text-white/45">Objectifs actifs</p>
+                    <p className="mt-2 text-xl font-semibold text-white">
+                      {bdoGoalsLoading ? "..." : Number((bdoGoalsData as any)?.summary?.activeGoals || 0)}
+                    </p>
+                  </div>
+                  <div className="rounded-xl border border-white/10 bg-black/25 p-3">
+                    <p className="text-[10px] uppercase tracking-[0.2em] text-white/45">Or en coffre</p>
                     <p className="mt-2 text-xl font-semibold text-white">
                       {vaultLoading ? "..." : `${Number(vaultData?.totalGrams || 0)} g`}
                     </p>
                   </div>
                   <div className="rounded-xl border border-white/10 bg-black/25 p-3">
-                    <p className="text-[10px] uppercase tracking-[0.2em] text-white/45">Unites en coffre</p>
-                    <p className="mt-2 text-xl font-semibold text-white">
-                      {vaultLoading ? "..." : Number(vaultData?.units?.length || 0)}
-                    </p>
-                  </div>
-                  <div className="rounded-xl border border-white/10 bg-black/25 p-3">
-                    <p className="text-[10px] uppercase tracking-[0.2em] text-white/45">Trésorerie</p>
+                    <p className="text-[10px] uppercase tracking-[0.2em] text-white/45">Fonds disponibles</p>
                     <p className="mt-2 text-xl font-semibold text-white">
                       {walletSummaryLoading
                         ? "..."
@@ -7977,49 +8151,60 @@ export function BuyerHomePage({
                     </p>
                   </div>
                 </div>
-                <div className="mt-4 flex flex-wrap gap-2">
+                <div className="mt-3 flex flex-wrap gap-2">
                   <Button
                     size="sm"
-                    className="bg-amber-500 text-black hover:bg-amber-400"
-                    onClick={() => {
-                      setVaultPane("wallet");
-                      setVaultOpen(true);
-                    }}
+                    className="h-8 bg-amber-500 px-3 text-black hover:bg-amber-400"
+                    onClick={() => navigate("/coffre")}
                   >
-                    Alimenter le portefeuille
+                    Ajouter des fonds
                   </Button>
                   <Button
                     size="sm"
                     variant="outline"
-                    className="border-white/15 text-white/80 hover:bg-white/10"
-                    onClick={() => navigate("/admin/stamped-gold/minting-studio")}
+                    className="h-8 border-white/15 px-3 text-white/80 hover:bg-white/10"
+                    onClick={() => navigate("/mes-objectifs")}
                   >
-                    Atelier de frappe
+                    Voir mes objectifs
                   </Button>
                 </div>
+                {activeBdoGoals[0] ? (
+                  <div className="mt-3 rounded-xl border border-white/10 bg-black/20 px-3 py-2">
+                    <p className="text-[10px] uppercase tracking-[0.2em] text-white/45">Objectif le plus proche</p>
+                    <p className="mt-1 text-sm font-semibold text-white">
+                      {activeBdoGoals[0]?.metadata?.productName || `Lingot ${activeBdoGoals[0]?.selectedWeightGrams || 0}g`}
+                    </p>
+                    <p className="mt-1 text-[11px] text-white/60">
+                      {Number(activeBdoGoals[0]?.progressPercent || 0)}% • reste {formatMoney(Number(activeBdoGoals[0]?.remainingMinor || 0), "XOF")}
+                    </p>
+                  </div>
+                ) : null}
               </div>
 
-              <div className="rounded-2xl border border-blue-500/20 bg-[#08111f]/90 p-4 shadow-xl backdrop-blur">
+              <div className="rounded-2xl border border-blue-500/20 bg-[#08111f]/90 p-3 shadow-xl backdrop-blur">
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <p className="text-[11px] uppercase tracking-[0.24em] text-blue-300/80">Carte professionnelle</p>
-                    <h3 className="mt-1 text-lg font-semibold text-white">Contreparties et sourcing verifies</h3>
+                    <p className="text-[11px] uppercase tracking-[0.24em] text-blue-300/80">Carte professionnelle & sourcing vérifié</p>
+                    <h3 className="mt-1 text-base font-semibold text-white">Contreparties et sourcing vérifiés</h3>
                   </div>
                   <Badge variant="outline" className="border-blue-400/25 bg-blue-500/10 text-blue-100">
                     Pro
                   </Badge>
                 </div>
                 <p className="mt-2 text-sm text-white/65">
-                  Accédez à la cartographie des bureaux d'achat vérifiés, exportateurs et zones de sourcing aurifère.
+                  Accédez à la cartographie des contreparties, bureaux d&apos;achat vérifiés et flux de sourcing aurifère.
                 </p>
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <Button className="bg-amber-500 text-black hover:bg-amber-400" onClick={() => navigate("/pro/map")}>
+                <div className="mt-2 rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-[11px] text-white/60">
+                  Réservé aux membres Pro vérifiés. Acheteurs internationaux: abonnement. Bureaux d'achat et acteurs terrain: accès vérifié.
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Button className="h-8 bg-amber-500 px-3 text-black hover:bg-amber-400" onClick={() => navigate("/pro/map")}>
                     Ouvrir la carte
                   </Button>
                   <Button
                     variant="outline"
-                    className="border-white/15 text-white/80 hover:bg-white/10"
-                    onClick={() => navigate("/pro/bureaux-achat")}
+                    className="h-8 border-white/15 px-3 text-white/80 hover:bg-white/10"
+                    onClick={() => navigate("/pro/counterparties")}
                   >
                     Voir les contreparties
                   </Button>
@@ -8027,12 +8212,12 @@ export function BuyerHomePage({
               </div>
             </div>
 
-            <div className="space-y-4">
-            <section id="bdo-buy" className="self-start rounded-2xl border border-white/10 bg-[#07101d]/90 p-4 shadow-xl backdrop-blur">
+            <div className="space-y-3">
+            <section id="bdo-buy" className="self-start rounded-2xl border border-white/10 bg-[#07101d]/90 p-3 shadow-xl backdrop-blur">
               <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
                 <div className="min-w-0">
                   <p className="text-[11px] uppercase tracking-[0.24em] text-amber-300/80">{bdoSelectedTile?.label || "Lingots"}</p>
-                  <h3 className="mt-1 text-lg font-semibold text-white">
+                  <h3 className="mt-1 text-base font-semibold text-white">
                     {bdoBrowseView === "lingots"
                       ? "Lingots d'investissement par poids"
                       : bdoBrowseView === "pieces"
@@ -8041,7 +8226,7 @@ export function BuyerHomePage({
                   </h3>
                   <p className="mt-1 text-sm text-white/60">
                     {bdoBrowseView === "lingots"
-                      ? "Le poids devient votre entrée principale, puis l'édition, le carat et les options de personnalisation."
+                      ? "Choisissez un poids, démarrez un objectif et financez-le progressivement avant la confirmation finale."
                       : bdoBrowseView === "pieces"
                         ? "Découvrez les pièces premium et les séries structurées pour achat patrimonial ou cadeau."
                         : "Une couche collector premium reliant héritage africain, éditions limitées et objets de collection."}
@@ -8055,7 +8240,7 @@ export function BuyerHomePage({
                           type="button"
                           size="sm"
                           variant={bdoWeightFilter == null ? "default" : "outline"}
-                          className={bdoWeightFilter == null ? "bg-amber-500 text-black hover:bg-amber-400" : "border-white/15 text-white/80 hover:bg-white/10"}
+                          className={bdoWeightFilter == null ? "h-8 bg-amber-500 text-black hover:bg-amber-400" : "h-8 border-white/15 text-white/80 hover:bg-white/10"}
                           onClick={() => setBdoWeightFilter(null)}
                         >
                           Tous
@@ -8066,7 +8251,7 @@ export function BuyerHomePage({
                             type="button"
                             size="sm"
                             variant={bdoWeightFilter === weight ? "default" : "outline"}
-                            className={bdoWeightFilter === weight ? "bg-amber-500 text-black hover:bg-amber-400" : "border-white/15 text-white/80 hover:bg-white/10"}
+                            className={bdoWeightFilter === weight ? "h-8 bg-amber-500 text-black hover:bg-amber-400" : "h-8 border-white/15 text-white/80 hover:bg-white/10"}
                             onClick={() => setBdoWeightFilter(weight)}
                           >
                             {formatGoldWeightLabel(weight)}
@@ -8080,10 +8265,10 @@ export function BuyerHomePage({
 
               {bdoVisibleProducts.length ? (
                 <>
-                  <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+                  <div className="mt-3 grid gap-2.5 sm:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5">
                     {bdoVisibleProducts.map((product: any, idx: number) => renderBdoInstitutionalCard(product, idx))}
                   </div>
-                  <div className="mt-4 flex items-center justify-between gap-3">
+                  <div className="mt-3 flex items-center justify-between gap-3">
                     <p className="text-[11px] text-white/45">
                       {bdoShowAllCatalog
                         ? `${bdoCatalogProducts.filter((product: any) => {
@@ -8100,7 +8285,7 @@ export function BuyerHomePage({
                         type="button"
                         size="sm"
                         variant="outline"
-                        className="border-white/15 text-white/80 hover:bg-white/10"
+                        className="h-8 border-white/15 px-3 text-white/80 hover:bg-white/10"
                         onClick={() => navigate(bdoBrowseView === "lingots" ? "/stamped-gold" : "/collections")}
                       >
                         Voir tout
@@ -8109,7 +8294,7 @@ export function BuyerHomePage({
                         <Button
                           type="button"
                           size="sm"
-                          className="bg-amber-500 text-black hover:bg-amber-400"
+                          className="h-8 bg-amber-500 px-3 text-black hover:bg-amber-400"
                           onClick={() => setBdoShowAllCatalog(true)}
                         >
                           Charger plus
@@ -8128,9 +8313,9 @@ export function BuyerHomePage({
               )}
             </section>
 
-          <section id="bdo-news" className="grid gap-4 xl:grid-cols-[1.4fr_minmax(0,1fr)]">
-            <div className="space-y-4">
-              <div id="bdo-market" className="rounded-2xl border border-white/10 bg-[#07101d]/90 p-4 shadow-xl backdrop-blur">
+          <section id="bdo-news" className="grid gap-3 xl:grid-cols-[1.4fr_minmax(0,1fr)]">
+            <div className="space-y-3">
+              <div id="bdo-market" className="rounded-2xl border border-white/10 bg-[#07101d]/90 p-3.5 shadow-xl backdrop-blur">
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <p className="text-[11px] uppercase tracking-[0.24em] text-amber-300/80">Actualités & réglementation</p>
@@ -8154,8 +8339,8 @@ export function BuyerHomePage({
               </div>
             </div>
 
-            <div id="bdo-pro" className="space-y-4">
-              <div className="rounded-2xl border border-blue-500/20 bg-[#08111f]/90 p-4 shadow-xl backdrop-blur">
+            <div id="bdo-pro" className="space-y-3">
+              <div className="rounded-2xl border border-blue-500/20 bg-[#08111f]/90 p-3.5 shadow-xl backdrop-blur">
                 <p className="text-[11px] uppercase tracking-[0.24em] text-blue-300/80">Industrie & conformité</p>
                 <h3 className="mt-1 text-lg font-semibold text-white">Actualités, réglementation et chaîne de confiance</h3>
                 <div className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -8178,26 +8363,29 @@ export function BuyerHomePage({
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-amber-500/25 bg-[#140d05]/90 p-4 shadow-xl backdrop-blur">
+              <div className="rounded-2xl border border-amber-500/25 bg-[#140d05]/90 p-3.5 shadow-xl backdrop-blur">
                 <p className="text-[11px] uppercase tracking-[0.24em] text-amber-300/80">Espace Pro</p>
-                <h3 className="mt-1 text-lg font-semibold text-white">Un espace dedie a l'ecosysteme aurifere africain</h3>
+                <h3 className="mt-1 text-lg font-semibold text-white">Espace Pro — Intelligence aurifère africaine</h3>
                 <p className="mt-2 text-sm text-white/65">
                   Pour mineurs, affineurs, négociants, exportateurs, investisseurs et institutions recherchant sourcing, certification, cartographie professionnelle et flux verifies.
                 </p>
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <Button className="bg-amber-500 text-black hover:bg-amber-400" onClick={() => navigate("/espace-pro")}>
+                <div className="mt-2 rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-[11px] text-white/60">
+                  Accès réservé aux membres Pro vérifiés. International buyer et investor: abonnement. Bureau d'achat, association et mineur: accès vérifié.
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Button className="h-9 bg-amber-500 px-3 text-black hover:bg-amber-400" onClick={() => navigate("/espace-pro")}>
                     Accéder à l'espace Pro
                   </Button>
                   <Button
                     variant="outline"
-                    className="border-white/15 text-white/80 hover:bg-white/10"
+                    className="h-9 border-white/15 px-3 text-white/80 hover:bg-white/10"
                     onClick={() => navigate("/pro/map")}
                   >
                     Ouvrir la carte
                   </Button>
                   <Button
                     variant="outline"
-                    className="border-white/15 text-white/80 hover:bg-white/10"
+                    className="h-9 border-white/15 px-3 text-white/80 hover:bg-white/10"
                     onClick={() => navigate("/pro/intelligence")}
                   >
                     Intelligence Pro
@@ -11974,24 +12162,32 @@ Signatures
               ) : (
                 <Wallet className="h-5 w-5 text-amber-300" />
               )}
-              {vaultPane === "vault" ? t("vault.title") : t("wallet.title")}
+              {useBdoInstitutionalLayout
+                ? vaultPane === "vault"
+                  ? "Votre coffre d'or"
+                  : "Vos objectifs d'or"
+                : vaultPane === "vault"
+                  ? "Coffre d'or & objectifs"
+                  : t("wallet.title")}
             </SheetTitle>
           </SheetHeader>
 
 	          {!session.isAuthenticated || session.isGuest ? (
 	            <div className="mt-6 space-y-3">
-	              <p className="text-sm text-white/80">{t("vault.signInToAccess")}</p>
+	              <p className="text-sm text-white/80">
+                  {useBdoInstitutionalLayout ? "Connectez-vous pour accéder à votre coffre et à vos objectifs d'or." : t("vault.signInToAccess")}
+                </p>
 	              <div className="flex gap-2">
 	                <Button
 	                  className="flex-1 bg-white/10 hover:bg-white/15 text-white"
-	                  onClick={() => navigate(`/login?next=${encodeURIComponent("/?panel=wallet&topup=1")}`)}
+	                  onClick={() => navigate(`/login?next=${encodeURIComponent(useBdoInstitutionalLayout ? "/coffre" : "/?panel=wallet&topup=1")}`)}
 	                >
 	                  {t("common.signIn")}
 	                </Button>
 	                <Button
 	                  variant="outline"
 	                  className="flex-1 border-white/15 text-white/80 hover:bg-white/10"
-	                  onClick={() => navigate(`/register?next=${encodeURIComponent("/?panel=wallet&topup=1")}`)}
+	                  onClick={() => navigate(`/register?next=${encodeURIComponent(useBdoInstitutionalLayout ? "/coffre" : "/?panel=wallet&topup=1")}`)}
 	                >
 	                  {t("common.createAccount")}
 	                </Button>
@@ -12008,7 +12204,7 @@ Signatures
                       vaultPane === "wallet" ? "bg-amber-500/20 text-amber-200" : "text-white/70 hover:text-white"
                     }`}
                   >
-                    {t("wallet.title")}
+                    {useBdoInstitutionalLayout ? "Objectifs" : t("wallet.title")}
                   </button>
                   <button
                     type="button"
@@ -12017,7 +12213,7 @@ Signatures
                       vaultPane === "vault" ? "bg-emerald-500/20 text-emerald-200" : "text-white/70 hover:text-white"
                     }`}
                   >
-                    {t("vault.title")}
+                    {useBdoInstitutionalLayout ? "Coffre" : t("vault.title")}
                   </button>
                 </div>
               </div>
@@ -12026,15 +12222,21 @@ Signatures
                 <div className="space-y-4">
                   <div className="rounded-xl border border-white/10 bg-white/5 p-4 space-y-3">
 	                    <div className="flex items-center justify-between gap-3">
-	                      <p className="text-sm font-semibold text-white">{t("wallet.title")}</p>
+	                      <p className="text-sm font-semibold text-white">{useBdoInstitutionalLayout ? "Votre coffre d'or" : t("wallet.title")}</p>
 	                      <p className="text-sm font-semibold text-amber-300">
 	                        {walletSummaryLoading ? "..." : formatMoney(Number(walletSummary?.wallet?.balance || 0), "XOF")}
 	                      </p>
 	                    </div>
 
+                    {useBdoInstitutionalLayout ? (
+                      <p className="text-[12px] text-white/60">
+                        Achetez, réservez, accumulez. Affectez vos fonds à un objectif précis puis verrouillez le prix au moment de la confirmation.
+                      </p>
+                    ) : null}
+
 	                    <WalletDepositModal
-	                      label={t("wallet.deposit")}
-	                      next="/?panel=wallet"
+	                      label={useBdoInstitutionalLayout ? "Ajouter des fonds" : t("wallet.deposit")}
+	                      next={useBdoInstitutionalLayout ? "/coffre" : "/?panel=wallet"}
 	                      autoOpen={walletTopupAutoOpen}
 	                      buttonClassName="w-full bg-amber-500 hover:bg-amber-600 text-black"
 	                    />
@@ -12043,32 +12245,48 @@ Signatures
 	                      <Button
 	                        variant="outline"
                         className="border-white/15 text-white/80 hover:bg-white/10"
-                        onClick={() => setBdoPurchaseOpen(true)}
+                        onClick={() => {
+                          if (useBdoInstitutionalLayout) {
+                            navigate("/mes-objectifs");
+                            return;
+                          }
+                          setBdoPurchaseOpen(true);
+                        }}
                       >
-                        {t("vault.buyUnits")}
+                        {useBdoInstitutionalLayout ? "Voir mes objectifs" : t("vault.buyUnits")}
                       </Button>
                       <Button
                         variant="outline"
                         className="border-white/15 text-white/80 hover:bg-white/10"
-                        onClick={() => setBdoSecondaryOpen(true)}
+                        onClick={() => (useBdoInstitutionalLayout ? navigate("/coffre") : setBdoSecondaryOpen(true))}
                       >
-                        {t("secondaryMarket.title")}
+                        {useBdoInstitutionalLayout ? "Voir le coffre" : t("secondaryMarket.title")}
                       </Button>
                     </div>
-                    <p className="text-[11px] text-white/50">{t("vault.pricingAtPurchase")}</p>
+                    <p className="text-[11px] text-white/50">
+                      {useBdoInstitutionalLayout
+                        ? "Le prix reste lié au marché jusqu'au moment de la confirmation."
+                        : t("vault.pricingAtPurchase")}
+                    </p>
                   </div>
 
                   <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4">
-                    <p className="text-[11px] text-white/60 uppercase tracking-wider">{t("vault.totalGold")}</p>
-                    <p className="text-xl font-semibold text-emerald-200">
-                      {vaultLoading ? "..." : `${Number(vaultData?.totalGrams || 0)} g`}
+                    <p className="text-[11px] text-white/60 uppercase tracking-wider">
+                      {useBdoInstitutionalLayout ? "Objectifs actifs" : t("vault.totalGold")}
                     </p>
-                    <p className="mt-1 text-[12px] text-white/60">{t("vault.description")}</p>
+                    <p className="text-xl font-semibold text-emerald-200">
+                      {useBdoInstitutionalLayout ? Number((bdoGoalsData as any)?.summary?.activeGoals || 0) : vaultLoading ? "..." : `${Number(vaultData?.totalGrams || 0)} g`}
+                    </p>
+                    <p className="mt-1 text-[12px] text-white/60">
+                      {useBdoInstitutionalLayout
+                        ? "Suivez vos objectifs et confirmez l'achat seulement lorsque le montant et le marché vous conviennent."
+                        : t("vault.description")}
+                    </p>
                   </div>
 
                   <div className="rounded-xl border border-white/10 bg-white/5 p-4 space-y-3">
                     <div className="flex items-center justify-between gap-3">
-                      <p className="text-sm font-semibold text-white">Recent activity</p>
+                      <p className="text-sm font-semibold text-white">{useBdoInstitutionalLayout ? "Activité récente du coffre" : "Recent activity"}</p>
                       <p className="text-[11px] text-white/50">{walletTransactions.length ? `${walletTransactions.length}` : ""}</p>
                     </div>
 	                    {walletTransactions.length ? (
@@ -12104,7 +12322,7 @@ Signatures
                         </div>
                       </ScrollArea>
                     ) : (
-                      <p className="text-[12px] text-white/60">No transactions yet.</p>
+                      <p className="text-[12px] text-white/60">{useBdoInstitutionalLayout ? "Aucun mouvement pour le moment." : "No transactions yet."}</p>
                     )}
                   </div>
                 </div>
@@ -12193,13 +12411,61 @@ Signatures
       <Dialog open={bdoPurchaseOpen} onOpenChange={setBdoPurchaseOpen}>
         <DialogContent className="bg-[#0b1117] border border-emerald-500/20 text-white max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-white">{t("vault.buyUnits")}</DialogTitle>
-            <DialogDescription className="text-white/60">{t("vault.buyUnitsDescription")}</DialogDescription>
+            <DialogTitle className="text-white">
+              {useBdoInstitutionalLayout ? "Créer un objectif d'or" : t("vault.buyUnits")}
+            </DialogTitle>
+            <DialogDescription className="text-white/60">
+              {useBdoInstitutionalLayout
+                ? "Choisissez un poids, consultez le prix indicatif actuel, puis démarrez un objectif à financer progressivement depuis votre coffre."
+                : t("vault.buyUnitsDescription")}
+            </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
+            {useBdoInstitutionalLayout ? (
+              <div className="rounded-xl border border-white/10 bg-white/5 p-3 space-y-2">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-white truncate">
+                      {selectedProduct?.name || `Lingot ${bdoPurchaseUnitSize}g`}
+                    </p>
+                    <p className="text-[11px] text-white/55">
+                      Objectif d&apos;accumulation. Le prix évolue avec le marché jusqu&apos;à votre confirmation finale.
+                    </p>
+                  </div>
+                  {selectedProductPrice?.primary ? (
+                    <div className="text-right">
+                      <p className="text-sm font-semibold text-amber-300">{selectedProductPrice.primary}</p>
+                      <p className="text-[10px] text-white/45">Prix affiché</p>
+                    </div>
+                  ) : null}
+                </div>
+                {selectedBdoGoalEstimate ? (
+                  <div className="grid gap-2 text-[11px] text-white/65 sm:grid-cols-2">
+                    <div className="rounded-lg border border-white/10 bg-black/20 px-3 py-2">
+                      <p className="uppercase tracking-[0.18em] text-white/40">Cible indicative</p>
+                      <p className="mt-1 text-sm font-semibold text-white">
+                        {formatMoney(selectedBdoGoalEstimate.amountMinor, selectedBdoGoalEstimate.currencyCode)}
+                      </p>
+                    </div>
+                    <div className="rounded-lg border border-white/10 bg-black/20 px-3 py-2">
+                      <p className="uppercase tracking-[0.18em] text-white/40">Référence actuelle</p>
+                      <p className="mt-1 text-sm font-semibold text-white">
+                        {selectedBdoGoalEstimate.perGramMinor
+                          ? formatMoney(selectedBdoGoalEstimate.perGramMinor, selectedBdoGoalEstimate.currencyCode, "/g")
+                          : selectedProductPrice?.secondary || "Marché en direct"}
+                      </p>
+                    </div>
+                  </div>
+                ) : null}
+                <p className="text-[11px] text-white/50">
+                  Le prix final est recalculé et verrouillé uniquement lorsque vous confirmez l&apos;achat.
+                </p>
+              </div>
+            ) : null}
+
             <div className="space-y-2">
-              <Label className="text-[11px] text-white/60">{t("vault.unitSize")}</Label>
+              <Label className="text-[11px] text-white/60">{useBdoInstitutionalLayout ? "Poids visé" : t("vault.unitSize")}</Label>
               <div className="flex flex-wrap gap-2">
                 {(Array.isArray(bdoUnitDefs) ? bdoUnitDefs : []).map((d: any) => (
                   <Button
@@ -12220,52 +12486,35 @@ Signatures
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label className="text-[11px] text-white/60">{t("vault.deliveryChoice")}</Label>
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  size="sm"
-                  variant={!bdoPurchaseDeliveryNow ? "default" : "outline"}
-                  className={
-                    !bdoPurchaseDeliveryNow ? "bg-white/10 hover:bg-white/15 text-white" : "border-white/15 text-white/80 hover:bg-white/10"
-                  }
-                  onClick={() => setBdoPurchaseDeliveryNow(false)}
-                >
-                  {t("vault.storeInVault")}
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant={bdoPurchaseDeliveryNow ? "default" : "outline"}
-                  className={
-                    bdoPurchaseDeliveryNow ? "bg-emerald-500 hover:bg-emerald-600 text-black" : "border-white/15 text-white/80 hover:bg-white/10"
-                  }
-                  onClick={() => setBdoPurchaseDeliveryNow(true)}
-                >
-                  {t("vault.deliveryNow")}
-                </Button>
+            {useBdoInstitutionalLayout ? (
+              <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 p-3 text-[11px] text-amber-50/85">
+                Ajoutez des fonds maintenant ou plus tard. Les options de stockage et de livraison seront choisies au moment de la confirmation finale.
               </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-[11px] text-white/60">{t("vault.lockupLabel")}</Label>
-              <Input
-                type="date"
-                value={bdoPurchaseLockupEndDate}
-                onChange={(e) => setBdoPurchaseLockupEndDate(e.target.value)}
-                className="bg-black/40 border-white/10 text-white"
-              />
-              <p className="text-[11px] text-white/50">{t("vault.lockupHelp")}</p>
-            </div>
+            ) : null}
 
             <Button
               className="w-full bg-emerald-500 hover:bg-emerald-600 text-black font-semibold"
-              disabled={bdoPurchaseMutation.isPending || !bdoPurchaseUnitSize}
-              onClick={() => bdoPurchaseMutation.mutate()}
+              disabled={bdoCreateGoalMutation.isPending || !bdoPurchaseUnitSize}
+              onClick={() => bdoCreateGoalMutation.mutate()}
             >
-              {t("vault.confirmPurchase")}
+              {useBdoInstitutionalLayout ? "Créer l'objectif" : t("vault.confirmPurchase")}
             </Button>
+            {useBdoInstitutionalLayout ? (
+              <div className="flex flex-wrap gap-2">
+                <WalletDepositModal
+                  label="Ajouter des fonds maintenant"
+                  next="/coffre"
+                  buttonClassName="flex-1 bg-amber-500 hover:bg-amber-400 text-black"
+                />
+                <Button
+                  variant="outline"
+                  className="flex-1 border-white/15 text-white/80 hover:bg-white/10"
+                  onClick={() => navigate("/coffre")}
+                >
+                  Utiliser mon coffre
+                </Button>
+              </div>
+            ) : null}
           </div>
         </DialogContent>
       </Dialog>
@@ -13132,10 +13381,14 @@ Signatures
             : []),
           {
             key: "wallet" as const,
-            label: t("nav.wallet"),
+            label: useBdoInstitutionalLayout ? "Objectifs" : t("nav.wallet"),
             icon: <Wallet className="h-4 w-4" />,
             primary: true,
             onPress: () => {
+              if (useBdoInstitutionalLayout) {
+                navigate("/mes-objectifs");
+                return;
+              }
               setVaultPane("wallet");
               setCartOpen(false);
               setVaultOpen(true);
@@ -13143,9 +13396,13 @@ Signatures
           },
           {
             key: "vault" as const,
-            label: t("nav.vault"),
+            label: useBdoInstitutionalLayout ? "Coffre" : t("nav.vault"),
             icon: <ShieldCheck className="h-4 w-4" />,
             onPress: () => {
+              if (useBdoInstitutionalLayout) {
+                navigate("/coffre");
+                return;
+              }
               setVaultPane("vault");
               setCartOpen(false);
               setVaultOpen(true);

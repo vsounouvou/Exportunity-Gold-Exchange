@@ -9,6 +9,7 @@ import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useCompany } from "@/hooks/use-company";
 import {
@@ -127,6 +128,13 @@ type AiRoutingResponse = {
   };
 };
 
+type GoldMarginSettingsResponse = {
+  scope: string;
+  key: string;
+  value: number;
+  percent: number;
+};
+
 function formatXof(value: number) {
   if (!Number.isFinite(value)) return "0";
   return new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 }).format(value);
@@ -143,6 +151,8 @@ export default function AdminDashboardPage() {
     allowedProviders: ["claude", "gemini", "openai"],
     forcedProvider: null,
   });
+  const [goldMarginDraft, setGoldMarginDraft] = useState("5");
+  const [goldMarginTouched, setGoldMarginTouched] = useState(false);
   const effectiveCompanyId =
     selectedCompanyId ??
     companies.find((c) => c.name.toLowerCase().replace(/\s+/g, " ").trim() === "exportunity gold exchange")?.id ??
@@ -179,6 +189,11 @@ export default function AdminDashboardPage() {
     staleTime: 10 * 60_000,
   });
 
+  const goldMarginQuery = useQuery<GoldMarginSettingsResponse>({
+    queryKey: ["/api/admin/settings/pricing/gold-margin"],
+    staleTime: 10_000,
+  });
+
   const aiStatusQuery = useQuery<AiStatus>({
     queryKey: ["/api/ai/status"],
     refetchInterval: 10_000,
@@ -201,6 +216,12 @@ export default function AdminDashboardPage() {
       setRoutingDraft(aiRoutingQuery.data.aiRouting);
     }
   }, [aiRoutingQuery.data?.companyId, aiRoutingQuery.data?.aiRouting, routingTouched]);
+
+  useEffect(() => {
+    if (!goldMarginTouched && goldMarginQuery.data?.percent != null) {
+      setGoldMarginDraft(String(goldMarginQuery.data.percent));
+    }
+  }, [goldMarginQuery.data?.percent, goldMarginTouched]);
 
   const saveAiRouting = useMutation({
     mutationFn: async () => {
@@ -262,6 +283,28 @@ export default function AdminDashboardPage() {
     mutationFn: async () => apiRequest("/api/marketplace/seed-gold-mines", { method: "POST" }),
     onSuccess: () => toast({ title: "Gold mines seeded" }),
     onError: (error: any) => toast({ title: "Seed failed", description: error.message, variant: "destructive" }),
+  });
+
+  const saveGoldMargin = useMutation({
+    mutationFn: async () => {
+      const percent = Number(goldMarginDraft);
+      if (!Number.isFinite(percent)) throw new Error("Enter a valid margin percent");
+      return apiRequest("/api/admin/settings/pricing/gold-margin", {
+        method: "PUT",
+        body: JSON.stringify({ percent }),
+      });
+    },
+    onSuccess: async () => {
+      setGoldMarginTouched(false);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["/api/admin/settings/pricing/gold-margin"] }),
+        queryClient.invalidateQueries({ queryKey: ["/api/marketplace/gold-price"] }),
+      ]);
+      toast({ title: "Pricing updated", description: "Platform gold margin saved." });
+    },
+    onError: (error: any) => {
+      toast({ title: "Save failed", description: error?.message || "Failed to update gold margin", variant: "destructive" });
+    },
   });
 
   const aiStartBackground = useMutation({
@@ -376,12 +419,16 @@ export default function AdminDashboardPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/marketplace/admin/orders?limit=20"] }),
       queryClient.invalidateQueries({ queryKey: ["/api/marketplace/gold-price"] }),
       queryClient.invalidateQueries({ queryKey: ["/api/marketplace/fx-rates"] }),
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/settings/pricing/gold-margin"] }),
       queryClient.invalidateQueries({ queryKey: ["/api/ai/status"] }),
     ]);
   };
 
   const gold = goldPriceQuery.data;
   const fx = fxRatesQuery.data;
+  const goldMarginPercent = Number(goldMarginQuery.data?.percent ?? (Number(gold?.platform?.marginPercent || 0) * 100));
+  const marketSpotPerGramXof = Number(gold?.market?.pure24KPerGramXOF || 0);
+  const platformPerGramXof = Number(gold?.platform?.pure24KPerGramXOF || 0);
   const effectiveFx = fx?.effectiveRates || fx?.rates || {};
   const baseFx = fx?.baseRates || {};
   const fxHasOverride = Boolean(fx?.overrideApplied);
@@ -626,6 +673,51 @@ export default function AdminDashboardPage() {
                   <div className="mt-2 text-[10px] text-gray-500">
                     Updated: {fxUpdatedLabel}
                     {fxHasOverride ? ` | base XOF ${baseFx?.XOF ?? "--"}` : ""}
+                  </div>
+                </div>
+                <div className="p-3 rounded-lg bg-gray-950 border border-gray-800">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <div className="text-xs text-gray-400">Platform Gold Margin</div>
+                      <div className="text-white font-semibold text-lg">{Number.isFinite(goldMarginPercent) ? `${goldMarginPercent.toFixed(2)}%` : "--"}</div>
+                      <div className="mt-1 text-[10px] text-gray-500">
+                        Applied to marketplace prices and orders. Chart remains spot-market only.
+                      </div>
+                    </div>
+                    <Badge variant="outline" className="border-amber-500/40 text-amber-300">
+                      tenant scoped
+                    </Badge>
+                  </div>
+                  <div className="mt-3 grid grid-cols-[minmax(0,1fr)_auto] gap-2">
+                    <Input
+                      inputMode="decimal"
+                      value={goldMarginDraft}
+                      onChange={(event) => {
+                        setGoldMarginDraft(event.target.value);
+                        setGoldMarginTouched(true);
+                      }}
+                      placeholder="5"
+                      className="border-gray-800 bg-gray-900 text-white"
+                    />
+                    <Button
+                      type="button"
+                      size="sm"
+                      className="bg-amber-500 text-black hover:bg-amber-600"
+                      disabled={saveGoldMargin.isPending}
+                      onClick={() => saveGoldMargin.mutate()}
+                    >
+                      Save %
+                    </Button>
+                  </div>
+                  <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+                    <div className="rounded-md border border-gray-800 bg-gray-900/80 px-2.5 py-2">
+                      <div className="text-gray-400">Spot XOF / g</div>
+                      <div className="mt-1 font-medium text-white">{marketSpotPerGramXof > 0 ? formatXof(marketSpotPerGramXof) : "--"}</div>
+                    </div>
+                    <div className="rounded-md border border-gray-800 bg-gray-900/80 px-2.5 py-2">
+                      <div className="text-gray-400">Marketplace XOF / g</div>
+                      <div className="mt-1 font-medium text-white">{platformPerGramXof > 0 ? formatXof(platformPerGramXof) : "--"}</div>
+                    </div>
                   </div>
                 </div>
                 <Link href="/seller-dashboard">

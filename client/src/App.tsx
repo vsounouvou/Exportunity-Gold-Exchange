@@ -321,6 +321,14 @@ const BdoProIntelligencePage = lazyPage(() => import("@/pages/bdo/BdoProPages"),
 const BdoProBureauxPage = lazyPage(() => import("@/pages/bdo/BdoProPages"), "BdoProBureauxPage");
 const BdoProBuyersPage = lazyPage(() => import("@/pages/bdo/BdoProPages"), "BdoProBuyersPage");
 const BdoProExportersPage = lazyPage(() => import("@/pages/bdo/BdoProPages"), "BdoProExportersPage");
+const BdoProCounterpartiesPage = lazyPage(() => import("@/pages/bdo/BdoProPages"), "BdoProCounterpartiesPage");
+const BdoProMembershipPage = lazyPage(() => import("@/pages/bdo/BdoProPages"), "BdoProMembershipPage");
+const BdoCoffrePage = lazyPage(() => import("@/pages/bdo/BdoGoalPages"), "BdoCoffrePage");
+const BdoGoalsPage = lazyPage(() => import("@/pages/bdo/BdoGoalPages"), "BdoGoalsPage");
+const BdoGoalDetailPage = lazyPage(() => import("@/pages/bdo/BdoGoalPages"), "BdoGoalDetailPage");
+const BdoAdminSettingsPage = lazyPage(() => import("@/pages/bdo/BdoAdminPages"), "BdoAdminSettingsPage");
+const BdoAdminGoalsPage = lazyPage(() => import("@/pages/bdo/BdoAdminPages"), "BdoAdminGoalsPage");
+const BdoAdminProMembershipsPage = lazyPage(() => import("@/pages/bdo/BdoAdminPages"), "BdoAdminProMembershipsPage");
 const AdminMarketingPostsPage = lazyPage(() => import("@/pages/AdminMarketingPostsPage"));
 const AdminMarketingPressPage = lazyPage(() => import("@/pages/AdminMarketingPressPage"));
 const AdminMarketingLibraryPage = lazyPage(() => import("@/pages/AdminMarketingLibraryPage"));
@@ -777,11 +785,20 @@ function App() {
           <Route path="/actualites" component={() => (isBdoHost() ? <BdoActualitesPage /> : <Redirect to="/store" />)} />
           <Route path="/reglementation" component={() => (isBdoHost() ? <BdoReglementationPage /> : <Redirect to="/store" />)} />
           <Route path="/industrie-miniere" component={() => (isBdoHost() ? <BdoIndustrieMinierePage /> : <Redirect to="/store" />)} />
+          <Route path="/coffre" component={() => (isBdoHost() ? <BdoCoffrePage /> : <Redirect to="/store" />)} />
+          <Route path="/mes-objectifs" component={() => (isBdoHost() ? <BdoGoalsPage /> : <Redirect to="/store" />)} />
+          <Route path="/objectif/:id">
+            {(params) =>
+              isBdoHost() ? <BdoGoalDetailPage goalId={String((params as any)?.id || "")} /> : <Redirect to="/store" />
+            }
+          </Route>
           <Route path="/espace-pro" component={() => (isBdoHost() ? <BdoEspaceProDashboardPage /> : <Redirect to="/store" />)} />
           <Route path="/pro/map" component={() => (isBdoHost() ? <BdoProMapPage /> : <Redirect to="/store" />)} />
           <Route path="/pro/intelligence" component={() => (isBdoHost() ? <BdoProIntelligencePage /> : <Redirect to="/store" />)} />
           <Route path="/pro/bureaux-achat" component={() => (isBdoHost() ? <BdoProBureauxPage /> : <Redirect to="/store" />)} />
           <Route path="/pro/buyers" component={() => (isBdoHost() ? <BdoProBuyersPage /> : <Redirect to="/store" />)} />
+          <Route path="/pro/counterparties" component={() => (isBdoHost() ? <BdoProCounterpartiesPage /> : <Redirect to="/store" />)} />
+          <Route path="/pro/membership" component={() => (isBdoHost() ? <BdoProMembershipPage /> : <Redirect to="/store" />)} />
           <Route path="/pro/exportateurs-verifies" component={() => (isBdoHost() ? <BdoProExportersPage /> : <Redirect to="/store" />)} />
           <Route path="/about" component={MarketingAwareAboutRoute} />
           <Route path="/press" component={() => (isVsHost() ? <VsPressPage /> : <MarketingRedirect to="/media" />)} />
@@ -1019,6 +1036,21 @@ function App() {
           <Route path="/admin/modules">
             <ProtectedRoute>
               <TenantAdminAliasRoute target="modules" />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/admin/bdo/settings">
+            <ProtectedRoute>
+              <BdoAdminSettingsPage />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/admin/bdo/goals">
+            <ProtectedRoute>
+              <BdoAdminGoalsPage />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/admin/bdo/pro-memberships">
+            <ProtectedRoute>
+              <BdoAdminProMembershipsPage />
             </ProtectedRoute>
           </Route>
           <Route path="/admin/met">

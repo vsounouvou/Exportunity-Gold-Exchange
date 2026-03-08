@@ -3,9 +3,10 @@ import { db } from "@db";
 import { tenants } from "@db/schema";
 import { eq } from "drizzle-orm";
 import { ensureTenantAdmin } from "./utils/auth";
-import { getSettingsByPrefix, setSetting } from "../lib/settings";
+import { getSetting, getSettingsByPrefix, setSetting } from "../lib/settings";
 import { getFxSnapshot, normalizeAndValidateOverrides } from "../lib/fx";
 import { verifyAgentKey } from "../routes/utils/agent-auth";
+import { getBdoCommerceSettings, saveBdoCommerceSettings } from "../lib/bdo-commerce";
 
 const SAFE_KEYS_PREFIX = ["gateway."];
 const router = Router();
@@ -23,6 +24,7 @@ const FEATURE_DEFAULTS: Record<ManagedFeatureKey, boolean> = {
   "feature.custom_jewelry": false,
   "feature.3d_memory": false,
 };
+const GOLD_MARGIN_SETTING_KEY = "platform_gold_margin_percent";
 
 function normalizeFeatureFlags(raw: unknown) {
   const input = raw && typeof raw === "object" && !Array.isArray(raw) ? (raw as Record<string, unknown>) : {};
@@ -51,6 +53,32 @@ function resolveSettingsScope(req: any) {
   const tenantId = Number(req?.tenant?.id);
   if (Number.isFinite(tenantId) && tenantId > 0) return `tenant:${Math.trunc(tenantId)}`;
   return "tenant:default";
+}
+
+function resolveDefaultGoldMarginPercent(req: any) {
+  const tenantKey = String(req?.tenant?.key || "")
+    .trim()
+    .toLowerCase();
+  return tenantKey === "bdo" ? 0.05 : 0;
+}
+
+function normalizeGoldMarginPercent(value: unknown, fallback: number) {
+  const raw = Number(value);
+  if (!Number.isFinite(raw)) return fallback;
+  const normalized = raw > 1 ? raw / 100 : raw;
+  return Math.min(Math.max(normalized, 0), 1);
+}
+
+function extractGoldMarginPercent(raw: unknown, fallback: number) {
+  if (raw && typeof raw === "object" && !Array.isArray(raw)) {
+    const candidate =
+      (raw as any).percent ??
+      (raw as any).value ??
+      (raw as any).margin ??
+      (raw as any).platform_gold_margin_percent;
+    return normalizeGoldMarginPercent(candidate, fallback);
+  }
+  return normalizeGoldMarginPercent(raw, fallback);
 }
 
 // Public read (whitelisted)
@@ -166,6 +194,68 @@ router.post("/api/admin/settings", async (req, res) => {
   if (!scope || !key) return res.status(400).json({ message: "scope and key required" });
   await setSetting(scope, key, value, (req as any).adminUser?.email || "admin");
   res.json({ ok: true });
+});
+
+router.get("/api/admin/settings/pricing/gold-margin", async (req, res) => {
+  try {
+    const scope = resolveSettingsScope(req);
+    const fallback = resolveDefaultGoldMarginPercent(req);
+    const raw = await getSetting(scope, GOLD_MARGIN_SETTING_KEY, fallback);
+    const value = extractGoldMarginPercent(raw, fallback);
+    res.json({
+      scope,
+      key: GOLD_MARGIN_SETTING_KEY,
+      value,
+      percent: Number((value * 100).toFixed(2)),
+    });
+  } catch (err: any) {
+    res.status(500).json({ message: err?.message || "Failed to load gold margin setting" });
+  }
+});
+
+router.put("/api/admin/settings/pricing/gold-margin", async (req, res) => {
+  const candidate = req.body?.value ?? req.body?.percent ?? req.body?.marginPercent;
+  const numeric = Number(candidate);
+  if (!Number.isFinite(numeric)) {
+    return res.status(400).json({ message: "value or percent must be a valid number" });
+  }
+
+  try {
+    const scope = resolveSettingsScope(req);
+    const fallback = resolveDefaultGoldMarginPercent(req);
+    const value = normalizeGoldMarginPercent(numeric, fallback);
+    await setSetting(scope, GOLD_MARGIN_SETTING_KEY, value, (req as any).adminUser?.email || "admin");
+    res.json({
+      ok: true,
+      scope,
+      key: GOLD_MARGIN_SETTING_KEY,
+      value,
+      percent: Number((value * 100).toFixed(2)),
+    });
+  } catch (err: any) {
+    res.status(500).json({ message: err?.message || "Failed to save gold margin setting" });
+  }
+});
+
+router.get("/api/admin/bdo/settings/commerce", async (req, res) => {
+  try {
+    const scope = resolveSettingsScope(req);
+    const settings = await getBdoCommerceSettings(scope);
+    res.json({ ok: true, scope, settings });
+  } catch (err: any) {
+    res.status(500).json({ message: err?.message || "Failed to load BDO commerce settings" });
+  }
+});
+
+router.put("/api/admin/bdo/settings/commerce", async (req, res) => {
+  try {
+    const scope = resolveSettingsScope(req);
+    const actor = (req as any).adminUser?.email || "admin";
+    const settings = await saveBdoCommerceSettings(scope, req.body || {}, actor);
+    res.json({ ok: true, scope, settings });
+  } catch (err: any) {
+    res.status(400).json({ message: err?.message || "Failed to save BDO commerce settings" });
+  }
 });
 
 router.get("/api/admin/settings/fx", async (req, res) => {

@@ -1,7 +1,9 @@
 import { db } from "@db";
 import { and, eq } from "drizzle-orm";
 import { communicationsMessages, communicationsThreads, communicationsWorkOrders } from "@db/schema";
-import { getTwilioConfig, normalizeE164, sendTwilioMessage, type TwilioChannel } from "./twilio";
+import { normalizeAgentKey } from "../mail/agentSlugs";
+import { normalizeE164, sendTenantMessage, type TwilioChannel } from "./twilio";
+import { resolveAgentIdentityForTenant } from "./sender-resolution";
 
 export type OutboundCommunicationRequest = {
   tenantId: number;
@@ -37,13 +39,17 @@ export async function sendOutboundCommunication(req: OutboundCommunicationReques
   if (contentSid && req.channel !== "whatsapp") return { ok: false as const, message: "Templates are only supported for WhatsApp" };
 
   const now = new Date();
-  const cfg = getTwilioConfig();
+  const normalizedAgentKey = normalizeAgentKey(req.agentKey) || req.agentKey;
+  const agentIdentity = await resolveAgentIdentityForTenant({
+    tenantId: req.tenantId,
+    agentKey: normalizedAgentKey,
+  });
 
   const [thread] = await db
     .insert(communicationsThreads)
     .values({
       tenantId: req.tenantId,
-      agentKey: req.agentKey,
+      agentKey: normalizedAgentKey,
       channel: req.channel,
       peerAddress: toE164,
       lastMessageAt: now,
@@ -66,16 +72,13 @@ export async function sendOutboundCommunication(req: OutboundCommunicationReques
     .insert(communicationsMessages)
     .values({
       tenantId: req.tenantId,
-      agentKey: req.agentKey,
+      agentKey: normalizedAgentKey,
       threadId: thread.id,
       direction: "outbound",
       status: "queued",
       provider: "twilio",
       channel: req.channel,
-      fromAddress:
-        req.channel === "whatsapp"
-          ? String(cfg.whatsappFrom || "")
-          : String(cfg.smsFrom || cfg.messagingServiceSid || ""),
+      fromAddress: "",
       toAddress: toE164,
       body: body || null,
       providerMessageId: null,
@@ -92,21 +95,63 @@ export async function sendOutboundCommunication(req: OutboundCommunicationReques
     })
     .returning();
 
-  const sendResult = await sendTwilioMessage({
-    channel: req.channel,
-    toE164,
-    body,
-    contentSid,
-    contentVariables,
-    mediaUrls: req.mediaUrls ?? null,
-    statusCallbackUrl: null,
-  });
+  let sendResult:
+    | Awaited<ReturnType<typeof sendTenantMessage>>
+    | {
+        ok: false;
+        providerMessageId: null;
+        status: string | null;
+        errorCode: string | null;
+        errorMessage: string | null;
+        raw: Record<string, unknown> | null;
+        outboundLogId: number | null;
+        finalBody: string | null;
+        fromAddress: string | null;
+      };
+
+  try {
+    sendResult = await sendTenantMessage({
+      tenantId: req.tenantId,
+      agentId: agentIdentity.agentId,
+      agentKey: agentIdentity.agentKey,
+      to: toE164,
+      channel: req.channel,
+      body,
+      templateName: contentSid,
+      templatePayload: contentSid
+        ? {
+            contentSid,
+            ...(contentVariables ? { contentVariables } : {}),
+          }
+        : null,
+      metadata: {
+        ...(req.metadata ?? {}),
+        ...(req.clientMessageId ? { clientMessageId: req.clientMessageId } : {}),
+        source: "communications.router",
+      },
+      mediaUrls: req.mediaUrls ?? null,
+    });
+  } catch (error: any) {
+    sendResult = {
+      ok: false,
+      providerMessageId: null,
+      status: "failed",
+      errorCode: String(error?.code || error?.providerErrorCode || "twilio_send_failed"),
+      errorMessage: String(error?.message || "Twilio send failed"),
+      raw: null,
+      outboundLogId: null,
+      finalBody: body || null,
+      fromAddress: null,
+    };
+  }
 
   const status = sendResult.ok ? String(sendResult.status || "sent").toLowerCase() : "failed";
   await db
     .update(communicationsMessages)
     .set({
       status,
+      fromAddress: sendResult.fromAddress || "",
+      body: sendResult.finalBody || body || null,
       providerMessageId: sendResult.providerMessageId,
       errorCode: sendResult.errorCode,
       errorMessage: sendResult.errorMessage,
@@ -115,6 +160,7 @@ export async function sendOutboundCommunication(req: OutboundCommunicationReques
         ...(req.clientMessageId ? { clientMessageId: req.clientMessageId } : {}),
         ...(contentSid ? { contentSid, contentVariables } : {}),
         ...(req.mediaUrls?.length ? { mediaUrls: req.mediaUrls } : {}),
+        ...(sendResult.outboundLogId ? { outboundLogId: sendResult.outboundLogId } : {}),
         ...(sendResult.raw ? { twilio: sendResult.raw } : {}),
       },
       updatedAt: new Date(),

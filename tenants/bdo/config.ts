@@ -42,6 +42,11 @@ export const bdoTenantConfig: TenantConfig = {
       gradientTo: "#5e4a1e",
     },
   },
+  marketplaceDefaults: {
+    defaultCurrency: "XOF",
+    distanceUnit: "km",
+    deliveryRadiusKm: 150,
+  },
   storefrontIdentity: {
     platformLabel: "Bourse de l'Or - Or Estampillé",
     retailModeLabel: "Or Estampillé",

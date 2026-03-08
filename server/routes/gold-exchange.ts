@@ -12,6 +12,9 @@ import {
   lbmaPriceCache,
   bdoGoldUnitDefinitions,
   bdoPricingSnapshots,
+  goldGoals,
+  goldGoalTransactions,
+  goldGoalSnapshots,
   bdoVirtualVaults,
   bdoGoldAcquisitionRecords,
   bdoVaultGoldUnits,
@@ -37,6 +40,7 @@ import { eq, desc, and, gte, lte, sql, asc, or, ilike } from "drizzle-orm";
 	import { demoCompanyName, isDemoModeRequest } from "./utils/demo-mode";
 	import { getOrCreateWalletAccount } from "../lib/wallet/wallet";
 	import { getFxSnapshot, getUsdConversionRateForCurrency } from "../lib/fx";
+import { computeBdoStampedGoldPriceMinor, getBdoCommerceSettings } from "../lib/bdo-commerce";
 
 const router = Router();
 
@@ -218,6 +222,168 @@ const parseOptionalDate = (value: unknown) => {
   const d = new Date(String(value));
   return Number.isFinite(d.getTime()) ? d : null;
 };
+
+function isAdminLike(user: any) {
+  const roles = Array.isArray(user?.roles) ? user.roles.map(String) : [];
+  const permissions = Array.isArray(user?.permissions) ? user.permissions.map(String) : [];
+  return (
+    user?.role === "admin" ||
+    user?.currentMode === "admin" ||
+    roles.includes("admin") ||
+    permissions.includes("*") ||
+    permissions.includes("admin:*") ||
+    isChairmanAssistantUser(user)
+  );
+}
+
+async function ensureBdoGoalTables() {
+  await db.execute(sql`
+    do $$
+    begin
+      create type gold_goal_status as enum ('accumulating', 'ready_to_confirm', 'confirmed', 'cancelled', 'converted', 'refunded');
+    exception
+      when duplicate_object then null;
+    end $$;
+  `);
+  await db.execute(sql`
+    do $$
+    begin
+      create type gold_goal_tx_type as enum ('fund', 'refund', 'adjust', 'convert');
+    exception
+      when duplicate_object then null;
+    end $$;
+  `);
+  await db.execute(sql`
+    create table if not exists gold_goals (
+      id serial primary key,
+      tenant_id integer not null references tenants(id) on delete cascade,
+      user_id integer not null references ece_users(id) on delete cascade,
+      product_id integer,
+      selected_weight_grams integer not null,
+      selected_variant_id text,
+      created_reference_price_minor integer not null,
+      current_target_price_minor integer not null,
+      amount_funded_minor integer not null default 0,
+      currency_code text not null default 'XOF',
+      status gold_goal_status not null default 'accumulating',
+      lock_price_minor integer,
+      locked_at timestamp without time zone,
+      purchase_confirmed_at timestamp without time zone,
+      created_at timestamp without time zone not null default now(),
+      updated_at timestamp without time zone not null default now(),
+      metadata jsonb not null default '{}'::jsonb
+    )
+  `);
+  await db.execute(sql`
+    create table if not exists gold_goal_transactions (
+      id serial primary key,
+      goal_id integer not null references gold_goals(id) on delete cascade,
+      payment_tx_id text,
+      amount_minor integer not null,
+      tx_type gold_goal_tx_type not null,
+      created_at timestamp without time zone not null default now(),
+      metadata jsonb not null default '{}'::jsonb
+    )
+  `);
+  await db.execute(sql`
+    create table if not exists gold_goal_snapshots (
+      id serial primary key,
+      goal_id integer not null references gold_goals(id) on delete cascade,
+      reference_spot_per_gram_minor integer not null,
+      computed_target_price_minor integer not null,
+      margin_percent numeric(8, 6) not null default 0.050000,
+      created_at timestamp without time zone not null default now(),
+      metadata jsonb not null default '{}'::jsonb
+    )
+  `);
+  await db.execute(sql`create index if not exists gold_goals_tenant_id_idx on gold_goals(tenant_id)`);
+  await db.execute(sql`create index if not exists gold_goals_user_id_idx on gold_goals(user_id)`);
+  await db.execute(sql`create index if not exists gold_goals_created_at_idx on gold_goals(created_at)`);
+  await db.execute(sql`create index if not exists gold_goal_transactions_goal_id_idx on gold_goal_transactions(goal_id)`);
+  await db.execute(sql`create index if not exists gold_goal_transactions_created_at_idx on gold_goal_transactions(created_at)`);
+  await db.execute(sql`create index if not exists gold_goal_snapshots_goal_id_idx on gold_goal_snapshots(goal_id)`);
+}
+
+function normalizeMinorAmount(value: unknown) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed <= 0) return null;
+  return Math.round(parsed);
+}
+
+async function getWalletBalanceMinor(walletAccountId: string, tx: DbTx | typeof db = db) {
+  const latest = await tx.query.walletLedgerEntries.findFirst({
+    where: eq(walletLedgerEntries.walletAccountId, walletAccountId as any),
+    orderBy: desc(walletLedgerEntries.createdAt),
+  });
+  return latest ? Math.max(0, Number(latest.balanceAfter || 0)) : 0;
+}
+
+async function getBdoGoalQuote(args: {
+  weightGrams: number;
+  currency?: WalletCurrency;
+  tenantId?: number;
+}) {
+  const currency = normalizeWalletCurrency(args.currency);
+  const pricingSnapshot = await getOrCreatePricingSnapshot(currency);
+  const spotPricePerGramMinor = Math.max(0, Math.round(Number(pricingSnapshot.pricePerGram || 0)));
+  const settings = await getBdoCommerceSettings(BDO_FX_SCOPE);
+  const computed = computeBdoStampedGoldPriceMinor({
+    spotPricePerGramMinor,
+    weightGrams: args.weightGrams,
+    marginPercent: settings.platformGoldMarginPercent,
+    mintFeeMinor: settings.stampedGoldMintFeeFixed,
+  });
+  return {
+    pricingSnapshot,
+    settings,
+    spotPricePerGramMinor,
+    computedTargetPriceMinor: computed.totalMinor,
+    subtotalMinor: computed.subtotalMinor,
+    marginPercent: computed.marginPercent,
+    mintFeeMinor: computed.mintFeeMinor,
+    currencyCode: currency,
+  };
+}
+
+function mapGoldGoalRecord(goal: any, quote?: Awaited<ReturnType<typeof getBdoGoalQuote>> | null) {
+  const amountFundedMinor = Number(goal.amountFundedMinor || 0);
+  const currentTargetPriceMinor = Number(quote?.computedTargetPriceMinor ?? goal.currentTargetPriceMinor ?? 0);
+  const remainingMinor = Math.max(0, currentTargetPriceMinor - amountFundedMinor);
+  const readiness =
+    String(goal.status) === "converted" || String(goal.status) === "confirmed"
+      ? false
+      : amountFundedMinor >= currentTargetPriceMinor;
+  return {
+    id: Number(goal.id),
+    tenantId: Number(goal.tenantId),
+    userId: Number(goal.userId),
+    productId: goal.productId == null ? null : Number(goal.productId),
+    selectedWeightGrams: Number(goal.selectedWeightGrams || 0),
+    selectedVariantId: goal.selectedVariantId ? String(goal.selectedVariantId) : null,
+    createdReferencePriceMinor: Number(goal.createdReferencePriceMinor || 0),
+    currentTargetPriceMinor,
+    amountFundedMinor,
+    remainingMinor,
+    progressPercent: currentTargetPriceMinor > 0 ? Math.min(100, Math.round((amountFundedMinor / currentTargetPriceMinor) * 100)) : 0,
+    currencyCode: String(goal.currencyCode || "XOF"),
+    status: String(readiness ? "ready_to_confirm" : goal.status || "accumulating"),
+    lockPriceMinor: goal.lockPriceMinor == null ? null : Number(goal.lockPriceMinor),
+    lockedAt: goal.lockedAt ?? null,
+    purchaseConfirmedAt: goal.purchaseConfirmedAt ?? null,
+    createdAt: goal.createdAt ?? null,
+    updatedAt: goal.updatedAt ?? null,
+    metadata: goal.metadata ?? {},
+    quote:
+      quote == null
+        ? null
+        : {
+            spotPricePerGramMinor: quote.spotPricePerGramMinor,
+            subtotalMinor: quote.subtotalMinor,
+            mintFeeMinor: quote.mintFeeMinor,
+            marginPercent: quote.marginPercent,
+          },
+  };
+}
 
 async function ensureBdoUnitDefinitionsSeeded() {
   const tenantId = await resolveBdoTenantId();
@@ -1409,6 +1575,7 @@ router.get("/bdo/unit-definitions", async (_req, res) => {
 
 router.get("/bdo/vault", requireAuth, async (req, res) => {
   try {
+    await ensureBdoGoalTables();
     const user = (req as any).user as any;
     const vault = await ensureBdoVault(user.id);
     const units = await db.query.bdoVaultGoldUnits.findMany({
@@ -1432,6 +1599,639 @@ router.get("/bdo/vault", requireAuth, async (req, res) => {
   } catch (error: any) {
     console.error("[BDO] Vault fetch error:", error);
     res.status(500).json({ message: "Failed to fetch vault" });
+  }
+});
+
+router.get("/bdo/goals", requireAuth, async (req, res) => {
+  try {
+    await ensureBdoGoalTables();
+    const tenantId = await resolveBdoTenantId();
+    const user = (req as any).user as any;
+    const rows = await db.query.goldGoals.findMany({
+      where: and(eq(goldGoals.tenantId, tenantId), eq(goldGoals.userId, Number(user.id))),
+      orderBy: [desc(goldGoals.updatedAt), desc(goldGoals.createdAt)],
+    });
+
+    const items = await Promise.all(
+      rows.map(async (row) => {
+        const active = String(row.status) === "accumulating" || String(row.status) === "ready_to_confirm";
+        const quote = active ? await getBdoGoalQuote({ weightGrams: row.selectedWeightGrams, currency: "XOF" }) : null;
+        if (quote && Number(row.currentTargetPriceMinor || 0) !== quote.computedTargetPriceMinor) {
+          const nextStatus =
+            Number(row.amountFundedMinor || 0) >= quote.computedTargetPriceMinor ? "ready_to_confirm" : "accumulating";
+          await db
+            .update(goldGoals)
+            .set({
+              currentTargetPriceMinor: quote.computedTargetPriceMinor,
+              status: nextStatus as any,
+              updatedAt: new Date(),
+            })
+            .where(eq(goldGoals.id, row.id));
+          return mapGoldGoalRecord(
+            {
+              ...row,
+              currentTargetPriceMinor: quote.computedTargetPriceMinor,
+              status: nextStatus,
+              updatedAt: new Date(),
+            },
+            quote,
+          );
+        }
+        return mapGoldGoalRecord(row, quote);
+      }),
+    );
+
+    res.json({
+      ok: true,
+      items,
+      summary: {
+        activeGoals: items.filter((goal) => goal.status === "accumulating" || goal.status === "ready_to_confirm").length,
+        readyGoals: items.filter((goal) => goal.status === "ready_to_confirm").length,
+        lockedPurchases: items.filter((goal) => goal.status === "converted" || goal.status === "confirmed").length,
+      },
+    });
+  } catch (error: any) {
+    console.error("[BDO] Goals fetch error:", error);
+    res.status(500).json({ message: "Failed to fetch goals" });
+  }
+});
+
+router.get("/bdo/goals/:goalId", requireAuth, async (req, res) => {
+  try {
+    await ensureBdoGoalTables();
+    const tenantId = await resolveBdoTenantId();
+    const user = (req as any).user as any;
+    const goalId = Number(req.params.goalId);
+    if (!Number.isFinite(goalId) || goalId <= 0) {
+      return res.status(400).json({ message: "Invalid goal id" });
+    }
+
+    const goal = await db.query.goldGoals.findFirst({
+      where: and(eq(goldGoals.id, goalId), eq(goldGoals.tenantId, tenantId), eq(goldGoals.userId, Number(user.id))),
+    });
+    if (!goal) return res.status(404).json({ message: "Goal not found" });
+
+    const quote =
+      String(goal.status) === "accumulating" || String(goal.status) === "ready_to_confirm"
+        ? await getBdoGoalQuote({ weightGrams: goal.selectedWeightGrams, currency: "XOF" })
+        : null;
+    const item = mapGoldGoalRecord(goal, quote);
+    const [transactions, snapshots] = await Promise.all([
+      db.query.goldGoalTransactions.findMany({
+        where: eq(goldGoalTransactions.goalId, goal.id),
+        orderBy: [desc(goldGoalTransactions.createdAt)],
+      }),
+      db.query.goldGoalSnapshots.findMany({
+        where: eq(goldGoalSnapshots.goalId, goal.id),
+        orderBy: [desc(goldGoalSnapshots.createdAt)],
+        limit: 50,
+      }),
+    ]);
+
+    res.json({
+      ok: true,
+      item,
+      transactions: transactions.map((tx) => ({
+        id: tx.id,
+        paymentTxId: tx.paymentTxId,
+        amountMinor: Number(tx.amountMinor || 0),
+        txType: String(tx.txType),
+        createdAt: tx.createdAt,
+        metadata: tx.metadata ?? {},
+      })),
+      snapshots: snapshots.map((snapshot) => ({
+        id: snapshot.id,
+        referenceSpotPerGramMinor: Number(snapshot.referenceSpotPerGramMinor || 0),
+        computedTargetPriceMinor: Number(snapshot.computedTargetPriceMinor || 0),
+        marginPercent: Number(snapshot.marginPercent || 0),
+        createdAt: snapshot.createdAt,
+        metadata: snapshot.metadata ?? {},
+      })),
+    });
+  } catch (error: any) {
+    console.error("[BDO] Goal detail error:", error);
+    res.status(500).json({ message: "Failed to fetch goal detail" });
+  }
+});
+
+router.post("/bdo/goals", requireAuth, async (req, res) => {
+  try {
+    await ensureBdoGoalTables();
+    await ensureBdoUnitDefinitionsSeeded();
+    const tenantId = await resolveBdoTenantId();
+    const user = (req as any).user as any;
+    const settings = await getBdoCommerceSettings(BDO_FX_SCOPE);
+    if (!settings.accumulationModeEnabled) {
+      return res.status(403).json({ message: "Accumulation mode is disabled" });
+    }
+
+    const selectedWeightGrams = Math.trunc(
+      Number(req.body?.selectedWeightGrams ?? req.body?.unitSizeGrams ?? req.body?.weightGrams ?? 0),
+    );
+    if (!Number.isFinite(selectedWeightGrams) || selectedWeightGrams <= 0) {
+      return res.status(400).json({ message: "selectedWeightGrams is required" });
+    }
+
+    const definition = await db.query.bdoGoldUnitDefinitions.findFirst({
+      where: and(eq(bdoGoldUnitDefinitions.tenantId, tenantId), eq(bdoGoldUnitDefinitions.unitSizeGrams, selectedWeightGrams)),
+    });
+    if (!definition || !definition.availability) {
+      return res.status(400).json({ message: "Unsupported unit size" });
+    }
+
+    const productId = Number(req.body?.productId || 0);
+    const linkedProduct =
+      Number.isFinite(productId) && productId > 0
+        ? await db.query.sellerProducts.findFirst({ where: eq(sellerProducts.id, productId) })
+        : null;
+    const quote = await getBdoGoalQuote({ weightGrams: selectedWeightGrams, currency: "XOF" });
+    const now = new Date();
+    const [goal] = await db
+      .insert(goldGoals)
+      .values({
+        tenantId,
+        userId: Number(user.id),
+        productId: linkedProduct?.id ?? (productId > 0 ? productId : null),
+        selectedWeightGrams,
+        selectedVariantId: req.body?.selectedVariantId ? String(req.body.selectedVariantId) : null,
+        createdReferencePriceMinor: quote.computedTargetPriceMinor,
+        currentTargetPriceMinor: quote.computedTargetPriceMinor,
+        amountFundedMinor: 0,
+        currencyCode: "XOF",
+        status: "accumulating",
+        createdAt: now,
+        updatedAt: now,
+        metadata: {
+          productName: req.body?.productName || linkedProduct?.name || null,
+          productSlug: linkedProduct?.slug || null,
+          fulfillmentChoice: req.body?.fulfillmentChoice || null,
+        },
+      })
+      .returning();
+
+    await db.insert(goldGoalSnapshots).values({
+      goalId: goal.id,
+      referenceSpotPerGramMinor: quote.spotPricePerGramMinor,
+      computedTargetPriceMinor: quote.computedTargetPriceMinor,
+      marginPercent: String(quote.marginPercent),
+      createdAt: now,
+      metadata: { mintFeeMinor: quote.mintFeeMinor, subtotalMinor: quote.subtotalMinor },
+    });
+
+    await writeAudit(req, {
+      userId: user?.id,
+      userRole: user?.role ?? null,
+      action: "bdo_goal_create",
+      entityType: "gold_goal",
+      entityId: goal.id,
+      metadata: {
+        selectedWeightGrams,
+        productId: goal.productId,
+        createdReferencePriceMinor: goal.createdReferencePriceMinor,
+      },
+    });
+
+    res.status(201).json({ ok: true, item: mapGoldGoalRecord(goal, quote) });
+  } catch (error: any) {
+    console.error("[BDO] Goal create error:", error);
+    res.status(500).json({ message: "Failed to create goal" });
+  }
+});
+
+router.post("/bdo/goals/:goalId/fund", requireAuth, async (req, res) => {
+  try {
+    await ensureBdoGoalTables();
+    const tenantId = await resolveBdoTenantId();
+    const user = (req as any).user as any;
+    const goalId = Number(req.params.goalId);
+    if (!Number.isFinite(goalId) || goalId <= 0) {
+      return res.status(400).json({ message: "Invalid goal id" });
+    }
+
+    const amountMinor = normalizeMinorAmount(req.body?.amountMinor ?? req.body?.amount);
+    if (!amountMinor) return res.status(400).json({ message: "Funding amount is required" });
+
+    const goal = await db.query.goldGoals.findFirst({
+      where: and(eq(goldGoals.id, goalId), eq(goldGoals.tenantId, tenantId), eq(goldGoals.userId, Number(user.id))),
+    });
+    if (!goal) return res.status(404).json({ message: "Goal not found" });
+    if (!["accumulating", "ready_to_confirm"].includes(String(goal.status))) {
+      return res.status(400).json({ message: "Goal can no longer be funded" });
+    }
+
+    const quote = await getBdoGoalQuote({ weightGrams: goal.selectedWeightGrams, currency: "XOF" });
+    const platform = await ensurePlatformUser();
+    const buyerWalletAccount = await getOrCreateWalletAccount(String(user.id), "XOF");
+    const platformWalletAccount = await getOrCreateWalletAccount(String(platform.id), "XOF");
+    const buyerBalance = await getWalletBalanceMinor(buyerWalletAccount.id);
+    if (buyerBalance < amountMinor) {
+      return res.status(400).json({ message: "Insufficient wallet balance", balanceMinor: buyerBalance });
+    }
+
+    const now = new Date();
+    const result = await db.transaction(async (tx) => {
+      const transfer = await walletOsTransferTx(tx as DbTx, {
+        fromWalletAccountId: buyerWalletAccount.id,
+        toWalletAccountId: platformWalletAccount.id,
+        amount: amountMinor,
+        entryType: "PURCHASE",
+        referenceType: "SELLER_OP",
+        referenceId: `bdo_goal_fund:${goal.id}`,
+        metadata: { goalId: goal.id, kind: "bdo_goal_fund" },
+      });
+
+      const nextAmountFundedMinor = Number(goal.amountFundedMinor || 0) + amountMinor;
+      const nextStatus = nextAmountFundedMinor >= quote.computedTargetPriceMinor ? "ready_to_confirm" : "accumulating";
+      const [updatedGoal] = await tx
+        .update(goldGoals)
+        .set({
+          currentTargetPriceMinor: quote.computedTargetPriceMinor,
+          amountFundedMinor: nextAmountFundedMinor,
+          status: nextStatus as any,
+          updatedAt: now,
+        })
+        .where(eq(goldGoals.id, goal.id))
+        .returning();
+
+      const [fundTx] = await tx
+        .insert(goldGoalTransactions)
+        .values({
+          goalId: goal.id,
+          paymentTxId: String(transfer.debitTx.id),
+          amountMinor,
+          txType: "fund",
+          createdAt: now,
+          metadata: { walletLedgerEntryId: transfer.debitTx.id },
+        })
+        .returning();
+
+      await tx.insert(goldGoalSnapshots).values({
+        goalId: goal.id,
+        referenceSpotPerGramMinor: quote.spotPricePerGramMinor,
+        computedTargetPriceMinor: quote.computedTargetPriceMinor,
+        marginPercent: String(quote.marginPercent),
+        createdAt: now,
+        metadata: { mintFeeMinor: quote.mintFeeMinor, subtotalMinor: quote.subtotalMinor },
+      });
+
+      return { updatedGoal, fundTx, transfer };
+    });
+
+    await writeAudit(req, {
+      userId: user?.id,
+      userRole: user?.role ?? null,
+      action: "bdo_goal_fund",
+      entityType: "gold_goal",
+      entityId: goal.id,
+      metadata: { amountMinor, paymentTxId: result.fundTx?.paymentTxId },
+    });
+
+    res.json({ ok: true, item: mapGoldGoalRecord(result.updatedGoal, quote), transaction: result.fundTx });
+  } catch (error: any) {
+    const msg = String(error?.message || "");
+    if (msg.includes("insufficient_balance")) {
+      return res.status(400).json({ message: "Insufficient wallet balance" });
+    }
+    console.error("[BDO] Goal fund error:", error);
+    res.status(500).json({ message: "Failed to fund goal" });
+  }
+});
+
+router.post("/bdo/goals/:goalId/confirm", requireAuth, async (req, res) => {
+  try {
+    await ensureBdoGoalTables();
+    const tenantId = await resolveBdoTenantId();
+    const user = (req as any).user as any;
+    const goalId = Number(req.params.goalId);
+    if (!Number.isFinite(goalId) || goalId <= 0) {
+      return res.status(400).json({ message: "Invalid goal id" });
+    }
+
+    const goal = await db.query.goldGoals.findFirst({
+      where: and(eq(goldGoals.id, goalId), eq(goldGoals.tenantId, tenantId), eq(goldGoals.userId, Number(user.id))),
+    });
+    if (!goal) return res.status(404).json({ message: "Goal not found" });
+    if (!["accumulating", "ready_to_confirm"].includes(String(goal.status))) {
+      return res.status(400).json({ message: "Goal can no longer be confirmed" });
+    }
+
+    const quote = await getBdoGoalQuote({ weightGrams: goal.selectedWeightGrams, currency: "XOF" });
+    const amountFundedMinor = Number(goal.amountFundedMinor || 0);
+    if (amountFundedMinor < quote.computedTargetPriceMinor) {
+      return res.status(400).json({
+        message: "Goal is not fully funded yet",
+        remainingMinor: quote.computedTargetPriceMinor - amountFundedMinor,
+      });
+    }
+
+    const platform = await ensurePlatformUser();
+    const buyerWalletAccount = await getOrCreateWalletAccount(String(user.id), "XOF");
+    const platformWalletAccount = await getOrCreateWalletAccount(String(platform.id), "XOF");
+    const vault = await ensureBdoVault(user.id);
+    const fulfillmentChoice = String(req.body?.fulfillmentChoice || goal.metadata?.fulfillmentChoice || "store")
+      .trim()
+      .toLowerCase();
+    const deliveryNow = fulfillmentChoice.includes("deliver");
+    const now = new Date();
+
+    const result = await db.transaction(async (tx) => {
+      const [acq] = await tx
+        .insert(bdoGoldAcquisitionRecords)
+        .values({
+          tenantId: vault.tenantId,
+          userId: user.id,
+          unitSizeGrams: goal.selectedWeightGrams,
+          purity: "0.9950",
+          timestamp: now,
+          pricePerGram: (quote.spotPricePerGramMinor * (1 + quote.marginPercent)).toFixed(6),
+          totalPrice: quote.computedTargetPriceMinor.toFixed(4),
+          currency: "XOF",
+          pricingSnapshotId: quote.pricingSnapshot.id,
+          allocatedLotIds: [],
+          proofDocs: [],
+          custodyLocation: deliveryNow ? "delivery_requested" : "virtual_vault",
+          lockupEndDate: null,
+          status: deliveryNow ? "delivered" : "stored",
+          metadata: {
+            kind: "bdo_goal_confirm",
+            goalId: goal.id,
+            mintFeeMinor: quote.mintFeeMinor,
+            fulfillmentChoice,
+          },
+          createdAt: now,
+        })
+        .returning();
+
+      const [unit] = await tx
+        .insert(bdoVaultGoldUnits)
+        .values({
+          tenantId: vault.tenantId,
+          vaultId: vault.id,
+          acquisitionId: acq.id,
+          unitSizeGrams: goal.selectedWeightGrams,
+          purity: "0.9950",
+          status: deliveryNow ? "delivered" : "stored",
+          lockupEndDate: null,
+          deliveryStatus: deliveryNow ? "delivered" : "created",
+          metadata: { createdBy: "gold_goal", goalId: goal.id },
+          createdAt: now,
+          updatedAt: now,
+        })
+        .returning();
+
+      let deliveryOrder = null as any;
+      if (deliveryNow) {
+        const [order] = await tx
+          .insert(bdoDeliveryOrders)
+          .values({
+            tenantId: vault.tenantId,
+            userId: user.id,
+            vaultUnitId: unit.id,
+            carrierId: "internal",
+            destination: req.body?.destination && typeof req.body.destination === "object" ? req.body.destination : {},
+            fees: "0.00",
+            currency: "XOF",
+            status: "delivered",
+            trackingEvents: [
+              { eventType: "order_created", description: "Delivery requested after goal confirmation", timestamp: now.toISOString() },
+              { eventType: "delivered", description: "Delivered", timestamp: now.toISOString() },
+            ],
+            proofDocs: [],
+            deliveredAt: now,
+            metadata: { kind: "delivery_now", goalId: goal.id },
+            createdAt: now,
+            updatedAt: now,
+          })
+          .returning();
+        deliveryOrder = order;
+      }
+
+      let refundMinor = 0;
+      let refundTransfer: any = null;
+      if (amountFundedMinor > quote.computedTargetPriceMinor) {
+        refundMinor = amountFundedMinor - quote.computedTargetPriceMinor;
+        refundTransfer = await walletOsTransferTx(tx as DbTx, {
+          fromWalletAccountId: platformWalletAccount.id,
+          toWalletAccountId: buyerWalletAccount.id,
+          amount: refundMinor,
+          entryType: "REVERSAL",
+          referenceType: "SELLER_OP",
+          referenceId: `bdo_goal_refund:${goal.id}`,
+          metadata: { goalId: goal.id, kind: "bdo_goal_refund" },
+        });
+      }
+
+      const [updatedGoal] = await tx
+        .update(goldGoals)
+        .set({
+          currentTargetPriceMinor: quote.computedTargetPriceMinor,
+          amountFundedMinor: quote.computedTargetPriceMinor,
+          status: "converted" as any,
+          lockPriceMinor: quote.computedTargetPriceMinor,
+          lockedAt: now,
+          purchaseConfirmedAt: now,
+          updatedAt: now,
+          metadata: {
+            ...(goal.metadata ?? {}),
+            fulfillmentChoice,
+            acquisitionId: acq.id,
+            vaultUnitId: unit.id,
+            deliveryOrderId: deliveryOrder?.id ?? null,
+          },
+        })
+        .where(eq(goldGoals.id, goal.id))
+        .returning();
+
+      await tx.insert(goldGoalTransactions).values({
+        goalId: goal.id,
+        paymentTxId: `confirm:${acq.id}`,
+        amountMinor: quote.computedTargetPriceMinor,
+        txType: "convert",
+        createdAt: now,
+        metadata: { acquisitionId: acq.id, vaultUnitId: unit.id },
+      });
+      if (refundMinor > 0) {
+        await tx.insert(goldGoalTransactions).values({
+          goalId: goal.id,
+          paymentTxId: String(refundTransfer?.creditTx?.id || ""),
+          amountMinor: refundMinor,
+          txType: "refund",
+          createdAt: now,
+          metadata: { walletLedgerEntryId: refundTransfer?.creditTx?.id || null },
+        });
+      }
+      await tx.insert(goldGoalSnapshots).values({
+        goalId: goal.id,
+        referenceSpotPerGramMinor: quote.spotPricePerGramMinor,
+        computedTargetPriceMinor: quote.computedTargetPriceMinor,
+        marginPercent: String(quote.marginPercent),
+        createdAt: now,
+        metadata: { mintFeeMinor: quote.mintFeeMinor, subtotalMinor: quote.subtotalMinor, confirmed: true },
+      });
+
+      return { updatedGoal, acquisition: acq, unit, deliveryOrder, refundMinor };
+    });
+
+    await writeAudit(req, {
+      userId: user?.id,
+      userRole: user?.role ?? null,
+      action: "bdo_goal_confirm",
+      entityType: "gold_goal",
+      entityId: goal.id,
+      metadata: {
+        lockPriceMinor: quote.computedTargetPriceMinor,
+        acquisitionId: result.acquisition?.id,
+        vaultUnitId: result.unit?.id,
+        refundMinor: result.refundMinor,
+      },
+    });
+
+    res.json({
+      ok: true,
+      item: mapGoldGoalRecord(result.updatedGoal, quote),
+      acquisition: result.acquisition,
+      unit: result.unit,
+      deliveryOrder: result.deliveryOrder,
+      refundMinor: result.refundMinor,
+    });
+  } catch (error: any) {
+    console.error("[BDO] Goal confirm error:", error);
+    res.status(500).json({ message: "Failed to confirm goal purchase" });
+  }
+});
+
+router.post("/bdo/goals/:goalId/cancel", requireAuth, async (req, res) => {
+  try {
+    await ensureBdoGoalTables();
+    const tenantId = await resolveBdoTenantId();
+    const user = (req as any).user as any;
+    const goalId = Number(req.params.goalId);
+    if (!Number.isFinite(goalId) || goalId <= 0) {
+      return res.status(400).json({ message: "Invalid goal id" });
+    }
+
+    const goal = await db.query.goldGoals.findFirst({
+      where: and(eq(goldGoals.id, goalId), eq(goldGoals.tenantId, tenantId), eq(goldGoals.userId, Number(user.id))),
+    });
+    if (!goal) return res.status(404).json({ message: "Goal not found" });
+    if (!["accumulating", "ready_to_confirm"].includes(String(goal.status))) {
+      return res.status(400).json({ message: "Goal can no longer be cancelled" });
+    }
+
+    const amountFundedMinor = Number(goal.amountFundedMinor || 0);
+    const now = new Date();
+    let refundTxId: string | null = null;
+
+    if (amountFundedMinor > 0) {
+      const platform = await ensurePlatformUser();
+      const buyerWalletAccount = await getOrCreateWalletAccount(String(user.id), "XOF");
+      const platformWalletAccount = await getOrCreateWalletAccount(String(platform.id), "XOF");
+      const refund = await db.transaction(async (tx) => {
+        const transfer = await walletOsTransferTx(tx as DbTx, {
+          fromWalletAccountId: platformWalletAccount.id,
+          toWalletAccountId: buyerWalletAccount.id,
+          amount: amountFundedMinor,
+          entryType: "REVERSAL",
+          referenceType: "SELLER_OP",
+          referenceId: `bdo_goal_cancel_refund:${goal.id}`,
+          metadata: { goalId: goal.id, kind: "bdo_goal_cancel_refund" },
+        });
+        await tx.insert(goldGoalTransactions).values({
+          goalId: goal.id,
+          paymentTxId: String(transfer.creditTx.id),
+          amountMinor: amountFundedMinor,
+          txType: "refund",
+          createdAt: now,
+          metadata: { walletLedgerEntryId: transfer.creditTx.id },
+        });
+        return transfer;
+      });
+      refundTxId = String(refund.creditTx.id);
+    }
+
+    const nextStatus = amountFundedMinor > 0 ? "refunded" : "cancelled";
+    const [updatedGoal] = await db
+      .update(goldGoals)
+      .set({
+        amountFundedMinor: 0,
+        status: nextStatus as any,
+        updatedAt: now,
+      })
+      .where(eq(goldGoals.id, goal.id))
+      .returning();
+
+    await writeAudit(req, {
+      userId: user?.id,
+      userRole: user?.role ?? null,
+      action: "bdo_goal_cancel",
+      entityType: "gold_goal",
+      entityId: goal.id,
+      metadata: { refundedMinor: amountFundedMinor, refundTxId },
+    });
+
+    res.json({ ok: true, item: mapGoldGoalRecord(updatedGoal, null), refundTxId });
+  } catch (error: any) {
+    console.error("[BDO] Goal cancel error:", error);
+    res.status(500).json({ message: "Failed to cancel goal" });
+  }
+});
+
+router.get("/bdo/goals/admin", requireAuth, async (req, res) => {
+  try {
+    await ensureBdoGoalTables();
+    const user = (req as any).user as any;
+    if (!isAdminLike(user)) return res.status(403).json({ message: "Admin access required" });
+    const tenantId = await resolveBdoTenantId();
+
+    const rows = await db
+      .select({
+        id: goldGoals.id,
+        tenantId: goldGoals.tenantId,
+        userId: goldGoals.userId,
+        productId: goldGoals.productId,
+        selectedWeightGrams: goldGoals.selectedWeightGrams,
+        createdReferencePriceMinor: goldGoals.createdReferencePriceMinor,
+        currentTargetPriceMinor: goldGoals.currentTargetPriceMinor,
+        amountFundedMinor: goldGoals.amountFundedMinor,
+        currencyCode: goldGoals.currencyCode,
+        status: goldGoals.status,
+        lockPriceMinor: goldGoals.lockPriceMinor,
+        lockedAt: goldGoals.lockedAt,
+        purchaseConfirmedAt: goldGoals.purchaseConfirmedAt,
+        createdAt: goldGoals.createdAt,
+        updatedAt: goldGoals.updatedAt,
+        metadata: goldGoals.metadata,
+        userEmail: eceUsers.email,
+        userDisplayName: eceUsers.displayName,
+      })
+      .from(goldGoals)
+      .leftJoin(eceUsers, eq(goldGoals.userId, eceUsers.id))
+      .where(eq(goldGoals.tenantId, tenantId))
+      .orderBy(desc(goldGoals.updatedAt), desc(goldGoals.createdAt));
+
+    const stats = rows.reduce(
+      (acc, row) => {
+        const status = String(row.status || "accumulating");
+        acc.total += 1;
+        acc[status] = (acc[status] || 0) + 1;
+        if (status === "converted" || status === "confirmed") acc.lockedPurchases += 1;
+        return acc;
+      },
+      { total: 0, lockedPurchases: 0 } as Record<string, number>,
+    );
+
+    res.json({
+      ok: true,
+      items: rows.map((row) => ({
+        ...mapGoldGoalRecord(row, null),
+        userEmail: row.userEmail ? String(row.userEmail) : null,
+        userDisplayName: row.userDisplayName ? String(row.userDisplayName) : null,
+      })),
+      stats,
+    });
+  } catch (error: any) {
+    console.error("[BDO] Admin goals error:", error);
+    res.status(500).json({ message: "Failed to fetch admin goals" });
   }
 });
 

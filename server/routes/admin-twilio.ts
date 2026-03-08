@@ -2,16 +2,19 @@ import { Router } from "express";
 import { and, asc, desc, eq, gte, ilike, lte } from "drizzle-orm";
 import { db } from "@db";
 import {
+  agentSenderProfiles,
+  agentsProduction,
   communicationsAgentControls,
   communicationsEvents,
   communicationsMessages,
   communicationsRoutingMap,
   communicationsWorkOrders,
+  tenantCommunicationProfiles,
 } from "@db/schema";
 import { ensureTenantAdmin } from "./utils/auth";
 import { normalizeAgentKey } from "../lib/mail/agentSlugs";
-import { getTwilioConfig, normalizeE164, normalizeTwilioAddress } from "../lib/communications/twilio";
-import { sendOutboundCommunication } from "../lib/communications/router";
+import { getTwilioConfig, normalizeE164, normalizeTwilioAddress, sendTenantMessage } from "../lib/communications/twilio";
+import { resolveAgentIdentityForTenant, seedTenantCommunicationProfiles } from "../lib/communications/sender-resolution";
 
 const router = Router();
 router.use(ensureTenantAdmin);
@@ -60,6 +63,53 @@ function parseContentVariables(value: unknown): Record<string, string> | null {
   return null;
 }
 
+function parseJsonObject(value: unknown) {
+  if (!value) return null;
+  if (typeof value === "object" && !Array.isArray(value)) return value as Record<string, unknown>;
+  if (typeof value !== "string") return null;
+  try {
+    const parsed = JSON.parse(value);
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? (parsed as Record<string, unknown>) : null;
+  } catch {
+    return null;
+  }
+}
+
+function parseAllowedChannels(value: unknown) {
+  const raw = Array.isArray(value)
+    ? value
+    : typeof value === "string"
+      ? value
+          .split(",")
+          .map((entry) => entry.trim())
+          .filter(Boolean)
+      : [];
+  const allowed = raw
+    .map((entry) => String(entry || "").trim().toLowerCase())
+    .filter((entry) => ["sms", "whatsapp", "verify_sms", "verify_whatsapp"].includes(entry));
+  return allowed.length ? allowed : ["sms", "whatsapp"];
+}
+
+function parseDefaultChannel(value: unknown) {
+  const normalized = String(value || "").trim().toLowerCase();
+  if (normalized === "sms" || normalized === "whatsapp" || normalized === "verify_sms" || normalized === "verify_whatsapp") {
+    return normalized;
+  }
+  return "sms";
+}
+
+async function getTenantProfileOrSeed(tenantId: number) {
+  let profile = await db.query.tenantCommunicationProfiles.findFirst({
+    where: eq(tenantCommunicationProfiles.tenantId, tenantId),
+  });
+  if (profile) return profile;
+  await seedTenantCommunicationProfiles();
+  profile = await db.query.tenantCommunicationProfiles.findFirst({
+    where: eq(tenantCommunicationProfiles.tenantId, tenantId),
+  });
+  return profile || null;
+}
+
 router.get("/twilio/status", async (_req: any, res) => {
   const cfg = getTwilioConfig();
   res.json({
@@ -86,6 +136,158 @@ router.get("/twilio/status", async (_req: any, res) => {
       webhookPath: (cfg as any).webhookPath ?? null,
     },
   });
+});
+
+router.get("/twilio/profile", async (req: any, res) => {
+  try {
+    const tenant = req.tenant;
+    if (!tenant) return res.status(400).json({ message: "tenant required" });
+
+    const profile = await getTenantProfileOrSeed(tenant.id);
+    res.json({
+      ok: true,
+      item: profile,
+      fallback: getTwilioConfig(),
+    });
+  } catch (err: any) {
+    res.status(500).json({ message: err?.message || "Failed to load tenant messaging profile" });
+  }
+});
+
+router.put("/twilio/profile", async (req: any, res) => {
+  try {
+    const tenant = req.tenant;
+    if (!tenant) return res.status(400).json({ message: "tenant required" });
+
+    const now = new Date();
+    const values = {
+      tenantId: tenant.id,
+      isActive: parseBool(req.body?.isActive ?? req.body?.is_active, true),
+      defaultChannel: parseDefaultChannel(req.body?.defaultChannel ?? req.body?.default_channel) as any,
+      smsFrom: normalizeE164(req.body?.smsFrom ?? req.body?.sms_from) || null,
+      whatsappFrom:
+        (() => {
+          const raw = String((req.body?.whatsappFrom ?? req.body?.whatsapp_from) || "").trim();
+          if (!raw) return null;
+          const parsed = normalizeTwilioAddress(raw.startsWith("whatsapp:") ? raw : `whatsapp:${raw}`);
+          return parsed?.channel === "whatsapp" ? `whatsapp:${parsed.addressE164}` : null;
+        })(),
+      verifyServiceSid: String((req.body?.verifyServiceSid ?? req.body?.verify_service_sid) || "").trim() || null,
+      senderLabel: String((req.body?.senderLabel ?? req.body?.sender_label) || "").trim() || null,
+      defaultSignature: String((req.body?.defaultSignature ?? req.body?.default_signature) || "").trim() || null,
+      messagingServiceSid: String((req.body?.messagingServiceSid ?? req.body?.messaging_service_sid) || "").trim() || null,
+      whatsappSenderStatus: String((req.body?.whatsappSenderStatus ?? req.body?.whatsapp_sender_status) || "").trim() || null,
+      useSandboxForDev: parseBool(req.body?.useSandboxForDev ?? req.body?.use_sandbox_for_dev, false),
+      metadata: parseJsonObject(req.body?.metadata) ?? {},
+      updatedAt: now,
+    };
+
+    const [row] = await db
+      .insert(tenantCommunicationProfiles)
+      .values({
+        ...values,
+        createdAt: now,
+      })
+      .onConflictDoUpdate({
+        target: [tenantCommunicationProfiles.tenantId],
+        set: values,
+      })
+      .returning();
+
+    res.status(201).json({ ok: true, item: row });
+  } catch (err: any) {
+    res.status(500).json({ message: err?.message || "Failed to save tenant messaging profile" });
+  }
+});
+
+router.get("/twilio/agent-senders", async (req: any, res) => {
+  try {
+    const tenant = req.tenant;
+    if (!tenant) return res.status(400).json({ message: "tenant required" });
+
+    const items = await db
+      .select({
+        id: agentSenderProfiles.id,
+        tenantId: agentSenderProfiles.tenantId,
+        agentId: agentSenderProfiles.agentId,
+        isActive: agentSenderProfiles.isActive,
+        displayName: agentSenderProfiles.displayName,
+        signature: agentSenderProfiles.signature,
+        allowedChannels: agentSenderProfiles.allowedChannels,
+        smsFrom: agentSenderProfiles.smsFrom,
+        whatsappFrom: agentSenderProfiles.whatsappFrom,
+        fallbackToTenantDefault: agentSenderProfiles.fallbackToTenantDefault,
+        metadata: agentSenderProfiles.metadata,
+        createdAt: agentSenderProfiles.createdAt,
+        updatedAt: agentSenderProfiles.updatedAt,
+        agentKey: agentsProduction.agentKey,
+        productionDisplayName: agentsProduction.displayName,
+      })
+      .from(agentSenderProfiles)
+      .leftJoin(
+        agentsProduction,
+        and(eq(agentsProduction.agentId, agentSenderProfiles.agentId), eq(agentsProduction.tenantId, agentSenderProfiles.tenantId)),
+      )
+      .where(eq(agentSenderProfiles.tenantId, tenant.id))
+      .orderBy(asc(agentsProduction.agentKey), asc(agentSenderProfiles.agentId));
+
+    res.json({ ok: true, items });
+  } catch (err: any) {
+    res.status(500).json({ message: err?.message || "Failed to load agent sender profiles" });
+  }
+});
+
+router.put("/twilio/agent-senders", async (req: any, res) => {
+  try {
+    const tenant = req.tenant;
+    if (!tenant) return res.status(400).json({ message: "tenant required" });
+
+    const agentIdentity = await resolveAgentIdentityForTenant({
+      tenantId: tenant.id,
+      agentId: req.body?.agentId ?? req.body?.agent_id ?? null,
+      agentKey: req.body?.agentKey ?? req.body?.agent_key ?? null,
+    });
+    if (!agentIdentity.agentId) {
+      return res.status(404).json({ message: "Agent not found in the tenant production allowlist" });
+    }
+
+    const now = new Date();
+    const values = {
+      tenantId: tenant.id,
+      agentId: agentIdentity.agentId,
+      isActive: parseBool(req.body?.isActive ?? req.body?.is_active, true),
+      displayName: String((req.body?.displayName ?? req.body?.display_name) || "").trim() || null,
+      signature: String(req.body?.signature || "").trim() || null,
+      allowedChannels: parseAllowedChannels(req.body?.allowedChannels ?? req.body?.allowed_channels) as any,
+      smsFrom: normalizeE164(req.body?.smsFrom ?? req.body?.sms_from) || null,
+      whatsappFrom:
+        (() => {
+          const raw = String((req.body?.whatsappFrom ?? req.body?.whatsapp_from) || "").trim();
+          if (!raw) return null;
+          const parsed = normalizeTwilioAddress(raw.startsWith("whatsapp:") ? raw : `whatsapp:${raw}`);
+          return parsed?.channel === "whatsapp" ? `whatsapp:${parsed.addressE164}` : null;
+        })(),
+      fallbackToTenantDefault: parseBool(req.body?.fallbackToTenantDefault ?? req.body?.fallback_to_tenant_default, true),
+      metadata: parseJsonObject(req.body?.metadata) ?? {},
+      updatedAt: now,
+    };
+
+    const [row] = await db
+      .insert(agentSenderProfiles)
+      .values({
+        ...values,
+        createdAt: now,
+      })
+      .onConflictDoUpdate({
+        target: [agentSenderProfiles.tenantId, agentSenderProfiles.agentId],
+        set: values,
+      })
+      .returning();
+
+    res.status(201).json({ ok: true, item: { ...row, agentKey: agentIdentity.agentKey } });
+  } catch (err: any) {
+    res.status(500).json({ message: err?.message || "Failed to save agent sender profile" });
+  }
 });
 
 router.get("/twilio/events", async (req: any, res) => {
@@ -329,6 +531,11 @@ router.post("/twilio/send-test", async (req: any, res) => {
     }
 
     const agentKey = normalizeAgentKey(String(req.body?.agentKey || "support")) || "support";
+    const agentIdentity = await resolveAgentIdentityForTenant({
+      tenantId: tenant.id,
+      agentId: req.body?.agentId ?? req.body?.agent_id ?? null,
+      agentKey,
+    });
     const messageRaw = String(req.body?.message || req.body?.body || "").trim();
     const message = mode === "template" ? messageRaw : messageRaw || `Test ${channel.toUpperCase()} from ${agentKey} (tenant=${tenant.key})`;
     const contentSid = mode === "template" ? String(req.body?.contentSid || req.body?.content_sid || "").trim() || null : null;
@@ -336,16 +543,21 @@ router.post("/twilio/send-test", async (req: any, res) => {
     const clientMessageId = String(req.body?.clientMessageId || req.body?.client_message_id || "").trim() || null;
     if (mode === "template" && !contentSid) return res.status(400).json({ message: "contentSid required for template mode" });
 
-    const out = await sendOutboundCommunication({
+    const out = await sendTenantMessage({
       tenantId: tenant.id,
-      agentKey,
+      agentId: agentIdentity.agentId,
+      agentKey: agentIdentity.agentKey || agentKey,
+      to: toE164,
       channel,
-      toE164,
       body: message,
-      ...(contentSid ? { contentSid, contentVariables } : {}),
-      clientMessageId,
-      metadata: { test: true, mode },
-      ackOnly: false,
+      templateName: contentSid,
+      templatePayload: contentSid
+        ? {
+            contentSid,
+            ...(contentVariables ? { contentVariables } : {}),
+          }
+        : null,
+      metadata: { test: true, mode, clientMessageId },
     });
 
     if (!out.ok) {
@@ -358,7 +570,7 @@ router.post("/twilio/send-test", async (req: any, res) => {
 
     res.status(201).json({ ok: true, result: out });
   } catch (err: any) {
-    res.status(500).json({ message: err?.message || "Failed to send test message" });
+    res.status(Number(err?.status) || 500).json({ message: err?.message || "Failed to send test message", code: err?.code || null });
   }
 });
 

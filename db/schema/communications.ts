@@ -1,5 +1,6 @@
 import { boolean, index, integer, jsonb, pgTable, serial, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
 import { tenants } from "./tenants";
+import { agents } from "../schema";
 
 // Shared communications layer (SMS/WhatsApp/… providers). Twilio is the first provider.
 
@@ -159,5 +160,125 @@ export const communicationsEvents = pgTable(
   (t) => ({
     byTenantEvent: index("communications_events_tenant_event_idx").on(t.tenantId, t.eventAt),
     byProviderEvent: index("communications_events_provider_event_idx").on(t.provider, t.eventAt),
+  }),
+);
+
+export const tenantCommunicationProfiles = pgTable(
+  "tenant_communication_profiles",
+  {
+    id: serial("id").primaryKey(),
+    tenantId: integer("tenant_id")
+      .references(() => tenants.id, { onDelete: "cascade" })
+      .notNull(),
+    isActive: boolean("is_active").notNull().default(true),
+    defaultChannel: text("default_channel", {
+      enum: ["sms", "whatsapp", "verify_sms", "verify_whatsapp"],
+    })
+      .notNull()
+      .default("sms"),
+    smsFrom: text("sms_from"),
+    whatsappFrom: text("whatsapp_from"),
+    verifyServiceSid: text("verify_service_sid"),
+    senderLabel: text("sender_label"),
+    defaultSignature: text("default_signature"),
+    messagingServiceSid: text("messaging_service_sid"),
+    whatsappSenderStatus: text("whatsapp_sender_status"),
+    useSandboxForDev: boolean("use_sandbox_for_dev").notNull().default(false),
+    metadata: jsonb("metadata").$type<Record<string, unknown>>().notNull().default({}),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    uniqueTenant: uniqueIndex("tenant_communication_profiles_tenant_idx").on(t.tenantId),
+    byTenantUpdated: index("tenant_communication_profiles_tenant_updated_idx").on(t.tenantId, t.updatedAt),
+    byTenantActive: index("tenant_communication_profiles_tenant_active_idx").on(t.tenantId, t.isActive),
+  }),
+);
+
+export const agentSenderProfiles = pgTable(
+  "agent_sender_profiles",
+  {
+    id: serial("id").primaryKey(),
+    tenantId: integer("tenant_id")
+      .references(() => tenants.id, { onDelete: "cascade" })
+      .notNull(),
+    agentId: integer("agent_id")
+      .references(() => agents.id, { onDelete: "cascade" })
+      .notNull(),
+    isActive: boolean("is_active").notNull().default(true),
+    displayName: text("display_name"),
+    signature: text("signature"),
+    allowedChannels: jsonb("allowed_channels")
+      .$type<Array<"sms" | "whatsapp" | "verify_sms" | "verify_whatsapp">>()
+      .notNull()
+      .default(["sms", "whatsapp"]),
+    smsFrom: text("sms_from"),
+    whatsappFrom: text("whatsapp_from"),
+    fallbackToTenantDefault: boolean("fallback_to_tenant_default").notNull().default(true),
+    metadata: jsonb("metadata").$type<Record<string, unknown>>().notNull().default({}),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    uniqueTenantAgent: uniqueIndex("agent_sender_profiles_tenant_agent_idx").on(t.tenantId, t.agentId),
+    byTenantAgent: index("agent_sender_profiles_tenant_idx").on(t.tenantId, t.createdAt),
+    byAgentUpdated: index("agent_sender_profiles_agent_updated_idx").on(t.agentId, t.updatedAt),
+  }),
+);
+
+export const outboundMessageLogs = pgTable(
+  "outbound_message_logs",
+  {
+    id: serial("id").primaryKey(),
+    tenantId: integer("tenant_id")
+      .references(() => tenants.id, { onDelete: "cascade" })
+      .notNull(),
+    agentId: integer("agent_id").references(() => agents.id, { onDelete: "set null" }),
+    channel: text("channel", {
+      enum: ["sms", "whatsapp", "verify_sms", "verify_whatsapp", "voice"],
+    }).notNull(),
+    fromAddress: text("from_address"),
+    toAddress: text("to_address").notNull(),
+    body: text("body"),
+    templateName: text("template_name"),
+    templatePayload: jsonb("template_payload").$type<Record<string, unknown> | null>().default(null),
+    twilioMessageSid: text("twilio_message_sid"),
+    twilioStatus: text("twilio_status"),
+    providerErrorCode: text("provider_error_code"),
+    providerErrorMessage: text("provider_error_message"),
+    providerResponse: jsonb("provider_response").$type<Record<string, unknown> | null>().default(null),
+    status: text("status").notNull().default("queued"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    byTenantCreated: index("outbound_message_logs_tenant_created_idx").on(t.tenantId, t.createdAt),
+    byAgentCreated: index("outbound_message_logs_agent_created_idx").on(t.agentId, t.createdAt),
+    byTwilioSid: index("outbound_message_logs_twilio_sid_idx").on(t.twilioMessageSid),
+    byStatusCreated: index("outbound_message_logs_status_created_idx").on(t.status, t.createdAt),
+  }),
+);
+
+export const inboundMessageLogs = pgTable(
+  "inbound_message_logs",
+  {
+    id: serial("id").primaryKey(),
+    tenantId: integer("tenant_id").references(() => tenants.id, { onDelete: "set null" }),
+    agentId: integer("agent_id").references(() => agents.id, { onDelete: "set null" }),
+    fromAddress: text("from_address").notNull(),
+    toAddress: text("to_address").notNull(),
+    body: text("body"),
+    channel: text("channel", {
+      enum: ["sms", "whatsapp", "verify_sms", "verify_whatsapp", "voice"],
+    }).notNull(),
+    twilioMessageSid: text("twilio_message_sid"),
+    rawPayload: jsonb("raw_payload").$type<Record<string, unknown>>().notNull().default({}),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    byTenantCreated: index("inbound_message_logs_tenant_created_idx").on(t.tenantId, t.createdAt),
+    byAgentCreated: index("inbound_message_logs_agent_created_idx").on(t.agentId, t.createdAt),
+    byTwilioSid: index("inbound_message_logs_twilio_sid_idx").on(t.twilioMessageSid),
+    byCreated: index("inbound_message_logs_created_idx").on(t.createdAt),
   }),
 );

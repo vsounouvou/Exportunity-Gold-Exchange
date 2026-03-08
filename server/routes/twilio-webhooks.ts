@@ -9,6 +9,7 @@ import {
   communicationsRoutingMap,
   communicationsThreads,
   communicationsWorkOrders,
+  tenants,
   notificationDeliveries,
   notifications,
 } from "@db/schema";
@@ -21,6 +22,8 @@ import {
   resolveTwilioProviderErrorMessage,
   verifyTwilioWebhookSignature,
 } from "../lib/communications/twilio";
+import { createInboundMessageLog, mapTwilioStatusToLogStatus, updateOutboundMessageLogBySid } from "../lib/communications/message-logs";
+import { resolveInboundTwilioContext } from "../lib/communications/sender-resolution";
 
 const router = Router();
 
@@ -144,8 +147,6 @@ async function resolveVoiceDialToE164(input: { tenantId: number; agentKey: strin
 }
 
 async function handleMessageStatus(req: Request, res: Response) {
-  const tenant = (req as any).tenant as TenantInfo;
-  if (!tenant) return reject(res, 500, "Tenant not configured");
   if (!verifySignature(req, res)) return;
 
   const messageSid = String((req.body as any)?.MessageSid || "").trim();
@@ -159,7 +160,18 @@ async function handleMessageStatus(req: Request, res: Response) {
   if (!messageSid) return reject(res, 400, "MessageSid required");
   if (!messageStatus) return reject(res, 400, "MessageStatus required");
 
-  const status = messageStatus.toLowerCase();
+  const status = mapTwilioStatusToLogStatus(messageStatus);
+  const outboundLog = await updateOutboundMessageLogBySid(messageSid, {
+    status,
+    twilioStatus: messageStatus,
+    providerErrorCode: errorCode,
+    providerErrorMessage: errorMessage,
+    providerResponse: req.body as Record<string, unknown>,
+  });
+  const resolvedTenantId = Number(outboundLog?.tenantId || (req as any)?.tenant?.id || 0) || null;
+  const messageWhere = resolvedTenantId
+    ? and(eq(communicationsMessages.tenantId, resolvedTenantId), eq(communicationsMessages.providerMessageId, messageSid))
+    : eq(communicationsMessages.providerMessageId, messageSid);
 
   await db
     .update(communicationsMessages)
@@ -169,7 +181,7 @@ async function handleMessageStatus(req: Request, res: Response) {
       errorMessage,
       updatedAt: new Date(),
     })
-    .where(and(eq(communicationsMessages.tenantId, tenant.id), eq(communicationsMessages.providerMessageId, messageSid)));
+    .where(messageWhere);
 
   // If this Twilio message was sent as part of a unified notification, mirror the status update.
   const updatedDeliveries = await db
@@ -180,35 +192,44 @@ async function handleMessageStatus(req: Request, res: Response) {
       errorMessage,
       updatedAt: new Date(),
     })
-    .where(and(eq(notificationDeliveries.tenantId, tenant.id), eq(notificationDeliveries.provider, "twilio"), eq(notificationDeliveries.providerMessageId, messageSid)))
+    .where(
+      resolvedTenantId
+        ? and(
+            eq(notificationDeliveries.tenantId, resolvedTenantId),
+            eq(notificationDeliveries.provider, "twilio"),
+            eq(notificationDeliveries.providerMessageId, messageSid),
+          )
+        : and(eq(notificationDeliveries.provider, "twilio"), eq(notificationDeliveries.providerMessageId, messageSid)),
+    )
     .returning({ notificationId: notificationDeliveries.notificationId });
 
   if (updatedDeliveries.length) {
     const ids = Array.from(new Set(updatedDeliveries.map((d) => Number(d.notificationId)).filter((id) => Number.isFinite(id))));
     const nextStatus = status === "delivered" || status === "read" ? "delivered" : null;
-    if (nextStatus && ids.length) {
+    if (nextStatus && ids.length && resolvedTenantId) {
       await db
         .update(notifications)
         .set({ status: nextStatus, updatedAt: new Date() })
-        .where(and(eq(notifications.tenantId, tenant.id), inArray(notifications.id, ids)));
+        .where(and(eq(notifications.tenantId, resolvedTenantId), inArray(notifications.id, ids)));
     }
   }
 
-  await logEvent(tenant.id, "twilio.message.status", {
-    messageSid,
-    messageStatus: status,
-    to: toRaw,
-    from: fromRaw,
-    errorCode,
-    errorMessage,
-  });
+  if (resolvedTenantId) {
+    await logEvent(resolvedTenantId, "twilio.message.status", {
+      messageSid,
+      messageStatus: status,
+      to: toRaw,
+      from: fromRaw,
+      errorCode,
+      errorMessage,
+      outboundLogId: outboundLog?.id ?? null,
+    });
+  }
 
-  res.json({ ok: true });
+  res.json({ ok: true, tenantId: resolvedTenantId });
 }
 
 async function handleMessageInbound(req: Request, res: Response) {
-  const tenant = (req as any).tenant as TenantInfo;
-  if (!tenant) return reject(res, 500, "Tenant not configured");
   if (!verifySignature(req, res)) return;
 
   const fromParsed = normalizeTwilioAddress((req.body as any)?.From);
@@ -223,25 +244,45 @@ async function handleMessageInbound(req: Request, res: Response) {
   const fromE164 = fromParsed.addressE164;
   const toE164 = toParsed.addressE164;
   const media = parseMedia(req.body as any);
-
-  const route = await db.query.communicationsRoutingMap.findFirst({
-    where: and(
-      eq(communicationsRoutingMap.tenantId, tenant.id),
-      eq(communicationsRoutingMap.provider, "twilio"),
-      eq(communicationsRoutingMap.channel, channel as any),
-      eq(communicationsRoutingMap.toAddress, toE164),
-      eq(communicationsRoutingMap.isEnabled, true),
-    ),
+  const hostTenant = (req as any).tenant as TenantInfo;
+  const inboundContext = await resolveInboundTwilioContext({
+    channel,
+    toAddress: String((req.body as any)?.To || ""),
+    hostTenant: hostTenant ?? null,
   });
-
-  const agentKey = normalizeAgentKey(route?.agentKey || defaultAgentKey()) || "support";
+  const tenantId = inboundContext.tenantId;
+  const tenantKey =
+    inboundContext.tenantKey ||
+    (tenantId
+      ? (
+          await db.query.tenants.findFirst({
+            where: eq(tenants.id, tenantId),
+            columns: { key: true },
+          })
+        )?.key || null
+      : null);
+  const agentKey = normalizeAgentKey(inboundContext.agentKey || defaultAgentKey()) || "support";
 
   const now = new Date();
+  const inboundLog = await createInboundMessageLog({
+    tenantId,
+    agentId: inboundContext.agentId,
+    fromAddress: channel === "whatsapp" ? `whatsapp:${fromE164}` : fromE164,
+    toAddress: String((req.body as any)?.To || "").trim() || (channel === "whatsapp" ? `whatsapp:${toE164}` : toE164),
+    body: bodyText || null,
+    channel,
+    twilioMessageSid: messageSid,
+    rawPayload: req.body as Record<string, unknown>,
+  });
+
+  if (!tenantId) {
+    return res.status(202).json({ ok: true, unresolved: true, inboundLogId: inboundLog.id });
+  }
 
   const [thread] = await db
     .insert(communicationsThreads)
     .values({
-      tenantId: tenant.id,
+      tenantId,
       agentKey,
       channel: channel as any,
       peerAddress: fromE164,
@@ -264,7 +305,7 @@ async function handleMessageInbound(req: Request, res: Response) {
   const inserted = await db
     .insert(communicationsMessages)
     .values({
-      tenantId: tenant.id,
+      tenantId,
       agentKey,
       threadId: thread.id,
       direction: "inbound",
@@ -279,6 +320,8 @@ async function handleMessageInbound(req: Request, res: Response) {
       errorMessage: null,
       metadata: {
         raw: { from: (req.body as any)?.From, to: (req.body as any)?.To },
+        inboundLogId: inboundLog.id,
+        resolutionSource: inboundContext.resolutionSource,
         ...(media.count ? { media } : {}),
         ...(channel === "whatsapp" && (req.body as any)?.ProfileName ? { profileName: String((req.body as any)?.ProfileName) } : {}),
       },
@@ -292,7 +335,7 @@ async function handleMessageInbound(req: Request, res: Response) {
     inserted[0] ||
     (await db.query.communicationsMessages.findFirst({
       where: and(
-        eq(communicationsMessages.tenantId, tenant.id),
+        eq(communicationsMessages.tenantId, tenantId),
         eq(communicationsMessages.provider, "twilio"),
         eq(communicationsMessages.providerMessageId, messageSid),
       ),
@@ -304,7 +347,7 @@ async function handleMessageInbound(req: Request, res: Response) {
   await db
     .insert(communicationsWorkOrders)
     .values({
-      tenantId: tenant.id,
+      tenantId,
       agentKey,
       channel: channel as any,
       threadId: thread.id,
@@ -334,20 +377,22 @@ async function handleMessageInbound(req: Request, res: Response) {
       },
     });
 
-  await logEvent(tenant.id, "twilio.message.inbound", {
+  await logEvent(tenantId, "twilio.message.inbound", {
     channel,
     messageSid,
     from: (req.body as any)?.From,
     to: (req.body as any)?.To,
     numMedia: media.count,
+    inboundLogId: inboundLog.id,
+    resolutionSource: inboundContext.resolutionSource,
   });
 
   // Only auto-reply once (idempotent on MessageSid).
   if (inserted.length && shouldAutoReply() && bodyText) {
     try {
-      const reply = await replyRouter(bodyText, { tenantId: tenant.id, tenantKey: tenant.key });
+      const reply = await replyRouter(bodyText, { tenantId, tenantKey: tenantKey || "exportunity" });
       const out = await sendOutboundCommunication({
-        tenantId: tenant.id,
+        tenantId,
         agentKey,
         channel,
         toE164: fromE164,
@@ -356,18 +401,18 @@ async function handleMessageInbound(req: Request, res: Response) {
         ackOnly: true,
       });
 
-      await logEvent(tenant.id, "twilio.auto_reply", {
+      await logEvent(tenantId, "twilio.auto_reply", {
         ok: out.ok,
         channel,
         to: fromE164,
         providerMessageId: out.providerMessageId,
       });
     } catch (err: any) {
-      await logEvent(tenant.id, "twilio.auto_reply_failed", { message: String(err?.message || "failed") });
+      await logEvent(tenantId, "twilio.auto_reply_failed", { message: String(err?.message || "failed") });
     }
   }
 
-  res.json({ ok: true });
+  res.json({ ok: true, tenantId, inboundLogId: inboundLog.id });
 }
 
 async function handleVoiceInbound(req: Request, res: Response) {

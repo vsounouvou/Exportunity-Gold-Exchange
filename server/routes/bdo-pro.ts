@@ -4,6 +4,7 @@ import { and, asc, desc, eq, sql } from "drizzle-orm";
 import { db } from "@db";
 import { bureauDAchat, goldOffers, miningSites } from "@db/schema";
 import { ensureTenantUser } from "./utils/auth";
+import { isChairmanAssistantUser } from "./utils/auth";
 
 const router = Router();
 const TIER_RANK = { free: 0, pro_basic: 1, pro_buyer: 2, pro_source: 3, admin_internal: 4 } as const;
@@ -77,6 +78,10 @@ async function ensureTables() {
       unique (tenant_id, user_id)
     )
   `);
+  await db.execute(sql`alter table pro_profiles add column if not exists subscription_status text not null default 'inactive'`);
+  await db.execute(sql`alter table pro_profiles add column if not exists free_access_reason text`);
+  await db.execute(sql`alter table pro_profiles add column if not exists can_access_counterparties boolean not null default false`);
+  await db.execute(sql`alter table pro_profiles add column if not exists can_access_supply_intelligence boolean not null default false`);
   await db.execute(sql`
     create table if not exists pro_map_nodes (
       id uuid primary key,
@@ -145,21 +150,24 @@ function deriveDefaultProfile(user: any) {
   const displayName = text(user?.displayName) || text(user?.email) || "Compte professionnel";
 
   if (rawRoles.has("admin") || rawRoles.has("chairman assistant") || rawRoles.has("chairman")) {
-    return { role: "admin_internal", company_name: displayName, country: "CI", verification_status: "verified", membership_tier: "admin_internal", can_access_map: true, can_view_supply_contacts: true, can_view_mine_layer: true, can_view_bureau_layer: true, can_view_export_layer: true };
+    return { role: "admin_internal", company_name: displayName, country: "CI", verification_status: "verified", membership_tier: "admin_internal", subscription_status: "active", free_access_reason: "admin_internal", can_access_map: true, can_view_supply_contacts: true, can_view_mine_layer: true, can_view_bureau_layer: true, can_view_export_layer: true, can_access_counterparties: true, can_access_supply_intelligence: true };
   }
   if (rawRoles.has("bureau achat user") || rawRoles.has("authorized gold buyer")) {
-    return { role: "bureau_achat", company_name: displayName, country: "CI", verification_status: "verified", membership_tier: "pro_source", can_access_map: true, can_view_supply_contacts: true, can_view_mine_layer: true, can_view_bureau_layer: true, can_view_export_layer: true };
+    return { role: "bureau_achat", company_name: displayName, country: "CI", verification_status: "verified", membership_tier: "pro_source", subscription_status: "active", free_access_reason: "verified_bureau_achat", can_access_map: true, can_view_supply_contacts: true, can_view_mine_layer: true, can_view_bureau_layer: true, can_view_export_layer: true, can_access_counterparties: true, can_access_supply_intelligence: true };
   }
   if (rawRoles.has("verified investor") || rawRoles.has("shareholder")) {
-    return { role: "international_buyer", company_name: displayName, country: "CI", verification_status: "verified", membership_tier: "pro_buyer", can_access_map: true, can_view_supply_contacts: true, can_view_mine_layer: false, can_view_bureau_layer: true, can_view_export_layer: true };
+    return { role: "international_buyer", company_name: displayName, country: "CI", verification_status: "verified", membership_tier: "pro_buyer", subscription_status: "active", free_access_reason: null, can_access_map: true, can_view_supply_contacts: true, can_view_mine_layer: false, can_view_bureau_layer: true, can_view_export_layer: true, can_access_counterparties: true, can_access_supply_intelligence: true };
   }
-  if (rawRoles.has("mine owner") || rawRoles.has("mine operator") || rawRoles.has("operator")) {
-    return { role: "association_admin", company_name: displayName, country: "CI", verification_status: "verified", membership_tier: "pro_source", can_access_map: true, can_view_supply_contacts: true, can_view_mine_layer: true, can_view_bureau_layer: true, can_view_export_layer: false };
+  if (rawRoles.has("association admin") || rawRoles.has("association")) {
+    return { role: "association", company_name: displayName, country: "CI", verification_status: "verified", membership_tier: "pro_source", subscription_status: "active", free_access_reason: "verified_association", can_access_map: true, can_view_supply_contacts: true, can_view_mine_layer: true, can_view_bureau_layer: true, can_view_export_layer: false, can_access_counterparties: true, can_access_supply_intelligence: true };
+  }
+  if (rawRoles.has("mine owner") || rawRoles.has("mine operator") || rawRoles.has("operator") || rawRoles.has("miner")) {
+    return { role: "miner", company_name: displayName, country: "CI", verification_status: "verified", membership_tier: "pro_source", subscription_status: "active", free_access_reason: "verified_miner", can_access_map: true, can_view_supply_contacts: true, can_view_mine_layer: true, can_view_bureau_layer: true, can_view_export_layer: false, can_access_counterparties: true, can_access_supply_intelligence: true };
   }
   if (rawRoles.has("investor")) {
-    return { role: "investor", company_name: displayName, country: "CI", verification_status: "pending", membership_tier: "pro_basic", can_access_map: false, can_view_supply_contacts: false, can_view_mine_layer: false, can_view_bureau_layer: true, can_view_export_layer: false };
+    return { role: "investor", company_name: displayName, country: "CI", verification_status: "pending", membership_tier: "pro_basic", subscription_status: "inactive", free_access_reason: null, can_access_map: false, can_view_supply_contacts: false, can_view_mine_layer: false, can_view_bureau_layer: true, can_view_export_layer: false, can_access_counterparties: false, can_access_supply_intelligence: false };
   }
-  return { role: "investor", company_name: displayName, country: "CI", verification_status: "unknown", membership_tier: "free", can_access_map: false, can_view_supply_contacts: false, can_view_mine_layer: false, can_view_bureau_layer: false, can_view_export_layer: false };
+  return { role: "investor", company_name: displayName, country: "CI", verification_status: "unknown", membership_tier: "free", subscription_status: "inactive", free_access_reason: null, can_access_map: false, can_view_supply_contacts: false, can_view_mine_layer: false, can_view_bureau_layer: false, can_view_export_layer: false, can_access_counterparties: false, can_access_supply_intelligence: false };
 }
 
 function mapProfile(row: any) {
@@ -172,7 +180,11 @@ function mapProfile(row: any) {
     country: text(row.country),
     verification_status: String(row.verification_status || "unknown"),
     membership_tier: String(row.membership_tier || "free"),
+    subscription_status: String(row.subscription_status || "inactive"),
+    free_access_reason: text(row.free_access_reason),
     can_access_map: Boolean(row.can_access_map),
+    can_access_counterparties: Boolean(row.can_access_counterparties),
+    can_access_supply_intelligence: Boolean(row.can_access_supply_intelligence),
     can_view_supply_contacts: Boolean(row.can_view_supply_contacts),
     can_view_mine_layer: Boolean(row.can_view_mine_layer),
     can_view_bureau_layer: Boolean(row.can_view_bureau_layer),
@@ -201,11 +213,13 @@ async function getProfile(req: any, res: any) {
   const inserted = await db.execute(sql`
     insert into pro_profiles (
       id, user_id, tenant_id, role, company_name, country, verification_status, membership_tier,
-      can_access_map, can_view_supply_contacts, can_view_mine_layer, can_view_bureau_layer, can_view_export_layer,
+      subscription_status, free_access_reason, can_access_map, can_access_counterparties, can_access_supply_intelligence,
+      can_view_supply_contacts, can_view_mine_layer, can_view_bureau_layer, can_view_export_layer,
       created_at, updated_at
     ) values (
       ${crypto.randomUUID()}, ${Number(user.id)}, ${tenant.id}, ${profile.role}, ${profile.company_name}, ${profile.country}, ${profile.verification_status}, ${profile.membership_tier},
-      ${profile.can_access_map}, ${profile.can_view_supply_contacts}, ${profile.can_view_mine_layer}, ${profile.can_view_bureau_layer}, ${profile.can_view_export_layer}, now(), now()
+      ${profile.subscription_status}, ${profile.free_access_reason}, ${profile.can_access_map}, ${profile.can_access_counterparties}, ${profile.can_access_supply_intelligence},
+      ${profile.can_view_supply_contacts}, ${profile.can_view_mine_layer}, ${profile.can_view_bureau_layer}, ${profile.can_view_export_layer}, now(), now()
     )
     on conflict (tenant_id, user_id) do update set updated_at = now()
     returning *
@@ -214,11 +228,32 @@ async function getProfile(req: any, res: any) {
 }
 
 function canDirectory(profile: any) {
-  return TIER_RANK[profile.membership_tier as keyof typeof TIER_RANK] >= TIER_RANK.pro_basic || profile.role === "admin_internal";
+  return (
+    Boolean(profile.can_access_counterparties) ||
+    Boolean(profile.free_access_reason) ||
+    profile.subscription_status === "active" ||
+    TIER_RANK[profile.membership_tier as keyof typeof TIER_RANK] >= TIER_RANK.pro_basic ||
+    profile.role === "admin_internal"
+  );
 }
 
 function canMap(profile: any) {
-  return Boolean(profile.can_access_map) || TIER_RANK[profile.membership_tier as keyof typeof TIER_RANK] >= TIER_RANK.pro_buyer;
+  return (
+    Boolean(profile.can_access_map) &&
+    (
+      Boolean(profile.free_access_reason) ||
+      profile.subscription_status === "active" ||
+      TIER_RANK[profile.membership_tier as keyof typeof TIER_RANK] >= TIER_RANK.pro_buyer ||
+      profile.role === "admin_internal"
+    )
+  );
+}
+
+function isAdminProfile(req: any) {
+  const user = req?.tenantUser;
+  const roles = Array.isArray(user?.roles) ? user.roles.map(String) : [];
+  const perms = Array.isArray(user?.permissions) ? user.permissions.map(String) : [];
+  return user?.currentMode === "admin" || roles.includes("admin") || perms.includes("*") || isChairmanAssistantUser(user);
 }
 
 function visibleLayers(profile: any) {
@@ -247,7 +282,7 @@ function visibleLayers(profile: any) {
 }
 
 function mapMeta(profile: any) {
-  if (profile.role === "bureau_achat" || profile.role === "association_admin" || profile.membership_tier === "pro_source") {
+  if (profile.role === "bureau_achat" || profile.role === "association" || profile.role === "miner" || profile.membership_tier === "pro_source") {
     return {
       variant: "source",
       title: "Carte de sourcing aurifere",
@@ -471,10 +506,14 @@ router.get("/pro/map/summary", ensureTenantUser, async (req: any, res) => {
         id: profile.id,
         role: profile.role,
         membershipTier: profile.membership_tier,
+        subscriptionStatus: profile.subscription_status,
+        freeAccessReason: profile.free_access_reason,
         verificationStatus: profile.verification_status,
         companyName: profile.company_name,
         country: profile.country,
         canAccessMap: canMap(profile),
+        canAccessCounterparties: Boolean(profile.can_access_counterparties),
+        canAccessSupplyIntelligence: Boolean(profile.can_access_supply_intelligence),
         canViewSupplyContacts: profile.can_view_supply_contacts,
         canViewMineLayer: profile.can_view_mine_layer,
         canViewBureauLayer: profile.can_view_bureau_layer,
@@ -486,7 +525,7 @@ router.get("/pro/map/summary", ensureTenantUser, async (req: any, res) => {
         subtitle: meta.subtitle,
         defaultTypes: meta.defaultTypes,
         locked: !canMap(profile),
-        lockedMessage: !canMap(profile) ? "Acces reserve aux membres Pro verifies" : null,
+        lockedMessage: !canMap(profile) ? "Acces reserve aux membres Pro verifies ou partenaires gratuits approuves" : null,
       },
       stats: summarize(nodes),
     });
@@ -506,10 +545,14 @@ router.get("/pro/profile", ensureTenantUser, async (req: any, res) => {
         id: profile.id,
         role: profile.role,
         membershipTier: profile.membership_tier,
+        subscriptionStatus: profile.subscription_status,
+        freeAccessReason: profile.free_access_reason,
         verificationStatus: profile.verification_status,
         companyName: profile.company_name,
         country: profile.country,
         canAccessMap: canMap(profile),
+        canAccessCounterparties: Boolean(profile.can_access_counterparties),
+        canAccessSupplyIntelligence: Boolean(profile.can_access_supply_intelligence),
         canViewSupplyContacts: profile.can_view_supply_contacts,
         canViewMineLayer: profile.can_view_mine_layer,
         canViewBureauLayer: profile.can_view_bureau_layer,
@@ -620,6 +663,89 @@ router.get("/pro/directory/exporters", ensureTenantUser, async (req: any, res) =
     return res.json({ ok: true, items: [...fromBureaux, ...fromCustom] });
   } catch (error: any) {
     return res.status(500).json({ ok: false, message: error?.message || "Failed to load exporters" });
+  }
+});
+
+router.get("/pro/admin/memberships", ensureTenantUser, async (req: any, res) => {
+  try {
+    const tenant = requireTenant(req, res);
+    if (!tenant) return;
+    if (!isAdminProfile(req)) return res.status(403).json({ ok: false, message: "Admin access required" });
+    await ensureTables();
+    const rows = await db.execute(
+      sql`select * from pro_profiles where tenant_id = ${tenant.id} order by updated_at desc nulls last, created_at desc`,
+    );
+    return res.json({
+      ok: true,
+      items: rows.rows.map((row: any) => ({
+        id: String(row.id),
+        userId: Number(row.user_id),
+        role: String(row.role),
+        companyName: text(row.company_name),
+        country: text(row.country),
+        verificationStatus: String(row.verification_status || "unknown"),
+        membershipTier: String(row.membership_tier || "free"),
+        subscriptionStatus: String(row.subscription_status || "inactive"),
+        freeAccessReason: text(row.free_access_reason),
+        canAccessMap: Boolean(row.can_access_map),
+        canAccessCounterparties: Boolean(row.can_access_counterparties),
+        canAccessSupplyIntelligence: Boolean(row.can_access_supply_intelligence),
+        canViewSupplyContacts: Boolean(row.can_view_supply_contacts),
+        canViewMineLayer: Boolean(row.can_view_mine_layer),
+        canViewBureauLayer: Boolean(row.can_view_bureau_layer),
+        canViewExportLayer: Boolean(row.can_view_export_layer),
+        createdAt: row.created_at ?? null,
+        updatedAt: row.updated_at ?? null,
+      })),
+    });
+  } catch (error: any) {
+    return res.status(500).json({ ok: false, message: error?.message || "Failed to load memberships" });
+  }
+});
+
+router.put("/pro/admin/memberships/:profileId", ensureTenantUser, async (req: any, res) => {
+  try {
+    const tenant = requireTenant(req, res);
+    if (!tenant) return;
+    if (!isAdminProfile(req)) return res.status(403).json({ ok: false, message: "Admin access required" });
+    await ensureTables();
+    const profileId = String(req.params.profileId || "").trim();
+    if (!profileId) return res.status(400).json({ ok: false, message: "Profile id is required" });
+
+    const updates = {
+      membership_tier: text(req.body?.membershipTier) || undefined,
+      subscription_status: text(req.body?.subscriptionStatus) || undefined,
+      free_access_reason: text(req.body?.freeAccessReason),
+      verification_status: text(req.body?.verificationStatus) || undefined,
+      can_access_map: typeof req.body?.canAccessMap === "boolean" ? req.body.canAccessMap : undefined,
+      can_access_counterparties:
+        typeof req.body?.canAccessCounterparties === "boolean" ? req.body.canAccessCounterparties : undefined,
+      can_access_supply_intelligence:
+        typeof req.body?.canAccessSupplyIntelligence === "boolean" ? req.body.canAccessSupplyIntelligence : undefined,
+      can_view_supply_contacts:
+        typeof req.body?.canViewSupplyContacts === "boolean" ? req.body.canViewSupplyContacts : undefined,
+      can_view_mine_layer: typeof req.body?.canViewMineLayer === "boolean" ? req.body.canViewMineLayer : undefined,
+      can_view_bureau_layer:
+        typeof req.body?.canViewBureauLayer === "boolean" ? req.body.canViewBureauLayer : undefined,
+      can_view_export_layer:
+        typeof req.body?.canViewExportLayer === "boolean" ? req.body.canViewExportLayer : undefined,
+      updated_at: new Date(),
+    } as Record<string, any>;
+
+    const payload = Object.fromEntries(Object.entries(updates).filter(([, value]) => value !== undefined));
+    const result = await db.execute(sql`
+      update pro_profiles
+      set ${sql.join(
+        Object.entries(payload).map(([key, value]) => sql`${sql.raw(key)} = ${value}`),
+        sql`, `,
+      )}
+      where id = ${profileId} and tenant_id = ${tenant.id}
+      returning *
+    `);
+    if (!result.rows[0]) return res.status(404).json({ ok: false, message: "Profile not found" });
+    return res.json({ ok: true, item: mapProfile(result.rows[0]) });
+  } catch (error: any) {
+    return res.status(500).json({ ok: false, message: error?.message || "Failed to update membership" });
   }
 });
 

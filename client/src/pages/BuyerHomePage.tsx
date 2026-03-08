@@ -5371,7 +5371,7 @@ export function BuyerHomePage({
     sortedShopRailProducts,
   ]);
   const materialsCatalogMeta = getCategoryMeta(selectedCategory || "earth-bricks");
-  const materialsGridClass = "grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr))]";
+  const materialsGridClass = "grid w-full content-start items-start gap-5 [grid-template-columns:repeat(auto-fill,minmax(260px,1fr))]";
   const materialsPreviewLimit = isMobile ? 2 : 4;
   const materialsSectionBlocks = useMemo(
     () =>
@@ -5584,21 +5584,23 @@ export function BuyerHomePage({
       <article
         key={`materials-grid-${product.id}`}
         data-shop-id={Number.isFinite(shopId) ? String(shopId) : undefined}
-        className={`group flex h-full min-w-0 flex-col overflow-hidden rounded-[26px] border transition-all duration-200 ${
-          isAvailable ? "cursor-pointer hover:-translate-y-0.5" : "opacity-70"
+        className={`group flex min-w-0 self-start flex-col overflow-hidden rounded-[22px] border transition-all duration-200 ${
+          isAvailable ? "cursor-pointer hover:-translate-y-0.5 hover:shadow-[0_20px_42px_rgba(48,29,12,0.16)]" : "opacity-70"
         }`}
         style={{
           background: "linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(245,239,228,0.98) 100%)",
           borderColor: "rgba(122,62,18,0.14)",
-          boxShadow: "0 18px 48px rgba(48,29,12,0.10)",
+          boxShadow: "0 16px 34px rgba(48,29,12,0.10)",
         }}
       >
-        <button type="button" className="flex h-full w-full flex-col text-left" onClick={() => setSelectedProduct(product)}>
+        <button type="button" className="flex w-full flex-col text-left" onClick={() => setSelectedProduct(product)}>
           <div className="relative aspect-[4/3] overflow-hidden bg-[#efe5d3]">
             <img
               src={imageSrc}
               alt={product.name}
               className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+              loading="lazy"
+              decoding="async"
               onError={(e) => {
                 e.currentTarget.onerror = null;
                 e.currentTarget.src = normalizeProductImageUrl(tenantPlaceholderProductImage) || buildProductPlaceholder(product, idx);
@@ -5634,7 +5636,7 @@ export function BuyerHomePage({
             </div>
           </div>
 
-          <div className="flex flex-1 flex-col gap-4 p-4">
+          <div className="flex flex-col gap-3 p-4">
             <div className="space-y-2">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
@@ -5653,10 +5655,10 @@ export function BuyerHomePage({
           </div>
         </button>
 
-        <div className="mt-auto flex items-center gap-2 border-t px-4 py-3" style={{ borderColor: "rgba(122,62,18,0.12)" }}>
+        <div className="flex items-center gap-2 border-t px-4 py-3" style={{ borderColor: "rgba(122,62,18,0.12)" }}>
           <Button
             size="sm"
-            className="flex-1 text-white hover:brightness-110"
+            className="h-9 flex-1 text-white hover:brightness-110"
             style={{ backgroundColor: materialsPrimaryColor }}
             onClick={(e) => {
               e.stopPropagation();
@@ -5694,8 +5696,11 @@ export function BuyerHomePage({
   }) => {
     const meta = getCategoryMeta(section.slug);
     return (
-      <section key={`materials-section-${section.slug}`} className="space-y-3">
-        <div className="flex flex-wrap items-start justify-between gap-3">
+      <section key={`materials-section-${section.slug}`} className="space-y-4 pb-1">
+        <div
+          className="flex flex-wrap items-start justify-between gap-3 border-b pb-3"
+          style={{ borderColor: "rgba(122,62,18,0.12)" }}
+        >
           <div className="min-w-0">
             <p className="text-[11px] font-semibold uppercase tracking-[0.22em]" style={{ color: meta.accent }}>
               {section.title}
@@ -5707,7 +5712,7 @@ export function BuyerHomePage({
           <Button
             size="sm"
             variant="outline"
-            className="border-[#7a3e12]/20 bg-white/75 text-[#7a3e12] hover:bg-[#f4eadc]"
+            className="h-8 border-[#7a3e12]/20 bg-white/75 px-3 text-[#7a3e12] hover:bg-[#f4eadc]"
             onClick={() => setSelectedCategory(section.slug)}
           >
             Voir tout
@@ -8211,7 +8216,7 @@ export function BuyerHomePage({
           className={`${
             useNonMapFlowLayout
               ? isMaterialsCatalogGrid
-                ? "relative z-40 mt-2 mx-3 mb-4 w-auto md:flex md:flex-col safe-area-bottom"
+                ? "relative z-40 mt-2 mx-3 mb-4 w-auto safe-area-bottom"
                 : `relative z-40 ${
                     showBdoTopPanels || showBdoCampaignHero ? "mt-2" : "mt-[calc(env(safe-area-inset-top,0px)+116px)]"
                   } mx-3 mb-3 w-auto md:flex md:flex-col bg-gradient-to-t from-black/95 via-black/80 to-transparent md:backdrop-blur-xl md:rounded-2xl md:border safe-area-bottom`
@@ -8485,7 +8490,7 @@ export function BuyerHomePage({
                       {materialsCatalogProducts.map((product: any, idx: number) => renderMaterialsCatalogCard(product, idx))}
                     </div>
                   ) : (
-                    <div className="space-y-6">
+                    <div className="space-y-8">
                       {materialsSectionBlocks.map((section) => renderMaterialsCatalogSection(section))}
                     </div>
                   )}
@@ -8578,7 +8583,9 @@ export function BuyerHomePage({
               )}
               <div
                 className={`hidden md:block ${
-                  useNonMapFlowLayout
+                  isMaterialsCatalogGrid
+                    ? "w-full overflow-visible px-4 pb-4"
+                    : useNonMapFlowLayout
                     ? "flex-1 overflow-visible px-4 pb-4"
                     : isDesktopRetail
                       ? "flex-1 overflow-y-auto px-4 pb-4"
@@ -8619,7 +8626,7 @@ export function BuyerHomePage({
                       if (!materialsCatalogProducts.length) {
                         const isAdminUser = session.user?.currentMode === "admin" || session.hasRole?.("admin" as any);
                         return (
-                          <div className="flex h-full items-center justify-center px-4">
+                          <div className="flex items-center justify-center px-4 py-6">
                             <div className="w-full max-w-lg rounded-2xl border border-white/10 bg-white/5 p-6 text-center backdrop-blur-md shadow-[0_0_30px_rgba(0,0,0,0.45)]">
                               <div className="mx-auto mb-3 h-12 w-12 rounded-full bg-amber-500/15 border border-amber-500/25 flex items-center justify-center">
                                 <Package className="h-5 w-5 text-amber-300" />
@@ -8656,7 +8663,7 @@ export function BuyerHomePage({
                       }
 
                       return (
-                        <div className="space-y-6">
+                        <div className="space-y-8">
                           {selectedCategory ? (
                             <div className={materialsGridClass}>
                               {materialsCatalogProducts.map((product: any, idx: number) => renderMaterialsCatalogCard(product, idx))}

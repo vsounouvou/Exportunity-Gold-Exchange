@@ -46,6 +46,40 @@ export const intellectMessageSenderEnum = pgEnum("intellect_message_sender", ["u
 export const mindbaseUserRoleEnum = pgEnum("mindbase_user_role", ["admin", "creator", "client"]);
 export const mindbaseWorkspaceMemberRoleEnum = pgEnum("mindbase_workspace_member_role", ["owner", "admin", "member"]);
 export const mindbaseEmailDirectionEnum = pgEnum("mindbase_email_direction", ["inbound", "outbound"]);
+export const mindbaseOrganizationStatusEnum = pgEnum("mindbase_organization_status", [
+  "draft",
+  "onboarding",
+  "active",
+  "paused",
+  "archived",
+]);
+export const mindbaseOrganizationPlanEnum = pgEnum("mindbase_organization_plan", [
+  "starter",
+  "growth",
+  "enterprise",
+]);
+export const mindbaseOrganizationUserRoleEnum = pgEnum("mindbase_organization_user_role", [
+  "owner",
+  "admin",
+  "manager",
+  "member",
+  "agent",
+]);
+export const mindbaseTenantPlatformStatusEnum = pgEnum("mindbase_tenant_platform_status", [
+  "active",
+  "sandbox",
+  "disconnected",
+]);
+export const mindbaseOrgChannelTypeEnum = pgEnum("mindbase_org_channel_type", [
+  "whatsapp",
+  "sms",
+  "voice",
+  "webchat",
+  "facebook_messenger",
+  "instagram_dm",
+]);
+export const mindbaseWidgetVisibilityEnum = pgEnum("mindbase_widget_visibility", ["visible", "hidden"]);
+export const intelligenceAssetTypeEnum = pgEnum("intelligence_asset_type", ["agent", "knowledge", "automation"]);
 
 const vector = customType<{ data: number[] | null; driverData: string | null }>({
   dataType() {
@@ -274,12 +308,347 @@ export const mindbaseWorkspaces = pgTable(
       .notNull(),
     name: text("name").notNull(),
     description: text("description"),
+    status: text("status").notNull().default("draft"),
+    companyBrainProgress: integer("company_brain_progress").notNull().default(0),
+    personaReadiness: integer("persona_readiness").notNull().default(0),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => ({
     byTenantOwner: index("mindbase_workspaces_tenant_owner_idx").on(t.tenantId, t.ownerUserId),
     byTenantName: index("mindbase_workspaces_tenant_name_idx").on(t.tenantId, t.name),
+  }),
+);
+
+export const mindbaseOrganizations = pgTable(
+  "mindbase_organizations",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: integer("tenant_id")
+      .references(() => tenants.id, { onDelete: "cascade" })
+      .notNull(),
+    ownerUserId: integer("owner_user_id")
+      .references(() => eceUsers.id, { onDelete: "cascade" })
+      .notNull(),
+    name: text("name").notNull(),
+    slug: text("slug").notNull(),
+    logoUrl: text("logo_url"),
+    status: mindbaseOrganizationStatusEnum("status").notNull().default("onboarding"),
+    plan: mindbaseOrganizationPlanEnum("plan").notNull().default("starter"),
+    chairmanAssistantName: text("chairman_assistant_name").notNull().default("Chairman Assistant"),
+    defaultWorkspaceId: uuid("default_workspace_id").references(() => mindbaseWorkspaces.id, { onDelete: "set null" }),
+    metadata: jsonb("metadata").$type<Record<string, unknown>>().notNull().default({}),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    byTenantSlug: uniqueIndex("mindbase_organizations_tenant_slug_unique").on(t.tenantId, t.slug),
+    byTenantOwner: index("mindbase_organizations_tenant_owner_idx").on(t.tenantId, t.ownerUserId),
+    byTenantStatus: index("mindbase_organizations_tenant_status_idx").on(t.tenantId, t.status, t.updatedAt),
+  }),
+);
+
+export const mindbaseOrganizationUsers = pgTable(
+  "mindbase_organization_users",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: integer("tenant_id")
+      .references(() => tenants.id, { onDelete: "cascade" })
+      .notNull(),
+    organizationId: uuid("organization_id")
+      .references(() => mindbaseOrganizations.id, { onDelete: "cascade" })
+      .notNull(),
+    userId: integer("user_id")
+      .references(() => eceUsers.id, { onDelete: "cascade" })
+      .notNull(),
+    role: mindbaseOrganizationUserRoleEnum("role").notNull().default("member"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    byOrganizationUser: uniqueIndex("mindbase_org_users_org_user_unique").on(t.organizationId, t.userId),
+    byTenantUser: index("mindbase_org_users_tenant_user_idx").on(t.tenantId, t.userId, t.updatedAt),
+  }),
+);
+
+export const mindbaseTenantPlatforms = pgTable(
+  "mindbase_tenant_platforms",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: integer("tenant_id")
+      .references(() => tenants.id, { onDelete: "cascade" })
+      .notNull(),
+    platformTenantId: integer("platform_tenant_id")
+      .references(() => tenants.id, { onDelete: "cascade" })
+      .notNull(),
+    slug: text("slug").notNull(),
+    name: text("name").notNull(),
+    baseUrl: text("base_url"),
+    apiKey: text("api_key"),
+    status: mindbaseTenantPlatformStatusEnum("status").notNull().default("active"),
+    metadata: jsonb("metadata").$type<Record<string, unknown>>().notNull().default({}),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    byTenantPlatform: uniqueIndex("mindbase_tenant_platforms_unique_idx").on(t.tenantId, t.platformTenantId),
+    byTenantSlug: uniqueIndex("mindbase_tenant_platforms_slug_unique").on(t.tenantId, t.slug),
+  }),
+);
+
+export const mindbaseOrganizationPlatforms = pgTable(
+  "mindbase_organization_platforms",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: integer("tenant_id")
+      .references(() => tenants.id, { onDelete: "cascade" })
+      .notNull(),
+    organizationId: uuid("organization_id")
+      .references(() => mindbaseOrganizations.id, { onDelete: "cascade" })
+      .notNull(),
+    tenantPlatformId: uuid("tenant_platform_id")
+      .references(() => mindbaseTenantPlatforms.id, { onDelete: "cascade" })
+      .notNull(),
+    isPrimary: boolean("is_primary").notNull().default(false),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    byOrgPlatform: uniqueIndex("mindbase_org_platforms_org_platform_unique").on(t.organizationId, t.tenantPlatformId),
+    byTenantOrg: index("mindbase_org_platforms_tenant_org_idx").on(t.tenantId, t.organizationId, t.updatedAt),
+  }),
+);
+
+export const mindbaseOrgChannels = pgTable(
+  "mindbase_org_channels",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: integer("tenant_id")
+      .references(() => tenants.id, { onDelete: "cascade" })
+      .notNull(),
+    organizationId: uuid("organization_id")
+      .references(() => mindbaseOrganizations.id, { onDelete: "cascade" })
+      .notNull(),
+    channelType: mindbaseOrgChannelTypeEnum("channel_type").notNull(),
+    twilioAccountSid: text("twilio_account_sid"),
+    phoneNumber: text("phone_number"),
+    status: text("status").notNull().default("disconnected"),
+    autoReplyEnabled: boolean("auto_reply_enabled").notNull().default(false),
+    metadata: jsonb("metadata").$type<Record<string, unknown>>().notNull().default({}),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    byOrgChannel: uniqueIndex("mindbase_org_channels_unique_idx").on(t.organizationId, t.channelType, t.phoneNumber),
+    byTenantOrg: index("mindbase_org_channels_tenant_org_idx").on(t.tenantId, t.organizationId, t.updatedAt),
+  }),
+);
+
+export const mindbaseOrgWallets = pgTable(
+  "mindbase_org_wallets",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: integer("tenant_id")
+      .references(() => tenants.id, { onDelete: "cascade" })
+      .notNull(),
+    organizationId: uuid("organization_id")
+      .references(() => mindbaseOrganizations.id, { onDelete: "cascade" })
+      .notNull(),
+    balance: numeric("balance", { precision: 18, scale: 2 }).notNull().default("0"),
+    currency: text("currency").notNull().default("USD"),
+    flutterwaveAccountId: text("flutterwave_account_id"),
+    status: text("status").notNull().default("active"),
+    metadata: jsonb("metadata").$type<Record<string, unknown>>().notNull().default({}),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    byOrg: uniqueIndex("mindbase_org_wallets_org_unique").on(t.organizationId),
+    byTenantOrg: index("mindbase_org_wallets_tenant_org_idx").on(t.tenantId, t.organizationId, t.updatedAt),
+  }),
+);
+
+export const intelligenceAssets = pgTable(
+  "intelligence_assets",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    type: intelligenceAssetTypeEnum("type").notNull(),
+    name: text("name").notNull(),
+    description: text("description"),
+    category: text("category").notNull(),
+    tags: text("tags").array().notNull().default([]),
+    creatorUserId: integer("creator_user_id").references(() => eceUsers.id, { onDelete: "set null" }),
+    price: numeric("price", { precision: 12, scale: 2 }).notNull().default("0"),
+    rating: numeric("rating", { precision: 3, scale: 2 }).notNull().default("0"),
+    installCount: integer("install_count").notNull().default(0),
+    visibility: text("visibility").notNull().default("public"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    byTypeName: uniqueIndex("intelligence_assets_type_name_unique").on(t.type, t.name),
+    byCategoryCreated: index("intelligence_assets_category_created_idx").on(t.category, t.createdAt),
+    byVisibilityInstallCount: index("intelligence_assets_visibility_installs_idx").on(t.visibility, t.installCount),
+  }),
+);
+
+export const organizationAssets = pgTable(
+  "organization_assets",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orgId: uuid("org_id")
+      .references(() => mindbaseOrganizations.id, { onDelete: "cascade" })
+      .notNull(),
+    assetId: uuid("asset_id")
+      .references(() => intelligenceAssets.id, { onDelete: "cascade" })
+      .notNull(),
+    installedBy: integer("installed_by").references(() => eceUsers.id, { onDelete: "set null" }),
+    installedAt: timestamp("installed_at", { withTimezone: true }).notNull().defaultNow(),
+    status: text("status").notNull().default("installed"),
+  },
+  (t) => ({
+    byOrgAsset: uniqueIndex("organization_assets_org_asset_unique").on(t.orgId, t.assetId),
+    byOrgInstalled: index("organization_assets_org_installed_idx").on(t.orgId, t.installedAt),
+    byAssetInstalled: index("organization_assets_asset_installed_idx").on(t.assetId, t.installedAt),
+  }),
+);
+
+export const mindbaseWidgetRegistry = pgTable(
+  "mindbase_widget_registry",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    type: text("type").notNull(),
+    componentKey: text("component_key").notNull(),
+    schema: jsonb("schema").$type<Record<string, unknown>>().notNull().default({}),
+    version: integer("version").notNull().default(1),
+    featureFlags: jsonb("feature_flags").$type<string[]>().notNull().default([]),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    byType: uniqueIndex("mindbase_widget_registry_type_unique").on(t.type),
+  }),
+);
+
+export const mindbaseOrgWidgets = pgTable(
+  "mindbase_org_widgets",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: integer("tenant_id")
+      .references(() => tenants.id, { onDelete: "cascade" })
+      .notNull(),
+    organizationId: uuid("organization_id")
+      .references(() => mindbaseOrganizations.id, { onDelete: "cascade" })
+      .notNull(),
+    widgetType: text("widget_type").notNull(),
+    configJson: jsonb("config_json").$type<Record<string, unknown>>().notNull().default({}),
+    widgetPermissions: jsonb("widget_permissions").$type<string[]>().notNull().default([]),
+    layoutZone: text("layout_zone").notNull().default("center"),
+    orderIndex: integer("order_index").notNull().default(0),
+    visibility: mindbaseWidgetVisibilityEnum("visibility").notNull().default("visible"),
+    widgetState: jsonb("widget_state").$type<Record<string, unknown>>().notNull().default({}),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    byOrgWidget: uniqueIndex("mindbase_org_widgets_org_widget_zone_unique").on(
+      t.organizationId,
+      t.widgetType,
+      t.layoutZone,
+      t.orderIndex,
+    ),
+    byTenantOrg: index("mindbase_org_widgets_tenant_org_idx").on(t.tenantId, t.organizationId, t.updatedAt),
+  }),
+);
+
+export const mindbaseEvents = pgTable(
+  "mindbase_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: integer("tenant_id")
+      .references(() => tenants.id, { onDelete: "cascade" })
+      .notNull(),
+    organizationId: uuid("organization_id")
+      .references(() => mindbaseOrganizations.id, { onDelete: "cascade" })
+      .notNull(),
+    workspaceId: uuid("workspace_id").references(() => mindbaseWorkspaces.id, { onDelete: "set null" }),
+    actorUserId: integer("actor_user_id").references(() => eceUsers.id, { onDelete: "set null" }),
+    eventType: text("event_type").notNull(),
+    status: text("status").notNull().default("pending"),
+    payload: jsonb("payload").$type<Record<string, unknown>>().notNull().default({}),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    byOrgCreated: index("mindbase_events_org_created_idx").on(t.organizationId, t.createdAt),
+    byTenantEvent: index("mindbase_events_tenant_event_idx").on(t.tenantId, t.eventType, t.createdAt),
+  }),
+);
+
+export const mindbaseDashboardSummaries = pgTable(
+  "mindbase_dashboard_summaries",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: integer("tenant_id")
+      .references(() => tenants.id, { onDelete: "cascade" })
+      .notNull(),
+    organizationId: uuid("organization_id")
+      .references(() => mindbaseOrganizations.id, { onDelete: "cascade" })
+      .notNull(),
+    summaryJson: jsonb("summary_json").$type<Record<string, unknown>>().notNull().default({}),
+    liveJson: jsonb("live_json").$type<Array<Record<string, unknown>>>().notNull().default([]),
+    cachedAt: timestamp("cached_at", { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    byOrg: uniqueIndex("mindbase_dashboard_summaries_org_unique").on(t.organizationId),
+    byTenantCached: index("mindbase_dashboard_summaries_tenant_cached_idx").on(t.tenantId, t.cachedAt),
+  }),
+);
+
+export const mindbaseBrainEvents = pgTable(
+  "mindbase_brain_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: integer("tenant_id")
+      .references(() => tenants.id, { onDelete: "cascade" })
+      .notNull(),
+    organizationId: uuid("organization_id")
+      .references(() => mindbaseOrganizations.id, { onDelete: "cascade" })
+      .notNull(),
+    eventType: text("event_type").notNull(),
+    entityType: text("entity_type"),
+    entityId: text("entity_id"),
+    payload: jsonb("payload").$type<Record<string, unknown>>().notNull().default({}),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    byOrgCreated: index("mindbase_brain_events_org_created_idx").on(t.organizationId, t.createdAt),
+    byTenantEvent: index("mindbase_brain_events_tenant_event_idx").on(t.tenantId, t.eventType, t.createdAt),
+  }),
+);
+
+export const mindbaseBrainInsights = pgTable(
+  "mindbase_brain_insights",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: integer("tenant_id")
+      .references(() => tenants.id, { onDelete: "cascade" })
+      .notNull(),
+    organizationId: uuid("organization_id")
+      .references(() => mindbaseOrganizations.id, { onDelete: "cascade" })
+      .notNull(),
+    sourceEventId: uuid("source_event_id").references(() => mindbaseBrainEvents.id, { onDelete: "set null" }),
+    insightType: text("insight_type").notNull(),
+    confidenceScore: numeric("confidence_score", { precision: 5, scale: 2 }).default("0"),
+    generatedByAgent: text("generated_by_agent"),
+    content: text("content").notNull(),
+    metadata: jsonb("metadata").$type<Record<string, unknown>>().notNull().default({}),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    byOrgInsight: index("mindbase_brain_insights_org_idx").on(t.organizationId, t.createdAt),
+    bySourceEvent: index("mindbase_brain_insights_source_idx").on(t.sourceEventId, t.createdAt),
   }),
 );
 
@@ -319,7 +688,10 @@ export const mindbaseWorkspaceAgents = pgTable(
     intellectId: uuid("intellect_id")
       .references(() => intellects.id, { onDelete: "cascade" })
       .notNull(),
+    status: text("status").notNull().default("draft"),
+    requiredIntegrations: jsonb("required_integrations").$type<string[]>().notNull().default([]),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => ({
     byWorkspaceIntellect: uniqueIndex("mindbase_workspace_agents_workspace_intellect_unique").on(t.workspaceId, t.intellectId),

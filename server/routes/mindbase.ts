@@ -19,6 +19,7 @@ import {
   mindbaseEmailMessages,
   mindbaseEmailThreads,
   mindbaseMindbases,
+  mindbaseOrganizations,
   mindbaseProfileDrafts,
   mindbaseUserRoles,
   intellectConversations,
@@ -35,6 +36,7 @@ import {
 import { getOpenAIClient } from "../lib/openai";
 import { ensureMindbaseTables, isMindbaseVectorEnabled } from "../lib/mindbase/ensureTables";
 import { signMindbaseToken, verifyMindbaseToken } from "../lib/mindbase/jwt";
+import { createMindbaseOrganization } from "../lib/mindbase/organizations";
 import {
   buildMindbaseSystemPrompt,
   chunkKnowledgeText,
@@ -241,6 +243,63 @@ function buildSystemPromptFromDraft(input: {
 function safeChunkText(input: string) {
   return chunkKnowledgeText(input);
 }
+
+const LAUNCH_STARTER_AGENTS = [
+  {
+    id: "adjoa",
+    name: "Adjoa",
+    role: "MindBase Guide",
+    purpose: "Guides onboarding, creates your workspace, and recommends the right AI team.",
+    category: "guide",
+    needs: ["Founder name", "Company name", "Business type"],
+    requiredIntegrations: [],
+  },
+  {
+    id: "awa",
+    name: "Awa",
+    role: "Executive Assistant",
+    purpose: "Manages inbox follow-ups, meetings, reminders, and decisions.",
+    category: "operations",
+    needs: ["Gmail or Outlook", "Calendar", "Founder priorities"],
+    requiredIntegrations: ["gmail", "calendar"],
+  },
+  {
+    id: "kwame",
+    name: "Kwame",
+    role: "Operations Manager",
+    purpose: "Turns goals into tasks, workflows, blockers, and execution plans.",
+    category: "operations",
+    needs: ["Company structure", "Projects", "Team members"],
+    requiredIntegrations: [],
+  },
+  {
+    id: "aminata",
+    name: "Aminata",
+    role: "Marketing Agent",
+    purpose: "Creates campaigns, content plans, social posts, and brand messaging.",
+    category: "marketing",
+    needs: ["Target customers", "Offer description", "Brand tone"],
+    requiredIntegrations: ["documents"],
+  },
+  {
+    id: "idriss",
+    name: "Idriss",
+    role: "Sales Agent",
+    purpose: "Tracks leads, prepares offers, follows up, and helps close opportunities.",
+    category: "sales",
+    needs: ["Customer list", "Pipeline", "Offer details"],
+    requiredIntegrations: ["crm"],
+  },
+  {
+    id: "nene",
+    name: "Nene",
+    role: "Accounting Agent",
+    purpose: "Tracks invoices, expenses, revenue, cashflow, and finance reminders.",
+    category: "finance",
+    needs: ["Revenue model", "Currency", "Invoices and expenses"],
+    requiredIntegrations: ["documents"],
+  },
+] as const;
 
 async function parsePdfText(buffer: Buffer) {
   const moduleValue = (await import("pdf-parse")) as {
@@ -1251,6 +1310,243 @@ router.post("/api/onboarding/finalize", async (req: any, res) => {
     });
   } catch (error: any) {
     return res.status(500).json({ ok: false, message: error?.message || "Failed to finalize onboarding" });
+  }
+});
+
+router.post("/api/mindbase/onboarding/workspace", async (req: any, res) => {
+  try {
+    await ensureMindbaseTables();
+    if (!checkRateLimit(req, res, "mindbase-launch-workspace-save", 30, 60_000)) return;
+    const tenant = requireTenant(req, res);
+    if (!tenant) return;
+    const user = await requireSessionUser(req, res);
+    if (!user) return;
+
+    await ensureMindbaseRole({ tenantId: tenant.id, userId: user.id, role: "creator" });
+    await ensureCreatorProfile(tenant.id, user);
+
+    const requestedCompanyName = asText(req.body?.companyName ?? req.body?.company_name);
+    const companyName =
+      !requestedCompanyName || requestedCompanyName.toLowerCase() === "not yet"
+        ? "Draft Company"
+        : requestedCompanyName;
+    const requestedWorkspaceName = asText(req.body?.workspaceName ?? req.body?.workspace_name);
+    const workspaceName = requestedWorkspaceName || `${companyName} HQ`;
+    const selectedAgentIds = new Set(
+      (Array.isArray(req.body?.selectedAgentIds ?? req.body?.selected_agent_ids)
+        ? (req.body?.selectedAgentIds ?? req.body?.selected_agent_ids)
+        : []
+      )
+        .map((entry: unknown) => String(entry || "").trim().toLowerCase())
+        .filter(Boolean),
+    );
+    if (!selectedAgentIds.size) {
+      for (const agent of LAUNCH_STARTER_AGENTS) {
+        if (agent.id !== "adjoa") selectedAgentIds.add(agent.id);
+      }
+    }
+    selectedAgentIds.add("adjoa");
+
+    const organization = await createMindbaseOrganization({
+      tenantId: tenant.id,
+      user: {
+        id: user.id,
+        displayName: user.displayName,
+        email: user.email,
+      },
+      name: companyName,
+    });
+
+    const persistedOrganization =
+      (await db.query.mindbaseOrganizations.findFirst({
+        where: and(eq(mindbaseOrganizations.tenantId, tenant.id), eq(mindbaseOrganizations.id, organization.id)),
+      })) || organization;
+
+    let workspace =
+      persistedOrganization.defaultWorkspaceId
+        ? await db.query.mindbaseWorkspaces.findFirst({
+            where: and(
+              eq(mindbaseWorkspaces.tenantId, tenant.id),
+              eq(mindbaseWorkspaces.id, persistedOrganization.defaultWorkspaceId),
+            ),
+          })
+        : null;
+
+    if (!workspace) {
+      workspace = await db.query.mindbaseWorkspaces.findFirst({
+        where: and(
+          eq(mindbaseWorkspaces.tenantId, tenant.id),
+          eq(mindbaseWorkspaces.ownerUserId, user.id),
+          eq(mindbaseWorkspaces.name, workspaceName),
+        ),
+        orderBy: [desc(mindbaseWorkspaces.updatedAt)],
+      });
+    }
+
+    if (!workspace) {
+      const [createdWorkspace] = await db
+        .insert(mindbaseWorkspaces)
+        .values({
+          tenantId: tenant.id,
+          ownerUserId: user.id,
+          name: workspaceName,
+          description: "Draft command center workspace for the MindBase guide and AI team.",
+          status: "draft",
+          companyBrainProgress: 18,
+          personaReadiness: 10,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .returning();
+      if (!createdWorkspace) throw new Error("Workspace creation returned no record");
+      workspace = createdWorkspace;
+
+      await db
+        .insert(mindbaseWorkspaceMembers)
+        .values({
+          tenantId: tenant.id,
+          workspaceId: workspace.id,
+          userId: user.id,
+          role: "owner",
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .onConflictDoUpdate({
+          target: [mindbaseWorkspaceMembers.workspaceId, mindbaseWorkspaceMembers.userId],
+          set: { role: "owner", updatedAt: new Date() },
+        });
+
+      await db
+        .update(mindbaseOrganizations)
+        .set({ defaultWorkspaceId: workspace.id, updatedAt: new Date() })
+        .where(eq(mindbaseOrganizations.id, persistedOrganization.id));
+    }
+    if (!workspace) throw new Error("Workspace was not available after creation");
+
+    const installedAgents: Array<{
+      id: string;
+      agentId: string;
+      name: string;
+      role: string;
+      status: string;
+      requiredIntegrations: string[];
+    }> = [];
+
+    for (const template of LAUNCH_STARTER_AGENTS.filter((agent) => selectedAgentIds.has(agent.id))) {
+      const existing = await db.query.intellects.findFirst({
+        where: and(
+          eq(intellects.tenantId, tenant.id),
+          eq(intellects.ownerUserId, user.id),
+          eq(intellects.name, template.name),
+        ),
+      });
+      const systemPrompt = buildSystemPromptFromDraft({
+        name: template.name,
+        description: template.purpose,
+        personaRole: template.role,
+        personaTone: "clear, practical, and operational",
+        personaRules: [
+          "Keep onboarding inside the chat unless the user explicitly opens another view.",
+          "Ask for missing integrations before claiming external work is complete.",
+          "Request approval before external or destructive actions.",
+        ],
+        styleConstraints: ["Use concise operational steps", "Name blockers plainly"],
+      });
+
+      const intellect =
+        existing ||
+        (
+          await db
+            .insert(intellects)
+            .values({
+              tenantId: tenant.id,
+              ownerUserId: user.id,
+              name: template.name,
+              slug: await ensureUniqueIntellectSlug({ tenantId: tenant.id, seed: `${template.id}-${user.id}` }),
+              tagline: template.role,
+              description: template.purpose,
+              category: template.category,
+              tags: ["mindbase", "launch", "starter-agent", template.id],
+              personaRole: template.role,
+              personaTone: "clear, practical, and operational",
+              personaRules: [
+                "Keep onboarding inside the chat unless the user explicitly opens another view.",
+                "Ask for missing integrations before claiming external work is complete.",
+                "Request approval before external or destructive actions.",
+              ],
+              styleConstraints: ["Use concise operational steps", "Name blockers plainly"],
+              systemPrompt,
+              accessPolicy: "private",
+              publishStatus: "draft",
+              isPublished: false,
+              pricePer100Messages: 0,
+              usageCount: 0,
+              agentEmail: await generateUniqueAgentEmail(tenant.id, template.id),
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            })
+            .returning()
+        )[0];
+
+      if (!intellect) continue;
+
+      const [installation] = await db
+        .insert(mindbaseWorkspaceAgents)
+        .values({
+          tenantId: tenant.id,
+          workspaceId: workspace.id,
+          intellectId: intellect.id,
+          status: "draft",
+          requiredIntegrations: [...template.requiredIntegrations],
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .onConflictDoUpdate({
+          target: [mindbaseWorkspaceAgents.workspaceId, mindbaseWorkspaceAgents.intellectId],
+          set: {
+            status: "draft",
+            requiredIntegrations: [...template.requiredIntegrations],
+            updatedAt: new Date(),
+          },
+        })
+        .returning();
+
+      installedAgents.push({
+        id: installation?.id || `${workspace.id}:${intellect.id}`,
+        agentId: template.id,
+        name: template.name,
+        role: template.role,
+        status: String(installation?.status || "draft"),
+        requiredIntegrations: [...template.requiredIntegrations],
+      });
+    }
+
+    const finalOrganization =
+      (await db.query.mindbaseOrganizations.findFirst({
+        where: and(eq(mindbaseOrganizations.tenantId, tenant.id), eq(mindbaseOrganizations.id, persistedOrganization.id)),
+      })) || persistedOrganization;
+
+    res.status(201).json({
+      ok: true,
+      organization: {
+        id: finalOrganization.id,
+        name: finalOrganization.name,
+        slug: finalOrganization.slug,
+        status: finalOrganization.status,
+      },
+      workspace: {
+        id: workspace.id,
+        organizationId: finalOrganization.id,
+        name: workspace.name,
+        status: workspace.status || "draft",
+        companyBrainProgress: workspace.companyBrainProgress ?? 0,
+        personaReadiness: workspace.personaReadiness ?? 0,
+      },
+      agents: installedAgents,
+      commandRoute: `/workspaces?workspace=${encodeURIComponent(workspace.id)}`,
+    });
+  } catch (error: any) {
+    res.status(500).json({ ok: false, message: error?.message || "Failed to save onboarding workspace" });
   }
 });
 

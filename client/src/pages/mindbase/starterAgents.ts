@@ -45,7 +45,7 @@ export const starterAgents: StarterAgent[] = [
     avatar: agentAvatars.adjoa,
     accent: "#0B65FF",
     firstMessage:
-      "I will help you assemble the AI team that will help run your company.",
+      "I'm Adjoa. I'll guide the setup, keep the conversation moving, and make sure your first AI team has a real place to work.",
   },
   {
     id: "awa",
@@ -64,7 +64,7 @@ export const starterAgents: StarterAgent[] = [
     accent: "#F59E0B",
     joinsAt: "team",
     firstMessage:
-      "I will organize your inbox, reminders, meetings, and decisions once your tools are connected.",
+      "Hi, I'm Awa, your Executive Assistant. I'll help protect your attention, follow up on messages, and keep meetings from becoming loose ends.",
   },
   {
     id: "kwame",
@@ -84,7 +84,7 @@ export const starterAgents: StarterAgent[] = [
     accent: "#38BDF8",
     joinsAt: "business",
     firstMessage:
-      "I will help structure the work your company needs to execute every week.",
+      "Kwame here. I turn goals into tasks, owners, weekly rhythms, and blockers so your company keeps moving.",
   },
   {
     id: "aminata",
@@ -109,7 +109,7 @@ export const starterAgents: StarterAgent[] = [
     accent: "#22C55E",
     joinsAt: "business",
     firstMessage:
-      "I will prepare campaigns, content ideas, and customer messages around your market.",
+      "I'm Aminata. I'll help shape your offer, campaigns, content ideas, and how customers understand your company.",
   },
   {
     id: "idriss",
@@ -129,7 +129,7 @@ export const starterAgents: StarterAgent[] = [
     accent: "#06B6D4",
     joinsAt: "customer",
     firstMessage:
-      "I will prepare your first customer pipeline and follow-up rhythm.",
+      "Idriss here. I'll help turn conversations into leads, offers, reminders, and a sales pipeline you can actually follow.",
   },
   {
     id: "nene",
@@ -155,7 +155,7 @@ export const starterAgents: StarterAgent[] = [
     accent: "#8B5CF6",
     joinsAt: "team",
     firstMessage:
-      "I will configure your finance workspace around invoices, expenses, revenue, and cashflow.",
+      "I'm Nene. I'll watch the money side: invoices, expenses, revenue, cashflow, and the reminders that keep finance clean.",
   },
 ];
 

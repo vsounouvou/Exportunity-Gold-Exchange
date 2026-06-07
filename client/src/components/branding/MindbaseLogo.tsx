@@ -1,9 +1,14 @@
 type MindbaseLogoProps = {
   className?: string;
   compact?: boolean;
+  tone?: "dark" | "light";
 };
 
-export default function MindbaseLogo({ className, compact = false }: MindbaseLogoProps) {
+export default function MindbaseLogo({
+  className,
+  compact = false,
+  tone = "light",
+}: MindbaseLogoProps) {
   return (
     <div className={className ? className : "inline-flex items-center gap-2"}>
       <svg
@@ -21,7 +26,9 @@ export default function MindbaseLogo({ className, compact = false }: MindbaseLog
         />
       </svg>
       {!compact ? (
-        <span className="text-base font-semibold leading-none text-slate-900">
+        <span
+          className={`text-base font-semibold leading-none ${tone === "dark" ? "text-white" : "text-slate-900"}`}
+        >
           MindBase
         </span>
       ) : null}

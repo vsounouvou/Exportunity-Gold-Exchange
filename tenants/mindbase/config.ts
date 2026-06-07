@@ -12,7 +12,7 @@ export const mindbaseTenantConfig: TenantConfig = {
   uiMode: "default",
   categoryPreset: "legacy",
   homeMode: "platform",
-  homeRedirectTo: "/store",
+  homeRedirectTo: "/mindbase",
   storefrontMarketType: "ALL",
   modulesEnabled: mindbaseModulesEnabled,
   modulesDisabled: mindbaseModulesDisabled,

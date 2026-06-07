@@ -116,6 +116,7 @@ try {
     "--exclude=./logs",
     "--exclude=./tmp",
     "--exclude=./mobile",
+    "--exclude=./data/postgres",
     "--exclude=./attached_assets",
     "--exclude=./test-results",
     "--exclude=./reports",
@@ -158,6 +159,9 @@ if [ -d "`$BASE/src" ]; then
   mv "`$BASE/src" "`$FAILED"
 fi
 mv "`$PREV" "`$BASE/src"
+mkdir -p "`$BASE/data/postgres" "`$BASE/src/data"
+rm -rf "`$BASE/src/data/postgres"
+ln -sfn "`$BASE/data/postgres" "`$BASE/src/data/postgres"
 cd "`$BASE/src"
 COMPOSE_PROJECT_NAME=src docker compose up -d --build bdo-app
 echo "[rollback] restored previous release"
@@ -189,6 +193,18 @@ if [ -f "`$BASE/src/.env" ]; then
   cp "`$BASE/src/.env" "`$NEW/.env"
 fi
 
+# Keep runtime database state outside the version-swapped source tree.
+PG_DATA="`$BASE/data/postgres"
+SRC_PG="`$BASE/src/data/postgres"
+mkdir -p "`$BASE/data" "`$PG_DATA" "`$NEW/data"
+PG_DATA_MOUNT="`$(docker inspect bdo-postgres --format '{{range .Mounts}}{{if eq .Destination "/var/lib/postgresql/data"}}{{.Source}}{{end}}{{end}}' 2>/dev/null || true)"
+if [ -n "`$PG_DATA_MOUNT" ] && [[ "`$PG_DATA_MOUNT" == "`$BASE/src/"* ]]; then
+  echo "[deploy] refusing deploy: postgres is mounted inside versioned src (`$PG_DATA_MOUNT). Move it to `$PG_DATA first."
+  exit 1
+fi
+rm -rf "`$NEW/data/postgres"
+ln -sfn "`$PG_DATA" "`$NEW/data/postgres"
+
 if [ -d "`$BASE/src" ]; then
   mv "`$BASE/src" "`$PREV"
 fi
@@ -198,9 +214,9 @@ cd "`$BASE/src"
 
 BUILD_ID="`$NEW_ID" GIT_SHA="`$GIT_SHA" COMPOSE_PROJECT_NAME=src docker compose up -d --build bdo-app
 
-# Keep the last 5 backups (best-effort; some old dirs may contain root-owned files).
+# Keep the current source plus the last two rollback dirs (best-effort; some old dirs may contain root-owned files).
 PG_DATA_MOUNT="`$(docker inspect bdo-postgres --format '{{range .Mounts}}{{if eq .Destination "/var/lib/postgresql/data"}}{{.Source}}{{end}}{{end}}' 2>/dev/null || true)"
-for d in `$(ls -1dt "`$BASE"/src_prev_* 2>/dev/null | tail -n +6); do
+for d in `$(ls -1dt "`$BASE"/src_prev_* 2>/dev/null | tail -n +3); do
   if [ -n "`$PG_DATA_MOUNT" ] && [[ "`$PG_DATA_MOUNT" == "`$d"* ]]; then
     echo "[deploy] skip cleanup for active postgres mount: `$d"
     continue

@@ -20,6 +20,7 @@
       ".env"
     ],
     "persistentPaths": [
+      "data/postgres",
       "data/attached_assets",
       "data/uploads",
       "data/storage",

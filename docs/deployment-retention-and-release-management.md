@@ -6,7 +6,7 @@ This repository now treats the laptop as a development workspace, not a release 
 
 - Local releases: keep only the latest 3 artifacts per tenant in `ops/local-releases/<tenant>/`
 - Local backups: keep only the latest 3 artifacts per tenant in `ops/local-backups/<tenant>/`
-- Remote release history: keep full history in `/var/backups/releases/<tenant>/`
+- Remote release history: keep the latest 3 archived releases in `/var/backups/releases/<tenant>/`
 - Remote backup history: keep full history in `/var/backups/db/<tenant>/` and `/var/backups/files/<tenant>/`
 - Rollback source of truth: the server release history under `/var/www/<tenant>/releases/`
 
@@ -108,7 +108,7 @@ The canonical deploy path is:
 2. upload the artifact and sidecars to `/var/backups/releases/<tenant>/`
 3. unpack into `/var/www/<tenant>/releases/<release-id>/`
 4. link shared runtime files
-5. ensure persistent runtime directories exist
+5. ensure persistent runtime directories exist, including `data/postgres` outside version-swapped source trees
 6. restart services from the candidate release
 7. hit the health endpoint
 8. switch `current` only after a healthy release
@@ -221,8 +221,8 @@ Supported tenants include at least:
 
 These are safe to delete locally because they are regenerable or retention-managed:
 
-- old files under `ops/local-releases/<tenant>/` beyond the newest 5
-- old files under `ops/local-backups/<tenant>/` beyond the newest 5
+- old files under `ops/local-releases/<tenant>/` beyond the newest 3
+- old files under `ops/local-backups/<tenant>/` beyond the newest 3
 - `dist/`
 - `build/`
 - `.next/`
@@ -320,7 +320,7 @@ On Windows, run the bash scripts from Git Bash or use the PowerShell wrappers:
 
 Compared with the old behavior of storing every deploy tarball in the repo root plus leaving build output behind, this should cut local deployment-storage usage by well over 95% over time because:
 
-- artifacts are retained only 5 deep per tenant
+- artifacts are retained only 3 deep per tenant
 - build output is actively cleaned
 - remote history becomes the archive source of truth
 - rollback uses release directories and symlinks instead of repeated full local copies

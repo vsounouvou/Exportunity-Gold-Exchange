@@ -1,11 +1,16 @@
 import fs from "fs";
 import path from "path";
-import { execSync } from "child_process";
+import { execFileSync, execSync } from "child_process";
 
 const repoRoot = process.cwd();
 
 const DIST_PUBLIC = process.env.DIST_PUBLIC || path.join(repoRoot, "dist", "public");
-const APP_NAME = process.env.APP_NAME || process.env.APP || "boursedelor";
+const APP_NAME =
+  process.env.APP_NAME ||
+  process.env.APP ||
+  process.env.DEPLOY_TENANT ||
+  process.env.TENANT_DEFAULT ||
+  "";
 
 function readJsonFile(filePath) {
   try {
@@ -29,6 +34,41 @@ function normalizeGitSha(raw) {
   if (!value) return null;
   if (!/^[0-9a-f]{7,40}$/i.test(value)) return null;
   return value.slice(0, 12);
+}
+
+function parseBooleanFlag(raw) {
+  const value = String(raw ?? "").trim().toLowerCase();
+  if (!value) return null;
+  if (["1", "true", "yes", "y", "on"].includes(value)) return true;
+  if (["0", "false", "no", "n", "off"].includes(value)) return false;
+  return null;
+}
+
+function isGitDirty(repoRootDir) {
+  const envDirty = parseBooleanFlag(process.env.GIT_DIRTY);
+  if (envDirty !== null) return envDirty;
+
+  try {
+    const output = execFileSync(
+      "git",
+      [
+        "status",
+        "--porcelain",
+        "--untracked-files=all",
+        "--",
+        ".",
+        ":(exclude)ops/local-releases",
+        ":(exclude)ops/local-backups",
+        ":(exclude)ops/tmp",
+      ],
+      { cwd: repoRootDir, stdio: ["ignore", "pipe", "ignore"] },
+    )
+      .toString()
+      .trim();
+    return output.length > 0;
+  } catch {
+    return false;
+  }
 }
 
 function readGitShaFromEnvOrGit(repoRootDir) {
@@ -73,8 +113,8 @@ function resolveBuildInfo(repoRootDir) {
   const gitSha =
     sanitizeId(
       normalizeGitSha(process.env.GIT_SHA) ||
-        normalizeGitSha(meta?.gitSha) ||
         normalizeGitSha(readGitShaFromEnvOrGit(repoRootDir)) ||
+        normalizeGitSha(meta?.gitSha) ||
         "",
     ) || "unknown";
 
@@ -85,24 +125,33 @@ function resolveBuildInfo(repoRootDir) {
     null;
 
   const buildId = sanitizeId(envBuild ? String(envBuild) : String(Date.now()));
+  const gitDirty = isGitDirty(repoRootDir);
+  const sourceVersion =
+    sanitizeId(process.env.SOURCE_VERSION || `${gitSha}${gitDirty ? "-dirty" : ""}`) || gitSha;
 
   // Persist build identity for downstream tooling (deploy scripts, server diagnostics).
   try {
     fs.writeFileSync(
       path.join(repoRootDir, ".build-meta.json"),
-      JSON.stringify({ gitSha, buildId }, null, 0),
+      JSON.stringify({ gitSha, buildId, gitDirty, sourceVersion }, null, 0),
       "utf8",
     );
   } catch {
     // ignore
   }
 
-  return { buildId, builtAt, gitSha };
+  return { buildId, builtAt, gitSha, gitDirty, sourceVersion };
 }
 
 function updateSwVersion(swPath, buildId) {
   if (!fs.existsSync(swPath)) return;
   const text = fs.readFileSync(swPath, "utf8");
+  const suffixMatch = text.match(/const\s+BUILD_SUFFIX\s*=\s*["']([^"']+)["']/);
+  if (suffixMatch) {
+    const updated = text.replace(suffixMatch[0], `const BUILD_SUFFIX = "${buildId}"`);
+    fs.writeFileSync(swPath, updated, "utf8");
+    return;
+  }
   const match = text.match(/const\s+VERSION\s*=\s*["']([^"']+)["']/);
   if (!match) return;
   const base = match[1].replace(/-build-[A-Za-z0-9._-]+$/, "");
@@ -122,11 +171,13 @@ function updateConfig(configPath, build) {
   const block = [
     "",
     "window.__EXPORTUNITY_CONFIG__ = window.__EXPORTUNITY_CONFIG__ || {};",
-    `window.__EXPORTUNITY_CONFIG__.app = "${sanitizeId(APP_NAME)}";`,
+    ...(APP_NAME ? [`window.__EXPORTUNITY_CONFIG__.app = "${sanitizeId(APP_NAME)}";`] : []),
     `window.__EXPORTUNITY_CONFIG__.buildId = "${build.buildId}";`,
     `window.__BUILD_ID__ = "${build.buildId}";`,
     `window.__EXPORTUNITY_CONFIG__.builtAt = "${build.builtAt}";`,
     `window.__EXPORTUNITY_CONFIG__.gitSha = "${build.gitSha}";`,
+    `window.__EXPORTUNITY_CONFIG__.gitDirty = "${String(build.gitDirty)}";`,
+    `window.__EXPORTUNITY_CONFIG__.sourceVersion = "${build.sourceVersion}";`,
     `window.__EXPORTUNITY_CONFIG__.versionGuardEnabled = "${String(process.env.VERSION_GUARD_ENABLED || "true")}";`,
     "",
   ].join("\n");
@@ -159,18 +210,22 @@ function writeBuildJson(publicDir, build) {
   const swPath = path.join(publicDir, "sw.js");
   const swText = fs.existsSync(swPath) ? fs.readFileSync(swPath, "utf8") : "";
   const swVersionMatch = swText.match(/const\s+VERSION\s*=\s*["']([^"']+)["']/);
+  const swBuildSuffixMatch = swText.match(/const\s+BUILD_SUFFIX\s*=\s*["']([^"']+)["']/);
+  const swAppPrefix = APP_NAME === "boursedelor" ? "bdo" : sanitizeId(APP_NAME || "tenant");
 
   const payload = {
-    app: sanitizeId(APP_NAME),
+    app: APP_NAME ? sanitizeId(APP_NAME) : null,
     build: build.buildId,
     buildId: build.buildId,
     gitSha: build.gitSha,
+    gitDirty: build.gitDirty,
+    sourceVersion: build.sourceVersion,
     builtAt: build.builtAt,
     // Backward-compatible aliases (older diagnostics pages used buildTime).
     buildTime: build.builtAt,
     mainJs: statOrNull(publicDir, mainJs),
     mainCss: statOrNull(publicDir, mainCss),
-    sw: swVersionMatch?.[1] ?? null,
+    sw: swVersionMatch?.[1] ?? (swBuildSuffixMatch ? `${swAppPrefix}-sw-v1-build-${swBuildSuffixMatch[1]}` : null),
   };
 
   fs.writeFileSync(path.join(publicDir, "build.json"), JSON.stringify(payload, null, 2), "utf8");

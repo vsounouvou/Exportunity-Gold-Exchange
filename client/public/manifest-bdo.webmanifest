@@ -1,22 +1,16 @@
 {
-  "name": "Bourse de l'Or by Exportunity",
+  "name": "Bourse de l'Or",
   "short_name": "Bourse de l'Or",
-  "description": "Bourse de l'Or - wallet-centric gold commerce with a virtual vault (merchant-of-record).",
+  "description": "Buy certified physical gold, verified jewelry, certificate verification and secure delivery.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#0b1117",
-  "theme_color": "#0b1117",
+  "background_color": "#0B0B0D",
+  "theme_color": "#0B0B0D",
   "icons": [
     {
-      "src": "/pwa/icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "/pwa/icon-512.png",
-      "sizes": "512x512",
+      "src": "/tenants/bdo/official/brand/app-icon-512.png",
+      "sizes": "1024x1024",
       "type": "image/png",
       "purpose": "any maskable"
     }

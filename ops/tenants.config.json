@@ -1,0 +1,106 @@
+{
+  "version": 1,
+  "defaults": {
+    "deployUser": "vital",
+    "remoteHost": "51.254.143.30",
+    "sshKeyDefault": "~/.ssh/bdo_ovh_vps_ed25519",
+    "localReleaseRoot": "ops/local-releases",
+    "localBackupRoot": "ops/local-backups",
+    "remoteReleaseArchiveRoot": "/var/backups/releases",
+    "remoteDbBackupRoot": "/var/backups/db",
+    "remoteFileBackupRoot": "/var/backups/files",
+    "remoteDeployRootBase": "/var/www",
+    "healthCheckPath": "/api/system/version",
+    "deployMode": "docker-compose",
+    "composeProject": "src",
+    "serviceNames": [
+      "bdo-app"
+    ],
+    "linkedSharedPaths": [
+      ".env"
+    ],
+    "persistentPaths": [
+      "data/attached_assets",
+      "data/uploads",
+      "data/storage",
+      "shared/uploads",
+      "shared/storage"
+    ],
+    "keepLocalReleases": 3,
+    "keepLocalBackups": 3,
+    "keepRemoteReleases": 3
+  },
+  "tenants": {
+    "boursedelor": {
+      "aliases": [
+        "bdo"
+      ],
+      "domain": "https://boursedelor.com",
+      "composeProject": "boursedelor",
+      "remoteDeployRoot": "/var/www/boursedelor"
+    },
+    "exportunity": {
+      "domain": "https://exportunity.net",
+      "composeProject": "exportunity",
+      "remoteDeployRoot": "/var/www/exportunity"
+    },
+    "mindbase": {
+      "deployUser": "root",
+      "domain": "https://mindbase.cloud",
+      "composeProject": "mindbase",
+      "hostPort": "5002",
+      "proxyAlias": "mindbase-app",
+      "remoteDeployRoot": "/var/www/mindbase"
+    },
+    "xportcard": {
+      "aliases": [
+        "xcard",
+        "xport"
+      ],
+      "domain": "https://xportcard.com",
+      "composeProject": "xportcard",
+      "remoteDeployRoot": "/var/www/xportcard"
+    },
+    "houseofzogue": {
+      "aliases": [
+        "hoz"
+      ],
+      "domain": "https://houseofzogue.com",
+      "composeProject": "houseofzogue",
+      "remoteDeployRoot": "/var/www/houseofzogue"
+    },
+    "zogueland": {
+      "aliases": [
+        "zogue",
+        "zogueland"
+      ],
+      "deployUser": "root",
+      "domain": "https://zogueland.com",
+      "composeProject": "zogueland",
+      "remoteDeployRoot": "/var/www/zogueland"
+    },
+    "maisonenterre": {
+      "aliases": [
+        "met"
+      ],
+      "domain": "https://maisonenterre.com",
+      "composeProject": "maisonenterre",
+      "hostPort": "5001",
+      "proxyAlias": "maisonenterre-app",
+      "remoteDeployRoot": "/var/www/maisonenterre"
+    },
+    "rayon1km": {
+      "domain": "https://rayon1km.com",
+      "composeProject": "rayon1km",
+      "remoteDeployRoot": "/var/www/rayon1km"
+    },
+    "vitalsounouvou": {
+      "aliases": [
+        "vs"
+      ],
+      "domain": "https://vitalsounouvou.com",
+      "composeProject": "vitalsounouvou",
+      "remoteDeployRoot": "/var/www/vitalsounouvou"
+    }
+  }
+}

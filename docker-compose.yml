@@ -6,6 +6,14 @@ services:
       args:
         BUILD_ID: ${BUILD_ID}
         GIT_SHA: ${GIT_SHA}
+        GIT_DIRTY: ${GIT_DIRTY}
+        SOURCE_VERSION: ${SOURCE_VERSION}
+        APP_NAME: ${APP_NAME}
+        TENANT_DEFAULT: ${TENANT_DEFAULT}
+        DEPLOY_TENANT: ${DEPLOY_TENANT}
+        PUBLIC_BASE_URL: ${PUBLIC_BASE_URL}
+        APP_BASE_URL: ${APP_BASE_URL}
+        PASSWORD_SETUP_BASE_URL: ${PASSWORD_SETUP_BASE_URL}
     restart: unless-stopped
     env_file:
       - .env
@@ -14,6 +22,14 @@ services:
       PORT: 5000
       BUILD_ID: ${BUILD_ID}
       GIT_SHA: ${GIT_SHA}
+      GIT_DIRTY: ${GIT_DIRTY}
+      SOURCE_VERSION: ${SOURCE_VERSION}
+      APP_NAME: ${APP_NAME}
+      TENANT_DEFAULT: ${TENANT_DEFAULT}
+      DEPLOY_TENANT: ${DEPLOY_TENANT}
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL}
+      APP_BASE_URL: ${APP_BASE_URL}
+      PASSWORD_SETUP_BASE_URL: ${PASSWORD_SETUP_BASE_URL}
       REPLICATE_API_TOKEN: ${REPLICATE_API_TOKEN}
       REPLICATE_MODEL_QUALITY: ${REPLICATE_MODEL_QUALITY}
       REPLICATE_MODEL_FAST: ${REPLICATE_MODEL_FAST}
@@ -40,9 +56,11 @@ services:
       # Allow admin email provisioning via docker exec into docker-mailserver (see server/lib/mail/mailserverSetup.ts)
       - /var/run/docker.sock:/var/run/docker.sock
     ports:
-      - "127.0.0.1:5000:5000"
+      - "${HOST_BIND:-127.0.0.1}:${HOST_PORT:-5000}:5000"
     networks:
-      - bdo-proxy
+      bdo-proxy:
+        aliases:
+          - "${PROXY_ALIAS:-bdo-app}"
 
 networks:
   bdo-proxy:

@@ -8,6 +8,7 @@ async function getJson(url) {
 
 const base = process.env.BASE_URL || process.env.E2E_BASE_URL || "https://boursedelor.com";
 const origin = base.replace(/\/+$/, "");
+const expectedApp = process.env.EXPECTED_APP || process.env.APP_NAME || process.env.DEPLOY_TENANT || "";
 
 const version = await getJson(`${origin}/api/system/version?v=${Date.now()}`);
 const build = await getJson(`${origin}/build.json?v=${Date.now()}`);
@@ -20,6 +21,12 @@ assert(version.clientBuild.buildId, "Missing clientBuild.buildId in /api/system/
 assert(version.clientBuild.gitSha, "Missing clientBuild.gitSha in /api/system/version");
 assert(build.buildId, "Missing buildId in /build.json");
 assert(build.gitSha, "Missing gitSha in /build.json");
+
+if (expectedApp) {
+  const diagnosticApp = String(version?.client?.build?.value?.app || "");
+  assert.strictEqual(diagnosticApp, expectedApp, `Expected /api/system/version client app=${expectedApp}`);
+  assert.strictEqual(String(build.app || ""), expectedApp, `Expected /build.json app=${expectedApp}`);
+}
 
 const mismatch =
   String(version.clientBuild.buildId) !== String(build.buildId) ||
@@ -35,5 +42,4 @@ if (mismatch) {
   process.exit(2);
 }
 
-console.log("[verify-deploy] OK. Build parity confirmed:", { buildId: build.buildId, gitSha: build.gitSha });
-
+console.log("[verify-deploy] OK. Build parity confirmed:", { app: build.app || null, buildId: build.buildId, gitSha: build.gitSha });

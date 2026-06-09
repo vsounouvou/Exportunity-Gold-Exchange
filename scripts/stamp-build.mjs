@@ -69,12 +69,13 @@ function readGitShaFromEnvOrGit(repoRootDir) {
 function resolveBuildInfo(repoRootDir) {
   const builtAt = new Date().toISOString();
   const meta = readJsonFile(path.join(repoRootDir, ".build-meta.json"));
+  const currentGitSha = readGitShaFromEnvOrGit(repoRootDir);
 
   const gitSha =
     sanitizeId(
       normalizeGitSha(process.env.GIT_SHA) ||
+        normalizeGitSha(currentGitSha) ||
         normalizeGitSha(meta?.gitSha) ||
-        normalizeGitSha(readGitShaFromEnvOrGit(repoRootDir)) ||
         "",
     ) || "unknown";
 

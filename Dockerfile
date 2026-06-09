@@ -54,7 +54,14 @@ ENV PASSWORD_SETUP_BASE_URL=$PASSWORD_SETUP_BASE_URL
 
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
-COPY package.json package-lock.json tsconfig.json env.ts ./
+RUN if [ "$DEPLOY_TENANT" = "boursedelor" ] || [ "$APP_NAME" = "boursedelor" ]; then \
+      find /app/dist/public/tenants -mindepth 1 -maxdepth 1 ! -name bdo -exec rm -rf {} + 2>/dev/null || true; \
+      rm -rf /app/dist/public/met \
+        /app/dist/public/zogueland \
+        /app/dist/public/brand/zogueland \
+        /app/dist/public/manifest-zogueland.webmanifest; \
+    fi
+COPY package.json package-lock.json tsconfig.json drizzle.config.ts env.ts ./
 COPY db ./db
 COPY server ./server
 COPY scripts ./scripts

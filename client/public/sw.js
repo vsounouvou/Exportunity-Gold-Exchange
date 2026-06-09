@@ -1,19 +1,5 @@
 /* eslint-disable no-restricted-globals */
-function resolveTenant(hostname) {
-  const host = String(hostname || "").toLowerCase();
-  if (host.includes("boursedelor")) return "bdo";
-  if (host.includes("maisonenterre") || host.includes("maisonsenterre")) return "met";
-  if (host.includes("xportcard")) return "xportcard";
-  if (host.includes("mindbase")) return "mindbase";
-  if (host.includes("zogueland")) return "zogueland";
-  if (host.includes("rayon1km")) return "rayon1km";
-  if (host.includes("houseofzogue")) return "hoz";
-  if (host.includes("vitalsounouvou")) return "vs";
-  if (host.includes("exportunity.zone")) return "zone";
-  return "exportunity";
-}
-
-const TENANT = resolveTenant(self.location.hostname);
+const TENANT = "bdo";
 const BUILD_SUFFIX = "dev";
 const VERSION = `${TENANT}-sw-v1-build-${BUILD_SUFFIX}`;
 
@@ -21,23 +7,13 @@ const STATIC_CACHE = `${VERSION}:static`;
 const RUNTIME_CACHE = `${VERSION}:runtime`;
 const API_CACHE = `${VERSION}:api`;
 
-const TENANT_PRECACHE = {
-  bdo: [
-    "/manifest-bdo.webmanifest",
-    "/tenants/bdo/official/brand/app-icon-512.png",
-    "/tenants/bdo/official/brand/favicon-512.png",
-  ],
-  met: ["/met/site.webmanifest", "/tenants/met/app-icon-1024.png", "/tenants/met/favicon-512.png"],
-  zogueland: ["/manifest-zogueland.webmanifest", "/tenants/zogueland/favicon.svg"],
-  zone: ["/manifest.webmanifest", "/icons/zone-192.png", "/icons/zone-512.png", "/icons/zone-512-maskable.png"],
-};
-
 const PRECACHE_URLS = [
   "/",
   "/index.html",
   "/offline.html",
-  "/apple-touch-icon.png",
-  ...(TENANT_PRECACHE[TENANT] || ["/manifest.webmanifest"]),
+  "/manifest-bdo.webmanifest",
+  "/tenants/bdo/official/brand/app-icon-512.png",
+  "/tenants/bdo/official/brand/favicon-512.png",
 ];
 
 function isNavigationRequest(request) {

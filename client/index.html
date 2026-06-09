@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
   <head>
     <meta charset="UTF-8" />
     <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0" />
@@ -9,109 +9,66 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Roboto:wght@400;500;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Cinzel:wght@500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,650;9..144,750&family=Lora:wght@400;500;600;700&family=Montserrat:wght@400;500;600;700&family=Nunito+Sans:wght@400;600;700;800&display=swap"
       rel="stylesheet"
     />
-    <title>Exportunity Marketplace</title>
+    <title>Platform</title>
     <meta
       name="description"
-      content="One engine for trade, operations, and AI execution."
+      content="Tenant platform."
     />
-    <meta id="theme-color" name="theme-color" content="#0B0F19" />
+    <meta id="theme-color" name="theme-color" content="#0B0B0D" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="Exportunity" />
+    <meta name="apple-mobile-web-app-title" content="Platform" />
     <link id="manifest-link" rel="manifest" href="/manifest.webmanifest" />
-    <link id="apple-touch-icon" rel="apple-touch-icon" href="/apple-touch-icon.png" />
-    <link id="favicon-32" rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
-    <link id="favicon-16" rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+    <link id="apple-touch-icon" rel="apple-touch-icon" href="/favicon.svg" />
+    <link id="favicon-32" rel="icon" type="image/svg+xml" sizes="32x32" href="/favicon.svg" />
+    <link id="favicon-16" rel="icon" type="image/svg+xml" sizes="16x16" href="/favicon.svg" />
     <link rel="apple-touch-startup-image" href="/splash/apple-splash-1170x2532.png" media="(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3)" />
     <link rel="apple-touch-startup-image" href="/splash/apple-splash-1290x2796.png" media="(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3)" />
     <link rel="apple-touch-startup-image" href="/splash/apple-splash-1242x2688.png" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3)" />
     <link id="favicon-ico" rel="icon" href="/favicon.ico" sizes="any" />
     <link id="favicon-svg" rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <meta property="og:type" content="website" />
-    <meta property="og:title" content="Exportunity Marketplace" />
-    <meta property="og:description" content="One engine for trade, operations, and AI execution." />
+    <meta property="og:title" content="Platform" />
+    <meta property="og:description" content="Tenant platform." />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="Exportunity Marketplace" />
-    <meta name="twitter:description" content="One engine for trade, operations, and AI execution." />
+    <meta name="twitter:title" content="Platform" />
+    <meta name="twitter:description" content="Tenant platform." />
     <script>
       (function () {
         var host = (location.hostname || "").toLowerCase();
         var cacheBuster = String(Date.now());
 
         function resolveTenant(hostname) {
-          if (!hostname) return "exportunity";
+          if (!hostname) return "neutral";
           if (hostname.indexOf("boursedelor") !== -1) return "bdo";
-          if (hostname.indexOf("houseofzogue") !== -1) return "hoz";
-          if (hostname.indexOf("maisonenterre") !== -1 || hostname.indexOf("maisonsenterre") !== -1) return "met";
-          if (hostname.indexOf("vitalsounouvou") !== -1 || hostname.indexOf("vss.") !== -1) return "vs";
-          if (hostname.indexOf("mindbase.cloud") !== -1) return "mindbase";
-          if (hostname.indexOf("zogueland") !== -1) return "zogueland";
-          if (hostname.indexOf("rayon1km") !== -1) return "rayon1km";
-          if (hostname.indexOf("exportunity.zone") !== -1) return "zone";
-          if (hostname.indexOf("exportunity") !== -1) return "exportunity";
-          return "exportunity";
+          return "neutral";
         }
 
         var tenant = resolveTenant(host);
-        var tenantMeta = {
-          bdo: {
-            title: "Bourse de l'Or Stamped Gold",
-            app: "Bourse de l'Or",
-            color: "#f59e0b",
-            description: "Stamped gold and certification platform."
-          },
-          exportunity: {
-            title: "Exportunity Marketplace",
-            app: "Exportunity",
-            color: "#0B0F19",
-            description: "Export-ready trade marketplace."
-          },
-          zone: {
-            title: "Exportunity Marketplace",
-            app: "Exportunity",
-            color: "#0B0F19",
-            description: "Export-ready trade marketplace."
-          },
-          mindbase: {
-            title: "MindBase - Own your intelligence. Deploy your Mind.",
-            app: "MindBase",
-            color: "#6B4EFF",
-            description: "AI agents, templates, and knowledge kits marketplace."
-          },
-          met: {
-            title: "Maison en Terre",
-            app: "Maison en Terre",
-            color: "#7A3E12",
-            description: "Briques BTC/CEB, maison modele et livraison chantier."
-          },
-          vs: {
-            title: "Vital Sounouvou Studio",
-            app: "Vital Sounouvou",
-            color: "#8B0000",
-            description: "Books, courses, and strategic media products."
-          },
-          hoz: {
-            title: "House of Zogue Marketplace",
-            app: "House of Zogue",
-            color: "#9A7D4F",
-            description: "Luxury creative house for jewelry and collectible drops."
-          },
-          zogueland: {
-            title: "Zogueland Marketplace",
-            app: "Zogueland",
-            color: "#FF6B6B",
-            description: "Stories, audio, and child-safe learning adventures."
-          },
-          rayon1km: {
-            title: "Rayon 1km Nearby",
-            app: "Rayon 1km",
-            color: "#f59e0b",
-            description: "Proximity-first commerce within 1 km."
-          }
-        }[tenant];
+        var bdoMeta = {
+          title: "Bourse de l'Or - Certification, traçabilité et commerce de l'or",
+          app: "Bourse de l'Or",
+          color: "#0B0B0D",
+          description: "La Bourse de l'Or est une plateforme de certification, de traçabilité et de commerce encadré pour lingots, bijoux et pièces de collection en or.",
+          image: "/images/boursedelor/og/og-boursedelor-home.webp",
+          icon: "/tenants/bdo/official/brand/favicon-512.png",
+          manifest: "/manifest-bdo.webmanifest"
+        };
+
+        var neutralMeta = {
+          title: "Platform",
+          app: "Platform",
+          color: "#0B0B0D",
+          description: "Tenant platform.",
+          icon: "/favicon.svg",
+          iconIco: "/favicon.ico",
+          manifest: "/manifest.webmanifest"
+        };
+
+        var tenantMeta = tenant === "bdo" ? bdoMeta : neutralMeta;
 
         function withBuster(path) {
           if (!path) return path;
@@ -133,21 +90,28 @@
         if (twitterTitle) twitterTitle.setAttribute("content", tenantMeta.title);
         var twitterDescription = document.querySelector('meta[name="twitter:description"]');
         if (twitterDescription) twitterDescription.setAttribute("content", tenantMeta.description || tenantMeta.title);
+        var ogImage = document.querySelector('meta[property="og:image"]');
+        if (ogImage && tenantMeta.image) ogImage.setAttribute("content", tenantMeta.image);
+        var twitterImage = document.querySelector('meta[name="twitter:image"]');
+        if (twitterImage && tenantMeta.image) twitterImage.setAttribute("content", tenantMeta.image);
 
         var manifest = document.getElementById("manifest-link");
-        if (manifest) manifest.setAttribute("href", withBuster("/manifest.webmanifest"));
+        if (manifest) manifest.setAttribute("href", withBuster(tenantMeta.manifest || "/manifest.webmanifest"));
 
-        var tenantFaviconSvg = "/tenants/" + tenant + "/favicon.svg";
-        var tenantFaviconIco = "/tenants/" + tenant + "/favicon.ico";
+        var tenantFaviconSvg = tenantMeta.iconSvg || tenantMeta.icon || "/tenants/" + tenant + "/favicon.svg";
+        var tenantFaviconIco = tenantMeta.iconIco || tenantMeta.icon || "/tenants/" + tenant + "/favicon.ico";
+        var tenantFavicon16 = tenantMeta.icon16 || tenantMeta.icon || tenantFaviconSvg;
+        var tenantFavicon32 = tenantMeta.icon32 || tenantMeta.icon || tenantFaviconSvg;
+        var tenantAppleIcon = tenantMeta.appleIcon || tenantMeta.icon || tenantFaviconSvg;
 
         var apple = document.getElementById("apple-touch-icon");
-        if (apple) apple.setAttribute("href", withBuster(tenantFaviconSvg));
+        if (apple) apple.setAttribute("href", withBuster(tenantAppleIcon));
 
         var favicon32 = document.getElementById("favicon-32");
-        if (favicon32) favicon32.setAttribute("href", withBuster(tenantFaviconSvg));
+        if (favicon32) favicon32.setAttribute("href", withBuster(tenantFavicon32));
 
         var favicon16 = document.getElementById("favicon-16");
-        if (favicon16) favicon16.setAttribute("href", withBuster(tenantFaviconSvg));
+        if (favicon16) favicon16.setAttribute("href", withBuster(tenantFavicon16));
 
         var faviconIco = document.getElementById("favicon-ico");
         if (faviconIco) faviconIco.setAttribute("href", withBuster(tenantFaviconIco));

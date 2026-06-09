@@ -25,8 +25,21 @@ fi
 load_tenant_config "$TENANT"
 KEEP_COUNT="${KEEP_OVERRIDE:-$KEEP_LOCAL_RELEASES}"
 TARGET_DIR="$(canonical_dir "$LOCAL_RELEASE_DIR_ABS")"
+ARCHIVE_DIR="$(canonical_dir "${LOCAL_BACKUP_DIR_ABS}/archived-releases")"
 
 path_is_within "$TARGET_DIR" "$LOCAL_RELEASE_ROOT_ABS" || fail "refusing to prune outside ${LOCAL_RELEASE_ROOT_ABS}"
+path_is_within "$ARCHIVE_DIR" "$LOCAL_BACKUP_ROOT_ABS" || fail "refusing to archive outside ${LOCAL_BACKUP_ROOT_ABS}"
+
+archive_release_file() {
+  local source_path="$1"
+  local destination_path="${ARCHIVE_DIR}/$(basename "$source_path")"
+
+  path_is_within "$source_path" "$TARGET_DIR" || fail "refusing to archive outside ${TARGET_DIR}: ${source_path}"
+  if [[ -e "$destination_path" ]]; then
+    fail "archive destination already exists: ${destination_path}"
+  fi
+  mv "$source_path" "$destination_path"
+}
 
 mapfile -t artifacts < <(find "$TARGET_DIR" -maxdepth 1 -type f -name '*.tar.gz' | sort -r)
 
@@ -36,11 +49,15 @@ if (( ${#artifacts[@]} <= KEEP_COUNT )); then
 fi
 
 for artifact in "${artifacts[@]:KEEP_COUNT}"; do
-  log "prune local release artifact ${artifact}"
+  log "archive local release artifact ${artifact}"
   if (( DRY_RUN == 0 )); then
-    rm -f "$artifact"
+    archive_release_file "$artifact"
     while IFS= read -r sidecar; do
-      [[ -f "$sidecar" ]] && rm -f "$sidecar"
+      if [[ -f "$sidecar" ]]; then
+        archive_release_file "$sidecar"
+      else
+        warn "release sidecar missing while archiving: ${sidecar}"
+      fi
     done < <(artifact_sidecars_for "$artifact")
   fi
 done

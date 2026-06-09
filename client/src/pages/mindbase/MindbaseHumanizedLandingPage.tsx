@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "wouter";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   Brain,
   BriefcaseBusiness,
@@ -11,9 +11,6 @@ import {
   Cloud,
   Command,
   Home,
-  HelpCircle,
-  LogIn,
-  LogOut,
   Lock,
   Mail,
   Menu,
@@ -39,6 +36,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { useScript } from "@/hooks/use-script";
 import { apiRequest } from "@/lib/queryClient";
 import { useSession, type User } from "@/lib/session";
 import {
@@ -70,13 +68,6 @@ type OnboardingStep =
   | "command"
   | "done";
 type ActiveTab = "chat" | "team" | "brain" | "tasks" | "market";
-type SignupMode =
-  | "choices"
-  | "email"
-  | "password"
-  | "signin-email"
-  | "signin-password"
-  | "recover";
 
 type ChatMessage = {
   id: string;
@@ -100,14 +91,18 @@ type SavedSession = {
   workspaceDraft?: string;
   connectedTools?: Record<string, string>;
   launchWorkspace?: LaunchWorkspaceRecord | null;
+  activePlan?: string;
+  lastPaymentId?: string;
 };
 
 type LaunchWorkspaceRecord = {
   organizationId: string;
   organizationSlug: string;
   organizationStatus: string;
+  organizationCreated: boolean;
   workspaceId: string;
   workspaceStatus: string;
+  workspaceCreated: boolean;
   commandRoute: string;
   installedAgents: Array<{
     id: string;
@@ -116,6 +111,49 @@ type LaunchWorkspaceRecord = {
     status: string;
     requiredIntegrations: string[];
   }>;
+};
+
+type IntegrationRuntimeStatus = {
+  id: string;
+  provider: string;
+  enabled: boolean;
+  configured: boolean;
+  status: string;
+  missingEnv?: string[];
+  message: string;
+  adminPath?: string;
+  connectUrl?: string;
+};
+
+type IntegrationStatusResponse = {
+  ok: boolean;
+  integrations?: Record<string, IntegrationRuntimeStatus>;
+  payments?: {
+    provider: string;
+    checkoutEnabled: boolean;
+    status: string;
+    message: string;
+    missingEnv?: string[];
+    plans?: PaymentPlan[];
+  };
+};
+
+type PaymentPlan = {
+  id: "free" | "starter" | "team" | "business" | "enterprise";
+  name: string;
+  monthlyXof: number | null;
+  limits: string[];
+  checkoutRequired: boolean;
+};
+
+type PendingKkiapayCheckout = {
+  paymentId: string;
+  publicKey: string;
+  amount: number;
+  currency: string;
+  reference: string;
+  callbackUrl: string;
+  sandbox: boolean;
 };
 
 const THEME_STORAGE_KEY = "mindbase_theme_mode";
@@ -147,6 +185,7 @@ const BUSINESS_SUGGESTIONS = [
   "Consulting firm",
   "Marketplace",
   "Education",
+  "Real estate",
   "I'll type my own",
 ];
 const CUSTOMER_SUGGESTIONS = [
@@ -158,18 +197,25 @@ const CUSTOMER_SUGGESTIONS = [
   "I'll type my own",
 ];
 const TEAM_SUGGESTIONS = [
-  "Yes, prepare my team",
+  "Prepare this team",
   "Show me what each agent does",
-  "Start with only one agent",
-  "I want to customize the team",
+  "Start with one agent",
+  "Customize the team",
 ];
 const WORKSPACE_SUGGESTIONS = [
   "Open workspace",
   "Connect Gmail",
   "Connect Google Drive",
+  "Choose a plan",
   "Invite my team",
   "Add my first customer",
   "Keep setting up in chat",
+];
+const PAYMENT_SUGGESTIONS = [
+  "Continue on Free plan",
+  "Start Starter checkout",
+  "Start Team checkout",
+  "Start Business checkout",
 ];
 const REASONING_TRIGGERS = [
   "which agents",
@@ -331,6 +377,15 @@ function agentForRole(role: ChatRole): StarterAgent | null {
   return starterAgentById[role];
 }
 
+function agentInitials(agent: StarterAgent) {
+  return agent.name
+    .split(/\s+/)
+    .map((part) => part[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+}
+
 function PortraitAvatar({
   agent,
   size = "md",
@@ -340,6 +395,7 @@ function PortraitAvatar({
   size?: "sm" | "md" | "lg" | "xl";
   active?: boolean;
 }) {
+  const [imageFailed, setImageFailed] = useState(false);
   const sizeClass =
     size === "xl"
       ? "h-28 w-28"
@@ -348,12 +404,30 @@ function PortraitAvatar({
         : size === "sm"
           ? "h-10 w-10"
           : "h-12 w-12";
+  const ringClass = active
+    ? "ring-2 ring-cyan-300/80 ring-offset-2 ring-offset-transparent"
+    : "";
+
+  if (imageFailed) {
+    return (
+      <span
+        aria-label={`${agent.name} portrait unavailable`}
+        className={`${sizeClass} ${ringClass} flex shrink-0 items-center justify-center rounded-full text-sm font-black text-white shadow-[0_0_24px_rgba(0,180,255,0.20)]`}
+        style={{ background: `linear-gradient(135deg, ${agent.accent}, #0B65FF)` }}
+      >
+        {agentInitials(agent)}
+      </span>
+    );
+  }
+
   return (
     <img
       src={agent.avatar}
       alt={`${agent.name} portrait`}
-      className={`${sizeClass} shrink-0 rounded-full object-cover object-center shadow-[0_0_24px_rgba(0,180,255,0.20)] ${active ? "ring-2 ring-cyan-300/80 ring-offset-2 ring-offset-transparent" : ""}`}
+      className={`${sizeClass} ${ringClass} shrink-0 rounded-full object-cover object-center shadow-[0_0_24px_rgba(0,180,255,0.20)]`}
       loading="eager"
+      decoding="async"
+      onError={() => setImageFailed(true)}
     />
   );
 }
@@ -371,13 +445,38 @@ function ProgressLine({ value, theme }: { value: number; theme: ThemeMode }) {
   );
 }
 
-function currentSuggestions(step: OnboardingStep) {
+function currentSuggestions(step: OnboardingStep, paymentChoiceMode = false) {
+  if (paymentChoiceMode) return PAYMENT_SUGGESTIONS;
   if (step === "business") return BUSINESS_SUGGESTIONS;
   if (step === "customer") return CUSTOMER_SUGGESTIONS;
   if (step === "team") return TEAM_SUGGESTIONS;
   if (step === "connect" || step === "command" || step === "done")
     return WORKSPACE_SUGGESTIONS;
   return [];
+}
+
+function describeOwnInputPrompt(step: OnboardingStep) {
+  if (step === "business")
+    return "Type your business type in your own words. I will use that to shape the AI team recommendation.";
+  if (step === "customer")
+    return "Type your main customer in your own words. For example: SMEs in construction, retail shops, or enterprise buyers.";
+  return "Type it in your own words and I will continue from there.";
+}
+
+function parseAgentSelection(value: string): StarterAgentId[] {
+  const lowered = value.toLowerCase();
+  const picked = operatingAgents
+    .filter((agent) => lowered.includes(agent.name.toLowerCase()))
+    .map((agent) => agent.id);
+  return Array.from(new Set(picked));
+}
+
+function selectedTeamNames(ids: StarterAgentId[]) {
+  return ids
+    .map((id) => starterAgentById[id])
+    .filter(Boolean)
+    .map((agent) => agent.name)
+    .join(", ");
 }
 
 function stepDescription(step: OnboardingStep) {
@@ -391,31 +490,8 @@ function stepDescription(step: OnboardingStep) {
   return "getting started";
 }
 
-function teamWelcomeMessages(
-  agentIds: StarterAgentId[],
-  visitorName: string,
-): ChatMessage[] {
-  const name = visitorName || "there";
-  const uniqueIds = Array.from(new Set(agentIds)).filter(
-    (id) => id !== "adjoa",
-  );
-  const copy: Partial<Record<StarterAgentId, string>> = {
-    awa: `Hi ${name}, I'm Awa, your Executive Assistant. I'll help protect your attention, follow up on messages, and keep meetings from becoming loose ends.`,
-    kwame: `Kwame here. I turn what you want to build into tasks, owners, rhythms, and blockers so the company keeps moving.`,
-    aminata:
-      "I'm Aminata. I'll help shape your offer, campaigns, content ideas, and the way customers understand your company.",
-    idriss:
-      "Idriss here. I'll help turn conversations into leads, offers, reminders, and a sales pipeline you can actually follow.",
-    nene:
-      "I'm Nene. I'll watch the money side: invoices, expenses, revenue, cashflow, and the reminders that keep finance clean.",
-  };
-  return uniqueIds
-    .map((id) => makeMessage(id, copy[id] || starterAgentById[id].firstMessage))
-    .filter(Boolean);
-}
-
 export default function MindbaseHumanizedLandingPage() {
-  const { isAuthenticated, login, logout, user } = useSession();
+  const { guestSessionId, login } = useSession();
   const restoredSession = useMemo(loadSavedSession, []);
   const restoredMessages = restoredSession?.messages?.length
     ? restoredSession.messages
@@ -470,19 +546,38 @@ export default function MindbaseHumanizedLandingPage() {
   const [selectedAgentIds, setSelectedAgentIds] = useState<StarterAgentId[]>(
     restoredSession?.selectedAgentIds?.length
       ? restoredSession.selectedAgentIds
-      : ["awa", "kwame", "aminata", "idriss", "nene"],
+      : [],
   );
   const [activeTab, setActiveTab] = useState<ActiveTab>(
     restoredSession?.activeTab || "chat",
   );
-  const [signupMode, setSignupMode] = useState<SignupMode>("choices");
+  const [signupMode, setSignupMode] = useState<
+    "choices" | "email" | "password" | "loginEmail" | "loginPassword" | "forgot"
+  >("choices");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [accountNotice, setAccountNotice] = useState("");
   const [reasoningModeReady, setReasoningModeReady] = useState(false);
   const [selectedAgent, setSelectedAgent] = useState<StarterAgent | null>(null);
+  const [workspaceSavePending, setWorkspaceSavePending] = useState(false);
+  const [paymentChoiceMode, setPaymentChoiceMode] = useState(false);
+  const [activePlan, setActivePlan] = useState(restoredSession?.activePlan || "free");
+  const [lastPaymentId, setLastPaymentId] = useState(restoredSession?.lastPaymentId || "");
+  const [pendingKkiapayCheckout, setPendingKkiapayCheckout] =
+    useState<PendingKkiapayCheckout | null>(null);
+  const brainFileInputRef = useRef<HTMLInputElement | null>(null);
   const messageEndRef = useRef<HTMLDivElement | null>(null);
   const t = modeCopy[theme];
+  const integrationStatusQuery = useQuery<IntegrationStatusResponse>({
+    queryKey: ["/api/mindbase/integrations/status"],
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
+  });
+  const integrationRuntimeById = integrationStatusQuery.data?.integrations || {};
+  const paymentRuntime = integrationStatusQuery.data?.payments || null;
+  const { status: kkiapayScriptStatus, error: kkiapayScriptError } = useScript(
+    pendingKkiapayCheckout ? "https://cdn.kkiapay.me/k.js" : null,
+  );
 
   useEffect(() => {
     if (typeof window !== "undefined")
@@ -508,14 +603,18 @@ export default function MindbaseHumanizedLandingPage() {
         workspaceDraft,
         connectedTools,
         launchWorkspace,
+        activePlan,
+        lastPaymentId,
       }),
     );
   }, [
     activeTab,
+    activePlan,
     business,
     companyName,
     connectedTools,
     customer,
+    lastPaymentId,
     launchWorkspace,
     messages,
     organizationDraft,
@@ -531,6 +630,58 @@ export default function MindbaseHumanizedLandingPage() {
   }, [messages.length]);
 
   useEffect(() => {
+    if (!pendingKkiapayCheckout) return;
+    if (kkiapayScriptStatus === "error") {
+      setMessages((current) => [
+        ...current,
+        makeMessage(
+          "adjoa",
+          `${kkiapayScriptError || "Kkiapay checkout could not load."}\n\nI did not activate the paid plan. You can try again, choose another method, or continue on the Free plan.`,
+        ),
+      ]);
+      setPendingKkiapayCheckout(null);
+      return;
+    }
+    if (kkiapayScriptStatus !== "ready") return;
+    const runtime: any = typeof window !== "undefined" ? window : null;
+    if (!runtime || typeof runtime.openKkiapayWidget !== "function") {
+      setMessages((current) => [
+        ...current,
+        makeMessage(
+          "adjoa",
+          "Kkiapay checkout is not available in this browser yet. I did not activate the paid plan.",
+        ),
+      ]);
+      setPendingKkiapayCheckout(null);
+      return;
+    }
+    runtime.openKkiapayWidget({
+      amount: pendingKkiapayCheckout.amount,
+      key: pendingKkiapayCheckout.publicKey,
+      callback: pendingKkiapayCheckout.callbackUrl,
+      sandbox: pendingKkiapayCheckout.sandbox,
+      paymentMethods: ["momo", "card", "direct_debit"],
+      data: {
+        reference: pendingKkiapayCheckout.reference,
+        paymentId: pendingKkiapayCheckout.paymentId,
+      },
+      partnerId: pendingKkiapayCheckout.reference,
+    });
+    setMessages((current) => [
+      ...current,
+      makeMessage(
+        "system",
+        `Kkiapay checkout opened.\nPayment ID: ${pendingKkiapayCheckout.paymentId}\nStatus: Pending server verification`,
+      ),
+      makeMessage(
+        "adjoa",
+        "Complete the payment in the provider window. I will activate the plan only after MindBase verifies the transaction server-side or receives the signed webhook.",
+      ),
+    ]);
+    setPendingKkiapayCheckout(null);
+  }, [kkiapayScriptError, kkiapayScriptStatus, pendingKkiapayCheckout]);
+
+  useEffect(() => {
     if (typeof window === "undefined" || organizationDraft) return;
     const params = new URLSearchParams(window.location.search);
     const organization = params.get("organization");
@@ -544,11 +695,11 @@ export default function MindbaseHumanizedLandingPage() {
       ...current,
       makeMessage(
         "system",
-        `Organization created: ${organization}\nStatus: Draft\nNext: Open workspace in chat`,
+        `Organization draft restored: ${organization}\nStatus: Local draft\nNext: Save workspace in chat`,
       ),
       makeMessage(
         "system",
-        `Workspace created: ${workspaceName}\nStatus: Draft\nAI team: Preparing`,
+        `Workspace draft restored: ${workspaceName}\nStatus: Local draft\nAI team: Preparing`,
       ),
       makeMessage(
         "adjoa",
@@ -558,14 +709,20 @@ export default function MindbaseHumanizedLandingPage() {
   }, [organizationDraft]);
 
   const applySavedLaunchWorkspace = (payload: any) => {
+    const session = payload?.session || null;
+    if (session?.access_token && session?.user) {
+      login(String(session.access_token), normalizeMindbaseUser(session.user));
+    }
     const organization = payload?.organization || {};
     const workspace = payload?.workspace || {};
     const record: LaunchWorkspaceRecord = {
       organizationId: String(organization.id || ""),
       organizationSlug: String(organization.slug || ""),
       organizationStatus: String(organization.status || "draft"),
+      organizationCreated: organization.created !== false,
       workspaceId: String(workspace.id || ""),
       workspaceStatus: String(workspace.status || "draft"),
+      workspaceCreated: workspace.created !== false,
       commandRoute: String(payload?.commandRoute || ""),
       installedAgents: Array.isArray(payload?.agents)
         ? payload.agents.map((agent: any) => ({
@@ -589,7 +746,11 @@ export default function MindbaseHumanizedLandingPage() {
 
   const saveLaunchWorkspace = async (
     accessToken?: string,
-    override?: { companyName?: string; workspaceName?: string },
+    override?: {
+      companyName?: string;
+      workspaceName?: string;
+      selectedAgentIds?: StarterAgentId[];
+    },
   ) =>
     apiRequest("/api/mindbase/onboarding/workspace", {
       method: "POST",
@@ -599,33 +760,17 @@ export default function MindbaseHumanizedLandingPage() {
           }
         : undefined,
       body: JSON.stringify({
+        visitorName,
+        guestSessionId,
         companyName:
           override?.companyName || companyName || organizationDraft || "Draft Company",
         workspaceName:
           override?.workspaceName ||
           workspaceDraft ||
           `${override?.companyName || companyName || "Draft Company"} HQ`,
-        selectedAgentIds,
+        selectedAgentIds: override?.selectedAgentIds || selectedAgentIds,
       }),
     });
-
-  const finishAuthenticatedWorkspace = async (
-    accessToken: string,
-    openingMessage: string,
-  ) => {
-    const saved = await saveLaunchWorkspace(accessToken);
-    const record = applySavedLaunchWorkspace(saved);
-    setStep("connect");
-    setMessages((current) => [
-      ...current,
-      makeMessage(
-        "system",
-        `Workspace saved: ${saved?.workspace?.name || workspaceDraft || `${companyName || "Your company"} HQ`}\nStatus: ${record.workspaceStatus}\nAI team: ${record.installedAgents.length} installed\nWorkspace ID: ${record.workspaceId}`,
-      ),
-      makeMessage("adjoa", openingMessage),
-      ...teamWelcomeMessages(selectedAgentIds, visitorName),
-    ]);
-  };
 
   const registerMutation = useMutation({
     mutationFn: async () =>
@@ -647,10 +792,20 @@ export default function MindbaseHumanizedLandingPage() {
         "Your account has been created. I sent you a verification email. You can continue setting up your workspace while we wait for verification.",
       );
       try {
-        await finishAuthenticatedWorkspace(
-          accessToken,
-          "Your workspace is ready. The team is here with you now. You can enter your company command center, keep setting up in chat, or connect the tools your agents need.",
-        );
+        const saved = await saveLaunchWorkspace(accessToken);
+        const record = applySavedLaunchWorkspace(saved);
+        setStep("connect");
+        setMessages((current) => [
+          ...current,
+          makeMessage(
+            "system",
+            `Workspace saved: ${saved?.workspace?.name || workspaceDraft || `${companyName || "Your company"} HQ`}\nStatus: ${record.workspaceStatus}\nAI team: ${record.installedAgents.length} installed\nWorkspace ID: ${record.workspaceId}`,
+          ),
+          makeMessage(
+            "adjoa",
+            "Your workspace is ready. You can now enter your company command center, continue setup here, or connect the tools your agents need.",
+          ),
+        ]);
       } catch (error: any) {
         setStep("signup");
         const message = String(
@@ -669,17 +824,14 @@ export default function MindbaseHumanizedLandingPage() {
     onError: (error: any) => {
       const message = String(error?.message || "Unable to create your account");
       setAccountNotice(message);
-      if (/already exists/i.test(message)) {
-        setSignupMode("signin-password");
-        setPassword("");
+      if (/already exists/i.test(message))
         setMessages((current) => [
           ...current,
           makeMessage(
             "adjoa",
-            "That email already has a MindBase account. Type the password here and I will bring you back into your workspace. If you forgot which email or password you used, choose the recovery option below.",
+            "That email already has a MindBase account. Use the sign-in option and I will take you back into your Command Center.",
           ),
         ]);
-      }
     },
   });
 
@@ -695,42 +847,234 @@ export default function MindbaseHumanizedLandingPage() {
     onSuccess: async (payload: any) => {
       const accessToken = String(payload?.access_token || "");
       login(accessToken, normalizeMindbaseUser(payload?.user));
-      setAccountNotice("Signed in. Your draft workspace is being saved.");
+      setAccountNotice("You are signed in to MindBase.");
+      setSignupMode("choices");
       try {
-        await finishAuthenticatedWorkspace(
-          accessToken,
-          `Welcome back${visitorName ? `, ${visitorName}` : ""}. I saved the draft workspace to this account, and your AI team can keep working from here.`,
-        );
+        const saved = await saveLaunchWorkspace(accessToken);
+        const record = applySavedLaunchWorkspace(saved);
+        setStep("connect");
+        setMessages((current) => [
+          ...current,
+          makeMessage(
+            "system",
+            `Signed in: ${payload?.user?.email || email}\nWorkspace saved: ${saved?.workspace?.name || workspaceDraft || `${companyName || "Your company"} HQ`}\nStatus: ${record.workspaceStatus}\nWorkspace ID: ${record.workspaceId}`,
+          ),
+          makeMessage(
+            "adjoa",
+            "Welcome back. Your current workspace draft is saved to your account, and we can continue setup here.",
+          ),
+        ]);
       } catch (error: any) {
         setStep("signup");
         const message = String(
-          error?.message || "You are signed in, but the workspace could not be saved yet.",
+          error?.message || "You signed in, but the workspace draft could not be saved yet.",
         );
         setAccountNotice(message);
         setMessages((current) => [
           ...current,
           makeMessage(
             "adjoa",
-            `${message}\n\nYou are signed in, and this chat still has the draft. Try saving again after checking the workspace details.`,
+            `${message}\n\nI did not mark the workspace as saved. Your draft is still in this browser session.`,
           ),
         ]);
       }
     },
     onError: (error: any) => {
-      const message = String(error?.message || "Unable to sign in");
+      const message = String(error?.message || "Sign-in failed");
       setAccountNotice(message);
       setMessages((current) => [
         ...current,
         makeMessage(
           "adjoa",
-          "I could not sign you in with those details. Try the password again, use the recovery option, or create a new account with another email.",
+          `${message}\n\nCheck the email and password, request a reset link, or continue with the browser draft.`,
+        ),
+      ]);
+    },
+  });
+
+  const passwordResetMutation = useMutation({
+    mutationFn: async () =>
+      apiRequest("/api/auth/request-password-reset", {
+        method: "POST",
+        body: JSON.stringify({ email }),
+      }),
+    onSuccess: () => {
+      setAccountNotice("If the account exists, a reset link has been sent.");
+      setMessages((current) => [
+        ...current,
+        makeMessage(
+          "system",
+          `Password reset requested: ${email}\nStatus: Sent if the account exists`,
+        ),
+        makeMessage(
+          "adjoa",
+          "If that account exists, MindBase sent a secure reset link by email. Your workspace draft remains in this chat.",
+        ),
+      ]);
+    },
+    onError: (error: any) => {
+      const message = String(error?.message || "Password reset is unavailable");
+      setAccountNotice(message);
+      setMessages((current) => [
+        ...current,
+        makeMessage(
+          "adjoa",
+          `${message}\n\nPassword reset was not marked as sent. Continue with the browser draft or configure email sending in admin.`,
+        ),
+      ]);
+    },
+  });
+
+  const paymentCheckoutMutation = useMutation({
+    mutationFn: async (planId: PaymentPlan["id"]) => {
+      let workspaceRecord = launchWorkspace;
+      if (!workspaceRecord?.organizationId) {
+        const saved = await saveLaunchWorkspace();
+        workspaceRecord = applySavedLaunchWorkspace(saved);
+      }
+      if (!workspaceRecord?.organizationId) {
+        throw new Error("Save the workspace before starting payment.");
+      }
+      return apiRequest("/api/mindbase/payments/checkout", {
+        method: "POST",
+        body: JSON.stringify({
+          planId,
+          organizationId: workspaceRecord.organizationId,
+          workspaceId: workspaceRecord.workspaceId,
+        }),
+      });
+    },
+    onSuccess: (payload: any) => {
+      const checkout = payload?.checkout || {};
+      const plan = payload?.plan || {};
+      const paymentId = String(payload?.payment?.id || "");
+      if (paymentId) setLastPaymentId(paymentId);
+      setPaymentChoiceMode(false);
+
+      if (checkout.type === "free") {
+        setActivePlan("free");
+        setMessages((current) => [
+          ...current,
+          makeMessage(
+            "system",
+            `Plan active: Free\nStatus: Active\nPayment: Not required`,
+          ),
+          makeMessage(
+            "adjoa",
+            "You are on the Free plan. You can keep setting up, connect tools, or upgrade later from this chat.",
+          ),
+        ]);
+        return;
+      }
+
+      if (checkout.type === "redirect" && checkout.url) {
+        setMessages((current) => [
+          ...current,
+          makeMessage(
+            "system",
+            `Checkout created: ${plan.name || "Paid plan"}\nPayment ID: ${paymentId}\nProvider: ${checkout.provider || "payment provider"}\nStatus: Pending server verification`,
+          ),
+          makeMessage(
+            "adjoa",
+            "I'm opening the secure checkout. Paid access will stay locked until the server verifies the payment.",
+          ),
+        ]);
+        window.location.assign(String(checkout.url));
+        return;
+      }
+
+      if (checkout.type === "kkiapay_widget") {
+        setPendingKkiapayCheckout({
+          paymentId,
+          publicKey: String(checkout.publicKey || ""),
+          amount: Number(checkout.amount || 0),
+          currency: String(checkout.currency || "XOF"),
+          reference: String(checkout.reference || paymentId),
+          callbackUrl: String(checkout.callbackUrl || ""),
+          sandbox: Boolean(checkout.sandbox),
+        });
+        setMessages((current) => [
+          ...current,
+          makeMessage(
+            "system",
+            `Checkout created: ${plan.name || "Paid plan"}\nPayment ID: ${paymentId}\nProvider: Kkiapay\nStatus: Pending`,
+          ),
+        ]);
+        return;
+      }
+
+      setMessages((current) => [
+        ...current,
+        makeMessage(
+          "adjoa",
+          checkout.message || "Checkout was created, but no browser payment action was returned. I did not activate a paid plan.",
+        ),
+      ]);
+    },
+    onError: (error: any) => {
+      setPaymentChoiceMode(true);
+      setMessages((current) => [
+        ...current,
+        makeMessage(
+          "adjoa",
+          `${String(error?.message || "Payment could not start.")}\n\nNo paid access was granted. You can continue on Free, configure payments in admin, or try again.`,
+        ),
+      ]);
+    },
+  });
+
+  const brainUploadMutation = useMutation({
+    mutationFn: async (file: File) => {
+      let workspaceRecord = launchWorkspace;
+      if (!workspaceRecord?.workspaceId || !workspaceRecord?.organizationId) {
+        const saved = await saveLaunchWorkspace();
+        workspaceRecord = applySavedLaunchWorkspace(saved);
+      }
+      if (!workspaceRecord?.workspaceId) {
+        throw new Error("Save the workspace before uploading company brain documents.");
+      }
+
+      const formData = new FormData();
+      formData.set("file", file);
+      return apiRequest(
+        `/api/mindbase/workspaces/${encodeURIComponent(workspaceRecord.workspaceId)}/brain/upload`,
+        {
+          method: "POST",
+          body: formData,
+        },
+      );
+    },
+    onSuccess: (payload: any) => {
+      const item = payload?.item || {};
+      const workspacePayload = payload?.workspace || {};
+      const progress =
+        Number(workspacePayload?.companyBrainProgress ?? workspacePayload?.company_brain_progress ?? 0) || 0;
+      setConnectedTools((current) => ({ ...current, documents: "Ready" }));
+      setMessages((current) => [
+        ...current,
+        makeMessage(
+          "system",
+          `Company Brain document processed: ${item.filename || "document"}\nStatus: ${item.status || "processed"}\nChunks: ${item.chunk_count || 0}\nCompany Brain: ${progress || "updated"}%`,
+        ),
+        makeMessage(
+          "adjoa",
+          "I attached that document to your workspace company brain. Your agents can now reference it in this command center and cite the filename when they use it.",
+        ),
+      ]);
+    },
+    onError: (error: any) => {
+      setMessages((current) => [
+        ...current,
+        makeMessage(
+          "adjoa",
+          `${String(error?.message || "The document could not be uploaded or processed.")}\n\nI did not mark it as processed. Try a PDF, DOCX, TXT, or XLSX file with readable text.`,
         ),
       ]);
     },
   });
 
   const workspace = useMemo(() => {
-    const brainProgress =
+    const baseBrainProgress =
       step === "done" ||
       step === "command" ||
       step === "connect" ||
@@ -745,8 +1089,12 @@ export default function MindbaseHumanizedLandingPage() {
               : companyName
                 ? 6
                 : visitorName
-                  ? 4
-                  : 0;
+              ? 4
+              : 0;
+    const brainProgress =
+      connectedTools.documents === "Ready"
+        ? Math.max(baseBrainProgress, 32)
+        : baseBrainProgress;
     const personaProgress =
       step === "done" ||
       step === "command" ||
@@ -770,6 +1118,7 @@ export default function MindbaseHumanizedLandingPage() {
   }, [
     business,
     companyName,
+    connectedTools.documents,
     customer,
     selectedAgentIds.length,
     step,
@@ -800,10 +1149,6 @@ export default function MindbaseHumanizedLandingPage() {
     });
   }, [business, customer, step]);
 
-  const authenticatedCommandRoute = launchWorkspace?.commandRoute
-    ? mindbasePath(launchWorkspace.commandRoute)
-    : mindbasePath("/workspaces");
-
   const pushConversation = (userText: string, replies: ChatMessage[]) =>
     setMessages((current) => [
       ...current,
@@ -811,13 +1156,56 @@ export default function MindbaseHumanizedLandingPage() {
       ...replies,
     ]);
 
-  const openWorkspaceInChat = (sourceText = "Open workspace") => {
+  const openWorkspaceInChat = async (sourceText = "Open workspace") => {
+    if (workspaceSavePending) return;
+
+    let workspaceRecord = launchWorkspace;
+    if (!workspaceRecord?.workspaceId || !workspaceRecord.organizationId) {
+      setWorkspaceSavePending(true);
+      setMessages((current) => [
+        ...current,
+        makeMessage("user", sourceText),
+        makeMessage(
+          "system",
+          `Open workspace\nStatus: Creating real draft workspace\nNo command center has been opened yet.`,
+        ),
+        makeMessage(
+          "adjoa",
+          "I need to save a real workspace before opening the command center. I will create it now and only open it if MindBase confirms the workspace exists.",
+        ),
+      ]);
+      try {
+        const saved = await saveLaunchWorkspace();
+        workspaceRecord = applySavedLaunchWorkspace(saved);
+      } catch (error: any) {
+        setWorkspaceSavePending(false);
+        setMessages((current) => [
+          ...current,
+          makeMessage(
+            "adjoa",
+            `I could not open the workspace because MindBase could not create the backend workspace yet: ${String(error?.message || "Unknown error")}\n\nI did not mark the command center as open. Your draft is still in this chat, and you can try again.`,
+          ),
+        ]);
+        return;
+      }
+      setWorkspaceSavePending(false);
+    } else {
+      setMessages((current) => [...current, makeMessage("user", sourceText)]);
+    }
+
+    const commandRoute = workspaceRecord.organizationSlug
+      ? mindbasePath(`/app/${encodeURIComponent(workspaceRecord.organizationSlug)}/operations`)
+      : workspaceRecord.commandRoute
+        ? mindbasePath(workspaceRecord.commandRoute)
+        : mindbasePath("/workspaces");
+
     setStep("command");
     setActiveTab("chat");
-    pushConversation(sourceText, [
+    setMessages((current) => [
+      ...current,
       makeMessage(
         "system",
-        `Command Center opened: ${workspaceDraft || `${companyName || "Your company"} HQ`}\nOrganization: ${organizationDraft || companyName || "Draft organization"}\nWorkspace ID: ${launchWorkspace?.workspaceId || "Draft local workspace"}\nInstalled agents: ${launchWorkspace?.installedAgents.length || selectedAgentIds.length}\nBackend route: ${authenticatedCommandRoute || "Draft chat command center"}\nNext action: Connect tools or invite your team.`,
+        `Command Center opened: ${workspaceDraft || `${companyName || "Your company"} HQ`}\nOrganization: ${organizationDraft || companyName || "Draft organization"}\nWorkspace ID: ${workspaceRecord.workspaceId}\nInstalled agents: ${workspaceRecord.installedAgents.length || selectedAgentIds.length}\nBackend route: ${commandRoute}\nNext action: Connect tools or invite your team.`,
       ),
       makeMessage(
         "adjoa",
@@ -826,51 +1214,71 @@ export default function MindbaseHumanizedLandingPage() {
     ]);
   };
 
-  const openAccountPanel = (
-    mode: "create" | "signin" | "recover",
-    sourceText?: string,
+  const startPlanCheckout = (
+    planId: PaymentPlan["id"],
+    sourceText = `Start ${planId} checkout`,
   ) => {
-    setStep("signup");
-    setActiveTab("chat");
-    setAccountNotice("");
-    setPassword("");
-    const modeCopyText = {
-      create:
-        "Let's save this workspace before the team starts doing serious work. What email should I use for your MindBase account?",
-      signin:
-        "Good. Sign in right here and I will attach this workspace draft to your account.",
-      recover:
-        "No problem. Give me the email you might have used, or choose that you forgot the email. I will keep this workspace draft in the chat while we sort it out.",
-    };
-    const modeLabel = {
-      create: "Create account",
-      signin: "Sign in",
-      recover: "I need help signing in",
-    };
-    setSignupMode(
-      mode === "create"
-        ? "email"
-        : mode === "signin"
-          ? "signin-email"
-          : "recover",
-    );
-    pushConversation(sourceText || modeLabel[mode], [
-      makeMessage("adjoa", modeCopyText[mode]),
+    if (paymentCheckoutMutation.isPending) return;
+    setPaymentChoiceMode(false);
+    setMessages((current) => [
+      ...current,
+      makeMessage("user", sourceText),
+      makeMessage(
+        "system",
+        `Payment request: ${planId}\nStatus: Creating secure checkout\nEntitlement: Locked until server verification`,
+      ),
+    ]);
+    paymentCheckoutMutation.mutate(planId);
+  };
+
+  const handlePaymentChoice = (sourceText = "Choose a plan") => {
+    const providerLine = paymentRuntime
+      ? `Provider: ${paymentRuntime.provider}\nCheckout: ${paymentRuntime.checkoutEnabled ? "Enabled" : "Not enabled"}`
+      : "Provider: Checking payment configuration";
+    const missing = paymentRuntime?.missingEnv?.length
+      ? `\nMissing configuration: ${paymentRuntime.missingEnv.join(", ")}`
+      : "";
+    setPaymentChoiceMode(true);
+    pushConversation(sourceText, [
+      makeMessage(
+        "system",
+        `MindBase plans\n${providerLine}${missing}\nCurrent plan: ${activePlan}\nPaid access: granted only after server-side payment verification`,
+      ),
+      makeMessage(
+        "adjoa",
+        `${paymentRuntime?.message || "Choose how you want to continue."}\n\nYou can continue on Free, start Starter checkout, start Team checkout, or start Business checkout.`,
+      ),
     ]);
   };
 
-  const handleLogout = () => {
-    logout();
-    setAccountNotice("Signed out.");
-    setMessages((current) => [
-      ...current,
-      makeMessage("user", "Log out"),
-      makeMessage("system", "Signed out of MindBase."),
+  const openBrainUploadPicker = (sourceText = "Upload documents") => {
+    if (brainUploadMutation.isPending) return true;
+    pushConversation(sourceText, [
+      makeMessage(
+        "system",
+        `Company Brain upload\nStatus: Waiting for file\nWorkspace: ${workspaceDraft || `${companyName || "Your company"} HQ`}\nAllowed: PDF, DOCX, TXT, XLSX`,
+      ),
       makeMessage(
         "adjoa",
-        "You are signed out. The chat draft is still here, but you will need to sign in again before the workspace can be saved.",
+        launchWorkspace?.workspaceId
+          ? "Choose a file and I will attach it to this workspace."
+          : "Choose a file. I will save the draft workspace first, then attach the document to its company brain.",
       ),
     ]);
+    brainFileInputRef.current?.click();
+    return true;
+  };
+
+  const handleBrainFileSelected = (file?: File | null) => {
+    if (!file || brainUploadMutation.isPending) return;
+    setMessages((current) => [
+      ...current,
+      makeMessage(
+        "system",
+        `Uploading document: ${file.name}\nStatus: Saving file and extracting text\nPaid access: Not affected`,
+      ),
+    ]);
+    brainUploadMutation.mutate(file);
   };
 
   const handleIntegrationChoice = (title: string, sourceText = title) => {
@@ -884,19 +1292,70 @@ export default function MindbaseHumanizedLandingPage() {
         ),
     );
     if (!card) return false;
-    if (card.fallback) {
+    if (card.id === "payments") {
+      handlePaymentChoice(sourceText);
+      return true;
+    }
+    if (card.id === "documents") {
+      const runtime = integrationRuntimeById[card.id];
+      if (runtime && !runtime.enabled) {
+        pushConversation(sourceText, [
+          makeMessage(
+            "system",
+            `${card.title}\nStatus: ${runtime.status || "Not enabled"}\nWhat it enables: ${card.copy}\nSecurity: ${card.security}`,
+          ),
+          makeMessage(
+            "adjoa",
+            `${runtime.message || card.fallback}\n\nSafe options: continue without it, configure it in admin, or try again after it is enabled.`,
+          ),
+        ]);
+        return true;
+      }
+      return openBrainUploadPicker(sourceText);
+    }
+    const runtime = integrationRuntimeById[card.id];
+    const runtimeKnown = Boolean(runtime);
+    const isEnabled = runtimeKnown ? Boolean(runtime?.enabled) : false;
+    const connectUrl = runtime?.connectUrl;
+    if (!isEnabled) {
+      const missing = runtime?.missingEnv?.length
+        ? `\nMissing configuration: ${runtime.missingEnv.join(", ")}`
+        : "";
+      const message =
+        runtime?.message ||
+        card.fallback ||
+        (integrationStatusQuery.isError
+          ? "MindBase could not verify this integration status yet."
+          : "MindBase is checking whether this integration is enabled.");
       setConnectedTools((current) => ({
         ...current,
-        [card.id]: "Unavailable",
+        [card.id]: runtime?.status || "Not enabled",
       }));
       pushConversation(sourceText, [
         makeMessage(
           "system",
-          `${card.title}\nStatus: Not connected\nWhat it enables: ${card.copy}\nSecurity: ${card.security}`,
+          `${card.title}\nStatus: ${runtime?.status || "Not enabled"}${missing}\nWhat it enables: ${card.copy}\nSecurity: ${card.security}`,
         ),
         makeMessage(
           "adjoa",
-          `${card.fallback}\n\nYou can continue setup without it, and MindBase will keep the workspace draft intact.`,
+          `${message}\n\nSafe options: continue without it, configure it in admin, or try again after it is enabled. MindBase will keep the workspace draft intact.`,
+        ),
+      ]);
+      return true;
+    }
+    if (!connectUrl) {
+      setConnectedTools((current) => ({
+        ...current,
+        [card.id]: runtime?.status || "Connection unavailable",
+      }));
+      pushConversation(sourceText, [
+        makeMessage(
+          "system",
+          `${card.title}\nStatus: Connection flow unavailable\nWhat it enables: ${card.copy}\nSecurity: ${card.security}`,
+        ),
+        makeMessage(
+          "adjoa",
+          `${runtime?.message || card.fallback}\n\nMindBase did not start a connection because this environment has no verified start URL for ${card.title}. Configure the integration in admin, then try again.`,
         ),
       ]);
       return true;
@@ -905,14 +1364,28 @@ export default function MindbaseHumanizedLandingPage() {
     pushConversation(sourceText, [
       makeMessage(
         "system",
-        `${card.title}\nStatus: Ready to configure\nWhat it enables: ${card.copy}\nSecurity: ${card.security}`,
+        `${card.title}\nStatus: Opening secure connection\nWhat it enables: ${card.copy}\nSecurity: ${card.security}`,
       ),
       makeMessage(
         "adjoa",
-        "Good. I kept this step inside your setup. What do you want to do next?",
+        "I am opening the secure provider connection now. If the popup or redirect is blocked, come back here and try again.",
       ),
     ]);
+    window.location.assign(connectUrl);
     return true;
+  };
+
+  const explainUnavailableFeature = (sourceText: string, featureName: string) => {
+    pushConversation(sourceText, [
+      makeMessage(
+        "system",
+        `${featureName}\nStatus: Not enabled in this environment`,
+      ),
+      makeMessage(
+        "adjoa",
+        `${featureName} is not enabled yet in this environment.\n\nYou can continue without it, configure it in admin, or try again after the integration is enabled.`,
+      ),
+    ]);
   };
 
   const addAgentToChat = (agent: StarterAgent) => {
@@ -1005,17 +1478,10 @@ export default function MindbaseHumanizedLandingPage() {
     setInput("");
     const strategyRequest = detectsStrategyRequest(value);
     if (strategyRequest) setReasoningModeReady(true);
-    if (value === "I'll type my own") return;
-    if (/forgot|recover|reset password|lost access|can't sign in|cannot sign in/i.test(value)) {
-      openAccountPanel("recover", value);
-      return;
-    }
-    if (/^sign in$|^login$|^log in$|already have an account/i.test(value)) {
-      openAccountPanel("signin", value);
-      return;
-    }
-    if (/^create account$|^sign up$|^signup$/i.test(value)) {
-      openAccountPanel("create", value);
+    if (value === "I'll type my own") {
+      pushConversation(value, [
+        makeMessage("adjoa", describeOwnInputPrompt(step)),
+      ]);
       return;
     }
     if (
@@ -1023,6 +1489,26 @@ export default function MindbaseHumanizedLandingPage() {
       /^open command center$/i.test(value)
     ) {
       openWorkspaceInChat(value);
+      return;
+    }
+    if (/choose a plan|review plans|pricing/i.test(value)) {
+      handlePaymentChoice(value);
+      return;
+    }
+    if (/continue on free plan|free plan/i.test(value)) {
+      startPlanCheckout("free", value);
+      return;
+    }
+    if (/starter checkout|starter plan/i.test(value)) {
+      startPlanCheckout("starter", value);
+      return;
+    }
+    if (/team checkout|team plan/i.test(value)) {
+      startPlanCheckout("team", value);
+      return;
+    }
+    if (/business checkout|business plan/i.test(value)) {
+      startPlanCheckout("business", value);
       return;
     }
     if (
@@ -1076,70 +1562,54 @@ export default function MindbaseHumanizedLandingPage() {
       setCompanyName(normalizedCompany);
       setOrganizationDraft(normalizedCompany);
       setWorkspaceDraft(workspaceName);
-      setStep("business");
-      if (isAuthenticated) {
-        pushConversation(value, [
-          makeMessage(
-            "adjoa",
-            `Great. I'm creating a draft organization for ${normalizedCompany}.`,
-          ),
-        ]);
-        saveLaunchWorkspace(undefined, {
-          companyName: normalizedCompany,
-          workspaceName,
-        })
-          .then((payload) => {
-            const record = applySavedLaunchWorkspace(payload);
-            setMessages((current) => [
-              ...current,
-              makeMessage(
-                "system",
-                `Organization created: ${payload?.organization?.name || normalizedCompany}\nStatus: ${record.organizationStatus}\nOrganization ID: ${record.organizationId}\nNext: Create workspace`,
-              ),
-              makeMessage(
-                "adjoa",
-                "Now I'll prepare your first workspace so your AI team has a place to work.",
-              ),
-              makeMessage(
-                "system",
-                `Workspace created: ${payload?.workspace?.name || workspaceName}\nStatus: ${record.workspaceStatus}\nWorkspace ID: ${record.workspaceId}\nAI team: Preparing`,
-              ),
-              makeMessage(
-                "adjoa",
-                `What kind of company is ${normalizedCompany}?`,
-              ),
-            ]);
-          })
-          .catch((error: any) => {
-            setMessages((current) => [
-              ...current,
-              makeMessage(
-                "adjoa",
-                `I could not create the backend workspace yet: ${String(error?.message || "Unknown error")}\n\nI kept a local draft in this chat and did not mark it as saved.`,
-              ),
-            ]);
-          });
-        return;
-      }
+      setStep("company");
+      setWorkspaceSavePending(true);
       pushConversation(value, [
         makeMessage(
           "adjoa",
           `Great. I'm creating a draft organization for ${normalizedCompany}.`,
         ),
-        makeMessage(
-          "system",
-          `Organization created: ${normalizedCompany}\nStatus: Draft\nNext: Create workspace`,
-        ),
-        makeMessage(
-          "adjoa",
-          "Now I'll prepare your first workspace so your AI team has a place to work.",
-        ),
-        makeMessage(
-          "system",
-          `Workspace created: ${workspaceName}\nStatus: Draft\nAI team: Preparing\n\nActions: Continue setup - Rename workspace - Add AI team`,
-        ),
-        makeMessage("adjoa", `What kind of company is ${normalizedCompany}?`),
       ]);
+      saveLaunchWorkspace(undefined, {
+        companyName: normalizedCompany,
+        workspaceName,
+        selectedAgentIds: ["adjoa"],
+      })
+        .then((payload) => {
+          const record = applySavedLaunchWorkspace(payload);
+          setWorkspaceSavePending(false);
+          setStep("business");
+          setMessages((current) => [
+            ...current,
+            makeMessage(
+              "system",
+              `${record.organizationCreated ? "Organization created" : "Organization ready"}: ${payload?.organization?.name || normalizedCompany}\nStatus: ${record.organizationStatus}\nOrganization ID: ${record.organizationId}\nNext: Create workspace`,
+            ),
+            makeMessage(
+              "adjoa",
+              "Now I'll prepare your first workspace so your AI team has a place to work.",
+            ),
+            makeMessage(
+              "system",
+              `${record.workspaceCreated ? "Workspace created" : "Workspace ready"}: ${payload?.workspace?.name || workspaceName}\nStatus: ${record.workspaceStatus}\nWorkspace ID: ${record.workspaceId}\nAI team: Preparing`,
+            ),
+            makeMessage(
+              "adjoa",
+              `What kind of company is ${normalizedCompany}?`,
+            ),
+          ]);
+        })
+        .catch((error: any) => {
+          setWorkspaceSavePending(false);
+          setStep("company");
+          setMessages((current) => [
+            ...current,
+            makeMessage(
+              "adjoa",
+              `I could not create the backend workspace yet: ${String(error?.message || "Unknown error")}\n\nI did not mark the organization or workspace as created. Your text is still here, and you can try again.`,
+            ),
+          ]);
+        });
       return;
     }
     if (step === "business") {
@@ -1170,29 +1640,101 @@ export default function MindbaseHumanizedLandingPage() {
         makeMessage("idriss", starterAgentById.idriss.firstMessage),
         makeMessage(
           "adjoa",
-          "Perfect. Based on that, I recommend starting with this AI team:\nAwa for executive follow-up,\nKwame for operations,\nAminata for marketing,\nIdriss for sales,\nand Nene for finance.\n\nDo you want me to prepare this team?",
+          "Perfect. Based on that, I recommend starting with this AI team:\nAwa for executive follow-up,\nKwame for operations,\nAminata for marketing,\nIdriss for sales,\nand Néné for finance.\n\nDo you want me to prepare this team?",
         ),
       ]);
       return;
     }
     if (step === "team") {
-      const nextAgentIds: StarterAgentId[] = /only one/i.test(value)
-        ? ["awa"]
-        : ["awa", "kwame", "aminata", "idriss", "nene"];
-      setSelectedAgentIds(nextAgentIds);
-      if (/show me/i.test(value)) setSelectedAgent(starterAgentById.awa);
-      setStep("signup");
-      const joinedNames = nextAgentIds
-        .map((id) => starterAgentById[id].name)
-        .join(", ");
+      if (/show me/i.test(value)) {
+        setSelectedAgent(starterAgentById.awa);
+        pushConversation(value, [
+          makeMessage(
+            "adjoa",
+            "Here is the starter team. Awa handles executive follow-up, Kwame handles operations, Aminata handles marketing, Idriss handles sales, and Nene handles finance.\n\nChoose Prepare this team, Start with one agent, or type the names you want.",
+          ),
+        ]);
+        return;
+      }
+      if (/customize/i.test(value)) {
+        pushConversation(value, [
+          makeMessage(
+            "adjoa",
+            "Tell me which agents you want to start with. You can type names like Awa and Idriss, or describe a role you want me to create. I will not install the full team until you confirm.",
+          ),
+        ]);
+        return;
+      }
+
+      const explicitSelection = parseAgentSelection(value);
+      const chosenAgentIds = /only one|start with one/i.test(value)
+        ? (["awa"] as StarterAgentId[])
+        : explicitSelection.length
+          ? explicitSelection
+          : /prepare|yes|full team|this team|all agents/i.test(value)
+            ? (["awa", "kwame", "aminata", "idriss", "nene"] as StarterAgentId[])
+            : [];
+
+      if (!chosenAgentIds.length) {
+        pushConversation(value, [
+          makeMessage(
+            "adjoa",
+            "I need a clear team choice before I install agents. Choose Prepare this team, Start with one agent, or type agent names like Awa, Kwame, Aminata, Idriss, and Nene.",
+          ),
+        ]);
+        return;
+      }
+
+      setSelectedAgentIds(chosenAgentIds);
+      setWorkspaceSavePending(true);
       pushConversation(value, [
-        makeMessage("system", `${joinedNames} joined your AI team.`),
-        ...teamWelcomeMessages(nextAgentIds, visitorName),
         makeMessage(
-          "adjoa",
-          "Your AI team is ready in draft mode.\n\nTo start working properly, your agents need access to the tools your company already uses.\n\nI've prepared your first MindBase workspace. To save it, choose how you want to continue.",
+          "system",
+          `AI team install requested: ${selectedTeamNames(chosenAgentIds)}\nStatus: Saving draft installations\nNo agent has been marked ready yet.`,
         ),
       ]);
+      saveLaunchWorkspace(undefined, { selectedAgentIds: chosenAgentIds })
+        .then((payload) => {
+          const record = applySavedLaunchWorkspace(payload);
+          const installedNames =
+            record.installedAgents
+              .filter((agent) => chosenAgentIds.includes(agent.agentId as StarterAgentId))
+              .map((agent) => agent.name)
+              .join(", ") || selectedTeamNames(chosenAgentIds);
+          setWorkspaceSavePending(false);
+          setStep("signup");
+          setMessages((current) => [
+            ...current,
+            ...chosenAgentIds.flatMap((agentId) => {
+              const agent = starterAgentById[agentId];
+              return agent
+                ? [
+                    makeMessage("system", `${agent.name} has joined your AI team.`),
+                    makeMessage(agent.id, agent.firstMessage),
+                  ]
+                : [];
+            }),
+            makeMessage(
+              "system",
+              `AI team installed in draft mode: ${installedNames}\nWorkspace ID: ${record.workspaceId}\nStatus: Draft`,
+            ),
+            makeMessage(
+              "adjoa",
+              "Your AI team is ready in draft mode.\n\nTo start working properly, your agents need access to the tools your company already uses.\n\nI've saved this draft to your browser session. To secure the workspace across devices, choose how you want to continue.",
+            ),
+          ]);
+        })
+        .catch((error: any) => {
+          setWorkspaceSavePending(false);
+          setStep("team");
+          setMessages((current) => [
+            ...current,
+            makeMessage(
+              "adjoa",
+              `I could not install those agents in the backend workspace yet: ${String(error?.message || "Unknown error")}\n\nI did not mark the team as ready. Choose the team again or keep setting up in chat.`,
+            ),
+          ]);
+        });
       return;
     }
     pushConversation(value, [
@@ -1213,30 +1755,65 @@ export default function MindbaseHumanizedLandingPage() {
       | "google"
       | "microsoft"
       | "email"
-      | "signin"
-      | "recover"
+      | "login"
+      | "forgot"
+      | "forgotEmail"
       | "later",
   ) => {
     if (choice === "email") {
-      openAccountPanel("create", "Create with email");
+      setStep("signup");
+      setSignupMode("email");
+      setMessages((current) => [
+        ...current,
+        makeMessage("user", "Create with email"),
+        makeMessage("adjoa", "What email should I use?"),
+      ]);
       return;
     }
-    if (choice === "signin") {
-      openAccountPanel("signin", "Sign in");
+    if (choice === "login") {
+      setStep("signup");
+      setSignupMode("loginEmail");
+      setMessages((current) => [
+        ...current,
+        makeMessage("user", "Sign in with email"),
+        makeMessage("adjoa", "What email should I use to sign you in?"),
+      ]);
       return;
     }
-    if (choice === "recover") {
-      openAccountPanel("recover", "I need help signing in");
+    if (choice === "forgot") {
+      setStep("signup");
+      setSignupMode("forgot");
+      setMessages((current) => [
+        ...current,
+        makeMessage("user", "I forgot my password"),
+        makeMessage(
+          "adjoa",
+          "Enter the email for your MindBase account. If email sending is configured, MindBase will send a secure reset link.",
+        ),
+      ]);
+      return;
+    }
+    if (choice === "forgotEmail") {
+      setStep("signup");
+      setSignupMode("choices");
+      setMessages((current) => [
+        ...current,
+        makeMessage("user", "I forgot my email"),
+        makeMessage(
+          "adjoa",
+          "For privacy, I cannot reveal account emails from chat. Try the email you normally use for your company, request a password reset for likely emails, or ask a MindBase admin to look up the workspace owner.",
+        ),
+      ]);
       return;
     }
     if (choice === "later") {
       setStep("connect");
       setMessages((current) => [
         ...current,
-        makeMessage("user", "Continue without saving for now"),
+        makeMessage("user", "Continue with browser draft"),
         makeMessage(
           "adjoa",
-          "No problem. Your draft workspace stays visible here. What do you want to do next?",
+          "No problem. Your draft workspace stays in this browser session. What do you want to do next?",
         ),
       ]);
       return;
@@ -1251,55 +1828,39 @@ export default function MindbaseHumanizedLandingPage() {
       ),
       makeMessage(
         "adjoa",
-        `${choice === "google" ? "Google" : "Microsoft"} sign-in is not enabled yet in this environment.\n\nUse email signup here now, or continue without saving. Your workspace draft will stay inside this chat.`,
+        `${choice === "google" ? "Google" : "Microsoft"} sign-in is not enabled yet in this environment.\n\nUse email signup here now, or continue with the browser draft. Your workspace draft will stay inside this chat.`,
       ),
     ]);
   };
 
   const submitEmail = () => {
-    const normalizedEmail = email.trim().toLowerCase();
-    if (!normalizedEmail.includes("@")) {
+    if (!email.includes("@")) {
       setAccountNotice("Enter a valid email address.");
-      return;
-    }
-    setEmail(normalizedEmail);
-    if (signupMode === "signin-email") {
-      setSignupMode("signin-password");
-      setAccountNotice("");
-      setMessages((current) => [
-        ...current,
-        makeMessage("user", normalizedEmail),
-        makeMessage(
-          "adjoa",
-          "Welcome back. Type your password here and I will save this workspace to your account.",
-        ),
-      ]);
-      return;
-    }
-    if (signupMode === "recover") {
-      setAccountNotice(
-        "If this email exists, use the password you remember or ask support for account recovery. Your workspace draft stays in this chat.",
-      );
-      setMessages((current) => [
-        ...current,
-        makeMessage("user", `Recover account for ${normalizedEmail}`),
-        makeMessage(
-          "adjoa",
-          "I will keep the workspace draft here. Try signing in with this email if you remember the password, or create a new account with another email and we will save the draft there.",
-        ),
-      ]);
-      setSignupMode("signin-password");
       return;
     }
     setSignupMode("password");
     setAccountNotice("");
     setMessages((current) => [
       ...current,
-      makeMessage("user", normalizedEmail),
+      makeMessage("user", email),
       makeMessage(
         "adjoa",
         "Great. Choose a password for your MindBase account.",
       ),
+    ]);
+  };
+
+  const submitLoginEmail = () => {
+    if (!email.includes("@")) {
+      setAccountNotice("Enter the email for your MindBase account.");
+      return;
+    }
+    setSignupMode("loginPassword");
+    setAccountNotice("");
+    setMessages((current) => [
+      ...current,
+      makeMessage("user", email),
+      makeMessage("adjoa", "Enter your MindBase password."),
     ]);
   };
 
@@ -1309,31 +1870,33 @@ export default function MindbaseHumanizedLandingPage() {
       return;
     }
     setAccountNotice("");
-    if (signupMode === "signin-password") {
-      loginMutation.mutate();
-      return;
-    }
     registerMutation.mutate();
   };
 
-  const submitRecovery = (forgotEmail = false) => {
-    setAccountNotice("");
-    if (forgotEmail || !email.trim()) {
-      setMessages((current) => [
-        ...current,
-        makeMessage("user", "I forgot my email"),
-        makeMessage(
-          "adjoa",
-          "That is okay. Tell me your name and company in the chat, or create a new account with an email you can access. I will keep the current workspace draft visible until you save it.",
-        ),
-      ]);
-      setSignupMode("choices");
+  const submitLoginPassword = () => {
+    if (!email.includes("@")) {
+      setSignupMode("loginEmail");
+      setAccountNotice("Enter the email for your MindBase account.");
       return;
     }
-    submitEmail();
+    if (!password) {
+      setAccountNotice("Enter your MindBase password.");
+      return;
+    }
+    setAccountNotice("");
+    loginMutation.mutate();
   };
 
-  const suggestions = currentSuggestions(step);
+  const submitPasswordReset = () => {
+    if (!email.includes("@")) {
+      setAccountNotice("Enter the email for your MindBase account.");
+      return;
+    }
+    setAccountNotice("");
+    passwordResetMutation.mutate();
+  };
+
+  const suggestions = currentSuggestions(step, paymentChoiceMode);
   const actionIcons = [
     Mail,
     CalendarDays,
@@ -1343,6 +1906,33 @@ export default function MindbaseHumanizedLandingPage() {
     Upload,
     BriefcaseBusiness,
   ];
+  const mobileSheetCopy: Record<
+    Exclude<ActiveTab, "chat">,
+    { title: string; description: string }
+  > = {
+    team: {
+      title: "Your AI team",
+      description:
+        "Add agents to the conversation, configure them, or connect the tools they need.",
+    },
+    brain: {
+      title: "Company Brain",
+      description:
+        "Upload documents and track how much operating context your agents can use.",
+    },
+    tasks: {
+      title: "Tasks",
+      description:
+        "Create draft actions for your agents. External actions still require approval.",
+    },
+    market: {
+      title: "Marketplace",
+      description:
+        "Find more agents or ask Adjoa to create a custom operating role.",
+    },
+  };
+  const mobileSheet =
+    activeTab === "chat" ? null : mobileSheetCopy[activeTab];
 
   return (
     <div
@@ -1392,47 +1982,34 @@ export default function MindbaseHumanizedLandingPage() {
                 <Moon className="h-4 w-4" />
               )}
             </button>
-            {isAuthenticated ? (
-              <>
-                <span
-                  className={`hidden max-w-[220px] truncate rounded-full border px-3 py-2 text-xs font-semibold md:inline-flex ${t.chip}`}
-                  title={user?.email || "Signed in"}
-                >
-                  {user?.email || "Signed in"}
-                </span>
-                <button
-                  type="button"
-                  className={`hidden items-center gap-2 rounded-[12px] border px-4 py-2 text-sm font-semibold md:inline-flex ${t.chip}`}
-                  onClick={handleLogout}
-                >
-                  <LogOut className="h-4 w-4" />
-                  Log out
-                </button>
-              </>
-            ) : (
-              <>
-                <button
-                  type="button"
-                  className={`hidden items-center gap-2 rounded-[12px] border px-4 py-2 text-sm font-semibold md:inline-flex ${t.chip}`}
-                  onClick={() => openAccountPanel("signin")}
-                >
-                  <LogIn className="h-4 w-4" />
-                  Sign in
-                </button>
-                <button
-                  type="button"
-                  className="hidden items-center gap-2 rounded-[12px] bg-[linear-gradient(135deg,#075DFF,#18A8FF)] px-4 py-2 text-sm font-semibold text-white shadow-[0_0_22px_rgba(11,101,255,0.35)] md:inline-flex"
-                  onClick={() => openAccountPanel("create")}
-                >
-                  <UserPlus className="h-4 w-4" />
-                  Create account
-                </button>
-              </>
-            )}
+            <button
+              type="button"
+              className={`hidden rounded-[12px] border px-4 py-2 text-sm font-semibold md:inline-flex ${t.chip}`}
+              onClick={() => chooseSignup("login")}
+            >
+              Sign in
+            </button>
+            <button
+              type="button"
+              className="hidden rounded-[12px] bg-[linear-gradient(135deg,#075DFF,#18A8FF)] px-4 py-2 text-sm font-semibold text-white shadow-[0_0_22px_rgba(11,101,255,0.35)] md:inline-flex"
+              onClick={() => chooseSignup("email")}
+            >
+              Create account
+            </button>
             <button
               type="button"
               className={`inline-flex h-10 w-10 items-center justify-center rounded-full border lg:hidden ${t.chip}`}
               aria-label="Open menu"
+              onClick={() => {
+                setActiveTab("team");
+                setMessages((current) => [
+                  ...current,
+                  makeMessage(
+                    "system",
+                    "Mobile menu opened: Team, Brain, Tasks, and Market are available in the bottom navigation.",
+                  ),
+                ]);
+              }}
             >
               <Menu className="h-5 w-5" />
             </button>
@@ -1440,21 +2017,21 @@ export default function MindbaseHumanizedLandingPage() {
         </div>
       </header>
 
-      <main className="mx-auto grid h-[calc(100vh-68px)] max-w-[1500px] grid-cols-1 gap-3 overflow-hidden px-3 pb-20 pt-3 md:grid-cols-[minmax(0,1fr)_330px] md:px-5 md:pb-3 lg:grid-cols-[190px_minmax(0,1.35fr)_350px] xl:grid-cols-[205px_minmax(0,1.45fr)_365px] xl:px-6">
+      <main className="mx-auto grid h-[calc(100vh-68px)] max-w-[1500px] grid-cols-1 gap-4 overflow-hidden px-4 pb-20 pt-4 md:grid-cols-[minmax(0,1fr)_340px] md:px-6 md:pb-4 lg:grid-cols-[220px_minmax(0,1fr)_380px] xl:px-8">
         <aside
-          className={`hidden min-h-0 overflow-hidden rounded-[20px] border p-3 lg:block ${t.panel}`}
+          className={`hidden min-h-0 overflow-hidden rounded-[24px] border p-4 lg:block ${t.panel}`}
         >
-          <div className="flex flex-col items-center border-b border-current/10 pb-4 text-center">
+          <div className="flex flex-col items-center border-b border-current/10 pb-5 text-center">
             <PortraitAvatar agent={starterAgentById.adjoa} size="lg" active />
-            <h2 className="mt-2 text-xl font-semibold">Adjoa</h2>
+            <h2 className="mt-3 text-2xl font-semibold">Adjoa</h2>
             <p className="text-sm font-medium text-cyan-500">MindBase Guide</p>
             <div
-              className={`mt-3 rounded-full border px-3 py-1 text-xs ${t.chip}`}
+              className={`mt-4 rounded-full border px-3 py-1 text-xs ${t.chip}`}
             >
               Your AI operations guide
             </div>
           </div>
-          <div className="mt-4 space-y-2">
+          <div className="mt-5 space-y-3">
             {[
               [Brain, "Start your company brain", "Build your foundation"],
               [Users, "Install your AI team", "Assemble operating agents"],
@@ -1465,7 +2042,7 @@ export default function MindbaseHumanizedLandingPage() {
               return (
                 <div
                   key={String(title)}
-                  className={`flex items-center gap-3 rounded-[14px] border p-2.5 ${t.panelSoft}`}
+                  className={`flex items-center gap-3 rounded-[16px] border p-3 ${t.panelSoft}`}
                 >
                   <JourneyIcon className="h-5 w-5 text-cyan-400" />
                   <div className="min-w-0 flex-1">
@@ -1480,22 +2057,22 @@ export default function MindbaseHumanizedLandingPage() {
         </aside>
 
         <section
-          className={`min-h-0 overflow-hidden rounded-[22px] border ${t.panel}`}
+          className={`min-h-0 overflow-hidden rounded-[26px] border ${t.panel}`}
         >
           <div className={`relative flex h-full min-h-0 flex-col ${t.chat}`}>
-            <div className="relative shrink-0 border-b border-current/10 px-4 py-3 md:px-5">
+            <div className="relative shrink-0 border-b border-current/10 px-4 py-4 md:px-6">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <p
-                    className={`text-xs font-semibold uppercase ${t.muted}`}
+                    className={`text-xs font-semibold uppercase tracking-[0.18em] ${t.muted}`}
                   >
                     Welcome to MindBase
                   </p>
-                  <h1 className="mt-1 max-w-2xl text-xl font-semibold leading-tight md:text-2xl xl:text-[28px]">
+                  <h1 className="mt-2 max-w-2xl text-2xl font-semibold leading-tight tracking-[-0.02em] md:text-3xl xl:text-4xl">
                     Build the AI team that helps run your company.
                   </h1>
                   <p
-                    className={`mt-1 max-w-xl text-xs leading-5 md:text-sm ${t.muted}`}
+                    className={`mt-2 max-w-xl text-sm md:text-base ${t.muted}`}
                   >
                     Create your company brain. Hire AI agents. Connect your
                     tools. Start operating.
@@ -1521,36 +2098,9 @@ export default function MindbaseHumanizedLandingPage() {
                   </button>
                 </div>
               </div>
-              <div className="mt-3 flex items-center gap-2 overflow-x-auto pb-1">
-                <span className={`shrink-0 text-xs font-semibold ${t.muted}`}>
-                  Talk with
-                </span>
-                {agents.map((agent) => (
-                  <button
-                    key={agent.id}
-                    type="button"
-                    onClick={() => addAgentToChat(agent)}
-                    className={`flex min-w-[132px] items-center gap-2 rounded-full border px-2 py-1.5 text-left ${agent.active ? t.panelSoft : t.chip}`}
-                  >
-                    <PortraitAvatar
-                      agent={agent}
-                      size="sm"
-                      active={agent.active}
-                    />
-                    <span className="min-w-0">
-                      <span className="block truncate text-xs font-semibold">
-                        {agent.name}
-                      </span>
-                      <span className={`block truncate text-[11px] ${t.muted}`}>
-                        {agent.role}
-                      </span>
-                    </span>
-                  </button>
-                ))}
-              </div>
             </div>
 
-            <div className="relative min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4 md:px-6">
+            <div className="relative min-h-0 flex-1 space-y-5 overflow-y-auto px-4 py-5 md:px-8">
               {messages.map((message) => {
                 const isUser = message.role === "user";
                 const isSystem = message.role === "system";
@@ -1567,7 +2117,7 @@ export default function MindbaseHumanizedLandingPage() {
                       />
                     ) : null}
                     <div
-                      className={`max-w-[88%] whitespace-pre-line rounded-[20px] border px-4 py-3 text-sm leading-6 md:max-w-[720px] ${isUser ? t.userBubble : isSystem ? t.systemBubble : t.agentBubble}`}
+                      className={`max-w-[86%] whitespace-pre-line rounded-[22px] border px-4 py-3 text-sm leading-6 md:max-w-[640px] ${isUser ? t.userBubble : isSystem ? t.systemBubble : t.agentBubble}`}
                     >
                       {!isUser ? (
                         <div className="mb-1 flex flex-wrap items-center gap-2 text-xs">
@@ -1604,7 +2154,7 @@ export default function MindbaseHumanizedLandingPage() {
             </div>
 
             <div
-              className={`relative shrink-0 border-t border-current/10 p-3 backdrop-blur-xl md:p-4 ${t.top}`}
+              className={`relative shrink-0 border-t border-current/10 p-3 backdrop-blur-xl md:p-5 ${t.top}`}
             >
               {suggestions.length ? (
                 <div className="mb-3 flex flex-wrap gap-2">
@@ -1622,50 +2172,28 @@ export default function MindbaseHumanizedLandingPage() {
                 </div>
               ) : null}
               {step === "signup" ? (
-                <div
-                  className={`rounded-[18px] border p-3 shadow-[0_16px_40px_rgba(15,23,42,0.08)] ${t.panelSoft}`}
-                >
-                  <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
-                    <div>
-                      <p className="text-sm font-semibold">
-                        Save this workspace
-                      </p>
-                      <p className={`mt-0.5 text-xs leading-5 ${t.muted}`}>
-                        Create an account, sign in, or keep the draft in chat.
-                      </p>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      <button
-                        type="button"
-                        className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold ${signupMode === "email" || signupMode === "password" ? "bg-[#0B65FF] text-white" : t.chip}`}
-                        onClick={() => chooseSignup("email")}
-                      >
-                        <UserPlus className="h-3.5 w-3.5" />
-                        Create
-                      </button>
-                      <button
-                        type="button"
-                        className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold ${signupMode === "signin-email" || signupMode === "signin-password" ? "bg-[#0B65FF] text-white" : t.chip}`}
-                        onClick={() => chooseSignup("signin")}
-                      >
-                        <LogIn className="h-3.5 w-3.5" />
-                        Sign in
-                      </button>
-                      <button
-                        type="button"
-                        className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold ${signupMode === "recover" ? "bg-[#0B65FF] text-white" : t.chip}`}
-                        onClick={() => chooseSignup("recover")}
-                      >
-                        <HelpCircle className="h-3.5 w-3.5" />
-                        Help
-                      </button>
-                    </div>
-                  </div>
+                <div className="space-y-3">
                   {signupMode === "choices" ? (
-                    <div className="flex flex-wrap gap-2">
+                    <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
                       <Button
                         type="button"
-                        className="h-11 rounded-[14px] bg-[#0B65FF] px-4 text-white hover:bg-[#075DFF]"
+                        variant="outline"
+                        className={`rounded-[14px] ${t.chip}`}
+                        onClick={() => chooseSignup("google")}
+                      >
+                        Continue with Google
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className={`rounded-[14px] ${t.chip}`}
+                        onClick={() => chooseSignup("microsoft")}
+                      >
+                        Continue with Microsoft
+                      </Button>
+                      <Button
+                        type="button"
+                        className="rounded-[14px] bg-[#0B65FF] text-white hover:bg-[#075DFF]"
                         onClick={() => chooseSignup("email")}
                       >
                         <Mail className="mr-2 h-4 w-4" />
@@ -1674,104 +2202,97 @@ export default function MindbaseHumanizedLandingPage() {
                       <Button
                         type="button"
                         variant="outline"
-                        className={`h-11 rounded-[14px] ${t.chip}`}
-                        onClick={() => chooseSignup("signin")}
+                        className={`rounded-[14px] ${t.chip}`}
+                        onClick={() => chooseSignup("login")}
                       >
-                        <LogIn className="mr-2 h-4 w-4" />
-                        I already have an account
+                        Sign in with email
                       </Button>
                       <Button
                         type="button"
                         variant="outline"
-                        className={`h-11 rounded-[14px] ${t.chip}`}
-                        onClick={() => chooseSignup("recover")}
+                        className={`rounded-[14px] ${t.chip}`}
+                        onClick={() => chooseSignup("forgot")}
                       >
-                        <HelpCircle className="mr-2 h-4 w-4" />
-                        I forgot my email or password
+                        Forgot password
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className={`rounded-[14px] ${t.chip}`}
+                        onClick={() => chooseSignup("forgotEmail")}
+                      >
+                        Forgot email
                       </Button>
                       <Button
                         type="button"
                         variant="ghost"
-                        className={`h-11 rounded-[14px] px-4 text-sm ${theme === "dark" ? "text-slate-200 hover:bg-white/8" : "text-slate-700 hover:bg-slate-100"}`}
+                        className={
+                          theme === "dark"
+                            ? "text-slate-200 hover:bg-white/8"
+                            : "text-slate-700 hover:bg-slate-100"
+                        }
                         onClick={() => chooseSignup("later")}
                       >
-                        Continue without saving
+                        Continue with browser draft
                       </Button>
                     </div>
                   ) : null}
-                  {signupMode === "email" ||
-                  signupMode === "signin-email" ||
-                  signupMode === "recover" ? (
-                    <form
-                      className="flex flex-col gap-2 sm:flex-row"
-                      onSubmit={(event) => {
-                        event.preventDefault();
-                        if (signupMode === "recover") submitRecovery();
-                        else submitEmail();
-                      }}
-                    >
+                  {signupMode === "email" || signupMode === "loginEmail" || signupMode === "forgot" ? (
+                    <div className="flex flex-col gap-2 sm:flex-row">
                       <Input
                         value={email}
                         onChange={(event) => setEmail(event.target.value)}
-                        placeholder={
-                          signupMode === "recover"
-                            ? "Email you might have used"
-                            : "you@company.com"
-                        }
-                        className={`h-12 rounded-[14px] ${t.input}`}
+                        placeholder="you@company.com"
+                        className={`h-12 rounded-[16px] ${t.input}`}
                       />
                       <Button
-                        type="submit"
-                        className="h-12 rounded-[14px] bg-[#0B65FF] px-5 text-white hover:bg-[#075DFF]"
+                        type="button"
+                        className="h-12 rounded-[16px] bg-[#0B65FF] px-5 text-white hover:bg-[#075DFF]"
+                        onClick={
+                          signupMode === "loginEmail"
+                            ? submitLoginEmail
+                            : signupMode === "forgot"
+                              ? submitPasswordReset
+                              : submitEmail
+                        }
+                        disabled={passwordResetMutation.isPending}
                       >
-                        {signupMode === "signin-email"
-                          ? "Use this email"
-                          : signupMode === "recover"
-                            ? "Try recovery"
-                            : "Continue"}
+                        {signupMode === "forgot"
+                          ? passwordResetMutation.isPending
+                            ? "Sending..."
+                            : "Send reset link"
+                          : "Continue"}
                         <ChevronRight className="ml-2 h-4 w-4" />
                       </Button>
-                      {signupMode === "recover" ? (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          className={`h-12 rounded-[14px] ${t.chip}`}
-                          onClick={() => submitRecovery(true)}
-                        >
-                          I forgot my email
-                        </Button>
-                      ) : null}
-                    </form>
+                    </div>
                   ) : null}
-                  {signupMode === "password" ||
-                  signupMode === "signin-password" ? (
-                    <form
-                      className="flex flex-col gap-2 sm:flex-row"
-                      onSubmit={(event) => {
-                        event.preventDefault();
-                        submitPassword();
-                      }}
-                    >
+                  {signupMode === "password" || signupMode === "loginPassword" ? (
+                    <div className="flex flex-col gap-2 sm:flex-row">
                       <Input
                         value={password}
                         onChange={(event) => setPassword(event.target.value)}
                         placeholder={
-                          signupMode === "signin-password"
+                          signupMode === "loginPassword"
                             ? "Enter your password"
                             : "Create a secure password"
                         }
                         type="password"
-                        className={`h-12 rounded-[14px] ${t.input}`}
+                        className={`h-12 rounded-[16px] ${t.input}`}
                       />
                       <Button
-                        type="submit"
-                        className="h-12 rounded-[14px] bg-[#0B65FF] px-5 text-white hover:bg-[#075DFF]"
+                        type="button"
+                        className="h-12 rounded-[16px] bg-[#0B65FF] px-5 text-white hover:bg-[#075DFF]"
+                        onClick={
+                          signupMode === "loginPassword"
+                            ? submitLoginPassword
+                            : submitPassword
+                        }
                         disabled={
                           registerMutation.isPending || loginMutation.isPending
                         }
                       >
                         <Lock className="mr-2 h-4 w-4" />
-                        {signupMode === "signin-password"
+                        {signupMode === "loginPassword"
                           ? loginMutation.isPending
                             ? "Signing in..."
                             : "Sign in"
@@ -1779,40 +2300,28 @@ export default function MindbaseHumanizedLandingPage() {
                             ? "Creating..."
                             : "Create account"}
                       </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className={`h-12 rounded-[14px] ${t.chip}`}
-                        onClick={() => chooseSignup("recover")}
-                      >
-                        <HelpCircle className="mr-2 h-4 w-4" />
-                        Forgot?
-                      </Button>
-                    </form>
+                    </div>
                   ) : null}
                   {signupMode !== "choices" ? (
-                    <div className="mt-2 flex flex-wrap gap-2 text-xs">
-                      {signupMode !== "signin-email" &&
-                      signupMode !== "signin-password" ? (
-                        <button
-                          type="button"
-                          className={`font-semibold ${t.muted}`}
-                          onClick={() => chooseSignup("signin")}
-                        >
-                          Use an existing account
-                        </button>
-                      ) : null}
-                      {signupMode !== "email" && signupMode !== "password" ? (
-                        <button
-                          type="button"
-                          className={`font-semibold ${t.muted}`}
-                          onClick={() => chooseSignup("email")}
-                        >
-                          Create a new account
-                        </button>
-                      ) : null}
-                      <button
+                    <div className="flex flex-wrap gap-2">
+                      <Button
                         type="button"
+                        variant="ghost"
+                        className={
+                          theme === "dark"
+                            ? "text-slate-200 hover:bg-white/8"
+                            : "text-slate-700 hover:bg-slate-100"
+                        }
+                        onClick={() => {
+                          setSignupMode("choices");
+                          setAccountNotice("");
+                        }}
+                      >
+                        Other account options
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
                         className={
                           theme === "dark"
                             ? "text-slate-200 hover:bg-white/8"
@@ -1821,13 +2330,11 @@ export default function MindbaseHumanizedLandingPage() {
                         onClick={() => chooseSignup("later")}
                       >
                         Continue without saving
-                      </button>
+                      </Button>
                     </div>
                   ) : null}
                   {accountNotice ? (
-                    <p className="mt-2 text-sm text-amber-500">
-                      {accountNotice}
-                    </p>
+                    <p className="text-sm text-amber-500">{accountNotice}</p>
                   ) : null}
                 </div>
               ) : (
@@ -1838,28 +2345,54 @@ export default function MindbaseHumanizedLandingPage() {
                     handleUserAnswer();
                   }}
                 >
+                  <input
+                    ref={brainFileInputRef}
+                    type="file"
+                    className="hidden"
+                    accept=".pdf,.doc,.docx,.txt,.md,.xls,.xlsx,application/pdf,text/plain,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    onChange={(event) => {
+                      const file = event.currentTarget.files?.[0] || null;
+                      event.currentTarget.value = "";
+                      handleBrainFileSelected(file);
+                    }}
+                  />
                   <button
                     type="button"
                     className={`inline-flex h-10 w-10 items-center justify-center rounded-full ${t.muted}`}
                     aria-label="Attach file"
+                    disabled={brainUploadMutation.isPending || workspaceSavePending}
+                    onClick={() => handleIntegrationChoice("Upload documents")}
                   >
-                    <Paperclip className="h-5 w-5" />
+                    {brainUploadMutation.isPending ? (
+                      <Upload className="h-5 w-5 animate-pulse" />
+                    ) : (
+                      <Paperclip className="h-5 w-5" />
+                    )}
                   </button>
                   <Input
                     value={input}
                     onChange={(event) => setInput(event.target.value)}
-                    placeholder="Tell MindBase what you want to build..."
+                    placeholder={
+                      workspaceSavePending
+                        ? "Creating your real draft workspace..."
+                        : "Tell MindBase what you want to build..."
+                    }
+                    disabled={workspaceSavePending}
                     className={`h-11 flex-1 border-0 bg-transparent px-1 shadow-none focus-visible:ring-0 ${theme === "dark" ? "text-white placeholder:text-slate-500" : "text-slate-950 placeholder:text-slate-400"}`}
                   />
                   <button
                     type="button"
                     className={`hidden h-10 w-10 items-center justify-center rounded-full md:inline-flex ${t.muted}`}
                     aria-label="Voice input"
+                    onClick={() =>
+                      explainUnavailableFeature("Voice input", "Voice input")
+                    }
                   >
                     <Mic className="h-4 w-4" />
                   </button>
                   <Button
                     type="submit"
+                    disabled={workspaceSavePending}
                     className="h-11 w-11 rounded-full bg-[linear-gradient(135deg,#075DFF,#18A8FF)] p-0 text-white shadow-[0_0_24px_rgba(11,101,255,0.36)]"
                   >
                     <Send className="h-5 w-5" />
@@ -1895,6 +2428,8 @@ export default function MindbaseHumanizedLandingPage() {
                     ? `${workspace.teamSize} agents`
                     : "Waiting",
                 ],
+                ["Plan", activePlan || "Free"],
+                ["Payment", lastPaymentId ? "Pending/verified by server" : "Not started"],
               ].map(([label, value]) => (
                 <div
                   key={label}
@@ -1933,9 +2468,13 @@ export default function MindbaseHumanizedLandingPage() {
                   <Users className="h-5 w-5 text-cyan-400" />
                   Your AI team
                 </h2>
-                <span className="text-xs font-semibold text-[#0B65FF]">
+                <button
+                  type="button"
+                  className="text-xs font-semibold text-[#0B65FF]"
+                  onClick={() => setSelectedAgent(starterAgentById.awa)}
+                >
                   View all
-                </span>
+                </button>
               </div>
               <p className={`mt-1 text-xs leading-5 ${t.muted}`}>
                 These agents will help operate your company once your workspace
@@ -1978,6 +2517,13 @@ export default function MindbaseHumanizedLandingPage() {
                     {agent.purpose}
                   </p>
                   <div className="mt-3 flex flex-wrap gap-2 pl-12">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedAgent(agent)}
+                      className={`rounded-full border px-2 py-1 text-[11px] font-semibold ${t.chip}`}
+                    >
+                      View profile
+                    </button>
                     <button
                       type="button"
                       onClick={() => addAgentToChat(agent)}
@@ -2032,7 +2578,14 @@ export default function MindbaseHumanizedLandingPage() {
             <div className="mt-4 grid gap-2">
               {integrationCards.map((card, index) => {
                 const ActionIcon = actionIcons[index] || Command;
-                const cardStatus = connectedTools[card.id] || card.status;
+                const runtime = integrationRuntimeById[card.id];
+                const cardStatus =
+                  runtime && !runtime.enabled
+                    ? runtime.status
+                    : connectedTools[card.id] ||
+                      runtime?.status ||
+                      (integrationStatusQuery.isLoading ? "Checking" : card.status);
+                const enabled = Boolean(runtime?.enabled);
                 return (
                   <button
                     key={card.id}
@@ -2045,7 +2598,7 @@ export default function MindbaseHumanizedLandingPage() {
                       <span className="flex items-center justify-between gap-2">
                         <span className="font-semibold">{card.title}</span>
                         <span
-                          className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${statusClass(cardStatus === "Ready" ? "Ready" : "Waiting", theme)}`}
+                          className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${statusClass(enabled ? "Ready" : "Waiting", theme)}`}
                         >
                           {cardStatus}
                         </span>
@@ -2060,8 +2613,16 @@ export default function MindbaseHumanizedLandingPage() {
                       >
                         {card.security}
                       </span>
-                      <span className="mt-2 inline-flex rounded-full bg-[#0B65FF] px-2.5 py-1 text-[11px] font-semibold text-white">
-                        {card.action}
+                      <span
+                        className={`mt-2 inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+                          enabled
+                            ? "bg-[#0B65FF] text-white"
+                            : theme === "dark"
+                              ? "bg-white/10 text-slate-200"
+                              : "bg-slate-100 text-slate-600"
+                        }`}
+                      >
+                        {enabled ? card.action : "See options"}
                       </span>
                     </span>
                     <ChevronRight className={`mt-0.5 h-4 w-4 ${t.muted}`} />
@@ -2115,6 +2676,242 @@ export default function MindbaseHumanizedLandingPage() {
       </nav>
 
       <Sheet
+        open={Boolean(mobileSheet)}
+        onOpenChange={(open) => {
+          if (!open) setActiveTab("chat");
+        }}
+      >
+        <SheetContent
+          side="bottom"
+          className="max-h-[82vh] overflow-y-auto rounded-t-[24px] border-slate-200 bg-white text-slate-950 md:hidden"
+        >
+          {mobileSheet ? (
+            <>
+              <SheetHeader className="text-left">
+                <SheetTitle>{mobileSheet.title}</SheetTitle>
+                <SheetDescription>{mobileSheet.description}</SheetDescription>
+              </SheetHeader>
+
+              {activeTab === "team" ? (
+                <div className="mt-5 space-y-3">
+                  {agents.map((agent) => (
+                    <div
+                      key={agent.id}
+                      className="rounded-[16px] border border-slate-200 bg-slate-50 p-3"
+                    >
+                      <button
+                        type="button"
+                        className="flex w-full items-center gap-3 text-left"
+                        onClick={() => setSelectedAgent(agent)}
+                      >
+                        <PortraitAvatar agent={agent} size="sm" active={agent.active} />
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-sm font-semibold">
+                            {agent.name}
+                          </span>
+                          <span className="block truncate text-xs text-slate-500">
+                            {agent.role}
+                          </span>
+                        </span>
+                        <span
+                          className={`rounded-full border px-2 py-1 text-[11px] font-semibold ${statusClass(agent.status, "light")}`}
+                        >
+                          {agent.status === "Waiting"
+                            ? "Waiting for tools"
+                            : agent.status}
+                        </span>
+                      </button>
+                      <p className="mt-2 pl-12 text-xs leading-5 text-slate-600">
+                        {agent.purpose}
+                      </p>
+                      <div className="mt-3 flex flex-wrap gap-2 pl-12">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="rounded-[12px]"
+                          onClick={() => addAgentToChat(agent)}
+                        >
+                          Add to chat
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="rounded-[12px]"
+                          onClick={() => configureAgent(agent)}
+                        >
+                          Configure
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="rounded-[12px]"
+                          onClick={() => connectAgentRequiredTools(agent)}
+                        >
+                          Connect tools
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+
+              {activeTab === "brain" ? (
+                <div className="mt-5 space-y-4">
+                  <div className="rounded-[16px] border border-slate-200 bg-slate-50 p-4">
+                    <div className="mb-2 flex items-center justify-between">
+                      <span className="text-sm font-semibold">
+                        Company Brain
+                      </span>
+                      <span className="text-sm font-semibold">
+                        {workspace.brainProgress}%
+                      </span>
+                    </div>
+                    <ProgressLine value={workspace.brainProgress} theme="light" />
+                    <p className="mt-3 text-xs leading-5 text-slate-600">
+                      Upload a PDF, DOCX, TXT, or XLSX file. MindBase only marks
+                      the document as processed after the backend extracts text
+                      and attaches it to this workspace.
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    className="w-full rounded-[14px] bg-[#0B65FF] text-white hover:bg-[#075DFF]"
+                    disabled={brainUploadMutation.isPending || workspaceSavePending}
+                    onClick={() => handleIntegrationChoice("Upload documents")}
+                  >
+                    <Upload className="mr-2 h-4 w-4" />
+                    Upload documents
+                  </Button>
+                  <div className="grid gap-2">
+                    {integrationCards
+                      .filter((card) =>
+                        ["gmail", "drive", "calendar", "whatsapp"].includes(
+                          card.id,
+                        ),
+                      )
+                      .map((card) => {
+                        const runtime = integrationRuntimeById[card.id];
+                        return (
+                          <button
+                            key={card.id}
+                            type="button"
+                            className="rounded-[14px] border border-slate-200 bg-white p-3 text-left"
+                            onClick={() => handleIntegrationChoice(card.title)}
+                          >
+                            <span className="flex items-center justify-between gap-3">
+                              <span className="text-sm font-semibold">
+                                {card.title}
+                              </span>
+                              <span className="rounded-full border border-slate-200 px-2 py-1 text-[11px] font-semibold text-slate-600">
+                                {runtime?.status || card.status}
+                              </span>
+                            </span>
+                            <span className="mt-1 block text-xs leading-5 text-slate-600">
+                              {card.copy}
+                            </span>
+                          </button>
+                        );
+                      })}
+                  </div>
+                </div>
+              ) : null}
+
+              {activeTab === "tasks" ? (
+                <div className="mt-5 space-y-3">
+                  <button
+                    type="button"
+                    className="w-full rounded-[16px] border border-slate-200 bg-slate-50 p-4 text-left"
+                    onClick={() => {
+                      setActiveTab("chat");
+                      setMessages((current) => [
+                        ...current,
+                        makeMessage(
+                          "system",
+                          "Task draft opened\nStatus: Needs instructions\nExternal actions: Approval required",
+                        ),
+                        makeMessage(
+                          "kwame",
+                          "Tell me the outcome, owner, deadline, and any document or tool I should use.",
+                        ),
+                      ]);
+                    }}
+                  >
+                    <span className="block text-sm font-semibold">
+                      Create a task draft
+                    </span>
+                    <span className="mt-1 block text-xs leading-5 text-slate-600">
+                      Kwame will structure the task in chat before any external
+                      action runs.
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    className="w-full rounded-[16px] border border-slate-200 bg-white p-4 text-left"
+                    onClick={() => assignTaskToAgent(starterAgentById.awa)}
+                  >
+                    <span className="block text-sm font-semibold">
+                      Ask Awa to prepare follow-ups
+                    </span>
+                    <span className="mt-1 block text-xs leading-5 text-slate-600">
+                      Awa will ask for email/calendar access before claiming
+                      inbox work is done.
+                    </span>
+                  </button>
+                </div>
+              ) : null}
+
+              {activeTab === "market" ? (
+                <div className="mt-5 space-y-3">
+                  <Link href={mindbasePath("/discover")}>
+                    <a className="flex items-center justify-between rounded-[16px] border border-slate-200 bg-slate-50 p-4 text-sm font-semibold text-slate-950">
+                      Browse agent marketplace
+                      <ChevronRight className="h-4 w-4" />
+                    </a>
+                  </Link>
+                  <button
+                    type="button"
+                    className="w-full rounded-[16px] border border-slate-200 bg-white p-4 text-left"
+                    onClick={() => {
+                      setActiveTab("chat");
+                      setMessages((current) => [
+                        ...current,
+                        makeMessage(
+                          "user",
+                          "Create a custom agent",
+                        ),
+                        makeMessage(
+                          "adjoa",
+                          "Tell me the role, the work this agent should handle, the tools it needs, and whether it should require approval before external actions.",
+                        ),
+                      ]);
+                    }}
+                  >
+                    <span className="block text-sm font-semibold">
+                      Create custom agent
+                    </span>
+                    <span className="mt-1 block text-xs leading-5 text-slate-600">
+                      Adjoa will design the draft agent inside this chat.
+                    </span>
+                  </button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full rounded-[14px]"
+                    onClick={() => setSelectedAgent(starterAgentById.awa)}
+                  >
+                    Show starter agents
+                  </Button>
+                </div>
+              ) : null}
+            </>
+          ) : null}
+        </SheetContent>
+      </Sheet>
+
+      <Sheet
         open={Boolean(selectedAgent)}
         onOpenChange={(open) => (!open ? setSelectedAgent(null) : undefined)}
       >
@@ -2137,7 +2934,7 @@ export default function MindbaseHumanizedLandingPage() {
               </SheetHeader>
               <div className="mt-8 space-y-6">
                 <section>
-                  <h3 className="text-sm font-semibold uppercase text-slate-500">
+                  <h3 className="text-sm font-semibold uppercase tracking-[0.12em] text-slate-500">
                     What I help with
                   </h3>
                   <div className="mt-3 grid gap-2">
@@ -2153,7 +2950,7 @@ export default function MindbaseHumanizedLandingPage() {
                   </div>
                 </section>
                 <section>
-                  <h3 className="text-sm font-semibold uppercase text-slate-500">
+                  <h3 className="text-sm font-semibold uppercase tracking-[0.12em] text-slate-500">
                     What I need to start working
                   </h3>
                   <div className="mt-3 grid gap-2">

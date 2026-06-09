@@ -15,10 +15,12 @@ import {
   eceSessions,
   eceUsers,
   mindbaseApiKeys,
+  mindbaseBrainEvents,
   mindbaseCreditsLedger,
   mindbaseEmailMessages,
   mindbaseEmailThreads,
   mindbaseMindbases,
+  mindbaseOrganizationUsers,
   mindbaseOrganizations,
   mindbaseProfileDrafts,
   mindbaseUserRoles,
@@ -31,10 +33,32 @@ import {
   mindbaseWorkspaceAgents,
   mindbaseWorkspaceMembers,
   mindbaseWorkspaces,
+  payments,
 } from "@db/schema";
 
+import type { TenantKey } from "../lib/tenants";
 import { getOpenAIClient } from "../lib/openai";
+import {
+  getFlutterwaveKeys,
+  getFlutterwaveMode,
+  getFlutterwaveKeyEnvVarNames,
+  verifyFlutterwaveWebhookSignature,
+} from "../lib/flutterwave/config";
+import {
+  buildFlutterwaveTxRef,
+  flutterwaveInitPayment,
+  flutterwaveVerifyTransaction,
+} from "../lib/flutterwave/service";
+import {
+  getKkiapayConfig,
+  getKkiapayPublicKeyEnvVarNames,
+  getRequestOrigin,
+  parseKkiapayWebhook,
+  verifyKkiapayWebhookSignature,
+} from "../lib/kkiapay/config";
+import { kkiapayVerifyTransaction } from "../lib/kkiapay/push";
 import { ensureMindbaseTables, isMindbaseVectorEnabled } from "../lib/mindbase/ensureTables";
+import { listPublicMindbaseMarketplaceAssets } from "../lib/mindbase/intelligenceMarketplace";
 import { signMindbaseToken, verifyMindbaseToken } from "../lib/mindbase/jwt";
 import { createMindbaseOrganization } from "../lib/mindbase/organizations";
 import {
@@ -161,6 +185,786 @@ async function listMindbaseRoles(tenantId: number, userId: number): Promise<Mind
 function asText(value: unknown) {
   const normalized = String(value ?? "").trim();
   return normalized || null;
+}
+
+function envPresent(key: string) {
+  return Boolean(String(process.env[key] || "").trim());
+}
+
+function envTruthy(key: string) {
+  return ["1", "true", "yes", "y", "on"].includes(String(process.env[key] || "").trim().toLowerCase());
+}
+
+function missingEnv(keys: string[]) {
+  return keys.filter((key) => !envPresent(key));
+}
+
+function integrationStatus(input: {
+  id: string;
+  provider: string;
+  requiredEnv?: string[];
+  enabled?: boolean;
+  statusWhenEnabled?: string;
+  disabledReason?: string;
+  adminPath?: string;
+  connectUrl?: string;
+}) {
+  const requiredEnv = input.requiredEnv || [];
+  const missing = missingEnv(requiredEnv);
+  const enabled = Boolean(input.enabled) && missing.length === 0;
+  return {
+    id: input.id,
+    provider: input.provider,
+    enabled,
+    configured: missing.length === 0,
+    status: enabled ? input.statusWhenEnabled || "Ready to connect" : "Not enabled",
+    missingEnv: missing,
+    message: enabled
+      ? `${input.provider} is configured for this environment.`
+      : input.disabledReason || "This integration is not enabled yet in this environment.",
+    adminPath: input.adminPath || "/admin/mindbase/integrations",
+    connectUrl: input.connectUrl,
+  };
+}
+
+function firstPresentEnv(keys: string[]) {
+  return keys.find((key) => envPresent(key)) || null;
+}
+
+function envGroupMissing(keys: string[]) {
+  return keys.filter((key) => !envPresent(key));
+}
+
+function envAlternativesConfigured(groups: string[][]) {
+  return groups.some((group) => group.every((key) => envPresent(key)));
+}
+
+function configuredEmailProvider() {
+  if (envPresent("RESEND_API_KEY")) return { provider: "Resend", configured: true, missingEnv: [] as string[] };
+  if (envPresent("SENDGRID_API_KEY")) return { provider: "SendGrid", configured: true, missingEnv: [] as string[] };
+  if (envPresent("MAILGUN_API_KEY")) return { provider: "Mailgun", configured: true, missingEnv: [] as string[] };
+  if (envTruthy("MAIL_SMTP_SENDMAIL")) return { provider: "sendmail", configured: true, missingEnv: [] as string[] };
+  if (
+    envPresent("MAIL_SMTP_HOST") &&
+    (envTruthy("MAIL_SMTP_ALLOW_NO_AUTH") || (envPresent("MAIL_SMTP_USER") && envPresent("MAIL_SMTP_PASS")))
+  ) {
+    return { provider: "SMTP", configured: true, missingEnv: [] as string[] };
+  }
+  if (envPresent("SMTP_HOST") && envPresent("SMTP_USER") && envPresent("SMTP_PASS")) {
+    return { provider: "SMTP", configured: true, missingEnv: [] as string[] };
+  }
+  return { provider: "SMTP", configured: false, missingEnv: ["MAIL_SMTP_HOST", "MAIL_SMTP_USER", "MAIL_SMTP_PASS"] };
+}
+
+const MINDBASE_PAYMENT_PLANS = [
+  {
+    id: "free",
+    name: "Free",
+    monthlyXof: 0,
+    limits: ["1 workspace", "1 guide agent", "limited messages", "limited uploads"],
+    checkoutRequired: false,
+  },
+  {
+    id: "starter",
+    name: "Starter",
+    monthlyXof: 15000,
+    limits: ["1 workspace", "5 agents", "basic integrations", "small usage limit"],
+    checkoutRequired: true,
+  },
+  {
+    id: "team",
+    name: "Team",
+    monthlyXof: 49000,
+    limits: ["multiple users", "15 agents", "Gmail/Drive/Calendar", "tasks and workflows"],
+    checkoutRequired: true,
+  },
+  {
+    id: "business",
+    name: "Business",
+    monthlyXof: 149000,
+    limits: ["50+ agents", "WhatsApp", "advanced automations", "audit logs", "priority support"],
+    checkoutRequired: true,
+  },
+  {
+    id: "enterprise",
+    name: "Enterprise",
+    monthlyXof: null,
+    limits: ["custom deployment", "custom agents", "custom compliance", "dedicated support"],
+    checkoutRequired: false,
+  },
+];
+
+function normalizePaymentProvider() {
+  const provider = String(process.env.PAYMENT_PROVIDER || process.env.MINDBASE_PAYMENT_PROVIDER || "").trim().toLowerCase();
+  if (provider === "flutterwave" || provider === "flw") return "flutterwave";
+  if (provider === "kkiapay" || provider === "kiki" || provider === "kkiapay") return "kkiapay";
+  if (provider === "manual" || provider === "free" || provider === "none") return "manual";
+  return "manual";
+}
+
+function buildPaymentStatus(tenantKeyInput: string) {
+  const tenantKey = (tenantKeyInput || "mindbase") as TenantKey;
+  const selectedProvider = normalizePaymentProvider();
+
+  const flutterwave = (() => {
+    const mode = getFlutterwaveMode(tenantKey);
+    const keys = getFlutterwaveKeys(tenantKey);
+    const names = getFlutterwaveKeyEnvVarNames(tenantKey, mode);
+    const requiredEnv =
+      keys.version === "v4"
+        ? ["FLUTTERWAVE_CLIENT_ID", "FLUTTERWAVE_CLIENT_SECRET", "FLUTTERWAVE_ENCRYPTION_KEY", "FLUTTERWAVE_WEBHOOK_SECRET"]
+        : ["FLUTTERWAVE_SECRET_KEY", "FLUTTERWAVE_WEBHOOK_SECRET"];
+    const publicKeyPresent = Boolean(keys.publicKey || firstPresentEnv(names.publicKey));
+    const webhookPresent = Boolean(keys.webhookHash || envPresent("FLUTTERWAVE_WEBHOOK_SECRET") || envPresent("FLW_WEBHOOK_SECRET"));
+    const configured =
+      keys.version === "v4"
+        ? Boolean(keys.clientId && keys.clientSecret && keys.encryptionKey && webhookPresent)
+        : Boolean(keys.secretKey && webhookPresent);
+    const missingEnv =
+      keys.version === "v4"
+        ? [
+            ...(keys.clientId ? [] : ["FLUTTERWAVE_CLIENT_ID"]),
+            ...(keys.clientSecret ? [] : ["FLUTTERWAVE_CLIENT_SECRET"]),
+            ...(keys.encryptionKey ? [] : ["FLUTTERWAVE_ENCRYPTION_KEY"]),
+            ...(webhookPresent ? [] : ["FLUTTERWAVE_WEBHOOK_SECRET"]),
+          ]
+        : [
+            ...(keys.secretKey ? [] : ["FLUTTERWAVE_SECRET_KEY"]),
+            ...(webhookPresent ? [] : ["FLUTTERWAVE_WEBHOOK_SECRET"]),
+          ];
+    return {
+      id: "flutterwave",
+      provider: "Flutterwave",
+      mode,
+      apiVersion: keys.version,
+      configured,
+      publicKeyPresent,
+      webhookConfigured: webhookPresent,
+      missingEnv,
+      requiredEnv,
+      message: configured
+        ? "Flutterwave keys and webhook secret are configured."
+        : "Flutterwave checkout is not ready. Add the missing keys and verify the webhook secret before enabling paid access.",
+    };
+  })();
+
+  const kkiapay = (() => {
+    const keys = getKkiapayConfig(tenantKey);
+    const publicKeyNames = getKkiapayPublicKeyEnvVarNames(tenantKey, keys.mode);
+    const publicKeyPresent = Boolean(keys.publicKey || firstPresentEnv(publicKeyNames));
+    const configured = Boolean(keys.publicKey && keys.privateKey && keys.secret);
+    const missingEnv = [
+      ...(keys.publicKey ? [] : ["KKIAPAY_PUBLIC_KEY"]),
+      ...(keys.privateKey ? [] : ["KKIAPAY_PRIVATE_KEY"]),
+      ...(keys.secret ? [] : ["KKIAPAY_SECRET_KEY"]),
+    ];
+    return {
+      id: "kkiapay",
+      provider: "Kkiapay",
+      mode: keys.mode,
+      configured,
+      publicKeyPresent,
+      webhookConfigured: Boolean(keys.secret),
+      missingEnv,
+      requiredEnv: ["KKIAPAY_PUBLIC_KEY", "KKIAPAY_PRIVATE_KEY", "KKIAPAY_SECRET_KEY", "KKIAPAY_SANDBOX"],
+      message: configured
+        ? "Kkiapay keys are configured."
+        : "Kkiapay checkout is not ready. Add public, private, and secret keys before enabling paid access.",
+    };
+  })();
+
+  const selected =
+    selectedProvider === "flutterwave" ? flutterwave : selectedProvider === "kkiapay" ? kkiapay : null;
+  const checkoutEnabled = Boolean(selected?.configured);
+  return {
+    provider: selectedProvider,
+    checkoutEnabled,
+    manualFallbackEnabled: true,
+    status: checkoutEnabled
+      ? `${selected?.provider} checkout configured`
+      : selectedProvider === "manual"
+        ? "Manual/free plan only"
+        : `${selected?.provider || selectedProvider} checkout not configured`,
+    message: checkoutEnabled
+      ? "Paid checkout can start, but paid entitlements must still be granted only after server-side verification and webhook processing."
+      : selectedProvider === "manual"
+        ? "MindBase can run Free/manual plans, but paid checkout is not enabled in this environment."
+        : "Paid checkout is gated until the selected provider is fully configured.",
+    providers: {
+      flutterwave,
+      kkiapay,
+      manual: {
+        id: "manual",
+        provider: "Manual/free fallback",
+        configured: true,
+        missingEnv: [] as string[],
+        message: "Users can continue on the Free plan or be handled manually without fake payment success.",
+      },
+    },
+    plans: MINDBASE_PAYMENT_PLANS,
+    missingEnv: selected?.missingEnv || [],
+  };
+}
+
+type MindbasePaymentPlan = (typeof MINDBASE_PAYMENT_PLANS)[number];
+type MindbasePaymentStatus = "pending" | "processing" | "succeeded" | "failed" | "cancelled" | "refunded";
+
+const MINDBASE_PAYMENT_PURPOSE = "MINDBASE_PLAN";
+
+function getMindbasePlan(planIdInput: unknown): MindbasePaymentPlan | null {
+  const planId = String(planIdInput ?? "")
+    .trim()
+    .toLowerCase();
+  return MINDBASE_PAYMENT_PLANS.find((plan) => plan.id === planId) || null;
+}
+
+function normalizeCurrency(value: unknown) {
+  const raw = String(value ?? "").trim().toUpperCase();
+  return raw && /^[A-Z]{3}$/.test(raw) ? raw : "XOF";
+}
+
+function mapMindbasePlanToOrganizationPlan(planId: string) {
+  if (planId === "enterprise") return "enterprise";
+  if (planId === "team" || planId === "business") return "growth";
+  return "starter";
+}
+
+function buildMindbasePlanEntitlement(plan: MindbasePaymentPlan) {
+  return {
+    planId: plan.id,
+    planName: plan.name,
+    limits: plan.limits,
+    checkoutRequired: plan.checkoutRequired,
+    monthlyXof: plan.monthlyXof,
+  };
+}
+
+function paymentMetadata(row: typeof payments.$inferSelect | null | undefined) {
+  return ((row as any)?.metadata && typeof (row as any).metadata === "object" ? ((row as any).metadata as Record<string, any>) : {}) || {};
+}
+
+function organizationMetadata(row: typeof mindbaseOrganizations.$inferSelect | null | undefined) {
+  return ((row as any)?.metadata && typeof (row as any).metadata === "object" ? ((row as any).metadata as Record<string, any>) : {}) || {};
+}
+
+function normalizeGatewayPaymentStatus(value: unknown): MindbasePaymentStatus | null {
+  const raw = String(value ?? "").trim().toLowerCase();
+  if (!raw) return null;
+  if (raw.includes("success") || raw.includes("paid") || raw.includes("complete")) return "succeeded";
+  if (raw.includes("refund")) return "refunded";
+  if (raw.includes("cancel")) return "cancelled";
+  if (raw.includes("fail") || raw.includes("error")) return "failed";
+  if (raw.includes("process")) return "processing";
+  if (raw.includes("pend")) return "pending";
+  return null;
+}
+
+function getWebhookHashForFlutterwave(keys: ReturnType<typeof getFlutterwaveKeys>) {
+  return (
+    keys.webhookHash ||
+    String(process.env.FLUTTERWAVE_WEBHOOK_SECRET || "").trim() ||
+    String(process.env.FLW_WEBHOOK_SECRET || "").trim() ||
+    null
+  );
+}
+
+function getMindbasePublicOrigin(req: any) {
+  return (
+    getRequestOrigin(req) ||
+    asText(process.env.MINDBASE_PUBLIC_URL) ||
+    asText(process.env.PUBLIC_BASE_URL) ||
+    asText(process.env.APP_BASE_URL) ||
+    "http://localhost:5000"
+  );
+}
+
+function safeJsonStringify(value: unknown) {
+  try {
+    return JSON.stringify(value ?? {});
+  } catch {
+    return JSON.stringify({ unserializable: true });
+  }
+}
+
+function rowsFromSqlResult<T = any>(result: unknown): T[] {
+  const rows = (result as any)?.rows;
+  return Array.isArray(rows) ? (rows as T[]) : [];
+}
+
+function serializeMindbasePayment(row: typeof payments.$inferSelect | null | undefined) {
+  if (!row) return null;
+  const metadata = paymentMetadata(row);
+  return {
+    id: row.id,
+    provider: row.provider,
+    purpose: row.purpose,
+    targetType: row.targetType,
+    targetId: row.targetId,
+    planId: metadata.planId || null,
+    status: row.status,
+    amount: Number(row.amount || 0),
+    currency: row.currency,
+    providerTransactionId: row.providerTransactionId || null,
+    providerTransactionRef: row.providerTransactionRef || null,
+    creditedAt: row.creditedAt || null,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  };
+}
+
+async function resolveAccessibleMindbaseOrganization(input: {
+  tenantId: number;
+  userId: number;
+  organizationId?: string | null;
+}) {
+  const organizationId = asText(input.organizationId);
+  const membershipFilters = [
+    eq(mindbaseOrganizationUsers.tenantId, input.tenantId),
+    eq(mindbaseOrganizationUsers.userId, input.userId),
+  ];
+  if (organizationId) membershipFilters.push(eq(mindbaseOrganizationUsers.organizationId, organizationId));
+
+  const membership = await db.query.mindbaseOrganizationUsers.findFirst({
+    where: and(...membershipFilters),
+    orderBy: [desc(mindbaseOrganizationUsers.updatedAt)],
+  });
+
+  const organization = organizationId
+    ? await db.query.mindbaseOrganizations.findFirst({
+        where: and(eq(mindbaseOrganizations.tenantId, input.tenantId), eq(mindbaseOrganizations.id, organizationId)),
+      })
+    : membership
+      ? await db.query.mindbaseOrganizations.findFirst({
+          where: and(eq(mindbaseOrganizations.tenantId, input.tenantId), eq(mindbaseOrganizations.id, membership.organizationId)),
+        })
+      : await db.query.mindbaseOrganizations.findFirst({
+          where: and(eq(mindbaseOrganizations.tenantId, input.tenantId), eq(mindbaseOrganizations.ownerUserId, input.userId)),
+          orderBy: [desc(mindbaseOrganizations.updatedAt)],
+        });
+
+  if (!organization) return null;
+  const isOwner = Number(organization.ownerUserId) === Number(input.userId);
+  if (!isOwner && !membership) return null;
+  return {
+    organization,
+    membershipRole: membership?.role || (isOwner ? "owner" : "member"),
+  };
+}
+
+async function applyMindbaseFreePlan(input: {
+  tenantId: number;
+  userId: number;
+  organization: typeof mindbaseOrganizations.$inferSelect;
+}) {
+  const plan = getMindbasePlan("free")!;
+  const metadata = organizationMetadata(input.organization);
+  const activatedAt = new Date().toISOString();
+  const entitlement = {
+    ...buildMindbasePlanEntitlement(plan),
+    status: "active",
+    provider: "manual",
+    paymentId: null,
+    activatedAt,
+  };
+
+  const [updated] = await db
+    .update(mindbaseOrganizations)
+    .set({
+      plan: mapMindbasePlanToOrganizationPlan(plan.id) as any,
+      status: input.organization.status === "draft" || input.organization.status === "onboarding" ? "active" : input.organization.status,
+      metadata: {
+        ...metadata,
+        activePlan: plan.id,
+        planStatus: "active",
+        paymentProvider: "manual",
+        entitlement,
+      },
+      updatedAt: new Date(),
+    })
+    .where(and(eq(mindbaseOrganizations.tenantId, input.tenantId), eq(mindbaseOrganizations.id, input.organization.id)))
+    .returning();
+
+  await db.execute(sql`
+    insert into mindbase_events (tenant_id, organization_id, actor_user_id, event_type, status, payload)
+    values (
+      ${input.tenantId},
+      ${input.organization.id},
+      ${input.userId},
+      'payment.free_plan_selected',
+      'completed',
+      ${safeJsonStringify({ planId: plan.id, activatedAt })}::jsonb
+    )
+  `);
+
+  return { organization: updated || input.organization, entitlement };
+}
+
+async function applyMindbasePaymentEntitlement(input: {
+  tenantId: number;
+  paymentRow: typeof payments.$inferSelect;
+  source: string;
+}) {
+  const metadata = paymentMetadata(input.paymentRow);
+  const plan = getMindbasePlan(metadata.planId);
+  if (!plan || !plan.checkoutRequired) return null;
+  if (String(input.paymentRow.status || "").toLowerCase() !== "succeeded") return null;
+
+  const organizationId = asText(metadata.organizationId) || asText(input.paymentRow.targetId);
+  if (!organizationId) return null;
+  const organization = await db.query.mindbaseOrganizations.findFirst({
+    where: and(eq(mindbaseOrganizations.tenantId, input.tenantId), eq(mindbaseOrganizations.id, organizationId)),
+  });
+  if (!organization) return null;
+
+  const orgMetadata = organizationMetadata(organization);
+  const existingEntitlement = (orgMetadata.entitlement && typeof orgMetadata.entitlement === "object" ? orgMetadata.entitlement : {}) as Record<string, any>;
+  const alreadyApplied = String(existingEntitlement.paymentId || "") === String(input.paymentRow.id);
+  const activatedAt = alreadyApplied ? String(existingEntitlement.activatedAt || new Date().toISOString()) : new Date().toISOString();
+  const entitlement = {
+    ...buildMindbasePlanEntitlement(plan),
+    status: "active",
+    provider: input.paymentRow.provider,
+    paymentId: input.paymentRow.id,
+    paymentStatus: input.paymentRow.status,
+    amount: Number(input.paymentRow.amount || 0),
+    currency: input.paymentRow.currency,
+    activatedAt,
+    source: input.source,
+  };
+
+  const [updated] = await db
+    .update(mindbaseOrganizations)
+    .set({
+      plan: mapMindbasePlanToOrganizationPlan(plan.id) as any,
+      status: organization.status === "draft" || organization.status === "onboarding" ? "active" : organization.status,
+      metadata: {
+        ...orgMetadata,
+        activePlan: plan.id,
+        planStatus: "active",
+        paymentProvider: input.paymentRow.provider,
+        entitlement,
+        lastPaymentId: input.paymentRow.id,
+      },
+      updatedAt: new Date(),
+    })
+    .where(and(eq(mindbaseOrganizations.tenantId, input.tenantId), eq(mindbaseOrganizations.id, organization.id)))
+    .returning();
+
+  if (!alreadyApplied) {
+    await db.execute(sql`
+      insert into mindbase_events (tenant_id, organization_id, actor_user_id, event_type, status, payload)
+      values (
+        ${input.tenantId},
+        ${organization.id},
+        ${Number(input.paymentRow.userId || 0) || null},
+        'payment.entitlement_activated',
+        'completed',
+        ${safeJsonStringify({
+          planId: plan.id,
+          paymentId: input.paymentRow.id,
+          provider: input.paymentRow.provider,
+          source: input.source,
+          activatedAt,
+        })}::jsonb
+      )
+    `);
+  }
+
+  return { organization: updated || organization, entitlement, duplicate: alreadyApplied };
+}
+
+async function recordMindbasePaymentEvent(input: {
+  tenantId: number;
+  provider: string;
+  providerEventId: string;
+  status: string;
+  paymentId?: string | null;
+  organizationId?: string | null;
+  rawPayload: unknown;
+}) {
+  const providerEventId =
+    asText(input.providerEventId) ||
+    `${input.provider}:${input.paymentId || "unknown"}:${sha256Hex(safeJsonStringify(input.rawPayload)).slice(0, 24)}`;
+  const rawPayload = safeJsonStringify(input.rawPayload);
+  const inserted = await db.execute(sql`
+    insert into mindbase_payment_events (
+      tenant_id,
+      payment_id,
+      organization_id,
+      provider,
+      provider_event_id,
+      status,
+      raw_payload,
+      created_at
+    )
+    values (
+      ${input.tenantId},
+      ${input.paymentId || null},
+      ${input.organizationId || null},
+      ${input.provider},
+      ${providerEventId},
+      ${input.status},
+      ${rawPayload}::jsonb,
+      now()
+    )
+    on conflict (tenant_id, provider, provider_event_id) do nothing
+    returning id, processed_at
+  `);
+  const insertedRows = rowsFromSqlResult<{ id: string; processed_at?: Date | string | null }>(inserted);
+  if (insertedRows.length) {
+    return { duplicate: false, providerEventId };
+  }
+  const existing = await db.execute(sql`
+    select id, processed_at
+    from mindbase_payment_events
+    where tenant_id = ${input.tenantId}
+      and provider = ${input.provider}
+      and provider_event_id = ${providerEventId}
+    limit 1
+  `);
+  const rows = rowsFromSqlResult<{ id: string; processed_at?: Date | string | null }>(existing);
+  return { duplicate: Boolean(rows[0]?.processed_at), providerEventId };
+}
+
+async function markMindbasePaymentEventProcessed(input: {
+  tenantId: number;
+  provider: string;
+  providerEventId: string;
+  status: string;
+  error?: string | null;
+}) {
+  await db.execute(sql`
+    update mindbase_payment_events
+    set status = ${input.status},
+        processing_error = ${input.error || null},
+        processed_at = now()
+    where tenant_id = ${input.tenantId}
+      and provider = ${input.provider}
+      and provider_event_id = ${input.providerEventId}
+  `);
+}
+
+async function updateMindbasePaymentFromGateway(input: {
+  tenantId: number;
+  paymentRow: typeof payments.$inferSelect;
+  status: MindbasePaymentStatus;
+  providerTransactionId?: string | null;
+  providerTransactionRef?: string | null;
+  rawPayload?: unknown;
+  source: string;
+}) {
+  const providerTransactionId = asText(input.providerTransactionId) || input.paymentRow.providerTransactionId || null;
+  const providerTransactionRef = asText(input.providerTransactionRef) || input.paymentRow.providerTransactionRef || null;
+  const [updated] = await db
+    .update(payments)
+    .set({
+      status: input.status as any,
+      providerTransactionId,
+      providerTransactionRef,
+      providerPayload: input.rawPayload !== undefined ? (input.rawPayload as any) : input.paymentRow.providerPayload,
+      creditedAt:
+        input.status === "succeeded"
+          ? input.paymentRow.creditedAt || new Date()
+          : input.paymentRow.creditedAt || null,
+      metadata: {
+        ...paymentMetadata(input.paymentRow),
+        lastStatusSource: input.source,
+        lastStatusAt: new Date().toISOString(),
+      },
+      updatedAt: new Date(),
+    } as any)
+    .where(and(eq(payments.id, input.paymentRow.id), eq(payments.tenantId, input.tenantId)))
+    .returning();
+
+  const payment = updated || input.paymentRow;
+  const entitlement = input.status === "succeeded" ? await applyMindbasePaymentEntitlement({ tenantId: input.tenantId, paymentRow: payment, source: input.source }) : null;
+  return { payment, entitlement };
+}
+
+async function verifyMindbasePaymentWithGateway(input: {
+  tenantId: number;
+  tenantKey: TenantKey;
+  paymentRow: typeof payments.$inferSelect;
+  transactionId?: string | null;
+  txRef?: string | null;
+  source: string;
+}) {
+  const provider = String(input.paymentRow.provider || "").toLowerCase();
+  if (provider === "flutterwave") {
+    const keys = getFlutterwaveKeys(input.tenantKey);
+    if (!keys.secretKey) {
+      throw new Error("Flutterwave hosted verification requires FLUTTERWAVE_SECRET_KEY.");
+    }
+    const verified = await flutterwaveVerifyTransaction({
+      mode: keys.mode,
+      secretKey: keys.secretKey,
+      transactionId: asText(input.transactionId) || input.paymentRow.providerTransactionId || null,
+      txRef: asText(input.txRef) || input.paymentRow.providerTransactionRef || null,
+    });
+    if (verified.amount !== null && Number(input.paymentRow.amount) !== Math.round(Number(verified.amount))) {
+      throw new Error("Payment amount mismatch.");
+    }
+    if (verified.currency && String(verified.currency).toUpperCase() !== String(input.paymentRow.currency || "XOF").toUpperCase()) {
+      throw new Error("Payment currency mismatch.");
+    }
+    if (
+      input.paymentRow.providerTransactionRef &&
+      verified.txRef &&
+      String(verified.txRef) !== String(input.paymentRow.providerTransactionRef)
+    ) {
+      throw new Error("Payment reference mismatch.");
+    }
+    return updateMindbasePaymentFromGateway({
+      tenantId: input.tenantId,
+      paymentRow: input.paymentRow,
+      status: verified.normalizedStatus,
+      providerTransactionId: verified.transactionId,
+      providerTransactionRef: verified.txRef,
+      rawPayload: verified.raw,
+      source: input.source,
+    });
+  }
+
+  if (provider === "kkiapay") {
+    const transactionId = asText(input.transactionId) || input.paymentRow.providerTransactionId || null;
+    if (!transactionId) {
+      return { payment: input.paymentRow, entitlement: null, pendingReason: "Kkiapay transaction id is not available yet." };
+    }
+    const config = getKkiapayConfig(input.tenantKey);
+    if (!config.publicKey || !config.privateKey || !config.secret) {
+      throw new Error("Kkiapay verification requires public, private, and secret keys.");
+    }
+    const verified = await kkiapayVerifyTransaction({
+      transactionId,
+      mode: config.mode,
+      publicKey: config.publicKey,
+      privateKey: config.privateKey,
+      secret: config.secret,
+    });
+    return updateMindbasePaymentFromGateway({
+      tenantId: input.tenantId,
+      paymentRow: input.paymentRow,
+      status: verified.normalizedStatus as MindbasePaymentStatus,
+      providerTransactionId: transactionId,
+      rawPayload: verified.raw,
+      source: input.source,
+    });
+  }
+
+  throw new Error(`Unsupported MindBase payment provider: ${provider || "unknown"}`);
+}
+
+function buildMindbaseIntegrationStatuses() {
+  const googleEnv = ["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "GOOGLE_REDIRECT_URI"];
+  const microsoftEnv = ["MICROSOFT_CLIENT_ID", "MICROSOFT_CLIENT_SECRET", "MICROSOFT_REDIRECT_URI"];
+  const whatsappEnv = ["WHATSAPP_ACCESS_TOKEN", "WHATSAPP_PHONE_NUMBER_ID", "WHATSAPP_VERIFY_TOKEN", "WHATSAPP_APP_SECRET"];
+  const email = configuredEmailProvider();
+
+  const googleOauthConfigured = envTruthy("MINDBASE_GOOGLE_OAUTH_ENABLED");
+  const microsoftOauthConfigured = envTruthy("MINDBASE_MICROSOFT_OAUTH_ENABLED");
+  const whatsappConfigured = envTruthy("MINDBASE_WHATSAPP_ENABLED");
+
+  return {
+    gmail: integrationStatus({
+      id: "gmail",
+      provider: "Google Gmail",
+      requiredEnv: googleEnv,
+      enabled: false,
+      disabledReason: googleOauthConfigured
+        ? "Google OAuth keys are present, but the MindBase Gmail OAuth callback/storage flow is not enabled yet."
+        : "Gmail is not enabled yet in this environment. Configure Google OAuth and enable MINDBASE_GOOGLE_OAUTH_ENABLED before starting the connection flow.",
+    }),
+    calendar: integrationStatus({
+      id: "calendar",
+      provider: "Google Calendar",
+      requiredEnv: googleEnv,
+      enabled: false,
+      disabledReason: googleOauthConfigured
+        ? "Google OAuth keys are present, but the MindBase Calendar OAuth callback/storage flow is not enabled yet."
+        : "Calendar is not enabled yet in this environment. Configure Google OAuth and enable MINDBASE_GOOGLE_OAUTH_ENABLED before starting the connection flow.",
+    }),
+    drive: integrationStatus({
+      id: "drive",
+      provider: "Google Drive",
+      requiredEnv: googleEnv,
+      enabled: false,
+      disabledReason: googleOauthConfigured
+        ? "Google OAuth keys are present, but the MindBase Drive OAuth callback/storage flow is not enabled yet."
+        : "Google Drive is not enabled yet in this environment. Configure Google OAuth and enable MINDBASE_GOOGLE_OAUTH_ENABLED before starting the connection flow.",
+    }),
+    microsoft: integrationStatus({
+      id: "microsoft",
+      provider: "Microsoft",
+      requiredEnv: microsoftEnv,
+      enabled: false,
+      disabledReason: microsoftOauthConfigured
+        ? "Microsoft OAuth keys are present, but the MindBase Microsoft callback/storage flow is not enabled yet."
+        : "Microsoft sign-in and Outlook are not enabled yet in this environment. Configure Microsoft OAuth and enable MINDBASE_MICROSOFT_OAUTH_ENABLED first.",
+    }),
+    whatsapp: integrationStatus({
+      id: "whatsapp",
+      provider: "WhatsApp Business",
+      requiredEnv: whatsappEnv,
+      enabled: false,
+      disabledReason: whatsappConfigured
+        ? "WhatsApp keys are present, but MindBase workspace routing and approval flow are not enabled yet."
+        : "WhatsApp is not enabled yet in this environment. Configure the WhatsApp Business API keys and enable MINDBASE_WHATSAPP_ENABLED before agents can use it.",
+    }),
+    email: {
+      id: "email",
+      provider: email.provider,
+      enabled: email.configured,
+      configured: email.configured,
+      status: email.configured ? "Configured" : "Not enabled",
+      missingEnv: email.missingEnv,
+      message: email.configured
+        ? "Transactional email is configured for this environment."
+        : "Email sending is not enabled yet in this environment.",
+      adminPath: "/admin/email",
+    },
+    team: {
+      id: "team",
+      provider: "MindBase team invitations",
+      enabled: false,
+      configured: false,
+      status: "Not enabled",
+      missingEnv: [] as string[],
+      message: "Team invitations are not enabled in the chat onboarding flow yet.",
+      adminPath: "/admin/mindbase/settings",
+    },
+    documents: {
+      id: "documents",
+      provider: "MindBase company brain",
+      enabled: true,
+      configured: true,
+      status: "Ready",
+      missingEnv: [] as string[],
+      message: "Chat-first workspace document upload is enabled. Files are stored, parsed, attached to the workspace, and cited in agent replies when used.",
+      adminPath: "/admin/mindbase/settings",
+    },
+    crm: {
+      id: "crm",
+      provider: "MindBase customer list",
+      enabled: false,
+      configured: false,
+      status: "Not enabled",
+      missingEnv: [] as string[],
+      message: "Customer/CRM import is not enabled in the chat onboarding flow yet.",
+      adminPath: "/admin/mindbase/settings",
+    },
+  };
+}
+
+function uniqueMissingEnvFromStatuses(statuses: Record<string, any>) {
+  const missing = new Set<string>();
+  for (const value of Object.values(statuses)) {
+    const keys = Array.isArray((value as any)?.missingEnv) ? (value as any).missingEnv : [];
+    for (const key of keys) {
+      const normalized = String(key || "").trim();
+      if (normalized) missing.add(normalized);
+    }
+  }
+  return Array.from(missing).sort();
 }
 
 function toInt(value: unknown, fallback: number) {
@@ -292,7 +1096,7 @@ const LAUNCH_STARTER_AGENTS = [
   },
   {
     id: "nene",
-    name: "Nene",
+    name: "Néné",
     role: "Accounting Agent",
     purpose: "Tracks invoices, expenses, revenue, cashflow, and finance reminders.",
     category: "finance",
@@ -522,6 +1326,98 @@ function createAuthTokens(input: { userId: number; tenantId: number; roles: stri
     expiresInSec: ACCESS_TOKEN_TTL,
     refreshExpiresInSec: REFRESH_TOKEN_TTL,
   };
+}
+
+function normalizeGuestSessionId(value: unknown) {
+  return String(value ?? "")
+    .trim()
+    .replace(/[^A-Za-z0-9._:-]+/g, "-")
+    .slice(0, 80);
+}
+
+function isTemporaryMindbaseUser(userRow: typeof eceUsers.$inferSelect | null | undefined) {
+  const metadata = (userRow?.metadata || {}) as Record<string, unknown>;
+  const preferences = (metadata.preferences || {}) as Record<string, unknown>;
+  return (
+    !userRow?.passwordHash &&
+    String((metadata.source || preferences.source) ?? "").trim() === "mindbase_onboarding_guest" &&
+    (metadata.onboardingVisitor === true || preferences.onboardingVisitor === true)
+  );
+}
+
+async function resolveOrCreateOnboardingUser(input: {
+  req: any;
+  tenantId: number;
+  tenantKey: string;
+  displayName?: string | null;
+}) {
+  const existingSessionUser = await resolveSessionUser(input.req);
+  if (existingSessionUser) {
+    return {
+      user: existingSessionUser,
+      temporary: false,
+      tokens: null as ReturnType<typeof createAuthTokens> | null,
+    };
+  }
+
+  const requestedGuestId = normalizeGuestSessionId(
+    input.req.body?.guestSessionId ||
+      input.req.body?.guest_session_id ||
+      input.req.headers?.["x-mindbase-guest-session"],
+  );
+  const guestSessionId = requestedGuestId || crypto.randomUUID();
+  const guestHash = crypto
+    .createHash("sha256")
+    .update(`${input.tenantId}:${guestSessionId}`)
+    .digest("hex")
+    .slice(0, 24);
+  const email = `guest+${input.tenantKey}-${guestHash}@mindbase.local`.toLowerCase();
+  const displayName = asText(input.displayName) || "MindBase Visitor";
+
+  let userRow = await db.query.eceUsers.findFirst({ where: eq(eceUsers.email, email) });
+  if (!userRow) {
+    [userRow] = await db
+      .insert(eceUsers)
+      .values({
+        email,
+        passwordHash: null,
+        displayName,
+        role: "buyer",
+        roles: ["buyer"],
+        permissions: [],
+        isActive: true,
+        emailVerified: false,
+        verificationLevel: "NONE",
+        currentMode: "buyer",
+        buyerType: "retail",
+        metadata: {
+          profileComplete: false,
+          mustChangePassword: true,
+          preferences: {
+            source: "mindbase_onboarding_guest",
+            onboardingVisitor: true,
+            guestSessionId,
+          },
+        },
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .returning();
+  } else if (displayName && userRow.displayName !== displayName && isTemporaryMindbaseUser(userRow)) {
+    [userRow] = await db
+      .update(eceUsers)
+      .set({ displayName, updatedAt: new Date() })
+      .where(eq(eceUsers.id, userRow.id))
+      .returning();
+  }
+
+  if (!userRow) throw new Error("Failed to create visitor session");
+  await ensureMindbaseRole({ tenantId: input.tenantId, userId: userRow.id, role: "creator" });
+  const user = await buildSessionUser({ userId: userRow.id, tenantId: input.tenantId });
+  if (!user) throw new Error("Failed to initialize visitor session");
+  await ensureCreatorProfile(input.tenantId, user);
+  const tokens = createAuthTokens({ userId: user.id, tenantId: input.tenantId, roles: user.roles });
+  return { user, temporary: true, tokens };
 }
 
 async function resolveWorkspaceMembership(input: { tenantId: number; workspaceId: string; userId: number }) {
@@ -838,6 +1734,148 @@ async function collectKnowledgeContext(input: {
       const source = String(chunk.sourceFilename || file?.filename || `source-${idx + 1}`);
       return `[${source}]\n${String(chunk.chunkText || "")}`;
     })
+    .join("\n\n---\n\n");
+
+  return { contextText, citations };
+}
+
+async function resolveOrganizationForWorkspace(input: {
+  tenantId: number;
+  workspaceId: string;
+  userId?: number | null;
+}) {
+  const organization = await db.query.mindbaseOrganizations.findFirst({
+    where: and(
+      eq(mindbaseOrganizations.tenantId, input.tenantId),
+      eq(mindbaseOrganizations.defaultWorkspaceId, input.workspaceId),
+    ),
+    orderBy: [desc(mindbaseOrganizations.updatedAt)],
+  });
+  if (!organization) return null;
+  if (!input.userId || Number(organization.ownerUserId) === Number(input.userId)) return organization;
+
+  const membership = await db.query.mindbaseOrganizationUsers.findFirst({
+    where: and(
+      eq(mindbaseOrganizationUsers.tenantId, input.tenantId),
+      eq(mindbaseOrganizationUsers.organizationId, organization.id),
+      eq(mindbaseOrganizationUsers.userId, input.userId),
+    ),
+  });
+  return membership ? organization : null;
+}
+
+function brainEventPayload(row: typeof mindbaseBrainEvents.$inferSelect | null | undefined) {
+  const payload = row?.payload;
+  return payload && typeof payload === "object" && !Array.isArray(payload) ? (payload as Record<string, any>) : {};
+}
+
+function serializeWorkspaceBrainDocument(row: typeof mindbaseBrainEvents.$inferSelect) {
+  const payload = brainEventPayload(row);
+  const status =
+    asText(payload.status) ||
+    (String(row.eventType || "").includes("failed") ? "failed" : "processed");
+  return {
+    id: row.id,
+    filename: asText(payload.filename) || "document",
+    mime: asText(payload.mime),
+    status,
+    workspace_id: asText(payload.workspaceId),
+    organization_id: row.organizationId,
+    bytes: Number(payload.bytes || 0),
+    extracted_chars: Number(payload.extractedChars || 0),
+    chunk_count: Number(payload.chunkCount || (Array.isArray(payload.chunks) ? payload.chunks.length : 0)),
+    error_message: asText(payload.errorMessage),
+    created_at: row.createdAt,
+  };
+}
+
+async function listWorkspaceBrainDocumentEvents(input: {
+  tenantId: number;
+  organizationId: string;
+  workspaceId: string;
+  limit?: number;
+}) {
+  const rows = await db.query.mindbaseBrainEvents.findMany({
+    where: and(
+      eq(mindbaseBrainEvents.tenantId, input.tenantId),
+      eq(mindbaseBrainEvents.organizationId, input.organizationId),
+      eq(mindbaseBrainEvents.entityType, "workspace_document"),
+    ),
+    orderBy: [desc(mindbaseBrainEvents.createdAt)],
+    limit: input.limit || 80,
+  });
+  return rows.filter((row) => asText(brainEventPayload(row).workspaceId) === input.workspaceId);
+}
+
+async function collectWorkspaceBrainContext(input: {
+  tenantId: number;
+  workspaceId: string;
+  userId: number;
+  query: string;
+}) {
+  const organization = await resolveOrganizationForWorkspace({
+    tenantId: input.tenantId,
+    workspaceId: input.workspaceId,
+    userId: input.userId,
+  });
+  if (!organization) {
+    return {
+      contextText: "",
+      citations: [] as Array<{ fileId: string; filename: string }>,
+    };
+  }
+
+  const events = (await listWorkspaceBrainDocumentEvents({
+    tenantId: input.tenantId,
+    organizationId: organization.id,
+    workspaceId: input.workspaceId,
+    limit: 100,
+  })).filter((row) => {
+    const payload = brainEventPayload(row);
+    return asText(payload.status) === "processed" && Array.isArray(payload.chunks);
+  });
+
+  const tokenized = String(input.query || "")
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .map((token) => token.trim())
+    .filter((token) => token.length >= 3)
+    .slice(0, 16);
+
+  const candidates = events.flatMap((event) => {
+    const payload = brainEventPayload(event);
+    const filename = asText(payload.filename) || "company-brain.txt";
+    return (Array.isArray(payload.chunks) ? payload.chunks : [])
+      .map((chunk: unknown, index: number) => ({
+        event,
+        filename,
+        index,
+        text: String(chunk || "").trim(),
+      }))
+      .filter((entry) => entry.text);
+  });
+
+  const selected = candidates
+    .map((entry) => ({
+      ...entry,
+      score: scoreChunk(entry.text, tokenized),
+    }))
+    .sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      return a.index - b.index;
+    })
+    .filter((entry, index) => entry.score > 0 || index < 6)
+    .slice(0, 8);
+
+  const citations = selected
+    .map((entry) => ({
+      fileId: entry.event.id,
+      filename: entry.filename,
+    }))
+    .filter((citation, index, all) => all.findIndex((item) => item.fileId === citation.fileId) === index);
+
+  const contextText = selected
+    .map((entry) => `[${entry.filename}]\n${entry.text}`)
     .join("\n\n---\n\n");
 
   return { contextText, citations };
@@ -1313,18 +2351,636 @@ router.post("/api/onboarding/finalize", async (req: any, res) => {
   }
 });
 
+router.get("/api/mindbase/integrations/status", async (req: any, res) => {
+  try {
+    const tenant = requireTenant(req, res);
+    if (!tenant) return;
+
+    const integrations = buildMindbaseIntegrationStatuses();
+    const payment = buildPaymentStatus(String(tenant.key || "mindbase"));
+
+    res.json({
+      ok: true,
+      tenant: tenant.key,
+      integrations: {
+        ...integrations,
+        payments: {
+          id: "payments",
+          provider: "MindBase payments",
+          enabled: payment.checkoutEnabled,
+          configured: payment.checkoutEnabled,
+          status: payment.status,
+          missingEnv: payment.missingEnv,
+          message: payment.message,
+          adminPath: "/admin/mindbase/settings",
+        },
+      },
+      payments: payment,
+    });
+  } catch (error: any) {
+    res.status(500).json({ ok: false, message: error?.message || "Failed to read integration status" });
+  }
+});
+
+router.get("/api/mindbase/payments/plans", async (req: any, res) => {
+  try {
+    const tenant = requireTenant(req, res);
+    if (!tenant) return;
+    const payment = buildPaymentStatus(String(tenant.key || "mindbase"));
+    res.setHeader("Cache-Control", "no-store");
+    res.json({
+      ok: true,
+      tenant: tenant.key,
+      payments: payment,
+      plans: MINDBASE_PAYMENT_PLANS,
+    });
+  } catch (error: any) {
+    res.status(500).json({ ok: false, message: error?.message || "Failed to load MindBase payment plans" });
+  }
+});
+
+router.post("/api/mindbase/payments/checkout", async (req: any, res) => {
+  try {
+    await ensureMindbaseTables();
+    if (!checkRateLimit(req, res, "mindbase-payment-checkout", 20, 5 * 60_000)) return;
+    const tenant = requireTenant(req, res);
+    if (!tenant) return;
+    const user = await requireSessionUser(req, res);
+    if (!user) return;
+
+    const plan = getMindbasePlan(req.body?.planId ?? req.body?.plan_id);
+    if (!plan) return res.status(400).json({ ok: false, message: "Unknown MindBase plan." });
+
+    const access = await resolveAccessibleMindbaseOrganization({
+      tenantId: tenant.id,
+      userId: user.id,
+      organizationId: asText(req.body?.organizationId ?? req.body?.organization_id),
+    });
+    if (!access) {
+      return res.status(404).json({
+        ok: false,
+        message: "Create or save a MindBase organization before starting checkout.",
+      });
+    }
+
+    if (plan.id === "free") {
+      const entitlement = await applyMindbaseFreePlan({
+        tenantId: tenant.id,
+        userId: user.id,
+        organization: access.organization,
+      });
+      res.setHeader("Cache-Control", "no-store");
+      return res.json({
+        ok: true,
+        checkout: {
+          type: "free",
+          message: "Free plan selected. No payment was created.",
+        },
+        plan,
+        entitlement: entitlement.entitlement,
+        organization: {
+          id: entitlement.organization.id,
+          slug: entitlement.organization.slug,
+          status: entitlement.organization.status,
+          activePlan: plan.id,
+        },
+      });
+    }
+
+    if (!plan.checkoutRequired || plan.monthlyXof === null) {
+      return res.status(409).json({
+        ok: false,
+        code: "manual_plan_required",
+        message: `${plan.name} plan requires manual activation. No paid access was granted.`,
+        plan,
+        safeOptions: ["Continue on Free plan", "Contact admin", "Choose Starter or Team"],
+      });
+    }
+
+    const tenantKey = (tenant.key || "mindbase") as TenantKey;
+    const paymentReadiness = buildPaymentStatus(tenantKey);
+    if (!paymentReadiness.checkoutEnabled || paymentReadiness.provider === "manual") {
+      return res.status(409).json({
+        ok: false,
+        code: "payment_provider_not_enabled",
+        message: paymentReadiness.message,
+        missingEnv: paymentReadiness.missingEnv,
+        safeOptions: ["Continue on Free plan", "Configure in admin", "Try again after payments are enabled"],
+      });
+    }
+
+    const provider = paymentReadiness.provider;
+    const amount = Number(plan.monthlyXof || 0);
+    const currency = normalizeCurrency(req.body?.currency || "XOF");
+    const workspaceId = asText(req.body?.workspaceId ?? req.body?.workspace_id) || access.organization.defaultWorkspaceId || null;
+    const returnPath = `/mindbase/payment/return?plan=${encodeURIComponent(plan.id)}`;
+    const origin = getMindbasePublicOrigin(req);
+
+    const [createdPayment] = await db
+      .insert(payments)
+      .values({
+        tenantId: tenant.id,
+        provider,
+        purpose: MINDBASE_PAYMENT_PURPOSE,
+        targetType: "MINDBASE_ORGANIZATION",
+        targetId: access.organization.id,
+        amount,
+        currency,
+        method: provider === "flutterwave" ? "REDIRECT" : "WIDGET",
+        userId: String(user.id),
+        status: "pending",
+        providerPayload: null,
+        metadata: {
+          reason: "mindbase_plan_checkout",
+          planId: plan.id,
+          planName: plan.name,
+          organizationId: access.organization.id,
+          organizationSlug: access.organization.slug,
+          workspaceId,
+          returnPath,
+          checkoutCreatedAt: new Date().toISOString(),
+        },
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      } as any)
+      .returning();
+
+    if (!createdPayment) throw new Error("Failed to create MindBase payment record.");
+
+    if (provider === "flutterwave") {
+      const keys = getFlutterwaveKeys(tenantKey);
+      if (!keys.secretKey) {
+        await db
+          .update(payments)
+          .set({
+            status: "failed",
+            metadata: {
+              ...paymentMetadata(createdPayment),
+              failureReason: "missing_flutterwave_secret_key",
+            },
+            updatedAt: new Date(),
+          } as any)
+          .where(and(eq(payments.id, createdPayment.id), eq(payments.tenantId, tenant.id)));
+        return res.status(409).json({
+          ok: false,
+          code: "flutterwave_hosted_checkout_not_configured",
+          message: "Flutterwave hosted checkout requires FLUTTERWAVE_SECRET_KEY for MindBase chat checkout.",
+          missingEnv: ["FLUTTERWAVE_SECRET_KEY"],
+          safeOptions: ["Continue on Free plan", "Configure in admin", "Try again"],
+        });
+      }
+
+      const txRef = buildFlutterwaveTxRef({
+        tenantKey,
+        paymentId: createdPayment.id,
+        type: "ORDER_PAYMENT",
+      });
+      const callbackPath = `/mindbase/payment/return?paymentId=${encodeURIComponent(String(createdPayment.id))}&plan=${encodeURIComponent(plan.id)}`;
+      const init = await flutterwaveInitPayment({
+        mode: keys.mode,
+        secretKey: keys.secretKey,
+        txRef,
+        amount,
+        currency,
+        redirectUrl: `${origin}${callbackPath}`,
+        customer: {
+          email: user.email || `mindbase-user-${user.id}@mindbase.local`,
+          name: user.displayName || user.email || "MindBase customer",
+        },
+        title: `MindBase ${plan.name}`,
+        description: `Activate the ${plan.name} plan for ${access.organization.name}.`,
+        meta: {
+          paymentId: createdPayment.id,
+          tenantKey,
+          type: MINDBASE_PAYMENT_PURPOSE,
+          planId: plan.id,
+          organizationId: access.organization.id,
+          workspaceId,
+        },
+        paymentOptions: req.body?.paymentOptions || "card,mobilemoney,banktransfer,ussd",
+      });
+
+      const [updatedPayment] = await db
+        .update(payments)
+        .set({
+          status: "pending",
+          providerTransactionRef: txRef,
+          providerTransactionId: init.transactionId || null,
+          providerPayload: init.raw ?? null,
+          metadata: {
+            ...paymentMetadata(createdPayment),
+            callbackPath,
+            flutterwaveMode: keys.mode,
+            flutterwaveVersion: "v3_hosted",
+            checkoutUrl: init.checkoutLink,
+          },
+          updatedAt: new Date(),
+        } as any)
+        .where(and(eq(payments.id, createdPayment.id), eq(payments.tenantId, tenant.id)))
+        .returning();
+
+      res.setHeader("Cache-Control", "no-store");
+      return res.status(201).json({
+        ok: true,
+        plan,
+        payment: serializeMindbasePayment(updatedPayment || createdPayment),
+        checkout: {
+          type: "redirect",
+          provider: "flutterwave",
+          url: init.checkoutLink,
+          returnPath: callbackPath,
+          message: "Open Flutterwave checkout. Paid access activates only after server-side verification.",
+        },
+      });
+    }
+
+    if (provider === "kkiapay") {
+      const config = getKkiapayConfig(tenantKey);
+      if (!config.publicKey || !config.privateKey || !config.secret) {
+        await db
+          .update(payments)
+          .set({
+            status: "failed",
+            metadata: {
+              ...paymentMetadata(createdPayment),
+              failureReason: "missing_kkiapay_keys",
+            },
+            updatedAt: new Date(),
+          } as any)
+          .where(and(eq(payments.id, createdPayment.id), eq(payments.tenantId, tenant.id)));
+        return res.status(409).json({
+          ok: false,
+          code: "kkiapay_not_configured",
+          message: "Kkiapay checkout requires public, private, and secret keys for server-side verification.",
+          missingEnv: ["KKIAPAY_PUBLIC_KEY", "KKIAPAY_PRIVATE_KEY", "KKIAPAY_SECRET_KEY"],
+          safeOptions: ["Continue on Free plan", "Configure in admin", "Try again"],
+        });
+      }
+
+      const callbackPath = `/mindbase/payment/return?paymentId=${encodeURIComponent(String(createdPayment.id))}&plan=${encodeURIComponent(plan.id)}`;
+      const [updatedPayment] = await db
+        .update(payments)
+        .set({
+          status: "pending",
+          providerTransactionRef: String(createdPayment.id),
+          metadata: {
+            ...paymentMetadata(createdPayment),
+            callbackPath,
+            kkiapayMode: config.mode,
+          },
+          updatedAt: new Date(),
+        } as any)
+        .where(and(eq(payments.id, createdPayment.id), eq(payments.tenantId, tenant.id)))
+        .returning();
+
+      res.setHeader("Cache-Control", "no-store");
+      return res.status(201).json({
+        ok: true,
+        plan,
+        payment: serializeMindbasePayment(updatedPayment || createdPayment),
+        checkout: {
+          type: "kkiapay_widget",
+          provider: "kkiapay",
+          publicKey: config.publicKey,
+          sandbox: config.mode === "SANDBOX",
+          amount,
+          currency,
+          reference: String(createdPayment.id),
+          callbackUrl: `${origin}${callbackPath}`,
+          message: "Open the Kkiapay widget. Paid access activates only after server-side verification.",
+        },
+      });
+    }
+
+    return res.status(409).json({
+      ok: false,
+      code: "unsupported_payment_provider",
+      message: `MindBase does not support checkout provider ${provider}.`,
+      safeOptions: ["Continue on Free plan", "Configure in admin"],
+    });
+  } catch (error: any) {
+    console.error("[MindBase payments] checkout error:", error);
+    res.status(500).json({ ok: false, message: error?.message || "Failed to start MindBase checkout" });
+  }
+});
+
+router.post("/api/mindbase/payments/flutterwave/webhook", async (req: any, res) => {
+  const provider = "flutterwave";
+  let recordedEvent: { providerEventId: string } | null = null;
+  let tenantId = 0;
+  try {
+    await ensureMindbaseTables();
+    const tenant = requireTenant(req, res);
+    if (!tenant) return;
+    tenantId = tenant.id;
+    const tenantKey = (tenant.key || "mindbase") as TenantKey;
+    const payload = req.body || {};
+    const data = payload?.data || payload || {};
+    const paymentId = asText(data?.meta?.paymentId || data?.meta?.payment_id || payload?.paymentId);
+    const txRef = asText(data?.tx_ref || data?.reference || payload?.tx_ref);
+    const transactionId = asText(data?.id || payload?.id || data?.transaction_id || payload?.transaction_id);
+    const eventId = asText(payload?.id || data?.id || transactionId || txRef);
+
+    const paymentRow =
+      (paymentId
+        ? await db.query.payments.findFirst({
+            where: and(eq(payments.tenantId, tenant.id), eq(payments.id, paymentId as any), eq(payments.provider, provider)),
+          })
+        : null) ||
+      (txRef
+        ? await db.query.payments.findFirst({
+            where: and(eq(payments.tenantId, tenant.id), eq(payments.provider, provider), eq(payments.providerTransactionRef, txRef)),
+          })
+        : null) ||
+      (transactionId
+        ? await db.query.payments.findFirst({
+            where: and(eq(payments.tenantId, tenant.id), eq(payments.provider, provider), eq(payments.providerTransactionId, transactionId)),
+          })
+        : null);
+
+    const keys = getFlutterwaveKeys(tenantKey);
+    const expectedHash = getWebhookHashForFlutterwave(keys);
+    if (!expectedHash) {
+      return res.status(401).json({ ok: false, message: "Flutterwave webhook secret is not configured." });
+    }
+    const signatureOk = verifyFlutterwaveWebhookSignature({
+      version: keys.version,
+      rawBody: req.rawBody,
+      headerValue: keys.version === "v4" ? req.headers?.["flutterwave-signature"] : req.headers?.["verif-hash"],
+      expectedHash,
+    });
+    if (!signatureOk) return res.status(401).json({ ok: false, message: "Invalid Flutterwave webhook signature." });
+
+    if (!paymentRow || String(paymentRow.purpose || "") !== MINDBASE_PAYMENT_PURPOSE) {
+      return res.status(200).json({ ok: true, ignored: true, reason: "payment_not_found" });
+    }
+
+    const metadata = paymentMetadata(paymentRow);
+    recordedEvent = await recordMindbasePaymentEvent({
+      tenantId: tenant.id,
+      provider,
+      providerEventId: eventId || `${paymentRow.id}:${transactionId || txRef || "event"}`,
+      status: "received",
+      paymentId: paymentRow.id,
+      organizationId: asText(metadata.organizationId) || paymentRow.targetId,
+      rawPayload: payload,
+    });
+    if ((recordedEvent as any).duplicate) {
+      return res.status(200).json({ ok: true, ignored: true, reason: "duplicate_event" });
+    }
+
+    const result = await verifyMindbasePaymentWithGateway({
+      tenantId: tenant.id,
+      tenantKey,
+      paymentRow,
+      transactionId,
+      txRef,
+      source: "flutterwave_webhook",
+    });
+    await markMindbasePaymentEventProcessed({
+      tenantId: tenant.id,
+      provider,
+      providerEventId: recordedEvent.providerEventId,
+      status: String(result.payment.status || "processed"),
+    });
+    return res.status(200).json({
+      ok: true,
+      payment: serializeMindbasePayment(result.payment),
+      entitlement: result.entitlement?.entitlement || null,
+    });
+  } catch (error: any) {
+    if (recordedEvent && tenantId) {
+      await markMindbasePaymentEventProcessed({
+        tenantId,
+        provider,
+        providerEventId: recordedEvent.providerEventId,
+        status: "failed",
+        error: error?.message || "webhook_processing_failed",
+      }).catch(() => undefined);
+    }
+    console.error("[MindBase payments] Flutterwave webhook error:", error);
+    return res.status(200).json({ ok: false, message: error?.message || "Flutterwave webhook processing failed" });
+  }
+});
+
+router.post("/api/mindbase/payments/kkiapay/webhook", async (req: any, res) => {
+  const provider = "kkiapay";
+  let recordedEvent: { providerEventId: string } | null = null;
+  let tenantId = 0;
+  try {
+    await ensureMindbaseTables();
+    const tenant = requireTenant(req, res);
+    if (!tenant) return;
+    tenantId = tenant.id;
+    const tenantKey = (tenant.key || "mindbase") as TenantKey;
+    const config = getKkiapayConfig(tenantKey);
+    const verified = verifyKkiapayWebhookSignature({
+      rawBody: req.rawBody,
+      headers: req.headers || {},
+      secret: config.secret,
+    });
+    if (!verified.ok) return res.status(401).json({ ok: false, message: "Invalid Kkiapay webhook signature." });
+
+    const parsed = parseKkiapayWebhook(req.body);
+    const reference = asText(parsed.reference);
+    const transactionId = asText(parsed.transactionId);
+    const paymentRow =
+      (reference
+        ? await db.query.payments.findFirst({
+            where: and(
+              eq(payments.tenantId, tenant.id),
+              eq(payments.provider, provider),
+              or(eq(payments.id, reference as any), eq(payments.providerTransactionRef, reference)),
+            ),
+          })
+        : null) ||
+      (transactionId
+        ? await db.query.payments.findFirst({
+            where: and(eq(payments.tenantId, tenant.id), eq(payments.provider, provider), eq(payments.providerTransactionId, transactionId)),
+          })
+        : null);
+
+    if (!paymentRow || String(paymentRow.purpose || "") !== MINDBASE_PAYMENT_PURPOSE) {
+      return res.status(200).json({ ok: true, ignored: true, reason: "payment_not_found" });
+    }
+
+    const status = normalizeGatewayPaymentStatus(parsed.status) || "processing";
+    if (parsed.amount !== null && Number(paymentRow.amount) !== Math.round(Number(parsed.amount))) {
+      return res.status(400).json({ ok: false, message: "Payment amount mismatch." });
+    }
+    if (parsed.currency && String(parsed.currency).toUpperCase() !== String(paymentRow.currency || "XOF").toUpperCase()) {
+      return res.status(400).json({ ok: false, message: "Payment currency mismatch." });
+    }
+
+    const metadata = paymentMetadata(paymentRow);
+    recordedEvent = await recordMindbasePaymentEvent({
+      tenantId: tenant.id,
+      provider,
+      providerEventId: transactionId || reference || `${paymentRow.id}:event`,
+      status: "received",
+      paymentId: paymentRow.id,
+      organizationId: asText(metadata.organizationId) || paymentRow.targetId,
+      rawPayload: req.body,
+    });
+    if ((recordedEvent as any).duplicate) {
+      return res.status(200).json({ ok: true, ignored: true, reason: "duplicate_event" });
+    }
+
+    const result =
+      status === "succeeded" && transactionId
+        ? await verifyMindbasePaymentWithGateway({
+            tenantId: tenant.id,
+            tenantKey,
+            paymentRow,
+            transactionId,
+            source: "kkiapay_webhook",
+          })
+        : await updateMindbasePaymentFromGateway({
+            tenantId: tenant.id,
+            paymentRow,
+            status,
+            providerTransactionId: transactionId,
+            rawPayload: req.body,
+            source: "kkiapay_webhook",
+          });
+
+    await markMindbasePaymentEventProcessed({
+      tenantId: tenant.id,
+      provider,
+      providerEventId: recordedEvent.providerEventId,
+      status: String(result.payment.status || "processed"),
+    });
+    return res.status(200).json({
+      ok: true,
+      payment: serializeMindbasePayment(result.payment),
+      entitlement: result.entitlement?.entitlement || null,
+    });
+  } catch (error: any) {
+    if (recordedEvent && tenantId) {
+      await markMindbasePaymentEventProcessed({
+        tenantId,
+        provider,
+        providerEventId: recordedEvent.providerEventId,
+        status: "failed",
+        error: error?.message || "webhook_processing_failed",
+      }).catch(() => undefined);
+    }
+    console.error("[MindBase payments] Kkiapay webhook error:", error);
+    return res.status(500).json({ ok: false, message: error?.message || "Kkiapay webhook processing failed" });
+  }
+});
+
+router.get("/api/mindbase/payments/:paymentId/status", async (req: any, res) => {
+  try {
+    await ensureMindbaseTables();
+    const tenant = requireTenant(req, res);
+    if (!tenant) return;
+    const user = await requireSessionUser(req, res);
+    if (!user) return;
+
+    const paymentId = String(req.params.paymentId || "").trim();
+    const paymentRow = await db.query.payments.findFirst({
+      where: and(eq(payments.tenantId, tenant.id), eq(payments.id, paymentId as any)),
+    });
+    if (!paymentRow || String(paymentRow.purpose || "") !== MINDBASE_PAYMENT_PURPOSE) {
+      return res.status(404).json({ ok: false, message: "MindBase payment not found." });
+    }
+
+    const access = await resolveAccessibleMindbaseOrganization({
+      tenantId: tenant.id,
+      userId: user.id,
+      organizationId: asText(paymentMetadata(paymentRow).organizationId) || paymentRow.targetId,
+    });
+    if (!access) return res.status(403).json({ ok: false, message: "You cannot access this payment." });
+
+    let latestPayment = paymentRow;
+    let entitlement: any = null;
+    const shouldVerify =
+      String(paymentRow.status || "").toLowerCase() !== "succeeded" &&
+      (asText(req.query?.transaction_id) || asText(req.query?.transactionId) || asText(req.query?.tx_ref) || asText(req.query?.txRef));
+    if (shouldVerify) {
+      const result = await verifyMindbasePaymentWithGateway({
+        tenantId: tenant.id,
+        tenantKey: (tenant.key || "mindbase") as TenantKey,
+        paymentRow,
+        transactionId: asText(req.query?.transaction_id) || asText(req.query?.transactionId),
+        txRef: asText(req.query?.tx_ref) || asText(req.query?.txRef),
+        source: "status_poll",
+      });
+      latestPayment = result.payment;
+      entitlement = result.entitlement;
+    }
+
+    res.setHeader("Cache-Control", "no-store");
+    return res.json({
+      ok: true,
+      payment: serializeMindbasePayment(latestPayment),
+      entitlement: entitlement?.entitlement || null,
+    });
+  } catch (error: any) {
+    res.status(500).json({ ok: false, message: error?.message || "Failed to read MindBase payment status" });
+  }
+});
+
+router.post("/api/mindbase/payments/:paymentId/verify", async (req: any, res) => {
+  try {
+    await ensureMindbaseTables();
+    if (!checkRateLimit(req, res, "mindbase-payment-verify", 30, 5 * 60_000)) return;
+    const tenant = requireTenant(req, res);
+    if (!tenant) return;
+    const user = await requireSessionUser(req, res);
+    if (!user) return;
+
+    const paymentId = String(req.params.paymentId || "").trim();
+    const paymentRow = await db.query.payments.findFirst({
+      where: and(eq(payments.tenantId, tenant.id), eq(payments.id, paymentId as any)),
+    });
+    if (!paymentRow || String(paymentRow.purpose || "") !== MINDBASE_PAYMENT_PURPOSE) {
+      return res.status(404).json({ ok: false, message: "MindBase payment not found." });
+    }
+
+    const access = await resolveAccessibleMindbaseOrganization({
+      tenantId: tenant.id,
+      userId: user.id,
+      organizationId: asText(paymentMetadata(paymentRow).organizationId) || paymentRow.targetId,
+    });
+    if (!access) return res.status(403).json({ ok: false, message: "You cannot verify this payment." });
+
+    const result = await verifyMindbasePaymentWithGateway({
+      tenantId: tenant.id,
+      tenantKey: (tenant.key || "mindbase") as TenantKey,
+      paymentRow,
+      transactionId: asText(req.body?.transactionId ?? req.body?.transaction_id ?? req.query?.transactionId ?? req.query?.transaction_id),
+      txRef: asText(req.body?.txRef ?? req.body?.tx_ref ?? req.query?.txRef ?? req.query?.tx_ref),
+      source: "manual_verify",
+    });
+
+    res.setHeader("Cache-Control", "no-store");
+    return res.json({
+      ok: true,
+      payment: serializeMindbasePayment(result.payment),
+      entitlement: result.entitlement?.entitlement || null,
+      pendingReason: (result as any).pendingReason || null,
+      message:
+        String(result.payment.status || "").toLowerCase() === "succeeded"
+          ? `Payment confirmed. Your ${paymentMetadata(result.payment).planName || "paid"} plan is now active.`
+          : "Payment was not completed.",
+      safeOptions:
+        String(result.payment.status || "").toLowerCase() === "succeeded"
+          ? ["Open workspace", "Connect tools"]
+          : ["Try again", "Choose another method", "Continue on Free plan"],
+    });
+  } catch (error: any) {
+    res.status(500).json({ ok: false, message: error?.message || "Failed to verify MindBase payment" });
+  }
+});
+
 router.post("/api/mindbase/onboarding/workspace", async (req: any, res) => {
   try {
     await ensureMindbaseTables();
     if (!checkRateLimit(req, res, "mindbase-launch-workspace-save", 30, 60_000)) return;
     const tenant = requireTenant(req, res);
     if (!tenant) return;
-    const user = await requireSessionUser(req, res);
-    if (!user) return;
-
-    await ensureMindbaseRole({ tenantId: tenant.id, userId: user.id, role: "creator" });
-    await ensureCreatorProfile(tenant.id, user);
-
     const requestedCompanyName = asText(req.body?.companyName ?? req.body?.company_name);
     const companyName =
       !requestedCompanyName || requestedCompanyName.toLowerCase() === "not yet"
@@ -1340,28 +2996,59 @@ router.post("/api/mindbase/onboarding/workspace", async (req: any, res) => {
         .map((entry: unknown) => String(entry || "").trim().toLowerCase())
         .filter(Boolean),
     );
-    if (!selectedAgentIds.size) {
+    const installStarterTeam =
+      req.body?.installStarterAgents === true ||
+      req.body?.install_starter_agents === true ||
+      req.body?.installStarterTeam === true ||
+      req.body?.install_starter_team === true;
+    if (!selectedAgentIds.size && installStarterTeam) {
       for (const agent of LAUNCH_STARTER_AGENTS) {
         if (agent.id !== "adjoa") selectedAgentIds.add(agent.id);
       }
     }
     selectedAgentIds.add("adjoa");
 
-    const organization = await createMindbaseOrganization({
+    const onboardingSession = await resolveOrCreateOnboardingUser({
+      req,
       tenantId: tenant.id,
-      user: {
-        id: user.id,
-        displayName: user.displayName,
-        email: user.email,
-      },
-      name: companyName,
+      tenantKey: tenant.key,
+      displayName: asText(req.body?.visitorName ?? req.body?.visitor_name),
     });
+    const user = onboardingSession.user;
+
+    await ensureMindbaseRole({ tenantId: tenant.id, userId: user.id, role: "creator" });
+    await ensureCreatorProfile(tenant.id, user);
+
+    let organizationCreated = false;
+    const existingOrganization = await db.query.mindbaseOrganizations.findFirst({
+      where: and(
+        eq(mindbaseOrganizations.tenantId, tenant.id),
+        eq(mindbaseOrganizations.ownerUserId, user.id),
+        eq(mindbaseOrganizations.name, companyName),
+        eq(mindbaseOrganizations.status, "draft"),
+      ),
+      orderBy: [desc(mindbaseOrganizations.updatedAt)],
+    });
+
+    const organization =
+      existingOrganization ||
+      (await createMindbaseOrganization({
+        tenantId: tenant.id,
+        user: {
+          id: user.id,
+          displayName: user.displayName,
+          email: user.email,
+        },
+        name: companyName,
+      }));
+    organizationCreated = !existingOrganization;
 
     const persistedOrganization =
       (await db.query.mindbaseOrganizations.findFirst({
         where: and(eq(mindbaseOrganizations.tenantId, tenant.id), eq(mindbaseOrganizations.id, organization.id)),
       })) || organization;
 
+    let workspaceCreated = organizationCreated;
     let workspace =
       persistedOrganization.defaultWorkspaceId
         ? await db.query.mindbaseWorkspaces.findFirst({
@@ -1400,6 +3087,7 @@ router.post("/api/mindbase/onboarding/workspace", async (req: any, res) => {
         .returning();
       if (!createdWorkspace) throw new Error("Workspace creation returned no record");
       workspace = createdWorkspace;
+      workspaceCreated = true;
 
       await db
         .insert(mindbaseWorkspaceMembers)
@@ -1533,6 +3221,7 @@ router.post("/api/mindbase/onboarding/workspace", async (req: any, res) => {
         name: finalOrganization.name,
         slug: finalOrganization.slug,
         status: finalOrganization.status,
+        created: organizationCreated,
       },
       workspace: {
         id: workspace.id,
@@ -1541,9 +3230,26 @@ router.post("/api/mindbase/onboarding/workspace", async (req: any, res) => {
         status: workspace.status || "draft",
         companyBrainProgress: workspace.companyBrainProgress ?? 0,
         personaReadiness: workspace.personaReadiness ?? 0,
+        created: workspaceCreated,
       },
       agents: installedAgents,
-      commandRoute: `/workspaces?workspace=${encodeURIComponent(workspace.id)}`,
+      commandRoute: `/app/${encodeURIComponent(finalOrganization.slug)}/operations`,
+      session: onboardingSession.tokens
+        ? {
+            temporary: onboardingSession.temporary,
+            access_token: onboardingSession.tokens.accessToken,
+            refresh_token: onboardingSession.tokens.refreshToken,
+            expires_in_sec: onboardingSession.tokens.expiresInSec,
+            refresh_expires_in_sec: onboardingSession.tokens.refreshExpiresInSec,
+            user: {
+              id: user.id,
+              email: user.email,
+              display_name: user.displayName,
+              roles: user.roles,
+              temporary: onboardingSession.temporary,
+            },
+          }
+        : null,
     });
   } catch (error: any) {
     res.status(500).json({ ok: false, message: error?.message || "Failed to save onboarding workspace" });
@@ -1570,34 +3276,97 @@ router.post("/api/mindbase/auth/register", async (req: any, res) => {
     if (!email || !email.includes("@")) return res.status(400).json({ ok: false, message: "Valid email is required" });
     if (password.length < 8) return res.status(400).json({ ok: false, message: "Password must be at least 8 characters" });
 
+    const sessionUser = await resolveSessionUser(req);
     const existing = await db.query.eceUsers.findFirst({ where: eq(eceUsers.email, email) });
-    if (existing) return res.status(409).json({ ok: false, message: "User already exists" });
-
     const passwordHash = await bcrypt.hash(password, 10);
-    const [created] = await db
-      .insert(eceUsers)
-      .values({
-        email,
-        passwordHash,
-        displayName,
-        role: "buyer",
-        roles: ["buyer"],
-        permissions: [],
-        isActive: true,
-        emailVerified: false,
-        verificationLevel: "NONE",
-        currentMode: "buyer",
-        buyerType: "retail",
-        metadata: {
-          profileComplete: false,
-          preferences: {
-            source: "mindbase_register",
+    let created = null as typeof eceUsers.$inferSelect | null;
+
+    if (existing) {
+      if (!sessionUser || existing.id !== sessionUser.id || !isTemporaryMindbaseUser(existing)) {
+        return res.status(409).json({ ok: false, message: "User already exists" });
+      }
+      const existingMetadata = ((existing as any).metadata || {}) as Record<string, unknown>;
+      const existingPreferences = ((existingMetadata.preferences || {}) as Record<string, unknown>) || {};
+      [created] = await db
+        .update(eceUsers)
+        .set({
+          email,
+          passwordHash,
+          displayName,
+          roles: ["buyer"],
+          metadata: {
+            profileComplete: Boolean(existingMetadata.profileComplete),
+            seeded: Boolean(existingMetadata.seeded),
+            mustChangePassword: false,
+            preferences: {
+              ...existingPreferences,
+              source: "mindbase_register",
+              onboardingVisitor: false,
+              upgradedFromGuest: isTemporaryMindbaseUser(existing),
+              passwordSetAt: new Date().toISOString(),
+            },
           },
-        },
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      })
-      .returning();
+          updatedAt: new Date(),
+        })
+        .where(eq(eceUsers.id, existing.id))
+        .returning();
+    } else if (sessionUser) {
+      const sessionRow = await db.query.eceUsers.findFirst({ where: eq(eceUsers.id, sessionUser.id) });
+      if (isTemporaryMindbaseUser(sessionRow)) {
+        const existingMetadata = ((sessionRow as any).metadata || {}) as Record<string, unknown>;
+        const existingPreferences = ((existingMetadata.preferences || {}) as Record<string, unknown>) || {};
+        [created] = await db
+          .update(eceUsers)
+          .set({
+            email,
+            passwordHash,
+            displayName,
+            roles: ["buyer"],
+            metadata: {
+              profileComplete: false,
+              seeded: Boolean(existingMetadata.seeded),
+              mustChangePassword: false,
+              preferences: {
+                ...existingPreferences,
+                source: "mindbase_register",
+                onboardingVisitor: false,
+                upgradedFromGuest: true,
+                passwordSetAt: new Date().toISOString(),
+              },
+            },
+            updatedAt: new Date(),
+          })
+          .where(eq(eceUsers.id, sessionRow!.id))
+          .returning();
+      }
+    }
+
+    if (!created) {
+      [created] = await db
+        .insert(eceUsers)
+        .values({
+          email,
+          passwordHash,
+          displayName,
+          role: "buyer",
+          roles: ["buyer"],
+          permissions: [],
+          isActive: true,
+          emailVerified: false,
+          verificationLevel: "NONE",
+          currentMode: "buyer",
+          buyerType: "retail",
+          metadata: {
+            profileComplete: false,
+            preferences: {
+              source: "mindbase_register",
+            },
+          },
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .returning();
+    }
 
     await ensureMindbaseRole({ tenantId: tenant.id, userId: created.id, role: "creator" });
     const user = await buildSessionUser({ userId: created.id, tenantId: tenant.id });
@@ -1773,6 +3542,7 @@ router.get("/api/mindbase/discover", async (req: any, res) => {
       const profile = profileRows.find((entry) => entry.userId === item.ownerUserId);
       const user = userRows.find((entry) => entry.id === item.ownerUserId);
       return {
+        source: "intellect",
         id: item.id,
         name: item.name,
         slug: item.slug,
@@ -1792,7 +3562,55 @@ router.get("/api/mindbase/discover", async (req: any, res) => {
       };
     });
 
-    res.json({ ok: true, total: payload.length, items: payload });
+    const assetLimit = Math.max(0, limit - payload.length);
+    const publishedNames = new Set(payload.map((item) => String(item.name || "").trim().toLowerCase()).filter(Boolean));
+    const assetRows = assetLimit
+      ? await listPublicMindbaseMarketplaceAssets({
+          q,
+          category: category === "Agents" ? "Agents" : category,
+          type: "agent",
+          limit: assetLimit,
+        })
+      : [];
+    const assetPayload = assetRows
+      .filter((asset) => !publishedNames.has(String(asset.name || "").trim().toLowerCase()))
+      .map((asset) => ({
+        source: "asset",
+        id: asset.id,
+        name: asset.name,
+        slug: slugify(asset.name),
+        tagline: asset.description,
+        description: asset.description,
+        category: asset.category,
+        tags: asset.tags || [],
+        access_policy: Number(asset.price || 0) > 0 ? "paid" : "public",
+        price_per_100_messages: Number(asset.price || 0),
+        pricing_label: Number(asset.price || 0) > 0 ? `${Number(asset.price).toLocaleString()} XOF install` : "Free starter install",
+        usage_count: asset.installCount,
+        install_count: asset.installCount,
+        rating: Number(asset.rating || 0),
+        plan_requirement: Number(asset.price || 0) > 0 ? "Starter or higher" : "Free",
+        tools: asset.tags || [],
+        needs: asset.tags || [],
+        creator: {
+          display_name: "MindBase",
+          headline: "Official MindBase launch marketplace",
+          share_slug: null,
+          verification_status: "verified",
+        },
+      }));
+
+    const combined = [...payload, ...assetPayload].slice(0, limit);
+    res.json({
+      ok: true,
+      total: combined.length,
+      marketplace_seeded: assetPayload.length > 0,
+      items: combined,
+      emptyState: {
+        message: "I do not have an exact match yet, but I can create this agent for you.",
+        actions: ["Create custom agent", "Show similar agents", "Ask Adjoa"],
+      },
+    });
   } catch (error: any) {
     res.status(500).json({ ok: false, message: error?.message || "Failed to load intellect marketplace" });
   }
@@ -2701,6 +4519,170 @@ router.get("/api/mindbase/workspaces/:id", async (req: any, res) => {
   }
 });
 
+router.get("/api/mindbase/workspaces/:id/brain/files", async (req: any, res) => {
+  try {
+    await ensureMindbaseTables();
+    const tenant = requireTenant(req, res);
+    if (!tenant) return;
+    const user = await requireSessionUser(req, res);
+    if (!user) return;
+
+    const workspaceId = asUuid(req.params?.id);
+    if (!workspaceId) return res.status(400).json({ ok: false, message: "workspace id is required" });
+
+    const membership = await resolveWorkspaceMembership({ tenantId: tenant.id, workspaceId, userId: user.id });
+    if (!membership) return res.status(403).json({ ok: false, message: "Workspace access denied" });
+
+    const organization = await resolveOrganizationForWorkspace({ tenantId: tenant.id, workspaceId, userId: user.id });
+    if (!organization) {
+      return res.status(409).json({
+        ok: false,
+        message: "Link this workspace to a MindBase organization before uploading company brain documents.",
+      });
+    }
+
+    const events = await listWorkspaceBrainDocumentEvents({
+      tenantId: tenant.id,
+      organizationId: organization.id,
+      workspaceId,
+      limit: 120,
+    });
+    res.setHeader("Cache-Control", "no-store");
+    res.json({
+      ok: true,
+      organization_id: organization.id,
+      workspace_id: workspaceId,
+      items: events.map(serializeWorkspaceBrainDocument),
+    });
+  } catch (error: any) {
+    res.status(500).json({ ok: false, message: error?.message || "Failed to list company brain documents" });
+  }
+});
+
+router.post(
+  "/api/mindbase/workspaces/:id/brain/upload",
+  knowledgeUpload.single("file"),
+  async (req: any, res) => {
+    try {
+      await ensureMindbaseTables();
+      if (!checkRateLimit(req, res, "mindbase-workspace-brain-upload", 30, 60_000)) return;
+      const tenant = requireTenant(req, res);
+      if (!tenant) return;
+      const user = await requireSessionUser(req, res);
+      if (!user) return;
+
+      const workspaceId = asUuid(req.params?.id);
+      if (!workspaceId) return res.status(400).json({ ok: false, message: "workspace id is required" });
+
+      const membership = await resolveWorkspaceMembership({ tenantId: tenant.id, workspaceId, userId: user.id });
+      if (!membership) return res.status(403).json({ ok: false, message: "Workspace access denied" });
+
+      const workspace = await db.query.mindbaseWorkspaces.findFirst({
+        where: and(eq(mindbaseWorkspaces.tenantId, tenant.id), eq(mindbaseWorkspaces.id, workspaceId)),
+      });
+      if (!workspace) return res.status(404).json({ ok: false, message: "Workspace not found" });
+
+      const organization = await resolveOrganizationForWorkspace({ tenantId: tenant.id, workspaceId, userId: user.id });
+      if (!organization) {
+        return res.status(409).json({
+          ok: false,
+          message: "Link this workspace to a MindBase organization before uploading company brain documents.",
+        });
+      }
+
+      const file = req.file as Express.Multer.File | undefined;
+      if (!file) return res.status(400).json({ ok: false, message: "file is required" });
+      if (!isAllowedKnowledgeUpload(file)) {
+        return res.status(400).json({ ok: false, message: "Unsupported file format. Allowed: PDF, DOCX, TXT, XLSX." });
+      }
+
+      const root = path.resolve(process.cwd(), "uploads", "mindbase", String(tenant.id), String(workspaceId), "brain");
+      await fs.mkdir(root, { recursive: true });
+      const sanitizedName = String(file.originalname || "company-brain.bin").replace(/[^A-Za-z0-9._-]/g, "_");
+      const finalPath = path.join(root, `${Date.now()}-${crypto.randomUUID()}-${sanitizedName}`);
+      await fs.writeFile(finalPath, file.buffer);
+
+      let extractedText = "";
+      let chunks: string[] = [];
+      let status: "processed" | "failed" = "processed";
+      let errorMessage: string | null = null;
+
+      try {
+        extractedText = await extractFileText(file);
+        if (!extractedText || extractedText.length < 10) {
+          throw new Error("No readable text found in the uploaded file");
+        }
+        chunks = safeChunkText(extractedText).slice(0, 120);
+        if (!chunks.length) throw new Error("No readable text chunks could be created");
+      } catch (error: any) {
+        status = "failed";
+        errorMessage = String(error?.message || "Text extraction failed");
+      }
+
+      const [event] = await db
+        .insert(mindbaseBrainEvents)
+        .values({
+          tenantId: tenant.id,
+          organizationId: organization.id,
+          eventType: status === "processed" ? "company_brain.document_processed" : "company_brain.document_failed",
+          entityType: "workspace_document",
+          entityId: workspaceId,
+          payload: {
+            workspaceId,
+            workspaceName: workspace.name,
+            filename: sanitizedName,
+            mime: file.mimetype || null,
+            bytes: file.buffer.length,
+            storageUrl: finalPath,
+            status,
+            errorMessage,
+            extractedChars: extractedText.length,
+            chunkCount: chunks.length,
+            chunks,
+            uploadedByUserId: user.id,
+          },
+          createdAt: new Date(),
+        })
+        .returning();
+
+      if (status === "failed") {
+        res.status(422).json({
+          ok: false,
+          message: errorMessage || "Document could not be processed.",
+          item: event ? serializeWorkspaceBrainDocument(event) : null,
+        });
+        return;
+      }
+
+      const processedEvents = (await listWorkspaceBrainDocumentEvents({
+        tenantId: tenant.id,
+        organizationId: organization.id,
+        workspaceId,
+        limit: 200,
+      })).filter((row) => asText(brainEventPayload(row).status) === "processed");
+      const companyBrainProgress = Math.min(100, Math.max(Number(workspace.companyBrainProgress || 0), 20 + processedEvents.length * 12));
+
+      const [updatedWorkspace] = await db
+        .update(mindbaseWorkspaces)
+        .set({
+          companyBrainProgress,
+          updatedAt: new Date(),
+        })
+        .where(and(eq(mindbaseWorkspaces.tenantId, tenant.id), eq(mindbaseWorkspaces.id, workspaceId)))
+        .returning();
+
+      res.status(201).json({
+        ok: true,
+        message: "Document processed and attached to the workspace company brain.",
+        item: event ? serializeWorkspaceBrainDocument(event) : null,
+        workspace: updatedWorkspace || workspace,
+      });
+    } catch (error: any) {
+      res.status(500).json({ ok: false, message: error?.message || "Failed to upload company brain document" });
+    }
+  },
+);
+
 router.get("/api/mindbase/workspaces/:id/conversations", async (req: any, res) => {
   try {
     await ensureMindbaseTables();
@@ -2975,12 +4957,27 @@ router.post("/api/mindbase/workspaces/:id/chat", async (req: any, res) => {
       : selectedIntellect.accessPolicy === "paid"
         ? ["public", "monetized"]
         : ["public"];
-    const { contextText, citations } = await collectKnowledgeContext({
+    const agentKnowledge = await collectKnowledgeContext({
       tenantId: tenant.id,
       intellectId: selectedIntellect.id,
       query: userMessage,
       allowScopes,
     });
+    const workspaceBrain = await collectWorkspaceBrainContext({
+      tenantId: tenant.id,
+      workspaceId,
+      userId: user.id,
+      query: userMessage,
+    });
+    const contextText = [
+      agentKnowledge.contextText,
+      workspaceBrain.contextText ? `Workspace company brain:\n${workspaceBrain.contextText}` : "",
+    ]
+      .filter(Boolean)
+      .join("\n\n---\n\n");
+    const citations = [...agentKnowledge.citations, ...workspaceBrain.citations].filter(
+      (citation, index, all) => all.findIndex((item) => item.fileId === citation.fileId) === index,
+    );
 
     const history = await loadConversationHistory(conversationId);
     const completion = await runMindbaseCompletion({
@@ -3686,7 +5683,7 @@ router.get("/api/admin/mindbase/dashboard", ensureTenantAdmin, async (req: any, 
     const tenant = requireTenant(req, res);
     if (!tenant) return;
 
-    const [intellectRows, workspaceRows, userRows, creditRows, pendingRows] = await Promise.all([
+    const [intellectRows, workspaceRows, userRows, creditRows, pendingRows, paymentRows] = await Promise.all([
       db.query.intellects.findMany({
         where: eq(intellects.tenantId, tenant.id),
         columns: { id: true, isPublished: true, publishStatus: true },
@@ -3712,6 +5709,11 @@ router.get("/api/admin/mindbase/dashboard", ensureTenantAdmin, async (req: any, 
         columns: { id: true },
         limit: 5000,
       }),
+      db.query.payments.findMany({
+        where: eq(payments.tenantId, tenant.id),
+        columns: { id: true, amount: true, status: true, provider: true },
+        limit: 10000,
+      }),
     ]);
 
     const uniqueUsers = new Set<number>();
@@ -3719,6 +5721,10 @@ router.get("/api/admin/mindbase/dashboard", ensureTenantAdmin, async (req: any, 
 
     const creditsNet = creditRows.reduce((sum, row) => sum + Number(row.deltaInt || 0), 0);
     const published = intellectRows.filter((row) => Boolean(row.isPublished)).length;
+    const failedPayments = paymentRows.filter((row) => String(row.status || "").toLowerCase() === "failed").length;
+    const revenue = paymentRows
+      .filter((row) => String(row.status || "").toLowerCase() === "succeeded")
+      .reduce((sum, row) => sum + Number(row.amount || 0), 0);
 
     res.json({
       ok: true,
@@ -3729,10 +5735,398 @@ router.get("/api/admin/mindbase/dashboard", ensureTenantAdmin, async (req: any, 
         workspaces: workspaceRows.length,
         usersWithRoles: uniqueUsers.size,
         creditsNet,
+        revenue,
+        failedPayments,
       },
     });
   } catch (error: any) {
     res.status(500).json({ ok: false, message: error?.message || "Failed to load MindBase admin dashboard" });
+  }
+});
+
+router.get("/api/admin/mindbase/launch-readiness", ensureTenantAdmin, async (req: any, res) => {
+  try {
+    await ensureMindbaseTables();
+    const tenant = requireTenant(req, res);
+    if (!tenant) return;
+
+    const [organizationRows, workspaceRows, installedAgentRows, intellectRows, paymentRows, marketplaceAgentRows] = await Promise.all([
+      db.query.mindbaseOrganizations.findMany({
+        where: eq(mindbaseOrganizations.tenantId, tenant.id),
+        columns: { id: true, status: true, plan: true },
+        limit: 5000,
+      }),
+      db.query.mindbaseWorkspaces.findMany({
+        where: eq(mindbaseWorkspaces.tenantId, tenant.id),
+        columns: { id: true, status: true },
+        limit: 5000,
+      }),
+      db.query.mindbaseWorkspaceAgents.findMany({
+        where: eq(mindbaseWorkspaceAgents.tenantId, tenant.id),
+        columns: { id: true, status: true },
+        limit: 10000,
+      }),
+      db.query.intellects.findMany({
+        where: eq(intellects.tenantId, tenant.id),
+        columns: { id: true, isPublished: true, publishStatus: true },
+        limit: 5000,
+      }),
+      db.query.payments.findMany({
+        where: eq(payments.tenantId, tenant.id),
+        columns: { id: true, status: true, amount: true, provider: true },
+        limit: 10000,
+      }),
+      listPublicMindbaseMarketplaceAssets({ type: "agent", limit: 200 }),
+    ]);
+
+    const integrations = buildMindbaseIntegrationStatuses();
+    const payment = buildPaymentStatus(String(tenant.key || "mindbase"));
+    const email = configuredEmailProvider();
+    const authMissing = missingEnv(["MINDBASE_JWT_SECRET", "MINDBASE_JWT_REFRESH_SECRET"]);
+    const aiConfigured =
+      envPresent("OPENAI_API_KEY") ||
+      envPresent("ANTHROPIC_API_KEY") ||
+      envPresent("GOOGLE_GENERATIVE_AI_API_KEY") ||
+      envPresent("GEMINI_API_KEY");
+    const errorMonitoringConfigured =
+      envPresent("SENTRY_DSN") || envPresent("LOGTAIL_TOKEN") || envPresent("AXIOM_TOKEN") || envPresent("BUGSNAG_API_KEY");
+    const publishedIntellects = intellectRows.filter((row) => Boolean(row.isPublished)).length;
+    const marketplaceAgents = marketplaceAgentRows.length;
+    const launchMarketplaceCount = publishedIntellects + marketplaceAgents;
+    const failedPayments = paymentRows.filter((row) => String(row.status || "").toLowerCase() === "failed").length;
+    const revenue = paymentRows
+      .filter((row) => String(row.status || "").toLowerCase() === "succeeded")
+      .reduce((sum, row) => sum + Number(row.amount || 0), 0);
+
+    const checks = [
+      {
+        id: "auth",
+        label: "Auth configured",
+        status: authMissing.length ? "blocked" : "ready",
+        ready: authMissing.length === 0,
+        missingEnv: authMissing,
+        message: authMissing.length
+          ? "MindBase JWT secrets are missing. Email/password auth cannot safely persist sessions in production."
+          : "MindBase JWT secrets are configured for persisted sessions.",
+      },
+      {
+        id: "payments",
+        label: "Payments configured",
+        status: payment.checkoutEnabled ? "ready" : payment.provider === "manual" ? "warning" : "blocked",
+        ready: payment.checkoutEnabled,
+        missingEnv: payment.missingEnv,
+        message: payment.message,
+      },
+      {
+        id: "webhooks",
+        label: "Payment webhooks configured",
+        status: payment.checkoutEnabled ? "ready" : "blocked",
+        ready: payment.checkoutEnabled,
+        missingEnv: payment.missingEnv,
+        message: payment.checkoutEnabled
+          ? "Selected payment provider has webhook credentials configured; still run duplicate and failed-payment sandbox tests."
+          : "Payment webhooks are not ready because paid checkout is not fully configured.",
+      },
+      {
+        id: "email",
+        label: "Email configured",
+        status: email.configured ? "ready" : "blocked",
+        ready: email.configured,
+        missingEnv: email.missingEnv,
+        message: email.configured ? `${email.provider} email sending is configured.` : "Transactional email is not configured.",
+      },
+      {
+        id: "google",
+        label: "Google integrations configured",
+        status: "blocked",
+        ready: false,
+        missingEnv: integrations.gmail.missingEnv,
+        message:
+          "Google OAuth keys alone are not enough. MindBase Gmail/Drive/Calendar callback storage and workspace-scoped token handling are still gated.",
+      },
+      {
+        id: "whatsapp",
+        label: "WhatsApp configured",
+        status: "blocked",
+        ready: false,
+        missingEnv: integrations.whatsapp.missingEnv,
+        message: integrations.whatsapp.message,
+      },
+      {
+        id: "marketplace",
+        label: "Agent marketplace seeded",
+        status: launchMarketplaceCount >= 20 ? "ready" : launchMarketplaceCount > 0 ? "warning" : "blocked",
+        ready: launchMarketplaceCount >= 20,
+        missingEnv: [] as string[],
+        message:
+          launchMarketplaceCount >= 20
+            ? `At least 20 launch marketplace agents are available (${publishedIntellects} published intellects, ${marketplaceAgents} server-backed agent assets).`
+            : `Only ${launchMarketplaceCount} launch marketplace agents found. Seed and approve the first 20 launch agents.`,
+      },
+      {
+        id: "onboarding",
+        label: "Onboarding tested",
+        status: organizationRows.length && workspaceRows.length && installedAgentRows.length ? "warning" : "blocked",
+        ready: false,
+        missingEnv: [] as string[],
+        message:
+          organizationRows.length && workspaceRows.length && installedAgentRows.length
+            ? "Database records exist for organizations, workspaces, and installed agents. Run the full browser E2E before marking launch-ready."
+            : "No complete org/workspace/agent installation evidence exists in this tenant yet.",
+      },
+      {
+        id: "mobile",
+        label: "Mobile tested",
+        status: "blocked",
+        ready: false,
+        missingEnv: [] as string[],
+        message: "Mobile chat layout still needs Playwright/browser verification before customer launch.",
+      },
+      {
+        id: "ai-provider",
+        label: "AI provider configured",
+        status: aiConfigured ? "ready" : "blocked",
+        ready: aiConfigured,
+        missingEnv: aiConfigured ? [] : ["OPENAI_API_KEY"],
+        message: aiConfigured
+          ? "At least one AI provider key is present."
+          : "No AI provider key is present. Configure OpenAI, Anthropic, Gemini, or another supported provider.",
+      },
+      {
+        id: "error-monitoring",
+        label: "Error monitoring configured",
+        status: errorMonitoringConfigured ? "ready" : "warning",
+        ready: errorMonitoringConfigured,
+        missingEnv: errorMonitoringConfigured ? [] : ["SENTRY_DSN"],
+        message: errorMonitoringConfigured
+          ? "Error monitoring env is present."
+          : "No error monitoring env was detected. Launch can proceed only with a manual monitoring runbook.",
+      },
+    ];
+
+    const missingEnvKeys = Array.from(
+      new Set([
+        ...checks.flatMap((check) => check.missingEnv || []),
+        ...uniqueMissingEnvFromStatuses(integrations),
+        ...payment.missingEnv,
+      ]),
+    )
+      .filter(Boolean)
+      .sort();
+    const blocking = checks.filter((check) => check.status === "blocked");
+    const warnings = checks.filter((check) => check.status === "warning");
+
+    res.setHeader("Cache-Control", "no-store");
+    res.json({
+      ok: true,
+      tenant: tenant.key,
+      ready: blocking.length === 0 && warnings.length === 0,
+      summary: {
+        organizations: organizationRows.length,
+        workspaces: workspaceRows.length,
+        installedAgents: installedAgentRows.length,
+        publishedIntellects,
+        marketplaceAgents,
+        revenue,
+        failedPayments,
+        blocking: blocking.length,
+        warnings: warnings.length,
+      },
+      checks,
+      integrations,
+      payments: payment,
+      missingEnv: missingEnvKeys,
+      nextSteps: [
+        ...missingEnvKeys.map((key) => `Set ${key} in production env if this feature is required for launch.`),
+        ...(payment.checkoutEnabled
+          ? ["Run Flutterwave/Kkiapay sandbox checkout, failed payment, abandoned checkout, and duplicate webhook tests."]
+          : ["Choose PAYMENT_PROVIDER=flutterwave or PAYMENT_PROVIDER=kkiapay and configure its keys before enabling paid plans."]),
+        "Implement and test Google OAuth callback/token storage before enabling Gmail, Drive, or Calendar cards.",
+        "Implement and test WhatsApp workspace routing and approval flow before enabling WhatsApp agents.",
+        "Run desktop and mobile onboarding E2E from a new visitor through command center access.",
+      ],
+    });
+  } catch (error: any) {
+    res.status(500).json({ ok: false, message: error?.message || "Failed to load MindBase launch readiness" });
+  }
+});
+
+router.get("/api/admin/mindbase/payments", ensureTenantAdmin, async (req: any, res) => {
+  try {
+    await ensureMindbaseTables();
+    const tenant = requireTenant(req, res);
+    if (!tenant) return;
+
+    const limit = Math.max(1, Math.min(toInt(req.query?.limit, 100), 500));
+    const status = asText(req.query?.status);
+    const filters: any[] = [eq(payments.tenantId, tenant.id), eq(payments.purpose, MINDBASE_PAYMENT_PURPOSE)];
+    if (status) filters.push(eq(payments.status, status as any));
+
+    const paymentRows = await db.query.payments.findMany({
+      where: and(...filters),
+      orderBy: [desc(payments.createdAt)],
+      limit,
+    });
+    const paymentIds = paymentRows.map((row) => String(row.id || "")).filter(Boolean);
+    const eventRows = paymentIds.length
+      ? rowsFromSqlResult<any>(
+          await db.execute(sql`
+            select
+              id::text,
+              payment_id::text,
+              provider,
+              provider_event_id,
+              status,
+              raw_payload,
+              processed_at,
+              created_at,
+              updated_at
+            from mindbase_payment_events
+            where tenant_id = ${tenant.id}
+              and payment_id in (${sql.join(paymentIds.map((id) => sql`${id}::uuid`), sql`,`)})
+            order by created_at desc
+            limit 1000
+          `),
+        )
+      : [];
+    const eventsByPayment = new Map<string, any[]>();
+    for (const event of eventRows) {
+      const key = String(event.payment_id || "");
+      if (!eventsByPayment.has(key)) eventsByPayment.set(key, []);
+      eventsByPayment.get(key)!.push({
+        id: String(event.id || ""),
+        provider: String(event.provider || ""),
+        providerEventId: String(event.provider_event_id || ""),
+        status: String(event.status || ""),
+        processedAt: event.processed_at || null,
+        createdAt: event.created_at || null,
+        updatedAt: event.updated_at || null,
+      });
+    }
+
+    const items = paymentRows.map((row) => {
+      const metadata = paymentMetadata(row);
+      const normalizedStatus = String(row.status || "").toLowerCase();
+      return {
+        ...serializeMindbasePayment(row),
+        targetType: row.targetType,
+        targetId: row.targetId,
+        method: row.method,
+        pushStatus: row.pushStatus,
+        metadata: {
+          planId: metadata.planId || null,
+          planName: metadata.planName || null,
+          organizationId: metadata.organizationId || null,
+          organizationSlug: metadata.organizationSlug || null,
+          workspaceId: metadata.workspaceId || null,
+          entitlement: metadata.entitlement || null,
+          lastStatusSource: metadata.lastStatusSource || null,
+          lastStatusAt: metadata.lastStatusAt || null,
+        },
+        webhookEvents: eventsByPayment.get(String(row.id)) || [],
+        retryableVerification: ["pending", "processing", "failed"].includes(normalizedStatus),
+      };
+    });
+
+    const summary = {
+      total: paymentRows.length,
+      succeeded: paymentRows.filter((row) => String(row.status || "").toLowerCase() === "succeeded").length,
+      pending: paymentRows.filter((row) => ["pending", "processing"].includes(String(row.status || "").toLowerCase())).length,
+      failed: paymentRows.filter((row) => String(row.status || "").toLowerCase() === "failed").length,
+      revenue: paymentRows
+        .filter((row) => String(row.status || "").toLowerCase() === "succeeded")
+        .reduce((sum, row) => sum + Number(row.amount || 0), 0),
+      events: eventRows.length,
+    };
+
+    res.setHeader("Cache-Control", "no-store");
+    res.json({
+      ok: true,
+      tenant: tenant.key,
+      summary,
+      items,
+    });
+  } catch (error: any) {
+    res.status(500).json({ ok: false, message: error?.message || "Failed to load MindBase payments" });
+  }
+});
+
+router.get("/api/admin/mindbase/payments/export.csv", ensureTenantAdmin, async (req: any, res) => {
+  try {
+    await ensureMindbaseTables();
+    const tenant = requireTenant(req, res);
+    if (!tenant) return;
+
+    const paymentRows = await db.query.payments.findMany({
+      where: and(eq(payments.tenantId, tenant.id), eq(payments.purpose, MINDBASE_PAYMENT_PURPOSE)),
+      orderBy: [desc(payments.createdAt)],
+      limit: 5000,
+    });
+    const escapeCsv = (value: unknown) => `"${String(value ?? "").replace(/"/g, '""')}"`;
+    const rows = [
+      ["id", "provider", "status", "amount", "currency", "plan_id", "plan_name", "target_type", "target_id", "transaction_id", "transaction_ref", "created_at", "updated_at"],
+      ...paymentRows.map((row) => {
+        const metadata = paymentMetadata(row);
+        return [
+          row.id,
+          row.provider,
+          row.status,
+          row.amount,
+          row.currency,
+          metadata.planId || "",
+          metadata.planName || "",
+          row.targetType,
+          row.targetId,
+          row.providerTransactionId || "",
+          row.providerTransactionRef || "",
+          row.createdAt?.toISOString?.() || row.createdAt || "",
+          row.updatedAt?.toISOString?.() || row.updatedAt || "",
+        ];
+      }),
+    ];
+
+    res.setHeader("Cache-Control", "no-store");
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", `attachment; filename="mindbase-payments-${new Date().toISOString().slice(0, 10)}.csv"`);
+    res.send(rows.map((row) => row.map(escapeCsv).join(",")).join("\n"));
+  } catch (error: any) {
+    res.status(500).json({ ok: false, message: error?.message || "Failed to export MindBase payments" });
+  }
+});
+
+router.post("/api/admin/mindbase/payments/:paymentId/verify", ensureTenantAdmin, async (req: any, res) => {
+  try {
+    await ensureMindbaseTables();
+    const tenant = requireTenant(req, res);
+    if (!tenant) return;
+    const paymentId = asUuid(req.params?.paymentId);
+    if (!paymentId) return res.status(400).json({ ok: false, message: "payment id is required" });
+
+    const paymentRow = await db.query.payments.findFirst({
+      where: and(eq(payments.tenantId, tenant.id), eq(payments.id, paymentId)),
+    });
+    if (!paymentRow || String(paymentRow.purpose || "") !== MINDBASE_PAYMENT_PURPOSE) {
+      return res.status(404).json({ ok: false, message: "MindBase payment not found" });
+    }
+
+    const result = await verifyMindbasePaymentWithGateway({
+      tenantId: tenant.id,
+      tenantKey: (tenant.key || "mindbase") as TenantKey,
+      paymentRow,
+      transactionId: asText(req.body?.transactionId ?? req.body?.transaction_id),
+      txRef: asText(req.body?.txRef ?? req.body?.tx_ref),
+      source: "admin_retry",
+    });
+
+    res.setHeader("Cache-Control", "no-store");
+    res.json({
+      ok: true,
+      payment: serializeMindbasePayment(result.payment),
+      entitlement: result.entitlement || null,
+      pendingReason: (result as any).pendingReason || null,
+    });
+  } catch (error: any) {
+    res.status(500).json({ ok: false, message: error?.message || "Failed to verify MindBase payment" });
   }
 });
 

@@ -51,6 +51,7 @@ MANIFEST_PATH="${ARTIFACT_BASE}.json"
 CHECKSUM_PATH="${ARTIFACT_BASE}.sha256"
 [[ -f "$MANIFEST_PATH" ]] || fail "manifest not found: $MANIFEST_PATH"
 [[ -f "$CHECKSUM_PATH" ]] || fail "checksum not found: $CHECKSUM_PATH"
+assert_artifact_matches_tenant "$ARTIFACT_PATH" "$CANONICAL_TENANT"
 
 run_ssh "mkdir -p '${REMOTE_RELEASE_ARCHIVE_DIR}' '${REMOTE_DB_BACKUP_DIR}' '${REMOTE_FILE_BACKUP_DIR}' '${REMOTE_DEPLOY_ROOT}/releases' '${REMOTE_DEPLOY_ROOT}/shared'"
 

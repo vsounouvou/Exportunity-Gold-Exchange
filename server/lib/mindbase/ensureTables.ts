@@ -600,6 +600,30 @@ export async function ensureMindbaseTables() {
   `);
 
   await db.execute(sql`
+    create table if not exists mindbase_payment_events (
+      id uuid primary key default gen_random_uuid(),
+      tenant_id integer not null references tenants(id) on delete cascade,
+      payment_id uuid,
+      organization_id uuid,
+      provider text not null,
+      provider_event_id text not null,
+      status text not null default 'received',
+      raw_payload jsonb not null default '{}'::jsonb,
+      processed_at timestamptz,
+      processing_error text,
+      created_at timestamptz not null default now()
+    );
+  `);
+  await db.execute(sql`
+    create unique index if not exists mindbase_payment_events_provider_event_unique
+    on mindbase_payment_events(tenant_id, provider, provider_event_id);
+  `);
+  await db.execute(sql`
+    create index if not exists mindbase_payment_events_payment_idx
+    on mindbase_payment_events(payment_id, created_at desc);
+  `);
+
+  await db.execute(sql`
     create table if not exists mindbase_dashboard_summaries (
       id uuid primary key default gen_random_uuid(),
       tenant_id integer not null references tenants(id) on delete cascade,

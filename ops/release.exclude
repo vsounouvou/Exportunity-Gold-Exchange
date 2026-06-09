@@ -2,7 +2,6 @@
 node_modules
 .next
 .next/cache
-dist
 build
 .cache
 coverage
@@ -20,19 +19,9 @@ client/public/assets/screenshots
 client/public/assets/media
 client/public/assets/exportunity
 client/public/downloads
-client/public/images
 client/public/zogueland/stories
 client/public/exportunity/legal
 client/public/exportunity/posts
-client/public/product-images
-client/public/tenants/exportunity
-client/public/tenants/hoz
-client/public/tenants/met
-client/public/tenants/mindbase
-client/public/tenants/rayon1km
-client/public/tenants/vs
-client/public/tenants/xportcard
-client/public/tenants/zone
 ops/local-releases
 ops/local-backups
 ops/tmp

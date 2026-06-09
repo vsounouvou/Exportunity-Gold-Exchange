@@ -66,6 +66,33 @@ short_git_sha() {
   git -C "$ROOT_DIR" rev-parse --short=12 HEAD
 }
 
+git_dirty() {
+  local status_output
+  status_output="$(
+    git -C "$ROOT_DIR" status --porcelain --untracked-files=all -- \
+      . \
+      ':(exclude)ops/local-releases' \
+      ':(exclude)ops/local-backups' \
+      ':(exclude)ops/tmp'
+  )"
+  if [[ -n "$status_output" ]]; then
+    printf 'true\n'
+  else
+    printf 'false\n'
+  fi
+}
+
+source_version() {
+  local sha dirty
+  sha="$(short_git_sha)"
+  dirty="$(git_dirty)"
+  if [[ "$dirty" == "true" ]]; then
+    printf '%s-dirty\n' "$sha"
+  else
+    printf '%s\n' "$sha"
+  fi
+}
+
 git_branch() {
   git -C "$ROOT_DIR" rev-parse --abbrev-ref HEAD
 }
@@ -153,6 +180,49 @@ artifact_sidecars_for() {
   local artifact_path="$1"
   local base_path="${artifact_path%.tar.gz}"
   printf '%s\n' "${base_path}.json" "${base_path}.sha256"
+}
+
+manifest_value() {
+  local manifest_path="$1"
+  local field_name="$2"
+  node -e "const fs=require('fs'); const data=JSON.parse(fs.readFileSync(process.argv[1],'utf8')); const value=data[process.argv[2]]; if (value !== undefined && value !== null) process.stdout.write(String(value));" "$manifest_path" "$field_name"
+}
+
+verify_artifact_checksum() {
+  local artifact_path="$1"
+  local checksum_path="${artifact_path%.tar.gz}.sha256"
+  [[ -f "$checksum_path" ]] || fail "checksum not found: $checksum_path"
+  local expected actual
+  expected="$(awk '{print $1}' "$checksum_path")"
+  [[ -n "$expected" ]] || fail "checksum file is empty: $checksum_path"
+  actual="$(sha256_file "$artifact_path")"
+  [[ "$actual" == "$expected" ]] || fail "checksum mismatch for $artifact_path"
+}
+
+assert_artifact_matches_tenant() {
+  local artifact_path="$1"
+  local expected_tenant="$2"
+  local manifest_path="${artifact_path%.tar.gz}.json"
+  [[ -f "$manifest_path" ]] || fail "manifest not found: $manifest_path"
+
+  local manifest_tenant manifest_artifact manifest_remote_root artifact_name
+  manifest_tenant="$(manifest_value "$manifest_path" tenant)"
+  manifest_artifact="$(manifest_value "$manifest_path" artifact)"
+  manifest_remote_root="$(manifest_value "$manifest_path" remoteDeployRoot)"
+  artifact_name="$(basename "$artifact_path")"
+
+  [[ "$manifest_tenant" == "$expected_tenant" ]] ||
+    fail "artifact tenant mismatch: manifest=${manifest_tenant:-missing}, target=${expected_tenant}"
+
+  if [[ -n "$manifest_artifact" && "$manifest_artifact" != "$artifact_name" ]]; then
+    fail "artifact filename mismatch: manifest=${manifest_artifact}, file=${artifact_name}"
+  fi
+
+  if [[ -n "${REMOTE_DEPLOY_ROOT:-}" && -n "$manifest_remote_root" && "$manifest_remote_root" != "$REMOTE_DEPLOY_ROOT" ]]; then
+    fail "artifact remote root mismatch: manifest=${manifest_remote_root}, target=${REMOTE_DEPLOY_ROOT}"
+  fi
+
+  verify_artifact_checksum "$artifact_path"
 }
 
 print_usage_header() {

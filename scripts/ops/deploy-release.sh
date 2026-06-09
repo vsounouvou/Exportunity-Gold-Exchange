@@ -60,20 +60,24 @@ require_cmd curl
 
 load_tenant_config "$TENANT"
 
-if [[ "${DEPLOY_MODE}" == "docker-compose" && "${COMPOSE_PROJECT}" == "src" && "${CANONICAL_TENANT}" != "boursedelor" ]]; then
-  fail "compose project 'src' is reserved for boursedelor; set a unique composeProject for ${CANONICAL_TENANT}"
+if [[ "${DEPLOY_MODE}" == "docker-compose" && "${COMPOSE_PROJECT}" == "src" ]]; then
+  fail "compose project 'src' is not allowed for tenant deployments; set a unique composeProject for ${CANONICAL_TENANT}"
 fi
 
 APP_NAME_VALUE="${APP_NAME_OVERRIDE:-$CANONICAL_TENANT}"
 TENANT_DEFAULT_VALUE="${TENANT_DEFAULT_OVERRIDE:-$APP_NAME_VALUE}"
 DEPLOY_TENANT_VALUE="${DEPLOY_TENANT_OVERRIDE:-$APP_NAME_VALUE}"
+PUBLIC_BASE_URL_VALUE="${PUBLIC_BASE_URL_OVERRIDE:-$DOMAIN}"
+APP_BASE_URL_VALUE="${APP_BASE_URL_OVERRIDE:-$PUBLIC_BASE_URL_VALUE}"
+PASSWORD_SETUP_BASE_URL_VALUE="${PASSWORD_SETUP_BASE_URL_OVERRIDE:-$APP_BASE_URL_VALUE}"
 
 if [[ -z "$ARTIFACT_PATH" ]] && (( SKIP_CREATE == 0 )); then
   create_args=("$CANONICAL_TENANT")
   if (( BUILD_ARTIFACT == 1 )); then
     create_args+=("--build")
   fi
-  ARTIFACT_PATH="$("${SCRIPT_DIR}/create-release-artifact.sh" "${create_args[@]}")"
+  create_output="$("${SCRIPT_DIR}/create-release-artifact.sh" "${create_args[@]}")"
+  ARTIFACT_PATH="$(printf '%s\n' "$create_output" | tail -n 1)"
 fi
 
 if [[ -z "$ARTIFACT_PATH" ]]; then
@@ -86,9 +90,13 @@ fi
 ARTIFACT_BASE="${ARTIFACT_PATH%.tar.gz}"
 MANIFEST_PATH="${ARTIFACT_BASE}.json"
 [[ -f "$MANIFEST_PATH" ]] || fail "manifest not found: $MANIFEST_PATH"
+assert_artifact_matches_tenant "$ARTIFACT_PATH" "$CANONICAL_TENANT"
 
 RELEASE_ID="$(node -e "const fs=require('fs'); const data=JSON.parse(fs.readFileSync(process.argv[1],'utf8')); process.stdout.write(data.releaseId);" "$MANIFEST_PATH")"
 GIT_SHA="$(node -e "const fs=require('fs'); const data=JSON.parse(fs.readFileSync(process.argv[1],'utf8')); process.stdout.write(data.gitSha);" "$MANIFEST_PATH")"
+GIT_DIRTY="$(node -e "const fs=require('fs'); const data=JSON.parse(fs.readFileSync(process.argv[1],'utf8')); process.stdout.write(String(data.gitDirty === true));" "$MANIFEST_PATH")"
+SOURCE_VERSION="$(node -e "const fs=require('fs'); const data=JSON.parse(fs.readFileSync(process.argv[1],'utf8')); process.stdout.write(String(data.sourceVersion || data.gitSha || data.releaseId || ''));" "$MANIFEST_PATH")"
+BUILD_ID="$(node -e "const fs=require('fs'); const data=JSON.parse(fs.readFileSync(process.argv[1],'utf8')); process.stdout.write(String(data.buildId || data.releaseId || ''));" "$MANIFEST_PATH")"
 ARTIFACT_NAME="$(basename "$ARTIFACT_PATH")"
 
 if (( SKIP_UPLOAD == 0 )); then
@@ -109,11 +117,21 @@ REMOTE_DEPLOY_ROOT='${REMOTE_DEPLOY_ROOT}'
 REMOTE_ARTIFACT_PATH='${REMOTE_ARTIFACT_PATH}'
 RELEASE_ID='${RELEASE_ID}'
 GIT_SHA='${GIT_SHA}'
+GIT_DIRTY='${GIT_DIRTY}'
+SOURCE_VERSION='${SOURCE_VERSION}'
+BUILD_ID='${BUILD_ID}'
 COMPOSE_PROJECT='${COMPOSE_PROJECT}'
 HEALTHCHECK_URL='${HEALTHCHECK_URL}'
 DEPLOY_MODE='${DEPLOY_MODE}'
+KEEP_REMOTE_RELEASES='${KEEP_REMOTE_RELEASES}'
 
 mkdir -p "\${REMOTE_DEPLOY_ROOT}/releases" "\${REMOTE_DEPLOY_ROOT}/shared"
+lock_dir="\${REMOTE_DEPLOY_ROOT}/.deploy.lock"
+if ! mkdir "\${lock_dir}" 2>/dev/null; then
+  echo "another deploy is already running for \${REMOTE_DEPLOY_ROOT}" >&2
+  exit 75
+fi
+trap 'rmdir "\${lock_dir}" 2>/dev/null || true' EXIT
 EOF
 )"
 
@@ -133,14 +151,18 @@ REMOTE_SCRIPT+=$'\n'"tar -xzf \"\${REMOTE_ARTIFACT_PATH}\" -C \"\${release_dir}\
 for shared_path in "${LINKED_SHARED_PATHS[@]}"; do
   REMOTE_SCRIPT+=$'\n'"mkdir -p \"\$(dirname \"\${REMOTE_DEPLOY_ROOT}/shared/${shared_path}\")\""
   REMOTE_SCRIPT+=$'\n'"mkdir -p \"\$(dirname \"\${release_dir}/${shared_path}\")\""
-  REMOTE_SCRIPT+=$'\n'"if [ ! -e \"\${REMOTE_DEPLOY_ROOT}/shared/${shared_path}\" ]; then touch \"\${REMOTE_DEPLOY_ROOT}/shared/${shared_path}\"; fi"
+  if [[ "$shared_path" == ".env" ]]; then
+    REMOTE_SCRIPT+=$'\n'"if [ ! -s \"\${REMOTE_DEPLOY_ROOT}/shared/${shared_path}\" ]; then echo \"missing required shared ${shared_path} at \${REMOTE_DEPLOY_ROOT}/shared/${shared_path}\" >&2; exit 78; fi"
+  else
+    REMOTE_SCRIPT+=$'\n'"if [ ! -e \"\${REMOTE_DEPLOY_ROOT}/shared/${shared_path}\" ]; then touch \"\${REMOTE_DEPLOY_ROOT}/shared/${shared_path}\"; fi"
+  fi
   REMOTE_SCRIPT+=$'\n'"rm -rf \"\${release_dir}/${shared_path}\""
   REMOTE_SCRIPT+=$'\n'"ln -sfn \"\${REMOTE_DEPLOY_ROOT}/shared/${shared_path}\" \"\${release_dir}/${shared_path}\""
 done
 
 REMOTE_SCRIPT+=$'\n'"cd \"\${release_dir}\""
 REMOTE_SCRIPT+=$'\n'"if [ \"\${DEPLOY_MODE}\" = \"docker-compose\" ]; then"
-REMOTE_SCRIPT+=$'\n'"  APP_NAME='${APP_NAME_VALUE}' TENANT_DEFAULT='${TENANT_DEFAULT_VALUE}' DEPLOY_TENANT='${DEPLOY_TENANT_VALUE}' BUILD_ID=\"\${RELEASE_ID}\" GIT_SHA=\"\${GIT_SHA}\" COMPOSE_PROJECT_NAME=\"\${COMPOSE_PROJECT}\" docker compose up -d --build${SERVICE_STRING}"
+REMOTE_SCRIPT+=$'\n'"  APP_NAME='${APP_NAME_VALUE}' TENANT_DEFAULT='${TENANT_DEFAULT_VALUE}' DEPLOY_TENANT='${DEPLOY_TENANT_VALUE}' PUBLIC_BASE_URL='${PUBLIC_BASE_URL_VALUE}' APP_BASE_URL='${APP_BASE_URL_VALUE}' PASSWORD_SETUP_BASE_URL='${PASSWORD_SETUP_BASE_URL_VALUE}' HOST_BIND='${HOST_BIND}' HOST_PORT='${HOST_PORT}' PROXY_ALIAS='${PROXY_ALIAS}' BUILD_ID=\"\${BUILD_ID}\" GIT_SHA=\"\${GIT_SHA}\" GIT_DIRTY=\"\${GIT_DIRTY}\" SOURCE_VERSION=\"\${SOURCE_VERSION}\" COMPOSE_PROJECT_NAME=\"\${COMPOSE_PROJECT}\" docker compose up -d --build${SERVICE_STRING}"
 REMOTE_SCRIPT+=$'\n'"fi"
 REMOTE_SCRIPT+=$'\n'"if [ -n \"\${HEALTHCHECK_URL}\" ]; then"
 REMOTE_SCRIPT+=$'\n'"  healthcheck_attempt=1"
@@ -158,12 +180,27 @@ REMOTE_SCRIPT+=$'\n'"ln -sfn \"\${release_dir}\" \"\${current_link}\""
 REMOTE_SCRIPT+=$'\n'"cat > \"\${release_dir}/release-status.json\" <<STATUS"
 REMOTE_SCRIPT+=$'\n'"{"
 REMOTE_SCRIPT+=$'\n'"  \"releaseId\": \"\${RELEASE_ID}\","
+REMOTE_SCRIPT+=$'\n'"  \"buildId\": \"\${BUILD_ID}\","
 REMOTE_SCRIPT+=$'\n'"  \"gitSha\": \"\${GIT_SHA}\","
+REMOTE_SCRIPT+=$'\n'"  \"gitDirty\": \${GIT_DIRTY},"
+REMOTE_SCRIPT+=$'\n'"  \"sourceVersion\": \"\${SOURCE_VERSION}\","
 REMOTE_SCRIPT+=$'\n'"  \"deployedAt\": \"\$(date -u +%Y-%m-%dT%H:%M:%SZ)\","
 REMOTE_SCRIPT+=$'\n'"  \"healthcheckUrl\": \"\${HEALTHCHECK_URL}\","
 REMOTE_SCRIPT+=$'\n'"  \"status\": \"successful\""
 REMOTE_SCRIPT+=$'\n'"}"
 REMOTE_SCRIPT+=$'\n'"STATUS"
+REMOTE_SCRIPT+=$'\n'"if [ \"\${KEEP_REMOTE_RELEASES:-0}\" -gt 0 ] 2>/dev/null; then"
+REMOTE_SCRIPT+=$'\n'"  keep_file=\"\$(mktemp)\""
+REMOTE_SCRIPT+=$'\n'"  trap 'rm -f \"\${keep_file}\"; rmdir \"\${lock_dir}\" 2>/dev/null || true' EXIT"
+REMOTE_SCRIPT+=$'\n'"  [ -L \"\${current_link}\" ] && readlink -f \"\${current_link}\" >> \"\${keep_file}\" || true"
+REMOTE_SCRIPT+=$'\n'"  [ -L \"\${previous_link}\" ] && readlink -f \"\${previous_link}\" >> \"\${keep_file}\" || true"
+REMOTE_SCRIPT+=$'\n'"  find \"\${REMOTE_DEPLOY_ROOT}/releases\" -mindepth 1 -maxdepth 1 -type d | sort -r | head -n \"\${KEEP_REMOTE_RELEASES}\" >> \"\${keep_file}\""
+REMOTE_SCRIPT+=$'\n'"  find \"\${REMOTE_DEPLOY_ROOT}/releases\" -mindepth 1 -maxdepth 1 -type d | while IFS= read -r old_release; do"
+REMOTE_SCRIPT+=$'\n'"    old_real=\"\$(readlink -f \"\${old_release}\" || true)\""
+REMOTE_SCRIPT+=$'\n'"    if [ -n \"\${old_real}\" ] && grep -Fxq \"\${old_real}\" \"\${keep_file}\"; then continue; fi"
+REMOTE_SCRIPT+=$'\n'"    rm -rf \"\${old_release}\""
+REMOTE_SCRIPT+=$'\n'"  done"
+REMOTE_SCRIPT+=$'\n'"fi"
 
 log "deploying ${CANONICAL_TENANT} release ${RELEASE_ID}"
 run_ssh_script "$REMOTE_SCRIPT"
@@ -172,7 +209,7 @@ if (( SKIP_VERIFY == 0 )) && [[ -n "${DOMAIN:-}" ]] && [[ -f "${ROOT_DIR}/verify
   log "running deploy verification against ${DOMAIN}"
   (
     cd "$ROOT_DIR"
-    BASE_URL="$DOMAIN" node verify-deploy.mjs
+    BASE_URL="$DOMAIN" EXPECTED_APP="$APP_NAME_VALUE" node verify-deploy.mjs
   )
 fi
 

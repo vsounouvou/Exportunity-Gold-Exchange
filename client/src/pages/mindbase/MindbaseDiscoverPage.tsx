@@ -6,16 +6,23 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import MindbaseLayout from "./MindbaseLayout";
 import { mindbasePath } from "./routing";
-import { operatingAgents } from "./starterAgents";
+import { operatingAgents, type StarterAgent } from "./starterAgents";
 
 type DiscoverItem = {
+  source?: "intellect" | "asset";
   id: string;
   name: string;
   slug: string;
   tagline: string | null;
+  description?: string | null;
   category: string;
   access_policy: "private" | "public" | "paid";
   price_per_100_messages: number;
+  pricing_label?: string;
+  plan_requirement?: string;
+  tools?: string[];
+  needs?: string[];
+  rating?: number;
   creator: {
     display_name: string;
     share_slug: string | null;
@@ -90,6 +97,46 @@ const FEATURED_MINDBASE_AGENTS: DiscoverItem[] = ([
 
 function portraitForAgent(name: string) {
   return operatingAgents.find((agent) => agent.role === name || agent.name === name || name.toLowerCase().includes(agent.role.toLowerCase().replace(" agent", "")));
+}
+
+function initialsFor(value: string) {
+  return value
+    .split(/\s+/)
+    .map((part) => part[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+}
+
+function MarketplaceAgentPortrait({
+  agent,
+  label,
+}: {
+  agent: StarterAgent | undefined;
+  label: string;
+}) {
+  const [imageFailed, setImageFailed] = useState(false);
+  if (agent && !imageFailed) {
+    return (
+      <img
+        src={agent.avatar}
+        alt={`${agent.name} portrait`}
+        className="h-14 w-14 shrink-0 rounded-full object-cover object-center shadow-[0_10px_24px_rgba(15,23,42,0.12)]"
+        loading="lazy"
+        decoding="async"
+        onError={() => setImageFailed(true)}
+      />
+    );
+  }
+
+  return (
+    <span
+      aria-label={`${label} avatar`}
+      className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-[linear-gradient(135deg,#23F6E7,#0B65FF)] text-sm font-black text-white shadow-[0_10px_24px_rgba(15,23,42,0.12)]"
+    >
+      {initialsFor(agent?.name || label)}
+    </span>
+  );
 }
 
 export default function MindbaseDiscoverPage() {
@@ -177,8 +224,13 @@ export default function MindbaseDiscoverPage() {
         ) : (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {displayItems.map((item) => {
-              const pricing = item.access_policy === "paid" ? `${item.price_per_100_messages} credits / 100 msgs` : "Free";
+              const pricing =
+                item.pricing_label ||
+                (item.access_policy === "paid" ? `${item.price_per_100_messages} credits / 100 msgs` : "Free");
               const portraitAgent = portraitForAgent(item.name);
+              const isSeededAsset = item.source === "asset";
+              const chatHref = isSeededAsset ? mindbasePath("/") : mindbasePath(`/i/${item.slug}`);
+              const hireHref = isSeededAsset ? mindbasePath("/") : mindbasePath(`/i/${item.slug}`);
               return (
                 <Card
                   key={item.id}
@@ -187,7 +239,7 @@ export default function MindbaseDiscoverPage() {
                 >
                   <CardHeader className="pb-2">
                     <div className="flex items-start gap-3">
-                      {portraitAgent ? <img src={portraitAgent.avatar} alt={`${portraitAgent.name} portrait`} className="h-14 w-14 shrink-0 rounded-full object-cover shadow-[0_10px_24px_rgba(15,23,42,0.12)]" /> : null}
+                      <MarketplaceAgentPortrait agent={portraitAgent} label={item.name} />
                       <div className="min-w-0">
                         <CardTitle className="text-lg text-[var(--text)]">{portraitAgent ? portraitAgent.name : item.name}</CardTitle>
                         <p className="text-sm font-medium text-[var(--muted)]">{portraitAgent ? item.name : item.category}</p>
@@ -209,19 +261,29 @@ export default function MindbaseDiscoverPage() {
                         {pricing}
                       </span>
                       <span className="inline-flex items-center rounded-full border border-[var(--border)] bg-amber-50 px-2.5 py-0.5 font-semibold text-amber-700">
-                        Rating: N/A
+                        Rating: {typeof item.rating === "number" && item.rating > 0 ? item.rating.toFixed(1) : "N/A"}
                       </span>
+                      {item.plan_requirement ? (
+                        <span className="inline-flex items-center rounded-full border border-[var(--border)] bg-sky-50 px-2.5 py-0.5 font-semibold text-sky-700">
+                          {item.plan_requirement}
+                        </span>
+                      ) : null}
                     </div>
+                    {item.tools?.length ? (
+                      <div className="text-xs leading-5 text-[var(--muted)]">
+                        Tools: {item.tools.slice(0, 4).join(", ")}
+                      </div>
+                    ) : null}
                     <div className="flex flex-col gap-2 border-t border-[var(--border)] pt-3 sm:flex-row sm:items-center sm:justify-between">
                       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                        <Link href={item.id.startsWith("featured-") ? mindbasePath("/") : mindbasePath(`/i/${item.slug}`)}>
+                        <Link href={item.id.startsWith("featured-") ? mindbasePath("/") : chatHref}>
                           <a className="inline-flex min-w-[110px] items-center justify-center rounded-[10px] border border-[var(--border)] bg-[var(--chipBg)] px-3 py-2 text-sm font-semibold text-[var(--text)] hover:bg-slate-200">
                             Chat first
                           </a>
                         </Link>
-                        <Link href={item.id.startsWith("featured-") ? mindbasePath("/") : mindbasePath(`/i/${item.slug}`)}>
+                        <Link href={item.id.startsWith("featured-") ? mindbasePath("/") : hireHref}>
                           <a className="inline-flex min-w-[110px] items-center justify-center rounded-[10px] bg-[var(--primary)] px-3 py-2 text-sm font-semibold text-white hover:bg-[var(--primaryHover)]">
-                            Hire agent
+                            {isSeededAsset ? "Hire in chat" : "Hire agent"}
                           </a>
                         </Link>
                       </div>

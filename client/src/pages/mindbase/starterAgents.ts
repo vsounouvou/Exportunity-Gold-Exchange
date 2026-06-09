@@ -45,7 +45,7 @@ export const starterAgents: StarterAgent[] = [
     avatar: agentAvatars.adjoa,
     accent: "#0B65FF",
     firstMessage:
-      "I'm Adjoa. I'll guide the setup, keep the conversation moving, and make sure your first AI team has a real place to work.",
+      "I will help you assemble the AI team that will help run your company.",
   },
   {
     id: "awa",
@@ -64,7 +64,7 @@ export const starterAgents: StarterAgent[] = [
     accent: "#F59E0B",
     joinsAt: "team",
     firstMessage:
-      "Hi, I'm Awa, your Executive Assistant. I'll help protect your attention, follow up on messages, and keep meetings from becoming loose ends.",
+      "I will organize your inbox, reminders, meetings, and decisions once your tools are connected.",
   },
   {
     id: "kwame",
@@ -84,7 +84,7 @@ export const starterAgents: StarterAgent[] = [
     accent: "#38BDF8",
     joinsAt: "business",
     firstMessage:
-      "Kwame here. I turn goals into tasks, owners, weekly rhythms, and blockers so your company keeps moving.",
+      "I will help structure the work your company needs to execute every week.",
   },
   {
     id: "aminata",
@@ -109,7 +109,7 @@ export const starterAgents: StarterAgent[] = [
     accent: "#22C55E",
     joinsAt: "business",
     firstMessage:
-      "I'm Aminata. I'll help shape your offer, campaigns, content ideas, and how customers understand your company.",
+      "I will prepare campaigns, content ideas, and customer messages around your market.",
   },
   {
     id: "idriss",
@@ -129,11 +129,11 @@ export const starterAgents: StarterAgent[] = [
     accent: "#06B6D4",
     joinsAt: "customer",
     firstMessage:
-      "Idriss here. I'll help turn conversations into leads, offers, reminders, and a sales pipeline you can actually follow.",
+      "I will prepare your first customer pipeline and follow-up rhythm.",
   },
   {
     id: "nene",
-    name: "Nene",
+    name: "Néné",
     role: "Accounting Agent",
     purpose:
       "Tracks invoices, expenses, revenue, cashflow, and finance reminders.",
@@ -155,7 +155,7 @@ export const starterAgents: StarterAgent[] = [
     accent: "#8B5CF6",
     joinsAt: "team",
     firstMessage:
-      "I'm Nene. I'll watch the money side: invoices, expenses, revenue, cashflow, and the reminders that keep finance clean.",
+      "I will configure your finance workspace around invoices, expenses, revenue, and cashflow.",
   },
 ];
 
@@ -208,27 +208,36 @@ export const integrationCards = [
     id: "team",
     title: "Invite your team",
     copy: "Allows MindBase to coordinate people, tasks, and responsibilities.",
-    status: "Ready",
+    status: "Not enabled",
     action: "Invite team",
-    fallback: "",
+    fallback: "Team invitations are not enabled yet in this environment.",
     security: "You control every invitation.",
   },
   {
     id: "documents",
     title: "Upload documents",
     copy: "Allows your agents to learn how your company already operates.",
-    status: "Ready",
+    status: "Not enabled",
     action: "Upload documents",
-    fallback: "",
+    fallback: "Chat-first document upload is not enabled yet in this environment.",
     security: "Documents stay inside your workspace.",
   },
   {
     id: "crm",
     title: "Add customers / CRM",
     copy: "Allows Idriss to track leads, offers, and follow-up.",
-    status: "Ready",
+    status: "Not enabled",
     action: "Add customers",
-    fallback: "",
+    fallback: "Customer/CRM import is not enabled yet in this environment.",
     security: "Customer data stays tied to this workspace.",
+  },
+  {
+    id: "payments",
+    title: "Choose a plan",
+    copy: "Allows MindBase to activate paid plans or continue on the Free/manual plan.",
+    status: "Not enabled",
+    action: "Review plans",
+    fallback: "Paid checkout is not enabled yet in this environment.",
+    security: "Paid access is granted only after server-side payment verification.",
   },
 ];

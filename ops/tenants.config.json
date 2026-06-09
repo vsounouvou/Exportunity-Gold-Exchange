@@ -20,7 +20,6 @@
       ".env"
     ],
     "persistentPaths": [
-      "data/postgres",
       "data/attached_assets",
       "data/uploads",
       "data/storage",
@@ -28,7 +27,8 @@
       "shared/storage"
     ],
     "keepLocalReleases": 3,
-    "keepLocalBackups": 3
+    "keepLocalBackups": 3,
+    "keepRemoteReleases": 3
   },
   "tenants": {
     "boursedelor": {
@@ -36,13 +36,21 @@
         "bdo"
       ],
       "domain": "https://boursedelor.com",
-      "composeProject": "src",
+      "composeProject": "boursedelor",
       "remoteDeployRoot": "/var/www/boursedelor"
     },
     "exportunity": {
       "domain": "https://exportunity.net",
       "composeProject": "exportunity",
       "remoteDeployRoot": "/var/www/exportunity"
+    },
+    "mindbase": {
+      "deployUser": "root",
+      "domain": "https://mindbase.cloud",
+      "composeProject": "mindbase",
+      "hostPort": "5003",
+      "proxyAlias": "mindbase-app",
+      "remoteDeployRoot": "/var/www/mindbase"
     },
     "xportcard": {
       "aliases": [
@@ -77,6 +85,8 @@
       ],
       "domain": "https://maisonenterre.com",
       "composeProject": "maisonenterre",
+      "hostPort": "5001",
+      "proxyAlias": "maisonenterre-app",
       "remoteDeployRoot": "/var/www/maisonenterre"
     },
     "rayon1km": {

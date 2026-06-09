@@ -69,11 +69,15 @@ function resolveTenant(requestedTenant) {
       );
       const remoteSshTarget =
         merged.remoteSshTarget ?? `${merged.deployUser ?? "vital"}@${merged.remoteHost ?? "127.0.0.1"}`;
+      const healthCheckPath = merged.healthCheckPath ?? "/api/system/version";
+      const hostBind = merged.hostBind ?? "127.0.0.1";
+      const hostPort = merged.hostPort ?? "5000";
+      const localHealthHost =
+        String(hostBind) === "0.0.0.0" || String(hostBind) === "::" ? "127.0.0.1" : String(hostBind);
+      const publicHealthCheckUrl = merged.domain ? `${String(merged.domain).replace(/\/+$/, "")}${healthCheckPath}` : "";
       const healthCheckUrl =
         merged.healthCheckUrl ??
-        (merged.domain
-          ? `${String(merged.domain).replace(/\/+$/, "")}${merged.healthCheckPath ?? "/api/system/version"}`
-          : "");
+        (merged.deployMode === "docker-compose" ? `http://${localHealthHost}:${hostPort}${healthCheckPath}` : publicHealthCheckUrl);
 
       return {
         ...merged,
@@ -86,7 +90,8 @@ function resolveTenant(requestedTenant) {
         remoteDbBackupDir,
         remoteFileBackupDir,
         remoteSshTarget,
-        healthCheckUrl
+        healthCheckUrl,
+        publicHealthCheckUrl
       };
     }
   }
@@ -117,9 +122,14 @@ function printShell(config) {
     COMPOSE_PROJECT: config.composeProject ?? "src",
     HEALTHCHECK_URL: config.healthCheckUrl ?? "",
     HEALTHCHECK_PATH: config.healthCheckPath ?? "",
+    PUBLIC_HEALTHCHECK_URL: config.publicHealthCheckUrl ?? "",
+    HOST_BIND: config.hostBind ?? "127.0.0.1",
+    HOST_PORT: config.hostPort ?? "5000",
+    PROXY_ALIAS: config.proxyAlias ?? "bdo-app",
     DOMAIN: config.domain ?? "",
     KEEP_LOCAL_RELEASES: String(config.keepLocalReleases ?? 3),
-    KEEP_LOCAL_BACKUPS: String(config.keepLocalBackups ?? 3)
+    KEEP_LOCAL_BACKUPS: String(config.keepLocalBackups ?? 3),
+    KEEP_REMOTE_RELEASES: String(config.keepRemoteReleases ?? 3)
   };
 
   for (const [key, value] of Object.entries(scalarEntries)) {

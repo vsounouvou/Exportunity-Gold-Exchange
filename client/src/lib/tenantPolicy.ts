@@ -4,10 +4,12 @@ import {
   hasTenantModule,
   type PlatformModuleKey,
 } from "../../../tenants/index";
+import { tenantFromHost } from "@/lib/tenantResolution";
 
-const CORE_BACKOFFICE_TENANTS: TenantKey[] = ["bdo", "exportunity", "zone", "zogueland", "rayon1km"];
+const CORE_BACKOFFICE_TENANTS: TenantKey[] = ["bdo", "exportunity", "zone", "zogueland", "madd", "rayon1km", "xportcard"];
 const TENANTS_EXPORTUNITY_ZONE: TenantKey[] = ["exportunity", "zone", "rayon1km"];
-const ALL_TENANTS: TenantKey[] = ["bdo", "exportunity", "zone", "mindbase", "met", "vs", "hoz", "zogueland", "rayon1km"];
+const SHARED_MARKETPLACE_CATALOG_TENANTS: TenantKey[] = ["exportunity", "zone"];
+const ALL_TENANTS: TenantKey[] = ["bdo", "exportunity", "zone", "mindbase", "met", "vs", "hoz", "zogueland", "madd", "rayon1km", "xportcard"];
 
 function normalizePath(value: string) {
   const raw = String(value || "").trim();
@@ -45,6 +47,7 @@ const RULES: Array<{ prefix: string; tenants: TenantKey[] }> = [
 
   // Mindbase is isolated from operations shell.
   { prefix: "/mindbase", tenants: ["mindbase"] },
+  { prefix: "/organizations", tenants: ["mindbase"] },
   { prefix: "/discover", tenants: ["mindbase"] },
   { prefix: "/explore", tenants: ["mindbase"] },
   { prefix: "/studio", tenants: ["mindbase"] },
@@ -56,25 +59,57 @@ const RULES: Array<{ prefix: string; tenants: TenantKey[] }> = [
   { prefix: "/admin/mindbase", tenants: ["mindbase"] },
 
   // BDO specific.
+  { prefix: "/espace-pro", tenants: ["bdo"] },
+  { prefix: "/pro/creations", tenants: ["bdo"] },
+  { prefix: "/pro/collections", tenants: ["bdo"] },
+  { prefix: "/pro/pieces", tenants: ["bdo"] },
+  { prefix: "/pro/bijoux", tenants: ["bdo"] },
+  { prefix: "/pro/art", tenants: ["bdo"] },
+  { prefix: "/pro/revue", tenants: ["bdo"] },
+  { prefix: "/pro/fabrication", tenants: ["bdo"] },
+  { prefix: "/pro/certification", tenants: ["bdo"] },
+  { prefix: "/pro/preuves", tenants: ["bdo"] },
+  { prefix: "/pro/livraison", tenants: ["bdo"] },
+  { prefix: "/pro/partenaires", tenants: ["bdo"] },
+  { prefix: "/pro/parametres", tenants: ["bdo"] },
+  { prefix: "/wholesale", tenants: ["bdo"] },
   { prefix: "/bureaus", tenants: ["bdo"] },
   { prefix: "/admin/stamped-gold", tenants: ["bdo"] },
-  { prefix: "/machinery", tenants: ["bdo"] },
+  { prefix: "/machinery", tenants: ["bdo", "exportunity"] },
   { prefix: "/finance", tenants: ["bdo"] },
-  { prefix: "/territories", tenants: ["bdo"] },
-  { prefix: "/admin/territories", tenants: ["bdo"] },
+  { prefix: "/territories", tenants: ["bdo", "exportunity", "xportcard"] },
+  { prefix: "/territory", tenants: ["bdo", "exportunity", "xportcard"] },
+  { prefix: "/admin/territories", tenants: ["bdo", "exportunity", "xportcard"] },
+  { prefix: "/admin/territory", tenants: ["bdo", "exportunity", "xportcard"] },
 
   // Exportunity + zone.
   { prefix: "/zone", tenants: [...ALL_TENANTS] },
   { prefix: "/retail", tenants: [...ALL_TENANTS] },
   { prefix: "/marketplace", tenants: [...ALL_TENANTS] },
   { prefix: "/shop", tenants: [...ALL_TENANTS] },
-  { prefix: "/admin/marketplace", tenants: TENANTS_EXPORTUNITY_ZONE },
+  { prefix: "/rayon", tenants: ["exportunity"] },
+  { prefix: "/xportcard", tenants: ["exportunity"] },
+  { prefix: "/mining", tenants: ["exportunity"] },
+  { prefix: "/gold", tenants: ["exportunity"] },
+  { prefix: "/image-bank", tenants: ["exportunity"] },
+  { prefix: "/media-bank", tenants: ["exportunity"] },
+  { prefix: "/platform", tenants: ["exportunity"] },
+  { prefix: "/pro", tenants: ["exportunity"] },
+  { prefix: "/my-business", tenants: ["exportunity"] },
+  { prefix: "/business-os", tenants: ["exportunity"] },
+  { prefix: "/ai-business-center", tenants: ["exportunity"] },
+  { prefix: "/distributor/territory", tenants: ["exportunity"] },
+  { prefix: "/admin/exportunity", tenants: ["exportunity"] },
+  { prefix: "/admin/marketplace", tenants: [...TENANTS_EXPORTUNITY_ZONE, "bdo"] },
   { prefix: "/seller-dashboard", tenants: TENANTS_EXPORTUNITY_ZONE },
   { prefix: "/seller", tenants: TENANTS_EXPORTUNITY_ZONE },
   { prefix: "/sellers", tenants: TENANTS_EXPORTUNITY_ZONE },
   { prefix: "/admin/equipment-ops", tenants: TENANTS_EXPORTUNITY_ZONE },
 
   // MET.
+  { prefix: "/chat", tenants: ["met"] },
+  { prefix: "/devis-btc", tenants: ["met"] },
+  { prefix: "/assistant-maison-en-terre", tenants: ["met"] },
   { prefix: "/maison-modele", tenants: ["met"] },
   { prefix: "/briques", tenants: ["met"] },
   { prefix: "/plans", tenants: ["met"] },
@@ -93,14 +128,34 @@ const RULES: Array<{ prefix: string; tenants: TenantKey[] }> = [
   { prefix: "/admin/vs", tenants: ["vs"] },
 
   // HOZ.
-  { prefix: "/books", tenants: ["hoz"] },
+  { prefix: "/books", tenants: ["hoz", "exportunity", "zogueland"] },
+  { prefix: "/library", tenants: ["hoz", "exportunity", "zogueland"] },
   { prefix: "/jewelry", tenants: ["hoz"] },
   { prefix: "/admin/hoz", tenants: ["hoz"] },
 
   // Zogueland.
+  { prefix: "/create", tenants: ["zogueland"] },
+  { prefix: "/family", tenants: ["zogueland"] },
+  { prefix: "/child", tenants: ["zogueland"] },
+  { prefix: "/story-bank", tenants: ["zogueland"] },
+  { prefix: "/stories", tenants: ["zogueland"] },
+  { prefix: "/zogueland", tenants: ["zogueland"] },
+  { prefix: "/listen", tenants: ["zogueland"] },
+  { prefix: "/worlds", tenants: ["zogueland"] },
+  { prefix: "/parents", tenants: ["zogueland"] },
+  { prefix: "/schools", tenants: ["zogueland"] },
+  { prefix: "/community", tenants: ["zogueland"] },
+  { prefix: "/classroom", tenants: ["zogueland"] },
+  { prefix: "/safety", tenants: ["zogueland"] },
+  { prefix: "/trust", tenants: ["zogueland"] },
   { prefix: "/admin/zogueland", tenants: ["zogueland"] },
+  // MADD Academy runs under Zogueland now and can become its own tenant later.
+  { prefix: "/madd-world", tenants: [...ALL_TENANTS] },
+  { prefix: "/admin/madd", tenants: ["zogueland", "madd", "exportunity"] },
   // Rayon 1km.
   { prefix: "/admin/rayon1km", tenants: ["rayon1km"] },
+  // XportCARD.
+  { prefix: "/admin/xportcard", tenants: ["xportcard"] },
 ];
 
 const SHARED_SAFE_PREFIXES = [
@@ -108,6 +163,7 @@ const SHARED_SAFE_PREFIXES = [
   "/auth",
   "/login",
   "/register",
+  "/forgot-password",
   "/setup-password",
   "/application-status",
   "/install",
@@ -115,6 +171,11 @@ const SHARED_SAFE_PREFIXES = [
   "/wallet/topup/return",
   "/wallet/topup/flutterwave/return",
 ];
+
+function isBdoHostMode() {
+  if (typeof window === "undefined") return false;
+  return tenantFromHost(window.location.hostname) === "bdo";
+}
 
 const SHARED_BACKOFFICE_PREFIXES = [
   "/dashboard",
@@ -173,8 +234,11 @@ const ROUTE_MODULE_RULES: Array<{ prefix: string; module: PlatformModuleKey }> =
   { prefix: "/wallet", module: "wallet" },
   { prefix: "/admin/map", module: "map" },
   { prefix: "/territories", module: "map" },
+  { prefix: "/territory", module: "map" },
   { prefix: "/admin/territories", module: "map" },
+  { prefix: "/admin/territory", module: "map" },
   { prefix: "/admin/stamped-gold", module: "products" },
+  { prefix: "/wholesale", module: "wholesale" },
   { prefix: "/devis", module: "bulk_quotes" },
   { prefix: "/admin/met/estimates", module: "bulk_quotes" },
   { prefix: "/books", module: "collections" },
@@ -191,6 +255,10 @@ function resolveRouteModule(path: string): PlatformModuleKey | null {
 export function getAllowedTenantsForPath(path: string): TenantKey[] {
   const normalized = normalizePath(path);
   if (!normalized) return [];
+
+  if (isBdoHostMode()) {
+    return ["bdo"];
+  }
 
   if (normalized === "/") {
     return [...ALL_TENANTS];
@@ -239,6 +307,13 @@ export function getAllowedTenantsForPath(path: string): TenantKey[] {
   }
 
   return [...ALL_TENANTS];
+}
+
+export function getSharedMarketplaceCatalogTenants(tenantKey: TenantKey): TenantKey[] {
+  if (SHARED_MARKETPLACE_CATALOG_TENANTS.includes(tenantKey)) {
+    return [...SHARED_MARKETPLACE_CATALOG_TENANTS];
+  }
+  return [tenantKey];
 }
 
 export function isTenantRouteAllowed(path: string, tenantKey: TenantKey) {

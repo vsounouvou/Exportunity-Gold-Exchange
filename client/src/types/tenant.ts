@@ -7,4 +7,6 @@ export type TenantKey =
   | "vs"
   | "hoz"
   | "zogueland"
-  | "rayon1km";
+  | "madd"
+  | "rayon1km"
+  | "xportcard";

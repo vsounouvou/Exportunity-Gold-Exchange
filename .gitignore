@@ -13,6 +13,9 @@ vite.config.ts.*
 test-results
 reports
 deploy-report-*.md
+ops/local-releases/
+ops/local-backups/
+ops/tmp/
 .git_corrupt_*/
 *.log
 .tmp*

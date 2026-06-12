@@ -245,21 +245,23 @@ const BDO_HOME_ASSETS = {
 } as const;
 
 const BDO_LUX_PRIMARY_BUTTON =
-  "border border-[#E8C873]/75 bg-[linear-gradient(135deg,#E8C873_0%,#D4AF37_100%)] text-[#0B0B0D] shadow-[0_10px_28px_rgba(212,175,55,0.22),inset_0_1px_0_rgba(255,255,255,0.36)] hover:border-[#E8C873]/95 hover:brightness-110 hover:text-[#0B0B0D]";
+  "border border-[#F5F3EC]/18 bg-[linear-gradient(135deg,#F1D27A_0%,#D4AF37_48%,#A77C1E_100%)] text-[#0B0B0D] shadow-[0_14px_34px_rgba(212,175,55,0.24),inset_0_1px_0_rgba(255,255,255,0.46),inset_0_-1px_0_rgba(11,11,13,0.24)] hover:border-[#F1D27A]/80 hover:brightness-110 hover:text-[#0B0B0D]";
 const BDO_LUX_SECONDARY_BUTTON =
-  "border border-[#D4AF37]/38 bg-[#0B0B0D]/92 text-[#F5F3EC]/90 shadow-[inset_0_1px_0_rgba(232,200,115,0.08)] hover:border-[#E8C873]/62 hover:bg-[#0D1B2A]/88 hover:text-[#FFFFFF]";
+  "border border-[#D4AF37]/42 bg-[linear-gradient(180deg,rgba(13,27,42,0.86),rgba(11,11,13,0.96))] text-[#F5F3EC]/90 shadow-[0_10px_24px_rgba(0,0,0,0.20),inset_0_1px_0_rgba(232,200,115,0.10)] hover:border-[#E8C873]/68 hover:bg-[#0B0B0D]/94 hover:text-[#FFFFFF]";
 const BDO_LUX_COMPACT_BUTTON_TEXT =
   "text-[clamp(11px,2.55vw,12px)] font-semibold leading-tight tracking-normal [letter-spacing:0] text-center whitespace-normal";
 const BDO_LUX_ACTIVE_PILL =
-  "border-[#D4AF37]/52 bg-[#D4AF37]/14 text-[#E8C873] shadow-[0_0_24px_rgba(212,175,55,0.12),inset_0_1px_0_rgba(232,200,115,0.12)]";
+  "border-[#D4AF37]/56 bg-[#D4AF37]/14 text-[#F1D27A] shadow-[0_0_24px_rgba(212,175,55,0.14),inset_0_1px_0_rgba(232,200,115,0.14)]";
 const BDO_LUX_MUTED_PILL =
-  "border-[#E8C873]/16 bg-[#0B0B0D]/68 text-[#F5F3EC]/74 hover:border-[#D4AF37]/36 hover:bg-[#0D1B2A]/86 hover:text-[#F5F3EC]";
+  "border-[#E8C873]/18 bg-[#0B0B0D]/72 text-[#F5F3EC]/74 hover:border-[#D4AF37]/38 hover:bg-[#0D1B2A]/82 hover:text-[#F5F3EC]";
 const BDO_LUX_PANEL =
-  "border-[#D4AF37]/26 bg-[linear-gradient(135deg,rgba(11,11,13,0.98),rgba(13,27,42,0.82)_72%,rgba(11,11,13,0.96))] shadow-[0_28px_90px_rgba(0,0,0,0.5),0_0_0_1px_rgba(232,200,115,0.06)]";
+  "border-[#D4AF37]/26 bg-[radial-gradient(circle_at_12%_0%,rgba(212,175,55,0.11),transparent_30%),repeating-linear-gradient(135deg,rgba(245,243,236,0.025)_0px,rgba(245,243,236,0.025)_1px,transparent_1px,transparent_7px),linear-gradient(135deg,rgba(11,11,13,0.99),rgba(13,27,42,0.80)_68%,rgba(5,5,5,0.98))] shadow-[0_30px_95px_rgba(0,0,0,0.52),0_0_0_1px_rgba(232,200,115,0.06)]";
 const BDO_LUX_CARD =
-  "border-[#E8C873]/14 bg-[linear-gradient(180deg,rgba(11,11,13,0.84),rgba(13,27,42,0.52))] shadow-[inset_0_1px_0_rgba(232,200,115,0.06)]";
+  "border-[#E8C873]/16 bg-[radial-gradient(circle_at_16%_0%,rgba(212,175,55,0.08),transparent_36%),linear-gradient(180deg,rgba(11,11,13,0.88),rgba(13,27,42,0.48))] shadow-[inset_0_1px_0_rgba(232,200,115,0.08)]";
 const BDO_LUX_PRODUCT_SURFACE =
-  "bg-[radial-gradient(circle_at_18%_0%,rgba(212,175,55,0.10),transparent_34%),linear-gradient(180deg,#0B0B0D_0%,#0B0B0D_58%,#050505_100%)]";
+  "bg-[radial-gradient(circle_at_18%_0%,rgba(212,175,55,0.13),transparent_34%),repeating-linear-gradient(135deg,rgba(245,243,236,0.018)_0px,rgba(245,243,236,0.018)_1px,transparent_1px,transparent_7px),linear-gradient(180deg,#0B0B0D_0%,#070707_58%,#050505_100%)]";
+const BDO_LUX_TITLE_FONT = "font-['Cinzel',serif] tracking-normal";
+const BDO_LUX_BODY_FONT = "font-['Montserrat',sans-serif]";
 
 const BDO_HOME_STARTER_PRODUCT_SPECS = [
   {
@@ -1610,10 +1612,10 @@ function createGoldShopIconLegacy(L: any, products?: any[]) {
   let borderColor = "#D4AF37";
   let typeLabel = "GOLD";
   if (hasDore && !hasRefined) {
-    borderColor = "#EA580C";
+    borderColor = "#7A5A18";
     typeLabel = "DORÃ‰";
   } else if (hasRefined && !hasDore) {
-    borderColor = "#10B981";
+    borderColor = "#E8C873";
     typeLabel = "REFINED";
   } else {
     typeLabel = "MIXED";
@@ -1943,7 +1945,7 @@ function createMachineryIcon(L: any, item: { status: string }) {
         : status === "used"
           ? "#94A3B8"
           : status === "reserved"
-            ? "#A855F7"
+            ? "#E8C873"
             : "#F43F5E";
   const label =
     status === "in_stock"
@@ -1996,7 +1998,7 @@ function createOpportunityIcon(
   L: any,
   item: { mineVerificationStatus?: string },
 ) {
-  const color = "#10B981";
+  const color = "#D4AF37";
   const label = "CADASTRE";
 
   return L.divIcon({
@@ -7903,19 +7905,19 @@ export function BuyerHomePage({
     if (category === "stamped") {
       return {
         label: "STAMPED",
-        className: "bg-emerald-500/80 text-white border-emerald-400/50",
+        className: "bg-[#D4AF37]/85 text-black border-[#E8C873]/60",
       };
     }
     if (category === "gold-art") {
       return {
         label: "GOLD ART",
-        className: "bg-yellow-500/70 text-black border-yellow-300/60",
+        className: "bg-[#E8C873]/82 text-[#0B0B0D] border-[#F1D27A]/60",
       };
     }
     if (category === "jewelry") {
       return {
         label: "JEWELRY",
-        className: "bg-violet-500/70 text-white border-violet-300/60",
+        className: "bg-[#7A5A18]/82 text-[#F8F3E7] border-[#D4AF37]/55",
       };
     }
     return {
@@ -10957,7 +10959,7 @@ export function BuyerHomePage({
           }}
         >
           <div
-            className={`relative overflow-hidden ${compactMobileCard ? "h-[332px]" : "h-[352px]"}`}
+            className={`relative overflow-hidden ${compactMobileCard ? "h-[348px]" : "h-[376px]"}`}
           >
             <div className="absolute inset-x-0 top-0 z-[1] h-1 bg-[linear-gradient(90deg,#D4AF37_0%,#E8C873_52%,#D4AF37_100%)] opacity-85" />
             <img
@@ -11518,7 +11520,7 @@ export function BuyerHomePage({
     <div className={`grid gap-3 ${compact ? "" : "lg:grid-cols-[1.05fr_0.95fr]"}`}>
       <section
         data-bdo-home="sidebar"
-        className="rounded-[24px] border border-white/10 bg-[#0B0B0D]/92 p-4 shadow-xl backdrop-blur"
+        className={`rounded-[24px] p-4 ${BDO_LUX_CARD}`}
       >
         <p className="text-[11px] uppercase tracking-[0.22em] text-[#E8C873]/80">
           Comment ça marche
@@ -11545,12 +11547,12 @@ export function BuyerHomePage({
 
       <section
         data-bdo-home="coffre-card"
-        className="rounded-[24px] border border-[#D4AF37]/20 bg-[linear-gradient(135deg,rgba(212,175,55,0.12),rgba(13,27,42,0.96)_42%,rgba(11,11,13,0.98))] p-4 shadow-xl backdrop-blur"
+        className={`rounded-[24px] p-4 ${BDO_LUX_PANEL}`}
       >
         <p className="text-[11px] uppercase tracking-[0.22em] text-[#E8C873]/80">
           Objectif d'achat
         </p>
-        <h3 className="mt-2 text-xl font-semibold text-white">
+        <h3 className={`mt-2 text-xl font-semibold text-white ${BDO_LUX_TITLE_FONT}`}>
           Commencez avec le montant disponible.
         </h3>
         <p className="mt-2 text-sm leading-relaxed text-white/62">
@@ -11589,14 +11591,14 @@ export function BuyerHomePage({
 
       <section
         data-bdo-home="pro-teaser"
-        className="rounded-[24px] border border-white/10 bg-[#0B0B0D]/92 p-4 shadow-xl backdrop-blur lg:col-span-2"
+        className={`rounded-[24px] p-4 lg:col-span-2 ${BDO_LUX_PANEL}`}
       >
         <div className={`grid gap-4 ${compact ? "" : "md:grid-cols-[1fr_0.82fr] md:items-center"}`}>
           <div>
             <p className="text-[11px] uppercase tracking-[0.22em] text-[#E8C873]/80">
               Certification
             </p>
-            <h3 className="mt-2 text-xl font-semibold text-white">
+            <h3 className={`mt-2 text-xl font-semibold text-white ${BDO_LUX_TITLE_FONT}`}>
               Chaque produit porte une preuve.
             </h3>
             <p className="mt-2 max-w-[72ch] text-sm leading-relaxed text-white/62">
@@ -11678,7 +11680,7 @@ export function BuyerHomePage({
     return (
       <article
         key={`bdo-featured-banner-${product?.id || product?.sellerProductId || idx}`}
-        className={`group relative shrink-0 snap-start overflow-hidden rounded-[22px] border border-[#D4AF37]/20 bg-[#08111f] shadow-[0_22px_58px_rgba(2,6,23,0.34)] ${
+        className={`group relative shrink-0 snap-start overflow-hidden rounded-[22px] border border-[#D4AF37]/20 ${BDO_LUX_PRODUCT_SURFACE} shadow-[0_22px_58px_rgba(0,0,0,0.34)] ${
           compact ? "w-[220px]" : "w-[340px] 2xl:w-[372px]"
         }`}
       >
@@ -11803,7 +11805,7 @@ export function BuyerHomePage({
     const isFeatured = bdoFeaturedProductIds.includes(productKey);
 
     return (
-      <div className="relative overflow-hidden rounded-[22px] border border-[#D4AF37]/20 bg-[#050b14] shadow-[0_26px_80px_rgba(0,0,0,0.32)]">
+      <div className={`relative overflow-hidden rounded-[22px] ${BDO_LUX_PANEL}`}>
         <button
           type="button"
           className="group relative block h-[410px] w-full overflow-hidden text-left 2xl:h-[470px]"
@@ -15841,11 +15843,11 @@ export function BuyerHomePage({
                                       ? category === "dore"
                                         ? "bg-[#D4AF37]/15 text-[#E8C873]"
                                         : category === "stamped"
-                                          ? "bg-emerald-500/20 text-emerald-400"
+                                          ? "bg-[#D4AF37]/20 text-[#F1D27A]"
                                           : category === "gold-art"
-                                            ? "bg-yellow-500/20 text-yellow-300"
+                                            ? "bg-[#E8C873]/20 text-[#F1D27A]"
                                             : category === "jewelry"
-                                              ? "bg-violet-500/20 text-violet-200"
+                                              ? "bg-[#7A5A18]/25 text-[#F8F3E7]"
                                               : "bg-white/10 text-white/70"
                                       : "bg-white/10 text-white/70";
                                     return (
@@ -17097,10 +17099,10 @@ export function BuyerHomePage({
       ) : null}
 
       {isBdoMobileHomeRoute ? (
-        <div className="relative z-40 mx-3 mb-4 mt-[calc(var(--safe-top)+var(--mobile-header-height)+14px)] space-y-3">
+        <div className={`relative z-40 mx-3 mb-4 mt-[calc(var(--safe-top)+var(--mobile-header-height)+14px)] space-y-3 ${BDO_LUX_BODY_FONT}`}>
           <section
             data-bdo-home="hero-final"
-            className="relative overflow-hidden rounded-[28px] border border-[#D4AF37]/18 bg-[#0B0B0D] shadow-[0_24px_80px_rgba(0,0,0,0.42)]"
+            className={`relative overflow-hidden rounded-[28px] ${BDO_LUX_PANEL}`}
           >
             <img
               src={BDO_HOME_ASSETS.banners.home}
@@ -17115,7 +17117,7 @@ export function BuyerHomePage({
               <p className="text-[10px] uppercase tracking-[0.28em] text-[#E8C873]/82">
                 Bourse de l&apos;Or
               </p>
-              <h1 className="mt-3 max-w-[9ch] text-[36px] font-semibold leading-[0.98] text-white">
+              <h1 className={`mt-3 max-w-[9ch] text-[36px] font-semibold leading-[0.98] text-white ${BDO_LUX_TITLE_FONT}`}>
                 Achetez de l&apos;or africain certifié.
               </h1>
               <p className="mt-4 max-w-[25ch] text-[15px] leading-relaxed text-white/78">
@@ -17288,14 +17290,14 @@ export function BuyerHomePage({
 
           <section
             id="bdo-mobile-buy"
-            className="overflow-hidden rounded-[26px] border border-[#D4AF37]/18 bg-[#0B0B0D] p-4 shadow-[0_22px_70px_rgba(0,0,0,0.38)]"
+            className={`overflow-hidden rounded-[26px] p-4 ${BDO_LUX_PANEL}`}
           >
             <div className="flex items-end justify-between gap-3">
               <div>
                 <p className="text-[10px] uppercase tracking-[0.24em] text-[#E8C873]/80">
                   Sélection publique
                 </p>
-                <h2 className="mt-1 text-[22px] font-semibold leading-tight text-white">
+                <h2 className={`mt-1 text-[22px] font-semibold leading-tight text-white ${BDO_LUX_TITLE_FONT}`}>
                   Nos premières pièces certifiées
                 </h2>
                 <p className="mt-2 max-w-[34ch] text-[13px] leading-relaxed text-white/58">
@@ -17324,14 +17326,14 @@ export function BuyerHomePage({
 
           <section
             id="bdo-mobile-catalogue-complet"
-            className="rounded-[24px] border border-white/10 bg-[#0B0B0D] p-4 shadow-lg"
+            className={`rounded-[24px] p-4 ${BDO_LUX_PANEL}`}
           >
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-[11px] uppercase tracking-[0.22em] text-[#E8C873]/80">
                   Catalogue certifié
                 </p>
-                <h2 className="mt-1 text-lg font-semibold text-white">
+                <h2 className={`mt-1 text-lg font-semibold text-white ${BDO_LUX_TITLE_FONT}`}>
                   Produits disponibles
                 </h2>
                 <p className="mt-1 text-[12px] leading-relaxed text-white/58">
@@ -17386,7 +17388,7 @@ export function BuyerHomePage({
             </div>
           </section>
 
-          <section className="rounded-[22px] border border-[#D4AF37]/14 bg-[#0B0B0D]/92 px-4 py-3 shadow-xl">
+          <section className={`rounded-[22px] px-4 py-3 ${BDO_LUX_CARD}`}>
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex flex-wrap gap-2">
                 {bdoFooterLinks.map((link) => (
@@ -17407,12 +17409,12 @@ export function BuyerHomePage({
           </section>
         </div>
       ) : isBdoMobileBuyRoute ? (
-        <div className="relative z-40 mx-3 mb-4 mt-[calc(var(--safe-top)+var(--mobile-header-height)+14px)] space-y-3">
-          <section className="rounded-[20px] border border-white/10 bg-[#0B0B0D] p-4 shadow-lg">
+        <div className={`relative z-40 mx-3 mb-4 mt-[calc(var(--safe-top)+var(--mobile-header-height)+14px)] space-y-3 ${BDO_LUX_BODY_FONT}`}>
+          <section className={`rounded-[20px] p-4 ${BDO_LUX_PANEL}`}>
             <p className="text-[11px] uppercase tracking-[0.22em] text-[#E8C873]/80">
               Acheter de l'or
             </p>
-            <h1 className="mt-1 text-xl font-semibold text-white">
+            <h1 className={`mt-1 text-xl font-semibold text-white ${BDO_LUX_TITLE_FONT}`}>
               Pièces certifiées
             </h1>
             <p className="mt-1 text-sm text-white/60">
@@ -17452,13 +17454,13 @@ export function BuyerHomePage({
             </div>
           </section>
 
-          <section className="rounded-[24px] border border-white/10 bg-[#0B0B0D] p-3 shadow-lg">
+          <section className={`rounded-[24px] p-3 ${BDO_LUX_PANEL}`}>
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-[11px] uppercase tracking-[0.22em] text-[#E8C873]/80">
                   {bdoSelectedTile?.label || "Catalogue"}
                 </p>
-                <h2 className="mt-1 text-lg font-semibold text-white">
+                <h2 className={`mt-1 text-lg font-semibold text-white ${BDO_LUX_TITLE_FONT}`}>
                   Produits disponibles
                 </h2>
               </div>
@@ -17483,7 +17485,7 @@ export function BuyerHomePage({
             </div>
           </section>
 
-          <section className="rounded-[20px] border border-white/10 bg-[#0c1522] p-4 shadow-lg">
+          <section className={`rounded-[20px] p-4 ${BDO_LUX_CARD}`}>
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-[10px] uppercase tracking-[0.22em] text-[#E8C873]/80">
@@ -17515,11 +17517,11 @@ export function BuyerHomePage({
             </div>
           </section>
 
-          <section className="rounded-[20px] border border-[#D4AF37]/20 bg-[#0B0B0D] p-4 shadow-lg">
+          <section className={`rounded-[20px] p-4 ${BDO_LUX_PANEL}`}>
             <p className="text-[11px] uppercase tracking-[0.22em] text-[#E8C873]/80">
               Marché de gros
             </p>
-            <h2 className="mt-1 text-lg font-semibold text-white">
+            <h2 className={`mt-1 text-lg font-semibold text-white ${BDO_LUX_TITLE_FONT}`}>
               Marché de gros vérifié
             </h2>
             <p className="mt-1 text-sm text-white/60">
@@ -17538,9 +17540,9 @@ export function BuyerHomePage({
       ) : showBdoCampaignHero ? (
         <div
           data-bdo-home="hero"
-          className="relative z-40 mx-3 mb-2 mt-2"
+          className={`relative z-40 mx-3 mb-2 mt-2 ${BDO_LUX_BODY_FONT}`}
         >
-          <section className="relative overflow-hidden rounded-[24px] border border-[#D4AF37]/18 bg-[#0B0B0D] shadow-[0_28px_90px_rgba(0,0,0,0.34)]">
+          <section className={`relative overflow-hidden rounded-[24px] ${BDO_LUX_PANEL}`}>
             <img
               src={BDO_HOME_ASSETS.banners.home}
               alt="Or africain certifié"
@@ -17555,7 +17557,7 @@ export function BuyerHomePage({
                 <p className="text-[11px] uppercase tracking-[0.3em] text-[#E8C873]/82">
                   Bourse de l&apos;Or
                 </p>
-                <h1 className="mt-4 max-w-[10ch] text-[46px] font-semibold leading-[0.96] text-white 2xl:text-[60px]">
+                <h1 className={`mt-4 max-w-[10ch] text-[46px] font-semibold leading-[0.96] text-white 2xl:text-[60px] ${BDO_LUX_TITLE_FONT}`}>
                   Achetez de l&apos;or africain certifié.
                 </h1>
                 <p className="mt-5 max-w-[32ch] text-[18px] leading-relaxed text-white/78">
@@ -17810,11 +17812,11 @@ export function BuyerHomePage({
       ) : null}
 
       {showBdoDesktopLayout ? (
-        <div className="relative z-40 mx-3 mb-4 mt-2 space-y-2.5">
+        <div className={`relative z-40 mx-3 mb-4 mt-2 space-y-2.5 ${BDO_LUX_BODY_FONT}`}>
           <section
             id="bdo-buy"
             data-bdo-home="starter-products"
-            className="relative overflow-hidden rounded-[24px] border border-[#D4AF37]/20 bg-[#0B0B0D]/96 p-3.5 shadow-xl backdrop-blur"
+            className={`relative overflow-hidden rounded-[24px] p-3.5 ${BDO_LUX_PANEL}`}
           >
             <img
               src={BDO_HOME_ASSETS.banners.products}
@@ -17828,7 +17830,7 @@ export function BuyerHomePage({
                 <p className="text-[11px] uppercase tracking-[0.24em] text-[#E8C873]/80">
                   Sélection publique
                 </p>
-                <h2 className="mt-1 text-2xl font-semibold text-white">
+                <h2 className={`mt-1 text-2xl font-semibold text-white ${BDO_LUX_TITLE_FONT}`}>
                   Nos premières pièces certifiées
                 </h2>
                 <p className="mt-2 text-sm leading-relaxed text-white/58">
@@ -17868,14 +17870,14 @@ export function BuyerHomePage({
           <section
             id="bdo-catalogue-complet"
             data-bdo-home="product-grid"
-            className="self-start rounded-[24px] border border-[#D4AF37]/18 bg-[radial-gradient(circle_at_0%_0%,rgba(212,175,55,0.12),transparent_34%),linear-gradient(180deg,#0B0B0D_0%,#060606_58%,#030303_100%)] p-3.5 shadow-xl shadow-black/30 backdrop-blur"
+            className={`self-start rounded-[24px] p-3.5 ${BDO_LUX_PANEL}`}
           >
             <div className="flex flex-col gap-2 xl:flex-row xl:items-center xl:justify-between">
               <div className="min-w-0">
                 <p className="text-[11px] uppercase tracking-[0.24em] text-[#E8C873]/80">
                   Apercu catalogue - {bdoSelectedTile?.label || "Or certifie"}
                 </p>
-                <h3 className="mt-0.5 text-base font-semibold text-white">
+                <h3 className={`mt-0.5 text-base font-semibold text-white ${BDO_LUX_TITLE_FONT}`}>
                   {bdoBrowseView === "lingots"
                     ? "Une ligne claire de pieces certifiees"
                     : bdoBrowseView === "pieces"
@@ -18034,14 +18036,14 @@ export function BuyerHomePage({
           <div id="bdo-news" className="space-y-3.5">
             <div
               data-bdo-home="article-block"
-              className="rounded-[24px] border border-[#D4AF37]/18 bg-[radial-gradient(circle_at_top_left,rgba(212,175,55,0.10),transparent_30%),linear-gradient(180deg,#0B0B0D_0%,#0B0B0D_100%)] p-3.5 shadow-xl shadow-black/30 backdrop-blur"
+              className={`rounded-[24px] p-3.5 ${BDO_LUX_PANEL}`}
             >
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <p className="text-[11px] uppercase tracking-[0.24em] text-[#E8C873]/80">
                     Actualités du marché
                   </p>
-                  <h3 className="mt-1 text-lg font-semibold text-white">
+                  <h3 className={`mt-1 text-lg font-semibold text-white ${BDO_LUX_TITLE_FONT}`}>
                     Réglementation, conformité et informations utiles
                   </h3>
                 </div>
@@ -18068,7 +18070,7 @@ export function BuyerHomePage({
 
             <div
               data-bdo-home="footer-bar"
-              className="rounded-[24px] border border-white/10 bg-[#050c18]/92 p-3.5 shadow-xl backdrop-blur"
+              className={`rounded-[24px] p-3.5 ${BDO_LUX_CARD}`}
             >
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex flex-wrap gap-2">
@@ -20601,7 +20603,7 @@ export function BuyerHomePage({
                                     key={product.id}
                                     className={`rounded-xl border transition-colors cursor-pointer ${
                                       section.slug === "jewelry"
-                                        ? "bg-white/3 border-white/10 hover:border-yellow-500/30 hover:bg-white/5"
+                                        ? "bg-white/3 border-white/10 hover:border-[#D4AF37]/30 hover:bg-white/5"
                                         : "bg-white/5 border-white/10 hover:border-[#D4AF37]/25 hover:bg-white/7"
                                     } ${!isAvailable ? "opacity-60" : ""}`}
                                     onClick={() => setSelectedProduct(product)}
@@ -26298,10 +26300,10 @@ Signatures
                             ? selectedShopCategory === "dore"
                               ? "bg-[#D4AF37]/15 text-[#E8C873] border-[#D4AF37]/30"
                               : selectedShopCategory === "gold-art"
-                                ? "bg-yellow-500/20 text-yellow-300 border-yellow-500/30"
+                                ? "bg-[#E8C873]/20 text-[#F1D27A] border-[#E8C873]/30"
                                 : selectedShopCategory === "jewelry"
-                                  ? "bg-violet-500/20 text-violet-200 border-violet-500/30"
-                                  : "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
+                                  ? "bg-[#7A5A18]/25 text-[#F8F3E7] border-[#D4AF37]/30"
+                                  : "bg-[#D4AF37]/20 text-[#F1D27A] border-[#D4AF37]/30"
                             : "bg-white/5 text-white/70 border-white/10"
                         }`}
                       >
@@ -26455,10 +26457,10 @@ Signatures
                         : meta.label.toUpperCase();
                       const categoryBadgeClass = isGoldTenant
                         ? isJewelry
-                          ? "bg-yellow-500/80 text-black"
+                          ? "bg-[#E8C873]/85 text-[#0B0B0D]"
                           : isDore
                             ? "bg-[#D4AF37]/90 text-black"
-                            : "bg-emerald-500/90 text-white"
+                            : "bg-[#D4AF37]/85 text-[#0B0B0D]"
                         : "bg-white/10 text-white";
 
                       return (

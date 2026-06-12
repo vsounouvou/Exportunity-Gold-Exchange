@@ -1,7 +1,7 @@
 export const bdoThemeTokens = {
-  "--color-bg": "#030711",
-  "--color-surface": "#0b1220",
-  "--color-text": "#e5e7eb",
-  "--color-primary": "#f59e0b",
-  "--color-accent": "#fbbf24",
+  "--color-bg": "#0B0B0D",
+  "--color-surface": "#0D1B2A",
+  "--color-text": "#F5F3EC",
+  "--color-primary": "#D4AF37",
+  "--color-accent": "#E8C873",
 };

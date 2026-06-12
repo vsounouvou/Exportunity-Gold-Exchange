@@ -36,6 +36,8 @@ export type TenantSlug =
   | "vs"
   | "hoz"
   | "zogueland"
+  | "madd"
+  | "xportcard"
   | "rayon1km";
 
 export type TenantKeyInput = TenantSlug | "vss" | "rayon";
@@ -86,6 +88,26 @@ export type TenantStorefrontIdentity = {
   categoryVisuals: TenantCategoryVisual[];
 };
 
+export type TenantFrontOfficeAgent = {
+  agentKey: string;
+  displayName: string;
+  shortName?: string;
+  roleLabel?: string;
+  retailSummary?: string;
+  wholesaleSummary?: string;
+  retailPrompt?: string;
+  retailAdvicePrompt?: string;
+  wholesalePrompt?: string;
+  wholesaleAdvicePrompt?: string;
+  logisticsPrompt?: string;
+  paymentSeed?: string;
+  retailActionLabel?: string;
+  wholesaleActionLabel?: string;
+  inputPlaceholder?: string;
+  voiceHint?: string;
+  adminPath?: string;
+};
+
 export type TenantThemeModel = {
   colors: {
     bg: string;
@@ -130,6 +152,7 @@ export type TenantConfig = {
   storefrontHero?: TenantStorefrontHero;
   storefrontTheme?: TenantThemeModel;
   storefrontIdentity?: TenantStorefrontIdentity;
+  frontOfficeAgent?: TenantFrontOfficeAgent;
   marketplaceDefaults?: TenantMarketplaceDefaults;
   assets?: TenantBrandAssets;
   navOverrides?: Record<string, unknown>;

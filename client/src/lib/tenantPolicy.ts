@@ -84,8 +84,10 @@ const RULES: Array<{ prefix: string; tenants: TenantKey[] }> = [
 
   // Exportunity + zone.
   { prefix: "/zone", tenants: [...ALL_TENANTS] },
+  { prefix: "/map", tenants: [...ALL_TENANTS] },
   { prefix: "/retail", tenants: [...ALL_TENANTS] },
   { prefix: "/marketplace", tenants: [...ALL_TENANTS] },
+  { prefix: "/marketplace/map", tenants: [...ALL_TENANTS] },
   { prefix: "/shop", tenants: [...ALL_TENANTS] },
   { prefix: "/rayon", tenants: ["exportunity"] },
   { prefix: "/xportcard", tenants: ["exportunity"] },

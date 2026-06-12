@@ -777,6 +777,8 @@ function App() {
           </Route>
           <Route path="/zone" component={StoreRoute} />
           <Route path="/zone/:rest*" component={StoreRoute} />
+          <Route path="/map" component={StoreRoute} />
+          <Route path="/marketplace/map" component={StoreRoute} />
           <Route path="/retail" component={RetailAliasRedirect} />
           <Route path="/retail/:rest*" component={RetailAliasRedirect} />
           <Route path="/marketplace" component={StoreRoute} />

@@ -59,9 +59,9 @@ export function GoldQuotesPanel() {
   const chartLocale = isFrench ? "fr" : language === "ar" ? "ar_AE" : "en";
 
   return (
-    <section className="rounded-2xl border border-amber-500/30 bg-[#0a0f1a]/90 p-3 shadow-xl backdrop-blur">
+    <section className="rounded-2xl border border-[#D4AF37]/28 bg-[linear-gradient(180deg,rgba(11,11,13,0.94),rgba(13,27,42,0.58))] p-3 shadow-xl backdrop-blur">
       <div className="mb-2 flex items-center justify-between gap-2">
-        <h3 className="text-sm font-semibold text-amber-200">{isFrench ? "Cours de l'or en direct" : "Live Gold Quotes"}</h3>
+        <h3 className="font-['Cinzel',serif] text-sm font-semibold text-[#F1D27A]">{isFrench ? "Cours de l'or en direct" : "Live Gold Quotes"}</h3>
         <div className="flex items-center gap-2">
           <span className="text-[11px] text-white/60">{isFrench ? "Mis à jour" : "as of"} {asOf}</span>
           <div className="hidden md:flex items-center gap-1 rounded-full border border-white/10 bg-black/20 p-1">
@@ -71,7 +71,7 @@ export function GoldQuotesPanel() {
                 type="button"
                 className={`rounded-full px-2 py-0.5 text-[10px] transition-colors ${
                   currency === curr
-                    ? "bg-amber-500/25 text-amber-200 border border-amber-500/40"
+                    ? "bg-[#D4AF37]/22 text-[#F1D27A] border border-[#D4AF37]/40"
                     : "text-white/60 hover:text-white"
                 }`}
                 onClick={() => setCurrency(curr)}

@@ -32,11 +32,12 @@ import {
   Video,
   Warehouse,
   type LucideIcon,
+  Plus,
+  Minus,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { findConversationFlow } from "./conversationFlows";
-import { getExportunityMarketplaceCategoryItems, type ExportunityParentCatalogItem } from "@/content/exportunity/marketplaceCatalog";
 import { getSeededBusinessPlaces, type SeededBusinessPlace } from "./seededBusinessData";
 
 export type ConversationSpace = "city" | "shop" | "business" | "wholesale" | "exchange";
@@ -82,6 +83,22 @@ export type ConversationMessage = {
   createdAt: string;
   imageUrl?: string;
   shopId?: string;
+};
+
+export type ShopProduct = {
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+  unit: string;
+  priceCfa: number;
+  quantityAvailable: number;
+  image: string;
+};
+
+type ShopOrderLine = {
+  product: ShopProduct;
+  quantity: number;
 };
 
 type ExportunityConversationalCommerceProps = {
@@ -239,6 +256,97 @@ const exchangePlaces: CommerceShop[] = [
   })),
 ];
 
+const SHOP_PRODUCT_LIBRARY: Record<string, ShopProduct[]> = {
+  Bakery: [
+    {
+      id: "prod-bread-1",
+      name: "Pain complet",
+      description: "Pain de campagne croustillant, cuit dans la journée.",
+      category: "Fresh Bread",
+      unit: "piece",
+      priceCfa: 900,
+      quantityAvailable: 80,
+      image: "https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&w=900&q=80",
+    },
+    {
+      id: "prod-bread-2",
+      name: "Croissant",
+      description: "Pâte feuilletée au beurre, prête à livrer.",
+      category: "Breakfast",
+      unit: "piece",
+      priceCfa: 500,
+      quantityAvailable: 120,
+      image: "https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&w=900&q=80",
+    },
+  ],
+  "Coffee": [
+    {
+      id: "prod-coffee-1",
+      name: "Coffee Beans Etiam",
+      description: "Mélange maison, moulu pour préparation filtre.",
+      category: "Coffee",
+      unit: "500g",
+      priceCfa: 3500,
+      quantityAvailable: 60,
+      image: "https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=900&q=80",
+    },
+    {
+      id: "prod-coffee-2",
+      name: "Cold Brew (pack)",
+      description: "Préparation café prête à boire, 6 bouteilles.",
+      category: "Beverage",
+      unit: "pack",
+      priceCfa: 4200,
+      quantityAvailable: 24,
+      image: "https://images.unsplash.com/photo-1485808191679-5f86510689c9?auto=format&fit=crop&w=900&q=80",
+    },
+  ],
+  "Hardware Store": [
+    {
+      id: "prod-hardware-1",
+      name: "Ciment Portland",
+      description: "Ciment 42.5, lot stable pour travaux.",
+      category: "Construction",
+      unit: "25kg",
+      priceCfa: 7500,
+      quantityAvailable: 320,
+      image: "https://images.unsplash.com/photo-1518005020951-eccb494ad4ac?auto=format&fit=crop&w=900&q=80",
+    },
+    {
+      id: "prod-hardware-2",
+      name: "Gravier sec",
+      description: "Gravier calibré, livrable en lots.",
+      category: "Construction",
+      unit: "m3",
+      priceCfa: 23000,
+      quantityAvailable: 60,
+      image: "https://images.unsplash.com/photo-1576402187878-974f0e2f0d2f?auto=format&fit=crop&w=900&q=80",
+    },
+  ],
+  "Building Materials": [
+    {
+      id: "prod-w-build-1",
+      name: "Sable 0/4",
+      description: "Sable pour maçonnerie et fondation légère.",
+      category: "Materials",
+      unit: "m3",
+      priceCfa: 13000,
+      quantityAvailable: 90,
+      image: "https://images.unsplash.com/photo-1504307651254-35680f356dfd?auto=format&fit=crop&w=900&q=80",
+    },
+    {
+      id: "prod-w-build-2",
+      name: "Tôle ondulée",
+      description: "Toiture standard, lot commercial.",
+      category: "Roofing",
+      unit: "sheet",
+      priceCfa: 4500,
+      quantityAvailable: 120,
+      image: "https://images.unsplash.com/photo-1578574577315-1fffe8f6c6f5?auto=format&fit=crop&w=900&q=80",
+    },
+  ],
+};
+
 function googlePlaceToShop(item: any, index: number, type: "marketplace" | "wholesale"): CommerceShop | null {
   if (typeof item?.lat !== "number" || typeof item?.lng !== "number") return null;
   const position: [number, number] = [item.lat, item.lng];
@@ -282,7 +390,7 @@ const districtLabels = [
 const cityQuickReplies = ["Find breakfast near me", "Fresh bread", "Coffee nearby", "Organic products", "Building materials", "Need delivery", "Send to family", "Find a pharmacy"];
 const wholesaleQuickReplies = ["Find suppliers near me", "Request a quote", "Building materials wholesale", "Machinery", "Food ingredients", "Packaging", "Logistics help", "Sell wholesale"];
 const exchangeQuickReplies = ["Show verified SMEs", "Fashion near Cocody", "Food businesses", "Women-led shops", "Investment review", "Contact a PME"];
-const shopQuickReplies = ["What's fresh today?", "Can you deliver?", "Can I see it live?", "Use my wallet", "Ask the team"];
+const shopQuickReplies = ["What should I buy first?", "Can you deliver?", "Can I see it live?", "Use my wallet", "Order a sample"];
 const businessQuickReplies = ["Summarize today", "What is low in stock?", "Show today's orders", "Plan a promo", "Assign delivery"];
 
 const initialMessages: ConversationMessage[] = [
@@ -310,6 +418,42 @@ function getShopTone(category: string) {
   if (normalized.includes("machinery")) return { color: "#475569" };
   if (normalized.includes("packaging")) return { color: "#0f766e" };
   return { color: "#F5A623" };
+}
+
+function normalizeCategoryKey(category: string) {
+  const normalized = category.toLowerCase();
+  if (normalized.includes("bakery") || normalized.includes("bread")) return "Bakery";
+  if (normalized.includes("cafe") || normalized.includes("coffee")) return "Coffee";
+  if (normalized.includes("building") || normalized.includes("hardware")) return "Building Materials";
+  return category;
+}
+
+function getProductsForShop(shop: CommerceShop): ShopProduct[] {
+  const key = normalizeCategoryKey(shop.category);
+  const seeded = SHOP_PRODUCT_LIBRARY[key];
+  if (seeded?.length) return seeded;
+  return [
+    {
+      id: `fallback-${shop.id}-1`,
+      name: `${shop.name} featured item`,
+      description: "Available in small quantity. Ask for current stock by message.",
+      category: "Featured",
+      unit: "unit",
+      priceCfa: 2500,
+      quantityAvailable: 20,
+      image: shop.image,
+    },
+    {
+      id: `fallback-${shop.id}-2`,
+      name: `${shop.name} best seller`,
+      description: "Popular option for quick delivery in nearby areas.",
+      category: "Popular",
+      unit: "unit",
+      priceCfa: 3200,
+      quantityAvailable: 10,
+      image: shop.image,
+    },
+  ];
 }
 
 function getCategoryIcon(category: string, wholesale: boolean, exchange = false) {
@@ -1010,6 +1154,7 @@ export function ExportunityConversationalCommerce({ onNavigate, isAdmin = false,
   const [voiceState, setVoiceState] = useState<"idle" | "listening" | "speaking" | "unavailable">("idle");
   const [isSearching, setIsSearching] = useState(false);
   const [quoteDraft, setQuoteDraft] = useState<null | { product: string; quantity: string; status: string; suppliers: CommerceShop[] }>(null);
+  const [shopOrderDrafts, setShopOrderDrafts] = useState<Record<string, Record<string, ShopOrderLine>>>({});
   const [googleMarketplacePlaces, setGoogleMarketplacePlaces] = useState<CommerceShop[]>([]);
   const [googleWholesalePlaces, setGoogleWholesalePlaces] = useState<CommerceShop[]>([]);
   const [marketplaceData, setMarketplaceData] = useState<PublicPlacesState>({
@@ -1035,6 +1180,13 @@ export function ExportunityConversationalCommerce({ onNavigate, isAdmin = false,
   const exchange = space === "exchange";
   const places = exchange ? exchangePlaces : wholesale ? (googleWholesalePlaces.length ? googleWholesalePlaces : wholesaleSuppliers) : (googleMarketplacePlaces.length ? googleMarketplacePlaces : shops);
   const visiblePlaces = useMemo(() => (resultsVisible ? places.slice(0, exchange ? 16 : wholesale ? 14 : 10) : places.slice(0, 5)), [exchange, places, resultsVisible, wholesale]);
+  const activeShopProducts = useMemo(() => (activeShop ? getProductsForShop(activeShop) : []), [activeShop]);
+  const activeShopOrder = useMemo(() => (activeShop ? shopOrderDrafts[activeShop.id] || {} : {}), [activeShop, shopOrderDrafts]);
+  const activeShopOrderEntries = useMemo(() => Object.values(activeShopOrder), [activeShopOrder]);
+  const activeShopSubtotal = useMemo(
+    () => activeShopOrderEntries.reduce((sum, line) => sum + line.product.priceCfa * line.quantity, 0),
+    [activeShopOrderEntries],
+  );
   const activeAgents = useMemo(() => {
     if (space === "business") return [agents.tassi, ...businessAgents.slice(0, 4)];
     const base = exchange ? [agents.tassi, agents.guide, agents.wallet] : wholesale ? [agents.tassi, agents.supplier, agents.wallet] : [agents.tassi, agents.guide];
@@ -1047,6 +1199,8 @@ export function ExportunityConversationalCommerce({ onNavigate, isAdmin = false,
   const activeData = wholesale ? wholesaleData : marketplaceData;
   const googleMapEnabled = Boolean(mapsConfig.enabled && mapsConfig.provider === "google" && mapsConfig.apiKey);
   const activeMapId = dark ? mapsConfig.mapIdDark || mapsConfig.mapIdLight || undefined : mapsConfig.mapIdLight || undefined;
+  const shopMode = space === "shop" && !!activeShop;
+  const visibleConversationAgent = shopMode && activeShop ? activeShop.frontDesk : agents.tassi;
 
   useEffect(() => {
     window.localStorage.setItem("exportunity-map-theme", themeMode);
@@ -1189,6 +1343,43 @@ export function ExportunityConversationalCommerce({ onNavigate, isAdmin = false,
     }, 260);
   };
 
+  const formatCurrency = (value: number) => `${Intl.NumberFormat("en-US").format(Math.round(value))} XAF`;
+
+  const setOrderQuantity = (shop: CommerceShop, product: ShopProduct, quantity: number) => {
+    setShopOrderDrafts((previous) => {
+      const next = { ...previous };
+      const currentShopDraft = { ...(previous[shop.id] || {}) };
+      const safeQty = Math.max(0, Math.min(product.quantityAvailable, quantity));
+      if (safeQty <= 0) {
+        delete currentShopDraft[product.id];
+      } else {
+        currentShopDraft[product.id] = { product, quantity: safeQty };
+      }
+      if (!Object.keys(currentShopDraft).length) {
+        delete next[shop.id];
+      } else {
+        next[shop.id] = currentShopDraft;
+      }
+      return next;
+    });
+  };
+
+  const submitShopOrder = () => {
+    if (!activeShop) return;
+    if (!activeShopOrderEntries.length) {
+      replyAsTassi("Select a quantity for one or more products first, then I can place your order with the shop.");
+      return;
+    }
+    const ordered = activeShopOrderEntries.map((line) => `${line.product.name} x${line.quantity}`).join(", ");
+    setShopOrderDrafts((previous) => {
+      const next = { ...previous };
+      delete next[activeShop.id];
+      return next;
+    });
+    pushMessage({ agentId: "user", content: `Place order at ${activeShop.name}: ${ordered}` });
+    replyAsTassi(`${activeShop.frontDesk.name} is confirming your order for ${ordered}. Total is ${formatCurrency(activeShopSubtotal)}. I can also help you add delivery notes if needed.`, activeShop);
+  };
+
   const handleAsk = (raw: string) => {
     const text = raw.trim();
     if (!text) return;
@@ -1250,8 +1441,25 @@ export function ExportunityConversationalCommerce({ onNavigate, isAdmin = false,
     setActiveShop(shop);
     setResultsVisible(true);
     setIsSearching(false);
-    pushMessage({ agentId: "tassi", content: exchange ? `I found ${shop.name}. ${shop.trustStatus || "PME profile"} and ${shop.investmentReadiness || "internal review"} are visible.` : wholesale ? `I found ${shop.name}. ${shop.moq || "Bulk terms available"} and ${shop.leadTime || "quote desk open"}.` : `I found ${shop.name}, ${shop.distance} away.` });
-    replyAsTassi(exchange ? `${shop.merchantStory || `${shop.name} has a neighbourhood business profile.`} We can review the profile, contact status, and compliance-gated eligibility before any public investment action.` : wholesale ? `Welcome to ${shop.name}. I can share stock, MOQ, quote timing, and logistics options. What quantity do you need?` : `Welcome to ${shop.name}. Fresh products are available now. What would you like today?`, shop);
+    pushMessage({
+      agentId: "tassi",
+      content: exchange
+        ? `I found ${shop.name}. ${shop.trustStatus || "PME profile"} and ${shop.investmentReadiness || "internal review"} are visible.`
+        : wholesale
+          ? `I found ${shop.name}. ${shop.moq || "Bulk terms available"} and ${shop.leadTime || "quote desk open"}.`
+          : `I found ${shop.name}, ${shop.distance} away. I have loaded the storefront and product list.`,
+    });
+    replyAsTassi(
+      exchange
+        ? `${shop.merchantStory || `${shop.name} has a neighbourhood business profile.`} We can review the profile, contact status, and compliance-gated eligibility before any public investment action.`
+        : wholesale
+          ? `Welcome to ${shop.name}. I can share stock, MOQ, quote timing, and logistics options. What quantity do you need?`
+          : `Welcome to ${shop.name}. I’m ${shop.frontDesk.name}, your shop Front Desk. Pick products and tap “Place order.”`,
+      shop,
+    );
+    if (!shopOrderDrafts[shop.id]) {
+      setShopOrderDrafts((previous) => ({ ...previous, [shop.id]: previous[shop.id] || {} }));
+    }
   };
 
   const handleQuickReply = (text: string) => {
@@ -1299,7 +1507,6 @@ export function ExportunityConversationalCommerce({ onNavigate, isAdmin = false,
     const imageUrl = URL.createObjectURL(file);
     pushMessage({ agentId: "user", content: "Can you find this around me?", imageUrl });
     setResultsVisible(true);
-    setActiveShop(shops[3]);
     replyAsTassi("I can inspect the image and search nearby matches. This looks like a product request, so I highlighted relevant shops and supplier options around you.");
   };
 
@@ -1333,9 +1540,18 @@ export function ExportunityConversationalCommerce({ onNavigate, isAdmin = false,
               type="button"
               onClick={() => {
                 if (key === "business") setSpace("business");
-                else if (key === "wholesale") { setSpace("wholesale"); setActiveShop(null); window.history.pushState(null, "", "/wholesale"); }
-                else if (key === "exchange") { setSpace("exchange"); setActiveShop(null); window.history.pushState(null, "", "/pme-exchange"); }
-                else if (key === "shop") selectShop(activeShop || shops[0]);
+                else if (key === "wholesale") {
+                  setSpace("wholesale");
+                  setActiveShop(null);
+                  onNavigate?.("/wholesale");
+                } else if (key === "exchange") {
+                  setSpace("exchange");
+                  setActiveShop(null);
+                  onNavigate?.("/pme-exchange");
+                } else if (key === "shop") {
+                  setSpace("city");
+                  setActiveShop(null);
+                }
                 else if (key === "orders") onNavigate?.("/orders");
                 else if (key === "wallet") onNavigate?.("/wallet");
                 else { setSpace("city"); setActiveShop(null); }
@@ -1370,8 +1586,26 @@ export function ExportunityConversationalCommerce({ onNavigate, isAdmin = false,
           {[
             { key: "city", label: "Map", icon: MapIcon, action: () => { setSpace("city"); setActiveShop(null); } },
             { key: "tassi", label: "Tassi", icon: Search, action: () => handleQuickReply("Find breakfast near me") },
-            { key: "wholesale", label: "Wholesale", icon: Warehouse, action: () => { setSpace("wholesale"); setActiveShop(null); window.history.pushState(null, "", "/wholesale"); } },
-            { key: "exchange", label: "PME", icon: BriefcaseBusiness, action: () => { setSpace("exchange"); setActiveShop(null); window.history.pushState(null, "", "/pme-exchange"); } },
+            {
+              key: "wholesale",
+              label: "Wholesale",
+              icon: Warehouse,
+              action: () => {
+                setSpace("wholesale");
+                setActiveShop(null);
+                onNavigate?.("/wholesale");
+              },
+            },
+            {
+              key: "exchange",
+              label: "PME",
+              icon: BriefcaseBusiness,
+              action: () => {
+                setSpace("exchange");
+                setActiveShop(null);
+                onNavigate?.("/pme-exchange");
+              },
+            },
             { key: "business", label: "Business", icon: Store, action: () => setSpace("business") },
           ].map(({ key, label, icon: Icon, action }) => {
             const active = key === space || (key === "tassi" && Boolean(activeShop));
@@ -1453,7 +1687,13 @@ export function ExportunityConversationalCommerce({ onNavigate, isAdmin = false,
                           <div className="text-sm text-slate-500">{shop.category}</div>
                           <div className="mt-1 text-sm">{shop.distance} | {shop.eta}</div>
                           {shop.moq ? <div className="mt-1 text-sm">{shop.moq} | {shop.leadTime}</div> : null}
-                          <button type="button" onClick={() => selectShop(shop)} className="mt-3 rounded-md border border-slate-200 px-3 py-2 text-sm font-semibold">Ask {shop.frontDesk.name}</button>
+                          <button
+                            type="button"
+                            onClick={() => selectShop(shop)}
+                            className="mt-3 rounded-md border border-slate-200 px-3 py-2 text-sm font-semibold hover:border-[#F5A623] hover:text-[#F5A623]"
+                          >
+                            Open shop
+                          </button>
                         </div>
                       </Popup>
                     </Marker>
@@ -1508,10 +1748,18 @@ export function ExportunityConversationalCommerce({ onNavigate, isAdmin = false,
 
         <aside className={cn("flex min-h-[520px] flex-col border-t p-4 lg:col-span-1 lg:min-h-0 lg:border-l lg:border-t-0", dark ? "border-white/10 bg-[#07111F]" : "border-slate-200 bg-white")}>
           <div className="mb-4 flex items-center gap-3 border-b border-current/10 pb-4">
-            <AgentAvatar agent={agents.tassi} />
+            <AgentAvatar agent={shopMode ? visibleConversationAgent : agents.tassi} />
             <div className="min-w-0">
-              <div className="font-black">Tassi</div>
-              <div className={cn("text-xs font-semibold", dark ? "text-white/58" : "text-slate-500")}>{exchange ? "PME scout and trust guide" : wholesale ? "Wholesale sourcing concierge" : activeShop ? `${activeShop.frontDesk.name} joined` : "Concierge"}</div>
+              <div className="font-black">{shopMode ? visibleConversationAgent.name : "Tassi"}</div>
+              <div className={cn("text-xs font-semibold", dark ? "text-white/58" : "text-slate-500")}>
+                {exchange
+                  ? "PME scout and trust guide"
+                  : wholesale
+                    ? "Wholesale sourcing concierge"
+                    : shopMode
+                      ? `${visibleConversationAgent.role} • Shop assistant`
+                      : "Concierge"}
+              </div>
             </div>
             <span className="ml-auto rounded-full bg-emerald-500/12 px-2 py-1 text-[11px] font-bold text-emerald-600">Online</span>
           </div>
@@ -1520,18 +1768,80 @@ export function ExportunityConversationalCommerce({ onNavigate, isAdmin = false,
               Bourse de PME is discovery and verification first. Investment actions stay internal-review and compliance-gated.
             </div>
           ) : null}
-          <div className={cn("mb-3 rounded-2xl border p-3", dark ? "border-white/10 bg-white/[0.04]" : "border-slate-200 bg-slate-50")}>
-            <div className="text-[11px] font-black uppercase tracking-[0.18em] text-[#F5A623]">Current context</div>
-            {activeShop ? (
+          {shopMode && activeShop ? (
+            <div className={cn("mb-3 rounded-2xl border p-3", dark ? "border-white/10 bg-white/[0.04]" : "border-slate-200 bg-slate-50")}>
+              <div className="text-[11px] font-black uppercase tracking-[0.18em] text-[#F5A623]">Shop storefront</div>
               <div className="mt-2 flex gap-3">
                 <img src={activeShop.image} alt="" className="h-14 w-16 rounded-xl object-cover" />
                 <div className="min-w-0">
                   <div className="truncate text-sm font-black">{activeShop.name}</div>
                   <div className={cn("truncate text-xs font-semibold", dark ? "text-white/58" : "text-slate-500")}>{activeShop.category}</div>
-                  <div className="mt-1 text-xs font-black text-[#F5A623]">{activeShop.distance} - {activeShop.eta}</div>
+                  <div className="mt-1 text-xs font-black text-[#F5A623]">{activeShop.distance} • {activeShop.eta}</div>
                 </div>
               </div>
-            ) : (
+              <div className="mt-3 space-y-3 pr-1">
+                {activeShopProducts.map((product) => {
+                  const line = activeShopOrder[product.id];
+                  const quantity = line?.quantity || 0;
+                  return (
+                    <article key={product.id} className={cn("rounded-xl border p-3", dark ? "border-white/12 bg-white/[0.03]" : "border-slate-200 bg-white")}>
+                      <div className="flex gap-3">
+                        <img src={product.image} alt={product.name} className="h-16 w-16 shrink-0 rounded-lg object-cover" />
+                        <div className="min-w-0">
+                          <div className="truncate text-sm font-black">{product.name}</div>
+                          <div className={cn("mt-1 text-[11px]", dark ? "text-white/64" : "text-slate-600")}>{product.description}</div>
+                          <div className="mt-1 text-sm font-black text-[#F5A623]">
+                            {formatCurrency(product.priceCfa)} / {product.unit}
+                          </div>
+                          <div className={cn("mt-1 text-[11px]", dark ? "text-white/52" : "text-slate-500")}>Stock {product.quantityAvailable}</div>
+                        </div>
+                      </div>
+                      <div className="mt-3 flex items-center justify-between gap-2">
+                        <span className={cn("text-[11px] font-semibold", dark ? "text-white/68" : "text-slate-600")}>Qty</span>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            className={cn("grid h-7 w-7 place-items-center rounded-lg border", dark ? "border-white/25 text-white hover:bg-white/10" : "border-slate-300 text-slate-700 hover:bg-slate-100")}
+                            onClick={() => setOrderQuantity(activeShop, product, quantity - 1)}
+                          >
+                            <Minus className="h-4 w-4" />
+                          </button>
+                          <span className="min-w-8 text-center text-sm font-black">{quantity}</span>
+                          <button
+                            type="button"
+                            className={cn("grid h-7 w-7 place-items-center rounded-lg border", dark ? "border-white/25 text-white hover:bg-white/10" : "border-slate-300 text-slate-700 hover:bg-slate-100")}
+                            onClick={() => setOrderQuantity(activeShop, product, quantity + 1)}
+                          >
+                            <Plus className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+              <div className="mt-3 border-t pt-3" style={{ borderColor: dark ? "rgba(255,255,255,.16)" : "rgba(15,23,42,.14)" }}>
+                <div className={cn("mb-2 flex items-center justify-between text-xs font-black", dark ? "text-white/78" : "text-slate-700")}>
+                  <span>Items</span>
+                  <span>{activeShopOrderEntries.length}</span>
+                </div>
+                <div className="flex items-center justify-between text-xs">
+                  <span className={cn(dark ? "text-white/62" : "text-slate-600")}>Subtotal</span>
+                  <span className="font-black">{formatCurrency(activeShopSubtotal)}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={submitShopOrder}
+                  className="mt-3 flex h-11 w-full items-center justify-center rounded-xl bg-[#F5A623] text-sm font-black text-[#07111F] disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-600"
+                  disabled={!activeShopOrderEntries.length}
+                >
+                  Place order
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className={cn("mb-3 rounded-2xl border p-3", dark ? "border-white/10 bg-white/[0.04]" : "border-slate-200 bg-slate-50")}>
+              <div className="text-[11px] font-black uppercase tracking-[0.18em] text-[#F5A623]">Current context</div>
               <div className={cn("mt-2 text-sm leading-relaxed", dark ? "text-white/64" : "text-slate-600")}>
                 {exchange
                   ? "Tassi is scouting PME profiles by trust, story, and verification status."
@@ -1539,8 +1849,8 @@ export function ExportunityConversationalCommerce({ onNavigate, isAdmin = false,
                     ? "Tassi is comparing suppliers, MOQ, lead time, and logistics around Abidjan."
                   : "Tassi is helping you discover nearby shops and services around Cocody."}
               </div>
-            )}
-          </div>
+            </div>
+          )}
           <div className="min-h-0 flex-1 space-y-3 overflow-auto pr-1">
             {messages.slice(-8).map((message) => <MessageBubble key={message.id} message={message} dark={dark} />)}
           </div>
@@ -1559,20 +1869,28 @@ export function ExportunityConversationalCommerce({ onNavigate, isAdmin = false,
               }}
               className={cn("flex items-center gap-2 rounded-3xl border-2 p-2", dark ? "border-[#F5A623]/34 bg-[#05070B]" : "border-[#F5A623]/55 bg-white")}
             >
-              <button type="button" onClick={() => fileInputRef.current?.click()} className={cn("grid h-11 w-11 shrink-0 place-items-center rounded-full", dark ? "text-white hover:bg-white/10" : "text-slate-700 hover:bg-slate-100")} aria-label="Attach file"><Paperclip className="h-5 w-5" /></button>
+              <button type="button" onClick={() => fileInputRef.current?.click()} className={cn("grid h-11 w-11 shrink-0 place-items-center rounded-full", dark ? "text-white hover:bg-white/10" : "text-slate-700 hover:bg-slate-100")} aria-label="Attach file">
+                <Paperclip className="h-5 w-5" />
+              </button>
               <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={(event) => handlePhoto(event.target.files?.[0])} />
               <input
                 value={input}
                 onChange={(event) => setInput(event.target.value)}
-                placeholder="Ask Tassi..."
+                placeholder={shopMode ? `Ask ${visibleConversationAgent.name}...` : "Ask Tassi..."}
                 className={cn("min-w-0 flex-1 bg-transparent px-2 text-sm font-semibold outline-none placeholder:text-current/46", dark ? "text-white" : "text-slate-950")}
               />
               <button type="button" onClick={startVoice} className={cn("grid h-11 w-11 shrink-0 place-items-center rounded-full", voiceState === "listening" ? "bg-red-500 text-white" : dark ? "text-white hover:bg-white/10" : "text-slate-700 hover:bg-slate-100")} aria-label="Tap to speak">
                 {voiceState === "listening" ? <Square className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
               </button>
-              <button type="button" onClick={() => fileInputRef.current?.click()} className={cn("grid h-11 w-11 shrink-0 place-items-center rounded-full", dark ? "text-white hover:bg-white/10" : "text-slate-700 hover:bg-slate-100")} aria-label="Photo search"><Camera className="h-5 w-5" /></button>
-              <button type="button" onClick={() => setVideoOpen(true)} className={cn("hidden h-11 w-11 shrink-0 place-items-center rounded-full sm:grid", dark ? "text-white hover:bg-white/10" : "text-slate-700 hover:bg-slate-100")} aria-label="Live product preview"><Video className="h-5 w-5" /></button>
-              <button type="submit" className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[#F5A623] text-[#07111F]" aria-label="Send to Tassi"><Send className="h-5 w-5" /></button>
+              <button type="button" onClick={() => fileInputRef.current?.click()} className={cn("grid h-11 w-11 shrink-0 place-items-center rounded-full", dark ? "text-white hover:bg-white/10" : "text-slate-700 hover:bg-slate-100")} aria-label="Photo search">
+                <Camera className="h-5 w-5" />
+              </button>
+              <button type="button" onClick={() => setVideoOpen(true)} className={cn("hidden h-11 w-11 shrink-0 place-items-center rounded-full sm:grid", dark ? "text-white hover:bg-white/10" : "text-slate-700 hover:bg-slate-100")} aria-label="Live product preview">
+                <Video className="h-5 w-5" />
+              </button>
+              <button type="submit" className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[#F5A623] text-[#07111F]" aria-label="Send to Tassi">
+                <Send className="h-5 w-5" />
+              </button>
             </form>
           </div>
         </aside>

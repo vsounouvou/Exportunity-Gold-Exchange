@@ -123,12 +123,12 @@ export function GoldNewsBanner() {
   const side = items.slice(1, 5);
 
   return (
-    <section className="rounded-2xl border border-amber-500/20 bg-[#0a0f1a]/85 p-3 shadow-xl backdrop-blur">
+    <section className="rounded-2xl border border-[#D4AF37]/20 bg-[linear-gradient(180deg,rgba(11,11,13,0.92),rgba(13,27,42,0.58))] p-3 shadow-xl backdrop-blur">
       <div className="mb-2 flex items-center justify-between gap-2">
-        <h3 className="text-sm font-semibold text-amber-200">
+        <h3 className="font-['Cinzel',serif] text-sm font-semibold text-[#F1D27A]">
           {isFrench ? "Actualités & Réglementation" : "Gold News & Regulation"}
         </h3>
-        <a href="/actualites" className="text-[11px] text-amber-300 hover:text-amber-200">
+        <a href="/actualites" className="text-[11px] text-[#E8C873] hover:text-[#F1D27A]">
           {isFrench ? "Voir tout" : "View all"}
         </a>
       </div>
@@ -143,9 +143,9 @@ export function GoldNewsBanner() {
           href={featured?.url || "#"}
           target="_blank"
           rel="noreferrer"
-          className="xl:col-span-4 rounded-lg border border-white/10 bg-black/20 p-2 hover:border-amber-400/40"
+          className="xl:col-span-4 rounded-lg border border-white/10 bg-black/20 p-2 hover:border-[#D4AF37]/40"
         >
-          <div className="text-[10px] uppercase tracking-wide text-amber-300/80">
+          <div className="text-[10px] uppercase tracking-wide text-[#E8C873]/80">
             {topicLabel(inferTopic(featured || FALLBACK_ITEMS[0]))}
           </div>
           <div className="mt-1 line-clamp-2 text-xs font-semibold text-white">{featured?.title || "Loading..."}</div>
@@ -162,7 +162,7 @@ export function GoldNewsBanner() {
               href={item.url}
               target="_blank"
               rel="noreferrer"
-              className="rounded-lg border border-white/10 bg-black/20 p-2 hover:border-amber-400/40"
+              className="rounded-lg border border-white/10 bg-black/20 p-2 hover:border-[#D4AF37]/40"
             >
               <div className="text-[10px] uppercase tracking-wide text-white/60">{topicLabel(inferTopic(item))}</div>
               <div className="mt-1 line-clamp-2 text-[12px] font-medium text-white">{item.title}</div>
@@ -172,7 +172,7 @@ export function GoldNewsBanner() {
         </div>
 
         <div className="xl:col-span-4 rounded-lg border border-white/10 bg-black/20 p-2">
-          <h4 className="text-xs font-semibold text-amber-200">
+          <h4 className="font-['Cinzel',serif] text-xs font-semibold text-[#F1D27A]">
             {isFrench ? "Industrie minière & Cadre réglementaire" : "Mining Industry & Regulatory Framework"}
           </h4>
           <div className="mt-2 space-y-2">
@@ -180,9 +180,9 @@ export function GoldNewsBanner() {
               <a
                 key={card.title}
                 href={card.href}
-                className="block rounded-lg border border-white/10 bg-black/25 p-2 hover:border-amber-400/40"
+                className="block rounded-lg border border-white/10 bg-black/25 p-2 hover:border-[#D4AF37]/40"
               >
-                <div className="text-[10px] uppercase tracking-wide text-amber-300/85">{card.tag}</div>
+                <div className="text-[10px] uppercase tracking-wide text-[#E8C873]/85">{card.tag}</div>
                 <div className="mt-1 line-clamp-1 text-[12px] font-medium text-white">{card.title}</div>
                 <div className="line-clamp-2 text-[11px] text-white/60">{card.summary}</div>
               </a>

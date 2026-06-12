@@ -1,0 +1,26 @@
+# Core application sources
+client
+config
+content
+db
+packages
+scripts
+server
+tenants
+
+# Runtime and build configuration
+.dockerignore
+.env.example
+Dockerfile
+docker-compose.yml
+drizzle.config.ts
+env.ts
+package-lock.json
+package.json
+postcss.config.js
+tailwind.config.ts
+tenants.json
+theme.json
+tsconfig.json
+verify-deploy.mjs
+vite.config.ts

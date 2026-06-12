@@ -4417,8 +4417,7 @@ export function BuyerHomePage({
           };
         }
         return res.json();
-      } catch (error) {
-        console.error("Wallet fetch error:", error);
+      } catch {
         return {
           wallet: {
             balance: "0.00",

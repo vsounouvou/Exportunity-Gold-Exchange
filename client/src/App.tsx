@@ -496,7 +496,15 @@ function StoreRoute() {
 }
 
 function BdoWholesaleRoute() {
-  return isBdoHost() ? <StoreRoute /> : <Redirect to="/zone" />;
+  if (!isBdoHost()) return <Redirect to="/zone" />;
+
+  const path = typeof window !== "undefined" ? window.location.pathname : "";
+  if (path.startsWith("/wholesale/machinery")) return <BdoProIntelligencePage />;
+  if (path.startsWith("/wholesale/investment-opportunities")) return <BdoProBuyersPage />;
+  if (path.startsWith("/wholesale/apply") || path.startsWith("/wholesale/membership")) return <BdoProMembershipPage />;
+  if (path.startsWith("/wholesale/counterparties")) return <BdoProCounterpartiesPage />;
+
+  return <BdoProMapPage />;
 }
 
 function CollectionsRoute() {

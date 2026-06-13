@@ -383,13 +383,14 @@ async function loginAdmin(context) {
       await passwordInput.fill(adminPassword, { timeout: 15_000 });
       const submit = page.getByRole("button", { name: /sign in|se connecter|login|connexion/i }).first();
       await submit.click({ timeout: 15_000 });
-      await page.waitForURL(/\/dashboard|\/admin\/password|\/admin\/email|\/admin/, { timeout: 40_000 }).catch(() => {});
+      await page.waitForFunction(() => Boolean(localStorage.getItem("ece_session")), null, { timeout: 40_000 }).catch(() => {});
+      await page.waitForURL(/\/dashboard|\/admin\/password|\/admin\/email|\/admin|\/store|\/$/, { timeout: 15_000 }).catch(() => {});
       await page.waitForTimeout(1500);
     }
 
     const token = await page.evaluate(() => localStorage.getItem("ece_session")).catch(() => null);
     const body = await page.locator("body").innerText({ timeout: 10_000 }).catch(() => "");
-    const ok = Boolean(token) || /dashboard|admin|agents|operations/i.test(body);
+    const ok = Boolean(token);
     return { ok, tokenPresent: Boolean(token), url: page.url(), errors: errors.filter((issue) => !isIgnoredConsoleIssue(issue)).slice(-10) };
   } catch (error) {
     const screenshotPath = path.join(outDir, "admin-login-failure.png");

@@ -5,6 +5,7 @@ import { Loader2 } from "lucide-react";
 import { useScript } from "@/hooks/use-script";
 import { apiRequest } from "@/lib/queryClient";
 import { useSession } from "@/lib/session";
+import { useLocale } from "@/contexts/LocaleContext";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -63,6 +64,69 @@ function formatPhone(value: string) {
   return groups.join(" ");
 }
 
+function paymentCopy(language: string) {
+  if (language === "fr") {
+    return {
+      payNow: "Paiement en ligne",
+      title: "Paiement securise",
+      description: "Choisissez le moyen de paiement disponible pour votre region.",
+      push: "Mobile Money Push",
+      widget: "Carte / autre",
+      phone: "Numero de telephone",
+      operator: "Operateur",
+      selectOperator: "Choisir un operateur",
+      send: "Envoyer la demande de paiement",
+      approve: "Validez le paiement sur votre telephone. Cela prend generalement quelques secondes.",
+      preparing: "Preparation du paiement...",
+      loadingWidget: "Chargement du module de paiement...",
+      amount: "Montant",
+      sandbox: "Sandbox",
+      startError: "Impossible de lancer le paiement",
+      pushError: "Impossible d'envoyer la demande de paiement",
+    };
+  }
+
+  if (language === "ar") {
+    return {
+      payNow: "الدفع عبر الإنترنت",
+      title: "دفع آمن",
+      description: "اختر طريقة الدفع المتاحة لمنطقتك.",
+      push: "الدفع عبر الهاتف",
+      widget: "بطاقة / خيار آخر",
+      phone: "رقم الهاتف",
+      operator: "المشغل",
+      selectOperator: "اختر المشغل",
+      send: "إرسال طلب الدفع",
+      approve: "أكد الدفع على هاتفك. يستغرق ذلك عادة بضع ثوان.",
+      preparing: "جار تحضير الدفع...",
+      loadingWidget: "جار تحميل بوابة الدفع...",
+      amount: "المبلغ",
+      sandbox: "وضع الاختبار",
+      startError: "تعذر بدء الدفع",
+      pushError: "تعذر إرسال طلب الدفع",
+    };
+  }
+
+  return {
+    payNow: "Online payment",
+    title: "Secure payment",
+    description: "Choose the payment method available for your region.",
+    push: "Mobile Money Push",
+    widget: "Card / Other",
+    phone: "Phone number",
+    operator: "Operator",
+    selectOperator: "Select operator",
+    send: "Send payment request",
+    approve: "Approve the payment on your phone. This usually takes a few seconds.",
+    preparing: "Preparing checkout...",
+    loadingWidget: "Loading payment widget...",
+    amount: "Amount",
+    sandbox: "Sandbox",
+    startError: "Failed to start payment",
+    pushError: "Failed to send payment request",
+  };
+}
+
 export function KkiapayCheckoutButton(props: {
   orderId: number;
   buyerEmail: string;
@@ -72,6 +136,23 @@ export function KkiapayCheckoutButton(props: {
 }) {
   const [, navigate] = useLocation();
   const session = useSession();
+  const { language } = useLocale();
+  const copy = useMemo(() => paymentCopy(language), [language]);
+  const isGuestBuyer = String(props.buyerEmail || "").trim().toLowerCase().startsWith("guest:");
+
+  const buildPaymentHeaders = () => {
+    const headers: Record<string, string> = {};
+    if (isGuestBuyer) {
+      headers["Authorization"] = "";
+      const guestIdFromOrder = String(props.buyerEmail || "").trim().slice("guest:".length);
+      const guestId = guestIdFromOrder || session.guestSessionId;
+      if (guestId) headers["x-guest-session"] = guestId;
+      return headers;
+    }
+
+    if (session.guestSessionId) headers["x-guest-session"] = session.guestSessionId;
+    return headers;
+  };
 
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<"push" | "widget">(() => {
@@ -116,8 +197,7 @@ export function KkiapayCheckoutButton(props: {
     setWidgetError(null);
     setWidgetLoading(true);
     try {
-      const headers: Record<string, string> = {};
-      if (session.guestSessionId) headers["x-guest-session"] = session.guestSessionId;
+      const headers = buildPaymentHeaders();
       const resp = await apiRequest("/api/payments/kkiapay/init", {
         method: "POST",
         headers,
@@ -126,7 +206,7 @@ export function KkiapayCheckoutButton(props: {
       setWidgetInit(resp);
       props.onPaymentCreated?.(resp.paymentId);
     } catch (err: any) {
-      setWidgetError(err?.message || "Failed to start payment");
+      setWidgetError(err?.message || copy.startError);
     } finally {
       setWidgetLoading(false);
     }
@@ -142,8 +222,7 @@ export function KkiapayCheckoutButton(props: {
     setPushError(null);
     setPushLoading(true);
     try {
-      const headers: Record<string, string> = {};
-      if (session.guestSessionId) headers["x-guest-session"] = session.guestSessionId;
+      const headers = buildPaymentHeaders();
 
       const resp = (await apiRequest("/api/payments/kkiapay/push/init", {
         method: "POST",
@@ -167,7 +246,7 @@ export function KkiapayCheckoutButton(props: {
       setOpen(false);
       navigate(`/pay/kkiapay/return?paymentId=${encodeURIComponent(String(resp.paymentId))}`);
     } catch (err: any) {
-      setPushError(err?.message || "Failed to send payment request");
+      setPushError(err?.message || copy.pushError);
     } finally {
       setPushLoading(false);
     }
@@ -183,7 +262,7 @@ export function KkiapayCheckoutButton(props: {
         disabled={loading}
       >
         {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
-        {props.label ?? "Pay now"}
+        {props.label ?? copy.payNow}
       </Button>
 
       <Dialog
@@ -198,8 +277,8 @@ export function KkiapayCheckoutButton(props: {
       >
         <DialogContent className="max-w-2xl bg-black border-white/10 text-white">
           <DialogHeader>
-            <DialogTitle className="text-white">Pay securely</DialogTitle>
-            <DialogDescription className="text-white/60">Choose the fastest option for your region.</DialogDescription>
+            <DialogTitle className="text-white">{copy.title}</DialogTitle>
+            <DialogDescription className="text-white/60">{copy.description}</DialogDescription>
           </DialogHeader>
 
           <Tabs value={tab} onValueChange={(v) => setTab(v === "widget" ? "widget" : "push")} className="w-full">
@@ -208,13 +287,13 @@ export function KkiapayCheckoutButton(props: {
                 value="push"
                 className="flex-1 text-xs sm:text-sm data-[state=active]:bg-amber-500/20 data-[state=active]:text-amber-300"
               >
-                Mobile Money Push
+                {copy.push}
               </TabsTrigger>
               <TabsTrigger
                 value="widget"
                 className="flex-1 text-xs sm:text-sm data-[state=active]:bg-white/10 data-[state=active]:text-white"
               >
-                Card / Other
+                {copy.widget}
               </TabsTrigger>
             </TabsList>
 
@@ -223,7 +302,7 @@ export function KkiapayCheckoutButton(props: {
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <Label className="text-white/80">Phone number</Label>
+                  <Label className="text-white/80">{copy.phone}</Label>
                   <Input
                     type="tel"
                     inputMode="numeric"
@@ -236,10 +315,10 @@ export function KkiapayCheckoutButton(props: {
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="text-white/80">Operator</Label>
+                  <Label className="text-white/80">{copy.operator}</Label>
                   <Select value={pushOperator} onValueChange={setPushOperator}>
                     <SelectTrigger className="bg-white/5 border-white/10 text-white">
-                      <SelectValue placeholder="Select operator" />
+                      <SelectValue placeholder={copy.selectOperator} />
                     </SelectTrigger>
                     <SelectContent className="bg-black border-white/10 text-white">
                       <SelectItem value="MTN_BJ">MTN</SelectItem>
@@ -255,11 +334,11 @@ export function KkiapayCheckoutButton(props: {
                 disabled={!pushPhone || !pushOperator || pushLoading}
               >
                 {pushLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
-                Send payment request
+                {copy.send}
               </Button>
 
               <div className="text-xs text-white/50">
-                Approve the payment on your phone. This usually takes a few seconds.
+                {copy.approve}
               </div>
             </TabsContent>
 
@@ -269,12 +348,12 @@ export function KkiapayCheckoutButton(props: {
               {!widgetInit ? (
                 <div className="flex items-center gap-3 text-sm text-white/60">
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Preparing checkout...
+                  {copy.preparing}
                 </div>
               ) : scriptStatus !== "ready" ? (
                 <div className="flex items-center gap-3 text-sm text-white/60">
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Loading payment widget...
+                  {copy.loadingWidget}
                 </div>
               ) : (
                 <div className="rounded-xl border border-white/10 bg-white/5 p-3">
@@ -283,8 +362,8 @@ export function KkiapayCheckoutButton(props: {
               )}
 
               <div className="flex items-center justify-between text-xs text-white/50">
-                <div>Amount: {widgetInit ? `${widgetInit.amount} ${widgetInit.currency}` : "--"}</div>
-                <div>{sandbox ? "Sandbox" : null}</div>
+                <div>{copy.amount}: {widgetInit ? `${widgetInit.amount} ${widgetInit.currency}` : "--"}</div>
+                <div>{sandbox ? copy.sandbox : null}</div>
               </div>
             </TabsContent>
           </Tabs>

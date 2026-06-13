@@ -774,7 +774,7 @@ export function BdoProMapPage() {
                 type="button"
                 size="sm"
                 variant={wholesaleReady ? "default" : "outline"}
-                className={wholesaleReady ? "bg-purple-500 text-black hover:bg-purple-400" : "border-white/15 text-white hover:bg-white/10"}
+                className={wholesaleReady ? "bg-[#D4AF37] text-[#0B0B0D] hover:bg-[#E8C873]" : "border-[#D4AF37]/25 text-[#F5F3EC] hover:bg-[#D4AF37]/10"}
                 onClick={() => setWholesaleReady((value) => !value)}
               >
                 Pret pour le gros

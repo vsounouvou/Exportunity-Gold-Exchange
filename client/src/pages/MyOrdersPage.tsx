@@ -7,7 +7,7 @@ import { useSession } from "@/lib/session";
 import { useLocale } from "@/contexts/LocaleContext";
 import { apiRequest } from "@/lib/queryClient";
 import { resolveApiUrl } from "@/lib/runtimeConfig";
-import { WalletDepositModal } from "@/components/payments/WalletDepositModal";
+import { KkiapayCheckoutButton } from "@/components/payments/KkiapayCheckoutButton";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -315,6 +315,12 @@ export default function MyOrdersPage() {
     const orderTotalRounded = Math.max(1, Math.round(Number(order?.total ?? 0)));
     const walletBalance = Number(walletSummaryQuery.data?.wallet?.balance ?? 0);
     const canPayWithWallet = walletBalance >= orderTotalRounded;
+    const checkoutBuyerEmail = String(
+      order?.buyerEmail ||
+        session.user?.email ||
+        lookup.email ||
+        (session.guestSessionId ? `guest:${session.guestSessionId}` : ""),
+    );
 
     return (
       <div className="min-h-screen bg-black text-white pb-[calc(var(--bottom-stack-height)+16px)] md:pb-0">
@@ -396,26 +402,14 @@ export default function MyOrdersPage() {
                       {payWithWalletMutation.isPending ? copy.processing : copy.payWithCredits}
                     </Button>
                     {!canPayWithWallet ? (
-                      <WalletDepositModal
+                      <KkiapayCheckoutButton
+                        orderId={Number(order.id)}
+                        buyerEmail={checkoutBuyerEmail}
                         label={copy.onlinePayment}
-                        defaultAmount={Math.max(1, orderTotalRounded - walletBalance)}
-                        next={`/orders/${encodeURIComponent(String(orderNumber))}?walletPay=1`}
                         autoOpen={orderPayRequested}
-                        allowSellerQr={false}
-                        allowProviderSwitch
-                        preferredProvider="kkiapay"
-                        title={copy.onlinePaymentTitle}
-                        description={copy.onlinePaymentDescription}
-                        summary={{
-                          eyebrow: copy.onlinePaymentEyebrow,
-                          title: copy.onlinePaymentSummary,
-                          lines: [
-                            { label: "Commande", value: String(orderNumber) },
-                            { label: "Total", value: formatMoney(order?.total) },
-                            { label: "Solde", value: `${walletBalance} XOF` },
-                          ],
+                        onPaymentCreated={() => {
+                          void Promise.allSettled([detailQuery.refetch(), ordersQuery.refetch(), walletSummaryQuery.refetch()]);
                         }}
-                        buttonClassName="bg-white/10 hover:bg-white/15 text-white font-semibold"
                       />
                     ) : null}
                   </div>

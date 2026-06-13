@@ -99,6 +99,8 @@ const adminUiCopy: Record<AdminLanguage, Record<string, string>> = {
     lastReport: "Last report",
     openManagerChat: "Open manager chat",
     adminInterface: "Admin interface",
+    openSidebar: "Open sidebar",
+    closeSidebar: "Close sidebar",
   },
   fr: {
     allPages: "Toutes les pages",
@@ -124,6 +126,8 @@ const adminUiCopy: Record<AdminLanguage, Record<string, string>> = {
     lastReport: "Dernier rapport",
     openManagerChat: "Ouvrir le chat responsable",
     adminInterface: "Interface administration",
+    openSidebar: "Ouvrir la navigation",
+    closeSidebar: "Fermer la navigation",
   },
   ar: {
     allPages: "كل الصفحات",
@@ -149,6 +153,8 @@ const adminUiCopy: Record<AdminLanguage, Record<string, string>> = {
     lastReport: "آخر تقرير",
     openManagerChat: "فتح محادثة المسؤول",
     adminInterface: "واجهة الإدارة",
+    openSidebar: "فتح التنقل",
+    closeSidebar: "إغلاق التنقل",
   },
 };
 
@@ -641,7 +647,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
           {/* Mobile Menu */}
           <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
             <SheetTrigger asChild className="lg:hidden">
-              <Button variant="ghost" size="icon" className="text-gray-400">
+              <Button variant="ghost" size="icon" className="text-gray-400" aria-label={t("common.menu")}>
                 <Menu className="h-5 w-5" />
               </Button>
             </SheetTrigger>
@@ -765,7 +771,12 @@ export function AdminLayout({ children }: AdminLayoutProps) {
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="relative text-gray-400 hover:text-gray-200">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="relative text-gray-400 hover:text-gray-200"
+                aria-label={adminCopy(language, "notifications")}
+              >
                 <Bell className="h-4 w-4" />
                 {unreadCount > 0 ? (
                   <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 rounded-full bg-amber-500 text-[10px] px-1 text-black font-semibold flex items-center justify-center">
@@ -833,7 +844,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
           {/* User Menu */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="rounded-full">
+              <Button variant="ghost" size="icon" className="rounded-full" aria-label={adminCopy(language, "profile")}>
                 <Avatar className="h-8 w-8">
                   <AvatarFallback className="bg-amber-500/20 text-amber-400">
                     {user?.displayName?.charAt(0)?.toUpperCase() || "U"}
@@ -897,6 +908,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                 variant="ghost"
                 size="icon"
                 className="h-8 w-8 text-gray-300 hover:text-white"
+                aria-label={adminCopy(language, sidebarCollapsed ? "openSidebar" : "closeSidebar")}
                 onClick={() => setSidebarCollapsed((prev) => !prev)}
               >
                 {sidebarCollapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}

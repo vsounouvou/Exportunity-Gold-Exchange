@@ -1232,6 +1232,34 @@ function getMarketplaceCategory(product: any): string | null {
   );
 }
 
+function getCartCategorySlug(product: any, isGoldTenant: boolean): string | null {
+  return (
+    (isGoldTenant ? normalizeCategorySlug(getGoldCategory(product)) : null) ||
+    getMarketplaceCategory(product)
+  );
+}
+
+function getCartItemCategorySlug(item: any): string | null {
+  const explicit = normalizeCategorySlug(item?.categorySlug);
+  if (explicit) return explicit;
+
+  const text = normalizeForMatch(
+    `${item?.name || ""} ${item?.categoryName || ""} ${item?.categorySlug || ""}`,
+  );
+  const looksLikeCertifiedGold =
+    /\b(stamped|piece|bar)\b/.test(text) ||
+    text.includes("lingot") ||
+    text.includes("certifie") ||
+    text.includes("certified");
+  const goldContext =
+    /\b(gold|or)\b/.test(text) ||
+    text.includes("stamped") ||
+    text.includes("certifie") ||
+    text.includes("certified");
+
+  return looksLikeCertifiedGold && goldContext ? "stamped" : null;
+}
+
 function parseProductAttributes(product: any): Record<string, any> | null {
   const raw = product?.attributes;
   if (!raw) return null;
@@ -3741,7 +3769,7 @@ export function BuyerHomePage({
   >([]);
   const [pickupPartnersLoading, setPickupPartnersLoading] = useState(false);
   const cartHasStamped = useMemo(
-    () => cart.some((item) => item.categorySlug === "stamped"),
+    () => cart.some((item) => getCartItemCategorySlug(item) === "stamped"),
     [cart],
   );
 
@@ -6306,12 +6334,17 @@ export function BuyerHomePage({
       });
       return;
     }
+    const categorySlug = getCartCategorySlug(product, isGoldTenant);
     setCart((prev) => {
       const existing = prev.find((item) => item.productId === product.id);
       if (existing) {
         return prev.map((item) =>
           item.productId === product.id
-            ? { ...item, quantity: item.quantity + 1 }
+            ? {
+                ...item,
+                quantity: item.quantity + 1,
+                categorySlug: item.categorySlug || categorySlug,
+              }
             : item,
         );
       }
@@ -6324,7 +6357,7 @@ export function BuyerHomePage({
           quantity: 1,
           shopId: shop?.id || product.shopId,
           shopName: shop?.shopName || product.shopName,
-          categorySlug: getMarketplaceCategory(product),
+          categorySlug,
         },
       ];
     });

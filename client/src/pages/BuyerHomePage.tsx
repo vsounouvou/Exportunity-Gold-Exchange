@@ -1276,12 +1276,47 @@ function parseProductAttributes(product: any): Record<string, any> | null {
 }
 
 function getGoldCategory(product: any): GoldCategorySlug | null {
-  const rawSlug = normalizeForMatch(product?.categorySlug);
+  const attrs = parseProductAttributes(product) || {};
+  const metadata =
+    product?.metadata && typeof product.metadata === "object"
+      ? product.metadata
+      : {};
+  const explicitGoldCategory = normalizeCategorySlug(
+    product?.bdoGoldCategory ||
+      product?.goldCategory ||
+      attrs?.bdoGoldCategory ||
+      attrs?.goldCategory ||
+      attrs?.category ||
+      (metadata as any)?.bdoGoldCategory ||
+      (metadata as any)?.goldCategory ||
+      (metadata as any)?.category,
+  );
+  if (
+    explicitGoldCategory === "dore" ||
+    explicitGoldCategory === "stamped" ||
+    explicitGoldCategory === "jewelry" ||
+    explicitGoldCategory === "gold-art"
+  ) {
+    return explicitGoldCategory;
+  }
+
+  const rawSlug = normalizeForMatch(
+    product?.categorySlug ||
+      attrs?.categorySlug ||
+      attrs?.category ||
+      (metadata as any)?.categorySlug ||
+      (metadata as any)?.category,
+  );
   const canonical = rawSlug ? rawSlug.replace(/[\s_]+/g, "-") : "";
 
   const categoryName = normalizeForMatch(product?.categoryName);
-  const name = normalizeForMatch(product?.name);
-  const text = `${canonical || rawSlug || ""} ${categoryName} ${name}`.trim();
+  const name = normalizeForMatch([product?.name, product?.title].filter(Boolean).join(" "));
+  const description = normalizeForMatch(
+    [product?.description, product?.shortDescription, attrs?.description, (metadata as any)?.description]
+      .filter(Boolean)
+      .join(" "),
+  );
+  const text = `${canonical || rawSlug || ""} ${categoryName} ${name} ${description}`.trim();
 
   const looksLikeGoldArt =
     text.includes("gold-art") ||
@@ -1339,7 +1374,15 @@ function getGoldCategory(product: any): GoldCategorySlug | null {
   if (!looksLikeGold) return null;
 
   if (text.includes("dore")) return "dore";
-  if (text.includes("stamp") || text.includes("piece") || text.includes("bar"))
+  if (
+    text.includes("stamp") ||
+    text.includes("piece") ||
+    text.includes("lingot") ||
+    text.includes("ingot") ||
+    text.includes("bar") ||
+    text.includes("bullion") ||
+    (text.includes("certifie") && !looksLikeJewelry)
+  )
     return "stamped";
 
   return "stamped";

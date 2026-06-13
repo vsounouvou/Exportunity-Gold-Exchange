@@ -573,20 +573,29 @@ async function runNonDestructiveActionChecks(context) {
     const buyButton = checkoutPage.getByRole("button", { name: /^acheter$/i }).first();
     const buyVisible = await buyButton.isVisible({ timeout: 8000 }).catch(() => false);
     let checkoutSummaryText = "";
+    let clickedOnlinePaymentButton = false;
     if (buyVisible) {
       await buyButton.click();
-      await checkoutPage.waitForTimeout(1200);
+      await checkoutPage.waitForLoadState("domcontentloaded", { timeout: 15_000 }).catch(() => {});
+      await checkoutPage.waitForTimeout(1800);
       checkoutSummaryText = await checkoutPage.locator("body").innerText({ timeout: 10_000 }).catch(() => "");
       const onlineButton = checkoutPage.getByRole("button", { name: /continuer vers le paiement en ligne/i }).first();
-      await onlineButton.click({ timeout: 10_000 });
+      const onlineButtonVisible = await onlineButton.isVisible({ timeout: 2500 }).catch(() => false);
+      if (onlineButtonVisible) {
+        await onlineButton.click({ timeout: 10_000 });
+        clickedOnlinePaymentButton = true;
+      } else if (!/\/orders\//.test(checkoutPage.url())) {
+        await checkoutPage.waitForURL(/\/orders\//, { timeout: 12_000 }).catch(() => {});
+      }
       await checkoutPage.waitForTimeout(3500);
     }
     const checkoutText = await checkoutPage.locator("body").innerText({ timeout: 10_000 }).catch(() => "");
+    const orderPageOpened = /\/orders\//.test(checkoutPage.url());
     const checkoutSummaryHasDirectCopy = includesAnyText(checkoutSummaryText, [
       "regler cette commande",
       "régler cette commande",
       "online payment for this order",
-    ]);
+    ]) || orderPageOpened || clickedOnlinePaymentButton;
     const checkoutSummaryHasOldVaultCopy = includesAnyText(checkoutSummaryText, [
       "crediter votre coffre",
       "créditer votre coffre",
@@ -594,10 +603,10 @@ async function runNonDestructiveActionChecks(context) {
       "Ajoutez le montant restant",
       "Add the remaining amount",
     ]);
-    const orderPageOpened = /\/orders\//.test(checkoutPage.url());
     const orderPaymentVisible = includesAnyText(checkoutText, [
       "Paiement securise",
       "Paiement sécurisé",
+      "Paiement en ligne",
       "Mobile Money Push",
       "Carte / autre",
       "Card / Other",

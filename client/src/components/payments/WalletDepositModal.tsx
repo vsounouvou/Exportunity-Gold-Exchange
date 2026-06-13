@@ -84,6 +84,7 @@ type WalletDepositSummary = {
 type WalletDepositModalProps = {
   label?: string;
   next?: string;
+  defaultAmount?: number;
   autoOpen?: boolean;
   buttonClassName?: string;
   experience?: "assistant" | "default" | string;
@@ -192,7 +193,7 @@ export function WalletDepositModal(props: WalletDepositModalProps) {
   const [step, setStep] = useState<"choose" | "online" | "seller">("choose");
   const [onlineProvider, setOnlineProvider] = useState<"flutterwave" | "kkiapay">(initialOnlineProvider);
 
-  const [amount, setAmount] = useState<string>("10000");
+  const [amount, setAmount] = useState<string>(() => String(props.defaultAmount ?? 10000));
   const parsedAmount = useMemo(() => {
     const n = Math.trunc(Number(String(amount || "").trim()));
     return Number.isFinite(n) && n > 0 ? n : null;
@@ -253,6 +254,11 @@ export function WalletDepositModal(props: WalletDepositModalProps) {
   useEffect(() => {
     if (props.autoOpen) setOpen(true);
   }, [props.autoOpen]);
+
+  useEffect(() => {
+    if (typeof props.defaultAmount !== "number") return;
+    setAmount(String(Math.max(1, Math.round(props.defaultAmount))));
+  }, [props.defaultAmount]);
 
   useEffect(() => {
     if (!open) return;

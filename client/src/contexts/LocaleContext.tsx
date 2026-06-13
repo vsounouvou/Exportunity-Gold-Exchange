@@ -62,11 +62,20 @@ function getTenantTranslationOverrides(
       language === "fr"
         ? "Unités d'or d'investissement estampillées • Lingots certifiés et scellés"
         : language === "ar"
-          ? "ÙˆØ­Ø¯Ø§Øª Ø°Ù‡Ø¨ Ø§Ø³ØªØ«Ù…Ø§Ø±ÙŠ Ù…Ø®ØªÙˆÙ…Ø© â€¢ Ø³Ø¨Ø§Ø¦Ùƒ Ù…Ø¹ØªÙ…Ø¯Ø© ÙˆÙ…Ø®ØªÙˆÙ…Ø©"
-          : "Unités d'or d'investissement estampillées • Lingots certifiés et scellés";
-    const proLabel = language === "ar" ? "Ù…Ø³Ø§Ø­Ø© Ø§Ù„Ù…Ø­ØªØ±ÙÙŠÙ†" : "Espace Pro";
+          ? "وحدات ذهب مادي موثقة • سبائك معتمدة ومختومة"
+          : "Certified physical gold units • Certified and sealed bullion";
+    const proLabel =
+      language === "ar"
+        ? "مساحة المحترفين"
+        : language === "fr"
+          ? "Espace Pro"
+          : "Professional Space";
     const retailTitle =
-      language === "ar" ? "Ø§Ù„Ø°Ù‡Ø¨ Ø§Ù„Ù…Ø®ØªÙˆÙ…" : "Or Estampillé";
+      language === "ar"
+        ? "ذهب موثق"
+        : language === "fr"
+          ? "Or Estampillé"
+          : "Certified Gold";
     return {
       "nav.dore": proLabel,
       "mode.wholesale": proLabel,
@@ -80,10 +89,27 @@ function getTenantTranslationOverrides(
       "buyer.panel.wholesaleMarketplace.subtitle":
         language === "fr"
           ? "Mines, négociants, maisons, investisseurs et acheteurs en gros."
+          : language === "ar"
+            ? "مناجم وتجار ومشترون مؤسسيون في مسار مهني منفصل."
           : "Mines, traders, maisons, investors, and institutional buyers.",
-      "wholesale.preview.title": language === "fr" ? "Aperçu Espace Pro (accès contrôlé)" : "Pro Space preview (restricted)",
-      "wholesale.apply.accessButton": language === "fr" ? "Demander l'accès Espace Pro" : "Request Pro Space access",
-      "nav.wallet": language === "fr" ? "Mon Portefeuille" : "My Wallet",
+      "wholesale.preview.title":
+        language === "fr"
+          ? "Aperçu Espace Pro (accès contrôlé)"
+          : language === "ar"
+            ? "معاينة مساحة المحترفين (وصول مقيد)"
+            : "Professional Space preview (restricted)",
+      "wholesale.apply.accessButton":
+        language === "fr"
+          ? "Demander l'accès Espace Pro"
+          : language === "ar"
+            ? "طلب الوصول إلى مساحة المحترفين"
+            : "Request Professional Space access",
+      "nav.wallet":
+        language === "fr"
+          ? "Mon Portefeuille"
+          : language === "ar"
+            ? "محفظتي"
+            : "My Wallet",
       "sections.stamped.title": retailTitle,
       "buyer.panel.retailGold.title": retailTitle,
       "buyer.panel.retailGold.subtitle": bdoSubtitle,

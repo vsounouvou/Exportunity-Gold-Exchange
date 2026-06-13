@@ -2606,18 +2606,26 @@ export function BuyerHomePage({
   const bdoHeroTitleLines =
     language === "ar"
       ? ["قطع معتمدة وقابلة للتتبع", "عرض واضح من القطعة حتى التسليم"]
+      : language === "en"
+        ? ["Certified and traceable pieces", "Clear presentation, simple purchase"]
       : ["Pièces certifiées et traçables", "Présentation claire, achat simple"];
   const bdoHeroSubtitle =
     language === "ar"
       ? "وزن متحقق • ورشة معتمدة • تتبع واضح"
+      : language === "en"
+        ? "Verified weight • Approved workshop • Clear traceability"
       : "Poids vérifié • Atelier certifié • Traçabilité claire";
   const bdoHeroSupportCopy =
     language === "ar"
       ? "الدفع عبر الهاتف أو البطاقة أو الخزنة. التسليم متاح حاليا في كوت ديفوار، والدولي قريبا."
+      : language === "en"
+        ? "Pay by mobile money, card, or purchase credits. Delivery is currently available in Côte d'Ivoire, with international delivery coming soon."
       : "Paiement par mobile money, carte bancaire ou coffre. Livraison disponible en Côte d'Ivoire pour le moment, international bientôt.";
   const bdoTrustBadges =
     language === "ar"
       ? ["وزن متحقق", "ورشة معتمدة", "تتبع واضح"]
+      : language === "en"
+        ? ["Verified weight", "Approved workshop", "Traceable"]
       : ["Poids vérifié", "Atelier certifié", "Traçable"];
   const bdoPaymentDeliveryHighlights = [
     {
@@ -2636,8 +2644,13 @@ export function BuyerHomePage({
   const bdoHomepageHeroLines =
     language === "ar"
       ? [
-          "Ø§Ø´ØªØ±Ù Ø°Ù‡Ø¨Ø§Ù‹ Ø£ÙØ±ÙŠÙ‚ÙŠØ§Ù‹ Ù…Ø¹ØªÙ…Ø¯Ø§Ù‹.",
-          "Ù‚Ø·Ø¹ Ø§Ø³ØªØ«Ù…Ø§Ø±ÙŠØ© ÙˆÙ…Ø¬Ù…ÙˆØ¹Ø§Øª ØªÙˆÙ‚ÙŠØ¹ ÙˆÙ‚Ø·Ø¹ ÙØ§Ø®Ø±Ø© Ø¬Ø§Ù‡Ø²Ø© Ù„Ù„Ø§Ù‚ØªÙ†Ø§Ø¡.",
+          "اشترِ ذهباً أفريقياً معتمداً.",
+          "ذهب مادي معتمد ومجوهرات موثقة جاهزة للشراء.",
+        ]
+      : language === "en"
+        ? [
+            "Buy certified African gold.",
+            "Certified physical gold and verified jewelry ready to purchase.",
         ]
       : [
           "Achetez de l'or africain certifié.",
@@ -2645,11 +2658,15 @@ export function BuyerHomePage({
         ];
   const bdoHomepageHeroSubtitle =
     language === "ar"
-      ? "Ø£ØµÙ„ Ù…Ø¹ØªÙ…Ø¯ â€¢ Ø´Ø±Ø§Ø¡ ÙÙˆØ±ÙŠ Ø£Ùˆ ØªØ¯Ø±ÙŠØ¬ÙŠ â€¢ ØªØ³Ù„ÙŠÙ… Ù…Ø¤Ù…Ù‘Ù†"
+      ? "أصل موثق • شراء فوري أو هدف شراء • تسليم آمن"
+      : language === "en"
+        ? "Certified physical gold - purchase objective - secure delivery"
       : "Or physique certifié - objectif d'achat - livraison sécurisée";
   const bdoHomepageHeroSupport =
     language === "ar"
-      ? "ØªØ¹Ø±Ø¶ Bourse de l'Or Ù‚Ø·Ø¹ Ø°Ù‡Ø¨ÙŠØ© Ù…Ø¹ØªÙ…Ø¯Ø© Ø¹ÙŠØ§Ø± 18Kâ€“22KØŒ Ù…Ø¹ Ø§Ù„ÙˆØ²Ù† ÙˆØ§Ù„Ø§Ø¹ØªÙ…Ø§Ø¯ ÙˆØ§Ù„ØªØªØ¨Ø¹ ÙˆØ³ÙŠÙ†Ø§Ø±ÙŠÙˆ Ù…Ø´ØªØ±Ù‰ ÙˆØ§Ø¶Ø­ Ù…Ù† Ø§Ù„Ø§ÙƒØªØ´Ø§Ù Ø­ØªÙ‰ Ø§Ù„Ø§Ù‚ØªÙ†Ø§Ø¡."
+      ? "تجمع Bourse de l'Or بين قطع ذهبية معتمدة، أسعار واضحة، تتبع مرئي، ومسار شراء منظم من الاكتشاف حتى التأكيد."
+      : language === "en"
+        ? "BOURSE DE L'OR brings together certified African gold pieces and bullion, with visible final pricing, traceability, and a clear acquisition path."
       : "Bourse de l'Or réunit des pièces et lingots en or africain certifié, avec prix final affiché, traçabilité visible et parcours d'acquisition clair.";
   const bdoHomepageTrustBadges =
     language === "ar"
@@ -5360,22 +5377,15 @@ export function BuyerHomePage({
       (sum, item) => sum + item.price * item.quantity,
       0,
     );
-    if (useBdoInstitutionalLayout) {
-      setCartOpen(false);
-      setCheckoutOpen(false);
-      openConcierge({
-        focus: false,
-        mode: "checkout",
-        seedMessage: `Très bien. Je reste avec vous jusqu'au paiement. Votre commande actuelle est de ${formatMoney(checkoutTotal, "XOF")}.`,
-      });
-      return;
-    }
     setCheckoutOpen(true);
     setCheckoutStep(0);
+    setConciergeOpen(false);
     setCheckoutMessages([
       {
         role: "assistant",
-        content: `Great! Let's complete your order of ${cart.length} item${cart.length > 1 ? "s" : ""} totaling ${formatMoney(checkoutTotal, "XOF")}. First, tell me about yourself - who is placing this order?`,
+        content: useBdoInstitutionalLayout
+          ? `Résumé de commande prêt: ${cart.length} article${cart.length > 1 ? "s" : ""}, total ${formatMoney(checkoutTotal, "XOF")}. Confirmez pour ouvrir le paiement en ligne ou régler depuis le coffre si le solde couvre la commande.`
+          : `Great! Let's complete your order of ${cart.length} item${cart.length > 1 ? "s" : ""} totaling ${formatMoney(checkoutTotal, "XOF")}. First, tell me about yourself - who is placing this order?`,
       },
     ]);
     setCartOpen(false);
@@ -6284,11 +6294,6 @@ export function BuyerHomePage({
     setVaultOpen(true);
     setCartOpen(false);
     setWalletTopupAutoOpen(true);
-    openConcierge({
-      focus: false,
-      mode: "wallet",
-      seedMessage: conciergeProfile.paymentSeed,
-    });
   };
   const addToCart = (product: any, shop: any) => {
     if (isWholesalePreview) {
@@ -10060,7 +10065,12 @@ export function BuyerHomePage({
       }
       if (selectedProduct?.id === product?.id) setSelectedProduct(null);
       addToCart(product, null);
-      setCartOpen(true);
+      setCartOpen(false);
+      setConciergeOpen(false);
+      window.setTimeout(() => {
+        setCheckoutOpen(true);
+        setCheckoutStep(0);
+      }, 0);
     },
     [addToCart, selectedProduct?.id, toast],
   );
@@ -12459,7 +12469,9 @@ export function BuyerHomePage({
   const isOperator = session.hasRole("operator") || session.hasRole("admin");
   const isDesktopViewport =
     typeof window !== "undefined" ? window.innerWidth >= 768 : !isMobile;
-  const isBdoWholesaleDesktop = isBdoUnifiedWholesale && isDesktopViewport;
+  const isBdoWholesaleDesktop =
+    isBdoUnifiedWholesale &&
+    (typeof window !== "undefined" ? window.innerWidth >= 640 : !isMobile);
   const isTightWholesaleViewport =
     isBdoWholesaleDesktop && typeof window !== "undefined"
       ? window.innerWidth <= 1920 || window.innerHeight <= 1080
@@ -14203,6 +14215,8 @@ export function BuyerHomePage({
     participateOpen ||
     bdoPurchaseOpen ||
     bdoSecondaryOpen ||
+    cartOpen ||
+    checkoutOpen ||
     wholesaleApplyOpen ||
     customEquipmentOpen ||
     mineListingOpen;
@@ -17117,11 +17131,14 @@ export function BuyerHomePage({
                 Bourse de l&apos;Or
               </p>
               <h1 className={`mt-3 max-w-[9ch] text-[36px] font-semibold leading-[0.98] text-white ${BDO_LUX_TITLE_FONT}`}>
-                Achetez de l&apos;or africain certifié.
+                {bdoHomepageHeroLines[0]}
               </h1>
               <p className="mt-4 max-w-[25ch] text-[15px] leading-relaxed text-white/78">
-                Commandez une pièce ou un lingot, ou constituez votre budget
-                avant confirmation.
+                {language === "en"
+                  ? "Order a piece or bullion product, or build your budget before confirmation."
+                  : language === "ar"
+                    ? "اطلب قطعة أو سبيكة، أو كوّن ميزانيتك قبل التأكيد."
+                    : "Commandez une pièce ou un lingot, ou constituez votre budget avant confirmation."}
               </p>
               <div className="mt-5 grid gap-2">
                 <Button
@@ -17129,7 +17146,11 @@ export function BuyerHomePage({
                   className={`h-12 rounded-xl text-[14px] font-semibold ${BDO_LUX_PRIMARY_BUTTON}`}
                   onClick={() => scrollToBdoSection("bdo-mobile-buy")}
                 >
-                  Acheter maintenant
+                  {language === "en"
+                    ? "Buy now"
+                    : language === "ar"
+                      ? "اشترِ الآن"
+                      : "Acheter maintenant"}
                 </Button>
                 <Button
                   type="button"
@@ -17137,7 +17158,11 @@ export function BuyerHomePage({
                   className={`h-12 rounded-xl text-[14px] font-semibold ${BDO_LUX_SECONDARY_BUTTON}`}
                   onClick={() => navigate("/coffre")}
                 >
-                  Créer un objectif
+                  {language === "en"
+                    ? "Create objective"
+                    : language === "ar"
+                      ? "إنشاء هدف"
+                      : "Créer un objectif"}
                 </Button>
               </div>
               <button
@@ -17145,7 +17170,11 @@ export function BuyerHomePage({
                 className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-[#E8C873] underline-offset-4 hover:underline"
                 onClick={() => navigate("/wholesale")}
               >
-                Je suis professionnel
+                {language === "en"
+                  ? "I am a professional"
+                  : language === "ar"
+                    ? "أنا محترف"
+                    : "Je suis professionnel"}
                 <ChevronRight className="h-4 w-4" />
               </button>
             </div>
@@ -17557,11 +17586,14 @@ export function BuyerHomePage({
                   Bourse de l&apos;Or
                 </p>
                 <h1 className={`mt-4 max-w-[10ch] text-[46px] font-semibold leading-[0.96] text-white 2xl:text-[60px] ${BDO_LUX_TITLE_FONT}`}>
-                  Achetez de l&apos;or africain certifié.
+                  {bdoHomepageHeroLines[0]}
                 </h1>
                 <p className="mt-5 max-w-[32ch] text-[18px] leading-relaxed text-white/78">
-                  Commandez une pièce ou un lingot, ou constituez votre budget
-                  avant confirmation.
+                  {language === "en"
+                    ? "Order a piece or bullion product, or build your budget before confirmation."
+                    : language === "ar"
+                      ? "اطلب قطعة أو سبيكة، أو كوّن ميزانيتك قبل التأكيد."
+                      : "Commandez une pièce ou un lingot, ou constituez votre budget avant confirmation."}
                 </p>
                 {bdoMobilePriceStrip.gramReference !== "--" ? (
                   <p className="mt-4 text-[12px] text-white/55">
@@ -17584,21 +17616,33 @@ export function BuyerHomePage({
                     className={`h-11 px-5 ${BDO_LUX_PRIMARY_BUTTON}`}
                     onClick={() => scrollToBdoSection("bdo-buy")}
                   >
-                    Acheter maintenant
+                    {language === "en"
+                      ? "Buy now"
+                      : language === "ar"
+                        ? "اشترِ الآن"
+                        : "Acheter maintenant"}
                   </Button>
                   <Button
                     variant="outline"
                     className={`h-11 px-5 ${BDO_LUX_SECONDARY_BUTTON}`}
                     onClick={() => navigate("/coffre")}
                   >
-                    Créer un objectif
+                    {language === "en"
+                      ? "Create objective"
+                      : language === "ar"
+                        ? "إنشاء هدف"
+                        : "Créer un objectif"}
                   </Button>
                   <Button
                     variant="ghost"
                     className="h-11 px-2 text-[#E8C873] hover:bg-transparent hover:text-[#E8C873]"
                     onClick={() => navigate("/wholesale")}
                   >
-                    Je suis professionnel
+                    {language === "en"
+                      ? "I am a professional"
+                      : language === "ar"
+                        ? "أنا محترف"
+                        : "Je suis professionnel"}
                     <ChevronRight className="ml-1 h-4 w-4" />
                   </Button>
                 </div>
@@ -22267,8 +22311,7 @@ export function BuyerHomePage({
                     Résumé avant paiement
                   </h3>
                   <p className="mt-1 text-[12px] text-white/50">
-                    Assistant Bourse de l'Or 1. Vérifier 2. Paiement 3.
-                    Confirmation
+                    1. Vérification 2. Paiement en ligne 3. Confirmation
                   </p>
                 </div>
                 <Button
@@ -22452,7 +22495,7 @@ export function BuyerHomePage({
                   </div>
                   <div>
                     <h3 className="text-sm font-semibold text-white">
-                      Checkout Assistant
+                      Checkout
                     </h3>
                     <p className="text-[10px] text-white/50">
                       Completing your order

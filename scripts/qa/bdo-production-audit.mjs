@@ -12,6 +12,9 @@ const outDir = path.resolve(process.cwd(), "artifacts", "bdo-production-audit", 
 fs.mkdirSync(outDir, { recursive: true });
 
 const languages = ["fr", "en", "ar"];
+// Admin is an internal operations surface. Public customer/pro surfaces are
+// still audited in French, English and Arabic.
+const adminLanguages = ["fr", "en"];
 
 const publicRoutes = [
   "/",
@@ -570,7 +573,7 @@ async function main() {
   const adminLogin = await loginAdmin(context);
   if (adminLogin.ok) {
     for (const route of adminRoutes) {
-      for (const language of languages) {
+      for (const language of adminLanguages) {
         routes.push(await auditRoute(context, route, language, "admin"));
       }
     }

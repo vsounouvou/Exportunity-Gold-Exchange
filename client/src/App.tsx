@@ -593,7 +593,7 @@ function normalizeAccessRoleLabel(value: unknown) {
   return String(value ?? "")
     .trim()
     .toLowerCase()
-    .replace(/['â€™]/g, "")
+    .replace(/['\u2019]/g, "")
     .replace(/[_-]+/g, " ")
     .replace(/[^\w\s]/g, " ")
     .replace(/\s+/g, " ")

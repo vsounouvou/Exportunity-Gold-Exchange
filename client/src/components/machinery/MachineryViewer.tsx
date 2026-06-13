@@ -314,7 +314,7 @@ export function MachineryViewer(props: {
       <div className="absolute top-2 left-2 z-10 flex gap-2">
         {loadState.status === "loading" ? (
           <span className="text-[10px] rounded-full bg-white/10 border border-white/15 text-white/70 px-2 py-1">
-            Loading {loadState.kind.toUpperCase()}â€¦
+            Loading {loadState.kind.toUpperCase()}?
           </span>
         ) : null}
         {loadState.status === "loaded" ? (
@@ -329,7 +329,7 @@ export function MachineryViewer(props: {
         ) : null}
       </div>
       <div className="absolute bottom-2 right-2 z-10 text-[10px] text-white/45 bg-black/40 border border-white/10 rounded-lg px-2 py-1">
-        Drag to orbit â€¢ Scroll to zoom
+        Drag to orbit ? Scroll to zoom
       </div>
     </div>
   );

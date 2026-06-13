@@ -1799,7 +1799,7 @@ export default function AdminMarketplaceProductsPage() {
 
               <div className="flex items-center justify-between gap-3 pt-1">
                 <div className="text-xs text-gray-400">
-                  Showing <span className="text-gray-200">{items.length}</span> item(s){hasMore ? "+" : ""} â€¢ Page size{" "}
+                  Showing <span className="text-gray-200">{items.length}</span> item(s){hasMore ? "+" : ""} ? Page size{" "}
                   <span className="text-gray-200">{limit}</span>
                 </div>
                 {hasMore ? (

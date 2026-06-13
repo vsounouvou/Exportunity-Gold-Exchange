@@ -33,7 +33,7 @@ export function InstallAppPage() {
 
   useEffect(() => {
     if (tenant.key === "exportunity") {
-      document.title = `Install ${installLabel} — Exportunity`;
+      document.title = `Install ${installLabel} ? Exportunity`;
       return;
     }
     document.title = formatPageTitle(`Install ${installLabel}`, brand);

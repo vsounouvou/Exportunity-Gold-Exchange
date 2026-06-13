@@ -22,6 +22,21 @@ export function FlutterwaveTopupButton(props: {
   returnUrl?: string;
   label?: string;
   className?: string;
+  next?: string;
+  autoOpen?: boolean;
+  buttonClassName?: string;
+  experience?: string;
+  allowSellerQr?: boolean;
+  allowProviderSwitch?: boolean;
+  preferredProvider?: string;
+  title?: string;
+  description?: string;
+  summary?: {
+    eyebrow?: string;
+    title?: string;
+    lines?: Array<{ label: string; value: string }>;
+  };
+  onExternalRedirect?: () => void;
 }) {
   const [, navigate] = useLocation();
   const session = useSession();
@@ -48,6 +63,7 @@ export function FlutterwaveTopupButton(props: {
 
       const checkoutLink = String(resp?.checkout?.link || "").trim();
       if (!checkoutLink) throw new Error("Flutterwave checkout link missing");
+      props.onExternalRedirect?.();
       window.location.assign(checkoutLink);
     } catch (err: any) {
       const message = String(err?.message || "Failed to open Flutterwave checkout");
@@ -64,7 +80,7 @@ export function FlutterwaveTopupButton(props: {
 
   return (
     <div className="space-y-1">
-      <Button className={props.className} onClick={startCheckout} disabled={loading}>
+      <Button className={props.buttonClassName || props.className} onClick={startCheckout} disabled={loading}>
         {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
         {props.label || "Pay with Flutterwave"}
       </Button>

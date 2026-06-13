@@ -17,7 +17,9 @@ const TENANT_ENTRY_URLS: Record<TenantKey, string> = {
   vs: "/",
   hoz: "/",
   zogueland: "/store",
+  madd: "/madd-world",
   rayon1km: "/zone",
+  xportcard: "/territories",
 };
 
 const TENANT_ROLE_URLS: Record<TenantKey, Record<GatewayRoleKey, string>> = {
@@ -77,12 +79,26 @@ const TENANT_ROLE_URLS: Record<TenantKey, Record<GatewayRoleKey, string>> = {
     investor: "/admin/zogueland",
     explore: "/store",
   },
+  madd: {
+    miner: "/madd-world",
+    wholesaler: "/collections",
+    buyer: "/madd-world",
+    investor: "/admin/madd",
+    explore: "/madd-world",
+  },
   rayon1km: {
     miner: "/dashboard",
     wholesaler: "/collections",
     buyer: "/zone",
     investor: "/dashboard",
     explore: "/zone",
+  },
+  xportcard: {
+    miner: "/territories",
+    wholesaler: "/marketplace?mode=wholesale",
+    buyer: "/territories",
+    investor: "/admin/xportcard",
+    explore: "/territories",
   },
 };
 

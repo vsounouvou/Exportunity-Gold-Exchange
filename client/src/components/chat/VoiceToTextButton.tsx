@@ -23,6 +23,9 @@ type VoiceToTextButtonProps = {
   apiClient?: (path: string, options?: RequestInit) => Promise<any>;
   autoSendAfterTranscription?: boolean;
   onAutoSend?: () => void;
+  helperText?: string;
+  recordingText?: string;
+  unavailableText?: string;
 };
 
 const RECORDING_MAX_MS = 120_000;
@@ -69,6 +72,9 @@ export function VoiceToTextButton({
   apiClient,
   autoSendAfterTranscription = false,
   onAutoSend,
+  helperText,
+  recordingText,
+  unavailableText,
 }: VoiceToTextButtonProps) {
   const { toast } = useToast();
   const mediaRecorderSupported = useMemo(() => typeof window !== "undefined" && "MediaRecorder" in window, []);
@@ -462,10 +468,10 @@ export function VoiceToTextButton({
             ? "Transcript inserted"
             : null;
   const micHelperText = !supported
-    ? "Microphone unavailable"
+    ? unavailableText || "Microphone unavailable"
     : isRecording
-      ? "Tap mic again to stop"
-      : "Tap mic to dictate";
+      ? recordingText || "Tap mic again to stop"
+      : helperText || "Tap mic to dictate";
 
   return (
     <div className="flex items-center gap-2">

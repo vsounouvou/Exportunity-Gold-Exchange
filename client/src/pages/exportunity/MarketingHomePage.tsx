@@ -409,7 +409,7 @@ export default function MarketingHomePage() {
                     <div className="line-clamp-2 text-sm font-semibold text-white">{product.name}</div>
                     <div className="mt-1 text-xs text-white/65">
                       {product.shopName || "Marketplace seller"}
-                      {product.distanceText ? ` · ${product.distanceText}` : ""}
+                      {product.distanceText ? ` ? ${product.distanceText}` : ""}
                     </div>
                     <div className="mt-1 text-xs text-white/50">{product.categoryName || "General goods"}</div>
                     <div className="mt-2 text-sm font-semibold text-amber-300">{formatMoney(product.price, product.currency || "XOF")}</div>

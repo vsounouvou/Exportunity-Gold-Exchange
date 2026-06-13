@@ -1,10 +1,12 @@
 import { bdoTenantConfig } from "./bdo/config";
 import { exportunityTenantConfig } from "./exportunity/config";
 import { hozTenantConfig } from "./hoz/config";
+import { maddTenantConfig } from "./madd/config";
 import { metTenantConfig } from "./met/config";
 import { mindbaseTenantConfig } from "./mindbase/config";
 import { rayon1kmTenantConfig } from "./rayon1km/config";
 import { vsTenantConfig } from "./vs/config";
+import { xportcardTenantConfig } from "./xportcard/config";
 import { zoneTenantConfig } from "./zone/config";
 import { zoguelandTenantConfig } from "./zogueland/config";
 import type { PlatformModuleKey, TenantConfig, TenantKeyInput, TenantRegistry, TenantSlug } from "./types";
@@ -18,6 +20,8 @@ export const TENANT_REGISTRY: TenantRegistry = {
   vs: vsTenantConfig,
   hoz: hozTenantConfig,
   zogueland: zoguelandTenantConfig,
+  madd: maddTenantConfig,
+  xportcard: xportcardTenantConfig,
   rayon1km: rayon1kmTenantConfig,
 };
 
@@ -31,6 +35,9 @@ const TENANT_ALIASES: Record<string, TenantSlug> = {
   zogue: "hoz",
   rayon: "rayon1km",
   rayon1km: "rayon1km",
+  xcard: "xportcard",
+  xport: "xportcard",
+  maddacademy: "madd",
 };
 
 const TENANT_HOST_MAP: Record<string, TenantSlug> = Object.values(TENANT_REGISTRY).reduce((acc, config) => {
@@ -167,6 +174,8 @@ export function getTenantDefaultRoute(tenantKey: TenantKeyInput | string) {
   if (key === "rayon1km") return "/admin/rayon1km";
   if (key === "zone") return "/zone";
   if (key === "zogueland") return "/admin/zogueland";
+  if (key === "madd") return "/admin/madd";
+  if (key === "xportcard") return "/admin/xportcard";
   if (key === "exportunity") return "/zone";
   return "/dashboard";
 }

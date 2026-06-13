@@ -614,7 +614,7 @@ const MANUAL_LOCATION_PRESETS = [
   DEFAULT_MANUAL_LOCATION,
   { lat: 6.366, lon: 2.433, label: "Cotonou" },
   { lat: 6.496, lon: 2.604, label: "Porto-Novo" },
-  { lat: 6.137, lon: 1.212, label: "LomÃ©" },
+  { lat: 6.137, lon: 1.212, label: "Lomé" },
   { lat: 5.603, lon: -0.187, label: "Accra" },
   { lat: 14.716, lon: -17.467, label: "Dakar" },
 ] as const;
@@ -624,23 +624,23 @@ function isWithinBeninBounds(lat: number, lng: number) {
 }
 
 const categoryIcons: Record<string, string> = {
-  dore: "ðŸª¨",
-  stamped: "ðŸª™",
-  "food-produce": "ðŸƒ",
-  "food & produce": "ðŸƒ",
-  handcrafts: "ðŸŽ¨",
-  "textiles-clothing": "ðŸ‘—",
-  "textiles & clothing": "ðŸ‘—",
-  "beauty-cosmetics": "âœ¨",
-  "beauty & cosmetics": "âœ¨",
-  "art-decor": "ðŸ–¼ï¸",
-  "art & decor": "ðŸ–¼ï¸",
-  jewelry: "ðŸ’Ž",
-  agriculture: "ðŸŒ¾",
-  beverages: "ðŸµ",
-  gold: "ðŸ¥‡",
-  minerals: "ðŸ’Ž",
-  default: "ðŸ“¦",
+  dore: "DG",
+  stamped: "AU",
+  "food-produce": "FP",
+  "food & produce": "FP",
+  handcrafts: "HC",
+  "textiles-clothing": "TF",
+  "textiles & clothing": "TF",
+  "beauty-cosmetics": "BC",
+  "beauty & cosmetics": "BC",
+  "art-decor": "AD",
+  "art & decor": "AD",
+  jewelry: "JW",
+  agriculture: "AG",
+  beverages: "BV",
+  gold: "AU",
+  minerals: "MN",
+  default: "MK",
 };
 
 const cleanCategoryIcons: Record<string, string> = {
@@ -1610,14 +1610,14 @@ function formatKgAsHuman(kg: number): string {
 function formatKgRangeAsHuman(minKg: number, maxKg: number): string {
   const a = Math.min(minKg, maxKg);
   const b = Math.max(minKg, maxKg);
-  if (!Number.isFinite(a) || !Number.isFinite(b) || b <= 0) return "â€”";
+  if (!Number.isFinite(a) || !Number.isFinite(b) || b <= 0) return "—";
   const fmtKg = (kg: number) => {
     const decimals = kg < 2 ? 2 : 1;
     return `${kg.toFixed(decimals)} kg`;
   };
-  if (b < 1) return `${Math.round(a * 1000)}â€“${Math.round(b * 1000)} g`;
-  if (a < 1) return `${Math.round(a * 1000)} gâ€“${fmtKg(b)}`;
-  return `${fmtKg(a)}â€“${fmtKg(b)}`;
+  if (b < 1) return `${Math.round(a * 1000)}–${Math.round(b * 1000)} g`;
+  if (a < 1) return `${Math.round(a * 1000)} g–${fmtKg(b)}`;
+  return `${fmtKg(a)}–${fmtKg(b)}`;
 }
 
 function createGoldShopIconLegacy(L: any, products?: any[]) {
@@ -1628,12 +1628,12 @@ function createGoldShopIconLegacy(L: any, products?: any[]) {
 
   const hasDore = products?.some(
     (p) =>
-      p.name?.toLowerCase().includes("dorÃ©") ||
+      p.name?.toLowerCase().includes("doré") ||
       p.name?.toLowerCase().includes("dore"),
   );
   const hasRefined = products?.some(
     (p) =>
-      !p.name?.toLowerCase().includes("dorÃ©") &&
+      !p.name?.toLowerCase().includes("doré") &&
       !p.name?.toLowerCase().includes("dore"),
   );
 
@@ -1641,7 +1641,7 @@ function createGoldShopIconLegacy(L: any, products?: any[]) {
   let typeLabel = "GOLD";
   if (hasDore && !hasRefined) {
     borderColor = "#7A5A18";
-    typeLabel = "DORÃ‰";
+    typeLabel = "DORÉ";
   } else if (hasRefined && !hasDore) {
     borderColor = "#E8C873";
     typeLabel = "REFINED";
@@ -1787,7 +1787,7 @@ function createGoldShopIcon(
   const typeLabel = isMixed
     ? "MIXED"
     : primaryCategory === "dore"
-      ? "DORÃ‰"
+      ? "DORÉ"
       : primaryCategory === "stamped"
         ? "STAMPED"
         : "MAKER";
@@ -1917,16 +1917,16 @@ function createShopIcon(
   const rawIconValue = String(markerStyle?.iconValue || "").trim();
   const lucideName = rawIconValue.toLowerCase().replace(/[^a-z0-9]+/g, "-");
   const lucideEmojiMap: Record<string, string> = {
-    "shopping-cart": "ðŸ›’",
-    store: "ðŸª",
-    shirt: "ðŸ‘—",
-    sparkles: "ðŸ§´",
-    tv: "ðŸ“º",
-    smartphone: "ðŸ“±",
-    house: "ðŸ ",
-    pill: "ðŸ’Š",
-    hammer: "ðŸ§±",
-    car: "ðŸš—",
+    "shopping-cart": "CT",
+    store: "ST",
+    shirt: "TF",
+    sparkles: "BC",
+    tv: "EL",
+    smartphone: "PH",
+    house: "HM",
+    pill: "PH",
+    hammer: "HW",
+    car: "AU",
   };
   const resolvedEmoji =
     iconType === "emoji" && rawIconValue
@@ -2000,7 +2000,7 @@ function createMachineryIcon(L: any, item: { status: string }) {
       justify-content: center;
       font-size: 22px;
     ">
-      âš™ï¸
+      ⚙️
       <div style="
         position: absolute;
         bottom: -8px;
@@ -2043,7 +2043,7 @@ function createOpportunityIcon(
       justify-content: center;
       font-size: 22px;
     ">
-      â›ï¸
+      ⛏️
       <div style="
         position: absolute;
         bottom: -8px;
@@ -2699,10 +2699,10 @@ export function BuyerHomePage({
   const bdoHomepageTrustBadges =
     language === "ar"
       ? [
-          "Ø£ØµÙ„ Ù…Ø¹ØªÙ…Ø¯",
-          "Ù‚Ø§Ø¨Ù„ Ù„Ù„ØªØªØ¨Ø¹",
-          "Ø¯ÙØ¹ Ù…Ø±Ù†",
-          "ØªØ³Ù„ÙŠÙ… Ù…Ø¤Ù…Ù‘Ù†",
+          "أصل معتمد",
+          "قابل للتتبع",
+          "دفع مرن",
+          "تسليم مؤمّن",
         ]
       : [
           "Origine certifiée",
@@ -3478,7 +3478,7 @@ export function BuyerHomePage({
         });
         toast({
           title: "Seeded marketplace inventory",
-          description: `${Number(result?.sellersCreated ?? 0)} sellers â€¢ ${Number(result?.productsCreated ?? 0)} products`,
+          description: `${Number(result?.sellersCreated ?? 0)} sellers • ${Number(result?.productsCreated ?? 0)} products`,
         });
         queryClient.invalidateQueries({
           queryKey: ["/api/marketplace/buyer/nearby"],
@@ -4004,7 +4004,7 @@ export function BuyerHomePage({
           <p>Capacity: {a.targetCapacity}</p>
           <p>Power: {a.powerSource}</p>
           <p>
-            Budget: {a.budgetMin}â€“{a.budgetMax} {a.budgetCurrency}
+            Budget: {a.budgetMin}?{a.budgetMax} {a.budgetCurrency}
           </p>
           <p>
             Delivery:{" "}
@@ -4184,7 +4184,7 @@ export function BuyerHomePage({
 
   useEffect(() => {
     safeLocalStorageSet("buyer_mode", buyerMode);
-    // DorÃ© is wholesale-only (compliance). Machinery/Investments are informational modules and can be used in retail.
+    // Dor? is wholesale-only (compliance). Machinery/Investments are informational modules and can be used in retail.
     if (buyerMode === "retail" && marketMode === "dore") {
       safeLocalStorageSet("market_mode", "marketplace");
       setMarketMode("marketplace");
@@ -5312,7 +5312,7 @@ export function BuyerHomePage({
 
   useEffect(() => {
     if (tenant.key === "exportunity") {
-      document.title = `${retailModeLabel} â€” Exportunity`;
+      document.title = `${retailModeLabel} — Exportunity`;
       return;
     }
     if (tenant.key === "met") {
@@ -6700,7 +6700,7 @@ export function BuyerHomePage({
       slug: "preview-ci",
       latitude: "7.55",
       longitude: "-5.55",
-      streetAddress: "CÃ´te d'Ivoire (Regional)",
+      streetAddress: "Côte d'Ivoire (Regional)",
       status: "approved",
       products: [
         {
@@ -7850,13 +7850,13 @@ export function BuyerHomePage({
   const getMixedGoldProducts = (products: any[]) => {
     const doreProducts = products.filter(
       (p: any) =>
-        p.name?.toLowerCase().includes("dorÃ©") ||
+        p.name?.toLowerCase().includes("doré") ||
         p.name?.toLowerCase().includes("dore"),
     );
     const refinedProducts = products.filter(
       (p: any) =>
         !(
-          p.name?.toLowerCase().includes("dorÃ©") ||
+          p.name?.toLowerCase().includes("doré") ||
           p.name?.toLowerCase().includes("dore")
         ),
     );
@@ -7965,7 +7965,7 @@ export function BuyerHomePage({
 
   const getGoldTypeLabel = (product: any) => {
     const nameLower = product?.name?.toLowerCase() || "";
-    if (nameLower.includes("dorÃ©") || nameLower.includes("dore")) {
+    if (nameLower.includes("doré") || nameLower.includes("dore")) {
       return {
         label: t("product.dore").toUpperCase(),
         color: "bg-[#D4AF37]/15 text-[#E8C873] border-[#D4AF37]/30",
@@ -14745,29 +14745,29 @@ export function BuyerHomePage({
           <div className="font-semibold text-white">Debug (admin)</div>
           <div className="mt-1 space-y-1 text-white/70">
             <div>
-              Tenant: <span className="text-white/90">{tenant.key}</span> â€¢
+              Tenant: <span className="text-white/90">{tenant.key}</span> •
               Mode: <span className="text-white/90">{buyerMode}</span>/
               <span className="text-white/90">{marketMode}</span>
             </div>
             <div>
               Location:{" "}
               <span className="text-white/90">
-                {activeLocationLabel || "â€”"}
+                {activeLocationLabel || "?"}
               </span>
             </div>
             <div>
               Source: <span className="text-white/90">{locationSource}</span>{" "}
-              â€¢ Permission:{" "}
+              • Permission:{" "}
               <span className="text-white/90">{locationPermissionState}</span>
               {locationUsedFallback ? (
-                <span className="text-white/50"> â€¢ fallback</span>
+                <span className="text-white/50"> • fallback</span>
               ) : null}
             </div>
             <div>
               Coords:{" "}
               <span className="text-white/90">
                 {formatCoordsLabel(userPosition[0], userPosition[1], 5) ||
-                  "â€”"}
+                  "?"}
               </span>
             </div>
             {locationLastError ? (
@@ -14779,10 +14779,10 @@ export function BuyerHomePage({
             <div>
               Category:{" "}
               <span className="text-white/90">{selectedCategory || "all"}</span>{" "}
-              â€¢ Radius: <span className="text-white/90">{radiusKm}km</span>
+              • Radius: <span className="text-white/90">{radiusKm}km</span>
             </div>
             <div>
-              Shops: <span className="text-white/90">{shops.length}</span> â€¢
+              Shops: <span className="text-white/90">{shops.length}</span> •
               Nearby products:{" "}
               <span className="text-white/90">
                 {sortedPanelSourceProducts.length}
@@ -14838,7 +14838,7 @@ export function BuyerHomePage({
                   </div>
                 </div>
                 <div className="mt-1 text-white/80">
-                  {activeLocationLabel || "â€”"}
+                  {activeLocationLabel || "?"}
                 </div>
                 <div className="mt-2 flex items-center justify-between gap-2 text-[11px] text-white/55">
                   <div>
@@ -14847,7 +14847,7 @@ export function BuyerHomePage({
                       {locationPermissionState}
                     </span>
                     {locationUsedFallback ? (
-                      <span className="text-white/40"> â€¢ fallback</span>
+                      <span className="text-white/40"> • fallback</span>
                     ) : null}
                   </div>
                   <Link
@@ -15876,7 +15876,7 @@ export function BuyerHomePage({
                                     const meta = getCategoryMeta(category);
                                     const badgeLabel = isGoldTenant
                                       ? category === "dore"
-                                        ? "DORÃ‰"
+                                        ? "DOR?"
                                         : category === "stamped"
                                           ? "STAMPED"
                                           : category === "gold-art"
@@ -16019,7 +16019,7 @@ export function BuyerHomePage({
                                       </strong>
                                       <span className="text-[10px] text-white/60">
                                         {formatMachineryCategory(item.category, t)}{" "}
-                                        â€¢{" "}
+                                        •{" "}
                                         {formatMachineryCondition(
                                           item.condition,
                                           t,
@@ -16032,7 +16032,7 @@ export function BuyerHomePage({
                                   </div>
                                   <div className="mt-2 flex items-center justify-between text-xs text-white/70">
                                     <span>
-                                      {item.location.country} â€¢{" "}
+                                      {item.location.country} •{" "}
                                       {item.location.region}
                                     </span>
                                     <span className="font-semibold text-[#D4AF37]">
@@ -16043,7 +16043,7 @@ export function BuyerHomePage({
                                           )
                                         : item.financingAvailable
                                           ? t("machinery.financingAvailable")
-                                          : "â€”"}
+                                          : "?"}
                                     </span>
                                   </div>
                                   <Button
@@ -16129,8 +16129,8 @@ export function BuyerHomePage({
                                       ? getCadastreSourceForCountry(mine.country)
                                       : null;
                                     const regionLabel = mine
-                                      ? `${mine.country} â€¢ ${mine.region}`
-                                      : `${op.location.country} â€¢ ${op.location.region}`;
+                                      ? `${mine.country} • ${mine.region}`
+                                      : `${op.location.country} • ${op.location.region}`;
                                     return (
                                       <>
                                         <div className="min-w-0">
@@ -16169,7 +16169,7 @@ export function BuyerHomePage({
                                             </div>
                                             <div className="font-semibold text-white">
                                               {mine?.licenseActiveSinceYear ??
-                                                "â€”"}
+                                                "?"}
                                             </div>
                                           </div>
                                           <div>
@@ -16179,7 +16179,7 @@ export function BuyerHomePage({
                                             <div className="font-semibold text-white">
                                               {mine
                                                 ? `${mine.currentCapacityKgPerMonth} kg/mo`
-                                                : "â€”"}
+                                                : "?"}
                                             </div>
                                           </div>
                                           <div className="col-span-2">
@@ -16189,7 +16189,7 @@ export function BuyerHomePage({
                                             <div className="font-semibold text-white">
                                               {mine
                                                 ? `${mine.historicalProductionLast12MonthsKg} kg`
-                                                : "â€”"}
+                                                : "?"}
                                             </div>
                                           </div>
                                           <div className="col-span-2">
@@ -16203,7 +16203,7 @@ export function BuyerHomePage({
                                                 ? t(
                                                     `investments.potential.${mine.remainingPotential}`,
                                                   )
-                                                : "â€”"}
+                                                : "?"}
                                             </div>
                                           </div>
                                         </div>
@@ -16808,7 +16808,7 @@ export function BuyerHomePage({
                             title={
                               isWholesaleAuthorized || isWholesaleShellRoute
                                 ? t("nav.machinery")
-                                : `${t("nav.machinery")} â€” Requires approved wholesale access`
+                                : `${t("nav.machinery")} — Requires approved wholesale access`
                             }
                             onClick={() => setWholesaleMode("machinery")}
                           >
@@ -18960,7 +18960,7 @@ export function BuyerHomePage({
                                     ) ?? t("location.setToSeeDistance")}
                                   </span>
                                   <span className="text-white/35 flex-shrink-0">
-                                    â€¢
+                                    •
                                   </span>
                                   <span className="truncate text-white/60">
                                     {product.shopName}
@@ -19607,7 +19607,7 @@ export function BuyerHomePage({
                                   <span>{sellerCount} sellers</span>
                                   {useProximityRadius ? (
                                     <>
-                                      <span className="text-white/25">â€¢</span>
+                                      <span className="text-white/25">•</span>
                                       <span>{radiusKm} km radius</span>
                                     </>
                                   ) : null}
@@ -19710,7 +19710,7 @@ export function BuyerHomePage({
                                 ) : null}
                                 <p className="mt-2 text-[10px] text-white/45">
                                   {useProximityRadius
-                                    ? `${activeLocationLabel ? `Location: ${activeLocationLabel}` : "Location: not set"} â€¢ Radius: ${radiusKm}km`
+                                    ? `${activeLocationLabel ? `Location: ${activeLocationLabel}` : "Location: not set"} • Radius: ${radiusKm}km`
                                     : "Catalog scope: global inventory"}
                                 </p>
                               </div>
@@ -20173,7 +20173,7 @@ export function BuyerHomePage({
                                                           {distanceLabel}
                                                         </span>
                                                         <span className="text-transparent flex-shrink-0 before:text-white/35 before:content-['|']">
-                                                          â€¢
+                                                          •
                                                         </span>
                                                         <span className="min-w-0 truncate text-white/60">
                                                           {product.shopName}
@@ -20969,7 +20969,7 @@ export function BuyerHomePage({
                 {t("nav.machinery")}
               </h3>
               <p className="text-[10px] text-white/50">
-                Equipment catalog â€¢ buy, request, deploy
+                Equipment catalog • buy, request, deploy
               </p>
             </div>
             <Button
@@ -21106,8 +21106,8 @@ export function BuyerHomePage({
                               {item.name}
                             </p>
                             <p className="text-[11px] text-white/60 truncate">
-                              {formatMachineryCategory(item.category, t)} â€¢{" "}
-                              {formatMachineryCondition(item.condition, t)} â€¢{" "}
+                              {formatMachineryCategory(item.category, t)} •{" "}
+                              {formatMachineryCondition(item.condition, t)} •{" "}
                               {item.location.country}
                             </p>
                             <p className="text-[10px] text-white/45 truncate mt-0.5">
@@ -21129,7 +21129,7 @@ export function BuyerHomePage({
                                   item.price.amount,
                                   item.price.currency,
                                 )
-                              : "â€”"}
+                              : "?"}
                           </div>
                         </div>
                       </div>
@@ -21183,8 +21183,8 @@ export function BuyerHomePage({
                               {item.name}
                             </p>
                             <p className="text-[11px] text-white/60">
-                              {formatMachineryCategory(item.category, t)} â€¢{" "}
-                              {formatMachineryCondition(item.condition, t)} â€¢{" "}
+                              {formatMachineryCategory(item.category, t)} •{" "}
+                              {formatMachineryCondition(item.condition, t)} •{" "}
                               {item.location.country}
                             </p>
                             <p className="text-[10px] text-white/45 truncate mt-0.5">
@@ -21210,7 +21210,7 @@ export function BuyerHomePage({
                       <div className="text-[12px] font-semibold text-[#D4AF37]">
                         {item.price
                           ? formatMoney(item.price.amount, item.price.currency)
-                          : "â€”"}
+                          : "?"}
                       </div>
                     </div>
                     <div className="mt-3 flex gap-2">
@@ -21368,8 +21368,8 @@ export function BuyerHomePage({
                         ? getCadastreSourceForCountry(mine.country)
                         : null;
                       const regionLabel = mine
-                        ? `${mine.country} â€¢ ${mine.region}`
-                        : `${op.location.country} â€¢ ${op.location.region}`;
+                        ? `${mine.country} • ${mine.region}`
+                        : `${op.location.country} • ${op.location.region}`;
                       return (
                         <>
                           <div className="min-w-0">
@@ -21406,7 +21406,7 @@ export function BuyerHomePage({
                                 {t("investments.field.licenseActiveSince")}
                               </div>
                               <div className="font-semibold text-white">
-                                {mine?.licenseActiveSinceYear ?? "â€”"}
+                                {mine?.licenseActiveSinceYear ?? "?"}
                               </div>
                             </div>
                             <div>
@@ -21416,7 +21416,7 @@ export function BuyerHomePage({
                               <div className="font-semibold text-white">
                                 {mine
                                   ? `${mine.currentCapacityKgPerMonth} ${t("units.kgPerMonth")}`
-                                  : "â€”"}
+                                  : "?"}
                               </div>
                             </div>
                             <div className="col-span-2">
@@ -21425,8 +21425,8 @@ export function BuyerHomePage({
                               </div>
                               <div className="font-semibold text-white">
                                 {mine
-                                  ? `${mine.historicalProductionTotalKg} ${t("units.kg")} ${t("investments.historical.totalSuffix")} â€¢ ${mine.historicalProductionLast12MonthsKg} ${t("units.kg")} (${t("investments.historical.last12m")})`
-                                  : "â€”"}
+                                  ? `${mine.historicalProductionTotalKg} ${t("units.kg")} ${t("investments.historical.totalSuffix")} • ${mine.historicalProductionLast12MonthsKg} ${t("units.kg")} (${t("investments.historical.last12m")})`
+                                  : "?"}
                               </div>
                             </div>
                             <div className="col-span-2">
@@ -21438,9 +21438,9 @@ export function BuyerHomePage({
                                   ? t(
                                       `investments.potential.${mine.remainingPotential}`,
                                     )
-                                  : "â€”"}
+                                  : "?"}
                                 {mine?.remainingLifeYearsAtCurrentRate
-                                  ? ` â€¢ ~${mine.remainingLifeYearsAtCurrentRate} ${
+                                  ? ` • ~${mine.remainingLifeYearsAtCurrentRate} ${
                                       mine.remainingLifeYearsAtCurrentRate === 1
                                         ? t("units.year")
                                         : t("units.years")
@@ -21518,8 +21518,8 @@ export function BuyerHomePage({
                         ? getCadastreSourceForCountry(mine.country)
                         : null;
                       const regionLabel = mine
-                        ? `${mine.country} â€“ ${mine.region}`
-                        : `${op.location.country} â€“ ${op.location.region}`;
+                        ? `${mine.country} – ${mine.region}`
+                        : `${op.location.country} – ${op.location.region}`;
                       return (
                         <>
                           <div className="min-w-0">
@@ -21556,7 +21556,7 @@ export function BuyerHomePage({
                                 {t("investments.field.licenseActiveSince")}
                               </div>
                               <div className="font-semibold text-white">
-                                {mine?.licenseActiveSinceYear ?? "â€”"}
+                                {mine?.licenseActiveSinceYear ?? "?"}
                               </div>
                             </div>
                             <div>
@@ -21566,7 +21566,7 @@ export function BuyerHomePage({
                               <div className="font-semibold text-white">
                                 {mine
                                   ? `${mine.currentCapacityKgPerMonth} ${t("units.kgPerMonth")}`
-                                  : "â€”"}
+                                  : "?"}
                               </div>
                             </div>
                             <div className="col-span-2">
@@ -21575,8 +21575,8 @@ export function BuyerHomePage({
                               </div>
                               <div className="font-semibold text-white">
                                 {mine
-                                  ? `${mine.historicalProductionTotalKg} ${t("units.kg")} ${t("investments.historical.totalSuffix")} â€¢ ${mine.historicalProductionLast12MonthsKg} ${t("units.kg")} (${t("investments.historical.last12m")})`
-                                  : "â€”"}
+                                  ? `${mine.historicalProductionTotalKg} ${t("units.kg")} ${t("investments.historical.totalSuffix")} • ${mine.historicalProductionLast12MonthsKg} ${t("units.kg")} (${t("investments.historical.last12m")})`
+                                  : "?"}
                               </div>
                             </div>
                             <div className="col-span-2">
@@ -21588,9 +21588,9 @@ export function BuyerHomePage({
                                   ? t(
                                       `investments.potential.${mine.remainingPotential}`,
                                     )
-                                  : "â€”"}
+                                  : "?"}
                                 {mine?.remainingLifeYearsAtCurrentRate
-                                  ? ` â€¢ ~${mine.remainingLifeYearsAtCurrentRate} ${
+                                  ? ` • ~${mine.remainingLifeYearsAtCurrentRate} ${
                                       mine.remainingLifeYearsAtCurrentRate === 1
                                         ? t("units.year")
                                         : t("units.years")
@@ -22785,7 +22785,7 @@ export function BuyerHomePage({
                           {pickupPartnersLoading ? (
                             <div className="flex items-center gap-2 text-xs text-white/60">
                               <Loader2 className="h-3 w-3 animate-spin" />{" "}
-                              Loading partnersâ€¦
+                              Loading partners…
                             </div>
                           ) : (
                             <select
@@ -22796,7 +22796,7 @@ export function BuyerHomePage({
                               className="w-full bg-white/10 border border-white/10 text-white rounded-lg px-3 py-2 text-sm"
                             >
                               <option value="">
-                                Select a partner jewellerâ€¦
+                                Select a partner jeweller…
                               </option>
                               {pickupPartners.map((p) => (
                                 <option key={p.id} value={p.id}>
@@ -25381,9 +25381,9 @@ export function BuyerHomePage({
                     </p>
                     <p className="text-[11px] text-white/60">
                       {formatMachineryCategory(selectedMachinery.category, t)}{" "}
-                      â€¢{" "}
+                      •{" "}
                       {formatMachineryCondition(selectedMachinery.condition, t)}{" "}
-                      â€¢ {selectedMachinery.location.country}
+                      • {selectedMachinery.location.country}
                     </p>
                   </div>
                 </SheetTitle>
@@ -25482,7 +25482,7 @@ export function BuyerHomePage({
                         onClick={() =>
                           toast({
                             title: "Financing request",
-                            description: "Weâ€™ll contact you shortly.",
+                            description: "We?ll contact you shortly.",
                           })
                         }
                       >
@@ -25561,7 +25561,7 @@ export function BuyerHomePage({
                     variant="outline"
                     className="text-[10px] border-white/15 text-white/70"
                   >
-                    {selectedOpportunity.location.country} â€¢{" "}
+                    {selectedOpportunity.location.country} •{" "}
                     {selectedOpportunity.location.region}
                   </Badge>
                 </div>
@@ -25577,7 +25577,7 @@ export function BuyerHomePage({
                           {t("cadastre.permitId")}
                         </p>
                         <p className="font-semibold text-white">
-                          {selectedCadastrePermit?.permitId ?? "Ã¢â‚¬â€"}
+                          {selectedCadastrePermit?.permitId ?? "?"}
                         </p>
                       </div>
                       <div>
@@ -25585,7 +25585,7 @@ export function BuyerHomePage({
                           {t("cadastre.permitStatus")}
                         </p>
                         <p className="font-semibold text-white">
-                          {selectedCadastrePermit?.permitStatus ?? "Ã¢â‚¬â€"}
+                          {selectedCadastrePermit?.permitStatus ?? "?"}
                         </p>
                       </div>
                       <div>
@@ -25593,7 +25593,7 @@ export function BuyerHomePage({
                           {t("cadastre.permitType")}
                         </p>
                         <p className="font-semibold text-white">
-                          {selectedCadastrePermit?.permitType ?? "Ã¢â‚¬â€"}
+                          {selectedCadastrePermit?.permitType ?? "?"}
                         </p>
                       </div>
                       <div>
@@ -25601,7 +25601,7 @@ export function BuyerHomePage({
                           {t("cadastre.commodity")}
                         </p>
                         <p className="font-semibold text-white">
-                          {selectedCadastrePermit?.commodity ?? "Ã¢â‚¬â€"}
+                          {selectedCadastrePermit?.commodity ?? "?"}
                         </p>
                       </div>
                     </div>
@@ -25635,7 +25635,7 @@ export function BuyerHomePage({
                             {t("investments.field.licenseActiveSince")}
                           </p>
                           <p className="text-sm font-semibold text-white">
-                            {mine?.licenseActiveSinceYear ?? "â€”"}
+                            {mine?.licenseActiveSinceYear ?? "?"}
                           </p>
                         </div>
                         <div>
@@ -25645,7 +25645,7 @@ export function BuyerHomePage({
                           <p className="text-sm font-semibold text-white">
                             {mine
                               ? `${mine.currentCapacityKgPerMonth} ${t("units.kgPerMonth")}`
-                              : "â€”"}
+                              : "?"}
                           </p>
                         </div>
                         <div className="col-span-2">
@@ -25654,8 +25654,8 @@ export function BuyerHomePage({
                           </p>
                           <p className="text-sm font-semibold text-white">
                             {mine
-                              ? `${mine.historicalProductionTotalKg} ${t("units.kg")} ${t("investments.historical.totalSuffix")} â€¢ ${mine.historicalProductionLast12MonthsKg} ${t("units.kg")} (${t("investments.historical.last12m")})`
-                              : "â€”"}
+                              ? `${mine.historicalProductionTotalKg} ${t("units.kg")} ${t("investments.historical.totalSuffix")} • ${mine.historicalProductionLast12MonthsKg} ${t("units.kg")} (${t("investments.historical.last12m")})`
+                              : "?"}
                           </p>
                         </div>
                         <div className="col-span-2">
@@ -25667,9 +25667,9 @@ export function BuyerHomePage({
                               ? t(
                                   `investments.potential.${mine.remainingPotential}`,
                                 )
-                              : "â€”"}
+                              : "?"}
                             {mine?.remainingLifeYearsAtCurrentRate
-                              ? ` â€¢ ~${mine.remainingLifeYearsAtCurrentRate} ${
+                              ? ` • ~${mine.remainingLifeYearsAtCurrentRate} ${
                                   mine.remainingLifeYearsAtCurrentRate === 1
                                     ? t("units.year")
                                     : t("units.years")
@@ -25960,9 +25960,9 @@ export function BuyerHomePage({
             <pre className="whitespace-pre-wrap text-[12px] text-white/80 leading-relaxed">
               {`DIGITALLY MANAGED CONTRACT (Preview)
 
-Mine reference: ${selectedOpportunity?.mineId || "â€”"}
-Cadastre permit: ${selectedCadastrePermit?.permitId || "â€”"}
-Authorized Bureau dâ€™Achat: (selected during participation)
+Mine reference: ${selectedOpportunity?.mineId || "?"}
+Cadastre permit: ${selectedCadastrePermit?.permitId || "?"}
+Authorized Bureau d’Achat: (selected during participation)
 
 Start date: (on activation)
 End date: (time-bound)
@@ -25980,7 +25980,7 @@ Only authorized buyers can execute purchase orders via the platform.
 Signatures
 - Party A: Mine (owner/licensed entity)
 - Party B: Investor
-- Party C (optional): Authorized Bureau dâ€™Achat`}
+- Party C (optional): Authorized Bureau d’Achat`}
             </pre>
           </div>
         </DialogContent>
@@ -26082,7 +26082,7 @@ Signatures
               {participateStep === 2 && (
                 <div className="space-y-3">
                   <p className="text-sm text-white/80">
-                    Select an authorized Bureau dâ€™Achat (recommended)
+                    Select an authorized Bureau d’Achat (recommended)
                   </p>
                   <p className="text-[12px] text-white/60">
                     Only authorized buyers can execute purchase orders via the
@@ -26109,8 +26109,8 @@ Signatures
                           </Badge>
                         </div>
                         <p className="text-[11px] text-white/60 truncate">
-                          {b.country} â€¢ {b.region || b.city} â€¢ License{" "}
-                          {b.licenseNumber || b.authorizationNumber || "â€”"}
+                          {b.country} • {b.region || b.city} • License{" "}
+                          {b.licenseNumber || b.authorizationNumber || "?"}
                         </p>
                       </button>
                     ))}
@@ -26178,7 +26178,7 @@ Signatures
                         ? "Revenue share (time-bound)"
                         : "Return per rotation (indicative)"}
                     </div>
-                    <div>Bureau: #{participateBureauId || "â€”"}</div>
+                    <div>Bureau: #{participateBureauId || "?"}</div>
                   </div>
                   <div className="flex justify-between gap-2">
                     <Button
@@ -26211,9 +26211,9 @@ Signatures
                         }
                         if (!participateBureauId) {
                           toast({
-                            title: "SÃ©lection requise",
+                            title: "S?lection requise",
                             description:
-                              "Choisissez un Bureau d'Achat autorisÃ© pour continuer.",
+                              "Choisissez un Bureau d'Achat autoris? pour continuer.",
                           });
                           return;
                         }
@@ -26872,7 +26872,7 @@ Signatures
                             {item.shopName}
                           </p>
                           <p className="mt-1 text-[11px] text-[#E8C873]">
-                            {formatMoney(item.price, "XOF")} Ã— {item.quantity}
+                            {formatMoney(item.price, "XOF")} × {item.quantity}
                           </p>
                         </div>
                         <div className="text-sm font-semibold text-[#E8C873] whitespace-nowrap">
@@ -27829,7 +27829,7 @@ Signatures
               <Input
                 value={customEquipmentForm.name}
                 onChange={(e) => setCustomEquipmentForm((p) => ({ ...p, name: e.target.value }))}
-                placeholder="e.g., Trommel 2m, Crusher jaw plateâ€¦"
+                placeholder="e.g., Trommel 2m, Crusher jaw plate?"
                 className="bg-black/30 border-white/10 text-white placeholder:text-white/40"
               />
             </div>
@@ -27840,7 +27840,7 @@ Signatures
                 <Input
                   value={customEquipmentForm.targetCapacity}
                   onChange={(e) => setCustomEquipmentForm((p) => ({ ...p, targetCapacity: e.target.value }))}
-                  placeholder="e.g., 20 t/h, 250 kVAâ€¦"
+                  placeholder="e.g., 20 t/h, 250 kVA?"
                   className="bg-black/30 border-white/10 text-white placeholder:text-white/40"
                 />
               </div>
@@ -27928,7 +27928,7 @@ Signatures
                 value={customEquipmentForm.notes}
                 onChange={(e) => setCustomEquipmentForm((p) => ({ ...p, notes: e.target.value }))}
                 className="w-full min-h-[88px] rounded-md bg-black/30 border border-white/10 text-white/80 text-[12px] p-2 outline-none"
-                placeholder="Add any specs or constraintsâ€¦"
+                placeholder="Add any specs or constraints?"
               />
             </div>
 
@@ -28045,7 +28045,7 @@ Signatures
                         </Badge>
                       </div>
                       <div className="mt-1 text-[11px] text-white/60">
-                        {permit.country} â€¢ {permit.region} â€¢{" "}
+                        {permit.country} • {permit.region} •{" "}
                         {permit.permitType}
                       </div>
                     </button>
@@ -28068,13 +28068,13 @@ Signatures
                     {cadastreSelectedPermit.permitId}
                   </p>
                   <p className="text-[11px] text-white/60">
-                    {cadastreSelectedPermit.holderName} â€¢{" "}
-                    {cadastreSelectedPermit.permitType} â€¢{" "}
+                    {cadastreSelectedPermit.holderName} •{" "}
+                    {cadastreSelectedPermit.permitType} •{" "}
                     {cadastreSelectedPermit.permitStatus}
                   </p>
                   <p className="text-[11px] text-white/60">
-                    {cadastreSelectedPermit.country} â€¢{" "}
-                    {cadastreSelectedPermit.region} â€¢{" "}
+                    {cadastreSelectedPermit.country} •{" "}
+                    {cadastreSelectedPermit.region} •{" "}
                     {cadastreSelectedPermit.commodity}
                   </p>
                   {getCadastreSourceForCountry(cadastreSelectedPermit.country)
@@ -28326,7 +28326,7 @@ Signatures
                     <Input
                       value={mineListingForm.equipmentList}
                       onChange={(e) => setMineListingForm((p) => ({ ...p, equipmentList: e.target.value }))}
-                      placeholder="e.g., Trommel, Generatorâ€¦"
+                      placeholder="e.g., Trommel, Generator?"
                       className="bg-black/30 border-white/10 text-white placeholder:text-white/40"
                     />
                   </div>
@@ -28419,7 +28419,7 @@ Signatures
                     value={mineListingForm.notes}
                     onChange={(e) => setMineListingForm((p) => ({ ...p, notes: e.target.value }))}
                     className="w-full min-h-[88px] rounded-md bg-black/30 border border-white/10 text-white/80 text-[12px] p-2 outline-none"
-                    placeholder="Add context or documentation notesâ€¦"
+                    placeholder="Add context or documentation notes?"
                   />
                 </div>
                 <p className="text-[11px] text-white/45 mt-3">

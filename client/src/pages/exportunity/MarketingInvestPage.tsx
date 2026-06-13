@@ -41,28 +41,28 @@ export default function MarketingInvestPage() {
       title: "SMEs & Online Shops",
       tracked: "Platform sales velocity, repeat-buyer activity, and order execution.",
       returns: "Revenue-share models linked to verified sales and margin behavior.",
-      duration: "6â€“12 months",
+      duration: "6–12 months",
       href: resolveDeepLinkPath("os.invest.opportunities", { language, currency, country, query: { type: "sme" } }, ctx),
     },
     {
       title: "Machinery & Equipment",
       tracked: "Vendor purchase proof, deployment status, and utilization.",
       returns: "Asset-backed models with service and usage-linked payout cadence.",
-      duration: "12â€“24 months",
+      duration: "12–24 months",
       href: resolveDeepLinkPath("os.invest.opportunities", { language, currency, country, query: { type: "machinery" } }, ctx),
     },
     {
       title: "Farms & Production Units",
       tracked: "Input purchases, output logs, delivery and sales evidence.",
       returns: "Seasonal revenue-share based on tracked production and sell-through.",
-      duration: "9â€“18 months",
+      duration: "9–18 months",
       href: resolveDeepLinkPath("os.invest.opportunities", { language, currency, country, query: { type: "farm" } }, ctx),
     },
     {
       title: "Gold & Commodities Operations",
       tracked: "Purchase orders, compliance evidence, rotation and settlement events.",
       returns: "Rotation economics with documentary controls and event-level reporting.",
-      duration: "3â€“9 months",
+      duration: "3–9 months",
       href: resolveDeepLinkPath("os.invest.opportunities", { language, currency, country, query: { type: "gold" } }, ctx),
     },
   ];
@@ -85,7 +85,7 @@ export default function MarketingInvestPage() {
           <div className="max-w-4xl space-y-5">
             <MarketingKicker>INVEST</MarketingKicker>
             <MarketingTitle className="text-4xl md:text-5xl">
-              {marketingSiteConfig.invest?.headline || "Invest directly into verified operations â€” with tracked execution."}
+              {marketingSiteConfig.invest?.headline || "Invest directly into verified operations — with tracked execution."}
             </MarketingTitle>
             <MarketingLead>
               {marketingSiteConfig.invest?.subtext ||
@@ -287,7 +287,7 @@ export default function MarketingInvestPage() {
       <MarketingContainer className="pb-14">
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           <GlassCard>
-            <h3 className="text-xl font-semibold">Iâ€™m an investor</h3>
+            <h3 className="text-xl font-semibold">I?m an investor</h3>
             <p className="mt-2 text-sm text-white/75">Request onboarding and receive a structured opportunity pack.</p>
             <div className="mt-4">
               <InvestmentLeadForm

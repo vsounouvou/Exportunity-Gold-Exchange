@@ -1,6 +1,7 @@
 type MindbaseLogoProps = {
   className?: string;
   compact?: boolean;
+  tone?: string;
 };
 
 export default function MindbaseLogo({ className, compact = false }: MindbaseLogoProps) {

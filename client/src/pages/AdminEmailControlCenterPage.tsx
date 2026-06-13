@@ -1011,7 +1011,7 @@ export function AdminEmailControlCenterPage() {
                         <div className="text-xs text-slate-200/70 mt-0.5 truncate">
                           From <span className="text-slate-100">{activeWorkOrder.senderEmail}</span>
                           {formatDueLabel(activeWorkOrder.dueAt) ? (
-                            <span> â€¢ {formatDueLabel(activeWorkOrder.dueAt)}</span>
+                            <span> ? {formatDueLabel(activeWorkOrder.dueAt)}</span>
                           ) : null}
                         </div>
                       </div>

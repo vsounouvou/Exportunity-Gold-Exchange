@@ -14,7 +14,9 @@ const TENANT_SUFFIX_ALIASES: Record<TenantKey, string[]> = {
   vs: ["VS", "VITALSOUNOUVOU", "VITAL_SOUNOUVOU"],
   hoz: ["HOZ", "HOUSEOFZOGUE", "HOUSE_OF_ZOGUE"],
   zogueland: ["ZOGUELAND"],
+  madd: ["MADD", "MADDACADEMY", "MADD_ACADEMY"],
   rayon1km: ["RAYON1KM", "RAYON"],
+  xportcard: ["XPORTCARD", "XCARD", "XPORT"],
 };
 
 const SHARED_FLUTTERWAVE_SUFFIXES = ["EXPO", "EXPORTUNITY"];

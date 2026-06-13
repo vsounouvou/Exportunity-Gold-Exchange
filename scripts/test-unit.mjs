@@ -17,6 +17,44 @@ async function readJson(filePath) {
   return JSON.parse(raw);
 }
 
+async function collectSourceFiles(dirPath, output = []) {
+  const entries = await fs.readdir(dirPath, { withFileTypes: true });
+  for (const entry of entries) {
+    const entryPath = path.join(dirPath, entry.name);
+    if (entry.isDirectory()) {
+      await collectSourceFiles(entryPath, output);
+      continue;
+    }
+    if (/\.(ts|tsx|js|jsx|json)$/.test(entry.name)) {
+      output.push(entryPath);
+    }
+  }
+  return output;
+}
+
+function findMojibakeLine(text) {
+  const forbiddenCodepoints = new Set([0x00c3, 0x00d8, 0x00d9, 0xfffd]);
+  const lines = text.split(/\r?\n/);
+  for (let lineIndex = 0; lineIndex < lines.length; lineIndex += 1) {
+    const line = lines[lineIndex];
+    const chars = Array.from(line);
+    if (chars.some((char) => forbiddenCodepoints.has(char.codePointAt(0)))) {
+      return { line: lineIndex + 1, text: line.trim().slice(0, 180) };
+    }
+    const codepoints = chars.map((char) => char.codePointAt(0));
+    for (let i = 0; i < codepoints.length - 1; i += 1) {
+      if (
+        (codepoints[i] === 0x00e2 && codepoints[i + 1] === 0x20ac) ||
+        (codepoints[i] === 0x00f0 && codepoints[i + 1] === 0x0178) ||
+        (codepoints[i] === 0x00ef && codepoints[i + 1] === 0x00b8)
+      ) {
+        return { line: lineIndex + 1, text: line.trim().slice(0, 180) };
+      }
+    }
+  }
+  return null;
+}
+
 async function main() {
   const repoRoot = process.cwd();
 
@@ -51,6 +89,21 @@ async function main() {
     const termsSize = (await fs.stat(terms)).size;
     assert.ok(privacySize > 100, "privacypolicy.html looks too small");
     assert.ok(termsSize > 100, "termsofservice.html looks too small");
+  }
+
+  // 3) Public/admin UI text must not ship mojibake.
+  {
+    const clientSrc = path.join(repoRoot, "client", "src");
+    const sourceFiles = await collectSourceFiles(clientSrc);
+    for (const sourceFile of sourceFiles) {
+      const raw = await fs.readFile(sourceFile, "utf8");
+      const hit = findMojibakeLine(raw);
+      assert.equal(
+        hit,
+        null,
+        `mojibake found in ${path.relative(repoRoot, sourceFile)}:${hit?.line} ${hit?.text || ""}`,
+      );
+    }
   }
 
   console.log("[test:unit] ok");

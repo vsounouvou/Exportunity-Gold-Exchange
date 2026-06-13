@@ -9,7 +9,9 @@ const REDIRECT_BY_TENANT: Record<TenantKey, string> = {
   vs: "/admin/vs",
   hoz: "/admin/hoz",
   zogueland: "/admin/zogueland",
+  madd: "/admin/madd",
   rayon1km: "/admin/rayon1km",
+  xportcard: "/admin/xportcard",
 };
 
 function asTenantKey(value: unknown): TenantKey | null {
@@ -22,7 +24,9 @@ function asTenantKey(value: unknown): TenantKey | null {
   if (normalized === "vs" || normalized === "vss" || normalized === "vital" || normalized === "vitalsounouvou") return "vs";
   if (normalized === "hoz" || normalized === "houseofzogue" || normalized === "zogue") return "hoz";
   if (normalized === "zogueland") return "zogueland";
+  if (normalized === "madd" || normalized === "maddacademy") return "madd";
   if (normalized === "rayon1km" || normalized === "rayon") return "rayon1km";
+  if (normalized === "xportcard" || normalized === "xcard" || normalized === "xport") return "xportcard";
   return null;
 }
 

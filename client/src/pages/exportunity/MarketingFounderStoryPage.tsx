@@ -111,7 +111,7 @@ export default function MarketingFounderStoryPage() {
             <GlassCard>
               <div className="text-xs uppercase tracking-[0.12em] text-white/60">Why he built it</div>
               <div className="mt-3 text-sm text-white/75">
-                Trade breaks when execution is informal: money moves, approvals vanish, and evidence is scattered across chats. Exportunity was built to make operations auditable by defaultâ€”so teams, partners, and investors can see the same truth.
+                Trade breaks when execution is informal: money moves, approvals vanish, and evidence is scattered across chats. Exportunity was built to make operations auditable by default?so teams, partners, and investors can see the same truth.
               </div>
             </GlassCard>
 

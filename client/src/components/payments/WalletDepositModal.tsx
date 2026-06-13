@@ -75,6 +75,27 @@ type RecentSeller = {
   lastAmount: number;
 };
 
+type WalletDepositSummary = {
+  eyebrow?: string;
+  title?: string;
+  lines?: Array<{ label: string; value: string }>;
+};
+
+type WalletDepositModalProps = {
+  label?: string;
+  next?: string;
+  autoOpen?: boolean;
+  buttonClassName?: string;
+  experience?: "assistant" | "default" | string;
+  allowSellerQr?: boolean;
+  allowProviderSwitch?: boolean;
+  preferredProvider?: "flutterwave" | "kkiapay" | string;
+  title?: string;
+  description?: string;
+  summary?: WalletDepositSummary;
+  onExternalRedirect?: () => void;
+};
+
 function toRelativePath(value: string) {
   const raw = String(value || "").trim();
   if (!raw) return "/";
@@ -142,27 +163,34 @@ function openKkiapayCheckout(opts: { init: KkiapayWidgetInit; topupId?: string |
   });
 }
 
-export function WalletDepositModal(props: {
-  label?: string;
-  next?: string;
-  autoOpen?: boolean;
-  buttonClassName?: string;
-}) {
+function normalizeOnlineProvider(value: unknown): "flutterwave" | "kkiapay" | null {
+  const normalized = String(value || "").trim().toLowerCase();
+  if (normalized === "flutterwave") return "flutterwave";
+  if (normalized === "kkiapay") return "kkiapay";
+  return null;
+}
+
+export function WalletDepositModal(props: WalletDepositModalProps) {
   const session = useSession();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [, navigate] = useLocation();
 
-  const [open, setOpen] = useState(false);
-  const [step, setStep] = useState<"choose" | "online" | "seller">("choose");
-  const [onlineProvider, setOnlineProvider] = useState<"flutterwave" | "kkiapay">(() => {
+  const allowSellerQr = props.allowSellerQr !== false;
+  const allowProviderSwitch = props.allowProviderSwitch !== false;
+  const preferredOnlineProvider = normalizeOnlineProvider(props.preferredProvider);
+  const initialOnlineProvider = preferredOnlineProvider || (() => {
     try {
       const saved = String(localStorage.getItem("wallet_online_provider") || "").trim().toLowerCase();
       return saved === "kkiapay" ? "kkiapay" : "flutterwave";
     } catch {
       return "flutterwave";
     }
-  });
+  })();
+
+  const [open, setOpen] = useState(false);
+  const [step, setStep] = useState<"choose" | "online" | "seller">("choose");
+  const [onlineProvider, setOnlineProvider] = useState<"flutterwave" | "kkiapay">(initialOnlineProvider);
 
   const [amount, setAmount] = useState<string>("10000");
   const parsedAmount = useMemo(() => {
@@ -228,10 +256,15 @@ export function WalletDepositModal(props: {
 
   useEffect(() => {
     if (!open) return;
-    setStep("choose");
+    setStep(allowSellerQr ? "choose" : "online");
+    if (preferredOnlineProvider) setOnlineProvider(preferredOnlineProvider);
     setFlutterwaveChallenge(null);
     setFlutterwaveError(null);
     setFlutterwaveStage("idle");
+  }, [allowSellerQr, open, preferredOnlineProvider]);
+
+  useEffect(() => {
+    if (!open) return;
     try {
       localStorage.setItem("wallet_online_provider", onlineProvider);
     } catch {
@@ -299,6 +332,7 @@ export function WalletDepositModal(props: {
         return;
       }
 
+      props.onExternalRedirect?.();
       openKkiapayCheckout({ init, topupId });
     } catch (err: any) {
       const message = err?.message || "Impossible d'ouvrir KKiaPay";
@@ -318,6 +352,7 @@ export function WalletDepositModal(props: {
       const checkoutLink = String(checkout.link || "").trim();
       if (!checkoutLink) throw new Error("Flutterwave checkout link missing");
       setFlutterwaveStage("redirecting");
+      props.onExternalRedirect?.();
       window.location.assign(checkoutLink);
       return;
     }
@@ -441,6 +476,7 @@ export function WalletDepositModal(props: {
     pendingWidgetOpenRef.current = null;
 
     try {
+      props.onExternalRedirect?.();
       openKkiapayCheckout({ init: pending, topupId: widgetTopupId });
     } catch (err: any) {
       setWidgetError(err?.message || "Impossible d'ouvrir KKiaPay");
@@ -519,13 +555,33 @@ export function WalletDepositModal(props: {
       <Dialog open={open} onOpenChange={(next) => setOpen(next)}>
         <DialogContent className="max-w-2xl bg-black border-white/10 text-white">
           <DialogHeader>
-            <DialogTitle className="text-white">Deposer</DialogTitle>
+            <DialogTitle className="text-white">{props.title || "Deposer"}</DialogTitle>
             <DialogDescription className="text-white/60">
-              Choisissez une methode: paiement en ligne (Flutterwave ou KKiaPay) ou depot chez un vendeur (QR).
+              {props.description ||
+                (allowSellerQr
+                  ? "Choisissez une methode: paiement en ligne (Flutterwave ou KKiaPay) ou depot chez un vendeur (QR)."
+                  : "Renseignez les informations de paiement pour continuer.")}
             </DialogDescription>
           </DialogHeader>
 
-          {step === "choose" ? (
+          {props.summary ? (
+            <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+              {props.summary.eyebrow ? <div className="text-[10px] uppercase tracking-[0.18em] text-amber-200/70">{props.summary.eyebrow}</div> : null}
+              {props.summary.title ? <div className="mt-1 text-sm font-semibold text-white">{props.summary.title}</div> : null}
+              {props.summary.lines?.length ? (
+                <div className="mt-3 space-y-1">
+                  {props.summary.lines.map((line) => (
+                    <div key={`${line.label}-${line.value}`} className="flex items-center justify-between gap-3 text-[12px]">
+                      <span className="text-white/55">{line.label}</span>
+                      <span className="text-right font-medium text-white">{line.value}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+
+          {step === "choose" && allowSellerQr ? (
             <div className="grid gap-3 sm:grid-cols-2">
               <button
                 type="button"
@@ -573,6 +629,7 @@ export function WalletDepositModal(props: {
                 </Button>
               </div>
 
+              {allowProviderSwitch ? (
               <div className="grid gap-2 sm:grid-cols-2">
                 <button
                   type="button"
@@ -601,6 +658,7 @@ export function WalletDepositModal(props: {
                   <div className="text-[11px] opacity-80">Mobile Money / Card</div>
                 </button>
               </div>
+              ) : null}
 
               <div className="space-y-2">
                 <Label className="text-white/80">Montant (XOF)</Label>

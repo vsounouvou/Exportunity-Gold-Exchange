@@ -11,7 +11,9 @@ const RETAIL_LABEL_BY_TENANT: Record<TenantKey, string> = {
   vs: "Studio",
   hoz: "Collections",
   zogueland: "Marketplace",
+  madd: "Learning Shop",
   rayon1km: "Nearby",
+  xportcard: "Territory Access",
 };
 
 const PLATFORM_LABEL_BY_TENANT: Record<TenantKey, string> = {
@@ -23,22 +25,26 @@ const PLATFORM_LABEL_BY_TENANT: Record<TenantKey, string> = {
   vs: "Vital Sounouvou Studio",
   hoz: "Collections",
   zogueland: "Zogueland Marketplace",
+  madd: "MADD Academy",
   rayon1km: "Rayon 1km",
+  xportcard: "XportCARD Territory Network",
 };
 
 const FALLBACK_CATEGORY_VISUALS: Record<TenantKey, TenantCategoryVisual[]> = {
   bdo: [
-    { slug: "dore", label: "Dore", icon: "ðŸª¨", image: "/product-images/dore-nuggets-01.png", accent: "#EA580C" },
-    { slug: "stamped", label: "Or Estampillé", icon: "ðŸª™", image: "/product-images/stamped-bar-01.png", accent: "#10B981" },
+    { slug: "dore", label: "Dore", icon: "gem", image: "/product-images/dore-nuggets-01.png", accent: "#EA580C" },
+    { slug: "stamped", label: "Or Estampille", icon: "shield", image: "/product-images/stamped-bar-01.png", accent: "#10B981" },
   ],
-  exportunity: [{ slug: "default", label: "Marketplace", icon: "ðŸ“¦", image: "/tenants/exportunity/placeholder-product.svg", accent: "#0EA5E9" }],
-  zone: [{ slug: "default", label: "Marketplace", icon: "ðŸ“¦", image: "/tenants/zone/placeholder-product.svg", accent: "#0EA5E9" }],
-  mindbase: [{ slug: "default", label: "MindBase", icon: "ðŸ§ ", image: "/tenants/mindbase/placeholder-product.svg", accent: "#6B4EFF" }],
-  met: [{ slug: "default", label: "Materials", icon: "ðŸ§±", image: "/tenants/met/placeholder-product.svg", accent: "#C19A6B" }],
-  vs: [{ slug: "default", label: "Studio", icon: "ðŸ“š", image: "/tenants/vs/placeholder-product.svg", accent: "#8B0000" }],
-  hoz: [{ slug: "default", label: "Marketplace", icon: "ðŸ’Ž", image: "/tenants/hoz/placeholder-product.svg", accent: "#9A7D4F" }],
-  zogueland: [{ slug: "default", label: "Stories", icon: "ðŸ“–", image: "/tenants/zogueland/placeholder-product.svg", accent: "#FF6B6B" }],
-  rayon1km: [{ slug: "default", label: "Nearby", icon: "ðŸ›ï¸", image: "/tenants/rayon1km/placeholder-product.svg", accent: "#F59E0B" }],
+  exportunity: [{ slug: "default", label: "Marketplace", icon: "package", image: "/tenants/exportunity/placeholder-product.svg", accent: "#0EA5E9" }],
+  zone: [{ slug: "default", label: "Marketplace", icon: "package", image: "/tenants/zone/placeholder-product.svg", accent: "#0EA5E9" }],
+  mindbase: [{ slug: "default", label: "MindBase", icon: "brain", image: "/tenants/mindbase/placeholder-product.svg", accent: "#6B4EFF" }],
+  met: [{ slug: "default", label: "Materials", icon: "bricks", image: "/tenants/met/placeholder-product.svg", accent: "#C19A6B" }],
+  vs: [{ slug: "default", label: "Studio", icon: "book", image: "/tenants/vs/placeholder-product.svg", accent: "#8B0000" }],
+  hoz: [{ slug: "default", label: "Marketplace", icon: "diamond", image: "/tenants/hoz/placeholder-product.svg", accent: "#9A7D4F" }],
+  zogueland: [{ slug: "default", label: "Stories", icon: "book-open", image: "/tenants/zogueland/placeholder-product.svg", accent: "#FF6B6B" }],
+  madd: [{ slug: "default", label: "Learning Shop", icon: "sparkles", image: "/tenants/exportunity/placeholder-product.svg", accent: "#f97316" }],
+  rayon1km: [{ slug: "default", label: "Nearby", icon: "map-pin", image: "/tenants/rayon1km/placeholder-product.svg", accent: "#F59E0B" }],
+  xportcard: [{ slug: "default", label: "Territory Access", icon: "map", image: "/tenants/exportunity/placeholder-product.svg", accent: "#0EA5E9" }],
 };
 
 export function getTenantIdentity(tenantKey: TenantKey): TenantStorefrontIdentity {

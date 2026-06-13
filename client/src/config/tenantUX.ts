@@ -117,6 +117,26 @@ const TENANT_UX: Record<TenantKey, TenantUXConfig> = {
     adaptiveRailThreshold: 4,
     nonMapFlowLayout: true,
   },
+  madd: {
+    showMap: false,
+    showGoldChart: false,
+    showNewsBanner: false,
+    storeMode: "GENERAL",
+    categoryMode: "NORMAL",
+    heroMode: "NONE",
+    adaptiveRailThreshold: 4,
+    nonMapFlowLayout: true,
+  },
+  xportcard: {
+    showMap: true,
+    showGoldChart: false,
+    showNewsBanner: false,
+    storeMode: "GENERAL",
+    categoryMode: "NORMAL",
+    heroMode: "NONE",
+    adaptiveRailThreshold: 4,
+    nonMapFlowLayout: false,
+  },
 };
 
 export function getTenantUXConfig(tenantKey: TenantKey): TenantUXConfig {

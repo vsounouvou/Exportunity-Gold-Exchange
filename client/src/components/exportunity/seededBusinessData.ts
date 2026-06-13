@@ -13,6 +13,7 @@ export type SeededBusinessPlace = {
   reviewCount: number;
   openStatus: string;
   type: SeededBusinessType;
+  source?: "google" | "seeded" | "onboarded" | "manual";
   verificationStatus: string;
   contactStatus?: string;
   availableQuantity?: string;

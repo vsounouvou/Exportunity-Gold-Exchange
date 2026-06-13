@@ -3,10 +3,13 @@ import { type ReactNode } from "react";
 export type MobileNavKey =
   | "chats"
   | "actions"
+  | "home"
   | "browse"
   | "map"
   | "wallet"
   | "vault"
+  | "buy"
+  | "pro"
   | "threads"
   | "operations"
   | "money"

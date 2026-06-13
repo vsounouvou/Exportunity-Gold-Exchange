@@ -141,7 +141,7 @@ export default function MarketingStoryPage() {
 
               <div className="space-y-3">
                 <div className="text-xs font-semibold tracking-[0.16em] text-sky-200/80">
-                  {item.year} — {item.location}
+                  {item.year} ? {item.location}
                 </div>
                 <h2 className="text-xl font-semibold text-white">{item.title}</h2>
                 <p className="text-sm text-white/85">{item.emotionalLine}</p>

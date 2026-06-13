@@ -286,7 +286,7 @@ export default function AdminContactsPage() {
       setCsvImportResult(result);
       toast({
         title: "Import complete",
-        description: `Rows ${result?.totalRows ?? 0} â€¢ created ${result?.createdContacts ?? 0} â€¢ linked ${result?.linkedExisting ?? 0} â€¢ errors ${Array.isArray(result?.errors) ? result.errors.length : 0}`,
+        description: `Rows ${result?.totalRows ?? 0} • created ${result?.createdContacts ?? 0} • linked ${result?.linkedExisting ?? 0} • errors ${Array.isArray(result?.errors) ? result.errors.length : 0}`,
       });
       await queryClient.invalidateQueries({ queryKey: ["admin-contacts-imports"] });
       await queryClient.invalidateQueries({ queryKey: ["tenant-contacts"] });

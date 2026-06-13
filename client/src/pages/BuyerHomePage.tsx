@@ -163,7 +163,7 @@ import {
 
 import { SendMoney } from "@/components/marketplace/SendMoney";
 import { MobileBottomNav } from "@/components/marketplace/MobileBottomNav";
-import { MobileBottomNavSpacer } from "@/components/mobile/MobileLayout";
+import { MobileBottomNavSpacer } from "@/components/mobile/MobileLayout.tsx";
 import { GoldNewsBanner } from "@/components/bdo/GoldNewsBanner";
 import { VoiceToTextButton } from "@/components/chat/VoiceToTextButton";
 import {

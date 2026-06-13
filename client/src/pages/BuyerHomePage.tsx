@@ -23750,7 +23750,7 @@ export function BuyerHomePage({
                 ? "justify-center bg-[#0B1D33]/18"
                 : "justify-end bg-transparent pointer-events-none"
           } md:p-6`}
-          style={{ zIndex: "var(--layer-alert)" }}
+          style={{ zIndex: "var(--layer-concierge)" }}
           onClick={isMobile || isExportunityMarketplaceExperience ? closeConcierge : undefined}
         >
           <div

@@ -10,6 +10,9 @@ export const bdoModulesEnabled: PlatformModuleKey[] = [
   "analytics",
   "map",
   "image_gen",
+  "wholesale",
+  "bulk_quotes",
+  "suppliers",
 ];
 
 export const bdoModulesDisabled: PlatformModuleKey[] = [
@@ -21,7 +24,4 @@ export const bdoModulesDisabled: PlatformModuleKey[] = [
   "character_creator",
   "print_on_demand",
   "luxury_drops",
-  "wholesale",
-  "bulk_quotes",
-  "suppliers",
 ];

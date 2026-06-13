@@ -82,16 +82,16 @@ function BdoPageShell({
   return (
     <div className="min-h-screen bg-[#020817] text-white">
       <div className="mx-auto flex w-full max-w-[1500px] flex-col gap-4 px-3 py-5 md:px-5">
-        <section className="rounded-3xl border border-amber-500/20 bg-gradient-to-r from-[#170c04] via-[#3b240c] to-[#6b4d18] p-5 shadow-[0_24px_80px_rgba(0,0,0,0.32)]">
+        <section className="rounded-3xl border border-[#D4AF37]/20 bg-gradient-to-r from-[#0B0B0D] via-[#0D1B2A] to-[#7A5A18] p-5 shadow-[0_24px_80px_rgba(0,0,0,0.32)]">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div className="max-w-3xl">
-              <p className="text-[11px] uppercase tracking-[0.24em] text-amber-200/85">Bourse de l&apos;Or</p>
+              <p className="text-[11px] uppercase tracking-[0.24em] text-[#E8C873]/85">Bourse de l&apos;Or</p>
               <h1 className="mt-2 text-2xl font-semibold text-white md:text-3xl">{title}</h1>
-              <p className="mt-2 text-sm text-amber-50/80">{subtitle}</p>
+              <p className="mt-2 text-sm text-[#F5F3EC]/80">{subtitle}</p>
             </div>
             <div className="flex flex-wrap gap-2">
               <Link href="/store">
-                <Button className="bg-amber-500 text-black hover:bg-amber-400">Retour au marché</Button>
+                <Button className="bg-[#D4AF37] text-black hover:bg-[#E8C873]">Retour au marché</Button>
               </Link>
               <Link href="/mes-objectifs">
                 <Button variant="outline" className="border-white/15 text-white hover:bg-white/10">
@@ -122,8 +122,8 @@ function GoalSummaryCard({ goal }: { goal: GoalItem }) {
                   goal.status === "ready_to_confirm"
                     ? "border-emerald-500/30 bg-emerald-500/15 text-emerald-100"
                     : goal.status === "converted"
-                      ? "border-amber-500/30 bg-amber-500/15 text-amber-100"
-                      : "border-blue-500/20 bg-blue-500/10 text-blue-100"
+                      ? "border-[#D4AF37]/30 bg-[#D4AF37]/15 text-[#F5F3EC]"
+                      : "border-[#0D1B2A]/60 bg-[#0D1B2A]/55 text-[#F5F3EC]"
                 }`}
               >
                 {goal.status === "ready_to_confirm"
@@ -140,7 +140,7 @@ function GoalSummaryCard({ goal }: { goal: GoalItem }) {
             <p className="mt-1 text-sm text-white/60">Prix indicatif ajusté au cours actuel jusqu&apos;à confirmation finale.</p>
           </div>
           <div className="text-right">
-            <p className="text-xl font-semibold text-amber-300">{formatMoneyMinor(goal.currentTargetPriceMinor, goal.currencyCode)}</p>
+            <p className="text-xl font-semibold text-[#E8C873]">{formatMoneyMinor(goal.currentTargetPriceMinor, goal.currencyCode)}</p>
             <p className="text-[11px] text-white/50">Cible actuelle</p>
           </div>
         </div>
@@ -183,7 +183,7 @@ function AuthPrompt() {
         </p>
         <div className="mt-4 flex flex-wrap gap-2">
           <Link href="/login?next=/coffre">
-            <Button className="bg-amber-500 text-black hover:bg-amber-400">Se connecter</Button>
+            <Button className="bg-[#D4AF37] text-black hover:bg-[#E8C873]">Se connecter</Button>
           </Link>
           <Link href="/register?next=/coffre">
             <Button variant="outline" className="border-white/15 text-white hover:bg-white/10">
@@ -279,7 +279,7 @@ export function BdoCoffrePage() {
                     <WalletDepositModal
                       label="Ajouter des fonds"
                       next="/coffre"
-                      buttonClassName="bg-amber-500 hover:bg-amber-600 text-black"
+                      buttonClassName="bg-[#D4AF37] hover:bg-[#E8C873] text-black"
                     />
                     <Link href="/mes-objectifs">
                       <Button variant="outline" className="border-white/15 text-white hover:bg-white/10">
@@ -298,7 +298,7 @@ export function BdoCoffrePage() {
                   <div className="mt-3 space-y-3">
                     <GoalSummaryCard goal={nearestGoal} />
                     <Link href={`/objectif/${nearestGoal.id}`}>
-                      <Button className="w-full bg-amber-500 text-black hover:bg-amber-400">Continuer cet objectif</Button>
+                      <Button className="w-full bg-[#D4AF37] text-black hover:bg-[#E8C873]">Continuer cet objectif</Button>
                     </Link>
                   </div>
                 ) : (
@@ -365,7 +365,7 @@ export function BdoGoalsPage() {
                 <p className="mt-1 text-sm text-white/60">Le prix final reste flottant jusqu’au moment de la confirmation.</p>
               </div>
               <Link href="/store">
-                <Button className="bg-amber-500 text-black hover:bg-amber-400">Créer un nouvel objectif</Button>
+                <Button className="bg-[#D4AF37] text-black hover:bg-[#E8C873]">Créer un nouvel objectif</Button>
               </Link>
             </div>
             <div className="mt-4 space-y-3">
@@ -533,7 +533,7 @@ export function BdoGoalDetailPage({ goalId }: { goalId: string }) {
                     </p>
                   </div>
                 </div>
-                <div className="mt-4 rounded-2xl border border-amber-500/20 bg-amber-500/10 p-4 text-sm text-amber-50/85">
+                <div className="mt-4 rounded-2xl border border-[#D4AF37]/20 bg-[#D4AF37]/10 p-4 text-sm text-[#F5F3EC]/85">
                   <p>Le prix évolue avec le marché jusqu’à confirmation.</p>
                   <p className="mt-2">Le prix final est verrouillé le jour de la confirmation et déclenche la création de l’unité dans votre coffre.</p>
                 </div>
@@ -552,7 +552,7 @@ export function BdoGoalDetailPage({ goalId }: { goalId: string }) {
                           <div key={tx.id} className="rounded-xl border border-white/10 bg-black/20 p-3">
                             <div className="flex items-center justify-between gap-3">
                               <p className="text-sm font-medium text-white">{tx.txType}</p>
-                              <p className="text-sm text-amber-300">{formatMoneyMinor(tx.amountMinor, goal.currencyCode)}</p>
+                              <p className="text-sm text-[#E8C873]">{formatMoneyMinor(tx.amountMinor, goal.currencyCode)}</p>
                             </div>
                             <p className="mt-1 text-[11px] text-white/50">
                               {tx.createdAt ? new Date(tx.createdAt).toLocaleString("fr-FR") : ""}
@@ -618,7 +618,7 @@ export function BdoGoalDetailPage({ goalId }: { goalId: string }) {
                     className="border-white/10 bg-black/30 text-white"
                   />
                   <Button
-                    className="bg-amber-500 text-black hover:bg-amber-400"
+                    className="bg-[#D4AF37] text-black hover:bg-[#E8C873]"
                     disabled={fundMutation.isPending || !Number(fundAmount)}
                     onClick={() => fundMutation.mutate(Math.max(0, Math.round(Number(fundAmount))))}
                   >
@@ -640,7 +640,7 @@ export function BdoGoalDetailPage({ goalId }: { goalId: string }) {
                 <h2 className="text-lg font-semibold text-white">Actions</h2>
                 <div className="mt-4 space-y-2">
                   <Button
-                    className="w-full bg-amber-500 text-black hover:bg-amber-400"
+                    className="w-full bg-[#D4AF37] text-black hover:bg-[#E8C873]"
                     disabled={confirmMutation.isPending || goal.status !== "ready_to_confirm"}
                     onClick={() => confirmMutation.mutate()}
                   >

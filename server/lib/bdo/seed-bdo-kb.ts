@@ -10,208 +10,142 @@ type SeedDoc = {
 
 const SPACE_NAME = "Company Brain — Bourse de l’Or";
 const PRIMARY_SPACE_NAME = "Company Brain — Bourse de l'Or";
-const SEED_VERSION = 2;
+const SEED_VERSION = 3;
 
 const DOCS: SeedDoc[] = [
   {
-    title: "BDO — Identity & Positioning (Merchant-of-Record)",
-    tags: ["bdo", "identity", "policy"],
-    content: `Core truth:
-- Bourse de l’Or is NOT a matching / "mise en relation" platform.
-- Bourse de l’Or is the sole counterparty (merchant-of-record): customers buy from Bourse de l’Or; suppliers sell to Bourse de l’Or.
+    title: "BDO - Identity & Compliance Positioning",
+    tags: ["bdo", "identity", "policy", "compliance"],
+    content: `Official brand: BOURSE DE L'OR. Tagline: Valeur - Confiance - Perennite.
 
-Do not describe the platform as connecting buyers and sellers.`,
+Core positioning:
+- Global brokerage platform for certified physical gold, verified gold jewelry, secure delivery, resale requests, and future gold-equipment brokerage.
+- Core promise: Buy certified physical gold. Choose secure delivery. Keep full ownership.
+
+Non-negotiable wording:
+- The product is physical gold or verified jewelry.
+- BOURSE DE L'OR is not a bank, wallet, stored-value account, money-transfer service, FX service, crypto platform, securities issuer, derivatives venue, or financial exchange.
+- Sensitive decisions require human escalation.`,
   },
   {
-    title: "BDO — Wallet-Centric Commerce",
-    tags: ["bdo", "wallet", "settlement"],
-    content: `All settlement happens via the Bourse de l’Or wallet ledger:
-- Deposits (bank transfer, cards, other rails)
-- Internal transfers (including escrow/holds)
-- All trades settle on-platform (no off-platform payment for core flows)`,
+    title: "BDO - Purchase Objective Flow",
+    tags: ["bdo", "purchase-objective", "order", "checkout"],
+    content: `Purchase Objective flow:
+1. User selects a target product.
+2. UI says: "Build your purchase budget. Your gold is not purchased until you confirm an order."
+3. User can add funds toward a purchase budget.
+4. User can cancel before order execution, subject to payment processor and refund rules.
+5. User clicks "Order Now".
+6. Price is refreshed and shown with a quote validity window.
+7. User confirms.
+8. Supplier or inventory allocation starts.
+
+Use approved terms: Purchase Objective, Build your purchase budget, Order when ready, Market-linked price + platform spread.`,
   },
   {
-    title: "BDO — Gold Units (Standardized)",
-    tags: ["bdo", "gold", "units"],
-    content: `Gold ownership is measured in grams (not money).
-Customers buy standardized units (no free-form "any grams" purchase):
-- 10g, 20g, 50g, 100g (larger sizes require higher KYC tier)
-Caps must apply per transaction and per time window.`,
+    title: "BDO - Pricing Display Rules",
+    tags: ["bdo", "pricing", "spread", "checkout"],
+    content: `Every product page must split pricing into:
+1. Physical product market-linked price
+2. Platform spread, default 2% for bullion
+3. Payment processing fee, if applicable
+4. Delivery / courier / insurance
+5. Customs / duties / taxes, if applicable
+6. Custody or storage fees, if selected
+7. Total payable
+
+Never hide logistics, payment, customs, insurance, or compliance costs inside the 2% bullion spread unless explicitly included in a product offer.`,
   },
   {
-    title: "BDO — Proof-of-Acquisition & Allocation",
-    tags: ["bdo", "acquisition", "audit"],
-    content: `Every purchase must create an immutable acquisition record:
-- timestamp, unit size in grams, purity
-- price-per-gram snapshot used at purchase time
-- total paid and pricing method id
-- allocation to inventory lot(s) + custody data
-- proof documents (attachments)`,
+    title: "BDO - Product Types",
+    tags: ["bdo", "products", "gold", "jewelry"],
+    content: `Primary customer-facing products:
+- Certified physical gold bars and ingots.
+- Verified jewelry.
+- Certificate verification and gold passport.
+- Secure delivery through an approved logistics partner.
+- Client-selected custodian where custody is selected.
+- Future gold-equipment brokerage for qualified suppliers and buyers.
+
+Do not position the offer as crypto, remittance, cash-out, investment yield, banking, or peer-to-peer exchange.`,
   },
   {
-    title: "BDO — Virtual Vault & Delivery",
-    tags: ["bdo", "vault", "delivery"],
-    content: `Each customer has a Virtual Gold Vault:
-- holdings shown in grams, broken down by units
-- each unit has status: stored / delivered / listed-for-resale / sold / locked-until-date
-- delivery can be immediate at purchase or requested later`,
+    title: "BDO - Certificate Verification & Gold Passport",
+    tags: ["bdo", "certificate", "verification", "gold-passport"],
+    content: `Certificate verification should document what is available at review time:
+- product identity, photos, weight, purity/karat, origin information when declared and validated
+- serial or certificate number
+- QR or code verification record
+- custody, logistics, or status history when available
+- expert or partner review status
+
+Avoid fake official seals, fake government language, or claims beyond verified records.`,
   },
   {
-    title: "BDO — Deferred Delivery (Lock-up)",
-    tags: ["bdo", "lockup", "delivery"],
-    content: `Customers can opt into "do not deliver before DATE":
-- blocks delivery requests before end date
-- can optionally enable eligibility for resale listing (only with explicit owner authorization)`,
+    title: "BDO - Resale Request Flow",
+    tags: ["bdo", "resale", "buyback", "compliance"],
+    content: `No public P2P exchange in MVP.
+Resale Request flow:
+1. User clicks "Request an Offer".
+2. User uploads certificate, invoice, photos, and storage location.
+3. AI performs a pre-check only.
+4. Compliance/human review approves or rejects the request.
+5. Approved buyers may submit offers.
+6. User accepts or rejects.
+7. Logistics or custody transfer is documented.
+8. Platform records brokerage fee.
+
+Company buyback is optional and not guaranteed. Use "Conditional Buyback Request" only when eligibility and human approval are clear.`,
   },
   {
-    title: "BDO — Secondary Market (Confirmed Clients Only)",
-    tags: ["bdo", "secondary-market", "resale"],
-    content: `Secondary market is controlled:
-- Only Confirmed Clients can access listings
-- Listings can be BDO inventory lots OR customer vault units with explicit ResaleAuthorization
-- Settlement via wallet: buyer debited, seller credited net of commission, BDO commission captured
-- Ownership transfers to buyer vault; buyer chooses delivery now or store`,
+    title: "BDO - AI Agent Operations Center",
+    tags: ["bdo", "agents", "operations", "human-escalation"],
+    content: `Admin operations center agents:
+- KYC/KYB Agent
+- Certificate Verification Agent
+- Pricing Agent
+- Order Routing Agent
+- Logistics Agent
+- Jewelry Marketplace Agent
+- Resale Request Agent
+- Buyback Review Agent
+- Supplier/Jeweler Onboarding Agent
+- Investor Reporting Agent
+- Website Copy Compliance Agent
+
+Every sensitive decision must support human escalation. Agents draft, pre-check, route, explain, and document; humans approve restricted outcomes.`,
   },
   {
-    title: "BDO — Operational Workflows (High Level)",
-    tags: ["bdo", "workflows", "ops"],
-    content: `Supplier → BDO:
-1) Supplier submits offer + docs
-2) Review/verification
-3) BDO purchases via wallet settlement
-4) Create/verify inventory lot(s)
+    title: "BDO - Forbidden and Approved Terms",
+    tags: ["bdo", "copy", "compliance", "forbidden"],
+    content: `Forbidden in customer-facing copy:
+- gold wallet
+- cash out anywhere
+- convert gold to yuan / dollars / CFA
+- remittance
+- guaranteed return
+- guaranteed buyback
+- peer-to-peer gold exchange
+- instant liquidity
+- deposit money
+- gold account
+- investment yield
 
-Customer buys:
-1) KYC tier
-2) Fund wallet
-3) Buy unit (10/20/50/100g)
-4) Create acquisition record + allocate lot(s) + create vault unit
-5) Delivery now or store (optionally locked)`,
-  },
-  {
-    title: "BDO — Compliance & Forbidden Language",
-    tags: ["bdo", "compliance", "wording"],
-    content: `Forbidden (must never appear in UI/agents):
-- "mise en relation"
-- "we connect buyers and sellers"
-- "buyer pays the seller"
-- "matching platform"
-- "interest rate", "guaranteed return", "savings product", "deposit account"
-- any claim that user gold is lent/used without explicit authorization
-
-Required wording (when relevant):
-- "You buy from Bourse de l’Or."
-- "Suppliers sell to Bourse de l’Or."
-- "Holdings are measured in grams."
-- "Your gold is stored in your virtual vault."
-- "Resale requires your explicit authorization."
-- "Bourse de l’Or earns a commission on resale."`,
-  },
-  {
-    title: "BDO — Internal Agent Roles (Short Prompts)",
-    tags: ["bdo", "agents", "prompts"],
-    content: `Onboarding Agent:
-- Classify user as Customer vs Supplier; drive KYC tier; never mention matching.
-
-Wallet & Settlement Agent:
-- All payments via wallet; explain deposits/transfers; gold holdings in grams.
-
-Vault & Delivery Agent:
-- Explain store vs delivery; enforce lock-up; handle delivery requests.
-
-Procurement Agent:
-- Manage supplier offers → purchases → inventory lots and verification tasks.
-
-Secondary Market Agent:
-- Enforce confirmed-client gating; require resale authorization; calculate commission and settle.
-
-Compliance Agent:
-- Blocks forbidden language; ensures required records exist before delivery/resale.`,
-  },
-  {
-    title: "BDO — Master Spec (Wallet + Vault + Resale)",
-    tags: ["bdo", "spec", "wallet", "vault", "resale", "compliance"],
-    content: `Source-of-truth (must be enforced everywhere):
-- Bourse de l'Or is NOT a matching / "mise en relation" platform (no buyer-seller deal rooms).
-- Bourse de l'Or is the sole counterparty (merchant-of-record): customers buy from Bourse de l'Or; suppliers sell to Bourse de l'Or.
-- All settlement happens via the Bourse de l'Or wallet ledger (no off-platform payments for core flows).
-- Gold ownership is measured in grams (not money).
-- Every purchase creates an immutable proof-of-acquisition record (timestamp, price-per-gram snapshot used at purchase time, unit size in grams, purity, custody data, proof attachments).
-- Each user has a Virtual Gold Vault; delivery can be immediate or requested later.
-- Optional deferred delivery: "Do not deliver before DATE" (lock-up) blocks delivery until end date.
-- Secondary resale is controlled: confirmed clients only; resale requires explicit owner authorization; Bourse de l'Or earns a commission; wallet settlement debits buyer, credits seller net of commission, captures commission, then transfers ownership into buyer vault.
-
-Compliance hard rules:
-- Forbidden wording in UI/agents: "mise en relation", "matching platform", "we connect buyers and sellers", "buyer pays the seller", any "interest rate"/"guaranteed return"/"savings product"/"deposit account" language, and any claim that user gold is used without explicit authorization.
-- Required wording (when relevant): "You buy from Bourse de l'Or.", "Suppliers sell to Bourse de l'Or.", "Holdings are measured in grams.", "Your gold is stored in your virtual vault.", "Resale requires your explicit authorization.", "Bourse de l'Or earns a commission on resale."`,
-  },
-  {
-    title: "BDO — Ingot Identity & Bar Passport (Digital Twin)",
-    tags: ["bdo", "vault", "identity", "audit", "custody"],
-    content: `Goal: each physical bar has a durable identity + a digital twin ("Bar Passport") that supports custody, delivery, disputes, and resale.
-
-Physical identity layers (recommended combo):
-- Laser-engraved serial (human-readable), e.g. BDO-CI-2026-000001
-- Data Matrix on the bar (more reliable than QR on metal)
-- Tamper-evident sealed packaging with NFC + hologram label
-- Optional vault-only RFID (bulk inventory scanning)
-
-Bar Passport (digital record) should include:
-- Bar ID (serial + checksum), weight (grams), purity, refiner/assayer (if applicable)
-- Custody timeline (created, received, verified, stored, moved, redeemed/resold)
-- Verification artifacts (photos, weigh/assay video, scale ticket reference, assay certificate reference)
-- Risk flags (holds, disputes, compliance checks)
-- Owner relationship: user owns title; Bourse de l'Or is custodian
-
-Anti-duplication (cryptographic layer):
-- Encode in QR/DataMatrix: bar_id + signature
-- signature = Sign(private_key, bar_id + issuance_timestamp)
-- App verifies signature via public key (fake codes fail verification)
-
-Proof-of-reserve style audits (optional, trust booster):
-- Vault performs periodic signed inventory snapshots ("Audit #12")
-- Users can see their Bar ID included in an audit snapshot.`,
-  },
-  {
-    title: "BDO — Autonomous Operations (Compliance + Growth Engines)",
-    tags: ["bdo", "autonomy", "operations", "marketing", "events", "governance"],
-    content: `Company "GO" switch triggers time-boxed, budgeted engines (script-first):
-1) Compliance & Risk Engine
-2) Client Hunter Engine
-3) Sales/Partnership Engine
-4) Marketing & Content Engine
-5) Event Engine
-
-Governance rules:
-- Scripts execute operations; LLMs only interpret, summarize, and draft.
-- Budgets, run limits, and approvals gates are mandatory (publisher can publish only after compliance + brand review pass).
-- All actions are logged to an audit trail with artifacts (drafts, posts, event pages, outreach lists).
-
-Client Hunter pipeline (low-cost, script-first):
-- Build target lists -> enrich -> score -> templated outreach drafts (LLM only for tone/localization) -> schedule follow-ups -> handoff.
-
-Marketing + Social Vault (credentials storage):
-- Store tokens/permissions for Meta/IG/TikTok/YouTube/X/LinkedIn/blog/email/ad accounts.
-- Split rights: creators draft; publisher schedules; treasury controls spend caps; auditor logs.
-
-Event engine:
-- Propose -> review -> landing page -> reminders -> host (AI can run structured parts) -> post-event lead extraction + content repurposing.`,
-  },
-  {
-    title: "BDO — Survival & Legacy (Roadmap Modules)",
-    tags: ["bdo", "vault", "legacy", "safety", "roadmap"],
-    content: `Survival layer (protect + access):
-- Emergency access protocol: trusted contacts can trigger a recovery case (not direct access).
-- Recovery modes: freeze everything; emergency cash-out (higher verification).
-- Safety modes: safe mode (time delays), travel mode (stricter checks), family mode, business mode.
-- Minimum reserve rule: lock a portion of grams as untouchable reserve.
-
-Expansion layer (share + transform + transmit):
-- Gifts: instant grams, scheduled gifts, milestone gifts, conditional release after recipient KYC.
-- Inheritance/beneficiaries: Legacy Plan with dead-man's-switch check-ins, executor workflow, dispute-safe delays.
-- Transformation: melt-to-jewelry orders with custody transfer events and a jewelry certificate.
-- Family vaults + community circles: permissioned sub-vaults, quorum rules, transparent circle vaults.
-- Vault goals (safer wording than "investments"): house deposit, school fund, business reserve, legacy targets in grams.`,
+Approved terms:
+- Buy certified physical gold
+- Market-linked price + platform spread
+- Purchase Objective
+- Build your purchase budget
+- Order when ready
+- Request a Resale Offer
+- Conditional Buyback Request
+- Purchase Credits
+- Verified jewelry
+- Approved logistics partner
+- Client-selected custodian
+- Certificate verification
+- Gold passport
+- Source of funds / source of goods review`,
   },
 ];
 

@@ -118,16 +118,16 @@ const tierRank: Record<string, number> = {
 
 function statusTone(verified: boolean) {
   return verified
-    ? "border-emerald-500/30 bg-emerald-500/15 text-emerald-100"
-    : "border-amber-500/25 bg-amber-500/10 text-amber-100";
+    ? "border-[#D4AF37]/35 bg-[#D4AF37]/12 text-[#F1D27A]"
+    : "border-[#7A5A18]/45 bg-[#7A5A18]/18 text-[#F5F3EC]/75";
 }
 
 function mapNodeTone(nodeType: string) {
-  if (nodeType === "bureau_achat") return "#f59e0b";
-  if (nodeType === "exporter" || nodeType === "export_hub") return "#22c55e";
-  if (nodeType === "mine" || nodeType === "artisanal_zone") return "#38bdf8";
-  if (nodeType === "association" || nodeType === "regional_supply_node") return "#a855f7";
-  return "#facc15";
+  if (nodeType === "bureau_achat") return "#D4AF37";
+  if (nodeType === "exporter" || nodeType === "export_hub") return "#E8C873";
+  if (nodeType === "mine" || nodeType === "artisanal_zone") return "#7A5A18";
+  if (nodeType === "association" || nodeType === "regional_supply_node") return "#F5F3EC";
+  return "#D4AF37";
 }
 
 function directoryUnlocked(summary: ProSummaryResponse | null) {
@@ -187,21 +187,21 @@ function ProShell({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen bg-[#020817] text-white">
+    <div className="min-h-screen bg-[#0B0B0D] text-white">
       <div className="mx-auto flex w-full max-w-[1700px] flex-col gap-4 px-3 py-5 md:px-5">
-        <section className="rounded-3xl border border-amber-500/20 bg-gradient-to-r from-[#170c04] via-[#3b240c] to-[#6b4d18] p-5 shadow-[0_24px_80px_rgba(0,0,0,0.32)]">
+        <section className="rounded-3xl border border-[#D4AF37]/25 bg-[radial-gradient(circle_at_10%_0%,rgba(212,175,55,0.18),transparent_30%),linear-gradient(135deg,#0B0B0D,#0D1B2A_54%,#171205)] p-5 shadow-[0_24px_80px_rgba(0,0,0,0.42)]">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div className="max-w-3xl">
-              <p className="text-[11px] uppercase tracking-[0.26em] text-amber-200/85">Bourse de l'Or</p>
-              <h1 className="mt-2 text-2xl font-semibold text-white md:text-3xl">{title}</h1>
-              <p className="mt-2 text-sm text-amber-50/80 md:text-base">{subtitle}</p>
+              <p className="text-[11px] uppercase tracking-[0.26em] text-[#E8C873]/90">BOURSE DE L'OR</p>
+              <h1 className="mt-2 font-['Cinzel'] text-2xl font-semibold text-white md:text-3xl">{title}</h1>
+              <p className="mt-2 text-sm text-[#F5F3EC]/78 md:text-base">{subtitle}</p>
             </div>
             <div className="flex flex-wrap gap-2">
               <Link href="/store">
-                <Button className="bg-amber-500 text-black hover:bg-amber-400">Or Estampille</Button>
+                <Button className="bg-[#D4AF37] text-[#0B0B0D] hover:bg-[#E8C873]">Or Estampille</Button>
               </Link>
               <Link href="/pro/map">
-                <Button variant="outline" className="border-white/15 text-white hover:bg-white/10">
+                <Button variant="outline" className="border-[#D4AF37]/25 text-[#F5F3EC] hover:bg-[#D4AF37]/10">
                   Ouvrir la carte
                 </Button>
               </Link>
@@ -216,17 +216,17 @@ function ProShell({
 
 function AccessLock({ message = "Acces reserve aux membres Pro verifies" }: { message?: string }) {
   return (
-    <Card className="border-amber-500/25 bg-[#0a1221]/95">
+    <Card className="border-[#D4AF37]/25 bg-[#0D1B2A]/92">
       <CardContent className="p-5">
-        <p className="text-[11px] uppercase tracking-[0.24em] text-amber-300/80">Carte professionnelle</p>
-        <h2 className="mt-2 text-lg font-semibold text-white">Debloquez l'acces Pro</h2>
-        <p className="mt-2 max-w-2xl text-sm text-white/65">{message}</p>
+        <p className="text-[11px] uppercase tracking-[0.24em] text-[#E8C873]/85">Carte professionnelle</p>
+        <h2 className="mt-2 font-['Cinzel'] text-lg font-semibold text-white">Debloquez l'acces Pro</h2>
+        <p className="mt-2 max-w-2xl text-sm text-[#F5F3EC]/68">{message}</p>
         <div className="mt-4 flex flex-wrap gap-2">
           <Link href="/admin">
-            <Button className="bg-amber-500 text-black hover:bg-amber-400">Se connecter</Button>
+            <Button className="bg-[#D4AF37] text-[#0B0B0D] hover:bg-[#E8C873]">Se connecter</Button>
           </Link>
           <Link href="/espace-pro">
-            <Button variant="outline" className="border-white/15 text-white hover:bg-white/10">
+            <Button variant="outline" className="border-[#D4AF37]/25 text-[#F5F3EC] hover:bg-[#D4AF37]/10">
               Voir l'espace Pro
             </Button>
           </Link>
@@ -247,7 +247,7 @@ function ProStats({ summary }: { summary: ProSummaryResponse }) {
   return (
     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
       {stats.map((item) => (
-        <Card key={item.label} className="border-white/10 bg-[#07101d]/95">
+        <Card key={item.label} className="border-[#D4AF37]/15 bg-[#0D1B2A]/82">
           <CardContent className="p-4">
             <p className="text-[10px] uppercase tracking-[0.22em] text-white/45">{item.label}</p>
             <p className="mt-2 text-2xl font-semibold text-white">{item.value}</p>
@@ -268,7 +268,7 @@ function DirectoryList({
   items: DirectoryItem[];
 }) {
   return (
-    <Card className="border-white/10 bg-[#07101d]/95">
+    <Card className="border-[#D4AF37]/15 bg-[#0D1B2A]/82">
       <CardContent className="p-4">
         <div>
           <h2 className="text-lg font-semibold text-white">{title}</h2>
@@ -284,12 +284,12 @@ function DirectoryList({
                       <h3 className="truncate text-sm font-semibold text-white">{item.companyName}</h3>
                       <Badge className={`border ${statusTone(item.verified)}`}>{item.verified ? "Verifie" : "En cours"}</Badge>
                       {item.wholesaleReady ? (
-                        <Badge className="border border-emerald-500/25 bg-emerald-500/10 text-emerald-100">Pret pour le gros</Badge>
+                        <Badge className="border border-[#D4AF37]/25 bg-[#D4AF37]/12 text-[#F1D27A]">Pret pour le gros</Badge>
                       ) : null}
                     </div>
                     <p className="mt-1 text-[12px] text-white/55">{[item.type, item.region, item.country].filter(Boolean).join(" - ")}</p>
                     {(item.activeOffers || item.totalWeightKg) ? (
-                      <p className="mt-1 text-[11px] text-amber-200/80">
+                      <p className="mt-1 text-[11px] text-[#E8C873]/80">
                         {item.activeOffers ? `${item.activeOffers} offres actives` : null}
                         {item.activeOffers && item.totalWeightKg ? " - " : null}
                         {item.totalWeightKg ? `${item.totalWeightKg.toFixed(2)} kg visibles` : null}
@@ -305,7 +305,7 @@ function DirectoryList({
                     <Button variant="outline" className="border-white/15 text-white hover:bg-white/10">
                       Contacter
                     </Button>
-                    <Button className="bg-amber-500 text-black hover:bg-amber-400">Demander une offre</Button>
+                    <Button className="bg-[#D4AF37] text-[#0B0B0D] hover:bg-[#E8C873]">Demander une offre</Button>
                   </div>
                 </div>
               </div>
@@ -347,11 +347,11 @@ function MapCard({
   }, [nodes]);
 
   return (
-    <Card className="overflow-hidden border-white/10 bg-[#07101d]/95">
+    <Card className="overflow-hidden border-[#D4AF37]/15 bg-[#0D1B2A]/82">
       <CardContent className="p-0">
         <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
           <div>
-            <p className="text-[11px] uppercase tracking-[0.24em] text-amber-300/80">Carte professionnelle</p>
+            <p className="text-[11px] uppercase tracking-[0.24em] text-[#E8C873]/85">Carte professionnelle</p>
             <h2 className="mt-1 text-lg font-semibold text-white">{summary?.map.title || "Carte des contreparties auriferes verifiees"}</h2>
             <p className="mt-1 text-sm text-white/60">{summary?.map.subtitle || "Cartographie des acteurs auriferes verifies."}</p>
           </div>
@@ -465,9 +465,9 @@ function ProDashboardContent() {
         </div>
 
         <div className="space-y-4">
-          <Card className="border-white/10 bg-[#07101d]/95">
+          <Card className="border-[#D4AF37]/15 bg-[#0D1B2A]/82">
             <CardContent className="p-4">
-              <p className="text-[11px] uppercase tracking-[0.24em] text-amber-300/80">Profil Pro</p>
+              <p className="text-[11px] uppercase tracking-[0.24em] text-[#E8C873]/85">Profil Pro</p>
               <h2 className="mt-1 text-lg font-semibold text-white">{summary.profile.companyName || "Compte professionnel"}</h2>
               <div className="mt-4 space-y-3 text-sm text-white/65">
                 <div className="flex items-center justify-between">
@@ -496,7 +496,7 @@ function ProDashboardContent() {
               </div>
               <div className="mt-4 flex flex-col gap-2">
                 <Link href="/pro/map">
-                  <Button className="w-full bg-amber-500 text-black hover:bg-amber-400">Ouvrir la carte complete</Button>
+                  <Button className="w-full bg-[#D4AF37] text-[#0B0B0D] hover:bg-[#E8C873]">Ouvrir la carte complete</Button>
                 </Link>
                 <Link href="/pro/bureaux-achat">
                   <Button variant="outline" className="w-full border-white/15 text-white hover:bg-white/10">
@@ -512,9 +512,9 @@ function ProDashboardContent() {
             </CardContent>
           </Card>
 
-          <Card className="border-white/10 bg-[#07101d]/95">
+          <Card className="border-[#D4AF37]/15 bg-[#0D1B2A]/82">
             <CardContent className="p-4">
-              <p className="text-[11px] uppercase tracking-[0.24em] text-blue-300/80">Carte professionnelle</p>
+              <p className="text-[11px] uppercase tracking-[0.24em] text-[#E8C873]/85">Carte professionnelle</p>
               <h2 className="mt-1 text-lg font-semibold text-white">Acces reserve aux membres Pro verifies</h2>
               <p className="mt-2 text-sm text-white/60">
                 Debloquez la cartographie des bureaux d'achat verifies, exportateurs et zones de sourcing aurifere.
@@ -599,7 +599,7 @@ export function BdoProMapPage() {
       ) : (
         <div className="space-y-4">
           {summary ? <ProStats summary={summary} /> : null}
-          <Card className="border-white/10 bg-[#07101d]/95">
+          <Card className="border-[#D4AF37]/15 bg-[#0D1B2A]/82">
             <CardContent className="flex flex-wrap gap-2 p-4">
               {(summary?.map.defaultTypes || ["bureau_achat", "exporter", "mine", "association"]).map((type) => {
                 const active = types.includes(type);
@@ -609,7 +609,7 @@ export function BdoProMapPage() {
                     type="button"
                     size="sm"
                     variant={active ? "default" : "outline"}
-                    className={active ? "bg-amber-500 text-black hover:bg-amber-400" : "border-white/15 text-white hover:bg-white/10"}
+                    className={active ? "bg-[#D4AF37] text-[#0B0B0D] hover:bg-[#E8C873]" : "border-[#D4AF37]/25 text-[#F5F3EC] hover:bg-[#D4AF37]/10"}
                     onClick={() =>
                       setTypes((current) => (current.includes(type) ? current.filter((entry) => entry !== type) : [...current, type]))
                     }
@@ -622,7 +622,7 @@ export function BdoProMapPage() {
                 type="button"
                 size="sm"
                 variant={verifiedOnly ? "default" : "outline"}
-                className={verifiedOnly ? "bg-emerald-500 text-black hover:bg-emerald-400" : "border-white/15 text-white hover:bg-white/10"}
+                className={verifiedOnly ? "bg-[#D4AF37] text-[#0B0B0D] hover:bg-[#E8C873]" : "border-[#D4AF37]/25 text-[#F5F3EC] hover:bg-[#D4AF37]/10"}
                 onClick={() => setVerifiedOnly((value) => !value)}
               >
                 Verifies seulement
@@ -631,7 +631,7 @@ export function BdoProMapPage() {
                 type="button"
                 size="sm"
                 variant={contactAvailable ? "default" : "outline"}
-                className={contactAvailable ? "bg-sky-500 text-black hover:bg-sky-400" : "border-white/15 text-white hover:bg-white/10"}
+                className={contactAvailable ? "bg-[#D4AF37] text-[#0B0B0D] hover:bg-[#E8C873]" : "border-[#D4AF37]/25 text-[#F5F3EC] hover:bg-[#D4AF37]/10"}
                 onClick={() => setContactAvailable((value) => !value)}
               >
                 Contact disponible
@@ -670,9 +670,9 @@ export function BdoProIntelligencePage() {
         <div className="space-y-4">
           {summary ? <ProStats summary={summary} /> : null}
           <div className="grid gap-4 xl:grid-cols-[1.3fr_minmax(0,1fr)]">
-            <Card className="border-white/10 bg-[#07101d]/95">
+            <Card className="border-[#D4AF37]/15 bg-[#0D1B2A]/82">
               <CardContent className="p-4">
-                <p className="text-[11px] uppercase tracking-[0.24em] text-amber-300/80">Flux et contreparties</p>
+                <p className="text-[11px] uppercase tracking-[0.24em] text-[#E8C873]/85">Flux et contreparties</p>
                 <h2 className="mt-2 text-lg font-semibold text-white">Lecture rapide du reseau aurifere Pro</h2>
                 <div className="mt-4 grid gap-3 md:grid-cols-2">
                   {[
@@ -688,9 +688,9 @@ export function BdoProIntelligencePage() {
                 </div>
               </CardContent>
             </Card>
-            <Card className="border-white/10 bg-[#07101d]/95">
+            <Card className="border-[#D4AF37]/15 bg-[#0D1B2A]/82">
               <CardContent className="p-4">
-                <p className="text-[11px] uppercase tracking-[0.24em] text-blue-300/80">Conformite & sourcing</p>
+                <p className="text-[11px] uppercase tracking-[0.24em] text-[#E8C873]/85">Conformite & sourcing</p>
                 <div className="mt-4 space-y-3">
                   {[
                     "Regles de tracabilite pour les lots professionnels.",
@@ -848,9 +848,9 @@ export function BdoProMembershipPage() {
       subtitle="Un espace dédié aux mines, bureaux d’achat, négociants et investisseurs."
     >
       <div className="grid gap-4 xl:grid-cols-[1.05fr_0.95fr]">
-        <Card className="border-white/10 bg-[#07101d]/95">
+        <Card className="border-[#D4AF37]/15 bg-[#0D1B2A]/82">
           <CardContent className="p-5">
-            <p className="text-[11px] uppercase tracking-[0.24em] text-amber-300/80">Accès Pro</p>
+            <p className="text-[11px] uppercase tracking-[0.24em] text-[#E8C873]/85">Accès Pro</p>
             <h2 className="mt-2 text-xl font-semibold text-white">Carte, contreparties et sourcing vérifié</h2>
             <p className="mt-2 text-sm text-white/65">
               Les associations, mineurs et bureaux d’achat vérifiés peuvent obtenir un accès gratuit ou partenaire. Les
@@ -860,16 +860,16 @@ export function BdoProMembershipPage() {
               {plans.map((plan) => (
                 <div key={plan.title} className="rounded-2xl border border-white/10 bg-white/5 p-4">
                   <p className="text-sm font-semibold text-white">{plan.title}</p>
-                  <p className="mt-2 text-lg font-semibold text-amber-300">{plan.price}</p>
+                  <p className="mt-2 text-lg font-semibold text-[#E8C873]">{plan.price}</p>
                   <p className="mt-2 text-sm text-white/60">{plan.copy}</p>
                 </div>
               ))}
             </div>
           </CardContent>
         </Card>
-        <Card className="border-white/10 bg-[#07101d]/95">
+        <Card className="border-[#D4AF37]/15 bg-[#0D1B2A]/82">
           <CardContent className="p-5">
-            <p className="text-[11px] uppercase tracking-[0.24em] text-blue-300/80">Eligibilité</p>
+            <p className="text-[11px] uppercase tracking-[0.24em] text-[#E8C873]/85">Eligibilité</p>
             <div className="mt-4 space-y-3">
               {[
                 "Associations : accès gratuit vérifié",
@@ -885,7 +885,7 @@ export function BdoProMembershipPage() {
             </div>
             <div className="mt-4 flex flex-wrap gap-2">
               <Link href="/pro/map">
-                <Button className="bg-amber-500 text-black hover:bg-amber-400">Ouvrir la carte</Button>
+                <Button className="bg-[#D4AF37] text-[#0B0B0D] hover:bg-[#E8C873]">Ouvrir la carte</Button>
               </Link>
               <Link href="/espace-pro">
                 <Button variant="outline" className="border-white/15 text-white hover:bg-white/10">

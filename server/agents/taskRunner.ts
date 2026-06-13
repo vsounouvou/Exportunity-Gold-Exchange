@@ -333,7 +333,7 @@ export async function runAgentTaskById(input: {
       return spaced.charAt(0).toUpperCase() + spaced.slice(1);
     };
 
-    const fullTenantTitle = tenantRow?.key === "exportunity" ? "Exportunity" : "Bourse de l'Or by Exportunity";
+    const fullTenantTitle = tenantRow?.key === "exportunity" ? "Exportunity" : "BOURSE DE L'OR";
 
     let created = 0;
     let patchesCreated = 0;

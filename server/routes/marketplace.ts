@@ -1207,12 +1207,12 @@ router.get("/admin/territory-metrics", async (req, res) => {
   }
 });
 
-const MARKETPLACE_SYSTEM_PROMPT = `You are the Bourse de l'Or AI Concierge, a merchant-of-record gold-only assistant.
+const MARKETPLACE_SYSTEM_PROMPT = `You are the BOURSE DE L'OR AI Concierge, a certified physical gold brokerage assistant.
 
 ${BDO_POLICY_SNIPPET}
 
 NON-NEGOTIABLE SCOPE:
-1. Discuss gold products and gold services only (dore lots, stamped bars in grams, jewelry/heritage items, virtual vault, delivery, authorized resale).
+1. Discuss certified physical gold products and gold services only (dore lots, stamped bars in grams, verified jewelry, certificate verification, secure delivery, and reviewed resale requests).
 2. If the user asks about anything non-gold, politely refuse and redirect to gold options.
 
 YOUR CAPABILITIES:
@@ -1221,7 +1221,7 @@ YOUR CAPABILITIES:
 3. Explain purity, provenance, certifications, and pricing per gram.
 
 REFUSAL TEMPLATE:
-"Bourse de l'Or is dedicated to gold only. I can help with bars, jewelry, dore lots, vault storage, delivery, or resale. What do you want to explore?"
+"BOURSE DE L'OR is dedicated to physical gold only. I can help with certified bars, verified jewelry, dore lots, certificate verification, secure delivery, or a reviewed resale request. What do you want to explore?"
 
 ACTIONS YOU CAN TRIGGER:
 When you want to perform an action, include it in your response using this format:
@@ -3952,12 +3952,12 @@ router.get("/buyer/feed", async (req, res) => {
   }
 });
 
-const BUYER_ASSISTANT_PROMPT = `You are the Bourse de l’Or AI Concierge (merchant-of-record).
+const BUYER_ASSISTANT_PROMPT = `You are the BOURSE DE L'OR AI Concierge, a certified physical gold brokerage assistant.
 
 ${BDO_POLICY_SNIPPET}
 
 YOUR CAPABILITIES:
-1. Help users discover gold products and gold services only (dore lots, stamped bars in grams, jewelry/heritage items, virtual vault, delivery, authorized resale)
+1. Help users discover certified physical gold products and gold services only (dore lots, stamped bars in grams, verified jewelry, certificate verification, secure delivery, and reviewed resale requests)
 2. Recommend gold products based on needs, location, and budget
 3. Add gold products to cart and guide through checkout
 4. Explain purity, provenance, certifications, and pricing per gram
@@ -4066,12 +4066,14 @@ const BUYER_CONCIERGE_ALLOWLIST = [
   "18k",
   "22k",
   "24k",
-  "vault",
   "coffre",
   "delivery",
   "livraison",
-  "wallet",
-  "portefeuille",
+  "purchase objective",
+  "objectif",
+  "budget",
+  "purchase credits",
+  "credits",
   "panier",
   "cart",
   "checkout",
@@ -4158,10 +4160,10 @@ router.post("/buyer/assistant", async (req, res) => {
       const lang = detectPreferredLanguage(req, String(message));
       const response =
         lang === "fr"
-          ? "Je peux uniquement vous aider pour l’or sur Bourse de l’Or (achat en grammes, coffre virtuel, livraison et revente autorisée). Dites-moi quel produit d’or vous cherchez (doré, barres/lingots, bijoux) et votre ville."
+          ? "Je peux uniquement vous aider pour l'or sur BOURSE DE L'OR: or physique certifie, bijoux verifies, verification de certificat, livraison securisee et demande de revente encadree. Quel produit cherchez-vous et dans quelle ville ?"
           : lang === "ar"
-            ? "يمكنني مساعدتك فقط فيما يتعلق بالذهب على Bourse de l’Or (شراء بالجرام، خزنة افتراضية، توصيل، وإعادة بيع بتفويض). أخبرني ما منتج الذهب الذي تبحث عنه (دوريه/سبائك/مجوهرات) وما هي مدينتك."
-            : "I can only help with gold on Bourse de l’Or (buy in grams, virtual vault, delivery, and authorized resale). Tell me what gold product you want (doré lot, bars/ingots, jewelry) and your city.";
+            ? "I can only help with certified physical gold on BOURSE DE L'OR: bars, verified jewelry, certificate verification, secure delivery, and reviewed resale requests. Which gold product are you looking for, and in which city?"
+            : "I can only help with certified physical gold on BOURSE DE L'OR: bars, verified jewelry, certificate verification, secure delivery, and reviewed resale requests. Which gold product are you looking for, and in which city?";
 
       return res.json({
         response,

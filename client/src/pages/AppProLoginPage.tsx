@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useSession } from "@/lib/session";
+import { useTenant } from "@/lib/tenant";
 
 type PasswordLoginResponse = {
   token: string;
@@ -36,6 +37,7 @@ function parseNextFromLocation(location: string) {
 
 export default function AppProLoginPage() {
   const session = useSession();
+  const { brand } = useTenant();
   const { toast } = useToast();
   const [location, setLocation] = useLocation();
 
@@ -60,12 +62,12 @@ export default function AppProLoginPage() {
         email: cleanedEmail,
         password: cleanedPassword,
       })) as PasswordLoginResponse;
-      if (!res?.token || !res?.user) throw new Error("Réponse invalide.");
+      if (!res?.token || !res?.user) throw new Error("Reponse invalide.");
       return res;
     },
     onSuccess: (res) => {
       session.login(res.token, res.user);
-      toast({ title: "Connecté", description: "Bienvenue." });
+      toast({ title: "Connecte", description: "Bienvenue." });
       setLocation(next);
     },
     onError: (error: any) => {
@@ -82,20 +84,28 @@ export default function AppProLoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white flex items-center justify-center p-4">
-      <Card className="w-full max-w-md bg-white/5 border-white/10">
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#0B0B0D] p-4 text-white">
+      <div
+        className="absolute inset-0 bg-cover bg-center opacity-60"
+        style={{ backgroundImage: "url('/tenants/bdo/official/banners/bdo-banner-certification.jpg')" }}
+      />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_22%_12%,rgba(212,175,55,0.18),transparent_32%),linear-gradient(135deg,rgba(11,11,13,0.96),rgba(13,27,42,0.9)_48%,rgba(11,11,13,0.98))]" />
+      <Card className="relative w-full max-w-md border-[#D4AF37]/25 bg-[#0B0B0D]/86 shadow-[0_24px_80px_rgba(0,0,0,0.52)] backdrop-blur-xl">
         <CardHeader>
-          <CardTitle className="text-white">Connexion - Espace Pro</CardTitle>
-          <CardDescription className="text-white/60">Connexion par email et mot de passe.</CardDescription>
+          <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#E8C873]">{brand.name}</div>
+          <CardTitle className="font-['Cinzel'] text-white">Connexion Espace Pro</CardTitle>
+          <CardDescription className="text-[#F5F3EC]/68">
+            Acces reserve aux comptes professionnels verifies et aux operations autorisees.
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <div className="text-sm font-medium text-white/80">Email</div>
+            <div className="text-sm font-medium text-[#F5F3EC]/82">Email</div>
             <Input
               value={email}
               onChange={(event) => setEmail(event.target.value)}
               placeholder="name@company.com"
-              className="bg-white/5 border-white/10 text-white placeholder:text-white/40"
+              className="border-[#D4AF37]/20 bg-black/35 text-white placeholder:text-white/35"
               disabled={passwordLoginMutation.isPending}
               inputMode="email"
               aria-label="Email"
@@ -104,12 +114,12 @@ export default function AppProLoginPage() {
           </div>
 
           <div className="space-y-2">
-            <div className="text-sm font-medium text-white/80">Mot de passe</div>
+            <div className="text-sm font-medium text-[#F5F3EC]/82">Mot de passe</div>
             <Input
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               type="password"
-              className="bg-white/5 border-white/10 text-white placeholder:text-white/40"
+              className="border-[#D4AF37]/20 bg-black/35 text-white placeholder:text-white/35"
               disabled={passwordLoginMutation.isPending}
               aria-label="Password"
               data-testid="app-pro-password"
@@ -120,7 +130,7 @@ export default function AppProLoginPage() {
           </div>
 
           <Button
-            className="w-full bg-amber-500 hover:bg-amber-600 text-black font-semibold"
+            className="w-full bg-[#D4AF37] text-[#0B0B0D] hover:bg-[#E8C873] font-semibold"
             onClick={() => passwordLoginMutation.mutate()}
             disabled={passwordLoginMutation.isPending}
             data-testid="app-pro-login-submit"
@@ -136,4 +146,3 @@ export default function AppProLoginPage() {
     </div>
   );
 }
-

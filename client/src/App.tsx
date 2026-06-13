@@ -493,6 +493,10 @@ function StoreRoute() {
   return <StorePage />;
 }
 
+function BdoWholesaleRoute() {
+  return isBdoHost() ? <StoreRoute /> : <Redirect to="/zone" />;
+}
+
 function CollectionsRoute() {
   return <StoreCollectionsPage />;
 }
@@ -783,6 +787,8 @@ function App() {
           <Route path="/retail/:rest*" component={RetailAliasRedirect} />
           <Route path="/marketplace" component={StoreRoute} />
           <Route path="/shop" component={StoreRoute} />
+          <Route path="/wholesale" component={BdoWholesaleRoute} />
+          <Route path="/wholesale/:rest*" component={BdoWholesaleRoute} />
           <Route path="/gateway" component={GatewayPage} />
           <Route path="/actualites" component={() => (isBdoHost() ? <BdoActualitesPage /> : <Redirect to="/store" />)} />
           <Route path="/reglementation" component={() => (isBdoHost() ? <BdoReglementationPage /> : <Redirect to="/store" />)} />

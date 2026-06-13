@@ -391,6 +391,8 @@ export const APP_ROUTE_PATHS = [
   "/wallet/topup/return",
   "/webmail",
   "/whatsapp",
+  "/wholesale",
+  "/wholesale/:rest*",
   "/workspaces",
   "/zone",
   "/zone/:rest*"

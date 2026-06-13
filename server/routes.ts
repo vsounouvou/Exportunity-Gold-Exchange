@@ -354,12 +354,12 @@ type TenantManifestOverride = Pick<TenantManifest, "name" | "short_name" | "desc
 
 const TENANT_MANIFEST_OVERRIDES: Record<string, TenantManifestOverride> = {
   bdo: {
-    name: "Bourse de l'Or by Exportunity",
+    name: "BOURSE DE L'OR",
     short_name: "Bourse de l'Or",
-    description: "Bourse de l'Or - wallet-centric gold commerce with a virtual vault (merchant-of-record).",
+    description: "Plateforme d'achat d'or physique certifie, de bijoux verifies, de verification de certificats et de livraison securisee.",
     start_url: "/store",
-    background_color: "#0b1117",
-    theme_color: "#0b1117",
+    background_color: "#0B0B0D",
+    theme_color: "#0B0B0D",
   },
   exportunity: {
     name: "Exportunity Marketplace",

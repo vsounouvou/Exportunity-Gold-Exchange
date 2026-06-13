@@ -24,8 +24,8 @@ import { resolveApiUrl } from "@/lib/runtimeConfig";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 const loginSchema = z.object({
-  email: z.string().email("Please enter a valid email address"),
-  password: z.string().min(6, "Password must be at least 6 characters")
+  email: z.string().email("Entrez une adresse email valide"),
+  password: z.string().min(6, "Le mot de passe doit contenir au moins 6 caracteres")
 });
 
 type LoginFormData = z.infer<typeof loginSchema>;
@@ -113,19 +113,19 @@ function getRoleKey(answers: ApplicationAnswers): string {
 function getRoleLabel(answers: ApplicationAnswers): string {
   switch (answers.role) {
     case "gold_miner":
-      return "Gold Miner (Mine Owner / Operator)";
+      return "Exploitant aurifere";
     case "authorized_gold_buyer":
-      return "Authorized Wholesale Gold Buyer (Bureau d'Achat)";
+      return "Acheteur grossiste autorise";
     case "jewelry":
-      if (answers.jewelrySubtype === "manufacturer") return "Jeweler / Jewelry Manufacturer (Manufacturer)";
-      if (answers.jewelrySubtype === "reseller") return "Jeweler / Jewelry Manufacturer (Reseller)";
-      return "Jeweler / Jewelry Manufacturer";
+      if (answers.jewelrySubtype === "manufacturer") return "Bijoutier fabricant";
+      if (answers.jewelrySubtype === "reseller") return "Bijoutier revendeur";
+      return "Bijoutier";
     case "machinery_manufacturer":
-      return "Mining Machinery Manufacturer";
+      return "Fabricant d'equipements miniers";
     case "machinery_reseller":
-      return "Mining Machinery Reseller / Dealer";
+      return "Distributeur d'equipements miniers";
     case "investor":
-      return "Investor";
+      return "Acheteur ou partenaire institutionnel";
     default:
       return "";
   }
@@ -167,7 +167,8 @@ function MapTeaser() {
 	  const [path, setLocation] = useLocation();
 	  const { toast } = useToast();
 	  const { login } = useSession();
-	  const { brand } = useTenant();
+	  const { brand, tenant } = useTenant();
+  const isBdoTenant = tenant.key === "bdo";
   const isMobile = useIsMobile();
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
 	  const [activeTab, setActiveTab] = useState<"login" | "apply">(() => (path.split("?")[0] === "/register" ? "apply" : "login"));
@@ -195,14 +196,14 @@ function MapTeaser() {
 	      const next = normalizeNext(params.get("next"));
 	      setLocation(next || "/");
 	      toast({
-	        title: "Welcome back!",
-	        description: `Logged in as ${data.user.displayName}`
+	        title: "Connexion reussie",
+	        description: `Connecte en tant que ${data.user.displayName}`
 	      });
 	    },
     onError: (error: any) => {
       toast({
-        title: "Login failed",
-        description: error.message || "Invalid email or password",
+        title: "Connexion impossible",
+        description: error.message || "Email ou mot de passe invalide",
         variant: "destructive"
       });
     }
@@ -236,65 +237,65 @@ function MapTeaser() {
         title: "Contact",
         kind: "text",
         field: "contact",
-        prompt: "What's your email or phone number?",
+        prompt: "Quel est votre email ou numero de telephone ?",
         placeholder: "name@example.com or +225 01 23 45 67 89",
         validate: (value) => {
           const raw = String(value || "").trim();
-          if (!raw) return "Please enter your email or phone number.";
+          if (!raw) return "Entrez votre email ou numero de telephone.";
           if (raw.includes("@")) {
             const res = z.string().email().safeParse(raw);
-            return res.success ? null : "Please enter a valid email address.";
+            return res.success ? null : "Entrez une adresse email valide.";
           }
           const digits = raw.replace(/[^\d]/g, "");
-          if (digits.length < 7) return "Please enter a valid phone number.";
+          if (digits.length < 7) return "Entrez un numero de telephone valide.";
           return null;
         },
       },
       {
         id: "fullName",
-        title: "Full Name",
+        title: "Nom complet",
         kind: "text",
         field: "fullName",
-        prompt: "What's your full name?",
-        placeholder: "Your full name",
-        validate: (value) => (String(value || "").trim().length < 2 ? "Please enter your full name." : null),
+        prompt: "Quel est votre nom complet ?",
+        placeholder: "Votre nom complet",
+        validate: (value) => (String(value || "").trim().length < 2 ? "Entrez votre nom complet." : null),
       },
       {
         id: "role",
-        title: "Role",
+        title: "Profil",
         kind: "cards",
         field: "role",
-        prompt: "What are you joining as?",
+        prompt: "Quel profil souhaitez-vous rejoindre ?",
         options: [
           {
             value: "gold_miner",
-            title: "Gold Miner (Mine Owner / Operator)",
-            description: "Artisanal, semi-industrial, or industrial operations.",
+            title: "Exploitant aurifere",
+            description: "Operation artisanale, semi-industrielle ou industrielle.",
           },
           {
             value: "authorized_gold_buyer",
-            title: "Authorized Wholesale Gold Buyer (Bureau d'Achat)",
-            description: "Licensed buyer with required authorization document.",
+            title: "Acheteur grossiste autorise",
+            description: "Bureau d'achat ou acheteur avec documents d'autorisation.",
           },
           {
             value: "jewelry",
-            title: "Jeweler / Jewelry Manufacturer",
-            description: "Manufacturer or reseller of finished jewelry.",
+            title: "Bijoutier",
+            description: "Fabricant ou revendeur de bijoux verifies.",
           },
           {
             value: "machinery_manufacturer",
-            title: "Mining Machinery Manufacturer",
-            description: "Builds or supplies machinery for mining operations.",
+            title: "Fabricant d'equipements",
+            description: "Fournisseur d'equipements pour operations auriferes.",
           },
           {
             value: "machinery_reseller",
-            title: "Mining Machinery Reseller / Dealer",
-            description: "Resells or distributes mining machinery.",
+            title: "Distributeur d'equipements",
+            description: "Distribution ou representation d'equipements miniers.",
           },
           {
             value: "investor",
-            title: "Investor",
-            description: "Production participation via digitally managed contracts.",
+            title: "Acheteur ou institution",
+            description: "Interet pour l'achat, la certification ou les partenariats.",
           },
         ],
       },
@@ -305,18 +306,18 @@ function MapTeaser() {
     const countryPrompt = (() => {
       switch (answers.role) {
         case "gold_miner":
-          return "In which country is your mine located?";
+          return "Dans quel pays se situe votre operation ?";
         case "authorized_gold_buyer":
-          return "Which country are you licensed in?";
+          return "Dans quel pays etes-vous autorise ?";
         default:
-          return "Country?";
+          return "Pays ?";
       }
     })();
 
     const location: ChatWizardStep<ApplicationAnswers>[] = [
       {
         id: "country",
-        title: "Country",
+        title: "Pays",
         kind: "custom",
         prompt: countryPrompt,
         isComplete: (a) => !!a.country,
@@ -326,47 +327,47 @@ function MapTeaser() {
       },
       {
         id: "stateRegion",
-        title: answers.role === "gold_miner" ? "Region" : "State/Region",
+        title: answers.role === "gold_miner" ? "Region" : "Region",
         kind: "text",
         field: "stateRegion",
-        prompt: answers.role === "gold_miner" ? "Which region/locality?" : "State/Region? (optional)",
+        prompt: answers.role === "gold_miner" ? "Quelle region ou localite ?" : "Region ? (optionnel)",
         required: (a) => a.role === "gold_miner",
-        placeholder: answers.role === "gold_miner" ? "e.g., Haut-Sassandra" : "Optional",
+        placeholder: answers.role === "gold_miner" ? "ex. Haut-Sassandra" : "Optionnel",
       },
       {
         id: "city",
-        title: "City",
+        title: "Ville",
         kind: "text",
         field: "city",
-        prompt: "City?",
-        placeholder: "e.g., Abidjan",
-        validate: (value) => (String(value || "").trim().length < 2 ? "Please enter a city." : null),
+        prompt: "Ville ?",
+        placeholder: "ex. Abidjan",
+        validate: (value) => (String(value || "").trim().length < 2 ? "Entrez une ville." : null),
       },
       {
         id: "address",
-        title: "Address",
+        title: "Adresse",
         kind: "textarea",
         field: "address",
-        prompt: "Full address?",
-        placeholder: "Street, building, and any useful directions",
-        validate: (value) => (String(value || "").trim().length < 6 ? "Please enter a full address." : null),
+        prompt: "Adresse complete ?",
+        placeholder: "Rue, batiment et indications utiles",
+        validate: (value) => (String(value || "").trim().length < 6 ? "Entrez une adresse complete." : null),
       },
       {
         id: "postalCode",
-        title: "Postal Code",
+        title: "Code postal",
         kind: "text",
         field: "postalCode",
-        prompt: "Postal code? (optional)",
+        prompt: "Code postal ? (optionnel)",
         required: false,
-        placeholder: "Optional",
+        placeholder: "Optionnel",
       },
     ];
 
     const review: ChatWizardStep<ApplicationAnswers> = {
       id: "review",
-      title: "Review",
+      title: "Verification",
       kind: "review",
-      prompt: "Review your summary, then submit your application.",
+      prompt: "Verifiez votre dossier, puis envoyez la demande.",
       renderSummary: (a, fileMeta) => {
         const roleLabel = getRoleLabel(a);
         const countryName = getCountryName(a.country);
@@ -377,51 +378,51 @@ function MapTeaser() {
         return (
           <div className="space-y-3">
             <div className="rounded-xl border border-white/10 bg-white/5 p-3">
-              <p className="text-sm font-semibold text-white">Summary</p>
+              <p className="text-sm font-semibold text-white">Resume</p>
               <div className="mt-2 grid grid-cols-1 gap-2 text-[12px] text-white/75">
                 <div className="flex items-center justify-between gap-3">
                   <span className="text-white/60">Contact</span>
                   <span className="text-right">{a.contact || "-"}</span>
                 </div>
                 <div className="flex items-center justify-between gap-3">
-                  <span className="text-white/60">Full name</span>
+                  <span className="text-white/60">Nom complet</span>
                   <span className="text-right">{a.fullName || "-"}</span>
                 </div>
                 <div className="flex items-center justify-between gap-3">
-                  <span className="text-white/60">Role</span>
+                  <span className="text-white/60">Profil</span>
                   <span className="text-right">{roleLabel || "-"}</span>
                 </div>
                 {a.role === "gold_miner" && a.mineSubtype ? (
                   <div className="flex items-center justify-between gap-3">
-                    <span className="text-white/60">Mine type</span>
+                    <span className="text-white/60">Type d'operation</span>
                     <span className="text-right">{formatMineSubtype(a.mineSubtype) || a.mineSubtype}</span>
                   </div>
                 ) : null}
                 <div className="flex items-center justify-between gap-3">
-                  <span className="text-white/60">Location</span>
+                  <span className="text-white/60">Localisation</span>
                   <span className="text-right">
                     {[countryName, a.stateRegion, a.city].filter(Boolean).join(", ") || "-"}
                   </span>
                 </div>
                 <div className="flex items-center justify-between gap-3">
-                  <span className="text-white/60">Address</span>
+                  <span className="text-white/60">Adresse</span>
                   <span className="text-right">{a.address || "-"}</span>
                 </div>
                 {a.postalCode ? (
                   <div className="flex items-center justify-between gap-3">
-                    <span className="text-white/60">Postal code</span>
+                    <span className="text-white/60">Code postal</span>
                     <span className="text-right">{a.postalCode}</span>
                   </div>
                 ) : null}
                 {a.licenseNumber ? (
                   <div className="flex items-center justify-between gap-3">
-                    <span className="text-white/60">License number</span>
+                    <span className="text-white/60">Numero d'autorisation</span>
                     <span className="text-right">{a.licenseNumber}</span>
                   </div>
                 ) : null}
                 {a.role === "investor" && (a.investmentRange || a.investorInterest) ? (
                   <div className="flex items-center justify-between gap-3">
-                    <span className="text-white/60">Investor</span>
+                    <span className="text-white/60">Interet</span>
                     <span className="text-right">{[a.investmentRange, a.investorInterest].filter(Boolean).join(" · ")}</span>
                   </div>
                 ) : null}
@@ -430,7 +431,7 @@ function MapTeaser() {
 
             {docs.length ? (
               <div className="rounded-xl border border-white/10 bg-white/5 p-3">
-                <p className="text-sm font-semibold text-white">Uploaded documents</p>
+                <p className="text-sm font-semibold text-white">Documents transmis</p>
                 <div className="mt-2 space-y-1 text-[12px] text-white/70">
                   {docs.map((d) => (
                     <p key={d.key} className="truncate">
@@ -449,10 +450,10 @@ function MapTeaser() {
       const mine: ChatWizardStep<ApplicationAnswers>[] = [
         {
           id: "mineSubtype",
-          title: "Mine Type",
+          title: "Type d'operation",
           kind: "cards",
           field: "mineSubtype",
-          prompt: "What type of mine is it?",
+          prompt: "Quel type d'operation aurifere ?",
           options: [
             { value: "artisanal", title: "Artisanal" },
             { value: "semi_industrial", title: "Semi-industrial" },
@@ -462,13 +463,13 @@ function MapTeaser() {
         ...location,
         {
           id: "mineLicenseNow",
-          title: "License",
+          title: "Autorisation",
           kind: "cards",
           field: "licenseUploadNow",
-          prompt: "Do you have a mining license to upload now?",
+          prompt: "Avez-vous un document d'autorisation a transmettre maintenant ?",
           options: [
-            { value: "yes", title: "Yes" },
-            { value: "not_now", title: "Not now" },
+            { value: "yes", title: "Oui" },
+            { value: "not_now", title: "Pas maintenant" },
           ],
         },
       ];
@@ -477,19 +478,19 @@ function MapTeaser() {
         mine.push(
           {
             id: "mineLicenseDoc",
-            title: "Upload License",
+            title: "Document d'autorisation",
             kind: "file",
             fileKey: "mine_license_doc",
-            prompt: "Upload your mining license document.",
+            prompt: "Televersez votre document d'autorisation.",
             accept: ".pdf,.jpg,.jpeg,.png",
           },
           {
             id: "licenseNumber",
-            title: "License Number",
+            title: "Numero d'autorisation",
             kind: "text",
             field: "licenseNumber",
-            prompt: "License number",
-            placeholder: "Enter your license number",
+            prompt: "Numero d'autorisation",
+            placeholder: "Entrez le numero du document",
           },
         );
       }
@@ -503,19 +504,19 @@ function MapTeaser() {
         ...location,
         {
           id: "buyerLicenseDoc",
-          title: "License Document",
+          title: "Document d'autorisation",
           kind: "file",
           fileKey: "buyer_license_doc",
-          prompt: "Upload your license document (required).",
+          prompt: "Televersez votre document d'autorisation (obligatoire).",
           accept: ".pdf,.jpg,.jpeg,.png",
         },
         {
           id: "licenseNumber",
-          title: "License Number",
+          title: "Numero d'autorisation",
           kind: "text",
           field: "licenseNumber",
-          prompt: "License number (required).",
-          placeholder: "Enter your license number",
+          prompt: "Numero d'autorisation (obligatoire).",
+          placeholder: "Entrez le numero du document",
         },
         review,
       ];
@@ -526,13 +527,13 @@ function MapTeaser() {
         ...base,
         {
           id: "jewelrySubtype",
-          title: "Jewelry Type",
+          title: "Type de bijoutier",
           kind: "cards",
           field: "jewelrySubtype",
-          prompt: "Are you a Manufacturer or Reseller?",
+          prompt: "Etes-vous fabricant ou revendeur ?",
           options: [
-            { value: "manufacturer", title: "Manufacturer" },
-            { value: "reseller", title: "Reseller" },
+            { value: "manufacturer", title: "Fabricant" },
+            { value: "reseller", title: "Revendeur" },
           ],
         },
         ...location,
@@ -541,7 +542,7 @@ function MapTeaser() {
           title: "Documents",
           kind: "file",
           fileKey: "jewelry_docs",
-          prompt: "Upload authorization documents? (optional)",
+          prompt: "Televerser des documents d'autorisation ? (optionnel)",
           accept: ".pdf,.jpg,.jpeg,.png",
           required: false,
         },
@@ -554,13 +555,13 @@ function MapTeaser() {
         ...location,
         {
           id: "sellOnPlatform",
-          title: "Selling",
+          title: "Vente",
           kind: "cards",
           field: "sellOnPlatform",
-          prompt: "Do you want to sell on the platform?",
+          prompt: "Souhaitez-vous presenter une offre sur la plateforme ?",
           options: [
-            { value: "yes", title: "Yes" },
-            { value: "not_now", title: "Not now" },
+            { value: "yes", title: "Oui" },
+            { value: "not_now", title: "Pas maintenant" },
           ],
         },
       ];
@@ -571,7 +572,7 @@ function MapTeaser() {
           title: "Documents",
           kind: "file",
           fileKey: "machinery_docs",
-          prompt: "Upload proof/authorization documents? (optional)",
+          prompt: "Televerser des justificatifs ou autorisations ? (optionnel)",
           accept: ".pdf,.jpg,.jpeg,.png",
           required: false,
         });
@@ -586,24 +587,24 @@ function MapTeaser() {
         ...location,
         {
           id: "investmentRange",
-          title: "Range",
+          title: "Budget",
           kind: "text",
           field: "investmentRange",
-          prompt: "What is your investment range? (optional)",
-          placeholder: "e.g., $10k–$50k",
+          prompt: "Quel est votre budget indicatif ? (optionnel)",
+          placeholder: "ex. 10 000 USD - 50 000 USD",
           required: false,
         },
         {
           id: "investorInterest",
-          title: "Interest",
+          title: "Interet",
           kind: "cards",
           field: "investorInterest",
-          prompt: "Are you interested in: Mines, Machinery, or Both? (optional)",
+          prompt: "Votre interet porte sur les mines, les equipements ou les deux ? (optionnel)",
           required: false,
           options: [
             { value: "mines", title: "Mines" },
-            { value: "machinery", title: "Machinery" },
-            { value: "both", title: "Both" },
+            { value: "machinery", title: "Equipements" },
+            { value: "both", title: "Les deux" },
           ],
         },
         review,
@@ -615,7 +616,7 @@ function MapTeaser() {
 
   const submitApplication = async ({ answers, files }: { answers: ApplicationAnswers; files: Record<string, File | null> }) => {
     const roleKey = getRoleKey(answers);
-    if (!roleKey) throw new Error("Missing role selection.");
+    if (!roleKey) throw new Error("Profil manquant.");
 
     const { email, phone } = parseContact(answers.contact);
     const formData = new FormData();
@@ -654,7 +655,7 @@ function MapTeaser() {
     const response = await fetch(resolveApiUrl("/api/ece/applications/submit"), { method: "POST", body: formData });
     if (!response.ok) {
       const err = await response.json().catch(() => ({}));
-      throw new Error(err?.message || "Failed to submit application.");
+      throw new Error(err?.message || "Impossible d'envoyer la demande.");
     }
     const data = await response.json();
     setApplicationRef(String(data.applicationRef || ""));
@@ -667,8 +668,8 @@ function MapTeaser() {
 
   if (applicationSubmitted) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-gray-950 via-gray-900 to-gray-950 flex flex-col">
-        <header className="border-b border-gray-800/50 bg-gray-950/80">
+      <div className="min-h-screen bg-[#0B0B0D] text-white flex flex-col">
+        <header className="border-b border-[#D4AF37]/20 bg-[#0B0B0D]/90">
           <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
             <Link href="/">
               <div className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity">
@@ -679,38 +680,38 @@ function MapTeaser() {
         </header>
 
         <div className="flex-1 flex items-center justify-center p-4">
-          <Card className="w-full max-w-lg bg-gray-900 border-gray-700">
+          <Card className="w-full max-w-lg border-[#D4AF37]/25 bg-[#0D1B2A]/85 shadow-[0_24px_80px_rgba(0,0,0,0.45)]">
             <CardContent className="pt-8 pb-8 text-center">
-              <div className="w-16 h-16 rounded-full bg-amber-500/20 flex items-center justify-center mx-auto mb-6">
-                <CheckCircle2 className="h-8 w-8 text-amber-500" />
+              <div className="w-16 h-16 rounded-full bg-[#D4AF37]/15 flex items-center justify-center mx-auto mb-6">
+                <CheckCircle2 className="h-8 w-8 text-[#E8C873]" />
               </div>
-              <h2 className="text-2xl font-bold text-white mb-2">Application Submitted</h2>
-              <p className="text-gray-400 mb-6">
-                Your application is now being reviewed by our verification system.
+              <h2 className="font-['Cinzel'] text-2xl font-semibold text-white mb-2">Demande transmise</h2>
+              <p className="text-[#F5F3EC]/70 mb-6">
+                Votre dossier est en cours de verification par l'equipe BOURSE DE L'OR.
               </p>
               
-              <div className="bg-gray-800 rounded-lg p-4 mb-6">
-                <p className="text-sm text-gray-500 mb-1">Application Reference</p>
-                <p className="text-xl font-mono font-bold text-amber-400">{applicationRef}</p>
+              <div className="rounded-lg border border-[#D4AF37]/20 bg-black/30 p-4 mb-6">
+                <p className="text-sm text-[#F5F3EC]/55 mb-1">Reference de demande</p>
+                <p className="text-xl font-mono font-bold text-[#E8C873]">{applicationRef}</p>
               </div>
 
-              <div className="space-y-4 text-left bg-gray-800/50 rounded-lg p-4 mb-6">
+              <div className="space-y-4 text-left rounded-lg border border-white/10 bg-black/25 p-4 mb-6">
                 <h3 className="font-semibold text-white flex items-center gap-2">
-                  <Clock className="h-4 w-4 text-amber-500" />
-                  What happens next?
+                  <Clock className="h-4 w-4 text-[#E8C873]" />
+                  Prochaines etapes
                 </h3>
-                <ol className="space-y-3 text-sm text-gray-400">
+                <ol className="space-y-3 text-sm text-[#F5F3EC]/70">
                   <li className="flex items-start gap-2">
-                    <span className="w-5 h-5 rounded-full bg-amber-500/20 text-amber-400 text-xs flex items-center justify-center flex-shrink-0 mt-0.5">1</span>
-                    <span>We review your documents and information</span>
+                    <span className="w-5 h-5 rounded-full bg-[#D4AF37]/15 text-[#E8C873] text-xs flex items-center justify-center flex-shrink-0 mt-0.5">1</span>
+                    <span>Verification des informations et documents transmis.</span>
                   </li>
                   <li className="flex items-start gap-2">
-                    <span className="w-5 h-5 rounded-full bg-amber-500/20 text-amber-400 text-xs flex items-center justify-center flex-shrink-0 mt-0.5">2</span>
-                    <span>If needed, an admin will perform additional verification</span>
+                    <span className="w-5 h-5 rounded-full bg-[#D4AF37]/15 text-[#E8C873] text-xs flex items-center justify-center flex-shrink-0 mt-0.5">2</span>
+                    <span>Escalade humaine si une confirmation supplementaire est necessaire.</span>
                   </li>
                   <li className="flex items-start gap-2">
-                    <span className="w-5 h-5 rounded-full bg-amber-500/20 text-amber-400 text-xs flex items-center justify-center flex-shrink-0 mt-0.5">3</span>
-                    <span>You'll receive an email with your account credentials once approved</span>
+                    <span className="w-5 h-5 rounded-full bg-[#D4AF37]/15 text-[#E8C873] text-xs flex items-center justify-center flex-shrink-0 mt-0.5">3</span>
+                    <span>Notification lorsque l'acces est approuve ou qu'un complement est requis.</span>
                   </li>
                 </ol>
               </div>
@@ -718,16 +719,16 @@ function MapTeaser() {
               <div className="flex gap-3">
                 <Button 
                   variant="outline"
-                  className="flex-1 border-gray-700 text-gray-300 hover:bg-gray-800"
+                  className="flex-1 border-[#D4AF37]/30 text-[#F5F3EC] hover:bg-[#D4AF37]/10"
                   onClick={() => setLocation("/")}
                 >
-                  Return Home
+                  Retour
                 </Button>
                 <Button 
-                  className="flex-1 bg-amber-500 hover:bg-amber-600 text-black font-semibold"
+                  className="flex-1 bg-[#D4AF37] hover:bg-[#E8C873] text-[#0B0B0D] font-semibold"
                   onClick={() => setLocation(`/application-status?ref=${applicationRef}`)}
                 >
-                  Check Status
+                  Suivre le dossier
                 </Button>
               </div>
             </CardContent>
@@ -740,7 +741,7 @@ function MapTeaser() {
 
   return (
     <div
-      className="min-h-screen relative overflow-hidden bg-gray-950"
+      className="min-h-screen relative overflow-hidden bg-[#0B0B0D]"
       onTouchStart={(e) => {
         if (!isMobile) return;
         const touch = e.touches[0];
@@ -765,17 +766,24 @@ function MapTeaser() {
         }
       }}
     >
-      <div className="absolute inset-0 opacity-40">
-        <MapTeaser />
-      </div>
-      <div className="absolute inset-0 bg-gradient-to-b from-gray-950 via-gray-950/80 to-gray-950" />
+      {isBdoTenant ? (
+        <div
+          className="absolute inset-0 bg-cover bg-center opacity-70"
+          style={{ backgroundImage: "url('/tenants/bdo/official/banners/bdo-banner-certification.jpg')" }}
+        />
+      ) : (
+        <div className="absolute inset-0 opacity-40">
+          <MapTeaser />
+        </div>
+      )}
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_10%,rgba(212,175,55,0.18),transparent_34%),linear-gradient(135deg,rgba(11,11,13,0.96),rgba(13,27,42,0.9)_48%,rgba(11,11,13,0.98))]" />
 
       <div className="relative min-h-screen flex flex-col">
-        <header className="border-b border-gray-800/50 bg-gray-950/70 backdrop-blur">
+        <header className="border-b border-[#D4AF37]/20 bg-[#0B0B0D]/75 backdrop-blur">
           <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
             <Link href="/">
               <div className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity">
-                <ArrowLeft className="h-5 w-5 text-gray-400" />
+                <ArrowLeft className="h-5 w-5 text-[#E8C873]" />
                 <BrandLockup />
               </div>
             </Link>
@@ -783,7 +791,7 @@ function MapTeaser() {
             <Button
               type="button"
               variant="ghost"
-              className="h-10 w-10 p-0 text-white/70 hover:text-white hover:bg-white/10"
+              className="h-10 w-10 p-0 text-[#F5F3EC]/75 hover:text-white hover:bg-[#D4AF37]/10"
               onClick={() => setLocation("/")}
               aria-label="Close"
             >
@@ -793,21 +801,21 @@ function MapTeaser() {
         </header>
 
       <div className="flex-1 flex items-center justify-center p-4 overflow-y-auto pb-[calc(env(safe-area-inset-bottom,0px)+96px)] md:pb-4">
-        <Card className="w-full max-w-3xl bg-gray-900/80 backdrop-blur border-gray-800 my-4">
+        <Card className="w-full max-w-3xl border-[#D4AF37]/25 bg-[#0B0B0D]/86 backdrop-blur-xl shadow-[0_24px_80px_rgba(0,0,0,0.52)] my-4">
           <CardHeader className="text-center">
-            <CardTitle className="text-2xl text-white">Accéder à la plateforme</CardTitle>
-            <CardDescription className="text-gray-400">
-              Se connecter ou créer un compte. {brand.complianceNotice}
+            <CardTitle className="font-['Cinzel'] text-2xl text-white">Acceder a BOURSE DE L'OR</CardTitle>
+            <CardDescription className="text-[#F5F3EC]/68">
+              Se connecter ou creer un compte. {brand.complianceNotice}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "login" | "apply")}>
-              <TabsList className="grid w-full grid-cols-2 bg-gray-800">
-                <TabsTrigger value="login" className="data-[state=active]:bg-amber-500 data-[state=active]:text-black">
-                  Sign In
+              <TabsList className="grid w-full grid-cols-2 border border-[#D4AF37]/15 bg-black/35">
+                <TabsTrigger value="login" className="text-[#F5F3EC]/70 data-[state=active]:bg-[#D4AF37] data-[state=active]:text-[#0B0B0D]">
+                  Se connecter
                 </TabsTrigger>
-                <TabsTrigger value="apply" className="data-[state=active]:bg-amber-500 data-[state=active]:text-black">
-                  Apply
+                <TabsTrigger value="apply" className="text-[#F5F3EC]/70 data-[state=active]:bg-[#D4AF37] data-[state=active]:text-[#0B0B0D]">
+                  Demander un acces
                 </TabsTrigger>
               </TabsList>
 
@@ -819,15 +827,15 @@ function MapTeaser() {
                       name="email"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-gray-300">Email</FormLabel>
+                          <FormLabel className="text-[#F5F3EC]/82">Email</FormLabel>
                           <FormControl>
                             <Input 
                               {...field} 
                               type="text" 
                               inputMode="email"
                               autoComplete="email"
-                              placeholder="you@company.com"
-                              className="bg-gray-800 border-gray-700 text-white"
+                              placeholder="vous@entreprise.com"
+                              className="border-[#D4AF37]/20 bg-black/35 text-white placeholder:text-white/35"
                             />
                           </FormControl>
                           <FormMessage />
@@ -839,14 +847,14 @@ function MapTeaser() {
                       name="password"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-gray-300">Password</FormLabel>
+                          <FormLabel className="text-[#F5F3EC]/82">Mot de passe</FormLabel>
                           <FormControl>
                             <Input 
                               {...field} 
                               type="password" 
                               autoComplete="current-password"
-                              placeholder="••••••••"
-                              className="bg-gray-800 border-gray-700 text-white"
+                              placeholder="Mot de passe"
+                              className="border-[#D4AF37]/20 bg-black/35 text-white placeholder:text-white/35"
                             />
                           </FormControl>
                           <FormMessage />
@@ -855,16 +863,16 @@ function MapTeaser() {
                     />
                     <Button 
                       type="submit" 
-                      className="w-full bg-amber-500 hover:bg-amber-600 text-black font-semibold"
+                      className="w-full bg-[#D4AF37] hover:bg-[#E8C873] text-[#0B0B0D] font-semibold"
                       disabled={loginMutation.isPending}
                     >
                       {loginMutation.isPending ? (
                         <>
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Signing in...
+                          Connexion...
                         </>
                       ) : (
-                        "Sign In"
+                        "Se connecter"
                       )}
                     </Button>
                   </form>
@@ -873,20 +881,20 @@ function MapTeaser() {
 
               <TabsContent value="apply" className="mt-6">
                 <ChatFormWizard<ApplicationAnswers>
-                  title={`Bienvenue sur ${brand.name}. Créons votre compte.`}
-                  description="This is a chat-style application. You can save and continue later."
+                  title={`Bienvenue sur ${brand.name}. Creons votre compte.`}
+                  description="Votre demande d'acces est structuree pour permettre une verification humaine si necessaire."
                   storageKey="ece_registration_chat_v1"
                   initialAnswers={initialAnswers}
                   steps={applicationSteps}
-                  submitLabel="Submit application"
+                  submitLabel="Envoyer la demande"
                   onExit={() => setActiveTab("login")}
                   onSubmit={submitApplication}
                 />
                 {/*
-                <div className="mb-4 p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+                <div className="mb-4 p-3 bg-[#D4AF37]/10 border border-[#D4AF37]/30 rounded-lg">
                   <div className="flex items-start gap-2">
-                    <AlertCircle className="h-4 w-4 text-amber-500 mt-0.5" />
-                    <p className="text-xs text-amber-400">
+                    <AlertCircle className="h-4 w-4 text-[#D4AF37] mt-0.5" />
+                    <p className="text-xs text-[#E8C873]">
                       Applications require legal documents authorizing you to trade commodities. 
                       Our AI will review your application and you'll receive credentials once approved.
                     </p>
@@ -905,7 +913,7 @@ function MapTeaser() {
                             <Input 
                               {...field} 
                               placeholder="John Doe"
-                              className="bg-gray-800 border-gray-700 text-white"
+                              className="border-[#D4AF37]/20 bg-black/35 text-white placeholder:text-white/35"
                             />
                           </FormControl>
                           <FormMessage />
@@ -926,7 +934,7 @@ function MapTeaser() {
                                 type="text" 
                                 inputMode="email"
                                 placeholder="you@company.com"
-                                className="bg-gray-800 border-gray-700 text-white"
+                                className="border-[#D4AF37]/20 bg-black/35 text-white placeholder:text-white/35"
                               />
                             </FormControl>
                             <FormMessage />
@@ -944,7 +952,7 @@ function MapTeaser() {
                                 {...field} 
                                 type="tel"
                                 placeholder="+1 234 567 8900"
-                                className="bg-gray-800 border-gray-700 text-white"
+                                className="border-[#D4AF37]/20 bg-black/35 text-white placeholder:text-white/35"
                               />
                             </FormControl>
                             <FormMessage />
@@ -961,7 +969,7 @@ function MapTeaser() {
                           <FormLabel className="text-gray-300">I am applying as a</FormLabel>
                           <Select onValueChange={field.onChange} defaultValue={field.value}>
                             <FormControl>
-                              <SelectTrigger className="bg-gray-800 border-gray-700 text-white">
+                              <SelectTrigger className="border-[#D4AF37]/20 bg-black/35 text-white placeholder:text-white/35">
                                 <SelectValue placeholder="Select your role" />
                               </SelectTrigger>
                             </FormControl>
@@ -987,7 +995,7 @@ function MapTeaser() {
                               <Input 
                                 {...field} 
                                 placeholder="Your company"
-                                className="bg-gray-800 border-gray-700 text-white"
+                                className="border-[#D4AF37]/20 bg-black/35 text-white placeholder:text-white/35"
                               />
                             </FormControl>
                             <FormMessage />
@@ -1004,7 +1012,7 @@ function MapTeaser() {
                               <Input 
                                 {...field} 
                                 placeholder="Optional"
-                                className="bg-gray-800 border-gray-700 text-white"
+                                className="border-[#D4AF37]/20 bg-black/35 text-white placeholder:text-white/35"
                               />
                             </FormControl>
                             <FormMessage />
@@ -1021,7 +1029,7 @@ function MapTeaser() {
                           <FormLabel className="text-gray-300">Country</FormLabel>
                           <Select onValueChange={field.onChange} defaultValue={field.value}>
                             <FormControl>
-                              <SelectTrigger className="bg-gray-800 border-gray-700 text-white">
+                              <SelectTrigger className="border-[#D4AF37]/20 bg-black/35 text-white placeholder:text-white/35">
                                 <SelectValue placeholder="Select your country" />
                               </SelectTrigger>
                             </FormControl>
@@ -1079,7 +1087,7 @@ function MapTeaser() {
                             <FormLabel className="text-gray-300">Trading Experience</FormLabel>
                             <Select onValueChange={field.onChange} defaultValue={field.value}>
                               <FormControl>
-                                <SelectTrigger className="bg-gray-800 border-gray-700 text-white">
+                                <SelectTrigger className="border-[#D4AF37]/20 bg-black/35 text-white placeholder:text-white/35">
                                   <SelectValue placeholder="Select" />
                                 </SelectTrigger>
                               </FormControl>
@@ -1103,7 +1111,7 @@ function MapTeaser() {
                             <FormLabel className="text-gray-300">Expected Monthly Volume</FormLabel>
                             <Select onValueChange={field.onChange} defaultValue={field.value}>
                               <FormControl>
-                                <SelectTrigger className="bg-gray-800 border-gray-700 text-white">
+                                <SelectTrigger className="border-[#D4AF37]/20 bg-black/35 text-white placeholder:text-white/35">
                                   <SelectValue placeholder="Select" />
                                 </SelectTrigger>
                               </FormControl>
@@ -1164,7 +1172,7 @@ function MapTeaser() {
                         <div className="space-y-2">
                           {documents.map((doc, index) => (
                             <div key={index} className="flex items-center gap-2 bg-gray-800 rounded-lg px-3 py-2">
-                              <FileText className="h-4 w-4 text-amber-500" />
+                              <FileText className="h-4 w-4 text-[#D4AF37]" />
                               <div className="flex-1 min-w-0">
                                 <p className="text-sm text-white truncate">{doc.name}</p>
                                 <p className="text-xs text-gray-500">{getDocTypeLabel(doc.type)}</p>
@@ -1186,7 +1194,7 @@ function MapTeaser() {
 
                     <Button 
                       type="submit" 
-                      className="w-full bg-amber-500 hover:bg-amber-600 text-black font-semibold"
+                      className="w-full bg-[#D4AF37] hover:bg-[#E8C873] text-black font-semibold"
                       disabled={applicationMutation.isPending}
                     >
                       {applicationMutation.isPending ? (

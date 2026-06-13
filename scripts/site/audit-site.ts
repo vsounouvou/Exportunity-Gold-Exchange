@@ -86,7 +86,10 @@ async function run() {
   const mode = parseMode();
   const baseUrl = process.env.MARKETING_AUDIT_BASE_URL || process.env.AUDIT_BASE_URL || "http://127.0.0.1:5000";
   const forceMarketingParam = parseBool(process.env.MARKETING_AUDIT_FORCE_MARKETING);
-  const browser = await chromium.launch({ headless: true });
+  const browser = await chromium.launch({
+    headless: true,
+    channel: process.env.PLAYWRIGHT_CHANNEL || undefined,
+  });
   const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
 
   const routeAudits: RouteAudit[] = [];
@@ -101,6 +104,10 @@ async function run() {
     const metaDescription = await page.locator("meta[name='description']").getAttribute("content").catch(() => "");
 
     const bodyText = (await page.locator("body").innerText()).toLowerCase();
+    const isBdoPage =
+      title.toLowerCase().includes("bourse de l'or") ||
+      String(metaDescription || "").toLowerCase().includes("bourse de l'or") ||
+      bodyText.includes("bourse de l'or");
     const localIssues: Issue[] = [];
 
     if (!title.trim()) {
@@ -176,7 +183,9 @@ async function run() {
         return href.startsWith(expectedHref);
       });
     }, contract.primaryCTA.href);
-    if (!contractPrimaryFound) {
+    const isCrossTenantMarketingCta =
+      isBdoPage && String(contract.primaryCTA.href || "").toLowerCase().includes("exportunity.net");
+    if (!contractPrimaryFound && !isCrossTenantMarketingCta) {
       localIssues.push({
         severity: "critical",
         code: "missing_primary_cta_contract",

@@ -19,13 +19,13 @@ function BdoAuthorityLayout({
   return (
     <div className="min-h-screen bg-[#020817] text-white">
       <div className="mx-auto max-w-6xl px-4 py-8 md:px-6 md:py-10">
-        <div className="rounded-2xl border border-amber-400/25 bg-gradient-to-r from-[#1f1408] via-[#3b2a10] to-[#5e4a1e] p-6 shadow-xl">
-          <p className="text-[11px] uppercase tracking-[0.24em] text-amber-200/90">Bourse de l'Or</p>
+        <div className="rounded-2xl border border-[#D4AF37]/25 bg-gradient-to-r from-[#0B0B0D] via-[#0D1B2A] to-[#7A5A18] p-6 shadow-xl">
+          <p className="text-[11px] uppercase tracking-[0.24em] text-[#E8C873]/90">Bourse de l'Or</p>
           <h1 className="mt-2 text-2xl font-semibold text-white md:text-3xl">{title}</h1>
-          <p className="mt-2 text-sm text-amber-100/90 md:text-base">{subtitle}</p>
+          <p className="mt-2 text-sm text-[#F5F3EC]/90 md:text-base">{subtitle}</p>
           <div className="mt-4 flex flex-wrap gap-2">
             <Link href="/store">
-              <Button className="bg-amber-500 text-black hover:bg-amber-400">Or Estampille</Button>
+              <Button className="bg-[#D4AF37] text-black hover:bg-[#E8C873]">Or Estampille</Button>
             </Link>
             <Link href="/espace-pro">
               <Button variant="outline" className="border-white/20 text-white hover:bg-white/10">
@@ -39,7 +39,7 @@ function BdoAuthorityLayout({
           {cards.map((card) => (
             <Card key={card.title} className="border-white/10 bg-[#0b1220]/90">
               <CardContent className="p-4">
-                <h2 className="text-sm font-semibold text-amber-200">{card.title}</h2>
+                <h2 className="text-sm font-semibold text-[#E8C873]">{card.title}</h2>
                 <p className="mt-1 text-sm text-white/70">{card.summary}</p>
               </CardContent>
             </Card>

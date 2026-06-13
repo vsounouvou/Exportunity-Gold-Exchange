@@ -33,20 +33,25 @@ export type BrandInfo = {
 export const BRAND_MAP: Record<TenantKey, BrandInfo> = {
   bdo: {
     name: "Bourse de l'Or",
+    shortName: "BDO",
     nameAscii: "Bourse de l'Or",
     domain: "boursedelor.com",
-    metaTitle: "Bourse de l'Or by Exportunity",
+    canonicalUrl: "https://boursedelor.com",
+    metaTitle: "BOURSE DE L'OR - Or physique certifie",
     metaDescription:
-      "Wallet-centric gold platform focused on verified supply, virtual vaulting, and compliant settlement.",
-    complianceNotice: "Access subject to applicable compliance requirements.",
-    tagline: "Or africain certifie, des mines africaines jusqu'a votre porte",
-    subtitle: "Or trace, conforme et certifie",
+      "BOURSE DE L'OR permet d'acheter de l'or physique certifie, de verifier des certificats, de commander des bijoux verifies et d'organiser une livraison securisee.",
+    complianceNotice: "Acces soumis aux controles de conformite applicables.",
+    tagline: "Valeur - Confiance - Perennite",
+    subtitle: "Or physique certifie, bijoux verifies et livraison securisee",
+    faviconPath: "/tenants/bdo/official/brand/favicon-512.png",
     productScope: "GOLD_ONLY",
     conciergeScope: "GOLD_ONLY",
     landing: "map-first",
     theme: {
-      primary: "#f59e0b",
-      accent: "#fbbf24",
+      primary: "#D4AF37",
+      secondary: "#0D1B2A",
+      accent: "#E8C873",
+      background: "#0B0B0D",
     },
   },
   exportunity: {

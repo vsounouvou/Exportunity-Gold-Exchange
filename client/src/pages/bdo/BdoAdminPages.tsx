@@ -14,10 +14,10 @@ function AdminShell({ title, subtitle, children }: { title: string; subtitle: st
   return (
     <div className="min-h-screen bg-[#020817] text-white">
       <div className="mx-auto flex w-full max-w-[1500px] flex-col gap-4 px-4 py-6">
-        <section className="rounded-3xl border border-amber-500/20 bg-gradient-to-r from-[#170c04] via-[#3b240c] to-[#6b4d18] p-5 shadow-[0_24px_80px_rgba(0,0,0,0.32)]">
-          <p className="text-[11px] uppercase tracking-[0.24em] text-amber-200/85">Bourse de l&apos;Or Admin</p>
+        <section className="rounded-3xl border border-[#D4AF37]/20 bg-gradient-to-r from-[#0B0B0D] via-[#0D1B2A] to-[#7A5A18] p-5 shadow-[0_24px_80px_rgba(0,0,0,0.32)]">
+          <p className="text-[11px] uppercase tracking-[0.24em] text-[#E8C873]/85">Bourse de l&apos;Or Admin</p>
           <h1 className="mt-2 text-2xl font-semibold text-white">{title}</h1>
-          <p className="mt-2 text-sm text-amber-50/80">{subtitle}</p>
+          <p className="mt-2 text-sm text-[#F5F3EC]/80">{subtitle}</p>
         </section>
         {children}
       </div>
@@ -156,7 +156,7 @@ export function BdoAdminSettingsPage() {
                 </div>
               ))}
 
-              <Button className="bg-amber-500 text-black hover:bg-amber-400" onClick={() => saveMutation.mutate()}>
+              <Button className="bg-[#D4AF37] text-black hover:bg-[#E8C873]" onClick={() => saveMutation.mutate()}>
                 Enregistrer
               </Button>
             </CardContent>
@@ -221,7 +221,7 @@ export function BdoAdminGoalsPage() {
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm font-semibold text-amber-300">{formatXof(goal.currentTargetPriceMinor)} XOF</p>
+                    <p className="text-sm font-semibold text-[#E8C873]">{formatXof(goal.currentTargetPriceMinor)} XOF</p>
                     <p className="text-[11px] text-white/55">Financé: {formatXof(goal.amountFundedMinor)} XOF</p>
                   </div>
                 </div>
@@ -325,7 +325,7 @@ export function BdoAdminProMembershipsPage() {
                   </SelectContent>
                 </Select>
                 <Button
-                  className="bg-amber-500 text-black hover:bg-amber-400"
+                  className="bg-[#D4AF37] text-black hover:bg-[#E8C873]"
                   onClick={() =>
                     saveMutation.mutate({
                       id: item.id,

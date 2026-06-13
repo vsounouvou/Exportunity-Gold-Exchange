@@ -172,7 +172,7 @@ function tenantFullTitle(tenantKey: string) {
   if (tenantKey === "mindbase") return "MindBase";
   if (tenantKey === "vs") return "Vital Sounouvou";
   if (tenantKey === "hoz") return "House of Zogue";
-  return tenantKey === "exportunity" ? "Exportunity" : "Bourse de l'Or by Exportunity";
+  return tenantKey === "exportunity" ? "Exportunity" : "BOURSE DE L'OR";
 }
 
 function tenantDescription(tenantKey: string) {
@@ -185,10 +185,13 @@ function tenantDescription(tenantKey: string) {
   if (tenantKey === "hoz") {
     return "House of Zogue: books, jewelry, and cultural media with editorial command workflows.";
   }
+  if (tenantKey === "bdo") {
+    return "BOURSE DE L'OR - certified physical gold, verified jewelry, certificate verification, secure delivery, and resale requests.";
+  }
   if (tenantKey === "exportunity") {
     return "Exportunity — proximity retail + wholesale marketplace on a shared wallet foundation.";
   }
-  return "Bourse de l'Or — compliant gold exchange, traceability, and virtual vault tooling by Exportunity.";
+  return "BOURSE DE L'OR - certified physical gold, verified jewelry, certificate verification, secure delivery, and resale requests.";
 }
 
 async function resolveCanonicalHost(input: { tenantId: number; env: string; host: string }) {

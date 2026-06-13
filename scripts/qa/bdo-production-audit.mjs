@@ -12,9 +12,7 @@ const outDir = path.resolve(process.cwd(), "artifacts", "bdo-production-audit", 
 fs.mkdirSync(outDir, { recursive: true });
 
 const languages = ["fr", "en", "ar"];
-// Admin is an internal operations surface. Public customer/pro surfaces are
-// still audited in French, English and Arabic.
-const adminLanguages = ["fr", "en"];
+const adminLanguages = languages;
 
 const publicRoutes = [
   "/",

@@ -59,6 +59,7 @@ import { useTenant } from "@/lib/tenant";
 import { getTenantDefaultRoute, isTenantRouteAllowed } from "@/lib/tenantPolicy";
 import { getTenantStandardAdminIa, resolveTenantAdminAliasDestination } from "@/lib/adminIa";
 import { TenantSwitcher } from "@/components/TenantSwitcher";
+import { LocaleSwitcher } from "@/components/LocaleSwitcher";
 import { type AdminNavIconKey } from "@/lib/adminNavRegistry";
 import { NAV_GROUPS } from "@/navigation/routes.manifest";
 import { CompanyProvider } from "@/hooks/use-company";
@@ -69,6 +70,239 @@ import { apiRequest } from "@/lib/queryClient";
 
 interface AdminLayoutProps {
   children: ReactNode;
+}
+
+type AdminLanguage = "en" | "fr" | "ar";
+
+const adminUiCopy: Record<AdminLanguage, Record<string, string>> = {
+  en: {
+    allPages: "All pages",
+    searchPages: "Search pages...",
+    noPages: "No pages found for this search.",
+    backToMarketplace: "Back to marketplace",
+    operationsCenter: "Operations Center HQ",
+    inbox: "Inbox",
+    internalAgents: "Internal agents",
+    webmail: "Webmail",
+    notifications: "Notifications",
+    viewAllNotifications: "View all notifications",
+    noNotifications: "No notifications.",
+    systemNotification: "System notification",
+    noMessage: "No message",
+    profile: "Profile",
+    marketplace: "Marketplace",
+    updateReset: "Update / reset",
+    department: "Department",
+    manager: "Manager",
+    notAssigned: "Not assigned",
+    openIssues: "Open issues",
+    lastReport: "Last report",
+    openManagerChat: "Open manager chat",
+    adminInterface: "Admin interface",
+  },
+  fr: {
+    allPages: "Toutes les pages",
+    searchPages: "Rechercher une page...",
+    noPages: "Aucune page trouvee pour cette recherche.",
+    backToMarketplace: "Retour au marche",
+    operationsCenter: "Centre des operations",
+    inbox: "Boite de reception",
+    internalAgents: "Agents internes",
+    webmail: "Webmail",
+    notifications: "Notifications",
+    viewAllNotifications: "Voir toutes les notifications",
+    noNotifications: "Aucune notification.",
+    systemNotification: "Notification systeme",
+    noMessage: "Aucun message",
+    profile: "Profil",
+    marketplace: "Marche",
+    updateReset: "Mise a jour / reset",
+    department: "Departement",
+    manager: "Responsable",
+    notAssigned: "Non assigne",
+    openIssues: "Points ouverts",
+    lastReport: "Dernier rapport",
+    openManagerChat: "Ouvrir le chat responsable",
+    adminInterface: "Interface administration",
+  },
+  ar: {
+    allPages: "كل الصفحات",
+    searchPages: "ابحث عن صفحة...",
+    noPages: "لا توجد صفحات مطابقة لهذا البحث.",
+    backToMarketplace: "العودة إلى السوق",
+    operationsCenter: "مركز العمليات",
+    inbox: "صندوق الوارد",
+    internalAgents: "الوكلاء الداخليون",
+    webmail: "البريد",
+    notifications: "الإشعارات",
+    viewAllNotifications: "عرض كل الإشعارات",
+    noNotifications: "لا توجد إشعارات.",
+    systemNotification: "إشعار النظام",
+    noMessage: "لا توجد رسالة",
+    profile: "الملف الشخصي",
+    marketplace: "السوق",
+    updateReset: "تحديث / إعادة ضبط",
+    department: "القسم",
+    manager: "المسؤول",
+    notAssigned: "غير مخصص",
+    openIssues: "المسائل المفتوحة",
+    lastReport: "آخر تقرير",
+    openManagerChat: "فتح محادثة المسؤول",
+    adminInterface: "واجهة الإدارة",
+  },
+};
+
+const adminNavLabelCopy: Record<AdminLanguage, Record<string, string>> = {
+  en: {},
+  fr: {
+    Overview: "Vue d'ensemble",
+    Agents: "Agents",
+    Operations: "Operations",
+    Trade: "Commerce",
+    Assets: "Actifs",
+    Territories: "Territoires",
+    Finance: "Finance",
+    Settings: "Parametres",
+    System: "Systeme",
+    Dashboard: "Tableau de bord",
+    Companies: "Entreprises",
+    "Org Hierarchy": "Hierarchie",
+    "Internal Agents": "Agents internes",
+    "AI Marketplace Agents": "Agents marketplace IA",
+    "Agents OS": "Agents OS",
+    "Action Forge": "Forge actions",
+    "Operations Center HQ": "Centre des operations",
+    Agenda: "Agenda",
+    Meetings: "Reunions",
+    Tasks: "Taches",
+    Objectives: "Objectifs",
+    Actions: "Actions",
+    Knowledge: "Connaissance",
+    "Expert Clones": "Clones experts",
+    Inbox: "Boite de reception",
+    Mail: "Courrier",
+    Workstations: "Postes de travail",
+    Evidence: "Preuves",
+    Notifications: "Notifications",
+    Bureaus: "Bureaux",
+    Contracts: "Contrats",
+    Delivery: "Livraison",
+    "Marketplace Products": "Produits marketplace",
+    "Marketplace Payments": "Paiements marketplace",
+    Marketing: "Marketing",
+    Sales: "Ventes",
+    "Lead Hunter": "Prospection",
+    "Gold Stamping": "Or certifie",
+    "Gold Stamping Hub": "Centre or certifie",
+    "Stamped Gold SKUs": "References or certifie",
+    "Stamped Gold Items": "Pieces or certifie",
+    "Stamped Gold Jewellers": "Bijoutiers or certifie",
+    "Stamped Gold Scans": "Scans or certifie",
+    "Stamped Gold Pickup": "Collecte or certifie",
+    Machinery: "Machines",
+    Media: "Media",
+    "Asset Studio": "Studio visuel",
+    "Map Icons": "Icones carte",
+    "Wallet Hub": "Centre portefeuille",
+    Wallet: "Portefeuille",
+    "Wallet Accounts": "Comptes portefeuille",
+    "Wallet Ledger": "Grand livre",
+    "Wallet Topups": "Rechargements",
+    "Wallet Payouts": "Paiements sortants",
+    "Wallet Vouchers": "Bons",
+    "Wallet Sellers": "Vendeurs",
+    "Wallet Risk": "Risque portefeuille",
+    "Wallet Config": "Configuration portefeuille",
+    "System Hub": "Centre systeme",
+    "SEO Hub": "Centre SEO",
+    "SEO Health": "Sante SEO",
+    "SEO Autopilot": "SEO autopilote",
+    "Visits Intelligence": "Analyse des visites",
+    Communications: "Communications",
+    "Email Control Center": "Centre email",
+    Contacts: "Contacts",
+    "User Management": "Gestion utilisateurs",
+  },
+  ar: {
+    Overview: "نظرة عامة",
+    Agents: "الوكلاء",
+    Operations: "العمليات",
+    Trade: "التجارة",
+    Assets: "الأصول",
+    Territories: "المناطق",
+    Finance: "المالية",
+    Settings: "الإعدادات",
+    System: "النظام",
+    Dashboard: "لوحة التحكم",
+    Companies: "الشركات",
+    "Org Hierarchy": "الهيكل التنظيمي",
+    "Internal Agents": "الوكلاء الداخليون",
+    "AI Marketplace Agents": "وكلاء سوق الذكاء الاصطناعي",
+    "Agents OS": "نظام الوكلاء",
+    "Action Forge": "إنشاء الإجراءات",
+    "Operations Center HQ": "مركز العمليات",
+    Agenda: "الأجندة",
+    Meetings: "الاجتماعات",
+    Tasks: "المهام",
+    Objectives: "الأهداف",
+    Actions: "الإجراءات",
+    Knowledge: "المعرفة",
+    "Expert Clones": "نسخ الخبراء",
+    Inbox: "صندوق الوارد",
+    Mail: "البريد",
+    Workstations: "محطات العمل",
+    Evidence: "الأدلة",
+    Notifications: "الإشعارات",
+    Bureaus: "المكاتب",
+    Contracts: "العقود",
+    Delivery: "التسليم",
+    "Marketplace Products": "منتجات السوق",
+    "Marketplace Payments": "مدفوعات السوق",
+    Marketing: "التسويق",
+    Sales: "المبيعات",
+    "Lead Hunter": "البحث عن العملاء",
+    "Gold Stamping": "ختم الذهب",
+    "Gold Stamping Hub": "مركز ختم الذهب",
+    "Stamped Gold SKUs": "رموز الذهب المختوم",
+    "Atelier de frappe": "ورشة الختم",
+    "Stamped Gold Items": "قطع الذهب المختوم",
+    "Stamped Gold Jewellers": "صاغة الذهب المختوم",
+    "Stamped Gold Scans": "مسح الذهب المختوم",
+    "Stamped Gold Pickup": "استلام الذهب المختوم",
+    Machinery: "المعدات",
+    Media: "الوسائط",
+    "Asset Studio": "استوديو الأصول",
+    "Map Icons": "أيقونات الخريطة",
+    "Wallet Hub": "مركز المحفظة",
+    Wallet: "المحفظة",
+    "Wallet Accounts": "حسابات المحفظة",
+    "Wallet Ledger": "سجل المحفظة",
+    "Wallet Topups": "تعبئة المحفظة",
+    "Wallet Payouts": "مدفوعات المحفظة",
+    "Wallet Vouchers": "قسائم المحفظة",
+    "Wallet Sellers": "بائعو المحفظة",
+    "Wallet Risk": "مخاطر المحفظة",
+    "Wallet Config": "إعدادات المحفظة",
+    "System Hub": "مركز النظام",
+    "SEO Hub": "مركز SEO",
+    "SEO Health": "صحة SEO",
+    "SEO Autopilot": "SEO تلقائي",
+    "Visits Intelligence": "تحليل الزيارات",
+    Communications: "الاتصالات",
+    "Email Control Center": "مركز البريد",
+    Contacts: "جهات الاتصال",
+    "User Management": "إدارة المستخدمين",
+  },
+};
+
+function adminCopy(language: string, key: string) {
+  const lang = (language === "fr" || language === "ar" ? language : "en") as AdminLanguage;
+  return adminUiCopy[lang][key] || adminUiCopy.en[key] || key;
+}
+
+function adminNavLabel(language: string, label: string) {
+  const lang = (language === "fr" || language === "ar" ? language : "en") as AdminLanguage;
+  return adminNavLabelCopy[lang][label] || label;
 }
 
 type DepartmentManagerContext = {
@@ -147,7 +381,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
   const queryClient = useQueryClient();
   const [mobileOpen, setMobileOpen] = useState(false);
   const { brand, tenant } = useTenant();
-  const { t } = useLocale();
+  const { t, language } = useLocale();
   const managerPageKey = resolveDepartmentPageKey(location);
   const managerDispatchRef = useRef<string | null>(null);
 
@@ -261,6 +495,8 @@ export function AdminLayout({ children }: AdminLayoutProps) {
 
       const mapItem = (item: { icon?: AdminNavIconKey; path: string; label: string; subgroup?: string }) => ({
         ...item,
+        label: adminNavLabel(language, item.label),
+        subgroup: item.subgroup ? adminNavLabel(language, item.subgroup) : item.subgroup,
         icon: item.icon ? ICONS[item.icon] : LayoutDashboard,
         route: item.path,
         href: item.path,
@@ -276,11 +512,12 @@ export function AdminLayout({ children }: AdminLayoutProps) {
 
       return {
         ...group,
+        label: adminNavLabel(language, group.label),
         items,
-        subgroups,
+        subgroups: subgroups.map((subgroup) => ({ ...subgroup, label: adminNavLabel(language, subgroup.label) })),
       };
     }).filter((group) => group.items.length > 0 || group.subgroups.length > 0);
-  }, [sidebarQuery, tenant.key]);
+  }, [language, sidebarQuery, tenant.key]);
 
   const operationsQuickAccessActive = location === "/ai-team" || location.startsWith("/ai-team/");
   const internalAgentsQuickAccessActive =
@@ -387,7 +624,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
       })}
       {!sidebarGroups.length ? (
         <div className="rounded-lg border border-gray-800 bg-gray-900/60 p-3 text-xs text-gray-400">
-          No pages found for this search.
+          {adminCopy(language, "noPages")}
         </div>
       ) : null}
     </div>
@@ -411,14 +648,14 @@ export function AdminLayout({ children }: AdminLayoutProps) {
             <SheetContent side="left" className="w-64 bg-gray-900 border-gray-800 p-4">
               <div className="mb-6">
                 <h2 className="text-lg font-semibold text-amber-500">{brand.name}</h2>
-                <p className="text-xs text-gray-500">All pages</p>
+                <p className="text-xs text-gray-500">{adminCopy(language, "allPages")}</p>
                 <div className="relative mt-3">
                   <Search className="h-4 w-4 text-gray-500 absolute left-3 top-1/2 -translate-y-1/2" />
                   <input
                     type="search"
                     value={sidebarQuery}
                     onChange={(event) => setSidebarQuery(event.target.value)}
-                    placeholder="Search pages..."
+                    placeholder={adminCopy(language, "searchPages")}
                     className="w-full h-9 rounded-md bg-gray-950 border border-gray-800 pl-9 pr-3 text-sm text-gray-100 placeholder:text-gray-500 focus:outline-none focus:ring-1 focus:ring-amber-500/60"
                   />
                 </div>
@@ -430,7 +667,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                 <Link href="/" onClick={() => setMobileOpen(false)}>
                   <div className="flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 transition-colors cursor-pointer">
                     <ShoppingBag className="h-4 w-4" />
-                    Back to Marketplace
+                    {adminCopy(language, "backToMarketplace")}
                   </div>
                 </Link>
               </div>
@@ -465,7 +702,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                 data-testid="top-quick-operations-hq"
               >
                 <MessageSquare className="h-4 w-4 mr-2" />
-                Operations Center HQ
+                {adminCopy(language, "operationsCenter")}
               </Button>
             </Link>
           ) : null}
@@ -484,7 +721,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                 data-testid="top-quick-inbox"
               >
                 <Mail className="h-4 w-4 mr-2" />
-                Inbox
+                {adminCopy(language, "inbox")}
               </Button>
             </Link>
           ) : null}
@@ -503,7 +740,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                 data-testid="top-quick-internal-agents"
               >
                 <Users className="h-4 w-4 mr-2" />
-                Internal Agents
+                {adminCopy(language, "internalAgents")}
               </Button>
             </Link>
           ) : null}
@@ -516,9 +753,15 @@ export function AdminLayout({ children }: AdminLayoutProps) {
           >
             <a href="https://mail.exportunity.net/" target="_blank" rel="noreferrer">
               <Mail className="h-4 w-4 mr-2" />
-              Webmail
+              {adminCopy(language, "webmail")}
             </a>
           </Button>
+
+          <div className="hidden sm:flex items-center gap-2 rounded-full border border-amber-500/20 bg-amber-500/10 px-2 py-1 text-[11px] font-medium text-amber-100">
+            {adminCopy(language, "adminInterface")}
+          </div>
+
+          <LocaleSwitcher compact />
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -532,7 +775,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-96 max-w-[90vw] bg-gray-900 border-gray-800">
-              <DropdownMenuLabel className="text-white">Notifications</DropdownMenuLabel>
+              <DropdownMenuLabel className="text-white">{adminCopy(language, "notifications")}</DropdownMenuLabel>
               <DropdownMenuSeparator className="bg-gray-800" />
               <div className="max-h-[420px] overflow-auto">
                 {notificationItems.length ? (
@@ -556,11 +799,13 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                         <div className="w-full p-3">
                           <div className="flex items-center justify-between gap-2">
                             <span className="text-sm font-medium text-gray-100 truncate">
-                              {n.title || "System notification"}
+                              {n.title || adminCopy(language, "systemNotification")}
                             </span>
                             {!n.readAt ? <span className="h-2 w-2 rounded-full bg-amber-400" /> : null}
                           </div>
-                          <p className="mt-1 text-xs text-gray-300 line-clamp-2">{n.message || "No message"}</p>
+                          <p className="mt-1 text-xs text-gray-300 line-clamp-2">
+                            {n.message || adminCopy(language, "noMessage")}
+                          </p>
                           <div className="mt-1 text-[11px] text-gray-500 flex items-center justify-between gap-2">
                             <span>{new Date(n.createdAt).toLocaleString()}</span>
                             <span className="truncate">{deliverySummary || n.status}</span>
@@ -570,14 +815,14 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                     );
                   })
                 ) : (
-                  <div className="p-3 text-sm text-gray-400">No notifications.</div>
+                  <div className="p-3 text-sm text-gray-400">{adminCopy(language, "noNotifications")}</div>
                 )}
               </div>
               <DropdownMenuSeparator className="bg-gray-800" />
               <DropdownMenuItem asChild className="cursor-pointer">
                 <Link href="/admin/notifications">
                   <Bell className="h-4 w-4 mr-2" />
-                  View all notifications
+                  {adminCopy(language, "viewAllNotifications")}
                 </Link>
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -607,19 +852,19 @@ export function AdminLayout({ children }: AdminLayoutProps) {
               <DropdownMenuItem asChild className="cursor-pointer">
                 <Link href="/profile">
                   <User className="h-4 w-4 mr-2" />
-                  Profile
+                  {adminCopy(language, "profile")}
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild className="cursor-pointer md:hidden">
                 <Link href="/">
                   <ShoppingBag className="h-4 w-4 mr-2" />
-                  Marketplace
+                  {adminCopy(language, "marketplace")}
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild className="cursor-pointer">
                 <Link href="/admin/system/update">
                   <RefreshCw className="h-4 w-4 mr-2" />
-                  Update / Reset
+                  {adminCopy(language, "updateReset")}
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator className="bg-gray-800" />
@@ -657,7 +902,9 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                 {sidebarCollapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
               </Button>
               {!sidebarCollapsed ? (
-                <span className="text-xs font-semibold tracking-wide uppercase text-gray-300">All Pages</span>
+                <span className="text-xs font-semibold tracking-wide uppercase text-gray-300">
+                  {adminCopy(language, "allPages")}
+                </span>
               ) : null}
             </div>
             {!sidebarCollapsed ? (
@@ -667,7 +914,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                   type="search"
                   value={sidebarQuery}
                   onChange={(event) => setSidebarQuery(event.target.value)}
-                  placeholder="Search pages..."
+                  placeholder={adminCopy(language, "searchPages")}
                   className="w-full h-9 rounded-md bg-gray-950 border border-gray-800 pl-9 pr-3 text-sm text-gray-100 placeholder:text-gray-500 focus:outline-none focus:ring-1 focus:ring-amber-500/60"
                 />
               </div>
@@ -710,7 +957,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                             : "border-gray-800 bg-gray-900/60 text-gray-300 hover:bg-gray-800/80 hover:text-white",
                         )}
                       >
-                        {item.label}
+                        {adminNavLabel(language, item.label)}
                       </div>
                     </Link>
                   );
@@ -722,22 +969,25 @@ export function AdminLayout({ children }: AdminLayoutProps) {
             <div className="border-b border-gray-800 bg-gray-900/70 px-4 py-2 text-xs">
               <div className="flex flex-wrap items-center gap-3 text-gray-300">
                 <span>
-                  Department: <span className="text-white font-medium">{managerContextQuery.data.page.label}</span>
-                </span>
-                <span>
-                  Manager:{" "}
+                  {adminCopy(language, "department")}:{" "}
                   <span className="text-white font-medium">
-                    {managerContextQuery.data.item?.manager_name || "Not assigned"}
+                    {adminNavLabel(language, managerContextQuery.data.page.label)}
                   </span>
                 </span>
                 <span>
-                  Open issues:{" "}
+                  {adminCopy(language, "manager")}:{" "}
+                  <span className="text-white font-medium">
+                    {managerContextQuery.data.item?.manager_name || adminCopy(language, "notAssigned")}
+                  </span>
+                </span>
+                <span>
+                  {adminCopy(language, "openIssues")}:{" "}
                   <span className="text-amber-300 font-medium">
                     {Number(managerContextQuery.data.item?.open_issues || 0)}
                   </span>
                 </span>
                 <span>
-                  Last report:{" "}
+                  {adminCopy(language, "lastReport")}:{" "}
                   <span className="text-gray-200">
                     {managerContextQuery.data.item?.last_report_at
                       ? new Date(managerContextQuery.data.item.last_report_at).toLocaleString()
@@ -763,7 +1013,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                     );
                   }}
                 >
-                  Open manager chat
+                  {adminCopy(language, "openManagerChat")}
                 </Button>
               </div>
             </div>

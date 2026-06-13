@@ -315,6 +315,8 @@ const HozAdminSettingsPage = lazyPage(() => import("@/pages/hoz/HozAdminPages"),
 const BdoActualitesPage = lazyPage(() => import("@/pages/bdo/BdoAuthorityPages"), "BdoActualitesPage");
 const BdoReglementationPage = lazyPage(() => import("@/pages/bdo/BdoAuthorityPages"), "BdoReglementationPage");
 const BdoIndustrieMinierePage = lazyPage(() => import("@/pages/bdo/BdoAuthorityPages"), "BdoIndustrieMinierePage");
+const BdoCertificationPage = lazyPage(() => import("@/pages/bdo/BdoAuthorityPages"), "BdoCertificationPage");
+const BdoVerifierPage = lazyPage(() => import("@/pages/bdo/BdoAuthorityPages"), "BdoVerifierPage");
 const BdoEspaceProDashboardPage = lazyPage(() => import("@/pages/bdo/BdoProPages"), "BdoEspaceProDashboardPage");
 const BdoProMapPage = lazyPage(() => import("@/pages/bdo/BdoProPages"), "BdoProMapPage");
 const BdoProIntelligencePage = lazyPage(() => import("@/pages/bdo/BdoProPages"), "BdoProIntelligencePage");
@@ -793,6 +795,8 @@ function App() {
           <Route path="/actualites" component={() => (isBdoHost() ? <BdoActualitesPage /> : <Redirect to="/store" />)} />
           <Route path="/reglementation" component={() => (isBdoHost() ? <BdoReglementationPage /> : <Redirect to="/store" />)} />
           <Route path="/industrie-miniere" component={() => (isBdoHost() ? <BdoIndustrieMinierePage /> : <Redirect to="/store" />)} />
+          <Route path="/certification" component={() => (isBdoHost() ? <BdoCertificationPage /> : <Redirect to="/store" />)} />
+          <Route path="/verifier" component={() => (isBdoHost() ? <BdoVerifierPage /> : <Redirect to="/store" />)} />
           <Route path="/coffre" component={() => (isBdoHost() ? <BdoCoffrePage /> : <Redirect to="/store" />)} />
           <Route path="/mes-objectifs" component={() => (isBdoHost() ? <BdoGoalsPage /> : <Redirect to="/store" />)} />
           <Route path="/objectif/:id">

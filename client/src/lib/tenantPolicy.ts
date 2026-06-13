@@ -118,7 +118,7 @@ const RULES: Array<{ prefix: string; tenants: TenantKey[] }> = [
   { prefix: "/devis", tenants: ["met"] },
   { prefix: "/realisations", tenants: ["met"] },
   { prefix: "/blog", tenants: ["met"] },
-  { prefix: "/contact", tenants: ["met", "vs", "hoz", "zogueland", "rayon1km"] },
+  { prefix: "/contact", tenants: ["bdo", "met", "vs", "hoz", "zogueland", "rayon1km"] },
   { prefix: "/mentions-legales", tenants: ["met"] },
   { prefix: "/politique-confidentialite", tenants: ["met"] },
   { prefix: "/admin/met", tenants: ["met"] },
@@ -257,29 +257,31 @@ function resolveRouteModule(path: string): PlatformModuleKey | null {
 export function getAllowedTenantsForPath(path: string): TenantKey[] {
   const normalized = normalizePath(path);
   if (!normalized) return [];
+  const bdoHostMode = isBdoHostMode();
 
-  if (isBdoHostMode()) {
-    return ["bdo"];
-  }
+  const applyHostIsolation = (tenants: TenantKey[]) => {
+    if (!bdoHostMode) return [...tenants];
+    return tenants.includes("bdo") ? (["bdo"] as TenantKey[]) : [];
+  };
 
   if (normalized === "/") {
-    return [...ALL_TENANTS];
+    return applyHostIsolation(ALL_TENANTS);
   }
 
   if (normalized === "/admin" || matchesPrefix(normalized, "/admin/password")) {
-    return [...ALL_TENANTS];
+    return applyHostIsolation(ALL_TENANTS);
   }
 
   for (const rule of RULES) {
-    if (matchesPrefix(normalized, rule.prefix)) return [...rule.tenants];
+    if (matchesPrefix(normalized, rule.prefix)) return applyHostIsolation(rule.tenants);
   }
 
   if (SHARED_BACKOFFICE_PREFIXES.some((prefix) => matchesPrefix(normalized, prefix))) {
-    return [...CORE_BACKOFFICE_TENANTS];
+    return applyHostIsolation(CORE_BACKOFFICE_TENANTS);
   }
 
   if (SHARED_SAFE_PREFIXES.some((prefix) => matchesPrefix(normalized, prefix))) {
-    return [...ALL_TENANTS];
+    return applyHostIsolation(ALL_TENANTS);
   }
 
   if (
@@ -305,10 +307,10 @@ export function getAllowedTenantsForPath(path: string): TenantKey[] {
     normalized.startsWith("/mail") ||
     normalized.startsWith("/notifications")
   ) {
-    return [...CORE_BACKOFFICE_TENANTS];
+    return applyHostIsolation(CORE_BACKOFFICE_TENANTS);
   }
 
-  return [...ALL_TENANTS];
+  return applyHostIsolation(ALL_TENANTS);
 }
 
 export function getSharedMarketplaceCatalogTenants(tenantKey: TenantKey): TenantKey[] {

@@ -12,6 +12,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useSession } from "@/lib/session";
+import { useLocale } from "@/contexts/LocaleContext";
 
 type GoalItem = {
   id: number;
@@ -70,6 +71,111 @@ function formatMoneyMinor(value: number, currency = "XOF") {
   }).format(value);
 }
 
+function getGoalPageCopy(language: string) {
+  if (language === "ar") {
+    return {
+      market: "العودة إلى السوق",
+      goals: "أهدافي",
+      coffreTitle: "خزنة الذهب",
+      coffreSubtitle: "كوّن ميزانية شراء الذهب المادي تدريجياً. لا يتم شراء الذهب حتى تؤكد الطلب بالسعر المحدث.",
+      goalsTitle: "أهداف شراء الذهب",
+      goalsSubtitle: "يتابع كل هدف سعراً مرتبطاً بالسوق. أضف الأموال تدريجياً ثم أكد الطلب عندما تصبح الميزانية جاهزة.",
+      authTitle: "سجّل الدخول للوصول إلى خزنة الذهب",
+      authBody:
+        "أهداف الشراء والتقدم مرتبطة بحسابك. سجّل الدخول لإنشاء هدف، إضافة أموال، ثم تأكيد شراء الذهب المادي عندما تكون جاهزاً.",
+      signIn: "تسجيل الدخول",
+      createAccount: "إنشاء حساب",
+      availableFunds: "الأموال المتاحة",
+      activeGoals: "الأهداف النشطة",
+      lockedPurchases: "طلبات مؤكدة",
+      vaultedGold: "ذهب في الخزنة",
+      vaultEyebrow: "خزنة الذهب",
+      addFundsTitle: "أضف أموالاً وخصصها لأهداف الشراء",
+      addFundsBody: "يبقى السعر مرتبطاً بالسوق حتى التأكيد. أنت تبني ميزانية المنتج المختار ثم تثبت السعر عند تأكيد الطلب.",
+      addFunds: "إضافة أموال",
+      viewGoals: "عرض أهدافي",
+      nearestGoal: "أقرب هدف للاكتمال",
+      continueGoal: "متابعة هذا الهدف",
+      noActiveGoal: "لا يوجد هدف نشط. ابدأ من السوق لتكوين ميزانية شراء الذهب المادي.",
+      goalsListTitle: "الأهداف النشطة والسابقة",
+      goalsListBody: "تابع الأهداف الجارية أو الجاهزة للتأكيد أو التي تم تحويلها إلى طلب.",
+      viewAll: "عرض الكل",
+      newGoal: "إنشاء هدف جديد",
+      noGoal: "لا يوجد هدف نشط حالياً.",
+    };
+  }
+
+  if (language === "en") {
+    return {
+      market: "Back to market",
+      goals: "My objectives",
+      coffreTitle: "Your gold vault",
+      coffreSubtitle:
+        "Build your physical gold purchase budget progressively. Your gold is not purchased until you confirm the order at a refreshed price.",
+      goalsTitle: "Gold Purchase Objectives",
+      goalsSubtitle:
+        "Each objective follows a market-linked value. Add funds progressively, then confirm the order when the budget is ready.",
+      authTitle: "Sign in to access your gold vault",
+      authBody:
+        "Your Purchase Objectives and progress are linked to your account. Sign in to create an objective, add funds, and confirm the physical gold purchase when ready.",
+      signIn: "Sign in",
+      createAccount: "Create account",
+      availableFunds: "Available funds",
+      activeGoals: "Active objectives",
+      lockedPurchases: "Confirmed purchases",
+      vaultedGold: "Gold in vault",
+      vaultEyebrow: "Gold vault",
+      addFundsTitle: "Add funds and allocate them to your Purchase Objectives",
+      addFundsBody:
+        "The price remains market-linked until confirmation. Build the budget for the selected product, then lock the price when you confirm the order.",
+      addFunds: "Add funds",
+      viewGoals: "View my objectives",
+      nearestGoal: "Most advanced objective",
+      continueGoal: "Continue this objective",
+      noActiveGoal: "No active objective. Start from the market to build a physical gold purchase budget.",
+      goalsListTitle: "Active and historical objectives",
+      goalsListBody: "Track active objectives, objectives ready to confirm, and converted purchases.",
+      viewAll: "View all",
+      newGoal: "Create a new objective",
+      noGoal: "No active objective yet.",
+    };
+  }
+
+  return {
+    market: "Retour au marché",
+    goals: "Mes objectifs",
+    coffreTitle: "Votre coffre d’or",
+    coffreSubtitle:
+      "Achetez, réservez, accumulez. Vos fonds restent disponibles pour atteindre le lingot visé, puis verrouiller le prix au moment de la confirmation.",
+    goalsTitle: "Mes objectifs d’or",
+    goalsSubtitle:
+      "Chaque objectif suit une valeur de marché dynamique. Vous ajoutez des fonds progressivement, puis vous confirmez l’achat quand le montant est atteint.",
+    authTitle: "Connectez-vous pour accéder à votre coffre d’or",
+    authBody:
+      "Vos objectifs et votre progression sont liés à votre compte. Connectez-vous pour créer un objectif, ajouter des fonds et confirmer l’achat au bon moment.",
+    signIn: "Se connecter",
+    createAccount: "Créer un compte",
+    availableFunds: "Fonds disponibles",
+    activeGoals: "Objectifs actifs",
+    lockedPurchases: "Achats verrouillés",
+    vaultedGold: "Or en coffre",
+    vaultEyebrow: "Coffre d’or",
+    addFundsTitle: "Ajoutez des fonds et allouez-les à vos objectifs",
+    addFundsBody:
+      "Le prix reste lié au marché jusqu’à la confirmation. Vous financez progressivement le lingot choisi, puis vous verrouillez le prix au moment opportun.",
+    addFunds: "Ajouter des fonds",
+    viewGoals: "Voir mes objectifs",
+    nearestGoal: "Objectif le plus avancé",
+    continueGoal: "Continuer cet objectif",
+    noActiveGoal: "Aucun objectif actif. Démarrez un objectif depuis le marché pour commencer votre accumulation.",
+    goalsListTitle: "Objectifs actifs et historiques",
+    goalsListBody: "Suivez vos objectifs actifs, prêts à confirmer ou déjà convertis.",
+    viewAll: "Tout voir",
+    newGoal: "Créer un nouvel objectif",
+    noGoal: "Aucun objectif actif pour l’instant.",
+  };
+}
+
 function BdoPageShell({
   title,
   subtitle,
@@ -79,6 +185,8 @@ function BdoPageShell({
   subtitle: string;
   children: React.ReactNode;
 }) {
+  const { language } = useLocale();
+  const copy = useMemo(() => getGoalPageCopy(language), [language]);
   return (
     <div className="min-h-screen bg-[#020817] text-white">
       <div className="mx-auto flex w-full max-w-[1500px] flex-col gap-4 px-3 py-5 md:px-5">
@@ -91,11 +199,11 @@ function BdoPageShell({
             </div>
             <div className="flex flex-wrap gap-2">
               <Link href="/store">
-                <Button className="bg-[#D4AF37] text-black hover:bg-[#E8C873]">Retour au marché</Button>
+                <Button className="bg-[#D4AF37] text-black hover:bg-[#E8C873]">{copy.market}</Button>
               </Link>
               <Link href="/mes-objectifs">
                 <Button variant="outline" className="border-white/15 text-white hover:bg-white/10">
-                  Mes objectifs
+                  {copy.goals}
                 </Button>
               </Link>
             </div>
@@ -173,21 +281,20 @@ function useGoals(enabled: boolean, token?: string | null) {
 }
 
 function AuthPrompt() {
+  const { language } = useLocale();
+  const copy = useMemo(() => getGoalPageCopy(language), [language]);
   return (
     <Card className="border-white/10 bg-[#07101d]/95">
       <CardContent className="p-5">
-        <h2 className="text-lg font-semibold text-white">Connectez-vous pour accéder à votre coffre d&apos;or</h2>
-        <p className="mt-2 text-sm text-white/65">
-          Vos objectifs et votre progression sont liés à votre compte. Connectez-vous pour créer un objectif, ajouter des
-          fonds et confirmer l&apos;achat au bon moment.
-        </p>
+        <h2 className="text-lg font-semibold text-white">{copy.authTitle}</h2>
+        <p className="mt-2 text-sm text-white/65">{copy.authBody}</p>
         <div className="mt-4 flex flex-wrap gap-2">
           <Link href="/login?next=/coffre">
-            <Button className="bg-[#D4AF37] text-black hover:bg-[#E8C873]">Se connecter</Button>
+            <Button className="bg-[#D4AF37] text-black hover:bg-[#E8C873]">{copy.signIn}</Button>
           </Link>
           <Link href="/register?next=/coffre">
             <Button variant="outline" className="border-white/15 text-white hover:bg-white/10">
-              Créer un compte
+              {copy.createAccount}
             </Button>
           </Link>
         </div>
@@ -198,6 +305,8 @@ function AuthPrompt() {
 
 export function BdoCoffrePage() {
   const session = useSession();
+  const { language } = useLocale();
+  const copy = useMemo(() => getGoalPageCopy(language), [language]);
   const goalsQuery = useGoals(!!session.token, session.token);
   const walletSummaryQuery = useQuery<any>({
     queryKey: ["/api/wallet/summary", session.token],
@@ -227,8 +336,8 @@ export function BdoCoffrePage() {
 
   return (
     <BdoPageShell
-      title="Votre coffre d’or"
-      subtitle="Achetez, réservez, accumulez. Vos fonds restent disponibles pour atteindre le lingot visé, puis verrouiller le prix au moment de la confirmation."
+      title={copy.coffreTitle}
+      subtitle={copy.coffreSubtitle}
     >
       {!session.token ? (
         <AuthPrompt />
@@ -237,7 +346,7 @@ export function BdoCoffrePage() {
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
             <Card className="border-white/10 bg-[#07101d]/95">
               <CardContent className="p-4">
-                <p className="text-[11px] uppercase tracking-[0.22em] text-white/45">Fonds disponibles</p>
+                <p className="text-[11px] uppercase tracking-[0.22em] text-white/45">{copy.availableFunds}</p>
                 <p className="mt-2 text-2xl font-semibold text-white">
                   {formatMoneyMinor(Number(walletSummaryQuery.data?.wallet?.balance || 0), "XOF")}
                 </p>
@@ -245,19 +354,19 @@ export function BdoCoffrePage() {
             </Card>
             <Card className="border-white/10 bg-[#07101d]/95">
               <CardContent className="p-4">
-                <p className="text-[11px] uppercase tracking-[0.22em] text-white/45">Objectifs actifs</p>
+                <p className="text-[11px] uppercase tracking-[0.22em] text-white/45">{copy.activeGoals}</p>
                 <p className="mt-2 text-2xl font-semibold text-white">{goalsQuery.data?.summary?.activeGoals || 0}</p>
               </CardContent>
             </Card>
             <Card className="border-white/10 bg-[#07101d]/95">
               <CardContent className="p-4">
-                <p className="text-[11px] uppercase tracking-[0.22em] text-white/45">Achats verrouillés</p>
+                <p className="text-[11px] uppercase tracking-[0.22em] text-white/45">{copy.lockedPurchases}</p>
                 <p className="mt-2 text-2xl font-semibold text-white">{goalsQuery.data?.summary?.lockedPurchases || 0}</p>
               </CardContent>
             </Card>
             <Card className="border-white/10 bg-[#07101d]/95">
               <CardContent className="p-4">
-                <p className="text-[11px] uppercase tracking-[0.22em] text-white/45">Or en coffre</p>
+                <p className="text-[11px] uppercase tracking-[0.22em] text-white/45">{copy.vaultedGold}</p>
                 <p className="mt-2 text-2xl font-semibold text-white">{Number(vaultQuery.data?.totalGrams || 0)} g</p>
               </CardContent>
             </Card>
@@ -268,22 +377,19 @@ export function BdoCoffrePage() {
               <CardContent className="p-5">
                 <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                   <div>
-                    <p className="text-[11px] uppercase tracking-[0.24em] text-emerald-300/80">Coffre d&apos;or</p>
-                    <h2 className="mt-1 text-xl font-semibold text-white">Ajoutez des fonds et allouez-les à vos objectifs</h2>
-                    <p className="mt-2 text-sm text-white/65">
-                      Le prix reste lié au marché jusqu&apos;à la confirmation. Vous financez progressivement le lingot choisi,
-                      puis vous verrouillez le prix au moment opportun.
-                    </p>
+                    <p className="text-[11px] uppercase tracking-[0.24em] text-emerald-300/80">{copy.vaultEyebrow}</p>
+                    <h2 className="mt-1 text-xl font-semibold text-white">{copy.addFundsTitle}</h2>
+                    <p className="mt-2 text-sm text-white/65">{copy.addFundsBody}</p>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <WalletDepositModal
-                      label="Ajouter des fonds"
+                      label={copy.addFunds}
                       next="/coffre"
                       buttonClassName="bg-[#D4AF37] hover:bg-[#E8C873] text-black"
                     />
                     <Link href="/mes-objectifs">
                       <Button variant="outline" className="border-white/15 text-white hover:bg-white/10">
-                        Voir mes objectifs
+                        {copy.viewGoals}
                       </Button>
                     </Link>
                   </div>
@@ -293,17 +399,17 @@ export function BdoCoffrePage() {
 
             <Card className="border-white/10 bg-[#07101d]/95">
               <CardContent className="p-5">
-                <h2 className="text-lg font-semibold text-white">Objectif le plus avancé</h2>
+                <h2 className="text-lg font-semibold text-white">{copy.nearestGoal}</h2>
                 {nearestGoal ? (
                   <div className="mt-3 space-y-3">
                     <GoalSummaryCard goal={nearestGoal} />
                     <Link href={`/objectif/${nearestGoal.id}`}>
-                      <Button className="w-full bg-[#D4AF37] text-black hover:bg-[#E8C873]">Continuer cet objectif</Button>
+                      <Button className="w-full bg-[#D4AF37] text-black hover:bg-[#E8C873]">{copy.continueGoal}</Button>
                     </Link>
                   </div>
                 ) : (
                   <div className="mt-3 rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-white/60">
-                    Aucun objectif actif. Démarrez un objectif depuis le marché pour commencer votre accumulation.
+                    {copy.noActiveGoal}
                   </div>
                 )}
               </CardContent>
@@ -314,12 +420,12 @@ export function BdoCoffrePage() {
             <CardContent className="p-5">
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <h2 className="text-lg font-semibold text-white">Mes objectifs</h2>
-                  <p className="mt-1 text-sm text-white/60">Suivez vos objectifs actifs, prêts à confirmer ou déjà convertis.</p>
+                  <h2 className="text-lg font-semibold text-white">{copy.goalsListTitle}</h2>
+                  <p className="mt-1 text-sm text-white/60">{copy.goalsListBody}</p>
                 </div>
                 <Link href="/mes-objectifs">
                   <Button variant="outline" className="border-white/15 text-white hover:bg-white/10">
-                    Tout voir
+                    {copy.viewAll}
                   </Button>
                 </Link>
               </div>
@@ -333,7 +439,7 @@ export function BdoCoffrePage() {
                 ))}
                 {!(goalsQuery.data?.items || []).length ? (
                   <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-white/60">
-                    Aucun objectif enregistré pour le moment.
+                    {copy.noGoal}
                   </div>
                 ) : null}
               </div>
@@ -347,12 +453,14 @@ export function BdoCoffrePage() {
 
 export function BdoGoalsPage() {
   const session = useSession();
+  const { language } = useLocale();
+  const copy = useMemo(() => getGoalPageCopy(language), [language]);
   const goalsQuery = useGoals(!!session.token, session.token);
 
   return (
     <BdoPageShell
-      title="Mes objectifs d’or"
-      subtitle="Chaque objectif suit une valeur de marché dynamique. Vous ajoutez des fonds progressivement, puis vous confirmez l’achat quand le montant est atteint."
+      title={copy.goalsTitle}
+      subtitle={copy.goalsSubtitle}
     >
       {!session.token ? (
         <AuthPrompt />
@@ -361,11 +469,11 @@ export function BdoGoalsPage() {
           <CardContent className="p-5">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <h2 className="text-lg font-semibold text-white">Objectifs actifs et historiques</h2>
-                <p className="mt-1 text-sm text-white/60">Le prix final reste flottant jusqu’au moment de la confirmation.</p>
+                <h2 className="text-lg font-semibold text-white">{copy.goalsListTitle}</h2>
+                <p className="mt-1 text-sm text-white/60">{copy.goalsListBody}</p>
               </div>
               <Link href="/store">
-                <Button className="bg-[#D4AF37] text-black hover:bg-[#E8C873]">Créer un nouvel objectif</Button>
+                <Button className="bg-[#D4AF37] text-black hover:bg-[#E8C873]">{copy.newGoal}</Button>
               </Link>
             </div>
             <div className="mt-4 space-y-3">
@@ -389,7 +497,7 @@ export function BdoGoalsPage() {
                 ))
               ) : (
                 <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-white/60">
-                  Aucun objectif actif pour l’instant.
+                  {copy.noGoal}
                 </div>
               )}
             </div>

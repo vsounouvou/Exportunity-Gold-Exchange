@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useSession } from "@/lib/session";
 import { useTenant } from "@/lib/tenant";
+import { useLocale } from "@/contexts/LocaleContext";
 
 type PasswordLoginResponse = {
   token: string;
@@ -35,13 +36,69 @@ function parseNextFromLocation(location: string) {
   }
 }
 
+function getAppProLoginCopy(language: string) {
+  if (language === "ar") {
+    return {
+      title: "تسجيل دخول المساحة المهنية",
+      description: "وصول مخصص للحسابات المهنية الموثقة والعمليات المعتمدة.",
+      email: "البريد الإلكتروني",
+      password: "كلمة المرور",
+      submit: "تسجيل الدخول",
+      submitting: "جار تسجيل الدخول...",
+      missingEmail: "أدخل بريدك الإلكتروني.",
+      missingPassword: "أدخل كلمة المرور.",
+      invalidResponse: "استجابة غير صالحة.",
+      successTitle: "تم تسجيل الدخول",
+      successDescription: "مرحباً بك.",
+      errorTitle: "تعذر تسجيل الدخول",
+      invalidCredentials: "البريد الإلكتروني أو كلمة المرور غير صحيحة.",
+    };
+  }
+
+  if (language === "en") {
+    return {
+      title: "Professional Space sign-in",
+      description: "Reserved access for verified professional accounts and approved gold operations.",
+      email: "Email",
+      password: "Password",
+      submit: "Sign in",
+      submitting: "Signing in...",
+      missingEmail: "Enter your email.",
+      missingPassword: "Enter your password.",
+      invalidResponse: "Invalid response.",
+      successTitle: "Signed in",
+      successDescription: "Welcome.",
+      errorTitle: "Sign-in failed",
+      invalidCredentials: "Invalid email or password.",
+    };
+  }
+
+  return {
+    title: "Connexion Espace Pro",
+    description: "Accès réservé aux comptes professionnels vérifiés et aux opérations autorisées.",
+    email: "Email",
+    password: "Mot de passe",
+    submit: "Se connecter",
+    submitting: "Connexion...",
+    missingEmail: "Entrez votre email.",
+    missingPassword: "Entrez votre mot de passe.",
+    invalidResponse: "Réponse invalide.",
+    successTitle: "Connecté",
+    successDescription: "Bienvenue.",
+    errorTitle: "Connexion impossible",
+    invalidCredentials: "Email ou mot de passe invalide.",
+  };
+}
+
 export default function AppProLoginPage() {
   const session = useSession();
   const { brand } = useTenant();
+  const { language } = useLocale();
   const { toast } = useToast();
   const [location, setLocation] = useLocation();
 
   const next = useMemo(() => parseNextFromLocation(location) || "/pro", [location]);
+  const copy = useMemo(() => getAppProLoginCopy(language), [language]);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -56,24 +113,24 @@ export default function AppProLoginPage() {
     mutationFn: async () => {
       const cleanedEmail = email.trim().toLowerCase();
       const cleanedPassword = password;
-      if (!cleanedEmail) throw new Error("Entrez votre email.");
-      if (!cleanedPassword) throw new Error("Entrez votre mot de passe.");
+      if (!cleanedEmail) throw new Error(copy.missingEmail);
+      if (!cleanedPassword) throw new Error(copy.missingPassword);
       const res = (await apiRequest("/api/ece/auth/login", "POST", {
         email: cleanedEmail,
         password: cleanedPassword,
       })) as PasswordLoginResponse;
-      if (!res?.token || !res?.user) throw new Error("Reponse invalide.");
+      if (!res?.token || !res?.user) throw new Error(copy.invalidResponse);
       return res;
     },
     onSuccess: (res) => {
       session.login(res.token, res.user);
-      toast({ title: "Connecte", description: "Bienvenue." });
+      toast({ title: copy.successTitle, description: copy.successDescription });
       setLocation(next);
     },
     onError: (error: any) => {
       toast({
-        title: "Connexion impossible",
-        description: String(error?.message || "Email ou mot de passe invalide."),
+        title: copy.errorTitle,
+        description: String(error?.message || copy.invalidCredentials),
         variant: "destructive",
       });
     },
@@ -93,14 +150,14 @@ export default function AppProLoginPage() {
       <Card className="relative w-full max-w-md border-[#D4AF37]/25 bg-[#0B0B0D]/86 shadow-[0_24px_80px_rgba(0,0,0,0.52)] backdrop-blur-xl">
         <CardHeader>
           <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#E8C873]">{brand.name}</div>
-          <CardTitle className="font-['Cinzel'] text-white">Connexion Espace Pro</CardTitle>
+          <CardTitle className="font-['Cinzel'] text-white">{copy.title}</CardTitle>
           <CardDescription className="text-[#F5F3EC]/68">
-            Acces reserve aux comptes professionnels verifies et aux operations autorisees.
+            {copy.description}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <div className="text-sm font-medium text-[#F5F3EC]/82">Email</div>
+            <div className="text-sm font-medium text-[#F5F3EC]/82">{copy.email}</div>
             <Input
               value={email}
               onChange={(event) => setEmail(event.target.value)}
@@ -108,20 +165,20 @@ export default function AppProLoginPage() {
               className="border-[#D4AF37]/20 bg-black/35 text-white placeholder:text-white/35"
               disabled={passwordLoginMutation.isPending}
               inputMode="email"
-              aria-label="Email"
+              aria-label={copy.email}
               data-testid="app-pro-email"
             />
           </div>
 
           <div className="space-y-2">
-            <div className="text-sm font-medium text-[#F5F3EC]/82">Mot de passe</div>
+            <div className="text-sm font-medium text-[#F5F3EC]/82">{copy.password}</div>
             <Input
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               type="password"
               className="border-[#D4AF37]/20 bg-black/35 text-white placeholder:text-white/35"
               disabled={passwordLoginMutation.isPending}
-              aria-label="Password"
+              aria-label={copy.password}
               data-testid="app-pro-password"
               onKeyDown={(e) => {
                 if (e.key === "Enter") passwordLoginMutation.mutate();
@@ -135,7 +192,7 @@ export default function AppProLoginPage() {
             disabled={passwordLoginMutation.isPending}
             data-testid="app-pro-login-submit"
           >
-            {passwordLoginMutation.isPending ? "Connexion..." : "Se connecter"}
+            {passwordLoginMutation.isPending ? copy.submitting : copy.submit}
           </Button>
 
           {passwordLoginMutation.error ? (

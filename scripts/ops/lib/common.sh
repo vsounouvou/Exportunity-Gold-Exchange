@@ -73,7 +73,8 @@ git_dirty() {
       . \
       ':(exclude)ops/local-releases' \
       ':(exclude)ops/local-backups' \
-      ':(exclude)ops/tmp'
+      ':(exclude)ops/tmp' \
+      ':(exclude)client/src/navigation/routes.generated.ts'
   )"
   if [[ -n "$status_output" ]]; then
     printf 'true\n'

@@ -22806,11 +22806,11 @@ export function BuyerHomePage({
                         Paiement
                       </p>
                       <p className="mt-1 text-sm font-semibold text-white">
-                        Paiement en ligne ou coffre
+                        Paiement en ligne
                       </p>
                       <p className="mt-1 text-[12px] text-white/55">
                         {bdoCheckoutRequiresTopup
-                          ? `Montant à compléter: ${formatMoney(bdoCheckoutTopupAmount, "XOF")}`
+                          ? `Montant à régler: ${formatMoney(cartTotal, "XOF")}`
                           : "Votre coffre couvre déjà cette commande."}
                       </p>
                     </div>
@@ -22910,9 +22910,9 @@ export function BuyerHomePage({
                 <p className="text-[12px] text-white/50">
                   {bdoCheckoutRequiresTopup
                     ? bdoText(
-                        "Nous préparons l'ouverture du paiement en ligne pour créditer votre coffre puis confirmer la commande.",
-                        "We are opening online payment to fund your vault and then confirm the order.",
-                        "نفتح الدفع الإلكتروني لإضافة الرصيد إلى خزنتك ثم تأكيد الطلب.",
+                        "Nous ouvrons le paiement en ligne pour régler cette commande. Le statut sera mis à jour après confirmation du prestataire.",
+                        "We are opening online payment for this order. The status updates after provider confirmation.",
+                        "نفتح الدفع الإلكتروني لهذا الطلب. يتم تحديث الحالة بعد تأكيد مزود الدفع.",
                       )
                     : bdoText(
                         "Commande réglée depuis votre coffre. Suivi disponible immédiatement.",

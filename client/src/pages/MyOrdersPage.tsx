@@ -62,6 +62,32 @@ function safeDate(value: unknown) {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
+function localizeOrderItemName(name: string, language: string) {
+  const value = String(name || "").trim();
+  if (!value) return value;
+
+  const replacements: Array<[RegExp, string]> =
+    language === "ar"
+      ? [
+          [/\bStamped Gold Piece\b/gi, "قطعة ذهب معتمدة"],
+          [/\bStamped Gold Bar\b/gi, "سبيكة ذهب معتمدة"],
+          [/\bStamped Gold\b/gi, "ذهب معتمد"],
+        ]
+      : language === "en"
+        ? [
+            [/\bStamped Gold Piece\b/gi, "Certified Gold Piece"],
+            [/\bStamped Gold Bar\b/gi, "Certified Gold Bar"],
+            [/\bStamped Gold\b/gi, "Certified Gold"],
+          ]
+        : [
+            [/\bStamped Gold Piece\b/gi, "Pièce certifiée"],
+            [/\bStamped Gold Bar\b/gi, "Lingot certifié"],
+            [/\bStamped Gold\b/gi, "Or certifié"],
+          ];
+
+  return replacements.reduce((next, [pattern, replacement]) => next.replace(pattern, replacement), value);
+}
+
 function hasQueryFlag(locationValue: string, key: string) {
   const queryParts: string[] = [];
   if (locationValue.includes("?")) queryParts.push(locationValue.split("?")[1] || "");
@@ -365,7 +391,7 @@ export default function MyOrdersPage() {
                       <div className="w-12 h-12 rounded-lg overflow-hidden border border-white/10 flex-shrink-0">
                         <img
                           src={item.productImage || "/product-images/gold-coin.png"}
-                          alt={item.productName}
+                          alt={localizeOrderItemName(item.productName, language)}
                           className="w-full h-full object-cover"
                           onError={(e) => {
                             e.currentTarget.onerror = null;
@@ -374,7 +400,7 @@ export default function MyOrdersPage() {
                         />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <div className="text-sm font-medium text-white truncate">{item.productName}</div>
+                        <div className="text-sm font-medium text-white truncate">{localizeOrderItemName(item.productName, language)}</div>
                         <div className="text-xs text-white/50">
                           {copy.qty} {item.quantity} • {formatMoney(item.unitPrice)} {copy.each}
                         </div>

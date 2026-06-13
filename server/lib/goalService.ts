@@ -77,13 +77,13 @@ export async function getGoalById(goalId: number): Promise<GoalWithStats | null>
     where: eq(goals.id, goalId),
     with: {
       ownerAgent: true,
-      tasks: true,
     },
   });
   
   if (!goal) return null;
   
-  const taskStats = calculateTaskStats(goal.tasks || []);
+  const goalTasks = await getTasksForGoal(goalId);
+  const taskStats = calculateTaskStats(goalTasks);
   const nextSteps = await getGoalNextSteps(goalId);
   
   return {
@@ -119,13 +119,15 @@ export async function getGoalsByCompany(companyId: number, filters?: {
     where: and(...conditions),
     with: {
       ownerAgent: true,
-      tasks: true,
     },
     orderBy: [desc(goals.createdAt)],
   });
+
+  const tasksByGoalId = await getTasksByGoalIds(goalsList.map((goal) => goal.id));
   
   return Promise.all(goalsList.map(async (goal) => {
-    const taskStats = calculateTaskStats(goal.tasks || []);
+    const goalTasks = tasksByGoalId.get(goal.id) || [];
+    const taskStats = calculateTaskStats(goalTasks);
     const nextSteps = await getGoalNextSteps(goal.id);
     
     return {
@@ -221,13 +223,11 @@ export async function checkGoalsWithoutTasks(companyId: number): Promise<typeof 
       eq(goals.companyId, companyId),
       inArray(goals.status, ['planned', 'in_progress'])
     ),
-    with: {
-      tasks: true,
-    },
   });
   
+  const tasksByGoalId = await getTasksByGoalIds(allGoals.map((goal) => goal.id));
   return allGoals.filter(g => {
-    const activeTasks = (g.tasks || []).filter(t => 
+    const activeTasks = (tasksByGoalId.get(g.id) || []).filter(t => 
       t.status !== 'done' && t.status !== 'canceled'
     );
     return activeTasks.length === 0;
@@ -240,14 +240,13 @@ export async function checkBlockedGoals(companyId: number): Promise<typeof goals
       eq(goals.companyId, companyId),
       eq(goals.status, 'in_progress')
     ),
-    with: {
-      tasks: true,
-    },
   });
   
+  const tasksByGoalId = await getTasksByGoalIds(allGoals.map((goal) => goal.id));
   return allGoals.filter(g => {
-    const blockedTasks = (g.tasks || []).filter(t => t.status === 'blocked');
-    const activeTasks = (g.tasks || []).filter(t => 
+    const goalTasks = tasksByGoalId.get(g.id) || [];
+    const blockedTasks = goalTasks.filter(t => t.status === 'blocked');
+    const activeTasks = goalTasks.filter(t => 
       t.status !== 'done' && t.status !== 'canceled'
     );
     return blockedTasks.length > 0 && blockedTasks.length === activeTasks.length;
@@ -315,6 +314,32 @@ export async function getGoalAgents(goalId: number): Promise<{
   }
   
   return Array.from(agentMap.values()).sort((a, b) => b.taskCount - a.taskCount);
+}
+
+async function getTasksForGoal(goalId: number): Promise<Array<typeof tasks.$inferSelect>> {
+  return db.query.tasks.findMany({
+    where: eq(tasks.goalId, goalId),
+  });
+}
+
+async function getTasksByGoalIds(goalIds: number[]): Promise<Map<number, Array<typeof tasks.$inferSelect>>> {
+  const uniqueGoalIds = Array.from(new Set(goalIds.filter((id) => Number.isFinite(id) && id > 0)));
+  const byGoalId = new Map<number, Array<typeof tasks.$inferSelect>>();
+  if (!uniqueGoalIds.length) return byGoalId;
+
+  const goalTasks = await db.query.tasks.findMany({
+    where: inArray(tasks.goalId, uniqueGoalIds),
+  });
+
+  for (const task of goalTasks) {
+    const goalId = Number(task.goalId || 0);
+    if (!goalId) continue;
+    const list = byGoalId.get(goalId) || [];
+    list.push(task);
+    byGoalId.set(goalId, list);
+  }
+
+  return byGoalId;
 }
 
 async function getGoalNextSteps(goalId: number): Promise<string[]> {

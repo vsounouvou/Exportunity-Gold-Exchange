@@ -557,6 +557,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
           <div key={group.groupId} className="rounded-lg border border-gray-800/70 bg-gray-900/40">
             <button
               type="button"
+              aria-expanded={!isCollapsed}
               className="w-full px-3 py-2 flex items-center justify-between text-left text-xs font-semibold text-gray-300 uppercase tracking-wide"
               onClick={() => toggleGroup(group.groupId)}
             >
@@ -591,6 +592,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                     <div key={subgroup.id} className="mx-2 rounded-md border border-gray-800/80 bg-gray-950/70">
                       <button
                         type="button"
+                        aria-expanded={!subgroupCollapsed}
                         className="w-full px-2 py-1.5 flex items-center justify-between text-left text-[11px] font-medium text-gray-400 uppercase tracking-wide"
                         onClick={() => toggleGroup(subgroup.id)}
                       >

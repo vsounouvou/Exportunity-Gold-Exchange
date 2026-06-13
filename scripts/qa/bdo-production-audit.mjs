@@ -18,6 +18,11 @@ const publicRoutes = [
   "/",
   "/store",
   "/wholesale",
+  "/wholesale/machinery",
+  "/wholesale/investment-opportunities",
+  "/wholesale/apply",
+  "/wholesale/membership",
+  "/wholesale/counterparties",
   "/certification",
   "/verifier",
   "/login",
@@ -113,6 +118,20 @@ const untranslatedFrenchSignals = [
   "Commande",
   "Paiement",
 ];
+
+function normalizeAuditText(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
+function includesAnyText(value, needles) {
+  const normalized = normalizeAuditText(value);
+  return needles.some((needle) => normalized.includes(normalizeAuditText(needle)));
+}
 
 async function firstUsableLocator(locators, timeout = 2000) {
   for (const locator of locators) {
@@ -427,10 +446,46 @@ async function runNonDestructiveActionChecks(context) {
       await page.waitForTimeout(1800);
     }
     const wholesaleText = await page.locator("body").innerText({ timeout: 10_000 }).catch(() => "");
+    const wholesaleLooksProfessional = includesAnyText(wholesaleText, [
+      "Carte professionnelle",
+      "Debloquez l'acces Pro",
+      "Acces reserve aux membres Pro",
+      "Professional",
+    ]);
+    const wholesaleShowsEmptyProductState = includesAnyText(wholesaleText, [
+      "Aucun produit trouve",
+      "Aucun produit trouvé",
+      "No products found",
+    ]);
     checks.push({
       name: "home-wholesale-entry",
-      ok: wholesaleVisible && /march[eé] de gros|wholesale|cartographie|sourcing|bureau|acheteur/i.test(wholesaleText),
+      ok: wholesaleVisible && wholesaleLooksProfessional && !wholesaleShowsEmptyProductState,
       url: page.url(),
+      details: { wholesaleVisible, wholesaleLooksProfessional, wholesaleShowsEmptyProductState },
+    });
+
+    await page.goto(appendQuery("/wholesale", { lang: "fr", currency: "XOF", qa: String(now) }), {
+      waitUntil: "domcontentloaded",
+      timeout: 75_000,
+    });
+    await page.waitForTimeout(1800);
+    const wholesaleDirectText = await page.locator("body").innerText({ timeout: 10_000 }).catch(() => "");
+    const wholesaleDirectLooksProfessional = includesAnyText(wholesaleDirectText, [
+      "Carte professionnelle",
+      "Debloquez l'acces Pro",
+      "Acces reserve aux membres Pro",
+      "Professional",
+    ]);
+    const wholesaleDirectShowsEmptyProductState = includesAnyText(wholesaleDirectText, [
+      "Aucun produit trouve",
+      "Aucun produit trouvé",
+      "No products found",
+    ]);
+    checks.push({
+      name: "wholesale-direct-pro-space",
+      ok: wholesaleDirectLooksProfessional && !wholesaleDirectShowsEmptyProductState,
+      url: page.url(),
+      details: { wholesaleDirectLooksProfessional, wholesaleDirectShowsEmptyProductState },
     });
 
     await page.goto(appendQuery("/verifier", { lang: "fr", currency: "XOF", qa: String(now) }), {
@@ -442,6 +497,30 @@ async function runNonDestructiveActionChecks(context) {
     checks.push({
       name: "verifier-page-has-certificate-flow",
       ok: /v[eé]rifier|verify|certificat|certificate|num[eé]ro|QR/i.test(verifierText),
+      url: page.url(),
+    });
+
+    await page.goto(appendQuery("/", { lang: "en", currency: "XOF", qa: String(now) }), {
+      waitUntil: "domcontentloaded",
+      timeout: 75_000,
+    });
+    await page.waitForTimeout(1200);
+    const englishText = await page.locator("body").innerText({ timeout: 10_000 }).catch(() => "");
+    checks.push({
+      name: "public-english-url-locale",
+      ok: includesAnyText(englishText, ["Buy certified African gold", "Professional space", "Purchase Objective"]),
+      url: page.url(),
+    });
+
+    await page.goto(appendQuery("/", { lang: "ar", currency: "XOF", qa: String(now) }), {
+      waitUntil: "domcontentloaded",
+      timeout: 75_000,
+    });
+    await page.waitForTimeout(1200);
+    const arabicText = await page.locator("body").innerText({ timeout: 10_000 }).catch(() => "");
+    checks.push({
+      name: "public-arabic-url-locale",
+      ok: /[\u0600-\u06ff]/.test(arabicText),
       url: page.url(),
     });
   } catch (error) {
@@ -461,18 +540,64 @@ async function runNonDestructiveActionChecks(context) {
     await checkoutPage.waitForTimeout(3000);
     const buyButton = checkoutPage.getByRole("button", { name: /^acheter$/i }).first();
     const buyVisible = await buyButton.isVisible({ timeout: 8000 }).catch(() => false);
+    let checkoutSummaryText = "";
     if (buyVisible) {
       await buyButton.click();
       await checkoutPage.waitForTimeout(1200);
+      checkoutSummaryText = await checkoutPage.locator("body").innerText({ timeout: 10_000 }).catch(() => "");
       const onlineButton = checkoutPage.getByRole("button", { name: /continuer vers le paiement en ligne/i }).first();
       await onlineButton.click({ timeout: 10_000 });
       await checkoutPage.waitForTimeout(3500);
     }
     const checkoutText = await checkoutPage.locator("body").innerText({ timeout: 10_000 }).catch(() => "");
+    const checkoutSummaryHasDirectCopy = includesAnyText(checkoutSummaryText, [
+      "regler cette commande",
+      "régler cette commande",
+      "online payment for this order",
+    ]);
+    const checkoutSummaryHasOldVaultCopy = includesAnyText(checkoutSummaryText, [
+      "crediter votre coffre",
+      "créditer votre coffre",
+      "fund your vault",
+      "Ajoutez le montant restant",
+      "Add the remaining amount",
+    ]);
+    const orderPageOpened = /\/orders\//.test(checkoutPage.url());
+    const orderPaymentVisible = includesAnyText(checkoutText, [
+      "Paiement securise",
+      "Paiement sécurisé",
+      "Mobile Money Push",
+      "Carte / autre",
+      "Card / Other",
+    ]);
+    const oldCreditTopupVisible = includesAnyText(checkoutText, [
+      "Ajoutez le montant restant",
+      "Add the remaining amount",
+      "crediter votre coffre",
+      "créditer votre coffre",
+      "fund your vault",
+    ]);
+    const productNameLocalized = !/Stamped Gold Piece/i.test(checkoutText) && /Pi[eè]ce certifi[eé]e|Certified Gold Piece|[\u0600-\u06ff]/i.test(checkoutText);
     checks.push({
       name: "mutating-buy-to-online-payment",
-      ok: buyVisible && /Paiement en ligne|Ouvrir KKiaPay|Flutterwave|Mobile Money/i.test(checkoutText),
+      ok:
+        buyVisible &&
+        checkoutSummaryHasDirectCopy &&
+        !checkoutSummaryHasOldVaultCopy &&
+        orderPageOpened &&
+        orderPaymentVisible &&
+        !oldCreditTopupVisible &&
+        productNameLocalized,
       url: checkoutPage.url(),
+      details: {
+        buyVisible,
+        checkoutSummaryHasDirectCopy,
+        checkoutSummaryHasOldVaultCopy,
+        orderPageOpened,
+        orderPaymentVisible,
+        oldCreditTopupVisible,
+        productNameLocalized,
+      },
     });
   } catch (error) {
     checks.push({ name: "mutating-buy-to-online-payment", ok: false, error: String(error?.message || error), url: checkoutPage.url() });
@@ -516,6 +641,7 @@ function writeReports(report) {
   for (const action of report.actionChecks) {
     lines.push(`- Action ${action.name}: **${action.ok ? "PASS" : "FAIL"}** (${action.url || ""})`);
     if (action.error) lines.push(`  Error: \`${action.error}\``);
+    if (action.details) lines.push(`  Details: \`${JSON.stringify(action.details).slice(0, 500)}\``);
   }
   lines.push("");
 

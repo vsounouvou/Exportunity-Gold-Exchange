@@ -6805,15 +6805,7 @@ export function BuyerHomePage({
       });
     },
     onSuccess: (data) => {
-      const liveCheckoutTotal = cart.reduce(
-        (sum, item) => sum + item.price * item.quantity,
-        0,
-      );
-      const liveWalletBalance = Number(walletData?.wallet?.balance || 0);
-      const bdoCheckoutPath =
-        useBdoInstitutionalLayout && liveWalletBalance >= liveCheckoutTotal
-          ? `/orders/${encodeURIComponent(String(data?.order?.orderNumber))}?walletPay=1`
-          : `/orders/${encodeURIComponent(String(data?.order?.orderNumber))}?pay=1`;
+      const bdoCheckoutPath = `/orders/${encodeURIComponent(String(data?.order?.orderNumber))}?pay=1`;
       toast({
         title: "Commande enregistrée",
         description: `Commande ${data.order.orderNumber} prête pour confirmation.`,
@@ -6955,13 +6947,7 @@ export function BuyerHomePage({
   );
   const bdoCheckoutWalletBalance = Number(walletData?.wallet?.balance || 0);
   const bdoCheckoutRequiresTopup = bdoCheckoutWalletBalance < cartTotal;
-  const bdoCheckoutTopupAmount = Math.max(
-    1,
-    cartTotal - bdoCheckoutWalletBalance,
-  );
-  const bdoCheckoutPrimaryAction = bdoCheckoutRequiresTopup
-    ? bdoText("Continuer vers le paiement en ligne", "Continue to online payment", "المتابعة إلى الدفع الإلكتروني")
-    : bdoText("Confirmer avec le coffre", "Confirm with vault", "التأكيد عبر الخزنة");
+  const bdoCheckoutPrimaryAction = bdoText("Continuer vers le paiement en ligne", "Continue to online payment", "المتابعة إلى الدفع الإلكتروني");
   const conciergeCanSend =
     Boolean(chatInput.trim()) || chatAttachments.length > 0;
   const conciergeQuickPrompts = useMemo(() => {
@@ -14659,6 +14645,12 @@ export function BuyerHomePage({
     mineListingOpen;
   const conciergeIsHidden =
     conciergeOpen || conciergeHidden || modalBlockingConcierge;
+
+  useEffect(() => {
+    if (!modalBlockingConcierge || !conciergeOpen) return;
+    setConciergeOpen(false);
+    setConciergeMode("general");
+  }, [conciergeOpen, modalBlockingConcierge]);
   const renderDebugEnabled = (() => {
     if (!import.meta.env.DEV) return false;
     try {
@@ -22809,9 +22801,11 @@ export function BuyerHomePage({
                         Paiement en ligne
                       </p>
                       <p className="mt-1 text-[12px] text-white/55">
-                        {bdoCheckoutRequiresTopup
-                          ? `Montant à régler: ${formatMoney(cartTotal, "XOF")}`
-                          : "Votre coffre couvre déjà cette commande."}
+                        {bdoText(
+                          `Montant à régler: ${formatMoney(cartTotal, "XOF")}`,
+                          `Amount payable: ${formatMoney(cartTotal, "XOF")}`,
+                          `المبلغ المستحق: ${formatMoney(cartTotal, "XOF")}`,
+                        )}
                       </p>
                     </div>
                     <div className="text-right text-[11px] text-white/55">
@@ -22890,9 +22884,7 @@ export function BuyerHomePage({
                     {orderMutation.isPending ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        {bdoCheckoutRequiresTopup
-                          ? bdoText("Ouverture du paiement...", "Opening payment...", "جار فتح الدفع...")
-                          : bdoText("Confirmation...", "Confirming...", "جار التأكيد...")}
+                        {bdoText("Ouverture du paiement...", "Opening payment...", "جار فتح الدفع...")}
                       </>
                     ) : (
                       bdoCheckoutPrimaryAction
@@ -22908,17 +22900,11 @@ export function BuyerHomePage({
                 </div>
 
                 <p className="text-[12px] text-white/50">
-                  {bdoCheckoutRequiresTopup
-                    ? bdoText(
-                        "Nous ouvrons le paiement en ligne pour régler cette commande. Le statut sera mis à jour après confirmation du prestataire.",
-                        "We are opening online payment for this order. The status updates after provider confirmation.",
-                        "نفتح الدفع الإلكتروني لهذا الطلب. يتم تحديث الحالة بعد تأكيد مزود الدفع.",
-                      )
-                    : bdoText(
-                        "Commande réglée depuis votre coffre. Suivi disponible immédiatement.",
-                        "Order paid from your vault. Tracking is available immediately.",
-                        "تم دفع الطلب من الخزنة. المتابعة متاحة فوراً.",
-                      )}
+                  {bdoText(
+                    "Nous ouvrons le paiement en ligne pour régler cette commande. Le statut sera mis à jour après confirmation du prestataire.",
+                    "We are opening online payment for this order. The status updates after provider confirmation.",
+                    "نفتح الدفع الإلكتروني لهذا الطلب. يتم تحديث الحالة بعد تأكيد مزود الدفع.",
+                  )}
                 </p>
               </div>
             </div>
@@ -23608,7 +23594,7 @@ export function BuyerHomePage({
         </button>
       ) : null}
 
-      {!suppressFloatingMobileChrome && conciergeOpen && (
+      {!suppressFloatingMobileChrome && conciergeOpen && !modalBlockingConcierge && (
         <div
           className={`fixed inset-0 flex items-end ${
             isMobile
@@ -23782,9 +23768,11 @@ export function BuyerHomePage({
                   </div>
 
                   <div className="mt-3 rounded-xl border border-white/10 bg-black/25 px-3 py-2 text-[12px] text-white/70">
-                    {bdoCheckoutRequiresTopup
-                      ? `Le paiement en ligne s'ouvrira pour ${formatMoney(bdoCheckoutTopupAmount, "XOF")}.`
-                      : "Votre coffre couvre déjà cette commande."}
+                    {bdoText(
+                      `Le paiement en ligne s'ouvrira pour ${formatMoney(cartTotal, "XOF")}.`,
+                      `Online payment opens for ${formatMoney(cartTotal, "XOF")}.`,
+                      `سيتم فتح الدفع الإلكتروني بمبلغ ${formatMoney(cartTotal, "XOF")}.`,
+                    )}
                   </div>
 
                   {cartHasStamped ? (
@@ -23840,9 +23828,7 @@ export function BuyerHomePage({
                       {orderMutation.isPending ? (
                         <>
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          {bdoCheckoutRequiresTopup
-                            ? bdoText("Ouverture du paiement...", "Opening payment...", "جار فتح الدفع...")
-                            : bdoText("Confirmation...", "Confirming...", "جار التأكيد...")}
+                          {bdoText("Ouverture du paiement...", "Opening payment...", "جار فتح الدفع...")}
                         </>
                       ) : (
                         bdoCheckoutPrimaryAction

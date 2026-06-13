@@ -109,15 +109,15 @@ function orderCopy(language: string) {
       items: "المنتجات",
       qty: "الكمية",
       each: "لكل وحدة",
-      payNow: "ادفع الآن لتأكيد الطلب وبدء التنفيذ.",
-      walletBalance: "رصيد الاعتمادات",
-      payWithCredits: "الدفع من الاعتمادات",
+      payNow: "الدفع عبر الإنترنت متاح لتأكيد هذا الطلب.",
+      walletBalance: "اعتمادات الشراء المتاحة",
+      payWithCredits: "استخدام اعتمادات الشراء",
       processing: "جار المعالجة...",
       onlinePayment: "الدفع عبر الإنترنت",
       onlinePaymentTitle: "الدفع عبر الإنترنت",
-      onlinePaymentDescription: "أضف المبلغ المتبقي لاعتمادات الشراء، ثم سيتم تأكيد الطلب تلقائياً عند توفر الرصيد.",
-      onlinePaymentEyebrow: "المبلغ المتبقي",
-      onlinePaymentSummary: "اعتمادات شراء لتأكيد الطلب",
+      onlinePaymentDescription: "نفتح الدفع الإلكتروني الآمن لهذا الطلب. يتم تحديث الحالة بعد تأكيد مزود الدفع.",
+      onlinePaymentEyebrow: "المبلغ المستحق",
+      onlinePaymentSummary: "دفع إلكتروني مباشر",
       loadingOrder: "تحميل الطلب...",
       failedOrder: "تعذر تحميل تفاصيل الطلب.",
       back: "رجوع",
@@ -147,15 +147,15 @@ function orderCopy(language: string) {
       items: "Items",
       qty: "Qty",
       each: "each",
-      payNow: "Pay now to confirm your order and start fulfillment.",
-      walletBalance: "Purchase credits balance",
-      payWithCredits: "Pay with credits",
+      payNow: "Online payment is available to confirm this order.",
+      walletBalance: "Available purchase credits",
+      payWithCredits: "Use purchase credits",
       processing: "Processing...",
       onlinePayment: "Online payment",
       onlinePaymentTitle: "Online payment",
-      onlinePaymentDescription: "Add the remaining amount to your purchase credits. The order will be confirmed automatically when the balance is available.",
-      onlinePaymentEyebrow: "Remaining amount",
-      onlinePaymentSummary: "Purchase credits for order confirmation",
+      onlinePaymentDescription: "We open secure online payment for this order. The status updates after provider confirmation.",
+      onlinePaymentEyebrow: "Amount payable",
+      onlinePaymentSummary: "Direct online payment",
       loadingOrder: "Loading order...",
       failedOrder: "Failed to load order details.",
       back: "Back",
@@ -184,15 +184,15 @@ function orderCopy(language: string) {
     items: "Articles",
     qty: "Qté",
     each: "unité",
-    payNow: "Payez maintenant pour confirmer la commande et lancer le traitement.",
-    walletBalance: "Solde crédits d'achat",
-    payWithCredits: "Payer avec les crédits",
+    payNow: "Le paiement en ligne est disponible pour confirmer cette commande.",
+    walletBalance: "Crédits d'achat disponibles",
+    payWithCredits: "Utiliser les crédits d'achat",
     processing: "Traitement...",
     onlinePayment: "Paiement en ligne",
     onlinePaymentTitle: "Paiement en ligne",
-    onlinePaymentDescription: "Ajoutez le montant restant à vos crédits d'achat. La commande sera confirmée automatiquement dès que le solde est disponible.",
-    onlinePaymentEyebrow: "Montant restant",
-    onlinePaymentSummary: "Crédits d'achat pour confirmer la commande",
+    onlinePaymentDescription: "Nous ouvrons un paiement en ligne sécurisé pour cette commande. Le statut sera mis à jour après confirmation du prestataire.",
+    onlinePaymentEyebrow: "Montant à régler",
+    onlinePaymentSummary: "Paiement en ligne direct",
     loadingOrder: "Chargement de la commande...",
     failedOrder: "Impossible de charger les détails de la commande.",
     back: "Retour",
@@ -420,23 +420,24 @@ export default function MyOrdersPage() {
                     </div>
                   </div>
                   <div className="flex flex-col gap-2 sm:items-end">
-                    <Button
-                      className="bg-amber-500 hover:bg-amber-400 text-black font-semibold"
-                      disabled={!canPayWithWallet || payWithWalletMutation.isPending}
-                      onClick={() => payWithWalletMutation.mutate(String(orderNumber))}
-                    >
-                      {payWithWalletMutation.isPending ? copy.processing : copy.payWithCredits}
-                    </Button>
-                    {!canPayWithWallet ? (
-                      <KkiapayCheckoutButton
-                        orderId={Number(order.id)}
-                        buyerEmail={checkoutBuyerEmail}
-                        label={copy.onlinePayment}
-                        autoOpen={orderPayRequested}
-                        onPaymentCreated={() => {
-                          void Promise.allSettled([detailQuery.refetch(), ordersQuery.refetch(), walletSummaryQuery.refetch()]);
-                        }}
-                      />
+                    <KkiapayCheckoutButton
+                      orderId={Number(order.id)}
+                      buyerEmail={checkoutBuyerEmail}
+                      label={copy.onlinePayment}
+                      autoOpen={orderPayRequested}
+                      onPaymentCreated={() => {
+                        void Promise.allSettled([detailQuery.refetch(), ordersQuery.refetch(), walletSummaryQuery.refetch()]);
+                      }}
+                    />
+                    {canPayWithWallet ? (
+                      <Button
+                        variant="outline"
+                        className="border-white/15 bg-white/5 text-white hover:bg-white/10 hover:text-white"
+                        disabled={payWithWalletMutation.isPending}
+                        onClick={() => payWithWalletMutation.mutate(String(orderNumber))}
+                      >
+                        {payWithWalletMutation.isPending ? copy.processing : copy.payWithCredits}
+                      </Button>
                     ) : null}
                   </div>
                 </div>

@@ -4160,6 +4160,17 @@ export function BuyerHomePage({
     [cart],
   );
 
+  const loadPickupPartners = useCallback(async () => {
+    const res = await fetch(resolveApiUrl("/api/stamped-gold/jewellers/public"), {
+      headers: { ...getDemoModeHeaders() },
+    });
+    const data = await res.json().catch(() => ({}));
+    const rows = Array.isArray(data?.jewellers) ? data.jewellers : [];
+    return rows
+      .filter((j: any) => j?.isActive)
+      .map((j: any) => ({ id: String(j.id), name: String(j.name) }));
+  }, []);
+
   useEffect(() => {
     if (!pickupPartnerId) return;
     safeLocalStorageSet("bdo_pickup_partner_v1", pickupPartnerId);
@@ -4169,18 +4180,10 @@ export function BuyerHomePage({
     if (!checkoutOpen || !cartHasStamped) return;
     let cancelled = false;
     setPickupPartnersLoading(true);
-    fetch(resolveApiUrl("/api/stamped-gold/jewellers/public"), {
-      headers: { ...getDemoModeHeaders() },
-    })
-      .then((r) => r.json())
-      .then((data) => {
+    loadPickupPartners()
+      .then((partners) => {
         if (cancelled) return;
-        const rows = Array.isArray(data?.jewellers) ? data.jewellers : [];
-        setPickupPartners(
-          rows
-            .filter((j: any) => j?.isActive)
-            .map((j: any) => ({ id: String(j.id), name: String(j.name) })),
-        );
+        setPickupPartners(partners);
       })
       .catch(() => {
         if (!cancelled) setPickupPartners([]);
@@ -4191,7 +4194,7 @@ export function BuyerHomePage({
     return () => {
       cancelled = true;
     };
-  }, [checkoutOpen, cartHasStamped]);
+  }, [checkoutOpen, cartHasStamped, loadPickupPartners]);
 
   const selectedPickupPartner =
     pickupPartners.find((partner) => partner.id === pickupPartnerId) || null;
@@ -6709,6 +6712,14 @@ export function BuyerHomePage({
     setVaultOpen(true);
     setCartOpen(false);
     setWalletTopupAutoOpen(true);
+  };
+  const openBdoCheckoutSummary = () => {
+    setConciergeMode("general");
+    setConciergeOpen(false);
+    setCartOpen(false);
+    setCheckoutStep(0);
+    setCheckoutMessages([]);
+    setCheckoutOpen(true);
   };
   const addToCart = (product: any, shop: any) => {
     if (isWholesalePreview) {
@@ -10459,7 +10470,7 @@ export function BuyerHomePage({
       )
     : false;
   const handleBdoImmediatePurchase = useCallback(
-    (product: any) => {
+    async (product: any) => {
       const stock = getProductStockLabel(product);
       if (!stock.inStock) {
         toast({
@@ -10470,16 +10481,105 @@ export function BuyerHomePage({
         });
         return;
       }
+
+      const productId = Number(product?.id);
+      const sellerId = Number(product?.shopId || product?.sellerId);
+      const categorySlug = getCartCategorySlug(product, isGoldTenant);
+      const requiresPickup = categorySlug === "stamped";
+
+      if (!Number.isFinite(productId) || productId <= 0 || !Number.isFinite(sellerId) || sellerId <= 0) {
+        toast({
+          title: "Commande impossible",
+          description:
+            "Cette fiche produit n'a pas encore les informations vendeur nécessaires au paiement direct.",
+          variant: "destructive",
+        });
+        setSelectedProduct(product);
+        return;
+      }
+
+      let nextPickupPartnerId = pickupPartnerId;
+      if (
+        requiresPickup &&
+        nextPickupPartnerId &&
+        pickupPartners.length &&
+        !pickupPartners.some((partner) => partner.id === nextPickupPartnerId)
+      ) {
+        nextPickupPartnerId = "";
+        setPickupPartnerId("");
+      }
+
+      if (requiresPickup && !nextPickupPartnerId) {
+        setPickupPartnersLoading(true);
+        try {
+          const partners = pickupPartners.length
+            ? pickupPartners
+            : await loadPickupPartners();
+          setPickupPartners(partners);
+          if (partners.length === 1 && partners[0]?.id) {
+            nextPickupPartnerId = partners[0].id;
+            setPickupPartnerId(nextPickupPartnerId);
+          } else {
+            setCart([
+              {
+                productId,
+                name: product.name,
+                price: getCartUnitPrice(product),
+                quantity: 1,
+                shopId: sellerId,
+                shopName: product.shopName,
+                categorySlug,
+              },
+            ]);
+            setSelectedProduct(null);
+            setConciergeOpen(false);
+            setCartOpen(false);
+            setCheckoutStep(0);
+            setCheckoutMessages([]);
+            setCheckoutOpen(true);
+            toast({
+              title: "Retrait certifié requis",
+              description:
+                partners.length > 0
+                  ? "Choisissez un partenaire de retrait, puis le paiement en ligne s'ouvrira."
+                  : "Aucun partenaire de retrait actif n'est disponible pour le moment.",
+              variant: partners.length > 0 ? undefined : "destructive",
+            });
+            return;
+          }
+        } catch (error: any) {
+          toast({
+            title: "Retrait indisponible",
+            description:
+              error?.message ||
+              "Impossible de charger les partenaires de retrait pour cette pièce.",
+            variant: "destructive",
+          });
+          return;
+        } finally {
+          setPickupPartnersLoading(false);
+        }
+      }
+
       if (selectedProduct?.id === product?.id) setSelectedProduct(null);
-      addToCart(product, null);
       setCartOpen(false);
       setConciergeOpen(false);
-      window.setTimeout(() => {
-        setCheckoutOpen(true);
-        setCheckoutStep(0);
-      }, 0);
+      setCheckoutOpen(false);
+      orderMutation.mutate({
+        sellerId,
+        items: [{ productId, quantity: 1 }],
+        pickupPartnerId: requiresPickup ? nextPickupPartnerId : undefined,
+      });
     },
-    [addToCart, selectedProduct?.id, toast],
+    [
+      isGoldTenant,
+      loadPickupPartners,
+      orderMutation,
+      pickupPartnerId,
+      pickupPartners,
+      selectedProduct?.id,
+      toast,
+    ],
   );
   const bdoMobileFeaturedProducts = useMemo(() => {
     if (!bdoCatalogProducts.length) return [];
@@ -14638,8 +14738,12 @@ export function BuyerHomePage({
     participateOpen ||
     bdoPurchaseOpen ||
     bdoSecondaryOpen ||
+    selectedProduct ||
+    selectedMachinery ||
+    selectedOpportunity ||
     cartOpen ||
     checkoutOpen ||
+    vaultOpen ||
     wholesaleApplyOpen ||
     customEquipmentOpen ||
     mineListingOpen;
@@ -23655,7 +23759,7 @@ export function BuyerHomePage({
                       <Badge className="border-white/10 bg-white/10 text-[10px] text-white/70">
                         {conciergeProfile.roleLabel}
                       </Badge>
-                      {conciergeMode === "checkout" ? (
+                      {conciergeMode === "checkout" && !useBdoInstitutionalLayout ? (
                         <Badge className="border-[#D4AF37]/30 bg-[#D4AF37]/15 text-[10px] text-[#E8C873]">
                           {bdoText("Assistance paiement", "Payment assistance", "مساعدة الدفع")}
                         </Badge>
@@ -23696,9 +23800,15 @@ export function BuyerHomePage({
                   <Button
                     size="sm"
                     className={BDO_LUX_PRIMARY_BUTTON}
-                    onClick={() => setConciergeMode("checkout")}
+                    onClick={
+                      useBdoInstitutionalLayout
+                        ? openBdoCheckoutSummary
+                        : () => setConciergeMode("checkout")
+                    }
                   >
-                    {bdoText("Payer", "Pay", "ادفع")} {formatMoney(cartTotal, "XOF")}
+                    {useBdoInstitutionalLayout
+                      ? bdoCheckoutPrimaryAction
+                      : `${bdoText("Payer", "Pay", "ادفع")} ${formatMoney(cartTotal, "XOF")}`}
                   </Button>
                 ) : null}
                 <Button
@@ -23735,7 +23845,7 @@ export function BuyerHomePage({
                 </Button>
               </div>
 
-              {conciergeMode === "checkout" && cart.length > 0 ? (
+              {conciergeMode === "checkout" && cart.length > 0 && !useBdoInstitutionalLayout ? (
                 <div className="mt-4 rounded-2xl border border-[#D4AF37]/20 bg-[#D4AF37]/8 p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div>

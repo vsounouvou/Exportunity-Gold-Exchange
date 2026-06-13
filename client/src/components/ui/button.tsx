@@ -39,15 +39,36 @@ export interface ButtonProps
   asChild?: boolean
 }
 
+function hasReadableChild(children: React.ReactNode): boolean {
+  return React.Children.toArray(children).some((child) => {
+    if (typeof child === "string" || typeof child === "number") {
+      return String(child).trim().length > 0
+    }
+    if (React.isValidElement<{ children?: React.ReactNode }>(child)) {
+      return hasReadableChild(child.props.children)
+    }
+    return false
+  })
+}
+
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, asChild = false, ...props }, ref) => {
+  ({ className, variant, size, asChild = false, children, ...props }, ref) => {
     const Comp = asChild ? Slot : "button"
+    const hasAccessibleName = Boolean(
+      props["aria-label"] ||
+        props["aria-labelledby"] ||
+        props.title ||
+        hasReadableChild(children),
+    )
     return (
       <Comp
         className={cn(buttonVariants({ variant, size, className }))}
         ref={ref}
         {...props}
-      />
+        aria-label={hasAccessibleName ? props["aria-label"] : "Action"}
+      >
+        {children}
+      </Comp>
     )
   }
 )

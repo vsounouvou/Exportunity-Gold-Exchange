@@ -7,6 +7,7 @@ const baseURL = (process.env.E2E_BASE_URL || "https://boursedelor.com").replace(
 const adminEmail = process.env.E2E_ADMIN_EMAIL || "";
 const adminPassword = process.env.E2E_ADMIN_PASSWORD || "";
 const runMutatingChecks = /^(1|true|yes)$/i.test(String(process.env.BDO_AUDIT_MUTATING || ""));
+const auditScope = String(process.env.BDO_AUDIT_SCOPE || "all").trim().toLowerCase();
 const now = Date.now();
 const outDir = path.resolve(process.cwd(), "artifacts", "bdo-production-audit", String(now));
 fs.mkdirSync(outDir, { recursive: true });
@@ -65,6 +66,25 @@ const adminRoutes = [
   "/admin/agents-os",
   "/admin/agents/governance",
 ];
+
+function parseCsvEnv(name) {
+  return String(process.env[name] || "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean);
+}
+
+function filterList(values, selected) {
+  if (!selected.length) return values;
+  const selectedSet = new Set(selected);
+  return values.filter((value) => selectedSet.has(value));
+}
+
+const selectedLanguages = filterList(languages, parseCsvEnv("BDO_AUDIT_LANGUAGES"));
+const selectedAdminLanguages = filterList(adminLanguages, parseCsvEnv("BDO_AUDIT_LANGUAGES"));
+const selectedRouteFilters = parseCsvEnv("BDO_AUDIT_ROUTES");
+const selectedPublicRoutes = filterList(publicRoutes, selectedRouteFilters);
+const selectedAdminRoutes = filterList(adminRoutes, selectedRouteFilters);
 
 const forbiddenPublicPatterns = [
   /Exportunity Marketplace/i,
@@ -207,6 +227,16 @@ async function setupLocale(page, language) {
   }, language);
 }
 
+async function waitForAppReady(page, timeout = 25_000) {
+  const deadline = Date.now() + timeout;
+  while (Date.now() < deadline) {
+    const text = await page.locator("body").innerText({ timeout: 1000 }).catch(() => "");
+    if (text.trim() && !/Resolving tenant/i.test(text)) return true;
+    await page.waitForTimeout(500).catch(() => {});
+  }
+  return false;
+}
+
 async function collectPageDiagnostics(page, options) {
   const bodyText = await page.locator("body").innerText({ timeout: 12_000 }).catch(() => "");
   const title = await page.title().catch(() => "");
@@ -330,7 +360,8 @@ async function auditRoute(context, route, language, scope) {
     const response = await page.goto(targetUrl, { waitUntil: "domcontentloaded", timeout: 75_000 });
     responseStatus = response?.status() ?? null;
     await page.waitForLoadState("networkidle", { timeout: 15_000 }).catch(() => {});
-    await page.waitForTimeout(1200);
+    await waitForAppReady(page);
+    await page.waitForTimeout(800);
   } catch (error) {
     navigationError = String(error?.message || error);
   }
@@ -384,7 +415,8 @@ async function loginAdmin(context) {
 
   try {
     await page.goto(appendQuery("/admin", { qa: String(now) }), { waitUntil: "domcontentloaded", timeout: 75_000 });
-    await page.waitForTimeout(1200);
+    await waitForAppReady(page);
+    await page.waitForTimeout(800);
 
     if (!/\/dashboard|\/admin\/password/.test(page.url())) {
       const emailInput = await firstUsableLocator([
@@ -689,22 +721,36 @@ async function main() {
 
   const routes = [];
 
-  for (const route of publicRoutes) {
-    for (const language of languages) {
-      routes.push(await auditRoute(context, route, language, "public"));
+  if (auditScope === "all" || auditScope === "public") {
+    for (const route of selectedPublicRoutes) {
+      for (const language of selectedLanguages) {
+        routes.push(await auditRoute(context, route, language, "public"));
+      }
     }
   }
 
-  const adminLogin = await loginAdmin(context);
-  if (adminLogin.ok) {
-    for (const route of adminRoutes) {
-      for (const language of adminLanguages) {
+  const adminLogin = auditScope === "public"
+    ? { ok: false, skipped: true, reason: "BDO_AUDIT_SCOPE=public" }
+    : await loginAdmin(context);
+  if (adminLogin.ok && (auditScope === "all" || auditScope === "admin")) {
+    for (const route of selectedAdminRoutes) {
+      for (const language of selectedAdminLanguages) {
         routes.push(await auditRoute(context, route, language, "admin"));
       }
     }
   }
 
-  const actionChecks = await runNonDestructiveActionChecks(context);
+  const actionChecks = auditScope === "admin" ? [] : await runNonDestructiveActionChecks(context);
+
+  if (selectedRouteFilters.length) {
+    const checkedRoutes = new Set([...selectedPublicRoutes, ...selectedAdminRoutes]);
+    const missingRoutes = selectedRouteFilters.filter((route) => !checkedRoutes.has(route));
+    for (const route of missingRoutes) {
+      for (const language of selectedLanguages) {
+        routes.push(await auditRoute(context, route, language, "public"));
+      }
+    }
+  }
 
   await context.close();
   await browser.close();

@@ -88,7 +88,7 @@ function paymentCopy(language: string) {
 
   if (language === "ar") {
     return {
-      payNow: "الدفع عبر الإنترنت",
+      payNow: "الدفع الإلكتروني",
       title: "دفع آمن",
       description: "اختر طريقة الدفع المتاحة لمنطقتك.",
       push: "الدفع عبر الهاتف",
@@ -181,7 +181,9 @@ export function KkiapayCheckoutButton(props: {
   const sandbox = useMemo(() => String(widgetInit?.mode || "").toUpperCase() === "SANDBOX", [widgetInit?.mode]);
 
   useEffect(() => {
-    if (props.autoOpen) setOpen(true);
+    if (!props.autoOpen) return;
+    setTab("widget");
+    setOpen(true);
   }, [props.autoOpen]);
 
   useEffect(() => {
@@ -257,7 +259,7 @@ export function KkiapayCheckoutButton(props: {
   return (
     <>
       <Button
-        className="bg-amber-500 hover:bg-amber-400 text-black font-semibold"
+        className="border border-[#F5F3EC]/18 bg-[linear-gradient(135deg,#E8C873_0%,#D4AF37_52%,#A77C1E_100%)] text-[#0B0B0D] shadow-[0_12px_28px_rgba(212,175,55,0.22)] hover:brightness-110 hover:text-[#0B0B0D] font-semibold"
         onClick={() => setOpen(true)}
         disabled={loading}
       >
@@ -285,7 +287,7 @@ export function KkiapayCheckoutButton(props: {
             <TabsList className="w-full bg-white/5 border border-white/10">
               <TabsTrigger
                 value="push"
-                className="flex-1 text-xs sm:text-sm data-[state=active]:bg-amber-500/20 data-[state=active]:text-amber-300"
+                className="flex-1 text-xs sm:text-sm data-[state=active]:bg-[#D4AF37]/20 data-[state=active]:text-[#E8C873]"
               >
                 {copy.push}
               </TabsTrigger>
@@ -329,7 +331,7 @@ export function KkiapayCheckoutButton(props: {
               </div>
 
               <Button
-                className="w-full bg-amber-500 hover:bg-amber-400 text-black font-semibold"
+                className="w-full bg-[#D4AF37] hover:bg-[#E8C873] text-[#0B0B0D] font-semibold"
                 onClick={submitPush}
                 disabled={!pushPhone || !pushOperator || pushLoading}
               >

@@ -12,6 +12,7 @@ vite.config.ts.*
 *.zip
 test-results
 reports
+artifacts
 deploy-report-*.md
 ops/local-releases/
 ops/local-backups/

@@ -74,6 +74,7 @@ git_dirty() {
       ':(exclude)ops/local-releases' \
       ':(exclude)ops/local-backups' \
       ':(exclude)ops/tmp' \
+      ':(exclude)artifacts' \
       ':(exclude)client/src/navigation/routes.generated.ts'
   )"
   if [[ -n "$status_output" ]]; then

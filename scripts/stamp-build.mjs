@@ -60,6 +60,7 @@ function isGitDirty(repoRootDir) {
         ":(exclude)ops/local-releases",
         ":(exclude)ops/local-backups",
         ":(exclude)ops/tmp",
+        ":(exclude)client/src/navigation/routes.generated.ts",
       ],
       { cwd: repoRootDir, stdio: ["ignore", "pipe", "ignore"] },
     )

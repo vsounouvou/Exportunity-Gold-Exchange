@@ -62,6 +62,19 @@ function safeDate(value: unknown) {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
+function hasQueryFlag(locationValue: string, key: string) {
+  const queryParts: string[] = [];
+  if (locationValue.includes("?")) queryParts.push(locationValue.split("?")[1] || "");
+  if (typeof window !== "undefined") queryParts.push(window.location.search.replace(/^\?/, ""));
+
+  for (const query of queryParts) {
+    if (!query) continue;
+    const value = new URLSearchParams(query).get(key);
+    if (value === "1" || value === "true") return true;
+  }
+  return false;
+}
+
 function orderCopy(language: string) {
   if (language === "ar") {
     return {
@@ -263,15 +276,11 @@ export default function MyOrdersPage() {
   });
 
   const walletPayRequested = useMemo(() => {
-    const qs = location.includes("?") ? location.split("?")[1] : "";
-    const value = new URLSearchParams(qs).get("walletPay");
-    return value === "1" || value === "true";
+    return hasQueryFlag(location, "walletPay");
   }, [location]);
 
   const orderPayRequested = useMemo(() => {
-    const qs = location.includes("?") ? location.split("?")[1] : "";
-    const value = new URLSearchParams(qs).get("pay");
-    return value === "1" || value === "true";
+    return hasQueryFlag(location, "pay");
   }, [location]);
 
   useEffect(() => {

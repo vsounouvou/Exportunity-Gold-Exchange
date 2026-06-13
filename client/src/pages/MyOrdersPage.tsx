@@ -15,6 +15,8 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { MobileBottomNav } from "@/components/marketplace/MobileBottomNav";
 
+const BDO_ORDER_FALLBACK_IMAGE = "/tenants/bdo/official/products/piece-20g-22k-box.jpg";
+
 type OrderSummary = {
   id: number;
   orderNumber: string;
@@ -390,12 +392,12 @@ export default function MyOrdersPage() {
                     <div key={item.id} className="flex items-center gap-3 bg-white/5 border border-white/10 rounded-xl p-3">
                       <div className="w-12 h-12 rounded-lg overflow-hidden border border-white/10 flex-shrink-0">
                         <img
-                          src={item.productImage || "/product-images/gold-coin.png"}
+                          src={item.productImage || BDO_ORDER_FALLBACK_IMAGE}
                           alt={localizeOrderItemName(item.productName, language)}
                           className="w-full h-full object-cover"
                           onError={(e) => {
                             e.currentTarget.onerror = null;
-                            e.currentTarget.src = "/product-images/gold-coin.png";
+                            e.currentTarget.src = BDO_ORDER_FALLBACK_IMAGE;
                           }}
                         />
                       </div>
@@ -594,12 +596,12 @@ export default function MyOrdersPage() {
                       <div className="flex items-center gap-3">
                         <div className="w-12 h-12 rounded-xl overflow-hidden border border-white/10 flex-shrink-0">
                           <img
-                            src={o.previewImage || "/product-images/gold-coin.png"}
+                            src={o.previewImage || BDO_ORDER_FALLBACK_IMAGE}
                             alt={o.orderNumber}
                             className="w-full h-full object-cover"
                             onError={(e) => {
                               e.currentTarget.onerror = null;
-                              e.currentTarget.src = "/product-images/gold-coin.png";
+                              e.currentTarget.src = BDO_ORDER_FALLBACK_IMAGE;
                             }}
                           />
                         </div>

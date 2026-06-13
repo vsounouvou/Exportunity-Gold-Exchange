@@ -32,8 +32,8 @@ const PLATFORM_LABEL_BY_TENANT: Record<TenantKey, string> = {
 
 const FALLBACK_CATEGORY_VISUALS: Record<TenantKey, TenantCategoryVisual[]> = {
   bdo: [
-    { slug: "dore", label: "Dore", icon: "gem", image: "/product-images/dore-nuggets-01.png", accent: "#EA580C" },
-    { slug: "stamped", label: "Or Estampille", icon: "shield", image: "/product-images/stamped-bar-01.png", accent: "#10B981" },
+    { slug: "dore", label: "Dore", icon: "gem", image: "/tenants/bdo/official/products/piece-20g-22k-box.jpg", accent: "#D4AF37" },
+    { slug: "stamped", label: "Or Estampille", icon: "shield", image: "/tenants/bdo/official/products/ingot-50g-22k-box.jpg", accent: "#E8C873" },
   ],
   exportunity: [{ slug: "default", label: "Marketplace", icon: "package", image: "/tenants/exportunity/placeholder-product.svg", accent: "#0EA5E9" }],
   zone: [{ slug: "default", label: "Marketplace", icon: "package", image: "/tenants/zone/placeholder-product.svg", accent: "#0EA5E9" }],

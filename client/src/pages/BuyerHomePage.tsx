@@ -188,7 +188,7 @@ import {
 
 const BDO_OFFICIAL_ASSET_ROOT = "/tenants/bdo/official";
 const BDO_OFFICIAL_PRODUCTS = `${BDO_OFFICIAL_ASSET_ROOT}/products`;
-const goldDoreImage = "/product-images/gold-coin.png";
+const goldDoreImage = `${BDO_OFFICIAL_PRODUCTS}/piece-20g-22k-box.jpg`;
 const stampedGoldImage = `${BDO_OFFICIAL_PRODUCTS}/piece-20g-22k-box.jpg`;
 const DEFAULT_FOUNDER_PORTRAIT =
   "/tenants/rayon1km/market-visuals/nearby-market.png";
@@ -199,7 +199,7 @@ const RAYON_BANNER_SIGNALS = [
 ] as const;
 const heritageGoldImage = `${BDO_OFFICIAL_PRODUCTS}/ingot-100g-box.jpg`;
 const refinedGoldBarsImage = `${BDO_OFFICIAL_PRODUCTS}/piece-20g-22k-box.jpg`;
-const jewelryImage = "/product-images/jewelry-chain.png";
+const jewelryImage = `${BDO_OFFICIAL_PRODUCTS}/piece-20g-18k-macro.jpg`;
 const BDO_HOME_ASSETS = {
   heroIngot: `${BDO_OFFICIAL_ASSET_ROOT}/hero/hero-ingot-box.jpg`,
   pattern: "/tenants/bdo/home/pattern-africa-gold.png",
@@ -7703,10 +7703,10 @@ export function BuyerHomePage({
     ...BDO_HOME_ASSETS.productVariants.piece20_22,
     BDO_HOME_ASSETS.products.coin50,
     BDO_HOME_ASSETS.products.ingot100,
-    "/product-images/jewelry-chain.png",
-    "/product-images/jewelry-bracelet.png",
-    "/product-images/custom-ring.png",
-    "/product-images/dore-nuggets-01.png",
+    jewelryImage,
+    BDO_HOME_ASSETS.products.coin10,
+    BDO_HOME_ASSETS.products.coin20,
+    goldDoreImage,
   ];
 
   const buildProductPlaceholder = (product: any, variantIndex: number) => {
@@ -7719,9 +7719,9 @@ export function BuyerHomePage({
     const category = getCategory(product);
     const meta = getCategoryMeta(category);
     const descriptor = `${product?.name || ""} ${meta.label || ""} ${brand.name || ""}`.toLowerCase();
-    if (descriptor.includes("ring")) return "/product-images/custom-ring.png";
-    if (descriptor.includes("bracelet")) return "/product-images/jewelry-bracelet.png";
-    if (descriptor.includes("chain") || descriptor.includes("necklace")) return "/product-images/jewelry-chain.png";
+    if (descriptor.includes("ring")) return BDO_HOME_ASSETS.products.coin10;
+    if (descriptor.includes("bracelet")) return BDO_HOME_ASSETS.products.coin20;
+    if (descriptor.includes("chain") || descriptor.includes("necklace")) return jewelryImage;
     if (descriptor.includes("100g") || descriptor.includes("ingot") || descriptor.includes("lingot")) return BDO_HOME_ASSETS.products.ingot100;
     if (descriptor.includes("50g")) return BDO_HOME_ASSETS.products.coin50;
     if (descriptor.includes("22k")) return BDO_HOME_ASSETS.products.coin22;
@@ -7729,7 +7729,7 @@ export function BuyerHomePage({
     if (descriptor.includes("10g")) return BDO_HOME_ASSETS.products.coin10;
     if (descriptor.includes("coin")) return BDO_HOME_ASSETS.products.coin22;
     if (descriptor.includes("card")) return BDO_HOME_ASSETS.products.coin20;
-    if (descriptor.includes("dore") || descriptor.includes("nugget") || descriptor.includes("dust")) return "/product-images/dore-nuggets-01.png";
+    if (descriptor.includes("dore") || descriptor.includes("nugget") || descriptor.includes("dust")) return goldDoreImage;
     if (descriptor.includes("bust") || descriptor.includes("portrait")) return BDO_HOME_ASSETS.products.ingot100;
     if (descriptor.includes("art") || descriptor.includes("medallion")) return BDO_HOME_ASSETS.products.coin22;
     const seed = Number(product?.id || 0) + variantIndex * 17;
@@ -7754,15 +7754,15 @@ export function BuyerHomePage({
     "/product-images/jewelry-chain.png": jewelryImage,
     "/product-images/jewelry-chain-02.png": jewelryImage,
     "/product-images/jewelry-bracelet.png":
-      "/product-images/jewelry-bracelet.png",
+      BDO_HOME_ASSETS.products.coin20,
     "/product-images/jewelry-bracelet-02.png":
-      "/product-images/jewelry-bracelet.png",
+      BDO_HOME_ASSETS.products.coin20,
     "/product-images/jewelry-earrings.png":
-      "/product-images/jewelry-earrings.png",
+      BDO_HOME_ASSETS.products.coin10,
     "/product-images/jewelry-pendant.png":
-      "/product-images/jewelry-pendant.png",
-    "/product-images/custom-ring.png": "/product-images/custom-ring.png",
-    "/product-images/custom-ring-02.png": "/product-images/custom-ring.png",
+      BDO_HOME_ASSETS.products.coin22,
+    "/product-images/custom-ring.png": BDO_HOME_ASSETS.products.coin10,
+    "/product-images/custom-ring-02.png": BDO_HOME_ASSETS.products.coin10,
   };
 
   const isPlaceholderAsset = (value: string): boolean => {
@@ -10649,7 +10649,7 @@ export function BuyerHomePage({
     () =>
       bdoHeroPreviewProduct
         ? getCommodityImage(bdoHeroPreviewProduct)
-        : "/product-images/stamped-bar-01.png",
+        : BDO_HOME_ASSETS.products.coin50,
     [bdoHeroPreviewProduct],
   );
   const bdoHeroPreviewMeta = useMemo(() => {

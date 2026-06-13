@@ -1656,7 +1656,7 @@ router.get("/bdo/goals", requireAuth, async (req, res) => {
   }
 });
 
-router.get("/bdo/goals/:goalId", requireAuth, async (req, res) => {
+router.get("/bdo/goals/:goalId(\\d+)", requireAuth, async (req, res) => {
   try {
     await ensureBdoGoalTables();
     const tenantId = await resolveBdoTenantId();
@@ -1798,7 +1798,7 @@ router.post("/bdo/goals", requireAuth, async (req, res) => {
   }
 });
 
-router.post("/bdo/goals/:goalId/fund", requireAuth, async (req, res) => {
+router.post("/bdo/goals/:goalId(\\d+)/fund", requireAuth, async (req, res) => {
   try {
     await ensureBdoGoalTables();
     const tenantId = await resolveBdoTenantId();
@@ -1897,7 +1897,7 @@ router.post("/bdo/goals/:goalId/fund", requireAuth, async (req, res) => {
   }
 });
 
-router.post("/bdo/goals/:goalId/confirm", requireAuth, async (req, res) => {
+router.post("/bdo/goals/:goalId(\\d+)/confirm", requireAuth, async (req, res) => {
   try {
     await ensureBdoGoalTables();
     const tenantId = await resolveBdoTenantId();
@@ -2100,7 +2100,7 @@ router.post("/bdo/goals/:goalId/confirm", requireAuth, async (req, res) => {
   }
 });
 
-router.post("/bdo/goals/:goalId/cancel", requireAuth, async (req, res) => {
+router.post("/bdo/goals/:goalId(\\d+)/cancel", requireAuth, async (req, res) => {
   try {
     await ensureBdoGoalTables();
     const tenantId = await resolveBdoTenantId();

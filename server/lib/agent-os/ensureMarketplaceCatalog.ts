@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import { db } from "@db";
+import { ensureEceAgentsTables } from "../ece-agents/ensureTables";
 
 let ensurePromise: Promise<void> | null = null;
 
@@ -7,6 +8,8 @@ export async function ensureAgentsOsMarketplaceTables() {
   if (ensurePromise) return ensurePromise;
 
   ensurePromise = (async () => {
+    await ensureEceAgentsTables();
+
     await db.execute(sql`create type agent_market_availability as enum ('available','paused','waitlist');`).catch(() => {});
     await db.execute(sql`create type agent_status_catalog as enum ('draft','active','retired');`).catch(() => {});
 
@@ -173,4 +176,3 @@ export async function ensureAgentsOsMarketplaceTables() {
 
   return ensurePromise;
 }
-

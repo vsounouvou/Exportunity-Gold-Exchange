@@ -2669,6 +2669,409 @@ export function BuyerHomePage({
       copy: "Livraison disponible en Côte d'Ivoire pour le moment. Livraison internationale bientôt.",
     },
   ] as const;
+  const bdoPublicCopy = useMemo(() => {
+    const productTitle = (family: string, weightLabel?: string | null, karatLabel?: string | null) => {
+      const spec = [weightLabel, karatLabel].filter(Boolean).join(" ");
+      if (language === "ar") {
+        const base = family === "collection" ? "قطعة مجموعة معتمدة" : family === "pieces" ? "قطعة ذهب مخصصة" : "قطعة ذهب معتمدة";
+        return spec ? `${base} - ${spec}` : base;
+      }
+      if (language === "en") {
+        const base = family === "collection" ? "Certified collection piece" : family === "pieces" ? "Custom verified gold piece" : "Certified gold piece";
+        return spec ? `${base} - ${spec}` : base;
+      }
+      const base = family === "collection" ? "Pièce de collection certifiée" : family === "pieces" ? "Pièce en or sur mesure" : "Pièce certifiée";
+      return spec ? `${base} - ${spec}` : base;
+    };
+
+    if (language === "ar") {
+      return {
+        headerSubtitle: "قطع معتمدة وتتبع واضح",
+        wholesaleSubtitle: "سوق الجملة، الخرائط والسourcing الموثق",
+        cart: "السلة",
+        credits: "اعتمادات الشراء",
+        wholesale: "سوق الجملة",
+        vault: "الخزنة",
+        settings: "الإعدادات",
+        account: "الحساب",
+        compliance: "الامتثال",
+        trustCards: [
+          { title: "ذهب معتمد", copy: "وزن وعيار ومرجع قابل للتحقق." },
+          { title: "هدف شراء", copy: "كوّن الميزانية ثم اطلب عندما تكون جاهزاً." },
+          { title: "مساحة مهنية", copy: "كميات وموردون وسوق جملة مخصص." },
+        ],
+        homepageTrustBadges: ["أصل موثق", "قابل للتتبع", "دفع مرن", "تسليم آمن"],
+        sectionEyebrow: "اختيار عام",
+        starterTitle: "أول القطع المعتمدة",
+        starterIntro: "اختيار قصير للبدء: قطع، سبائك وأهداف شراء.",
+        vaultButton: "خزنتي",
+        fullCatalog: "الكتالوج الكامل",
+        viewAll: "عرض الكل",
+        howItWorks: "كيف يعمل",
+        steps: [
+          "اختر قطعة أو سبيكة.",
+          "اشتر الآن أو أنشئ هدف شراء.",
+          "يتم اعتماد ذهبك وتسجيله.",
+          "استلم أو تسلم المنتج حسب الشروط المتفق عليها.",
+        ],
+        objective: "هدف الشراء",
+        objectiveTitle: "ابدأ بالمبلغ المتاح.",
+        objectiveBody: "كوّن ميزانيتك. لا يتم طلب الذهب المادي إلا بعد تأكيدك النهائي.",
+        objectiveCta: "إنشاء هدف شراء",
+        certification: "الشهادة",
+        certificationTitle: "كل منتج يحمل دليلاً.",
+        certificationBody: "يمكن ربط كل قطعة أو سبيكة بمرجع وصورة ووزن وعيار ودليل رقمي قابل للتحقق.",
+        certificateExample: "عرض مثال شهادة",
+        proSpace: "دخول المساحة المهنية",
+        catalogEyebrow: "معاينة الكتالوج",
+        catalogTitle: {
+          lingots: "خط واضح من القطع المعتمدة",
+          pieces: "إنشاء قطعة مخصصة",
+          collection: "مجموعات وقطع مميزة",
+        },
+        catalogIntro: {
+          lingots: "قطع مختومة 18K-22K مع سعر نهائي ظاهر وإمكانية هدف شراء.",
+          pieces: "صف القطعة أو النقش أو الطلب. يساعدك المساعد في إعداد ملف التصنيع.",
+          collection: "إصدارات مميزة وقطع محدودة جاهزة للاستكشاف أو الشراء.",
+        },
+        categoryTiles: {
+          lingots: { label: "ذهب مادي معتمد", subtitle: "قطع مختومة 18K-22K مع سعر نهائي ظاهر وشراء مباشر.", badgeText: undefined },
+          collection: { label: "مجموعات وتواقيع", subtitle: "إصدارات مميزة وقطع محدودة جاهزة للشراء.", badgeText: undefined },
+          pieces: { label: "قطعة مخصصة", subtitle: "حضّر طلب تصنيع واضح بمساعدة المساعد.", badgeText: "حسب الطلب" },
+        },
+        homepageLimited: "تعرض الصفحة الرئيسية معاينة مختارة.",
+        catalogOneClick: "الكتالوج الكامل متاح بنقرة واحدة.",
+        supplemented: "تُستكمل هذه المعاينة بقطع مرتبطة عندما تكون المراجع المنشورة قليلة.",
+        noReferences: "لا توجد مراجع منشورة لهذه المعاينة.",
+        noReferencesHelp: "ارجع إلى الكتالوج الكامل أو افتح الخزنة لتحضير شراء معتمد.",
+        seeAllPieces: "عرض كل القطع",
+        openVault: "فتح الخزنة",
+        newsEyebrow: "أخبار السوق",
+        newsTitle: "تنظيم وامتثال ومعلومات مفيدة",
+        newsBody: "تبقى مؤشرات السوق والامتثال متاحة هنا بعد إجراءات الشراء والسourcing.",
+        productTitle,
+        certifiedFinishedPiece: "قطعة جاهزة معتمدة",
+        approvedWorkshop: "ورشة معتمدة",
+        certifiedPhysicalGold: "ذهب مادي معتمد",
+        customPiece: "حسب الطلب",
+        signatureCollection: "مجموعة مميزة",
+        originCertified: "أصل موثق",
+        traceable: "قابل للتتبع",
+        certified: "معتمد",
+        signatureSeries: "سلسلة مميزة",
+        weight: "الوزن",
+        karat: "العيار",
+        trust: "الثقة",
+        category: "الفئة",
+        type: "النوع",
+        certif: "شهادة",
+        reserve: "احتياطي",
+        strong: "قوي",
+        workshop: "ورشة",
+        signature: "توقيع",
+        priceLabel: "سعر القطعة",
+        finalObject: "منتج معتمد",
+        priceCaption: "السعر النهائي ظاهر. مرجع 24K معروض بشكل منفصل.",
+        activeGoal: "هدف نشط",
+        allocated: "مخصص",
+        remaining: "المتبقي",
+        budgetReady: "استمر في تكوين الميزانية أو أكد عندما تصل إلى المستوى المستهدف.",
+        budgetCaption: "لا يتم طلب الذهب المادي إلا بعد التأكيد",
+        budgetFunded: "ميزانية مكوّنة:",
+        buy: "شراء",
+        buyNow: "اشترِ الآن",
+        purchaseObjective: "هدف شراء",
+        requestAvailability: "طلب التوفر",
+        indicativePrice: "سعر إرشادي",
+        publicPrice: "السعر العام",
+        show: "عرض",
+        directGoldDescription: "قطعة ذهب مادي معتمدة، جاهزة للشراء.",
+        customGoldDescription: "طلب مخصص، تصنيع وشهادة تحت المتابعة.",
+        collectionDescription: "إصدار مميز جاهز للاقتناء أو الإهداء.",
+        ctaMicrocopy: {
+          lingots: "شراء مباشر أو هدف شراء قبل تأكيد الطلب.",
+          pieces: "ملف تصنيع، دفعة أولى وتحقق الورشة قبل التأكيد النهائي.",
+          collection: "شراء مباشر أو هدف شراء لقطعة مميزة.",
+        },
+        originLine: {
+          lingots: "أصل موثق · ورشة معتمدة",
+          pieces: "طلب مخصص · ورشة معتمدة",
+          collection: "مجموعة مميزة · أصل موثق",
+        },
+        starterProducts: {
+          "piece-10g-18k": { title: "قطعة معتمدة - 10g 18K", badge: "بداية حفظ القيمة", description: "قطعة أولى لبدء حفظ ذهب أفريقي معتمد.", secondaryCta: "تكوين ميزانيتي" },
+          "piece-20g-18k": { title: "قطعة معتمدة - 20g 18K", badge: "صيغة قياسية", description: "صيغة متوازنة لبناء احتياطي ذهب مادي.", secondaryCta: "تكوين ميزانيتي" },
+          "piece-20g-22k": { title: "قطعة معتمدة - 20g 22K", badge: "ذهب ممتاز", description: "قطعة عالية العيار، معتمدة ومسجلة.", secondaryCta: "تكوين ميزانيتي" },
+          "piece-50g-22k": { title: "سبيكة معتمدة - 50g 22K", badge: "هدف شراء", description: "صيغة أعلى لتكوين ميزانية شراء ذهب مادي.", secondaryCta: "تكوين ميزانيتي" },
+          "lingot-100g": { title: "سبيكة معتمدة - 100g", badge: "حسب الطلب", description: "سبيكة ذهب مادي معتمدة ومنقوشة وموثقة عند الطلب.", secondaryCta: "طلب التوفر" },
+        },
+        footerLinks: [
+          { label: "الشروط", href: "/terms" },
+          { label: "الخصوصية", href: "/privacy" },
+          { label: "الامتثال", href: "/cadre-conformite" },
+          { label: "اتصال", href: "/contact" },
+        ],
+      };
+    }
+
+    if (language === "en") {
+      return {
+        headerSubtitle: "Certified pieces, clear traceability",
+        wholesaleSubtitle: "Wholesale market, map and verified sourcing",
+        cart: "Cart",
+        credits: "Credits",
+        wholesale: "Wholesale market",
+        vault: "Vault",
+        settings: "Settings",
+        account: "Account",
+        compliance: "Compliance framework",
+        trustCards: [
+          { title: "Certified gold", copy: "Weight, title and reference can be verified." },
+          { title: "Purchase Objective", copy: "Build your budget, then order when ready." },
+          { title: "Professional space", copy: "Volumes, suppliers and dedicated wholesale access." },
+        ],
+        homepageTrustBadges: ["Certified origin", "Traceable", "Flexible payment", "Secure delivery"],
+        sectionEyebrow: "Public selection",
+        starterTitle: "First certified pieces",
+        starterIntro: "A focused selection to start simply: pieces, bullion and purchase objectives.",
+        vaultButton: "My vault",
+        fullCatalog: "Full catalog",
+        viewAll: "View all",
+        howItWorks: "How it works",
+        steps: [
+          "Choose your piece or bullion.",
+          "Buy now or create a Purchase Objective.",
+          "Your gold is certified and recorded.",
+          "Collect or receive your product under the agreed conditions.",
+        ],
+        objective: "Purchase Objective",
+        objectiveTitle: "Start with the amount available.",
+        objectiveBody: "Build your budget. Your physical gold is not ordered until your final confirmation.",
+        objectiveCta: "Create my Purchase Objective",
+        certification: "Certification",
+        certificationTitle: "Every product carries proof.",
+        certificationBody: "Each piece or bullion product can be linked to a reference, photo, weight, title and verifiable digital proof.",
+        certificateExample: "View a certificate example",
+        proSpace: "Enter the Pro space",
+        catalogEyebrow: "Catalog preview",
+        catalogTitle: {
+          lingots: "A clear line of certified pieces",
+          pieces: "Create a custom piece",
+          collection: "Collections and signature pieces",
+        },
+        catalogIntro: {
+          lingots: "Stamped 18K-22K pieces with final price displayed and Purchase Objective available.",
+          pieces: "Describe the piece, engraving or intention. The assistant prepares the production brief.",
+          collection: "Signature editions, limited series and premium pieces ready to discover or purchase.",
+        },
+        categoryTiles: {
+          lingots: { label: "Certified physical gold", subtitle: "Stamped 18K-22K pieces with final displayed price and direct purchase.", badgeText: undefined },
+          collection: { label: "Collections & signatures", subtitle: "Signature editions, limited series and premium pieces ready to purchase.", badgeText: undefined },
+          pieces: { label: "Custom piece", subtitle: "Prepare a clear production brief guided by the assistant.", badgeText: "Custom" },
+        },
+        homepageLimited: "Homepage limited to a premium preview.",
+        catalogOneClick: "Full catalog available in one click.",
+        supplemented: "This view is completed with related pieces when only a few references are published.",
+        noReferences: "No references are published for this view.",
+        noReferencesHelp: "Return to the full catalog or open your vault to prepare a certified purchase.",
+        seeAllPieces: "View all pieces",
+        openVault: "Open vault",
+        newsEyebrow: "Market news",
+        newsTitle: "Regulation, compliance and useful information",
+        newsBody: "Market and compliance references stay available here after purchase and sourcing actions.",
+        productTitle,
+        certifiedFinishedPiece: "Certified finished piece",
+        approvedWorkshop: "Approved workshop",
+        certifiedPhysicalGold: "Certified physical gold",
+        customPiece: "Custom piece",
+        signatureCollection: "Signature collection",
+        originCertified: "Certified origin",
+        traceable: "Traceable",
+        certified: "Certified",
+        signatureSeries: "Signature series",
+        weight: "Weight",
+        karat: "Karat",
+        trust: "Trust",
+        category: "Category",
+        type: "Type",
+        certif: "Certif.",
+        reserve: "Reserve",
+        strong: "Strong",
+        workshop: "Workshop",
+        signature: "Signature",
+        priceLabel: "Piece price",
+        finalObject: "Certified finished item",
+        priceCaption: "Final price shown. 24K reference shown separately.",
+        activeGoal: "Active objective",
+        allocated: "allocated",
+        remaining: "remaining",
+        budgetReady: "Keep building your budget or confirm when the target level is reached.",
+        budgetCaption: "Your physical gold is not ordered until confirmation",
+        budgetFunded: "Budget funded:",
+        buy: "Buy",
+        buyNow: "Buy now",
+        purchaseObjective: "Purchase Objective",
+        requestAvailability: "Request availability",
+        indicativePrice: "Indicative price",
+        publicPrice: "Public price",
+        show: "View",
+        directGoldDescription: "Certified physical gold piece, ready to purchase.",
+        customGoldDescription: "Custom brief, production and certification workflow.",
+        collectionDescription: "Signature edition ready to collect or gift.",
+        ctaMicrocopy: {
+          lingots: "Direct purchase or Purchase Objective before order confirmation.",
+          pieces: "Brief, deposit and workshop validation before final confirmation.",
+          collection: "Direct purchase or Purchase Objective for a signature piece.",
+        },
+        originLine: {
+          lingots: "Certified origin · Approved workshop",
+          pieces: "Custom brief · Approved workshop",
+          collection: "Signature collection · Certified origin",
+        },
+        starterProducts: {
+          "piece-10g-18k": { title: "Certified piece - 10g 18K", badge: "Entry heritage", description: "A first piece to start holding certified African gold.", secondaryCta: "Build my budget" },
+          "piece-20g-18k": { title: "Certified piece - 20g 18K", badge: "Standard format", description: "A balanced format to build a physical gold reserve.", secondaryCta: "Build my budget" },
+          "piece-20g-22k": { title: "Certified piece - 20g 22K", badge: "Premium gold", description: "A high-title piece, certified and recorded.", secondaryCta: "Build my budget" },
+          "piece-50g-22k": { title: "Certified bullion - 50g 22K", badge: "Purchase Objective", description: "A larger format to build a physical gold purchase budget.", secondaryCta: "Build my budget" },
+          "lingot-100g": { title: "Certified bullion - 100g", badge: "On request", description: "Certified physical bullion, engraved and documented on request.", secondaryCta: "Request availability" },
+        },
+        footerLinks: [
+          { label: "Terms", href: "/terms" },
+          { label: "Privacy", href: "/privacy" },
+          { label: "Compliance", href: "/cadre-conformite" },
+          { label: "Contact", href: "/contact" },
+        ],
+      };
+    }
+
+    return {
+      headerSubtitle: "Pièces certifiées, traçabilité claire",
+      wholesaleSubtitle: "Marché de gros, cartographie et sourcing vérifiés",
+      cart: "Panier",
+      credits: "Crédits",
+      wholesale: "Marché de gros",
+      vault: "Coffre",
+      settings: "Paramètres",
+      account: "Compte",
+      compliance: "Cadre de conformité",
+      trustCards: [
+        { title: "Or certifié", copy: "Poids, titre et référence vérifiables." },
+        { title: "Objectif d'achat", copy: "Constituez le budget, puis commandez quand vous êtes prêt." },
+        { title: "Espace professionnel", copy: "Volumes, fournisseurs et marché de gros dédiés." },
+      ],
+      homepageTrustBadges: ["Origine certifiée", "Traçable", "Paiement flexible", "Livraison sécurisée"],
+      sectionEyebrow: "Sélection publique",
+      starterTitle: "Nos premières pièces certifiées",
+      starterIntro: "Une sélection courte pour commencer simplement : pièces, lingots et objectifs d'achat.",
+      vaultButton: "Mon coffre",
+      fullCatalog: "Catalogue complet",
+      viewAll: "Voir tout",
+      howItWorks: "Comment ça marche",
+      steps: [
+        "Choisissez votre pièce ou lingot.",
+        "Achetez maintenant ou créez un objectif d'achat.",
+        "Votre or est certifié et enregistré.",
+        "Récupérez ou recevez votre produit selon les conditions prévues.",
+      ],
+      objective: "Objectif d'achat",
+      objectiveTitle: "Commencez avec le montant disponible.",
+      objectiveBody: "Constituez votre budget. L'or physique n'est commandé qu'après votre confirmation finale.",
+      objectiveCta: "Créer mon objectif d'achat",
+      certification: "Certification",
+      certificationTitle: "Chaque produit porte une preuve.",
+      certificationBody: "Chaque pièce ou lingot peut être associé à une référence, une photo, un poids, un titre et une preuve digitale vérifiable.",
+      certificateExample: "Voir un exemple de certificat",
+      proSpace: "Entrer dans l'espace Pro",
+      catalogEyebrow: "Aperçu catalogue",
+      catalogTitle: {
+        lingots: "Une ligne claire de pièces certifiées",
+        pieces: "Créer une pièce sur mesure",
+        collection: "Collections & pièces signatures",
+      },
+      catalogIntro: {
+        lingots: "Pièces estampées 18K-22K, prix final affiché et objectif d'achat possible.",
+        pieces: "Décrivez la pièce, la gravure ou l'intention. L'assistant prépare le brief de fabrication.",
+        collection: "Éditions signatures, séries limitées et pièces premium prêtes à être découvertes ou acquises.",
+      },
+      categoryTiles: {
+        lingots: { label: "Or physique certifié", subtitle: "Pièces estampées 18K-22K avec prix final affiché et achat direct.", badgeText: undefined },
+        collection: { label: "Collections & signatures", subtitle: "Éditions signatures, séries limitées et pièces premium prêtes à l'achat.", badgeText: undefined },
+        pieces: { label: "Pièce sur mesure", subtitle: "Préparez un brief clair pour une création certifiée guidée par l'assistant.", badgeText: "Sur mesure" },
+      },
+      homepageLimited: "Homepage limitée à un aperçu premium.",
+      catalogOneClick: "Catalogue complet disponible en un clic.",
+      supplemented: "Cette vue est complétée avec des pièces associées quand peu de références sont publiées.",
+      noReferences: "Aucune référence publiée pour cette vue.",
+      noReferencesHelp: "Revenez au catalogue complet ou ouvrez votre coffre pour préparer un achat certifié.",
+      seeAllPieces: "Voir toutes les pièces",
+      openVault: "Ouvrir le coffre",
+      newsEyebrow: "Actualités du marché",
+      newsTitle: "Réglementation, conformité et informations utiles",
+      newsBody: "Les repères marché et conformité restent disponibles ici, après les actions d'achat et de sourcing.",
+      productTitle,
+      certifiedFinishedPiece: "Pièce finie certifiée",
+      approvedWorkshop: "Atelier certifié",
+      certifiedPhysicalGold: "Or physique certifié",
+      customPiece: "Sur mesure",
+      signatureCollection: "Collection signature",
+      originCertified: "Origine certifiée",
+      traceable: "Traçable",
+      certified: "Certifié",
+      signatureSeries: "Série signature",
+      weight: "Poids",
+      karat: "Karat",
+      trust: "Confiance",
+      category: "Catégorie",
+      type: "Type",
+      certif: "Certif.",
+      reserve: "Réserve",
+      strong: "Forte",
+      workshop: "Atelier",
+      signature: "Signature",
+      priceLabel: "Prix de la pièce",
+      finalObject: "Objet fini certifié",
+      priceCaption: "Prix final affiché. Référence 24K séparée.",
+      activeGoal: "Objectif actif",
+      allocated: "alloués",
+      remaining: "reste",
+      budgetReady: "Continuez à constituer votre budget ou confirmez dès que le niveau visé est atteint.",
+      budgetCaption: "Votre or physique n'est commandé qu'après confirmation",
+      budgetFunded: "Budget constitué:",
+      buy: "Acheter",
+      buyNow: "Acheter maintenant",
+      purchaseObjective: "Objectif d'achat",
+      requestAvailability: "Demander disponibilité",
+      indicativePrice: "Prix indicatif",
+      publicPrice: "Prix public",
+      show: "Voir",
+      directGoldDescription: "Pièce d'or physique certifiée, prête à l'acquisition.",
+      customGoldDescription: "Brief sur mesure, fabrication et certification pilotés.",
+      collectionDescription: "Édition signature prête à collectionner ou offrir.",
+      ctaMicrocopy: {
+        lingots: "Achat direct ou objectif d'achat à confirmer avant commande.",
+        pieces: "Brief, acompte et validation atelier avant commande finale.",
+        collection: "Achat direct ou objectif d'achat pour une pièce signature.",
+      },
+      originLine: {
+        lingots: "Origine certifiée · Atelier certifié",
+        pieces: "Brief sur mesure · Atelier certifié",
+        collection: "Collection signature · Origine certifiée",
+      },
+      starterProducts: {
+        "piece-10g-18k": { title: "Pièce certifiée - 10g 18K", badge: "Entrée patrimoine", description: "Une première pièce pour commencer à conserver de l'or africain certifié.", secondaryCta: "Constituer mon budget" },
+        "piece-20g-18k": { title: "Pièce certifiée - 20g 18K", badge: "Format standard", description: "Le format équilibré pour construire une réserve d'or physique.", secondaryCta: "Constituer mon budget" },
+        "piece-20g-22k": { title: "Pièce certifiée - 20g 22K", badge: "Or premium", description: "Une pièce à haute teneur en or, certifiée et enregistrée.", secondaryCta: "Constituer mon budget" },
+        "piece-50g-22k": { title: "Lingot certifié - 50g 22K", badge: "Objectif d'achat", description: "Un format supérieur pour constituer un budget d'achat en or physique.", secondaryCta: "Constituer mon budget" },
+        "lingot-100g": { title: "Lingot certifié - 100g", badge: "Sur commande", description: "Un lingot physique certifié, gravé et documenté sur demande.", secondaryCta: "Demander disponibilité" },
+      },
+      footerLinks: [
+        { label: "Conditions", href: "/terms" },
+        { label: "Confidentialité", href: "/privacy" },
+        { label: "Conformité", href: "/cadre-conformite" },
+        { label: "Contact", href: "/contact" },
+      ],
+    };
+  }, [language]);
   const bdoHomepageHeroLines =
     language === "ar"
       ? [
@@ -2696,20 +3099,7 @@ export function BuyerHomePage({
       : language === "en"
         ? "BOURSE DE L'OR brings together certified African gold pieces and bullion, with visible final pricing, traceability, and a clear acquisition path."
       : "Bourse de l'Or réunit des pièces et lingots en or africain certifié, avec prix final affiché, traçabilité visible et parcours d'acquisition clair.";
-  const bdoHomepageTrustBadges =
-    language === "ar"
-      ? [
-          "أصل معتمد",
-          "قابل للتتبع",
-          "دفع مرن",
-          "تسليم مؤمّن",
-        ]
-      : [
-          "Origine certifiée",
-          "Traçable",
-          "Paiement flexible",
-          "Livraison sécurisée",
-        ];
+  const bdoHomepageTrustBadges = bdoPublicCopy.homepageTrustBadges;
   const wholesaleDeskLocale = useMemo(() => {
     if (language === "ar") {
       return {
@@ -2914,12 +3304,9 @@ export function BuyerHomePage({
     () => ["XOF", "USD", "EUR", "AED"],
     [],
   );
-  const bdoFooterLinks = [
-    { label: "Conditions", href: "/terms" },
-    { label: "Confidentialité", href: "/privacy" },
-    { label: "Conformité", href: "/cadre-conformite" },
-    { label: "Contact", href: "/contact" },
-  ] as const;
+  const bdoFooterLinks = bdoPublicCopy.footerLinks;
+  const bdoText = (fr: string, en: string, ar: string) =>
+    language === "ar" ? ar : language === "en" ? en : fr;
   const noProductsTitle = isGoldTenant
     ? t("buyer.noProducts.titleGold")
     : useProximityRadius
@@ -6573,8 +6960,8 @@ export function BuyerHomePage({
     cartTotal - bdoCheckoutWalletBalance,
   );
   const bdoCheckoutPrimaryAction = bdoCheckoutRequiresTopup
-    ? "Continuer vers le paiement en ligne"
-    : "Confirmer avec le coffre";
+    ? bdoText("Continuer vers le paiement en ligne", "Continue to online payment", "المتابعة إلى الدفع الإلكتروني")
+    : bdoText("Confirmer avec le coffre", "Confirm with vault", "التأكيد عبر الخزنة");
   const conciergeCanSend =
     Boolean(chatInput.trim()) || chatAttachments.length > 0;
   const conciergeQuickPrompts = useMemo(() => {
@@ -9657,28 +10044,17 @@ export function BuyerHomePage({
     ).map((tile) => {
       const products = groups[tile.key];
       const first = products[0];
-      const label =
-        tile.key === "lingots"
-          ? "Or physique certifié"
-          : tile.key === "collection"
-            ? "Collections & signatures"
-            : "Pièce sur mesure";
-      const subtitle =
-        tile.key === "lingots"
-          ? "Pièces estampées 18K–22K avec prix final affiché et achat direct."
-          : tile.key === "collection"
-            ? "Éditions signatures, séries limitées et pièces premium prêtes à l'achat."
-            : "Préparez un brief clair pour une création certifiée guidée par l'assistant.";
+      const localizedTile = bdoPublicCopy.categoryTiles[tile.key];
       return {
         ...tile,
-        label,
-        subtitle,
-        badgeText: tile.key === "pieces" ? "Sur mesure" : tile.badgeText,
+        label: localizedTile.label,
+        subtitle: localizedTile.subtitle,
+        badgeText: tile.key === "pieces" ? localizedTile.badgeText : tile.badgeText,
         count: products.length,
         fromPrice: first ? getProductPriceDisplay(first).primary : null,
       };
     });
-  }, [bdoCatalogProducts, getBdoCatalogFamily]);
+  }, [bdoCatalogProducts, bdoPublicCopy.categoryTiles, getBdoCatalogFamily]);
   const bdoVisibleProducts = useMemo(() => {
     const filtered = bdoCatalogProducts.filter((product: any) => {
       return getBdoCatalogFamily(product) === bdoBrowseView;
@@ -9732,10 +10108,22 @@ export function BuyerHomePage({
   const bdoVisibleProductsSupplemented =
     !bdoShowAllCatalog && bdoVisibleProducts.length > bdoVisibleCategoryCount;
   const bdoVisibleCountCopy = bdoShowAllCatalog
-    ? `${bdoVisibleCategoryCount} références dans cet univers`
+    ? language === "en"
+      ? `${bdoVisibleCategoryCount} references in this section`
+      : language === "ar"
+        ? `${bdoVisibleCategoryCount} مرجعاً في هذا القسم`
+        : `${bdoVisibleCategoryCount} références dans cet univers`
     : bdoVisibleProductsSupplemented
-      ? `${bdoVisibleCategoryCount} références directes, complétées par des pièces associées`
-      : `${bdoVisibleProducts.length} références affichées`;
+      ? language === "en"
+        ? `${bdoVisibleCategoryCount} direct references, completed with related pieces`
+        : language === "ar"
+          ? `${bdoVisibleCategoryCount} مراجع مباشرة، مكملة بقطع مرتبطة`
+          : `${bdoVisibleCategoryCount} références directes, complétées par des pièces associées`
+      : language === "en"
+        ? `${bdoVisibleProducts.length} references shown`
+        : language === "ar"
+          ? `${bdoVisibleProducts.length} مراجع معروضة`
+          : `${bdoVisibleProducts.length} références affichées`;
   const bdoStarterProducts = useMemo(() => {
     const productKey = (product: any) =>
       String(
@@ -10899,56 +11287,69 @@ export function BuyerHomePage({
           : weightLabel
             ? `Collection limitée ${weightLabel}`
             : "Collection limitée";
-    const displayName = getBdoPublicProductLabel(product?.name, fallbackTitle);
-    const descriptor = mapBdoPublicTerminology(
-      catalogFamily === "lingots"
-        ? product.bdoEdition || "Pièce standard"
-        : catalogFamily === "pieces"
-          ? product.bdoEdition || "Edition gravée"
-          : product.bdoEdition || "Collection limitée",
-    );
-    const actionLabel = "Constituer mon budget";
+    const displayName =
+      language === "fr"
+        ? getBdoPublicProductLabel(product?.name, fallbackTitle)
+        : bdoPublicCopy.productTitle(catalogFamily, weightLabel, karatLabel);
+    const descriptor =
+      language === "en"
+        ? catalogFamily === "lingots"
+          ? "Standard edition"
+          : catalogFamily === "pieces"
+            ? "Custom edition"
+            : "Limited collection"
+        : language === "ar"
+          ? catalogFamily === "lingots"
+            ? "إصدار قياسي"
+            : catalogFamily === "pieces"
+              ? "إصدار مخصص"
+              : "مجموعة محدودة"
+          : mapBdoPublicTerminology(
+              catalogFamily === "lingots"
+                ? product.bdoEdition || "Pièce standard"
+                : catalogFamily === "pieces"
+                  ? product.bdoEdition || "Edition gravée"
+                  : product.bdoEdition || "Collection limitée",
+            );
+    const actionLabel = bdoPublicCopy.purchaseObjective;
     const categoryLabel =
       catalogFamily === "lingots"
-        ? "Or physique certifié"
+        ? bdoPublicCopy.certifiedPhysicalGold
         : catalogFamily === "pieces"
-          ? "Sur mesure"
-          : "Collection signature";
+          ? bdoPublicCopy.customPiece
+          : bdoPublicCopy.signatureCollection;
     const trustMarkers = [
-      "Origine certifiée",
-      product.bdoTraceabilityEnabled ? "Traçable" : "Certifié",
-      catalogFamily === "collection" ? "Série signature" : "Atelier certifié",
+      bdoPublicCopy.originCertified,
+      product.bdoTraceabilityEnabled ? bdoPublicCopy.traceable : bdoPublicCopy.certified,
+      catalogFamily === "collection" ? bdoPublicCopy.signatureSeries : bdoPublicCopy.approvedWorkshop,
     ].filter(Boolean);
     const specItems = [
-      { label: "Poids", value: weightLabel || "Sur mesure" },
-      { label: "Karat", value: karatLabel },
+      { label: bdoPublicCopy.weight, value: weightLabel || bdoPublicCopy.customPiece },
+      { label: bdoPublicCopy.karat, value: karatLabel },
       {
-        label: "Confiance",
-        value: product.bdoTraceabilityEnabled ? "Traçable" : "Certifié",
+        label: bdoPublicCopy.trust,
+        value: product.bdoTraceabilityEnabled ? bdoPublicCopy.traceable : bdoPublicCopy.certified,
       },
     ];
     const productProofItems = [
-      { label: "Categorie", value: categoryLabel },
-      { label: "Type", value: descriptor },
-      { label: "Certif.", value: product.bdoTraceabilityEnabled ? "Traceable" : "Certifie" },
-      { label: "Reserve", value: catalogFamily === "lingots" ? "Forte" : catalogFamily === "pieces" ? "Atelier" : "Signature" },
+      { label: bdoPublicCopy.category, value: categoryLabel },
+      { label: bdoPublicCopy.type, value: descriptor },
+      { label: bdoPublicCopy.certif, value: product.bdoTraceabilityEnabled ? bdoPublicCopy.traceable : bdoPublicCopy.certified },
+      { label: bdoPublicCopy.reserve, value: catalogFamily === "lingots" ? bdoPublicCopy.strong : catalogFamily === "pieces" ? bdoPublicCopy.workshop : bdoPublicCopy.signature },
     ];
     const ctaMicrocopy =
       catalogFamily === "lingots"
-        ? "Achat direct ou objectif d'achat à confirmer avant commande."
+        ? bdoPublicCopy.ctaMicrocopy.lingots
         : catalogFamily === "pieces"
-          ? "Brief, acompte et validation atelier avant commande finale."
-          : "Achat direct ou objectif d'achat pour une pièce signature.";
-    const priceCaption =
-      language === "fr"
-        ? "Prix final affiché. Référence 24K séparée."
-        : "Final price shown. 24K reference shown separately.";
+          ? bdoPublicCopy.ctaMicrocopy.pieces
+          : bdoPublicCopy.ctaMicrocopy.collection;
+    const priceCaption = bdoPublicCopy.priceCaption;
     const originLine =
       catalogFamily === "lingots"
-        ? "Origine certifiée · Atelier certifié"
+        ? bdoPublicCopy.originLine.lingots
         : catalogFamily === "pieces"
-          ? "Brief sur mesure · Atelier certifié"
-          : "Collection signature · Origine certifiée";
+          ? bdoPublicCopy.originLine.pieces
+          : bdoPublicCopy.originLine.collection;
     const featureKey = getBdoFeatureProductKey(product);
     const isFeaturedInBanner = bdoFeaturedProductIds.includes(featureKey);
     const progressivePercent = Math.max(
@@ -10957,8 +11358,8 @@ export function BuyerHomePage({
     );
     const progressiveBarWidth = `${goal ? Math.max(6, progressivePercent) : 8}%`;
     const progressiveCaption = goal
-      ? `Budget constitué: ${formatMoney(Number(goal.amountFundedMinor || 0), "XOF")}`
-      : "Votre or physique n'est commandé qu'après confirmation";
+      ? `${bdoPublicCopy.budgetFunded} ${formatMoney(Number(goal.amountFundedMinor || 0), "XOF")}`
+      : bdoPublicCopy.budgetCaption;
 
     return (
       <article
@@ -11019,7 +11420,7 @@ export function BuyerHomePage({
             <div className="absolute inset-0 bg-gradient-to-t from-[#0B0B0D] via-black/35 to-transparent" />
             <div className="absolute left-3 top-3 flex flex-wrap gap-1">
               <Badge className="border-[#D4AF37]/30 bg-[#0B0B0D]/48 px-2 py-0.5 text-[9px] text-[#E8C873]">
-                Pièce finie certifiée
+                {bdoPublicCopy.certifiedFinishedPiece}
               </Badge>
               {weightLabel ? (
                 <Badge
@@ -11054,7 +11455,7 @@ export function BuyerHomePage({
                 <p
                   className={`mt-1 text-white/65 ${compactMobileCard ? "text-[10px] line-clamp-1" : "text-[11px]"}`}
                 >
-                  Atelier certifié
+                  {bdoPublicCopy.approvedWorkshop}
                 </p>
               </div>
             </div>
@@ -11081,10 +11482,10 @@ export function BuyerHomePage({
                   className={`${compactMobileCard ? "hidden" : "mt-1 text-[11px]"} leading-relaxed text-white/45`}
                 >
                   {catalogFamily === "lingots"
-                    ? "Pièce d'or physique certifiée, prête à l'acquisition."
+                    ? bdoPublicCopy.directGoldDescription
                     : catalogFamily === "pieces"
-                      ? "Brief sur mesure, fabrication et certification pilotés."
-                      : "Édition signature prête à collectionner ou offrir."}
+                      ? bdoPublicCopy.customGoldDescription
+                      : bdoPublicCopy.collectionDescription}
                 </p>
               </div>
                 <div className={`${compactMobileCard ? "hidden" : "flex"} flex-wrap gap-1`}>
@@ -11118,7 +11519,7 @@ export function BuyerHomePage({
               className={`rounded-[18px] border border-white/10 bg-black/20 ${compactMobileCard ? "px-2.5 py-2" : "px-3 py-2.5"}`}
             >
               <p className="text-[10px] uppercase tracking-[0.16em] text-white/40">
-                Prix de la pièce
+                {bdoPublicCopy.priceLabel}
               </p>
               <div className="mt-1 flex items-end justify-between gap-3">
                 <p
@@ -11127,7 +11528,7 @@ export function BuyerHomePage({
                   {formatBdoPriceAccent(price.primary)}
                 </p>
                 <span className="rounded-full border border-[#D4AF37]/20 bg-[#D4AF37]/10 px-2 py-0.5 text-[10px] text-[#E8C873]">
-                  Objet fini certifié
+                  {bdoPublicCopy.finalObject}
                 </span>
               </div>
               <p
@@ -11144,11 +11545,11 @@ export function BuyerHomePage({
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="text-[10px] uppercase tracking-[0.18em] text-[#E8C873]/80">
-                      Objectif actif
+                      {bdoPublicCopy.activeGoal}
                     </p>
                     <p className="mt-1 text-sm font-semibold text-[#F5F3EC]">
                       {formatMoney(Number(goal.amountFundedMinor || 0), "XOF")}{" "}
-                      alloués
+                      {bdoPublicCopy.allocated}
                     </p>
                   </div>
                   <div className="text-right">
@@ -11156,7 +11557,7 @@ export function BuyerHomePage({
                       {goal.progressPercent || 0}%
                     </p>
                     <p className="mt-1 text-[10px] text-[#F5F3EC]/70">
-                      reste{" "}
+                      {bdoPublicCopy.remaining}{" "}
                       {formatMoney(Number(goal.remainingMinor || 0), "XOF")}
                     </p>
                   </div>
@@ -11171,8 +11572,7 @@ export function BuyerHomePage({
                 </div>
                 {!compactMobileCard ? (
                   <p className="mt-2 text-[10px] text-[#F5F3EC]/78">
-                    Continuez à constituer votre budget ou confirmez
-                    dès que le niveau visé est atteint.
+                    {bdoPublicCopy.budgetReady}
                   </p>
                 ) : null}
               </div>
@@ -11189,14 +11589,14 @@ export function BuyerHomePage({
                 trackBdoProductEvent("buy_now", product, "bdo_mobile_grid");
                 handleBdoImmediatePurchase(product);
               }}
-              title="Acheter maintenant"
+              title={bdoPublicCopy.buyNow}
             >
-              Acheter
+              {bdoPublicCopy.buy}
             </Button>
             <div className="mt-2 rounded-[16px] border border-[#D4AF37]/18 bg-[#0B0B0D]/78 p-2.5">
               <div className="flex items-center justify-between gap-2">
                 <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#E8C873]">
-                  Objectif d'achat
+                  {bdoPublicCopy.purchaseObjective}
                 </p>
                 <p className="text-[11px] font-semibold text-[#E8C873]">
                   {progressivePercent}%
@@ -11225,7 +11625,7 @@ export function BuyerHomePage({
                 }}
                 title={actionLabel}
               >
-                Objectif d'achat
+                {bdoPublicCopy.purchaseObjective}
               </Button>
             </div>
             <p className="mt-2 hidden text-[10px] leading-relaxed text-white/45">
@@ -11241,15 +11641,15 @@ export function BuyerHomePage({
                 trackBdoProductEvent("buy_now", product, "bdo_desktop_grid");
                 handleBdoImmediatePurchase(product);
               }}
-              title="Acheter maintenant"
+              title={bdoPublicCopy.buyNow}
             >
-              Acheter
+              {bdoPublicCopy.buy}
             </Button>
             <div className="mt-2 rounded-[16px] border border-[#D4AF37]/18 bg-[#0B0B0D]/78 p-2.5">
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
                   <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#E8C873]">
-                    Objectif d'achat
+                    {bdoPublicCopy.purchaseObjective}
                   </p>
                   <p className="mt-0.5 truncate text-[10px] text-white/55">
                     {progressiveCaption}
@@ -11279,7 +11679,7 @@ export function BuyerHomePage({
                 }}
                 title={actionLabel}
               >
-                Objectif d'achat
+                {bdoPublicCopy.purchaseObjective}
               </Button>
             </div>
             <p className="hidden">
@@ -11336,7 +11736,14 @@ export function BuyerHomePage({
     compact = false,
   ) => {
     const { spec, product } = item;
-    const price = product ? getProductPriceDisplay(product).primary : "Sur demande";
+    const starterCopy = bdoPublicCopy.starterProducts[spec.key] || spec;
+    const price = product
+      ? getProductPriceDisplay(product).primary
+      : language === "en"
+        ? "On request"
+        : language === "ar"
+          ? "حسب الطلب"
+          : "Sur demande";
     const ctaContext = compact ? "bdo_mobile_starter" : "bdo_desktop_starter";
     const starterGoal = product ? getBdoGoalForProduct(product) : null;
     const starterProgressivePercent = Math.max(
@@ -11345,8 +11752,8 @@ export function BuyerHomePage({
     );
     const starterProgressiveBarWidth = `${starterGoal ? Math.max(6, starterProgressivePercent) : 8}%`;
     const starterProgressiveCaption = starterGoal
-      ? `Budget constitué: ${formatMoney(Number(starterGoal.amountFundedMinor || 0), "XOF")}`
-      : "Votre or physique n'est commandé qu'après confirmation";
+      ? `${bdoPublicCopy.budgetFunded} ${formatMoney(Number(starterGoal.amountFundedMinor || 0), "XOF")}`
+      : bdoPublicCopy.budgetCaption;
     const openFallbackRequest = () => {
       if (product) {
         setSelectedProduct(product);
@@ -11407,7 +11814,7 @@ export function BuyerHomePage({
           <div className={`relative overflow-hidden ${compact ? "h-[330px]" : "h-[376px]"}`}>
             <img
               src={spec.image}
-              alt={spec.title}
+              alt={starterCopy.title}
               loading={idx < 2 ? "eager" : "lazy"}
               decoding={idx < 2 ? "sync" : "async"}
               fetchPriority={idx === 0 ? "high" : "auto"}
@@ -11422,7 +11829,7 @@ export function BuyerHomePage({
             <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(11,11,13,0.02)_0%,rgba(11,11,13,0.12)_50%,rgba(11,11,13,0.82)_100%)]" />
             <div className="absolute left-3 top-3 flex flex-wrap gap-1.5 pr-12">
               <span className="rounded-full border border-[#D4AF37]/28 bg-[#0B0B0D]/50 px-2.5 py-1 text-[10px] font-medium text-[#E8C873]">
-                {spec.badge}
+                {starterCopy.badge}
               </span>
               <span className="rounded-full border border-white/12 bg-black/45 px-2.5 py-1 text-[10px] text-white/78">
                 {spec.weight}g{spec.karat ? ` - ${spec.karat}K` : ""}
@@ -11437,15 +11844,15 @@ export function BuyerHomePage({
                 compact ? "text-[16px]" : "text-[18px]"
               }`}
             >
-              {spec.title}
+              {starterCopy.title}
             </h3>
             <p className={`${compact ? "hidden" : "mt-1 line-clamp-1"} text-[12px] leading-relaxed text-white/58`}>
-              {spec.description}
+              {starterCopy.description}
             </p>
           </div>
           <div className="rounded-[16px] border border-[#E8C873]/18 bg-[#D4AF37]/[0.07] px-3 py-2">
             <p className="text-[9px] uppercase tracking-[0.18em] text-[#E8C873]/60">
-              Prix indicatif
+              {bdoPublicCopy.indicativePrice}
             </p>
             <p className="mt-1 text-lg font-semibold leading-none text-[#E8C873]">
               {formatBdoPriceAccent(price)}
@@ -11455,9 +11862,9 @@ export function BuyerHomePage({
             type="button"
             className={`h-10 w-full min-w-0 rounded-xl px-3 ${BDO_LUX_COMPACT_BUTTON_TEXT} ${BDO_LUX_PRIMARY_BUTTON}`}
             onClick={buyNow}
-            title="Acheter maintenant"
+            title={bdoPublicCopy.buyNow}
           >
-            Acheter
+            {bdoPublicCopy.buy}
           </Button>
           {spec.key === "lingot-100g" ? (
             <Button
@@ -11465,16 +11872,16 @@ export function BuyerHomePage({
               variant="outline"
               className={`h-10 w-full min-w-0 rounded-xl px-3 ${BDO_LUX_COMPACT_BUTTON_TEXT} ${BDO_LUX_SECONDARY_BUTTON}`}
               onClick={openFallbackRequest}
-              title={spec.secondaryCta}
+              title={starterCopy.secondaryCta}
             >
-              Demander disponibilité
+              {bdoPublicCopy.requestAvailability}
             </Button>
           ) : (
             <div className="rounded-[16px] border border-[#D4AF37]/18 bg-[#0B0B0D]/78 p-2.5">
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
                   <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#E8C873]">
-                    Objectif d'achat
+                    {bdoPublicCopy.purchaseObjective}
                   </p>
                   <p className="mt-0.5 truncate text-[10px] text-white/55">
                     {starterProgressiveCaption}
@@ -11495,9 +11902,9 @@ export function BuyerHomePage({
               variant="outline"
                 className={`mt-2 h-10 w-full min-w-0 rounded-xl px-3 ${BDO_LUX_COMPACT_BUTTON_TEXT} ${BDO_LUX_SECONDARY_BUTTON}`}
                 onClick={buyProgressively}
-              title={spec.secondaryCta}
+               title={starterCopy.secondaryCta}
             >
-                Objectif d'achat
+                {bdoPublicCopy.purchaseObjective}
             </Button>
           </div>
           )}
@@ -11508,21 +11915,9 @@ export function BuyerHomePage({
 
   const renderBdoTrustBar = (compact = false) => {
     const items = [
-      {
-        title: "Or certifié",
-        copy: "Poids, titre et référence vérifiables.",
-        icon: ShieldCheck,
-      },
-      {
-        title: "Objectif d'achat",
-        copy: "Constituez le budget, puis commandez quand vous êtes prêt.",
-        icon: TrendingUp,
-      },
-      {
-        title: "Espace professionnel",
-        copy: "Volumes, fournisseurs et marché de gros dédiés.",
-        icon: BriefcaseBusiness,
-      },
+      { ...bdoPublicCopy.trustCards[0], icon: ShieldCheck },
+      { ...bdoPublicCopy.trustCards[1], icon: TrendingUp },
+      { ...bdoPublicCopy.trustCards[2], icon: BriefcaseBusiness },
     ];
     return (
       <div
@@ -11565,15 +11960,10 @@ export function BuyerHomePage({
         className={`rounded-[24px] p-4 ${BDO_LUX_CARD}`}
       >
         <p className="text-[11px] uppercase tracking-[0.22em] text-[#E8C873]/80">
-          Comment ça marche
+          {bdoPublicCopy.howItWorks}
         </p>
         <div className="mt-3 grid gap-2 sm:grid-cols-2">
-          {[
-            "Choisissez votre pièce ou lingot.",
-            "Achetez maintenant ou créez un objectif d'achat.",
-            "Votre or est certifié et enregistré.",
-            "Récupérez ou recevez votre produit selon les conditions prévues.",
-          ].map((step, idx) => (
+          {bdoPublicCopy.steps.map((step, idx) => (
             <div
               key={step}
               className="flex gap-3 rounded-[18px] border border-white/10 bg-white/[0.035] px-3 py-3"
@@ -11592,20 +11982,19 @@ export function BuyerHomePage({
         className={`rounded-[24px] p-4 ${BDO_LUX_PANEL}`}
       >
         <p className="text-[11px] uppercase tracking-[0.22em] text-[#E8C873]/80">
-          Objectif d'achat
+          {bdoPublicCopy.objective}
         </p>
         <h3 className={`mt-2 text-xl font-semibold text-white ${BDO_LUX_TITLE_FONT}`}>
-          Commencez avec le montant disponible.
+          {bdoPublicCopy.objectiveTitle}
         </h3>
         <p className="mt-2 text-sm leading-relaxed text-white/62">
-          Constituez votre budget. L'or physique n'est commandé qu'après
-          votre confirmation finale.
+          {bdoPublicCopy.objectiveBody}
         </p>
         <div className="mt-4 rounded-[20px] border border-white/10 bg-black/35 p-4">
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="text-[10px] uppercase tracking-[0.18em] text-white/38">
-                Objectif
+                {bdoPublicCopy.objective}
               </p>
               <p className="mt-1 text-sm font-semibold text-white">
                 Pièce 20g 22K
@@ -11627,7 +12016,7 @@ export function BuyerHomePage({
           className={`mt-4 h-10 w-full ${BDO_LUX_PRIMARY_BUTTON}`}
           onClick={() => navigate("/coffre")}
         >
-          Créer mon objectif d'achat
+          {bdoPublicCopy.objectiveCta}
         </Button>
       </section>
 
@@ -11638,14 +12027,13 @@ export function BuyerHomePage({
         <div className={`grid gap-4 ${compact ? "" : "md:grid-cols-[1fr_0.82fr] md:items-center"}`}>
           <div>
             <p className="text-[11px] uppercase tracking-[0.22em] text-[#E8C873]/80">
-              Certification
+              {bdoPublicCopy.certification}
             </p>
             <h3 className={`mt-2 text-xl font-semibold text-white ${BDO_LUX_TITLE_FONT}`}>
-              Chaque produit porte une preuve.
+              {bdoPublicCopy.certificationTitle}
             </h3>
             <p className="mt-2 max-w-[72ch] text-sm leading-relaxed text-white/62">
-              Chaque pièce ou lingot peut être associé à une référence, une
-              photo, un poids, un titre et une preuve digitale vérifiable.
+              {bdoPublicCopy.certificationBody}
             </p>
             <div className="mt-4 flex flex-wrap gap-2">
               <Button
@@ -11653,7 +12041,7 @@ export function BuyerHomePage({
                 className={`h-9 px-4 ${BDO_LUX_PRIMARY_BUTTON}`}
                 onClick={() => scrollToBdoSection(compact ? "bdo-mobile-buy" : "bdo-buy")}
               >
-                Voir un exemple de certificat
+                {bdoPublicCopy.certificateExample}
               </Button>
               <Button
                 type="button"
@@ -11661,7 +12049,7 @@ export function BuyerHomePage({
                 className={`h-9 px-4 ${BDO_LUX_SECONDARY_BUTTON}`}
                 onClick={() => navigate("/wholesale")}
               >
-                Entrer dans l'espace Pro
+                {bdoPublicCopy.proSpace}
               </Button>
             </div>
             <div className="sr-only">
@@ -11705,20 +12093,36 @@ export function BuyerHomePage({
           : weightLabel
             ? `Collection limitée ${weightLabel}`
             : "Collection limitée";
-    const displayName = getBdoPublicProductLabel(product?.name, fallbackTitle);
+    const displayName =
+      language === "fr"
+        ? getBdoPublicProductLabel(product?.name, fallbackTitle)
+        : bdoPublicCopy.productTitle(catalogFamily, weightLabel, product?.bdoKarat ? `${product.bdoKarat}K` : null);
     const categoryLabel =
       catalogFamily === "lingots"
-        ? "Or physique certifié"
+        ? bdoPublicCopy.certifiedPhysicalGold
         : catalogFamily === "pieces"
-          ? "Sur mesure"
-          : "Collection signature";
-    const editionLabel = mapBdoPublicTerminology(
-      catalogFamily === "lingots"
-        ? product.bdoEdition || "Pièce standard"
-        : catalogFamily === "pieces"
-          ? product.bdoEdition || "Edition gravée"
-          : product.bdoEdition || "Collection signature",
-    );
+          ? bdoPublicCopy.customPiece
+          : bdoPublicCopy.signatureCollection;
+    const editionLabel =
+      language === "en"
+        ? catalogFamily === "lingots"
+          ? "Standard edition"
+          : catalogFamily === "pieces"
+            ? "Custom edition"
+            : "Signature collection"
+        : language === "ar"
+          ? catalogFamily === "lingots"
+            ? "إصدار قياسي"
+            : catalogFamily === "pieces"
+              ? "إصدار مخصص"
+              : "مجموعة مميزة"
+          : mapBdoPublicTerminology(
+              catalogFamily === "lingots"
+                ? product.bdoEdition || "Pièce standard"
+                : catalogFamily === "pieces"
+                  ? product.bdoEdition || "Edition gravée"
+                  : product.bdoEdition || "Collection signature",
+            );
     return (
       <article
         key={`bdo-featured-banner-${product?.id || product?.sellerProductId || idx}`}
@@ -11785,7 +12189,7 @@ export function BuyerHomePage({
           <div className="flex items-end justify-between gap-3">
             <div className="min-w-0">
               <p className="text-[10px] uppercase tracking-[0.18em] text-white/35">
-                Prix public
+                {bdoPublicCopy.publicPrice}
               </p>
               <p
                 className={`mt-1 truncate font-semibold leading-none text-[#E8C873] ${
@@ -11808,7 +12212,7 @@ export function BuyerHomePage({
                 setSelectedProduct(product);
               }}
             >
-              Voir
+              {bdoPublicCopy.show}
             </Button>
           </div>
         </div>
@@ -14344,11 +14748,11 @@ export function BuyerHomePage({
         ? "..."
         : formatMoney(Number(walletSummary?.wallet?.balance || 0), "XOF")
       : null;
-  const bdoHeaderWalletLabel = walletBalanceLabel || "Crédits";
+  const bdoHeaderWalletLabel = walletBalanceLabel || bdoPublicCopy.credits;
   const bdoHeaderCartLabel =
     cart.length > 0
       ? `${cart.length} article${cart.length > 1 ? "s" : ""}`
-      : "Panier";
+      : bdoPublicCopy.cart;
   const formatBdoPriceAccent = useCallback((label: string) => {
     const match = String(label || "").match(/^(.*?)(\sFCFA(?:\/[a-z]+)?)$/i);
     if (!match) {
@@ -14385,7 +14789,7 @@ export function BuyerHomePage({
         onClick={() => navigate("/profile")}
       >
         <UserCircle className="h-4 w-4 mr-2" />
-        {useBdoInstitutionalLayout ? "Compte" : "Account"}
+        {useBdoInstitutionalLayout ? bdoPublicCopy.account : "Account"}
       </DropdownMenuItem>
       {session.hasRole("admin") && (
         <DropdownMenuItem
@@ -16353,9 +16757,9 @@ export function BuyerHomePage({
                 isMobile
                   ? undefined
                   : useBdoInstitutionalLayout
-                    ? "Pièces certifiées, traçabilité claire"
+                    ? bdoPublicCopy.headerSubtitle
                     : isWholesaleShellRoute
-                      ? "Marché de gros, cartographie et sourcing vérifiés"
+                      ? bdoPublicCopy.wholesaleSubtitle
                       : t("header.subtitle")
               }
             />
@@ -16422,7 +16826,7 @@ export function BuyerHomePage({
                   className="h-8 px-3 text-[12px] font-medium text-white/80 hover:bg-white/10 hover:text-white"
                   onClick={() => navigate("/wholesale")}
                 >
-                  Marché de gros
+                  {bdoPublicCopy.wholesale}
                 </Button>
                 <Button
                   variant="ghost"
@@ -16436,9 +16840,9 @@ export function BuyerHomePage({
                     <Button
                       variant="ghost"
                       className="h-8 px-3 text-[12px] font-medium text-white/80 hover:bg-white/10 hover:text-white"
-                      aria-label="Paramètres"
+                      aria-label={bdoPublicCopy.settings}
                     >
-                      Paramètres
+                      {bdoPublicCopy.settings}
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent
@@ -16461,7 +16865,7 @@ export function BuyerHomePage({
                       className="cursor-pointer hover:bg-gray-800"
                       onClick={() => navigate("/cadre-conformite")}
                     >
-                      Cadre de conformité
+                      {bdoPublicCopy.compliance}
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -16470,9 +16874,9 @@ export function BuyerHomePage({
                     <Button
                       variant="ghost"
                       className="h-8 px-3 text-[12px] font-medium text-white/80 hover:bg-white/10 hover:text-white"
-                      aria-label="Compte"
+                      aria-label={bdoPublicCopy.account}
                     >
-                      Compte
+                      {bdoPublicCopy.account}
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent
@@ -16523,13 +16927,13 @@ export function BuyerHomePage({
                       className="cursor-pointer hover:bg-gray-800"
                       onClick={() => navigate("/wholesale")}
                     >
-                      Marché de gros
+                      {bdoPublicCopy.wholesale}
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       className="cursor-pointer hover:bg-gray-800"
                       onClick={() => navigate("/coffre")}
                     >
-                      Coffre d'or
+                      {bdoPublicCopy.vault}
                     </DropdownMenuItem>
                     <DropdownMenuSeparator className="bg-gray-700" />
                     <DropdownMenuLabel className="text-xs text-gray-400">
@@ -16618,7 +17022,7 @@ export function BuyerHomePage({
                       setVaultPane("wallet");
                       setVaultOpen(true);
                     }}
-                    aria-label={useBdoInstitutionalLayout ? "Crédits d'achat" : t("wallet.title")}
+                    aria-label={useBdoInstitutionalLayout ? bdoPublicCopy.credits : t("wallet.title")}
                   >
                     <Wallet className="h-5 w-5 md:h-4 md:w-4 md:mr-2" />
                     <span className="hidden md:inline text-[11px] font-semibold text-[#E8C873]">
@@ -16657,14 +17061,14 @@ export function BuyerHomePage({
                       className={`h-9 rounded-full px-3 text-[12px] font-medium ${BDO_LUX_ACTIVE_PILL}`}
                       onClick={() => navigate("/store")}
                     >
-                      Pièces certifiées
+                      {bdoPublicCopy.starterTitle}
                     </Button>
                     <Button
                       variant="ghost"
                       className={`h-9 rounded-full px-3 text-[12px] font-medium ${BDO_LUX_MUTED_PILL}`}
                       onClick={() => navigate("/wholesale")}
                     >
-                      Marché de gros
+                      {bdoPublicCopy.wholesale}
                     </Button>
                     <Badge className={`h-8 rounded-full px-3 text-[11px] font-medium ${BDO_LUX_ACTIVE_PILL}`}>
                       {bdoWholesaleViewLabel}
@@ -16680,7 +17084,7 @@ export function BuyerHomePage({
                         })
                       }
                     >
-                      Parler pour sourcer
+                      {language === "en" ? "Talk to source" : language === "ar" ? "تحدث للسourcing" : "Parler pour sourcer"}
                     </Button>
 
                     <Badge
@@ -16753,7 +17157,7 @@ export function BuyerHomePage({
                           >
                             <MapPin className="h-4 w-4 mr-2" />
                             <span className="max-w-[160px] truncate text-[12px]">
-                              Marché de gros
+                              {bdoPublicCopy.wholesale}
                             </span>
                           </Button>
                           <Button
@@ -17015,13 +17419,13 @@ export function BuyerHomePage({
                           className="cursor-pointer hover:bg-gray-800"
                           onClick={() => navigate("/store")}
                         >
-                          Pièces certifiées
+                          {bdoPublicCopy.starterTitle}
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           className="cursor-pointer hover:bg-gray-800"
                           onClick={() => navigate("/wholesale")}
                         >
-                          Marché de gros
+                          {bdoPublicCopy.wholesale}
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           className="cursor-pointer hover:bg-gray-800"
@@ -17183,7 +17587,7 @@ export function BuyerHomePage({
                     ? "Buy now"
                     : language === "ar"
                       ? "اشترِ الآن"
-                      : "Acheter maintenant"}
+                      : bdoPublicCopy.buyNow}
                 </Button>
                 <Button
                   type="button"
@@ -17293,7 +17697,7 @@ export function BuyerHomePage({
                 className="h-9 bg-[#D4AF37] px-3 text-[11px] text-black hover:bg-[#E8C873]"
                 onClick={() => scrollToBdoSection("bdo-mobile-buy")}
               >
-                Voir le catalogue
+                {bdoPublicCopy.fullCatalog}
               </Button>
               <Button
                 type="button"
@@ -17301,7 +17705,7 @@ export function BuyerHomePage({
                 className="h-9 border-white/15 px-3 text-[11px] text-white/80 hover:bg-white/10"
                 onClick={() => navigate("/wholesale")}
               >
-                Marché de gros
+                {bdoPublicCopy.wholesale}
               </Button>
             </div>
 
@@ -17321,10 +17725,10 @@ export function BuyerHomePage({
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <p className="text-[10px] uppercase tracking-[0.22em] text-[#E8C873]/80">
-                      Produits mis en avant
+                      {language === "en" ? "Featured products" : language === "ar" ? "منتجات مميزة" : "Produits mis en avant"}
                     </p>
                     <p className="mt-1 text-sm font-semibold text-white">
-                      Bannière produits
+                      {language === "en" ? "Product banner" : language === "ar" ? "بانر المنتجات" : "Bannière produits"}
                     </p>
                   </div>
                   <Button
@@ -17334,7 +17738,7 @@ export function BuyerHomePage({
                     className="h-8 px-0 text-[11px] text-[#E8C873] hover:bg-transparent hover:text-[#E8C873]"
                     onClick={() => navigate("/or")}
                   >
-                    Voir tout
+                    {bdoPublicCopy.viewAll}
                   </Button>
                 </div>
                 <div
@@ -17356,14 +17760,13 @@ export function BuyerHomePage({
             <div className="flex items-end justify-between gap-3">
               <div>
                 <p className="text-[10px] uppercase tracking-[0.24em] text-[#E8C873]/80">
-                  Sélection publique
+                  {bdoPublicCopy.sectionEyebrow}
                 </p>
                 <h2 className={`mt-1 text-[22px] font-semibold leading-tight text-white ${BDO_LUX_TITLE_FONT}`}>
-                  Nos premières pièces certifiées
+                  {bdoPublicCopy.starterTitle}
                 </h2>
                 <p className="mt-2 max-w-[34ch] text-[13px] leading-relaxed text-white/58">
-                  Une sélection courte pour commencer simplement : pièces,
-                  lingots et objectifs d'achat.
+                  {bdoPublicCopy.starterIntro}
                 </p>
               </div>
               <Button
@@ -17373,7 +17776,7 @@ export function BuyerHomePage({
                 className="h-8 shrink-0 px-0 text-[12px] text-[#E8C873] hover:bg-transparent hover:text-[#E8C873]"
                 onClick={() => navigate("/or")}
               >
-                Voir tout
+                {bdoPublicCopy.viewAll}
               </Button>
             </div>
             <div className="mt-4 flex snap-x gap-3 overflow-x-auto pb-2 scrollbar-hide">
@@ -17392,17 +17795,17 @@ export function BuyerHomePage({
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-[11px] uppercase tracking-[0.22em] text-[#E8C873]/80">
-                  Catalogue certifié
+                  {bdoPublicCopy.catalogEyebrow}
                 </p>
                 <h2 className={`mt-1 text-lg font-semibold text-white ${BDO_LUX_TITLE_FONT}`}>
-                  Produits disponibles
+                  {language === "en" ? "Available products" : language === "ar" ? "المنتجات المتاحة" : "Produits disponibles"}
                 </h2>
                 <p className="mt-1 text-[12px] leading-relaxed text-white/58">
                   {bdoBrowseView === "lingots"
-                    ? "Pièces estampées 18K–22K avec prix final affiché."
+                    ? bdoPublicCopy.catalogIntro.lingots
                     : bdoBrowseView === "pieces"
-                      ? "Préparez un brief de fabrication puis suivez la certification."
-                      : "Collections signatures et pièces premium prêtes à l&apos;achat."}
+                      ? bdoPublicCopy.catalogIntro.pieces
+                      : bdoPublicCopy.catalogIntro.collection}
                 </p>
               </div>
               <Button
@@ -17412,7 +17815,7 @@ export function BuyerHomePage({
                 className={`h-8 px-3 ${BDO_LUX_SECONDARY_BUTTON}`}
                 onClick={() => navigate("/coffre")}
               >
-                Coffre
+                {bdoPublicCopy.vault}
               </Button>
             </div>
             <div className="mt-3 flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
@@ -17465,7 +17868,7 @@ export function BuyerHomePage({
                   </Button>
                 ))}
               </div>
-              <p className="text-[11px] text-white/50">FR • {currency}</p>
+              <p className="text-[11px] text-white/50">{language.toUpperCase()} • {currency}</p>
             </div>
           </section>
         </div>
@@ -17473,13 +17876,13 @@ export function BuyerHomePage({
         <div className={`relative z-40 mx-3 mb-4 mt-[calc(var(--safe-top)+var(--mobile-header-height)+14px)] space-y-3 ${BDO_LUX_BODY_FONT}`}>
           <section className={`rounded-[20px] p-4 ${BDO_LUX_PANEL}`}>
             <p className="text-[11px] uppercase tracking-[0.22em] text-[#E8C873]/80">
-              Acheter de l'or
+              {language === "en" ? "Buy gold" : language === "ar" ? "شراء الذهب" : "Acheter de l'or"}
             </p>
             <h1 className={`mt-1 text-xl font-semibold text-white ${BDO_LUX_TITLE_FONT}`}>
-              Pièces certifiées
+              {bdoPublicCopy.starterTitle}
             </h1>
             <p className="mt-1 text-sm text-white/60">
-              Achat immédiat ou objectif d'achat.
+              {language === "en" ? "Immediate purchase or Purchase Objective." : language === "ar" ? "شراء فوري أو هدف شراء." : "Achat immédiat ou objectif d'achat."}
             </p>
             <div className="mt-3 flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
               {[
@@ -17532,7 +17935,7 @@ export function BuyerHomePage({
                 className="h-8 px-0 text-[11px] text-white/65 hover:bg-transparent hover:text-white"
                 onClick={() => navigate("/coffre")}
               >
-                Coffre
+                  {bdoPublicCopy.vault}
               </Button>
             </div>
             <div className="mt-3 grid gap-3">
@@ -17556,7 +17959,7 @@ export function BuyerHomePage({
                   {bdoMobilePriceStrip.gramReference}
                 </p>
                 <p className="mt-1 text-[11px] text-white/52">
-                  Vente publique {bdoMobilePriceStrip.publicGram} ({bdoMobilePriceStrip.markupLabel})
+                  {language === "en" ? "Public sale" : language === "ar" ? "بيع عام" : "Vente publique"} {bdoMobilePriceStrip.publicGram} ({bdoMobilePriceStrip.markupLabel})
                 </p>
               </div>
               <div className="text-right">
@@ -17580,20 +17983,20 @@ export function BuyerHomePage({
 
           <section className={`rounded-[20px] p-4 ${BDO_LUX_PANEL}`}>
             <p className="text-[11px] uppercase tracking-[0.22em] text-[#E8C873]/80">
-              Marché de gros
+              {bdoPublicCopy.wholesale}
             </p>
             <h2 className={`mt-1 text-lg font-semibold text-white ${BDO_LUX_TITLE_FONT}`}>
-              Marché de gros vérifié
+              {language === "en" ? "Verified wholesale market" : language === "ar" ? "سوق جملة موثق" : "Marché de gros vérifié"}
             </h2>
             <p className="mt-1 text-sm text-white/60">
-              Bureaux d'achat, affineurs et exportateurs approuvés.
+              {language === "en" ? "Approved buying offices, refiners and exporters." : language === "ar" ? "مكاتب شراء ومصافي ومصدرون معتمدون." : "Bureaux d'achat, affineurs et exportateurs approuvés."}
             </p>
             <div className="mt-3">
               <Button
                 className={`h-8 px-3 ${BDO_LUX_PRIMARY_BUTTON}`}
                 onClick={() => navigate("/wholesale")}
               >
-                Accéder au marché de gros
+                {language === "en" ? "Open wholesale market" : language === "ar" ? "فتح سوق الجملة" : "Accéder au marché de gros"}
               </Button>
             </div>
           </section>
@@ -17653,7 +18056,7 @@ export function BuyerHomePage({
                       ? "Buy now"
                       : language === "ar"
                         ? "اشترِ الآن"
-                        : "Acheter maintenant"}
+                        : bdoPublicCopy.buyNow}
                   </Button>
                   <Button
                     variant="outline"
@@ -17730,21 +18133,21 @@ export function BuyerHomePage({
                     className={`h-8 px-3 text-[11px] ${BDO_LUX_PRIMARY_BUTTON}`}
                     onClick={() => scrollToBdoSection("bdo-buy")}
                   >
-                    Voir le catalogue
+                    {bdoPublicCopy.fullCatalog}
                   </Button>
                   <Button
                     variant="outline"
                     className="h-8 border-white/15 px-3 text-[11px] text-white/80 hover:bg-white/10"
                     onClick={() => navigate("/coffre")}
                   >
-                    Mon coffre
+                    {bdoPublicCopy.vaultButton}
                   </Button>
                   <Button
                     variant="outline"
                     className="h-8 border-white/15 px-3 text-[11px] text-white/80 hover:bg-white/10"
                     onClick={() => navigate("/wholesale")}
                   >
-                    Marché de gros
+                    {bdoPublicCopy.wholesale}
                   </Button>
                 </div>
               </div>
@@ -17773,8 +18176,12 @@ export function BuyerHomePage({
                     {bdoMobilePriceStrip.gramReference}
                   </p>
                   <p className="mt-1 text-[12px] leading-relaxed text-white/58">
-                    Vente publique {bdoMobilePriceStrip.publicGram} ({bdoMobilePriceStrip.markupLabel}).
-                    Achat au spot LBMA, vente indexee sur le marche.
+                    {bdoText("Vente publique", "Public sale", "بيع عام")} {bdoMobilePriceStrip.publicGram} ({bdoMobilePriceStrip.markupLabel}).
+                    {bdoText(
+                      "Achat au spot LBMA, vente indexée sur le marché.",
+                      "Purchase indexed on LBMA spot, sale indexed on the market.",
+                      "شراء مرتبط بسعر LBMA الفوري وبيع مرتبط بالسوق.",
+                    )}
                   </p>
                 </div>
                 <div className="grid gap-2 sm:grid-cols-3">
@@ -17904,14 +18311,13 @@ export function BuyerHomePage({
             <div className="relative z-[1] flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
               <div className="max-w-[720px]">
                 <p className="text-[11px] uppercase tracking-[0.24em] text-[#E8C873]/80">
-                  Sélection publique
+                  {bdoPublicCopy.sectionEyebrow}
                 </p>
                 <h2 className={`mt-1 text-2xl font-semibold text-white ${BDO_LUX_TITLE_FONT}`}>
-                  Nos premières pièces certifiées
+                  {bdoPublicCopy.starterTitle}
                 </h2>
                 <p className="mt-2 text-sm leading-relaxed text-white/58">
-                  Une sélection courte pour commencer simplement : pièces,
-                  lingots et objectifs d'achat.
+                  {bdoPublicCopy.starterIntro}
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -17922,7 +18328,7 @@ export function BuyerHomePage({
                   className="h-8 border-white/15 px-3 text-[11px] text-white/80 hover:bg-white/10"
                   onClick={() => navigate("/coffre")}
                 >
-                  Mon coffre
+                  {bdoPublicCopy.vaultButton}
                 </Button>
                 <Button
                   type="button"
@@ -17930,7 +18336,7 @@ export function BuyerHomePage({
                   className={`h-8 px-3 text-[11px] ${BDO_LUX_PRIMARY_BUTTON}`}
                   onClick={() => navigate("/or")}
                 >
-                  Catalogue complet
+                  {bdoPublicCopy.fullCatalog}
                 </Button>
               </div>
             </div>
@@ -17951,21 +18357,21 @@ export function BuyerHomePage({
             <div className="flex flex-col gap-2 xl:flex-row xl:items-center xl:justify-between">
               <div className="min-w-0">
                 <p className="text-[11px] uppercase tracking-[0.24em] text-[#E8C873]/80">
-                  Apercu catalogue - {bdoSelectedTile?.label || "Or certifie"}
+                  {bdoPublicCopy.catalogEyebrow} - {bdoSelectedTile?.label || bdoPublicCopy.certifiedPhysicalGold}
                 </p>
                 <h3 className={`mt-0.5 text-base font-semibold text-white ${BDO_LUX_TITLE_FONT}`}>
                   {bdoBrowseView === "lingots"
-                    ? "Une ligne claire de pieces certifiees"
+                    ? bdoPublicCopy.catalogTitle.lingots
                     : bdoBrowseView === "pieces"
-                      ? "Creer une piece sur mesure"
-                      : "Collections & pieces signatures"}
+                      ? bdoPublicCopy.catalogTitle.pieces
+                      : bdoPublicCopy.catalogTitle.collection}
                 </h3>
                 <p className="mt-1 hidden max-w-[68ch] text-sm leading-relaxed text-white/60">
                   {bdoBrowseView === "lingots"
-                    ? "Pièces estampées 18K–22K, prix final affiché et objectif d'achat possible."
+                    ? bdoPublicCopy.catalogIntro.lingots
                     : bdoBrowseView === "pieces"
-                      ? "Décrivez la pièce, la gravure ou l'intention. L'assistant prépare le brief de fabrication."
-                      : "Éditions signatures, séries limitées et pièces premium prêtes à être découvertes ou acquises."}
+                      ? bdoPublicCopy.catalogIntro.pieces
+                      : bdoPublicCopy.catalogIntro.collection}
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -17976,7 +18382,7 @@ export function BuyerHomePage({
                   className="h-8 border-white/15 px-3 text-[11px] text-white/80 hover:bg-white/10"
                   onClick={() => navigate("/coffre")}
                 >
-                  Mon coffre
+                  {bdoPublicCopy.vaultButton}
                 </Button>
                 <Button
                   type="button"
@@ -17988,7 +18394,7 @@ export function BuyerHomePage({
                     )
                   }
                 >
-                  Catalogue complet
+                  {bdoPublicCopy.fullCatalog}
                 </Button>
               </div>
             </div>
@@ -18015,7 +18421,7 @@ export function BuyerHomePage({
                   <span className="text-[11px] font-medium">{tile.label}</span>
                   <span className="ml-2 text-[10px] text-white/45">
                     {tile.key === "pieces"
-                      ? "Assistant"
+                      ? (language === "en" ? "Assistant" : language === "ar" ? "مساعد" : "Assistant")
                       : tile.fromPrice || `${tile.count} refs`}
                   </span>
                 </button>
@@ -18023,12 +18429,11 @@ export function BuyerHomePage({
             </div>
 
             <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[10px] leading-relaxed text-white/48">
-              <span>Homepage limitee a un apercu premium.</span>
-              <span>Catalogue complet disponible en un clic.</span>
+              <span>{bdoPublicCopy.homepageLimited}</span>
+              <span>{bdoPublicCopy.catalogOneClick}</span>
               {bdoVisibleProductsSupplemented ? (
                 <span>
-                  Cette vue est complétée avec des pièces associées quand peu
-                  de références sont publiées.
+                  {bdoPublicCopy.supplemented}
                 </span>
               ) : null}
             </div>
@@ -18068,7 +18473,7 @@ export function BuyerHomePage({
                         )
                       }
                     >
-                      Voir tout
+                      {bdoPublicCopy.viewAll}
                     </Button>
                   </div>
                 </div>
@@ -18078,11 +18483,10 @@ export function BuyerHomePage({
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                   <div className="max-w-[56ch]">
                     <p className="text-sm font-semibold text-white">
-                      Aucune référence publiée pour cette vue.
+                      {bdoPublicCopy.noReferences}
                     </p>
                     <p className="mt-1 text-[12px] leading-relaxed text-white/55">
-                      Revenez au catalogue complet ou ouvrez votre coffre pour
-                      préparer un achat certifié.
+                      {bdoPublicCopy.noReferencesHelp}
                     </p>
                   </div>
                   <div className="flex flex-wrap gap-2">
@@ -18092,7 +18496,7 @@ export function BuyerHomePage({
                       className={`h-8 px-3 text-[11px] ${BDO_LUX_PRIMARY_BUTTON}`}
                       onClick={() => navigate("/or")}
                     >
-                      Voir toutes les pièces
+                      {bdoPublicCopy.seeAllPieces}
                     </Button>
                     <Button
                       type="button"
@@ -18101,7 +18505,7 @@ export function BuyerHomePage({
                       className="h-8 border-white/15 px-3 text-[11px] text-white/80 hover:bg-white/10"
                       onClick={() => navigate("/coffre")}
                     >
-                      Ouvrir le coffre
+                      {bdoPublicCopy.openVault}
                     </Button>
                   </div>
                 </div>
@@ -18117,10 +18521,10 @@ export function BuyerHomePage({
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <p className="text-[11px] uppercase tracking-[0.24em] text-[#E8C873]/80">
-                    Actualités du marché
+                    {bdoPublicCopy.newsEyebrow}
                   </p>
                   <h3 className={`mt-1 text-lg font-semibold text-white ${BDO_LUX_TITLE_FONT}`}>
-                    Réglementation, conformité et informations utiles
+                    {bdoPublicCopy.newsTitle}
                   </h3>
                 </div>
                 <Button
@@ -18130,12 +18534,11 @@ export function BuyerHomePage({
                   className="h-7 border-white/15 px-2.5 text-[11px] text-white/80 hover:bg-white/10"
                   onClick={() => navigate("/actualites")}
                 >
-                  Voir tout
+                  {bdoPublicCopy.viewAll}
                 </Button>
               </div>
               <p className="mt-2 text-[12px] leading-relaxed text-white/55">
-                Les repères marché et conformité restent disponibles ici, après
-                les actions d&apos;achat et de sourcing.
+                {bdoPublicCopy.newsBody}
               </p>
               {showBdoNewsBanner ? (
                 <div className="mt-4">
@@ -21884,7 +22287,7 @@ export function BuyerHomePage({
                             Number(selectedBdoGoal.amountFundedMinor || 0),
                             "XOF",
                           )}{" "}
-                          financés • reste{" "}
+                          {bdoText("financés", "funded", "مموّل")} • {bdoText("reste", "remaining", "المتبقي")}{" "}
                           {formatMoney(
                             Number(selectedBdoGoal.remainingMinor || 0),
                             "XOF",
@@ -21895,18 +22298,20 @@ export function BuyerHomePage({
 
                     <div className="rounded-2xl border border-[#D4AF37]/15 bg-[#D4AF37]/10 p-4">
                       <p className="text-[10px] uppercase tracking-[0.2em] text-[#F5F3EC]/70">
-                        Accumulation & confirmation
+                        {bdoText("Accumulation & confirmation", "Budget build & confirmation", "تكوين الميزانية والتأكيد")}
                       </p>
                       <p className="mt-2 text-sm text-white/80">
-                        Le prix évolue avec le marché jusqu'à confirmation. Le
-                        prix final est recalculé puis verrouillé au moment de
-                        l'achat.
+                        {bdoText(
+                          "Le prix évolue avec le marché jusqu'à confirmation. Le prix final est recalculé puis verrouillé au moment de l'achat.",
+                          "The price follows the market until confirmation. The final price is refreshed and locked when the order is confirmed.",
+                          "يتغير السعر مع السوق حتى التأكيد. يتم تحديث السعر النهائي وتثبيته عند تأكيد الطلب.",
+                        )}
                       </p>
                     </div>
 
                     <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
                       <p className="text-[10px] uppercase tracking-[0.2em] text-white/45">
-                        Description
+                        {bdoText("Description", "Description", "الوصف")}
                       </p>
                       <p className="mt-2 text-sm leading-relaxed text-white/75">
                         {selectedProduct.description ||
@@ -21930,7 +22335,7 @@ export function BuyerHomePage({
                           handleBdoImmediatePurchase(selectedProduct);
                         }}
                       >
-                        Acheter maintenant
+                        {bdoPublicCopy.buyNow}
                       </Button>
                       <Button
                         variant="outline"
@@ -21959,7 +22364,7 @@ export function BuyerHomePage({
                             openBdoCatalogProductEditor(selectedProduct)
                           }
                         >
-                          Éditer la fiche
+                          {bdoText("Éditer la fiche", "Edit product", "تعديل المنتج")}
                         </Button>
                         <Button
                           type="button"
@@ -21969,7 +22374,7 @@ export function BuyerHomePage({
                             openBdoCatalogProductImages(selectedProduct)
                           }
                         >
-                          Gérer les images
+                          {bdoText("Gérer les images", "Manage images", "إدارة الصور")}
                         </Button>
                       </div>
                     ) : null}
@@ -21979,7 +22384,7 @@ export function BuyerHomePage({
                         className="text-left text-[12px] font-medium text-[#E8C873]/85 transition-colors hover:text-[#E8C873]"
                         onClick={() => navigate("/coffre")}
                       >
-                        Voir mon coffre d'or
+                        {bdoText("Voir mon coffre d'or", "View my gold vault", "عرض خزنة الذهب")}
                       </button>
                     ) : null}
                   </div>
@@ -22486,8 +22891,8 @@ export function BuyerHomePage({
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         {bdoCheckoutRequiresTopup
-                          ? "Ouverture du paiement..."
-                          : "Confirmation..."}
+                          ? bdoText("Ouverture du paiement...", "Opening payment...", "جار فتح الدفع...")
+                          : bdoText("Confirmation...", "Confirming...", "جار التأكيد...")}
                       </>
                     ) : (
                       bdoCheckoutPrimaryAction
@@ -22498,14 +22903,22 @@ export function BuyerHomePage({
                     className={BDO_LUX_SECONDARY_BUTTON}
                     onClick={() => setCheckoutOpen(false)}
                   >
-                    Fermer
+                    {bdoText("Fermer", "Close", "إغلاق")}
                   </Button>
                 </div>
 
                 <p className="text-[12px] text-white/50">
                   {bdoCheckoutRequiresTopup
-                    ? "Nous préparons l'ouverture du paiement en ligne pour créditer votre coffre puis confirmer la commande."
-                    : "Commande réglée depuis votre coffre. Suivi disponible immédiatement."}
+                    ? bdoText(
+                        "Nous préparons l'ouverture du paiement en ligne pour créditer votre coffre puis confirmer la commande.",
+                        "We are opening online payment to fund your vault and then confirm the order.",
+                        "نفتح الدفع الإلكتروني لإضافة الرصيد إلى خزنتك ثم تأكيد الطلب.",
+                      )
+                    : bdoText(
+                        "Commande réglée depuis votre coffre. Suivi disponible immédiatement.",
+                        "Order paid from your vault. Tracking is available immediately.",
+                        "تم دفع الطلب من الخزنة. المتابعة متاحة فوراً.",
+                      )}
                 </p>
               </div>
             </div>
@@ -22531,7 +22944,7 @@ export function BuyerHomePage({
                       Checkout
                     </h3>
                     <p className="text-[10px] text-white/50">
-                      Completing your order
+                      {bdoText("Finalisation de la commande", "Completing your order", "إتمام الطلب")}
                     </p>
                   </div>
                 </div>
@@ -22549,7 +22962,7 @@ export function BuyerHomePage({
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-[10px] text-white/50 uppercase tracking-wider">
-                      Order Total
+                      {bdoText("Total commande", "Order total", "إجمالي الطلب")}
                     </p>
                     <p className="text-xl font-bold text-[#D4AF37]">
                       {formatMoney(
@@ -22564,7 +22977,7 @@ export function BuyerHomePage({
                   <div className="text-right">
                     <p className="text-[10px] text-white/50 uppercase tracking-wider">
                       {useBdoInstitutionalLayout
-                        ? "Crédits disponibles"
+                        ? bdoText("Crédits disponibles", "Available credits", "الاعتمادات المتاحة")
                         : "Purchase credits"}
                     </p>
                     <p className="text-lg font-semibold text-white">
@@ -23258,7 +23671,7 @@ export function BuyerHomePage({
                       </Badge>
                       {conciergeMode === "checkout" ? (
                         <Badge className="border-[#D4AF37]/30 bg-[#D4AF37]/15 text-[10px] text-[#E8C873]">
-                          Paiement assisté
+                          {bdoText("Assistance paiement", "Payment assistance", "مساعدة الدفع")}
                         </Badge>
                       ) : null}
                     </div>
@@ -23278,7 +23691,9 @@ export function BuyerHomePage({
                     )
                   }
                 >
-                  {conciergeSize === "expanded" ? "Réduire" : "Agrandir"}
+                  {conciergeSize === "expanded"
+                    ? bdoText("Réduire", "Collapse", "تصغير")
+                    : bdoText("Agrandir", "Expand", "تكبير")}
                 </Button>
                 <Button
                   variant="ghost"
@@ -23297,7 +23712,7 @@ export function BuyerHomePage({
                     className={BDO_LUX_PRIMARY_BUTTON}
                     onClick={() => setConciergeMode("checkout")}
                   >
-                    Payer {formatMoney(cartTotal, "XOF")}
+                    {bdoText("Payer", "Pay", "ادفع")} {formatMoney(cartTotal, "XOF")}
                   </Button>
                 ) : null}
                 <Button
@@ -23306,7 +23721,7 @@ export function BuyerHomePage({
                   className={BDO_LUX_SECONDARY_BUTTON}
                   onClick={launchConciergeWalletTopup}
                 >
-                  Ajouter des fonds
+                  {bdoText("Ajouter des fonds", "Add funds", "إضافة رصيد")}
                 </Button>
                 <Button
                   size="sm"
@@ -23330,7 +23745,7 @@ export function BuyerHomePage({
                   className={BDO_LUX_SECONDARY_BUTTON}
                   onClick={() => setCartOpen(true)}
                 >
-                  Voir le panier
+                  {bdoText("Voir le panier", "View cart", "عرض السلة")}
                 </Button>
               </div>
 
@@ -23426,8 +23841,8 @@ export function BuyerHomePage({
                         <>
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                           {bdoCheckoutRequiresTopup
-                            ? "Ouverture du paiement..."
-                            : "Confirmation..."}
+                            ? bdoText("Ouverture du paiement...", "Opening payment...", "جار فتح الدفع...")
+                            : bdoText("Confirmation...", "Confirming...", "جار التأكيد...")}
                         </>
                       ) : (
                         bdoCheckoutPrimaryAction
@@ -23439,7 +23854,7 @@ export function BuyerHomePage({
                         className={BDO_LUX_SECONDARY_BUTTON}
                         onClick={launchConciergeWalletTopup}
                       >
-                        Ajouter des fonds
+                        {bdoText("Ajouter des fonds", "Add funds", "إضافة رصيد")}
                       </Button>
                     ) : null}
                   </div>
@@ -24969,7 +25384,7 @@ export function BuyerHomePage({
                         className={BDO_LUX_SECONDARY_BUTTON}
                         onClick={returnToRetailCatalog}
                       >
-                        Retour aux pièces certifiées
+                        {bdoText("Retour aux pièces certifiées", "Back to certified pieces", "العودة إلى القطع المعتمدة")}
                       </Button>
                     ) : (
                       <Button
@@ -24984,7 +25399,7 @@ export function BuyerHomePage({
                           })
                         }
                       >
-                        Parler pour sourcer
+                        {bdoText("Parler pour sourcer", "Talk to source", "تحدث للسourcing")}
                       </Button>
                     )}
                     {!showWholesalePreviewShell ? (
@@ -24994,7 +25409,7 @@ export function BuyerHomePage({
                         className={BDO_LUX_SECONDARY_BUTTON}
                         onClick={() => navigate("/store")}
                       >
-                        Pièces certifiées
+                        {bdoText("Pièces certifiées", "Certified pieces", "قطع معتمدة")}
                       </Button>
                     ) : null}
                   </div>
@@ -25040,13 +25455,21 @@ export function BuyerHomePage({
                 <>
                   <p className="text-white text-xs font-medium drop-shadow-lg">
                     {buyerMode === "wholesale"
-                      ? `${shops.length} points d'offre aurifère`
+                      ? bdoText(
+                          `${shops.length} points d'offre aurifère`,
+                          `${shops.length} gold offer points`,
+                          `${shops.length} نقاط عروض ذهب`,
+                        )
                       : `${retailVisibleSellerCount} ${retailModeLabel.toLowerCase()} sellers`}
                   </p>
                   <p className="text-white/60 text-[10px] drop-shadow-md">
                     {buyerMode === "wholesale"
                       ? isGoldTenant
-                        ? "Sourcing, conformité et production sur carte."
+                        ? bdoText(
+                            "Sourcing, conformité et production sur carte.",
+                            "Sourcing, compliance and production on map.",
+                            "المصادر والامتثال والإنتاج على الخريطة.",
+                          )
                         : "Bulk purchasing, RFQs, and supplier coordination."
                       : isGoldTenant
                         ? "Stamped gold retail units"
@@ -25073,20 +25496,21 @@ export function BuyerHomePage({
                             {conciergeProfile.roleLabel}
                           </p>
                           <p className="mt-1 text-lg font-semibold text-[#F5F3EC]">
-                            Desk wholesale investisseurs
+                            {bdoText("Desk wholesale investisseurs", "Investor wholesale desk", "مكتب الجملة للمستثمرين")}
                           </p>
                         </div>
                       </div>
                       <p className="mt-3 max-w-[68ch] text-sm leading-relaxed text-[#F5F3EC]/66">
-                        Dites le volume voulu, la zone, le profil de mine, le
-                        bureau de sortie ou le besoin machine. Le desk assemble
-                        la shortlist, le contrat type, le funding et la route de
-                        paiement.
+                        {bdoText(
+                          "Indiquez le volume voulu, la zone, le profil de mine, le bureau de sortie ou le besoin machine. Le desk assemble la shortlist, le contrat type, le funding et la route de paiement.",
+                          "Share the target volume, area, mine profile, exit office or machinery need. The desk prepares the shortlist, draft contract, funding and payment route.",
+                          "حدد الحجم المطلوب والمنطقة ونوع المنجم ومكتب الخروج أو احتياج المعدات. يجهز المكتب القائمة المختصرة والعقد والتمويل ومسار الدفع.",
+                        )}
                       </p>
                     </div>
                     <div className="grid shrink-0 gap-2 text-right">
                       <p className="text-[10px] uppercase tracking-[0.18em] text-[#E8C873]/58">
-                        Vue
+                        {bdoText("Vue", "View", "العرض")}
                       </p>
                       <p className="text-sm font-semibold text-[#F5F3EC]">
                         {bdoWholesaleViewLabel}
@@ -25120,7 +25544,7 @@ export function BuyerHomePage({
                         })
                       }
                     >
-                      Parler au desk
+                      {bdoText("Parler au desk", "Talk to the desk", "التحدث إلى المكتب")}
                     </Button>
                   </div>
                 </div>
@@ -25176,10 +25600,10 @@ export function BuyerHomePage({
                       onClick={openWholesalePrimaryAction}
                     >
                       {isBdoUnifiedWholesale
-                        ? bdoWholesalePrimaryActionLabel
+                          ? bdoWholesalePrimaryActionLabel
                         : isWholesaleAuthorized
-                          ? "Ouvrir les dossiers"
-                          : "Demander l'accès"}
+                          ? bdoText("Ouvrir les dossiers", "Open files", "فتح الملفات")
+                          : bdoText("Demander l'accès", "Request access", "طلب الوصول")}
                     </Button>
                     {showWholesalePreviewShell ? (
                       <Button
@@ -25188,7 +25612,7 @@ export function BuyerHomePage({
                         className={BDO_LUX_SECONDARY_BUTTON}
                         onClick={returnToRetailCatalog}
                       >
-                        Pièces certifiées
+                        {bdoText("Pièces certifiées", "Certified pieces", "قطع معتمدة")}
                       </Button>
                     ) : (
                       <Button
@@ -25203,7 +25627,7 @@ export function BuyerHomePage({
                           })
                         }
                       >
-                        Parler à l&apos;assistant
+                        {bdoText("Parler à l'assistant", "Talk to the assistant", "التحدث إلى المساعد")}
                       </Button>
                     )}
                   </div>
@@ -26915,7 +27339,7 @@ Signatures
                           className="text-rose-300 hover:text-rose-200 hover:bg-rose-500/10"
                           onClick={() => removeFromCart(item.productId)}
                         >
-                          {useBdoInstitutionalLayout ? "Retirer" : "Remove"}
+                          {useBdoInstitutionalLayout ? bdoText("Retirer", "Remove", "إزالة") : "Remove"}
                         </Button>
                       </div>
                     </div>
@@ -26928,7 +27352,7 @@ Signatures
                   <div className="mb-3 flex items-center justify-between rounded-xl border border-[#D4AF37]/25 bg-[#D4AF37]/10 px-3 py-2">
                     <div>
                       <p className="text-[10px] uppercase tracking-[0.16em] text-[#E8C873]/80">
-                        Crédits disponibles
+                        {bdoText("Crédits disponibles", "Available credits", "الاعتمادات المتاحة")}
                       </p>
                       <p className="mt-1 text-sm font-semibold text-white">
                         {bdoHeaderWalletLabel}
@@ -26940,7 +27364,7 @@ Signatures
                       className="h-7 border-white/15 px-2.5 text-[11px] text-white/80 hover:bg-white/10"
                       onClick={() => navigate("/coffre")}
                     >
-                      Objectifs
+                      {bdoText("Objectifs", "Objectives", "الأهداف")}
                     </Button>
                   </div>
                 ) : null}
@@ -26959,7 +27383,7 @@ Signatures
                       className="border-white/15 text-white/80 hover:bg-white/10"
                       onClick={() => setCart([])}
                     >
-                      {useBdoInstitutionalLayout ? "Vider" : t("common.clear")}
+                      {useBdoInstitutionalLayout ? bdoText("Vider", "Clear", "تفريغ") : t("common.clear")}
                     </Button>
                     <Button
                       className="bg-gradient-to-r from-[#D4AF37] to-[#D4AF37] hover:from-[#E8C873] hover:to-[#D4AF37] text-black font-semibold"
@@ -26973,7 +27397,7 @@ Signatures
                       {orderMutation.isPending
                         ? "..."
                         : useBdoInstitutionalLayout
-                          ? "Payer avec l'assistant"
+                          ? bdoText("Continuer vers le paiement", "Continue to payment", "المتابعة إلى الدفع")
                           : t("cart.checkout")}
                     </Button>
                   </div>
@@ -26999,8 +27423,8 @@ Signatures
               )}
               {useBdoInstitutionalLayout
                 ? vaultPane === "vault"
-                  ? "Votre coffre d'or"
-                  : "Crédits & objectifs"
+                  ? bdoText("Votre coffre d'or", "Your gold vault", "خزنة الذهب")
+                  : bdoText("Crédits & objectifs", "Credits & objectives", "الاعتمادات والأهداف")
                 : vaultPane === "vault"
                   ? "Coffre d'or & objectifs"
                   : t("wallet.title")}
@@ -27011,7 +27435,11 @@ Signatures
             <div className="mt-6 space-y-3">
               <p className="text-sm text-white/80">
                 {useBdoInstitutionalLayout
-                  ? "Connectez-vous pour accéder à vos crédits d'achat, à vos objectifs et à votre coffre d'or."
+                  ? bdoText(
+                      "Connectez-vous pour accéder à vos crédits d'achat, à vos objectifs et à votre coffre d'or.",
+                      "Sign in to access your purchase credits, objectives and gold vault.",
+                      "سجّل الدخول للوصول إلى اعتمادات الشراء والأهداف وخزنة الذهب.",
+                    )
                   : t("vault.signInToAccess")}
               </p>
               <div className="flex gap-2">
@@ -27052,7 +27480,7 @@ Signatures
                     }`}
                   >
                     {useBdoInstitutionalLayout
-                      ? "Crédits"
+                      ? bdoText("Crédits", "Credits", "الاعتمادات")
                       : t("wallet.title")}
                   </button>
                   <button
@@ -27064,7 +27492,7 @@ Signatures
                         : "text-white/70 hover:text-white"
                     }`}
                   >
-                    {useBdoInstitutionalLayout ? "Coffre" : t("vault.title")}
+                    {useBdoInstitutionalLayout ? bdoText("Coffre", "Vault", "الخزنة") : t("vault.title")}
                   </button>
                 </div>
               </div>
@@ -27075,7 +27503,7 @@ Signatures
                     <div className="flex items-center justify-between gap-3">
                       <p className="text-sm font-semibold text-white">
                         {useBdoInstitutionalLayout
-                          ? "Crédits d'achat disponibles"
+                          ? bdoText("Crédits d'achat disponibles", "Available purchase credits", "اعتمادات الشراء المتاحة")
                           : t("wallet.title")}
                       </p>
                       <p className="text-sm font-semibold text-[#E8C873]">
@@ -27090,15 +27518,18 @@ Signatures
 
                     {useBdoInstitutionalLayout ? (
                       <p className="text-[12px] text-white/60">
-                        Ajoutez des crédits d'achat, puis affectez-les à un
-                        objectif ou à une commande confirmée.
+                        {bdoText(
+                          "Ajoutez des crédits d'achat, puis affectez-les à un objectif ou à une commande confirmée.",
+                          "Add purchase credits, then allocate them to an objective or confirmed order.",
+                          "أضف اعتمادات شراء ثم خصصها لهدف أو طلب مؤكد.",
+                        )}
                       </p>
                     ) : null}
 
                     <WalletDepositModal
                       label={
                         useBdoInstitutionalLayout
-                          ? "Ajouter des crédits d'achat"
+                          ? bdoText("Ajouter des crédits d'achat", "Add purchase credits", "إضافة اعتمادات شراء")
                           : t("wallet.deposit")
                       }
                       next={
@@ -27115,22 +27546,26 @@ Signatures
                       }
                       title={
                         useBdoInstitutionalLayout
-                          ? "Assistant de paiement"
+                          ? bdoText("Paiement en ligne", "Online payment", "الدفع الإلكتروني")
                           : undefined
                       }
                       description={
                         useBdoInstitutionalLayout
-                          ? "Ajoutez des crédits d'achat. Le paiement en ligne s'ouvre ensuite sans détour."
+                          ? bdoText(
+                              "Ajoutez des crédits d'achat. Le paiement en ligne s'ouvre ensuite sans détour.",
+                              "Add purchase credits. Online payment opens directly.",
+                              "أضف اعتمادات شراء. يفتح الدفع الإلكتروني مباشرة.",
+                            )
                           : undefined
                       }
                       summary={
                         useBdoInstitutionalLayout
                           ? {
-                              eyebrow: "Crédits d'achat",
-                              title: "Préparer un budget d'achat",
+                              eyebrow: bdoText("Crédits d'achat", "Purchase credits", "اعتمادات الشراء"),
+                              title: bdoText("Préparer un budget d'achat", "Prepare a purchase budget", "تحضير ميزانية شراء"),
                               lines: [
                                 {
-                                  label: "Crédits disponibles",
+                                  label: bdoText("Crédits disponibles", "Available credits", "الاعتمادات المتاحة"),
                                   value: walletSummaryLoading
                                     ? "..."
                                     : formatMoney(
@@ -27192,7 +27627,7 @@ Signatures
                   <div className="rounded-xl border border-[#D4AF37]/20 bg-[#D4AF37]/8 p-4">
                     <p className="text-[11px] text-white/60 uppercase tracking-wider">
                       {useBdoInstitutionalLayout
-                        ? "Objectifs actifs"
+                        ? bdoText("Objectifs actifs", "Active objectives", "الأهداف النشطة")
                         : t("vault.totalGold")}
                     </p>
                     <p className="text-xl font-semibold text-[#E8C873]">
@@ -27206,7 +27641,11 @@ Signatures
                     </p>
                     <p className="mt-1 text-[12px] text-white/60">
                       {useBdoInstitutionalLayout
-                        ? "Suivez vos objectifs et confirmez l'achat quand le montant vous convient."
+                        ? bdoText(
+                            "Suivez vos objectifs et confirmez l'achat quand le montant vous convient.",
+                            "Track your objectives and confirm the purchase when the amount works for you.",
+                            "تابع أهدافك وأكد الشراء عندما يناسبك المبلغ.",
+                          )
                         : t("vault.description")}
                     </p>
                   </div>
@@ -27531,14 +27970,18 @@ Signatures
             {useBdoInstitutionalLayout ? (
               <div className="flex flex-wrap gap-2">
                 <WalletDepositModal
-                  label="Ajouter des fonds maintenant"
+                  label={bdoText("Ajouter des fonds maintenant", "Add funds now", "إضافة رصيد الآن")}
                   next="/coffre"
                   experience="assistant"
                   allowSellerQr={false}
                   allowProviderSwitch={false}
                   preferredProvider="flutterwave"
-                  title="Assistant de paiement"
-                  description="Ajoutez des fonds puis revenez au coffre pour confirmer votre pièce."
+                  title={bdoText("Paiement en ligne", "Online payment", "الدفع الإلكتروني")}
+                  description={bdoText(
+                    "Ajoutez des fonds puis revenez au coffre pour confirmer votre pièce.",
+                    "Add funds, then return to the vault to confirm your piece.",
+                    "أضف الرصيد ثم عد إلى الخزنة لتأكيد القطعة.",
+                  )}
                   summary={{
                     eyebrow: "Coffre d'or",
                     title: getBdoPublicProductLabel(

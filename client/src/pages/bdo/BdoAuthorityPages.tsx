@@ -2,11 +2,105 @@ import { Link } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
+import { useLocale } from "@/contexts/LocaleContext";
 
 type InsightCard = {
   title: string;
   summary: string;
 };
+
+function getAuthorityCopy(language: string) {
+  if (language === "ar") {
+    return {
+      brand: "BOURSE DE L'OR",
+      certificationEyebrow: "شهادة BOURSE DE L'OR",
+      certificationTitle: "شهادة وتتبع الذهب المادي",
+      certificationBody:
+        "وثّق قطعة ذهبية بالمعلومات المتاحة أثناء الفحص: الصورة، الوزن، العيار، الأصل المصرح به، رقم الشهادة، رمز QR وسجل التحقق عندما تكون البيانات متاحة.",
+      verifyPiece: "تحقق من قطعة",
+      viewProducts: "عرض المنتجات",
+      certificationCards: [
+        ["ما يتم التحقق منه", "الوزن، العيار، الصور، الشهادة، الرقم التسلسلي وعناصر الأصل المتاحة وقت الفحص."],
+        ["QR وجواز الذهب", "يمكن ربط كل قطعة مؤهلة بصفحة تحقق يمكن فتحها برمز أو QR."],
+        ["حدود المسؤولية", "توثق الشهادة العناصر التي تم التحقق منها؛ ولا تستبدل الالتزامات القانونية أو الضريبية أو الجمركية."],
+        ["تصعيد بشري", "الحالات الحساسة تمر بمراجعة بشرية قبل أي تحقق عام أو إجراء معاملاتي."],
+      ],
+      verifierEyebrow: "التحقق من الشهادة",
+      verifierTitle: "تحقق من قطعة",
+      verifierBody:
+        "أدخل الرقم التسلسلي أو رمز الشهادة للاطلاع على صفحة مرتبطة بقطعة ذهب معتمدة.",
+      certificateCode: "رمز الشهادة",
+      verifyNow: "تحقق الآن",
+      resultTitle: "نتيجة التحقق",
+      status: "الحالة",
+      ready: "جاهز للاستشارة",
+      codeRequired: "الرمز مطلوب",
+      resultBody:
+        "يمكن أن تعرض الصفحة المنتج، الوزن، العيار، التاريخ، الصور، الأصل المصرح به، الشهادة والسجل المتاح. تبقى البيانات الحساسة خاضعة لمراجعة بشرية.",
+      resultItems: ["صورة القطعة", "الوزن والعيار", "رقم الشهادة", "السجل المتاح"],
+    };
+  }
+
+  if (language === "en") {
+    return {
+      brand: "BOURSE DE L'OR",
+      certificationEyebrow: "BOURSE DE L'OR certification",
+      certificationTitle: "Certification and traceability for physical gold",
+      certificationBody:
+        "Document a piece with the information available at inspection: photo, weight, title, declared origin, certificate number, QR verification and history when available.",
+      verifyPiece: "Verify a piece",
+      viewProducts: "View products",
+      certificationCards: [
+        ["What is verified", "Weight, title, photos, certificate, serial number and available origin elements at the time of inspection."],
+        ["QR and gold passport", "Each eligible piece can be linked to a verification record accessible by code or QR."],
+        ["Liability limits", "Certification documents validated elements; it does not replace legal, tax or customs obligations."],
+        ["Human escalation", "Sensitive cases go through human review before any public or transactional validation."],
+      ],
+      verifierEyebrow: "Certificate verification",
+      verifierTitle: "Verify a piece",
+      verifierBody:
+        "Enter the serial number or certificate code to consult the record linked to a certified gold piece.",
+      certificateCode: "Certificate code",
+      verifyNow: "Verify now",
+      resultTitle: "Verification result",
+      status: "Status",
+      ready: "Ready for consultation",
+      codeRequired: "Code required",
+      resultBody:
+        "The record can display the product, weight, title, date, photos, declared origin, certificate and available history. Sensitive data remains subject to human verification.",
+      resultItems: ["Piece photo", "Weight and title", "Certificate number", "Available history"],
+    };
+  }
+
+  return {
+    brand: "BOURSE DE L'OR",
+    certificationEyebrow: "Certification BOURSE DE L'OR",
+    certificationTitle: "Certification et traçabilité de l'or physique",
+    certificationBody:
+      "Documentez une pièce avec les informations disponibles au contrôle : photo, poids, titre, origine déclarée, numéro de certificat, QR de vérification et historique lorsque les données sont disponibles.",
+    verifyPiece: "Vérifier une pièce",
+    viewProducts: "Voir les produits",
+    certificationCards: [
+      ["Ce qui est vérifié", "Poids, titre, photos, certificat, numéro de série et éléments d'origine disponibles au moment du contrôle."],
+      ["QR et gold passport", "Chaque pièce éligible peut être reliée à une fiche de vérification consultable par code ou QR."],
+      ["Limites de responsabilité", "La certification documente les éléments validés; elle ne remplace pas les obligations légales, fiscales ou douanières."],
+      ["Escalade humaine", "Les cas sensibles passent par une revue humaine avant toute validation publique ou transactionnelle."],
+    ],
+    verifierEyebrow: "Vérification certificat",
+    verifierTitle: "Vérifier une pièce",
+    verifierBody:
+      "Saisissez le numéro de série ou le code certificat pour consulter la fiche liée à une pièce d'or certifiée.",
+    certificateCode: "Code certificat",
+    verifyNow: "Vérifier maintenant",
+    resultTitle: "Résultat de vérification",
+    status: "Statut",
+    ready: "Prêt pour consultation",
+    codeRequired: "Code requis",
+    resultBody:
+      "La fiche peut afficher le produit, le poids, le titre, la date, les photos, l'origine déclarée, le certificat et l'historique disponible. Les données sensibles restent soumises à vérification humaine.",
+    resultItems: ["Photo de la pièce", "Poids et titre", "Numéro de certificat", "Historique disponible"],
+  };
+}
 
 function BdoAuthorityLayout({
   title,
@@ -52,25 +146,27 @@ function BdoAuthorityLayout({
 }
 
 export function BdoCertificationPage() {
+  const { language } = useLocale();
+  const copy = getAuthorityCopy(language);
+
   return (
     <div className="min-h-screen bg-[#0B0B0D] text-white">
       <div className="mx-auto max-w-6xl px-4 py-8 md:px-6 md:py-10">
         <section className="overflow-hidden rounded-2xl border border-[#D4AF37]/25 bg-[#0D1B2A] shadow-xl">
           <div className="grid gap-0 lg:grid-cols-[1.05fr_0.95fr]">
             <div className="p-6 md:p-8">
-              <p className="text-[11px] uppercase tracking-[0.24em] text-[#E8C873]/90">Certification BOURSE DE L'OR</p>
-              <h1 className="mt-3 text-3xl font-semibold text-white md:text-4xl">Certification et tracabilite de l'or physique</h1>
+              <p className="text-[11px] uppercase tracking-[0.24em] text-[#E8C873]/90">{copy.certificationEyebrow}</p>
+              <h1 className="mt-3 text-3xl font-semibold text-white md:text-4xl">{copy.certificationTitle}</h1>
               <p className="mt-3 max-w-2xl text-sm leading-6 text-[#F5F3EC]/80 md:text-base">
-                Documentez une piece avec les informations disponibles au controle: photo, poids, titre, origine declaree,
-                numero de certificat, QR de verification et historique lorsque les donnees sont disponibles.
+                {copy.certificationBody}
               </p>
               <div className="mt-5 flex flex-wrap gap-3">
                 <Link href="/verifier">
-                  <Button className="bg-[#D4AF37] text-black hover:bg-[#E8C873]">Verifier une piece</Button>
+                  <Button className="bg-[#D4AF37] text-black hover:bg-[#E8C873]">{copy.verifyPiece}</Button>
                 </Link>
                 <Link href="/store">
                   <Button variant="outline" className="border-white/20 text-white hover:bg-white/10">
-                    Voir les produits
+                    {copy.viewProducts}
                   </Button>
                 </Link>
               </div>
@@ -84,12 +180,7 @@ export function BdoCertificationPage() {
         </section>
 
         <div className="mt-5 grid gap-3 md:grid-cols-2">
-          {[
-            ["Ce qui est verifie", "Poids, titre, photos, certificat, numero de serie et elements d'origine disponibles au moment du controle."],
-            ["QR et gold passport", "Chaque piece eligible peut etre reliee a une fiche de verification consultable par code ou QR."],
-            ["Limites de responsabilite", "La certification documente les elements valides; elle ne remplace pas les obligations legales, fiscales ou douanieres."],
-            ["Escalade humaine", "Les cas sensibles passent par une revue humaine avant toute validation publique ou transactionnelle."],
-          ].map(([title, summary]) => (
+          {copy.certificationCards.map(([title, summary]) => (
             <Card key={title} className="border-white/10 bg-[#0D1B2A]/90">
               <CardContent className="p-4">
                 <h2 className="text-sm font-semibold text-[#E8C873]">{title}</h2>
@@ -104,6 +195,8 @@ export function BdoCertificationPage() {
 }
 
 export function BdoVerifierPage() {
+  const { language } = useLocale();
+  const copy = getAuthorityCopy(language);
   const [code, setCode] = useState("");
   const cleanCode = code.trim().toUpperCase();
   const canVerify = cleanCode.length >= 4;
@@ -112,10 +205,11 @@ export function BdoVerifierPage() {
     <div className="min-h-screen bg-[#0B0B0D] text-white">
       <div className="mx-auto grid max-w-6xl gap-5 px-4 py-8 md:px-6 md:py-10 lg:grid-cols-[0.95fr_1.05fr]">
         <section className="rounded-2xl border border-[#D4AF37]/25 bg-gradient-to-br from-[#0D1B2A] via-[#0B0B0D] to-[#7A5A18] p-6 shadow-xl">
-          <p className="text-[11px] uppercase tracking-[0.24em] text-[#E8C873]/90">Verification certificat</p>
-          <h1 className="mt-3 text-3xl font-semibold text-white md:text-4xl">Verifier une piece</h1>
+          <p className="text-[11px] uppercase tracking-[0.24em] text-[#E8C873]/90">{copy.brand}</p>
+          <p className="mt-2 text-[11px] uppercase tracking-[0.24em] text-[#E8C873]/75">{copy.verifierEyebrow}</p>
+          <h1 className="mt-3 text-3xl font-semibold text-white md:text-4xl">{copy.verifierTitle}</h1>
           <p className="mt-3 text-sm leading-6 text-[#F5F3EC]/80">
-            Saisissez le numero de serie ou le code certificat pour consulter la fiche liee a une piece d'or certifiee.
+            {copy.verifierBody}
           </p>
 
           <form
@@ -125,7 +219,7 @@ export function BdoVerifierPage() {
               if (canVerify) window.location.href = `/verify/${encodeURIComponent(cleanCode)}`;
             }}
           >
-            <label className="block text-xs font-semibold uppercase tracking-[0.18em] text-white/55">Code certificat</label>
+            <label className="block text-xs font-semibold uppercase tracking-[0.18em] text-white/55">{copy.certificateCode}</label>
             <input
               value={code}
               onChange={(event) => setCode(event.target.value)}
@@ -133,23 +227,22 @@ export function BdoVerifierPage() {
               className="h-12 w-full rounded-xl border border-[#D4AF37]/25 bg-black/35 px-4 text-sm text-white outline-none placeholder:text-white/35 focus:border-[#D4AF37]"
             />
             <Button type="submit" disabled={!canVerify} className="w-full bg-[#D4AF37] text-black hover:bg-[#E8C873] disabled:opacity-50">
-              Verifier maintenant
+              {copy.verifyNow}
             </Button>
           </form>
         </section>
 
         <section className="rounded-2xl border border-white/10 bg-[#0D1B2A]/90 p-6">
-          <h2 className="text-lg font-semibold text-white">Resultat de verification</h2>
+          <h2 className="text-lg font-semibold text-white">{copy.resultTitle}</h2>
           <div className="mt-4 rounded-xl border border-[#D4AF37]/20 bg-black/25 p-4">
-            <p className="text-xs uppercase tracking-[0.2em] text-[#E8C873]/85">Statut</p>
-            <p className="mt-2 text-2xl font-semibold text-white">{canVerify ? "Pret pour consultation" : "Code requis"}</p>
+            <p className="text-xs uppercase tracking-[0.2em] text-[#E8C873]/85">{copy.status}</p>
+            <p className="mt-2 text-2xl font-semibold text-white">{canVerify ? copy.ready : copy.codeRequired}</p>
             <p className="mt-2 text-sm leading-6 text-white/65">
-              La fiche peut afficher le produit, le poids, le titre, la date, les photos, l'origine declaree, le certificat
-              et l'historique disponible. Les donnees sensibles restent soumises a verification humaine.
+              {copy.resultBody}
             </p>
           </div>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            {["Photo de la piece", "Poids et titre", "Numero de certificat", "Historique disponible"].map((item) => (
+            {copy.resultItems.map((item) => (
               <div key={item} className="rounded-xl border border-white/10 bg-black/20 p-3 text-sm text-white/75">
                 {item}
               </div>

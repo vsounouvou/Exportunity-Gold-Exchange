@@ -328,7 +328,10 @@ export default function MyOrdersPage() {
               <ArrowLeft className="h-4 w-4 mr-2" />
               {copy.backToOrders}
             </Button>
-            <Badge className={`text-[10px] px-2 py-1 ${status.className} self-start sm:self-auto`}>{status.label}</Badge>
+            <div className="flex items-center gap-2 self-start sm:self-auto">
+              <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-amber-300">BOURSE DE L'OR</span>
+              <Badge className={`text-[10px] px-2 py-1 ${status.className}`}>{status.label}</Badge>
+            </div>
           </div>
 
           <Card className="mt-4 bg-white/5 border-white/10">
@@ -475,6 +478,7 @@ export default function MyOrdersPage() {
               </Button>
             </Link>
             <div>
+              <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-amber-300">BOURSE DE L'OR</div>
               <div className="text-lg font-semibold">{copy.myOrders}</div>
               <div className="text-xs text-white/50">{copy.lookupHelp}</div>
             </div>

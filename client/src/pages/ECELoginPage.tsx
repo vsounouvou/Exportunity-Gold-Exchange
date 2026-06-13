@@ -22,6 +22,7 @@ import { BrandLockup, InstitutionFooter } from "@pkg/branding";
 import { useTenant } from "@/lib/tenant";
 import { resolveApiUrl } from "@/lib/runtimeConfig";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useLocale } from "@/contexts/LocaleContext";
 
 const loginSchema = z.object({
   email: z.string().email("Entrez une adresse email valide"),
@@ -60,6 +61,96 @@ type ApplicationAnswers = {
   investmentRange: string;
   investorInterest: InvestorInterest;
 };
+
+function getLoginPageCopy(language: string) {
+  if (language === "ar") {
+    return {
+      accessTitle: "الدخول إلى BOURSE DE L'OR",
+      accessDescription: "سجّل الدخول أو أنشئ حساباً. كل طلب مهني يخضع للمراجعة عند الحاجة.",
+      signIn: "تسجيل الدخول",
+      requestAccess: "طلب الوصول",
+      signingIn: "جار تسجيل الدخول...",
+      email: "البريد الإلكتروني",
+      emailPlaceholder: "you@company.com",
+      password: "كلمة المرور",
+      close: "إغلاق",
+      loginSuccess: "تم تسجيل الدخول",
+      signedInAs: "تم الدخول باسم",
+      loginError: "تعذر تسجيل الدخول",
+      invalidCredentials: "البريد الإلكتروني أو كلمة المرور غير صحيحة",
+      welcomeTitle: (brandName: string) => `مرحباً بك في ${brandName}. لننشئ حسابك.`,
+      welcomeDescription: "يتم تنظيم طلب الوصول حتى يمكن إجراء مراجعة بشرية عند الحاجة.",
+      submitApplication: "إرسال الطلب",
+      submittedTitle: "تم إرسال الطلب",
+      submittedBody: "ملفك قيد المراجعة من فريق BOURSE DE L'OR.",
+      requestReference: "مرجع الطلب",
+      nextSteps: "الخطوات التالية",
+      step1: "مراجعة المعلومات والوثائق المرسلة.",
+      step2: "تصعيد بشري إذا كانت هناك حاجة إلى تأكيد إضافي.",
+      step3: "إشعار عند الموافقة على الوصول أو طلب معلومات إضافية.",
+      back: "رجوع",
+      trackApplication: "متابعة الملف",
+    };
+  }
+
+  if (language === "en") {
+    return {
+      accessTitle: "Access BOURSE DE L'OR",
+      accessDescription: "Sign in or create an account. Professional access requests can be escalated to human review.",
+      signIn: "Sign in",
+      requestAccess: "Request access",
+      signingIn: "Signing in...",
+      email: "Email",
+      emailPlaceholder: "you@company.com",
+      password: "Password",
+      close: "Close",
+      loginSuccess: "Signed in",
+      signedInAs: "Signed in as",
+      loginError: "Sign-in failed",
+      invalidCredentials: "Invalid email or password",
+      welcomeTitle: (brandName: string) => `Welcome to ${brandName}. Let's create your account.`,
+      welcomeDescription: "Your access request is structured so it can be reviewed by a human when needed.",
+      submitApplication: "Submit request",
+      submittedTitle: "Request submitted",
+      submittedBody: "Your file is under review by the BOURSE DE L'OR team.",
+      requestReference: "Request reference",
+      nextSteps: "Next steps",
+      step1: "Review of submitted information and documents.",
+      step2: "Human escalation if additional confirmation is needed.",
+      step3: "Notification when access is approved or more information is required.",
+      back: "Back",
+      trackApplication: "Track application",
+    };
+  }
+
+  return {
+    accessTitle: "Accéder à BOURSE DE L'OR",
+    accessDescription: "Se connecter ou créer un compte. Les demandes professionnelles peuvent passer en revue humaine.",
+    signIn: "Se connecter",
+    requestAccess: "Demander un accès",
+    signingIn: "Connexion...",
+    email: "Email",
+    emailPlaceholder: "vous@entreprise.com",
+    password: "Mot de passe",
+    close: "Fermer",
+    loginSuccess: "Connexion réussie",
+    signedInAs: "Connecté en tant que",
+    loginError: "Connexion impossible",
+    invalidCredentials: "Email ou mot de passe invalide",
+    welcomeTitle: (brandName: string) => `Bienvenue sur ${brandName}. Créons votre compte.`,
+    welcomeDescription: "Votre demande d'accès est structurée pour permettre une vérification humaine si nécessaire.",
+    submitApplication: "Envoyer la demande",
+    submittedTitle: "Demande transmise",
+    submittedBody: "Votre dossier est en cours de vérification par l'équipe BOURSE DE L'OR.",
+    requestReference: "Référence de demande",
+    nextSteps: "Prochaines étapes",
+    step1: "Vérification des informations et documents transmis.",
+    step2: "Escalade humaine si une confirmation supplémentaire est nécessaire.",
+    step3: "Notification lorsque l'accès est approuvé ou qu'un complément est requis.",
+    back: "Retour",
+    trackApplication: "Suivre le dossier",
+  };
+}
 
 function getCountryName(code: string): string {
   if (!code) return "";
@@ -168,6 +259,8 @@ function MapTeaser() {
 	  const { toast } = useToast();
 	  const { login } = useSession();
 	  const { brand, tenant } = useTenant();
+  const { language } = useLocale();
+  const copy = useMemo(() => getLoginPageCopy(language), [language]);
   const isBdoTenant = tenant.key === "bdo";
   const isMobile = useIsMobile();
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
@@ -196,14 +289,14 @@ function MapTeaser() {
 	      const next = normalizeNext(params.get("next"));
 	      setLocation(next || "/");
 	      toast({
-	        title: "Connexion reussie",
-	        description: `Connecte en tant que ${data.user.displayName}`
+	        title: copy.loginSuccess,
+	        description: `${copy.signedInAs} ${data.user.displayName}`
 	      });
 	    },
     onError: (error: any) => {
       toast({
-        title: "Connexion impossible",
-        description: error.message || "Email ou mot de passe invalide",
+        title: copy.loginError,
+        description: error.message || copy.invalidCredentials,
         variant: "destructive"
       });
     }
@@ -685,33 +778,33 @@ function MapTeaser() {
               <div className="w-16 h-16 rounded-full bg-[#D4AF37]/15 flex items-center justify-center mx-auto mb-6">
                 <CheckCircle2 className="h-8 w-8 text-[#E8C873]" />
               </div>
-              <h2 className="font-['Cinzel'] text-2xl font-semibold text-white mb-2">Demande transmise</h2>
+              <h2 className="font-['Cinzel'] text-2xl font-semibold text-white mb-2">{copy.submittedTitle}</h2>
               <p className="text-[#F5F3EC]/70 mb-6">
-                Votre dossier est en cours de verification par l'equipe BOURSE DE L'OR.
+                {copy.submittedBody}
               </p>
               
               <div className="rounded-lg border border-[#D4AF37]/20 bg-black/30 p-4 mb-6">
-                <p className="text-sm text-[#F5F3EC]/55 mb-1">Reference de demande</p>
+                <p className="text-sm text-[#F5F3EC]/55 mb-1">{copy.requestReference}</p>
                 <p className="text-xl font-mono font-bold text-[#E8C873]">{applicationRef}</p>
               </div>
 
               <div className="space-y-4 text-left rounded-lg border border-white/10 bg-black/25 p-4 mb-6">
                 <h3 className="font-semibold text-white flex items-center gap-2">
                   <Clock className="h-4 w-4 text-[#E8C873]" />
-                  Prochaines etapes
+                  {copy.nextSteps}
                 </h3>
                 <ol className="space-y-3 text-sm text-[#F5F3EC]/70">
                   <li className="flex items-start gap-2">
                     <span className="w-5 h-5 rounded-full bg-[#D4AF37]/15 text-[#E8C873] text-xs flex items-center justify-center flex-shrink-0 mt-0.5">1</span>
-                    <span>Verification des informations et documents transmis.</span>
+                    <span>{copy.step1}</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="w-5 h-5 rounded-full bg-[#D4AF37]/15 text-[#E8C873] text-xs flex items-center justify-center flex-shrink-0 mt-0.5">2</span>
-                    <span>Escalade humaine si une confirmation supplementaire est necessaire.</span>
+                    <span>{copy.step2}</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="w-5 h-5 rounded-full bg-[#D4AF37]/15 text-[#E8C873] text-xs flex items-center justify-center flex-shrink-0 mt-0.5">3</span>
-                    <span>Notification lorsque l'acces est approuve ou qu'un complement est requis.</span>
+                    <span>{copy.step3}</span>
                   </li>
                 </ol>
               </div>
@@ -722,13 +815,13 @@ function MapTeaser() {
                   className="flex-1 border-[#D4AF37]/30 text-[#F5F3EC] hover:bg-[#D4AF37]/10"
                   onClick={() => setLocation("/")}
                 >
-                  Retour
+                  {copy.back}
                 </Button>
                 <Button 
                   className="flex-1 bg-[#D4AF37] hover:bg-[#E8C873] text-[#0B0B0D] font-semibold"
                   onClick={() => setLocation(`/application-status?ref=${applicationRef}`)}
                 >
-                  Suivre le dossier
+                  {copy.trackApplication}
                 </Button>
               </div>
             </CardContent>
@@ -793,7 +886,7 @@ function MapTeaser() {
               variant="ghost"
               className="h-10 w-10 p-0 text-[#F5F3EC]/75 hover:text-white hover:bg-[#D4AF37]/10"
               onClick={() => setLocation("/")}
-              aria-label="Close"
+              aria-label={copy.close}
             >
               <X className="h-5 w-5" />
             </Button>
@@ -803,19 +896,19 @@ function MapTeaser() {
       <div className="flex-1 flex items-center justify-center p-4 overflow-y-auto pb-[calc(env(safe-area-inset-bottom,0px)+96px)] md:pb-4">
         <Card className="w-full max-w-3xl border-[#D4AF37]/25 bg-[#0B0B0D]/86 backdrop-blur-xl shadow-[0_24px_80px_rgba(0,0,0,0.52)] my-4">
           <CardHeader className="text-center">
-            <CardTitle className="font-['Cinzel'] text-2xl text-white">Acceder a BOURSE DE L'OR</CardTitle>
+            <CardTitle className="font-['Cinzel'] text-2xl text-white">{copy.accessTitle}</CardTitle>
             <CardDescription className="text-[#F5F3EC]/68">
-              Se connecter ou creer un compte. {brand.complianceNotice}
+              {copy.accessDescription}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "login" | "apply")}>
               <TabsList className="grid w-full grid-cols-2 border border-[#D4AF37]/15 bg-black/35">
                 <TabsTrigger value="login" className="text-[#F5F3EC]/70 data-[state=active]:bg-[#D4AF37] data-[state=active]:text-[#0B0B0D]">
-                  Se connecter
+                  {copy.signIn}
                 </TabsTrigger>
                 <TabsTrigger value="apply" className="text-[#F5F3EC]/70 data-[state=active]:bg-[#D4AF37] data-[state=active]:text-[#0B0B0D]">
-                  Demander un acces
+                  {copy.requestAccess}
                 </TabsTrigger>
               </TabsList>
 
@@ -827,14 +920,14 @@ function MapTeaser() {
                       name="email"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-[#F5F3EC]/82">Email</FormLabel>
+                          <FormLabel className="text-[#F5F3EC]/82">{copy.email}</FormLabel>
                           <FormControl>
                             <Input 
                               {...field} 
                               type="text" 
                               inputMode="email"
                               autoComplete="email"
-                              placeholder="vous@entreprise.com"
+                              placeholder={copy.emailPlaceholder}
                               className="border-[#D4AF37]/20 bg-black/35 text-white placeholder:text-white/35"
                             />
                           </FormControl>
@@ -847,13 +940,13 @@ function MapTeaser() {
                       name="password"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-[#F5F3EC]/82">Mot de passe</FormLabel>
+                          <FormLabel className="text-[#F5F3EC]/82">{copy.password}</FormLabel>
                           <FormControl>
                             <Input 
                               {...field} 
                               type="password" 
                               autoComplete="current-password"
-                              placeholder="Mot de passe"
+                              placeholder={copy.password}
                               className="border-[#D4AF37]/20 bg-black/35 text-white placeholder:text-white/35"
                             />
                           </FormControl>
@@ -869,10 +962,10 @@ function MapTeaser() {
                       {loginMutation.isPending ? (
                         <>
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Connexion...
+                          {copy.signingIn}
                         </>
                       ) : (
-                        "Se connecter"
+                        copy.signIn
                       )}
                     </Button>
                   </form>
@@ -881,12 +974,12 @@ function MapTeaser() {
 
               <TabsContent value="apply" className="mt-6">
                 <ChatFormWizard<ApplicationAnswers>
-                  title={`Bienvenue sur ${brand.name}. Creons votre compte.`}
-                  description="Votre demande d'acces est structuree pour permettre une verification humaine si necessaire."
+                  title={copy.welcomeTitle(brand.name)}
+                  description={copy.welcomeDescription}
                   storageKey="ece_registration_chat_v1"
                   initialAnswers={initialAnswers}
                   steps={applicationSteps}
-                  submitLabel="Envoyer la demande"
+                  submitLabel={copy.submitApplication}
                   onExit={() => setActiveTab("login")}
                   onSubmit={submitApplication}
                 />

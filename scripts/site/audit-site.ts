@@ -1,4 +1,5 @@
 import fs from "node:fs/promises";
+import fsSync from "node:fs";
 import path from "node:path";
 import { chromium } from "playwright";
 
@@ -86,7 +87,23 @@ async function run() {
   const mode = parseMode();
   const baseUrl = process.env.MARKETING_AUDIT_BASE_URL || process.env.AUDIT_BASE_URL || "http://127.0.0.1:5000";
   const forceMarketingParam = parseBool(process.env.MARKETING_AUDIT_FORCE_MARKETING);
-  const browser = await chromium.launch({
+  const browserCandidates = [
+    process.env.PLAYWRIGHT_CHROME_PATH,
+    "C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe",
+    "C:/Program Files/Microsoft/Edge/Application/msedge.exe",
+    "C:/Program Files/Google/Chrome/Application/chrome.exe",
+  ].filter(Boolean) as string[];
+  let browser = null as Awaited<ReturnType<typeof chromium.launch>> | null;
+  for (const executablePath of browserCandidates) {
+    if (!fsSync.existsSync(executablePath)) continue;
+    try {
+      browser = await chromium.launch({ headless: true, executablePath });
+      break;
+    } catch {
+      // Continue to the next installed browser before trying bundled Chromium.
+    }
+  }
+  browser ??= await chromium.launch({
     headless: true,
     channel: process.env.PLAYWRIGHT_CHANNEL || undefined,
   });

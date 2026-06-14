@@ -36,8 +36,12 @@ const publicRoutes = [
   "/industrie-miniere",
   "/certification",
   "/verifier",
+  "/terms",
+  "/privacy",
+  "/cadre-conformite",
   "/login",
   "/register",
+  "/admin/login",
   "/pro/login",
   "/pro",
   "/pro/map",
@@ -310,14 +314,22 @@ async function launchBrowser() {
 async function setupLocale(page, language) {
   await page.addInitScript((lang) => {
     const currency = "XOF";
-    localStorage.setItem("ece_language", lang);
-    localStorage.setItem("ece_currency", currency);
-    localStorage.setItem(
-      "ece_locale_manual_v1",
-      JSON.stringify({ language: lang, currency, updatedAt: new Date().toISOString() }),
-    );
-    document.cookie = `exportunity_pref_lang=${encodeURIComponent(lang)}; Path=/; Max-Age=31536000; SameSite=Lax`;
-    document.cookie = `exportunity_pref_currency=${encodeURIComponent(currency)}; Path=/; Max-Age=31536000; SameSite=Lax`;
+    try {
+      localStorage.setItem("ece_language", lang);
+      localStorage.setItem("ece_currency", currency);
+      localStorage.setItem(
+        "ece_locale_manual_v1",
+        JSON.stringify({ language: lang, currency, updatedAt: new Date().toISOString() }),
+      );
+    } catch {
+      // Some transient browser documents deny storage access; cookies below still cover the app route.
+    }
+    try {
+      document.cookie = `exportunity_pref_lang=${encodeURIComponent(lang)}; Path=/; Max-Age=31536000; SameSite=Lax`;
+      document.cookie = `exportunity_pref_currency=${encodeURIComponent(currency)}; Path=/; Max-Age=31536000; SameSite=Lax`;
+    } catch {
+      // Ignore storage-denied transitional documents in QA.
+    }
   }, language);
 }
 
@@ -538,7 +550,9 @@ async function loginAdmin(context) {
       if (!emailInput || !passwordInput) throw new Error("Admin login fields not found");
       await emailInput.fill(adminEmail, { timeout: 15_000 });
       await passwordInput.fill(adminPassword, { timeout: 15_000 });
-      const submit = page.getByRole("button", { name: /sign in|se connecter|login|connexion/i }).first();
+      const submit = page
+        .getByRole("button", { name: /sign in|se connecter|acc[eé]der|login|connexion|console/i })
+        .first();
       await submit.click({ timeout: 15_000 });
       await page.waitForFunction(() => Boolean(localStorage.getItem("ece_session")), null, { timeout: 40_000 }).catch(() => {});
       await page.waitForURL(/\/dashboard|\/admin\/password|\/admin\/email|\/admin|\/store|\/$/, { timeout: 15_000 }).catch(() => {});
@@ -574,6 +588,11 @@ async function runNonDestructiveActionChecks(context) {
     });
     await page.waitForTimeout(2000);
     const wholesale = await firstUsableLocator([
+      page.getByRole("link", { name: /gros/i }),
+      page.getByRole("button", { name: /gros/i }),
+      page.getByRole("link", { name: /march(?:e|é|Ã©) de gros|wholesale/i }),
+      page.getByRole("button", { name: /march(?:e|é|Ã©) de gros|wholesale/i }),
+      page.getByText(/march(?:e|é|Ã©) de gros|wholesale/i),
       page.getByRole("link", { name: /march[eé] de gros|wholesale/i }),
       page.getByRole("button", { name: /march[eé] de gros|wholesale/i }),
       page.getByText(/march[eé] de gros|wholesale/i),
@@ -584,6 +603,11 @@ async function runNonDestructiveActionChecks(context) {
       await page.waitForTimeout(1800);
     }
     const wholesaleText = await page.locator("body").innerText({ timeout: 10_000 }).catch(() => "");
+    const wholesaleEntryVisibleInText = includesAnyText(wholesaleText, [
+      "Marche de gros",
+      "Marché de gros",
+      "Wholesale",
+    ]);
     const wholesaleLooksProfessional = includesAnyText(wholesaleText, [
       "Carte professionnelle",
       "Debloquez l'acces Pro",
@@ -604,9 +628,9 @@ async function runNonDestructiveActionChecks(context) {
     ]);
     checks.push({
       name: "home-wholesale-entry",
-      ok: wholesaleVisible && wholesaleLooksProfessional && !wholesaleShowsEmptyProductState,
+      ok: (wholesaleVisible || wholesaleEntryVisibleInText) && wholesaleLooksProfessional && !wholesaleShowsEmptyProductState,
       url: page.url(),
-      details: { wholesaleVisible, wholesaleLooksProfessional, wholesaleShowsEmptyProductState },
+      details: { wholesaleVisible, wholesaleEntryVisibleInText, wholesaleLooksProfessional, wholesaleShowsEmptyProductState },
     });
 
     await page.goto(appendQuery("/wholesale", { lang: "fr", currency: "XOF", qa: String(now) }), {

@@ -15,6 +15,7 @@ import { getTenantDefaultRoute } from "@/lib/tenantPolicy";
 import { Loader2, Bot, Users, BarChart3, Zap, ArrowLeft } from "lucide-react";
 import { BrandLockup } from "@pkg/branding";
 import { useTenant } from "@/lib/tenant";
+import { useLocale } from "@/contexts/LocaleContext";
 
 const loginSchema = z.object({
   email: z.string().email("Please enter a valid email"),
@@ -25,27 +26,92 @@ type LoginFormData = z.infer<typeof loginSchema>;
 
 export function AdminLoginPage() {
   const { brand, tenant } = useTenant();
+  const { language } = useLocale();
   const { toast } = useToast();
   const { login, isAuthenticated, isGuest, user } = useSession();
   const [, setLocation] = useLocation();
   const defaultRoute = tenant.key === "mindbase" ? "/admin/mindbase" : getTenantDefaultRoute(tenant.key);
   const isBdoTenant = tenant.key === "bdo";
+  const bdoCopy = {
+    fr: {
+      back: "Retour au site",
+      subtitle: "Console d'administration",
+      headline: "Piloter LA BOURSE DE L'OR",
+      intro:
+        "Accedez aux commandes, paiements, produits, pieces certifiees, controles KYC/KYB, operations wholesale et agents de suivi.",
+      signIn: "Se connecter",
+      description: "Connectez-vous avec votre compte admin.",
+      submit: "Acceder a la console",
+      submitting: "Connexion...",
+      returnHome: "Retour au site public",
+      success: "Connexion reussie",
+      failure: "Connexion impossible",
+      emailPlaceholder: "admin@boursedelor.com",
+      passwordLabel: "Mot de passe",
+      passwordPlaceholder: "Entrez votre mot de passe",
+      changePassword: "Changer le mot de passe ?",
+      setupLink: "J'ai un lien d'activation",
+      features: [
+        { icon: BarChart3, title: "Commandes & paiements", description: "Suivre ventes, paniers et paiements" },
+        { icon: Users, title: "KYC / KYB", description: "Controler acheteurs, vendeurs et partenaires" },
+        { icon: Bot, title: "Agents operationnels", description: "Escalade humaine pour les decisions sensibles" },
+        { icon: Zap, title: "Wholesale & pieces", description: "Piloter marche de gros et pieces certifiees" },
+      ],
+    },
+    en: {
+      back: "Back to site",
+      subtitle: "Administration console",
+      headline: "Operate LA BOURSE DE L'OR",
+      intro:
+        "Access gold orders, online payment follow-up, certified products, KYC/KYB controls, wholesale operations, and human escalation agents.",
+      signIn: "Sign in",
+      description: "Sign in with your administrator account.",
+      submit: "Access the console",
+      submitting: "Signing in...",
+      returnHome: "Return to public site",
+      success: "Login successful",
+      failure: "Login failed",
+      emailPlaceholder: "admin@boursedelor.com",
+      passwordLabel: "Password",
+      passwordPlaceholder: "Enter your password",
+      changePassword: "Need to change password?",
+      setupLink: "I have a setup link",
+      features: [
+        { icon: BarChart3, title: "Gold orders & payments", description: "Track sales, carts, and payment status" },
+        { icon: Users, title: "KYC / KYB", description: "Review buyers, sellers, and partners" },
+        { icon: Bot, title: "Operations agents", description: "Escalate sensitive decisions to humans" },
+        { icon: Zap, title: "Wholesale & certified pieces", description: "Operate the wholesale market and certified products" },
+      ],
+    },
+    ar: {
+      back: "العودة إلى الموقع",
+      subtitle: "لوحة الإدارة",
+      headline: "إدارة LA BOURSE DE L'OR",
+      intro:
+        "إدارة طلبات الذهب، متابعة الدفع الإلكتروني، المنتجات الموثقة، مراجعات KYC/KYB، عمليات الجملة، ووكلاء التصعيد البشري.",
+      signIn: "تسجيل الدخول",
+      description: "سجل الدخول بحساب الإدارة.",
+      submit: "الدخول إلى اللوحة",
+      submitting: "جار تسجيل الدخول...",
+      returnHome: "العودة إلى الموقع العام",
+      success: "تم تسجيل الدخول",
+      failure: "تعذر تسجيل الدخول",
+      emailPlaceholder: "admin@boursedelor.com",
+      passwordLabel: "كلمة المرور",
+      passwordPlaceholder: "أدخل كلمة المرور",
+      changePassword: "هل تحتاج إلى تغيير كلمة المرور؟",
+      setupLink: "لدي رابط تفعيل",
+      features: [
+        { icon: BarChart3, title: "طلبات الذهب والدفع", description: "متابعة المبيعات والسلالات وحالة الدفع" },
+        { icon: Users, title: "KYC / KYB", description: "مراجعة المشترين والبائعين والشركاء" },
+        { icon: Bot, title: "وكلاء العمليات", description: "تصعيد القرارات الحساسة إلى مراجعة بشرية" },
+        { icon: Zap, title: "الجملة والقطع الموثقة", description: "إدارة سوق الجملة والمنتجات الموثقة" },
+      ],
+    },
+  };
+  const bdoLanguage = language === "en" || language === "ar" ? language : "fr";
   const copy = isBdoTenant
-    ? {
-        back: "Retour au site",
-        subtitle: "Console d'administration",
-        headline: "Piloter LA BOURSE DE L'OR",
-        intro:
-          "Accedez aux commandes, paiements, produits, pieces certifiees, controles KYC/KYB, operations wholesale et agents de suivi.",
-        signIn: "Se connecter",
-        description: "Connectez-vous avec votre compte admin.",
-        submit: "Acceder a la console",
-        submitting: "Connexion...",
-        returnHome: "Retour au site public",
-        success: "Connexion reussie",
-        failure: "Connexion impossible",
-        emailPlaceholder: "admin@boursedelor.com",
-      }
+    ? bdoCopy[bdoLanguage]
     : {
         back: "Back to Marketplace",
         subtitle: "Console d'administration",
@@ -60,6 +126,16 @@ export function AdminLoginPage() {
         success: "Welcome back!",
         failure: "Login failed",
         emailPlaceholder: "admin@example.com",
+        passwordLabel: "Password",
+        passwordPlaceholder: "Enter your password",
+        changePassword: "Need to change password?",
+        setupLink: "Have a setup link?",
+        features: [
+          { icon: Bot, title: "Operations Center", description: "Coordinate your AI agents" },
+          { icon: Users, title: "Multi-Agent Meetings", description: "Run automated discussions" },
+          { icon: BarChart3, title: "Performance Analytics", description: "Track agent efficiency" },
+          { icon: Zap, title: "Task Automation", description: "Delegate work to agents" },
+        ],
       };
 
   useEffect(() => {
@@ -101,19 +177,7 @@ export function AdminLoginPage() {
     loginMutation.mutate(data);
   };
 
-  const features = isBdoTenant
-    ? [
-        { icon: BarChart3, title: "Commandes & paiements", description: "Suivre ventes, paniers et paiements" },
-        { icon: Users, title: "KYC / KYB", description: "Controler acheteurs, vendeurs et partenaires" },
-        { icon: Bot, title: "Agents operationnels", description: "Escalade humaine pour les decisions sensibles" },
-        { icon: Zap, title: "Wholesale & pieces", description: "Piloter marche de gros et pieces certifiees" },
-      ]
-    : [
-        { icon: Bot, title: "Operations Center", description: "Coordinate your AI agents" },
-        { icon: Users, title: "Multi-Agent Meetings", description: "Run automated discussions" },
-        { icon: BarChart3, title: "Performance Analytics", description: "Track agent efficiency" },
-        { icon: Zap, title: "Task Automation", description: "Delegate work to agents" },
-      ];
+  const features = copy.features;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 flex">
@@ -192,11 +256,11 @@ export function AdminLoginPage() {
                   name="password"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-gray-300">Password</FormLabel>
+                        <FormLabel className="text-gray-300">{copy.passwordLabel}</FormLabel>
                       <FormControl>
                         <Input 
                           type="password" 
-                          placeholder="Enter your password"
+                          placeholder={copy.passwordPlaceholder}
                           className="bg-gray-800 border-gray-700 text-white"
                           {...field} 
                         />
@@ -229,7 +293,7 @@ export function AdminLoginPage() {
                 onClick={() => setLocation("/admin/password")}
                 className="underline underline-offset-2 hover:text-white"
               >
-                Need to change password?
+                {copy.changePassword}
               </button>
               <span className="mx-2 text-gray-600">|</span>
               <button
@@ -237,7 +301,7 @@ export function AdminLoginPage() {
                 onClick={() => setLocation("/setup-password")}
                 className="underline underline-offset-2 hover:text-white"
               >
-                Have a setup link?
+                {copy.setupLink}
               </button>
             </div>
             

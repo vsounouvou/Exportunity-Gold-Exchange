@@ -133,7 +133,7 @@ const copy = {
       {
         title: "Limitations",
         body:
-          "The platform supports presentation, documentation, verification, and coordination. It does not provide financial, investment, tax, or legal advice, and does not promise returns, instant liquidity, or guaranteed buyback.",
+          "The platform supports presentation, documentation, verification, and coordination. It does not provide financial, investment, tax, or legal advice, and does not promise resale availability, rapid exit options, fixed outcomes, or company repurchase.",
       },
       {
         title: "Independent partners",

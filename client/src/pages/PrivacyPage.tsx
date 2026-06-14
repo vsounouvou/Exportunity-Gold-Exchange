@@ -16,17 +16,17 @@ const copy = {
       {
         title: "Données collectées",
         body:
-          "Nous collectons les informations nécessaires à la navigation, aux demandes de cotation, aux commandes, au support, à la vérification de certificat, à la livraison et aux contrôles de conformité.",
+          "Nous collectons les informations nécessaires à la navigation, aux demandes de cotation, aux commandes, au support, à la vérification de certificat, à la livraison, au stockage et aux contrôles de conformité.",
       },
       {
         title: "Documents de vérification",
         body:
-          "Les pièces d'identité, documents d'entreprise, preuves d'origine, photos, certificats et justificatifs sont utilisés pour l'évaluation de conformité, la sécurité opérationnelle et le traitement des demandes.",
+          "Les pièces d'identité, documents d'entreprise, preuves d'origine, photos, certificats, informations de source des fonds, informations de source des biens et justificatifs sont utilisés pour la revue de conformité, la sécurité opérationnelle et le traitement des demandes.",
       },
       {
         title: "Utilisation des données",
         body:
-          "Les données servent à gérer les comptes, vérifier les produits, préparer les commandes, traiter les paiements, organiser la livraison, documenter la traçabilité et répondre aux demandes.",
+          "Les données servent à gérer les comptes, vérifier les produits, préparer les commandes, traiter les paiements, organiser la production, la livraison ou le stockage, documenter la traçabilité et répondre aux demandes client.",
       },
       {
         title: "Confidentialité des commandes",
@@ -34,19 +34,24 @@ const copy = {
           "Les détails de commande, documents d'identité, informations de paiement et communications avec les fournisseurs, raffineries, artisans, logisticiens ou partenaires de stockage sont traités comme confidentiels et utilisés uniquement pour le traitement des commandes, la conformité, la logistique et le support client.",
       },
       {
+        title: "Partage avec les partenaires",
+        body:
+          "Les informations peuvent être partagées avec des prestataires autorisés uniquement lorsque cela est nécessaire pour la vérification, le paiement, la production, l'affinage, l'essai, la livraison, le stockage, la conformité ou le support.",
+      },
+      {
         title: "Protection et accès",
         body:
-          "L'accès aux informations sensibles est limité aux personnes et prestataires autorisés lorsque cela est nécessaire à la vérification, au paiement, à la production, à la livraison, au stockage, à la conformité ou au support. Les documents de conformité ne doivent pas être exposés publiquement.",
+          "L'accès aux informations sensibles est limité aux personnes et prestataires autorisés. Les documents de conformité ne doivent pas être exposés publiquement et les décisions sensibles peuvent être soumises à une revue humaine.",
       },
       {
         title: "Conservation",
         body:
-          "Les informations sont conservées pendant la durée nécessaire aux opérations, obligations de conformité, suivi des commandes, résolution des litiges et exigences légales applicables.",
+          "Les informations sont conservées pendant la durée nécessaire aux opérations, obligations de conformité, suivi des commandes, résolution des litiges, sécurité et exigences légales applicables.",
       },
       {
         title: "Vos droits",
         body:
-          "Vous pouvez demander l'accès, la correction ou la suppression de certaines données lorsque la loi le permet. Certaines informations peuvent devoir être conservées pour des obligations légales ou de sécurité.",
+          "Vous pouvez demander l'accès, la correction ou la suppression de certaines données lorsque la loi le permet. Certaines informations peuvent devoir être conservées pour des obligations légales, de conformité ou de sécurité.",
       },
     ],
   },
@@ -58,17 +63,17 @@ const copy = {
       {
         title: "Data collected",
         body:
-          "We collect the information needed for browsing, quote requests, orders, support, certificate verification, delivery, and compliance checks.",
+          "We collect the information needed for browsing, quote requests, orders, support, certificate verification, delivery, storage, and compliance checks.",
       },
       {
         title: "Verification documents",
         body:
-          "Identity documents, company records, origin evidence, photos, certificates, and supporting files are used for compliance review, operational security, and request processing.",
+          "Identity documents, company records, origin evidence, photos, certificates, source of funds information, source of goods information, and supporting files are used for compliance review, operational security, and request processing.",
       },
       {
         title: "Data use",
         body:
-          "Data is used to manage accounts, verify products, prepare orders, process payments, organize delivery, document traceability, and respond to requests.",
+          "Data is used to manage accounts, verify products, prepare orders, process payments, coordinate production, delivery or storage, document traceability, and respond to customer requests.",
       },
       {
         title: "Order confidentiality",
@@ -76,19 +81,24 @@ const copy = {
           "Customer order details, identity documents, payment information, and communications with suppliers, refineries, artisans, logistics providers, or vaulting partners are treated as confidential and used only for order processing, compliance, logistics, and customer support.",
       },
       {
+        title: "Partner sharing",
+        body:
+          "Information may be shared with authorized service providers only when needed for verification, payment, production, refining, assay, delivery, storage, compliance, or support.",
+      },
+      {
         title: "Protection and access",
         body:
-          "Access to sensitive information is limited to authorized people and service providers when needed for verification, payment, production, delivery, storage, compliance, or support. Compliance documents must not be exposed publicly.",
+          "Access to sensitive information is limited to authorized people and service providers. Compliance documents must not be exposed publicly, and sensitive decisions may be subject to human review.",
       },
       {
         title: "Retention",
         body:
-          "Information is retained for the time needed for operations, compliance obligations, order follow-up, dispute resolution, and applicable legal requirements.",
+          "Information is retained for the time needed for operations, compliance obligations, order follow-up, dispute resolution, security, and applicable legal requirements.",
       },
       {
         title: "Your rights",
         body:
-          "You may request access, correction, or deletion of certain data where permitted by law. Some information may need to be retained for legal or security obligations.",
+          "You may request access, correction, or deletion of certain data where permitted by law. Some information may need to be retained for legal, compliance, or security obligations.",
       },
     ],
   },
@@ -100,32 +110,42 @@ const copy = {
       {
         title: "البيانات التي يتم جمعها",
         body:
-          "نجمع المعلومات اللازمة للتصفح وطلبات التسعير والطلبات والدعم والتحقق من الشهادات والتسليم وفحوصات الامتثال.",
+          "نجمع المعلومات اللازمة للتصفح وطلبات التسعير والطلبات والدعم والتحقق من الشهادات والتسليم والتخزين وفحوص الامتثال.",
       },
       {
         title: "وثائق التحقق",
         body:
-          "تستخدم وثائق الهوية وسجلات الشركة وأدلة الأصل والصور والشهادات والملفات الداعمة للمراجعة الامتثالية والأمان التشغيلي ومعالجة الطلبات.",
+          "تستخدم وثائق الهوية وسجلات الشركة وأدلة الأصل والصور والشهادات ومعلومات مصدر الأموال ومصدر البضائع والملفات الداعمة لمراجعة الامتثال والأمان التشغيلي ومعالجة الطلبات.",
       },
       {
         title: "استخدام البيانات",
         body:
-          "تستخدم البيانات لإدارة الحسابات والتحقق من المنتجات وتجهيز الطلبات ومعالجة المدفوعات وتنظيم التسليم وتوثيق التتبع والرد على الطلبات.",
+          "تستخدم البيانات لإدارة الحسابات والتحقق من المنتجات وتجهيز الطلبات ومعالجة المدفوعات وتنسيق الإنتاج أو التسليم أو التخزين وتوثيق التتبع والرد على طلبات العملاء.",
+      },
+      {
+        title: "سرية الطلبات",
+        body:
+          "تتم معاملة تفاصيل الطلب ووثائق الهوية ومعلومات الدفع والاتصالات مع الموردين والمصافي والحرفيين ومقدمي الخدمات اللوجستية أو شركاء الحفظ بسرية، وتستخدم فقط لمعالجة الطلبات والامتثال واللوجستيات ودعم العملاء.",
+      },
+      {
+        title: "المشاركة مع الشركاء",
+        body:
+          "قد تتم مشاركة المعلومات مع مزودي خدمات مصرح لهم فقط عندما يكون ذلك ضرورياً للتحقق أو الدفع أو الإنتاج أو التصفية أو الفحص أو التسليم أو التخزين أو الامتثال أو الدعم.",
       },
       {
         title: "الحماية والوصول",
         body:
-          "يقتصر الوصول إلى المعلومات الحساسة على الأشخاص ومقدمي الخدمات المصرح لهم. ويجب عدم عرض وثائق الامتثال علنا.",
+          "يقتصر الوصول إلى المعلومات الحساسة على الأشخاص ومزودي الخدمات المصرح لهم. يجب عدم عرض وثائق الامتثال علناً، وقد تخضع القرارات الحساسة لمراجعة بشرية.",
       },
       {
         title: "الاحتفاظ",
         body:
-          "يتم الاحتفاظ بالمعلومات للفترة اللازمة للعمليات والالتزامات الامتثالية ومتابعة الطلبات وحل النزاعات والمتطلبات القانونية المعمول بها.",
+          "يتم الاحتفاظ بالمعلومات للفترة اللازمة للعمليات والالتزامات الامتثالية ومتابعة الطلبات وحل النزاعات والأمان والمتطلبات القانونية المعمول بها.",
       },
       {
         title: "حقوقك",
         body:
-          "يمكنك طلب الوصول إلى بعض البيانات أو تصحيحها أو حذفها عندما يسمح القانون بذلك. وقد يلزم الاحتفاظ ببعض المعلومات لالتزامات قانونية أو أمنية.",
+          "يمكنك طلب الوصول إلى بعض البيانات أو تصحيحها أو حذفها عندما يسمح القانون بذلك. وقد يلزم الاحتفاظ ببعض المعلومات لالتزامات قانونية أو امتثالية أو أمنية.",
       },
     ],
   },

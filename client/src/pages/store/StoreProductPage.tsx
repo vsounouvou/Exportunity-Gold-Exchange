@@ -21,16 +21,16 @@ const copy = {
   fr: {
     loading: "Chargement du produit...",
     notFound: "Produit introuvable.",
-    back: "Retour a la boutique",
+    back: "Retour à la boutique",
     noImage: "Aucune image disponible",
     description: "Description",
     emptyDescription: "Aucune description disponible.",
     brand: "BOURSE DE L'OR",
-    proof: "Or physique certifie, prix lie au marche et verification documentaire.",
+    proof: "Or physique certifié, prix lié au marché et vérification documentaire.",
     priceNotice:
-      "Prix indicatif jusqu'a confirmation finale. Le total payable peut inclure frais de plateforme, paiement, livraison, assurance, taxes, droits, stockage ou verification selon le produit et le pays.",
+      "Prix indicatif jusqu'à confirmation finale. Le total payable peut inclure le prix du produit physique, le spread de plateforme, le paiement, la livraison, l'assurance, les taxes, les droits, le stockage ou la vérification selon le produit et le pays.",
     complianceNotice:
-      "Commande soumise a disponibilite, paiement confirme, verification KYC/KYB si applicable et validation finale par La Bourse de l'Or ou le partenaire approuve.",
+      "Commande soumise à disponibilité, paiement confirmé, vérification KYC/KYB si applicable, revue de conformité et validation finale par La Bourse de l'Or ou le partenaire approuvé. Le transfert de propriété intervient uniquement après confirmation finale.",
     order: "Commander",
     quote: "Demander une cotation",
   },
@@ -44,9 +44,9 @@ const copy = {
     brand: "BOURSE DE L'OR",
     proof: "Certified physical gold, market-linked price and document verification.",
     priceNotice:
-      "Indicative price until final confirmation. The total payable may include platform, payment, delivery, insurance, taxes, duties, storage, or verification fees depending on the product and country.",
+      "Indicative price until final confirmation. The total payable may include the physical product price, platform spread, payment processing, delivery, insurance, taxes, duties, storage, or verification fees depending on the product and country.",
     complianceNotice:
-      "Order subject to availability, confirmed payment, KYC/KYB verification when applicable, and final validation by La Bourse de l'Or or the approved partner.",
+      "Order subject to availability, confirmed payment, KYC/KYB verification when applicable, compliance review, and final validation by La Bourse de l'Or or the approved partner. Ownership transfers only after final confirmation.",
     order: "Order now",
     quote: "Request a quote",
   },
@@ -58,7 +58,11 @@ const copy = {
     description: "الوصف",
     emptyDescription: "لا يوجد وصف متاح.",
     brand: "BOURSE DE L'OR",
-    proof: "ذهب مادي معتمد، سعر مرتبط بالسوق، وتحقق من الوثائق.",
+    proof: "ذهب مادي موثق، سعر مرتبط بالسوق، وتحقق من الوثائق.",
+    priceNotice:
+      "السعر إرشادي حتى التأكيد النهائي. قد يشمل المبلغ النهائي سعر المنتج المادي وهامش المنصة ومعالجة الدفع والتسليم والتأمين والضرائب والرسوم والتخزين أو التحقق حسب المنتج والبلد.",
+    complianceNotice:
+      "الطلب خاضع للتوفر وتأكيد الدفع والتحقق KYC/KYB عند الاقتضاء ومراجعة الامتثال والتأكيد النهائي من لا بورص دو لور أو الشريك المعتمد. تنتقل الملكية فقط بعد التأكيد النهائي.",
     order: "اطلب الآن",
     quote: "طلب تسعير",
   },
@@ -84,25 +88,9 @@ export default function StoreProductPage({ slug }: { slug: string }) {
   }, [brand.name, product?.title, tenant.key]);
 
   const labels = tenant.key === "met" ? copy.fr : copy[language] || copy.fr;
-  const arProductLegalNotice = {
-    priceNotice:
-      "السعر إرشادي حتى التأكيد النهائي. قد يشمل المبلغ النهائي رسوم المنصة أو الدفع أو التسليم أو التأمين أو الضرائب أو الرسوم أو التخزين أو التحقق حسب المنتج والبلد.",
-    complianceNotice:
-      "الطلب خاضع للتوفر وتأكيد الدفع والتحقق KYC/KYB عند الاقتضاء والتأكيد النهائي من La Bourse de l'Or أو الشريك المعتمد.",
-  };
   const bdoLegalLabels: { priceNotice: string; complianceNotice: string } = {
-    priceNotice:
-      "priceNotice" in labels && typeof labels.priceNotice === "string"
-        ? labels.priceNotice
-        : language === "ar"
-          ? arProductLegalNotice.priceNotice
-          : copy.fr.priceNotice,
-    complianceNotice:
-      "complianceNotice" in labels && typeof labels.complianceNotice === "string"
-        ? labels.complianceNotice
-        : language === "ar"
-          ? arProductLegalNotice.complianceNotice
-          : copy.fr.complianceNotice,
+    priceNotice: labels.priceNotice || copy.fr.priceNotice,
+    complianceNotice: labels.complianceNotice || copy.fr.complianceNotice,
   };
   const isBdo = tenant.key === "bdo";
 

@@ -193,6 +193,12 @@ async function loginAdmin(context) {
 
 async function collectCandidates(page) {
   return page.$$eval("button, a[href], [role='button'], [data-action], [onclick], select, input[type='checkbox'], input[type='radio']", (nodes) => {
+    const openDialog = Array.from(document.querySelectorAll("[role='dialog']")).find((dialog) => {
+      const rect = dialog.getBoundingClientRect();
+      const style = window.getComputedStyle(dialog);
+      return rect.width > 0 && rect.height > 0 && style.display !== "none" && style.visibility !== "hidden";
+    });
+
     function cssPath(element) {
       const parts = [];
       let current = element;
@@ -218,6 +224,7 @@ async function collectCandidates(page) {
     return nodes
       .map((node, index) => {
         const element = node;
+        if (openDialog && !openDialog.contains(element)) return null;
         const parentClickable = element.parentElement?.closest("button, a[href], [role='button'], [data-action], [onclick]");
         if (parentClickable && parentClickable !== element) return null;
         const rect = element.getBoundingClientRect();

@@ -496,6 +496,13 @@ async function runNonDestructiveActionChecks(context) {
       "Debloquez l'acces Pro",
       "Acces reserve aux membres Pro",
       "Professional",
+      "Marche de gros",
+      "Espace professionnel",
+      "Volumes, fournisseurs",
+      "sourcing verifies",
+      "Adhesion requise",
+      "Vue investisseur",
+      "Parler pour sourcer",
     ]);
     const wholesaleShowsEmptyProductState = includesAnyText(wholesaleText, [
       "Aucun produit trouve",
@@ -520,6 +527,13 @@ async function runNonDestructiveActionChecks(context) {
       "Debloquez l'acces Pro",
       "Acces reserve aux membres Pro",
       "Professional",
+      "Marche de gros",
+      "Espace professionnel",
+      "Volumes, fournisseurs",
+      "sourcing verifies",
+      "Adhesion requise",
+      "Vue investisseur",
+      "Parler pour sourcer",
     ]);
     const wholesaleDirectShowsEmptyProductState = includesAnyText(wholesaleDirectText, [
       "Aucun produit trouve",

@@ -1473,7 +1473,7 @@ function getProductPurityLabel(product: any): string {
   return "Or certifié";
 }
 
-const BDO_PUBLIC_TERM_REPLACEMENTS: Array<[RegExp, string]> = [
+const BDO_PUBLIC_TERM_REPLACEMENTS_FR: Array<[RegExp, string]> = [
   [/\bGold Portrait Bust - Limited Edition\b/g, "Lingot certifié - Édition limitée"],
   [/\bGold Portrait Bust\b/g, "Lingot certifié"],
   [/\bStamped Gold Piece\b/g, "Pièce certifiée"],
@@ -1496,9 +1496,38 @@ const BDO_PUBLIC_TERM_REPLACEMENTS: Array<[RegExp, string]> = [
   [/\bingot\b/g, "certified ingot"],
 ];
 
-function mapBdoPublicTerminology(text: string | null | undefined) {
+const BDO_PUBLIC_TERM_REPLACEMENTS_EN: Array<[RegExp, string]> = [
+  [/\bGold Portrait Bust - Limited Edition\b/g, "Certified Gold - Limited Edition"],
+  [/\bGold Portrait Bust\b/g, "Certified Gold"],
+  [/\bStamped Gold Piece\b/g, "Certified Gold Piece"],
+  [/\bStamped Gold Bar\b/g, "Certified Gold Bar"],
+  [/\bStamped Gold\b/g, "Certified Gold"],
+  [/\bstamped gold piece\b/g, "certified gold piece"],
+  [/\bstamped gold bar\b/g, "certified gold bar"],
+  [/\bstamped gold\b/g, "certified gold"],
+];
+
+const BDO_PUBLIC_TERM_REPLACEMENTS_AR: Array<[RegExp, string]> = [
+  [/\bGold Portrait Bust - Limited Edition\b/g, "\u0630\u0647\u0628 \u0645\u0639\u062a\u0645\u062f - \u0625\u0635\u062f\u0627\u0631 \u0645\u062d\u062f\u0648\u062f"],
+  [/\bGold Portrait Bust\b/g, "\u0630\u0647\u0628 \u0645\u0639\u062a\u0645\u062f"],
+  [/\bStamped Gold Piece\b/g, "\u0642\u0637\u0639\u0629 \u0630\u0647\u0628 \u0645\u0639\u062a\u0645\u062f\u0629"],
+  [/\bStamped Gold Bar\b/g, "\u0633\u0628\u064a\u0643\u0629 \u0630\u0647\u0628 \u0645\u0639\u062a\u0645\u062f\u0629"],
+  [/\bStamped Gold\b/g, "\u0630\u0647\u0628 \u0645\u0639\u062a\u0645\u062f"],
+  [/\bstamped gold piece\b/g, "\u0642\u0637\u0639\u0629 \u0630\u0647\u0628 \u0645\u0639\u062a\u0645\u062f\u0629"],
+  [/\bstamped gold bar\b/g, "\u0633\u0628\u064a\u0643\u0629 \u0630\u0647\u0628 \u0645\u0639\u062a\u0645\u062f\u0629"],
+  [/\bstamped gold\b/g, "\u0630\u0647\u0628 \u0645\u0639\u062a\u0645\u062f"],
+  [/\bBased on the international 24K reference\b/g, "\u0628\u0646\u0627\u0621\u064b \u0639\u0644\u0649 \u0645\u0631\u062c\u0639 24K \u0627\u0644\u062f\u0648\u0644\u064a"],
+];
+
+function getBdoPublicTermReplacements(language = "fr") {
+  if (language === "ar") return BDO_PUBLIC_TERM_REPLACEMENTS_AR;
+  if (language === "en") return BDO_PUBLIC_TERM_REPLACEMENTS_EN;
+  return BDO_PUBLIC_TERM_REPLACEMENTS_FR;
+}
+
+function mapBdoPublicTerminology(text: string | null | undefined, language = "fr") {
   let next = String(text || "");
-  for (const [pattern, replacement] of BDO_PUBLIC_TERM_REPLACEMENTS) {
+  for (const [pattern, replacement] of getBdoPublicTermReplacements(language)) {
     next = next.replace(pattern, replacement);
   }
   return next;
@@ -1507,9 +1536,10 @@ function mapBdoPublicTerminology(text: string | null | undefined) {
 function getBdoPublicProductLabel(
   name: string | null | undefined,
   fallback: string,
+  language = "fr",
 ) {
   const raw = String(name || "").trim() || fallback;
-  return mapBdoPublicTerminology(raw);
+  return mapBdoPublicTerminology(raw, language);
 }
 
 function getBdoProductKind(product: any): "ingot" | "coin" | "collector" {
@@ -8368,24 +8398,24 @@ export function BuyerHomePage({
     }
     if (category === "stamped") {
       return {
-        label: "STAMPED",
+        label: bdoText("CERTIFIÉ", "CERTIFIED", "\u0645\u0639\u062a\u0645\u062f"),
         className: "bg-[#D4AF37]/85 text-black border-[#E8C873]/60",
       };
     }
     if (category === "gold-art") {
       return {
-        label: "GOLD ART",
+        label: bdoText("ART OR", "GOLD ART", "\u0641\u0646 \u0630\u0647\u0628\u064a"),
         className: "bg-[#E8C873]/82 text-[#0B0B0D] border-[#F1D27A]/60",
       };
     }
     if (category === "jewelry") {
       return {
-        label: "JEWELRY",
+        label: bdoText("BIJOU", "JEWELRY", "\u0645\u062c\u0648\u0647\u0631\u0627\u062a"),
         className: "bg-[#7A5A18]/82 text-[#F8F3E7] border-[#D4AF37]/55",
       };
     }
     return {
-      label: "GOLD",
+      label: bdoText("OR", "GOLD", "\u0630\u0647\u0628"),
       className: "bg-white/20 text-white border-white/30",
     };
   };
@@ -8419,7 +8449,7 @@ export function BuyerHomePage({
       };
     }
     return {
-      label: "STAMPED",
+      label: bdoText("CERTIFI\u00c9", "CERTIFIED", "\u0645\u0639\u062a\u0645\u062f"),
       color: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
     };
   };
@@ -8668,7 +8698,9 @@ export function BuyerHomePage({
         0,
     );
     const trendLabel =
-      language === "fr"
+      language === "ar"
+        ? `\u0627\u062a\u062c\u0627\u0647 \u0627\u0644\u0630\u0647\u0628: ${trendToday > 0 ? "+" : ""}${trendToday.toFixed(2)}% \u0627\u0644\u064a\u0648\u0645`
+      : language === "fr"
         ? `Tendance de l'or: ${trendToday > 0 ? "+" : ""}${trendToday.toFixed(2)}% aujourd'hui`
         : `Gold trend: ${trendToday > 0 ? "+" : ""}${trendToday.toFixed(2)}% today`;
     if (dynamicPricing) {
@@ -8680,14 +8712,20 @@ export function BuyerHomePage({
         dynamicPricing.marketReferenceValueMinor &&
         dynamicPricing.marketReferenceValueMinor > 0
           ? trendLabel
+          : language === "ar"
+            ? "\u0628\u0646\u0627\u0621\u064b \u0639\u0644\u0649 \u0645\u0631\u062c\u0639 24K \u0627\u0644\u062f\u0648\u0644\u064a"
           : language === "fr"
             ? "Base sur le cours international 24K"
             : "Based on the international 24K reference";
       const marginText =
         dynamicPricing.marginPercent != null && dynamicPricing.marginPercent > 0
-          ? language === "fr"
+          ? language === "ar"
+            ? `\u0633\u0639\u0631 \u0627\u0644\u0628\u064a\u0639 \u0627\u0644\u0639\u0627\u0645 \u0645\u0631\u062a\u0628\u0637 \u0628\u0640 LBMA + ${marginPercentLabel}%.`
+          : language === "fr"
             ? `Vente publique indexee LBMA + ${marginPercentLabel}%.`
             : `Public sell indexed to LBMA + ${marginPercentLabel}%.`
+          : language === "ar"
+            ? "\u064a\u0634\u0645\u0644 \u0645\u0631\u062c\u0639 \u0633\u0648\u0642 24K."
           : language === "fr"
             ? "Base marche 24K incluse."
             : "24K market base included.";
@@ -16419,14 +16457,14 @@ export function BuyerHomePage({
                                     const meta = getCategoryMeta(category);
                                     const badgeLabel = isGoldTenant
                                       ? category === "dore"
-                                        ? "DOR?"
+                                        ? bdoText("DOR\u00c9", "DORE", "\u0630\u0647\u0628 \u062e\u0627\u0645")
                                         : category === "stamped"
-                                          ? "STAMPED"
+                                          ? bdoText("CERTIFI\u00c9", "CERTIFIED", "\u0645\u0639\u062a\u0645\u062f")
                                           : category === "gold-art"
-                                            ? "GOLD ART"
+                                            ? bdoText("ART OR", "GOLD ART", "\u0641\u0646 \u0630\u0647\u0628\u064a")
                                             : category === "jewelry"
-                                              ? "JEWELRY"
-                                              : "GOLD"
+                                              ? bdoText("BIJOU", "JEWELRY", "\u0645\u062c\u0648\u0647\u0631\u0627\u062a")
+                                              : bdoText("OR", "GOLD", "\u0630\u0647\u0628")
                                       : meta.label.toUpperCase();
                                     const badgeClass = isGoldTenant
                                       ? category === "dore"
@@ -16451,7 +16489,11 @@ export function BuyerHomePage({
                                             {badgeLabel}
                                           </span>
                                           <span className="text-xs text-white">
-                                            {product.name?.slice(0, 18)}
+                                            {getBdoPublicProductLabel(
+                                              product?.name,
+                                              product?.name || "",
+                                              language,
+                                            ).slice(0, 18)}
                                           </span>
                                         </div>
                                         <span className="text-xs font-bold text-[#D4AF37]">
@@ -20576,6 +20618,12 @@ export function BuyerHomePage({
                                               product,
                                               idx,
                                             );
+                                          const displayName =
+                                            getBdoPublicProductLabel(
+                                              product?.name,
+                                              product?.name || section.title,
+                                              language,
+                                            );
                                           const hasDisplayImage =
                                             hasRealImages ||
                                             displayImages.some(
@@ -20636,7 +20684,7 @@ export function BuyerHomePage({
                                               >
                                                 <img
                                                   src={imageSrc}
-                                                  alt={product.name}
+                                                  alt={displayName}
                                                   className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                                                   onError={(e) => {
                                                     e.currentTarget.onerror =
@@ -20707,7 +20755,7 @@ export function BuyerHomePage({
                                                   <div className={`flex items-end justify-between ${isRayonDenseDesktopMarket ? "gap-1.5" : "gap-3"}`}>
                                                     <div className="min-w-0">
                                                       <p className={`${isRayonDenseDesktopMarket ? "text-[11px]" : "text-sm"} font-semibold text-white truncate drop-shadow`}>
-                                                        {product.name}
+                                                        {displayName}
                                                       </p>
                                                       <div className={`${isRayonDenseDesktopMarket ? "text-[9px]" : "text-[11px]"} text-white/70 flex items-center gap-1 min-w-0 drop-shadow`}>
                                                         <MapPin className="h-3 w-3 flex-shrink-0" />
@@ -27100,6 +27148,11 @@ Signatures
                             ? "bg-[#D4AF37]/90 text-black"
                             : "bg-[#D4AF37]/85 text-[#0B0B0D]"
                         : "bg-white/10 text-white";
+                      const displayName = getBdoPublicProductLabel(
+                        product?.name,
+                        product?.name || meta.label,
+                        language,
+                      );
 
                       return (
                         <Card
@@ -27140,7 +27193,7 @@ Signatures
                                     normalizeProductImageUrl(meta.image) ||
                                     buildProductPlaceholder(product, 0)
                                   }
-                                  alt={product.name}
+                                  alt={displayName}
                                   className="w-full h-full object-cover"
                                   loading="eager"
                                   onError={(e) => {
@@ -27192,7 +27245,7 @@ Signatures
 
                             <div className="mt-3 min-w-0">
                               <p className="font-semibold text-white text-sm truncate">
-                                {product.name}
+                                {displayName}
                               </p>
                               <p className="text-xs text-white/55 mt-1 truncate">
                                 {isJewelry
@@ -27235,6 +27288,8 @@ Signatures
                                 )}
                                 {isWholesalePreview
                                   ? "Demander accès"
+                                  : language === "ar"
+                                    ? "\u0625\u0636\u0627\u0641\u0629"
                                   : isMaterialsTenant || language === "fr"
                                     ? "Ajouter"
                                     : "Add"}

@@ -111,6 +111,13 @@ try {
   report.checks.paymentOptionsVisible =
     (await visible(page, /Mobile Money Push/i)) && (await visible(page, /Carte \/ autre/i));
   report.checks.assistantNotForced = !/payer avec l'assistant|pay with assistant/i.test(orderText);
+  report.checks.paymentLayerAboveToasts = await page.evaluate(() => {
+    const dialog = document.querySelector("[role='dialog']");
+    const toastViewport = document.querySelector("[data-radix-toast-viewport]");
+    const dialogZ = dialog ? Number(window.getComputedStyle(dialog).zIndex || 0) : 0;
+    const toastZ = toastViewport ? Number(window.getComputedStyle(toastViewport).zIndex || 0) : 0;
+    return dialogZ > toastZ;
+  });
   report.checks.noBlockingErrorVisible = !/Page failed to load|Application error|Something went wrong/i.test(orderText);
 
   report.ok =

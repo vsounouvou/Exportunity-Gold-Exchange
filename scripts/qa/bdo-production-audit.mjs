@@ -24,6 +24,16 @@ const publicRoutes = [
   "/wholesale/apply",
   "/wholesale/membership",
   "/wholesale/counterparties",
+  "/pieces",
+  "/collections",
+  "/cart",
+  "/checkout",
+  "/marketplace",
+  "/marketplace/map",
+  "/shop",
+  "/actualites",
+  "/reglementation",
+  "/industrie-miniere",
   "/certification",
   "/verifier",
   "/login",
@@ -36,17 +46,43 @@ const publicRoutes = [
   "/pro/bureaux-achat",
   "/pro/exportateurs-verifies",
   "/pro/membership",
+  "/pro/intelligence",
   "/pro/mine",
   "/pro/money",
   "/pro/operations",
+  "/pro/chats",
+  "/pro/orders",
+  "/pro/agents",
+  "/pro/account",
+  "/espace-pro",
   "/coffre",
   "/mes-objectifs",
   "/orders",
+  "/account",
+  "/delivery",
+  "/app",
+  "/app/wallet",
+  "/app/contracts",
+  "/app/actions",
+  "/app/shop",
+  "/app/equipment",
+  "/app/invest/opportunities",
+  "/app/invest/onboarding",
+  "/app/raise-capital/apply",
+  "/app/machinery/financing",
+  "/application-status",
+  "/apply/shop",
+  "/apply/delivery",
   "/stamped-gold",
 ];
 
 const adminRoutes = [
   "/admin/dashboard",
+  "/admin/orders",
+  "/admin/products",
+  "/admin/collections",
+  "/admin/agents",
+  "/admin/wallets",
   "/admin/bdo/goals",
   "/admin/bdo/pro-memberships",
   "/admin/bdo/settings",
@@ -60,11 +96,25 @@ const adminRoutes = [
   "/admin/marketplace/products",
   "/admin/marketplace/payments",
   "/admin/wallet",
+  "/admin/wallet/accounts",
+  "/admin/wallet/ledger",
   "/admin/wallet/config",
   "/admin/wallet/topups",
+  "/admin/wallet/payouts",
+  "/admin/wallet/vouchers",
+  "/admin/wallet/sellers",
+  "/admin/wallet/risk",
   "/admin/map-icons",
   "/admin/agents-os",
   "/admin/agents/governance",
+  "/admin/inbox",
+  "/admin/email",
+  "/admin/communications/whatsapp",
+  "/admin/communications/whatsapp/logs",
+  "/admin/communications/twilio",
+  "/admin/communications/twilio/logs",
+  "/admin/pro-test-accounts",
+  "/admin/system/update",
 ];
 
 function parseCsvEnv(name) {
@@ -92,6 +142,8 @@ const forbiddenPublicPatterns = [
   /Lorem ipsum/i,
   /\bTODO\b/i,
   /coming soon/i,
+  /Shared collection layout across all tenants/i,
+  /Curated collection/i,
   /cash out anywhere/i,
   /gold wallet/i,
   /guaranteed return/i,
@@ -174,6 +226,47 @@ function appendQuery(route, params) {
 
 function normalizeRouteName(route) {
   return route.replace(/^\/+$/, "home").replace(/^\/+/, "").replace(/[^a-z0-9]+/gi, "-") || "home";
+}
+
+function uniqueRoutes(routes) {
+  return Array.from(new Set(routes.filter(Boolean)));
+}
+
+async function fetchJsonSafe(request, route) {
+  try {
+    const url = new URL(`${baseURL}${route}`);
+    url.searchParams.set("qa", String(now));
+    const response = await request.get(url.toString(), {
+      headers: {
+        "x-ece-lang": "fr",
+        "x-ece-currency": "XOF",
+      },
+      timeout: 20_000,
+    });
+    if (!response.ok()) return null;
+    return await response.json().catch(() => null);
+  } catch {
+    return null;
+  }
+}
+
+async function resolveDynamicPublicRoutes(context) {
+  const dynamic = [];
+  const productsPayload = await fetchJsonSafe(context.request, "/api/store/products?limit=8");
+  const firstProduct = Array.isArray(productsPayload?.items)
+    ? productsPayload.items.find((item) => String(item?.slug || item?.id || "").trim())
+    : null;
+  const productSlug = String(firstProduct?.slug || firstProduct?.id || "").trim();
+  if (productSlug) dynamic.push(`/product/${encodeURIComponent(productSlug)}`);
+
+  const collectionsPayload = await fetchJsonSafe(context.request, "/api/store/collections");
+  const firstCollection = Array.isArray(collectionsPayload?.items)
+    ? collectionsPayload.items.find((item) => String(item?.slug || "").trim())
+    : null;
+  const collectionSlug = String(firstCollection?.slug || "").trim();
+  if (collectionSlug) dynamic.push(`/collections/${encodeURIComponent(collectionSlug)}`);
+
+  return uniqueRoutes(dynamic);
 }
 
 function isIgnoredConsoleIssue(text) {
@@ -760,9 +853,11 @@ async function main() {
   });
 
   const routes = [];
+  const dynamicPublicRoutes = selectedRouteFilters.length ? [] : await resolveDynamicPublicRoutes(context);
+  const publicRoutesToAudit = uniqueRoutes([...selectedPublicRoutes, ...dynamicPublicRoutes]);
 
   if (auditScope === "all" || auditScope === "public") {
-    for (const route of selectedPublicRoutes) {
+    for (const route of publicRoutesToAudit) {
       for (const language of selectedLanguages) {
         routes.push(await auditRoute(context, route, language, "public"));
       }
@@ -783,7 +878,7 @@ async function main() {
   const actionChecks = auditScope === "admin" ? [] : await runNonDestructiveActionChecks(context);
 
   if (selectedRouteFilters.length) {
-    const checkedRoutes = new Set([...selectedPublicRoutes, ...selectedAdminRoutes]);
+    const checkedRoutes = new Set([...publicRoutesToAudit, ...selectedAdminRoutes]);
     const missingRoutes = selectedRouteFilters.filter((route) => !checkedRoutes.has(route));
     for (const route of missingRoutes) {
       for (const language of selectedLanguages) {
@@ -801,6 +896,7 @@ async function main() {
     browserEngine: engine,
     fallbackReason,
     mutatingChecks: runMutatingChecks,
+    dynamicPublicRoutes,
     summary: summarize(routes, actionChecks, adminLogin),
     actionChecks,
     routes,

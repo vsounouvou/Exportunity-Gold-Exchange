@@ -15,6 +15,33 @@ function normalizeCurrencyCode(value: unknown): Currency {
   return "XOF";
 }
 
+const copy = {
+  fr: {
+    loading: "Chargement du produit...",
+    notFound: "Produit introuvable.",
+    back: "Retour a la boutique",
+    noImage: "Aucune image disponible",
+    description: "Description",
+    emptyDescription: "Aucune description disponible.",
+  },
+  en: {
+    loading: "Loading product...",
+    notFound: "Product not found.",
+    back: "Back to store",
+    noImage: "No image available",
+    description: "Description",
+    emptyDescription: "No description available.",
+  },
+  ar: {
+    loading: "جاري تحميل المنتج...",
+    notFound: "المنتج غير موجود.",
+    back: "العودة إلى المتجر",
+    noImage: "لا توجد صورة متاحة",
+    description: "الوصف",
+    emptyDescription: "لا يوجد وصف متاح.",
+  },
+};
+
 export default function StoreProductPage({ slug }: { slug: string }) {
   const { brand, tenant } = useTenant();
   const { formatAmount, language } = useLocale();
@@ -34,19 +61,13 @@ export default function StoreProductPage({ slug }: { slug: string }) {
     document.title = tenant.key === "met" ? brand.name : product?.title ? `${product.title} | ${brand.name}` : brand.name;
   }, [brand.name, product?.title, tenant.key]);
 
-  const isFrench = language === "fr" || tenant.key === "met";
-  const loadingLabel = isFrench ? "Chargement du produit..." : "Loading product...";
-  const notFoundLabel = isFrench ? "Produit introuvable." : "Product not found.";
-  const backLabel = isFrench ? "Retour a la boutique" : "Back to Store";
-  const noImageLabel = isFrench ? "Aucune image disponible" : "No image available";
-  const descriptionLabel = isFrench ? "Description" : "Description";
-  const emptyDescriptionLabel = isFrench ? "Aucune description disponible." : "No description available.";
+  const labels = tenant.key === "met" ? copy.fr : copy[language] || copy.fr;
 
   if (query.isLoading) {
     return (
       <main className="min-h-screen bg-[#020817] px-4 py-6 text-white sm:px-6 lg:px-10">
         <div className="mx-auto max-w-5xl rounded-xl border border-white/10 bg-[#0b1220] p-6 text-sm text-white/60">
-          {loadingLabel}
+          {labels.loading}
         </div>
       </main>
     );
@@ -56,7 +77,7 @@ export default function StoreProductPage({ slug }: { slug: string }) {
     return (
       <main className="min-h-screen bg-[#020817] px-4 py-6 text-white sm:px-6 lg:px-10">
         <div className="mx-auto max-w-5xl rounded-xl border border-white/10 bg-[#0b1220] p-6 text-sm text-white/60">
-          {notFoundLabel} <Link href="/store"><span className="text-amber-300">{backLabel}</span></Link>
+          {labels.notFound} <Link href="/store"><span className="text-amber-300">{labels.back}</span></Link>
         </div>
       </main>
     );
@@ -68,7 +89,7 @@ export default function StoreProductPage({ slug }: { slug: string }) {
     <main className="min-h-screen bg-[#020817] px-4 py-6 text-white sm:px-6 lg:px-10">
       <div className="mx-auto max-w-6xl space-y-6">
         <Link href="/store">
-          <span className="text-xs text-white/60 hover:text-white">{backLabel}</span>
+          <span className="text-xs text-white/60 hover:text-white">{labels.back}</span>
         </Link>
 
         <section className="grid gap-6 rounded-2xl border border-white/10 bg-[#0b1220] p-6 lg:grid-cols-[1.1fr_1fr]">
@@ -76,7 +97,7 @@ export default function StoreProductPage({ slug }: { slug: string }) {
             {cover ? (
               <img src={cover} alt={product.title} className="h-full w-full rounded-lg object-cover" />
             ) : (
-              <div className="flex min-h-[280px] items-center justify-center text-sm text-white/50">{noImageLabel}</div>
+              <div className="flex min-h-[280px] items-center justify-center text-sm text-white/50">{labels.noImage}</div>
             )}
           </div>
 
@@ -95,8 +116,8 @@ export default function StoreProductPage({ slug }: { slug: string }) {
         </section>
 
         <section className="rounded-2xl border border-white/10 bg-[#0b1220] p-6">
-          <h2 className="text-lg font-semibold">{descriptionLabel}</h2>
-          <p className="mt-2 text-sm text-white/70 whitespace-pre-wrap">{product.description || emptyDescriptionLabel}</p>
+          <h2 className="text-lg font-semibold">{labels.description}</h2>
+          <p className="mt-2 text-sm text-white/70 whitespace-pre-wrap">{product.description || labels.emptyDescription}</p>
         </section>
       </div>
     </main>

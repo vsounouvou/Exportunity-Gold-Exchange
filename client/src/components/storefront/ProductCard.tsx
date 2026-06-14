@@ -3,13 +3,35 @@ import type { StoreProduct } from "@/types/storefront";
 import type { TenantKey } from "@/types/tenant";
 import { useTenant } from "@/lib/tenant";
 import { getTenantPlaceholderProductImage } from "@/lib/storefrontIdentity";
+import { useLocale, type Currency } from "@/contexts/LocaleContext";
 
-function formatMoney(value: number, currency: string) {
-  try {
-    return new Intl.NumberFormat("fr-FR", { style: "currency", currency, maximumFractionDigits: 0 }).format(value);
-  } catch {
-    return `${value} ${currency}`;
+const copy = {
+  fr: {
+    verifiedSeller: "Vendeur verifie",
+    sellerPrefix: "Vendeur",
+    quickAdd: "Ajouter",
+    view: "Voir",
+  },
+  en: {
+    verifiedSeller: "Verified seller",
+    sellerPrefix: "Seller",
+    quickAdd: "Add",
+    view: "View",
+  },
+  ar: {
+    verifiedSeller: "بائع موثق",
+    sellerPrefix: "بائع",
+    quickAdd: "إضافة",
+    view: "عرض",
+  },
+};
+
+function normalizeCurrencyCode(value: unknown): Currency {
+  const upper = String(value || "").trim().toUpperCase();
+  if (upper === "USD" || upper === "EUR" || upper === "GBP" || upper === "XOF" || upper === "GHS" || upper === "NGN" || upper === "KES" || upper === "AED") {
+    return upper as Currency;
   }
+  return "XOF";
 }
 
 function resolveProductImage(product: StoreProduct, tenantKey: TenantKey) {
@@ -30,7 +52,7 @@ function resolveProductImage(product: StoreProduct, tenantKey: TenantKey) {
   return fromMetadata || getTenantPlaceholderProductImage(tenantKey);
 }
 
-function resolveSellerLabel(product: StoreProduct) {
+function resolveSellerLabel(product: StoreProduct, labels: typeof copy.fr) {
   const metadata = product.metadata && typeof product.metadata === "object" ? product.metadata : {};
   const candidates = [
     (metadata as any)?.sellerName,
@@ -40,8 +62,8 @@ function resolveSellerLabel(product: StoreProduct) {
   ];
   const label = candidates.find((entry) => typeof entry === "string" && entry.trim().length > 0);
   if (label) return String(label);
-  if (product.creatorId) return `Seller #${product.creatorId}`;
-  return "Verified seller";
+  if (product.creatorId) return `${labels.sellerPrefix} #${product.creatorId}`;
+  return labels.verifiedSeller;
 }
 
 function quickAdd(product: StoreProduct) {
@@ -68,8 +90,11 @@ function quickAdd(product: StoreProduct) {
 
 export function ProductCard({ product }: { product: StoreProduct }) {
   const { tenant } = useTenant();
+  const { language, formatAmount } = useLocale();
+  const labels = copy[language] || copy.fr;
   const cover = resolveProductImage(product, tenant.key);
-  const sellerLabel = resolveSellerLabel(product);
+  const sellerLabel = resolveSellerLabel(product, labels);
+  const price = formatAmount(Number(product.price || 0), normalizeCurrencyCode(product.currency));
 
   return (
     <article className="rounded-xl border border-white/10 bg-[#0f172a] p-4 shadow-sm">
@@ -82,7 +107,7 @@ export function ProductCard({ product }: { product: StoreProduct }) {
           <p className="line-clamp-2 text-xs text-white/60">{product.subtitle || product.description}</p>
           <p className="mt-1 text-[11px] text-white/40">{sellerLabel}</p>
         </div>
-        <span className="text-xs font-semibold text-amber-300">{formatMoney(product.price, product.currency)}</span>
+        <span className="text-xs font-semibold text-amber-300">{price}</span>
       </div>
       <div className="mt-3 flex items-center justify-between">
         <div className="flex flex-wrap gap-1">
@@ -95,13 +120,13 @@ export function ProductCard({ product }: { product: StoreProduct }) {
         <div className="flex items-center gap-2">
           <button
             type="button"
-            className="rounded-md border border-emerald-400/40 bg-emerald-500/10 px-2 py-1 text-[10px] font-semibold text-emerald-200 hover:bg-emerald-500/20"
+            className="rounded-md border border-[#D4AF37]/45 bg-[#D4AF37]/12 px-2 py-1 text-[10px] font-semibold text-[#F1D27A] hover:bg-[#D4AF37]/20"
             onClick={() => quickAdd(product)}
           >
-            Quick add
+            {labels.quickAdd}
           </button>
           <Link href={`/product/${encodeURIComponent(product.slug || String(product.id))}`}>
-            <span className="text-xs text-amber-300 hover:text-amber-200">View</span>
+            <span className="text-xs text-amber-300 hover:text-amber-200">{labels.view}</span>
           </Link>
         </div>
       </div>

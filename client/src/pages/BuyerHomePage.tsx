@@ -2537,6 +2537,7 @@ export function BuyerHomePage({
       ? (tenantConfig?.storefrontHero ?? null)
       : storefrontHero;
   const isGoldTenant = tenant.key === "bdo";
+  const useBdoDirectCheckout = isGoldTenant;
   const isHozTenant = tenant.key === "hoz";
   const isExportunityTenant = tenant.key === "exportunity";
   const isRayonTenant = tenant.key === "rayon1km" || tenant.key === "exportunity";
@@ -2567,6 +2568,7 @@ export function BuyerHomePage({
         : null;
   const isWholesaleShellRoute =
     isGoldTenant && location.startsWith("/wholesale");
+  const isBdoUnifiedWholesale = isGoldTenant && isWholesaleShellRoute;
   const useProximityRadius =
     storefrontMarketType === "PROXIMITY" ||
     (isGoldTenant && location.startsWith("/wholesale"));
@@ -5856,9 +5858,16 @@ export function BuyerHomePage({
     const shopIds = [...new Set(cart.map((item) => item.shopId))];
     if (shopIds.length > 1) {
       toast({
-        title: "Multiple producers",
-        description:
-          "Please order from one producer at a time. Remove items from other producers first.",
+        title: useBdoDirectCheckout
+          ? bdoText("Un seul vendeur", "One seller only", "بائع واحد فقط")
+          : "Multiple producers",
+        description: useBdoDirectCheckout
+          ? bdoText(
+              "Retirez les autres produits pour poursuivre le paiement.",
+              "Remove the other products to continue payment.",
+              "أزل المنتجات الأخرى للمتابعة إلى الدفع.",
+            )
+          : "Please order from one producer at a time. Remove items from other producers first.",
         variant: "destructive",
       });
       return;
@@ -5874,7 +5883,7 @@ export function BuyerHomePage({
     setCheckoutMessages([
       {
         role: "assistant",
-        content: useBdoInstitutionalLayout
+        content: useBdoDirectCheckout
           ? `Résumé de commande prêt: ${cart.length} article${cart.length > 1 ? "s" : ""}, total ${formatMoney(checkoutTotal, "XOF")}. Confirmez pour ouvrir le paiement en ligne ou régler depuis le coffre si le solde couvre la commande.`
           : `Great! Let's complete your order of ${cart.length} item${cart.length > 1 ? "s" : ""} totaling ${formatMoney(checkoutTotal, "XOF")}. First, tell me about yourself - who is placing this order?`,
       },
@@ -13061,7 +13070,6 @@ export function BuyerHomePage({
     session.hasRole("verified_investor") ||
     session.hasRole("shareholder") ||
     session.hasRole("admin");
-  const isBdoUnifiedWholesale = isGoldTenant && isWholesaleShellRoute;
   const isBdoAuthorizedBuyerRole =
     isBdoUnifiedWholesale &&
     (session.hasRole("authorized_gold_buyer" as any) ||
@@ -22946,7 +22954,7 @@ export function BuyerHomePage({
       )}
 
       {checkoutOpen &&
-        (useBdoInstitutionalLayout ? (
+        (useBdoDirectCheckout ? (
           <div
             className="fixed inset-0 flex items-start justify-center pt-8 px-4 pointer-events-none"
             style={{
@@ -23884,7 +23892,7 @@ export function BuyerHomePage({
                       <Badge className="border-white/10 bg-white/10 text-[10px] text-white/70">
                         {conciergeProfile.roleLabel}
                       </Badge>
-                      {conciergeMode === "checkout" && !useBdoInstitutionalLayout ? (
+                      {conciergeMode === "checkout" && !useBdoDirectCheckout ? (
                         <Badge className="border-[#D4AF37]/30 bg-[#D4AF37]/15 text-[10px] text-[#E8C873]">
                           {bdoText("Assistance paiement", "Payment assistance", "مساعدة الدفع")}
                         </Badge>
@@ -23926,12 +23934,12 @@ export function BuyerHomePage({
                     size="sm"
                     className={BDO_LUX_PRIMARY_BUTTON}
                     onClick={
-                      useBdoInstitutionalLayout
+                      useBdoDirectCheckout
                         ? openBdoCheckoutSummary
                         : () => setConciergeMode("checkout")
                     }
                   >
-                    {useBdoInstitutionalLayout
+                    {useBdoDirectCheckout
                       ? bdoCheckoutPrimaryAction
                       : `${bdoText("Payer", "Pay", "ادفع")} ${formatMoney(cartTotal, "XOF")}`}
                   </Button>
@@ -23970,7 +23978,7 @@ export function BuyerHomePage({
                 </Button>
               </div>
 
-              {conciergeMode === "checkout" && cart.length > 0 && !useBdoInstitutionalLayout ? (
+              {conciergeMode === "checkout" && cart.length > 0 && !useBdoDirectCheckout ? (
                 <div className="mt-4 rounded-2xl border border-[#D4AF37]/20 bg-[#D4AF37]/8 p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div>
@@ -27461,13 +27469,13 @@ Signatures
             <SheetTitle className="text-white flex items-center justify-between gap-3">
               <div className="flex items-center gap-2">
                 <ShoppingCart className="h-5 w-5 text-[#E8C873]" />
-                {useBdoInstitutionalLayout ? "Votre panier" : t("cart.title")}
+                {useBdoDirectCheckout ? "Votre panier" : t("cart.title")}
               </div>
               <Badge
                 variant="outline"
                 className="border-white/15 text-white/70 text-[10px]"
               >
-                {cart.length} {useBdoInstitutionalLayout ? "articles" : "items"}
+                {cart.length} {useBdoDirectCheckout ? "articles" : "items"}
               </Badge>
             </SheetTitle>
           </SheetHeader>
@@ -27497,12 +27505,12 @@ Signatures
                     return shopsCount > 1 ? (
                       <div className="rounded-xl border border-rose-500/25 bg-rose-500/10 p-3">
                         <p className="text-[12px] font-semibold text-rose-200">
-                          {useBdoInstitutionalLayout
+                          {useBdoDirectCheckout
                             ? "Un seul vendeur par commande"
                             : "Multiple shops detected"}
                         </p>
                         <p className="mt-1 text-[11px] text-rose-100/70">
-                          {useBdoInstitutionalLayout
+                          {useBdoDirectCheckout
                             ? "Retirez les autres produits pour poursuivre."
                             : "Please order from one shop at a time. Remove items from other shops."}
                         </p>
@@ -27567,7 +27575,7 @@ Signatures
                           className="text-rose-300 hover:text-rose-200 hover:bg-rose-500/10"
                           onClick={() => removeFromCart(item.productId)}
                         >
-                          {useBdoInstitutionalLayout ? bdoText("Retirer", "Remove", "إزالة") : "Remove"}
+                          {useBdoDirectCheckout ? bdoText("Retirer", "Remove", "إزالة") : "Remove"}
                         </Button>
                       </div>
                     </div>
@@ -27576,7 +27584,7 @@ Signatures
               </ScrollArea>
 
               <div className="border-t border-white/10 bg-black/60 backdrop-blur px-4 py-3 pb-[calc(env(safe-area-inset-bottom,0px)+12px)]">
-                {useBdoInstitutionalLayout ? (
+                {useBdoDirectCheckout ? (
                   <div className="mb-3 flex items-center justify-between rounded-xl border border-[#D4AF37]/25 bg-[#D4AF37]/10 px-3 py-2">
                     <div>
                       <p className="text-[10px] uppercase tracking-[0.16em] text-[#E8C873]/80">
@@ -27611,20 +27619,20 @@ Signatures
                       className="border-white/15 text-white/80 hover:bg-white/10"
                       onClick={() => setCart([])}
                     >
-                      {useBdoInstitutionalLayout ? bdoText("Vider", "Clear", "تفريغ") : t("common.clear")}
+                      {useBdoDirectCheckout ? bdoText("Vider", "Clear", "تفريغ") : t("common.clear")}
                     </Button>
                     <Button
                       className="bg-gradient-to-r from-[#D4AF37] to-[#D4AF37] hover:from-[#E8C873] hover:to-[#D4AF37] text-black font-semibold"
                       disabled={orderMutation.isPending}
                       onClick={
-                        useBdoInstitutionalLayout
+                        useBdoDirectCheckout
                           ? startCheckout
                           : handlePlaceOrder
                       }
                     >
                       {orderMutation.isPending
                         ? "..."
-                        : useBdoInstitutionalLayout
+                        : useBdoDirectCheckout
                           ? bdoText("Continuer vers le paiement", "Continue to payment", "المتابعة إلى الدفع")
                           : t("cart.checkout")}
                     </Button>

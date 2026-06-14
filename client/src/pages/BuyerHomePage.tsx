@@ -11089,10 +11089,15 @@ export function BuyerHomePage({
       ? getCommodityImage(product)
       : normalizeProductImageUrl(tenantPlaceholderProductImage) ||
         buildProductPlaceholder(product, idx);
+    const displayName = getBdoPublicProductLabel(
+      product?.name,
+      product?.name || meta.label,
+      language,
+    );
     const shouldPrioritizeImage = idx < (isMobile ? 2 : 4);
     const ctaLabel =
       String(product?.ctaLabel || productAttributes?.ctaLabel || "").trim() ||
-      "View";
+      (isGoldTenant ? bdoText("Voir", "View", "\u0639\u0631\u0636") : "View");
     const sourceHref = String(
       product?.sourceUrl || productAttributes?.sourceUrl || "",
     ).trim();
@@ -11136,7 +11141,7 @@ export function BuyerHomePage({
           <div className="relative aspect-[4/3] overflow-hidden bg-[#efe5d3]">
             <img
               src={imageSrc}
-              alt={product.name}
+              alt={displayName}
               className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
               loading={shouldPrioritizeImage ? "eager" : "lazy"}
               decoding={shouldPrioritizeImage ? "sync" : "async"}
@@ -11203,7 +11208,7 @@ export function BuyerHomePage({
                     className="truncate text-sm font-semibold"
                     style={{ color: materialsTextColor }}
                   >
-                    {product.name}
+                    {displayName}
                   </h4>
                   <p
                     className="mt-1 truncate text-[12px]"
@@ -15636,7 +15641,15 @@ export function BuyerHomePage({
                     <div className="absolute inset-x-0 top-0 h-1 bg-[linear-gradient(90deg,#D4AF37_0%,#22c55e_100%)]" />
                     <img
                       src={rayonHeroLeadProduct ? getCommodityImage(rayonHeroLeadProduct) : rayonFounderPortrait}
-                      alt={rayonHeroLeadProduct ? rayonHeroLeadProduct.name : "rayOn 1m featured offer"}
+                      alt={
+                        rayonHeroLeadProduct
+                          ? getBdoPublicProductLabel(
+                              rayonHeroLeadProduct?.name,
+                              rayonHeroLeadProduct?.name || "",
+                              language,
+                            )
+                          : "rayOn 1m featured offer"
+                      }
                       className="h-full w-full object-cover object-center transition-transform duration-300 group-hover:scale-[1.03]"
                     />
                     <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,10,16,0.10),rgba(5,10,16,0.82)_75%,rgba(5,10,16,0.96)_100%)]" />
@@ -15652,7 +15665,13 @@ export function BuyerHomePage({
                         ) : null}
                       </div>
                       <p className="mt-3 text-xl font-semibold text-white">
-                        {rayonHeroLeadProduct?.name || "Top local picks, ready to add"}
+                        {rayonHeroLeadProduct
+                          ? getBdoPublicProductLabel(
+                              rayonHeroLeadProduct?.name,
+                              rayonHeroLeadProduct?.name || "",
+                              language,
+                            )
+                          : "Top local picks, ready to add"}
                       </p>
                       <p className="mt-1 text-[12px] leading-5 text-white/62">
                         {rayonHeroLeadProduct
@@ -16840,6 +16859,11 @@ export function BuyerHomePage({
                 const imageUrl = getProductImages(product)[0];
                 const isAvailable =
                   (product?.stockQuantity ?? 0) > 0 || product?.inStock;
+                const displayName = getBdoPublicProductLabel(
+                  product?.name,
+                  product?.name || "",
+                  language,
+                );
 
                 return (
                   <div
@@ -16865,7 +16889,7 @@ export function BuyerHomePage({
                       </div>
 
                       <h2 className="mt-2 text-xl font-semibold leading-snug text-white">
-                        {product.name}
+                        {displayName}
                       </h2>
                       {product?.shopName ? (
                         <p className="mt-1 text-[12px] text-white/70 truncate">
@@ -19478,6 +19502,11 @@ export function BuyerHomePage({
                           session.hasRole?.("admin" as any);
                         const hasRealImages =
                           collectProductImages(product).length > 0;
+                        const displayName = getBdoPublicProductLabel(
+                          product?.name,
+                          product?.name || "",
+                          language,
+                        );
                         return (
                           <div
                             key={product.id}
@@ -19489,7 +19518,7 @@ export function BuyerHomePage({
                             >
                               <img
                                 src={getCommodityImage(product)}
-                                alt={product.name}
+                                alt={displayName}
                                 className="w-full h-full object-cover"
                                 onError={(e) => {
                                   e.currentTarget.onerror = null;
@@ -19534,7 +19563,7 @@ export function BuyerHomePage({
                               </div>
                               <div className="absolute bottom-0 left-0 right-0 p-2">
                                 <p className="text-xs font-medium text-white truncate drop-shadow-lg">
-                                  {product.name}
+                                  {displayName}
                                 </p>
                                 <p className="text-[9px] text-white/50 flex items-center gap-1 truncate drop-shadow-md">
                                   <MapPin className="h-3 w-3 flex-shrink-0" />
@@ -21263,6 +21292,11 @@ export function BuyerHomePage({
                                 const wholesaleDisplay = isBdoWholesaleDesktop
                                   ? getWholesaleProductCardDisplay(product)
                                   : null;
+                                const displayName = getBdoPublicProductLabel(
+                                  product?.name,
+                                  product?.name || "",
+                                  language,
+                                );
 
                                 return (
                                   <div
@@ -21400,7 +21434,7 @@ export function BuyerHomePage({
                                         <div className="relative h-12 w-12 flex-shrink-0 rounded-lg overflow-hidden border border-white/10">
                                           <img
                                             src={getCommodityImage(product)}
-                                            alt={product.name}
+                                            alt={displayName}
                                             className="w-full h-full object-cover"
                                             onError={(e) => {
                                               e.currentTarget.onerror = null;
@@ -21445,7 +21479,7 @@ export function BuyerHomePage({
                                                 </span>
                                               </div>
                                               <p className="text-xs font-medium text-white truncate mt-1">
-                                                {product.name}
+                                                {displayName}
                                               </p>
                                               <p className="text-[10px] text-white/55 truncate">
                                                 {product.shopName}

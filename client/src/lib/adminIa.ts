@@ -51,6 +51,7 @@ export function resolveTenantAdminAliasDestination(tenantKey: TenantKey, target:
     case "dashboard":
       return getTenantDefaultRoute(tenantKey);
     case "orders":
+      if (tenantKey === "bdo") return "/admin/dashboard";
       if (tenantKey === "met") return "/admin/met/orders";
       if (tenantKey === "vs") return "/admin/vs/inbox";
       if (tenantKey === "hoz") return "/admin/hoz/inbox";

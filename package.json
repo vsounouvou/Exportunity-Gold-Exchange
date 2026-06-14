@@ -14,7 +14,7 @@
     "routes:discover": "tsx scripts/discover-routes.ts",
     "registry:sync": "tsx scripts/sync-pages-registry.ts",
     "registry:drift-check": "tsx scripts/registry-drift-check.ts",
-    "check": "npm run routes:verify && tsc",
+    "check": "npm run routes:verify && node --max-old-space-size=4096 ./node_modules/typescript/bin/tsc --noEmit",
     "test": "npm run test:unit",
     "test:unit": "node scripts/test-unit.mjs",
     "test:integration": "node --import ./scripts/spawn-debug.mjs --loader ./scripts/ts-loader.mjs --test tests/**/*.test.ts",

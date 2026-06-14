@@ -74,7 +74,8 @@ import {
   EXPORTUNITY_PARENT_MARKETPLACE_ITEMS,
   isExportunityLocationRelevantCategory,
 } from "@/content/exportunity/marketplaceCatalog";
-import { ExportunityConversationalCommerce } from "@/components/exportunity/ExportunityConversationalCommerce";
+import { ExportunityNeighbourhoodCommerce as ExportunityConversationalCommerce } from "@/components/exportunity/ExportunityNeighbourhoodCommerce";
+import type { ConversationSpace, ExportunityShellMode } from "@/components/exportunity/ExportunityConversationalCommerce";
 import { ExportunityAssistantBar } from "@/components/exportunity/ExportunityAssistantBar";
 import {
   findAssistantQuickFlowByQuery,
@@ -2498,6 +2499,8 @@ type BuyerHomePageProps = {
   showGoldChart?: boolean;
   showNewsBanner?: boolean;
   uiMarker?: string;
+  exportunityInitialSpace?: ConversationSpace;
+  exportunityShellMode?: ExportunityShellMode;
 };
 
 export function BuyerHomePage({
@@ -2507,6 +2510,8 @@ export function BuyerHomePage({
   showGoldChart,
   showNewsBanner,
   uiMarker,
+  exportunityInitialSpace = "city",
+  exportunityShellMode = "commerce",
 }: BuyerHomePageProps = {}) {
   const [location, navigate] = useLocation();
   const { toast } = useToast();
@@ -2784,10 +2789,12 @@ export function BuyerHomePage({
         viewAll: "عرض الكل",
         howItWorks: "كيف يعمل",
         steps: [
-          "اختر قطعة أو سبيكة.",
-          "اشتر الآن أو أنشئ هدف شراء.",
-          "يتم اعتماد ذهبك وتسجيله.",
-          "استلم أو تسلم المنتج حسب الشروط المتفق عليها.",
+          "يختار العميل منتج الذهب المناسب.",
+          "تؤكد المنصة التوفر والسعر وشروط الدفع.",
+          "يتم توريد الذهب عبر مصفاة أو منتج أو مورد أو حرفي معتمد.",
+          "يتم التحقق من المنتج وتوثيقه وتحضيره.",
+          "يتلقى العميل التأكيد قبل التسليم أو الاستلام أو التخزين.",
+          "في القطع المصنوعة حسب الطلب، يتم تأكيد الإنتاج عبر الشريك المعتمد.",
         ],
         objective: "هدف الشراء",
         objectiveTitle: "ابدأ بالمبلغ المتاح.",
@@ -2795,7 +2802,15 @@ export function BuyerHomePage({
         objectiveCta: "إنشاء هدف شراء",
         certification: "الشهادة",
         certificationTitle: "كل منتج يحمل دليلاً.",
-        certificationBody: "يمكن ربط كل قطعة أو سبيكة بمرجع وصورة ووزن وعيار ودليل رقمي قابل للتحقق.",
+        certificationBody: "قد تكون المنتجات سبائك من مصاف معتمدة، أو قضباناً وقطعاً ذهبية موثقة، أو مجوهرات وقطعاً مخصصة، أو منتجات يوفرها شركاء معتمدون. يمكن ربط كل قطعة بمرجع وصورة ووزن وعيار ودليل رقمي قابل للتحقق.",
+        legalNotice: "كل منتجات الذهب تخضع للتوفر، والتحقق، ومراجعة الامتثال، وتأكيد الدفع. قد تطلب BOURSE DE L'OR وثائق KYC/KYB قبل تأكيد بعض المعاملات، وقد ترفض أو تؤخر أو تلغي المعاملة إذا لم تستوف متطلبات الامتثال. قد تتغير الأسعار حسب السعر الدولي للذهب وتكاليف التصفية والعلاوات واللوجستيات والضرائب والرسوم وظروف السوق المحلية. السعر المعروض قد يكون إرشادياً حتى التأكيد النهائي.",
+        sourcingNotice: "لا تدعم BOURSE DE L'OR أي تجارة ذهب غير قانونية أو غير موثقة أو مرتبطة بالنزاعات أو غير ممتثلة. يجب أن يتبع التوريد مبادئ التوريد المسؤول ومكافحة غسل الأموال والعقوبات والتتبع.",
+        refineryNotice: "قد يتم توريد بعض منتجات السبائك مباشرة من مصاف معتمدة أو شركاء مرتبطين بالمصافي. في هذه الحالة تسهل BOURSE DE L'OR الطلب الرقمي والتواصل والدفع والتوثيق وخيارات التسليم أو التخزين.",
+        custodyNotice: "يمكن للعملاء، حيثما توفر ذلك، اختيار التسليم أو الاستلام أو التخزين الآمن. تعتمد مواعيد التسليم على توفر المنتج ووقت الإنتاج وفحوص الامتثال وتأكيد الدفع واللوجستيات والجمارك والقوانين المحلية. يتم تأكيد شروط التخزين ومزود الحفظ والتأمين والرسوم والسحب والتحويل بشكل منفصل قبل تفعيل الخدمة.",
+        madeToOrderNotice: "بالنسبة للمجوهرات والقطع المصنوعة حسب الطلب، تنقل المنصة تفاصيل الطلب إلى شريك إنتاج معتمد. بعد انتهاء الإنتاج، يؤكد الشريك الجاهزية داخلياً ثم يتم إعلام العميل.",
+        ownershipNotice: "انتقال الملكية لا يحدث إلا بعد السداد الكامل، والتحقق من الامتثال، والتأكيد النهائي من BOURSE DE L'OR أو المورد أو المصفاة المعتمدة ذات الصلة.",
+        disclosureNotice: "لا تقدم BOURSE DE L'OR نصائح مالية أو استثمارية أو ضريبية أو قانونية، وشراء الذهب ينطوي على مخاطر تغير السعر. قد لا تكون الطلبات المرتبطة بتثبيت السعر أو الإنتاج المخصص أو تخصيص المصفاة أو التوريد الخاص قابلة للإلغاء بعد التأكيد. تُعامل بيانات الطلب والهوية والدفع واتصالات الموردين بسرية وتستخدم لمعالجة الطلب والامتثال واللوجستيات والدعم. يظل الشركاء المعتمدون من مصاف وموردين وحرفيين ولوجستيين ومزودي حفظ جهات مستقلة.",
+        footerLegalNotice: "تخضع المنتجات والخدمات المعروضة على هذه المنصة لقيود الولاية القضائية، وفحوص الامتثال، والتوفر، والتأكيد النهائي. تحتفظ BOURSE DE L'OR بحق رفض أو إلغاء أي معاملة لا تستوفي المعايير القانونية أو التنظيمية أو معايير الامتثال أو الدفع أو التوريد.",
         certificateExample: "عرض مثال شهادة",
         proSpace: "دخول المساحة المهنية",
         catalogEyebrow: "معاينة الكتالوج",
@@ -2914,10 +2929,12 @@ export function BuyerHomePage({
         viewAll: "View all",
         howItWorks: "How it works",
         steps: [
-          "Choose your piece or bullion.",
-          "Buy now or create a Purchase Objective.",
-          "Your gold is certified and recorded.",
-          "Collect or receive your product under the agreed conditions.",
+          "Select a gold product.",
+          "The platform confirms availability, pricing and payment conditions.",
+          "Gold is sourced from an approved refinery, producer, supplier or artisan partner.",
+          "The product is verified, documented and prepared.",
+          "You receive confirmation before delivery, collection or storage.",
+          "For made-to-order pieces, production is confirmed through partner validation.",
         ],
         objective: "Purchase Objective",
         objectiveTitle: "Start with the amount available.",
@@ -2925,7 +2942,15 @@ export function BuyerHomePage({
         objectiveCta: "Create my Purchase Objective",
         certification: "Certification",
         certificationTitle: "Every product carries proof.",
-        certificationBody: "Each piece or bullion product can be linked to a reference, photo, weight, title and verifiable digital proof.",
+        certificationBody: "Products may include refinery-produced bullion, certified gold bars or coins, made-to-order jewelry or collectible pieces, and products supplied through approved partners. Each product can be linked to a reference, photo, weight, title and verifiable digital proof.",
+        legalNotice: "All gold products are subject to availability, verification, compliance review and payment confirmation. LA BOURSE DE L'OR may request KYC/KYB documents before confirming certain transactions, and transactions may be refused, delayed or cancelled if compliance requirements are not met. Prices may fluctuate according to international gold prices, refining costs, premiums, logistics, taxes, duties and local market conditions. Displayed prices may remain indicative until final confirmation.",
+        sourcingNotice: "LA BOURSE DE L'OR does not support illegal, undocumented, conflict-related or non-compliant gold trade. All sourcing must follow responsible sourcing, AML, sanctions and traceability principles.",
+        refineryNotice: "Certain bullion products may be supplied directly from approved refineries or refinery-linked partners. In such cases, LA BOURSE DE L'OR facilitates the digital order process, customer communication, payment coordination, documentation, and delivery or storage options.",
+        custodyNotice: "Customers may choose, where available, delivery, collection, or secure storage. Delivery times depend on product availability, production time, compliance checks, payment confirmation, logistics, customs, and local regulations. Storage terms, custody provider, insurance coverage, fees, withdrawal conditions, and transfer procedures must be confirmed separately before the service becomes active.",
+        madeToOrderNotice: "For made-to-order jewelry and collectible pieces, the platform transmits order details to the approved production partner. Once production is completed, the partner confirms readiness through internal validation, after which the customer is informed.",
+        ownershipNotice: "Ownership transfer occurs only after full payment, compliance validation, and final confirmation by LA BOURSE DE L'OR or the relevant approved supplier/refinery partner.",
+        disclosureNotice: "LA BOURSE DE L'OR does not provide financial, investment, tax or legal advice. Gold purchases involve price fluctuation risk. Orders involving gold price locking, custom production, refinery allocation or special procurement may not be cancellable once confirmed. Customer order details, identity documents, payment information and supplier communications are treated as confidential and used only for order processing, compliance, logistics and support. Approved refineries, suppliers, artisans, logistics providers and vaulting partners remain independent operators.",
+        footerLegalNotice: "Products and services displayed on this platform are subject to jurisdictional restrictions, compliance checks, availability, and final confirmation. LA BOURSE DE L'OR reserves the right to refuse or cancel any transaction that does not meet legal, regulatory, compliance, payment, or sourcing standards.",
         certificateExample: "View a certificate example",
         proSpace: "Enter the Pro space",
         catalogEyebrow: "Catalog preview",
@@ -3043,10 +3068,12 @@ export function BuyerHomePage({
       viewAll: "Voir tout",
       howItWorks: "Comment ça marche",
       steps: [
-        "Choisissez votre pièce ou lingot.",
-        "Achetez maintenant ou créez un objectif d'achat.",
-        "Votre or est certifié et enregistré.",
-        "Récupérez ou recevez votre produit selon les conditions prévues.",
+        "Le client sélectionne un produit en or.",
+        "La plateforme confirme la disponibilité, le prix et les conditions de paiement.",
+        "L'or est sourcé auprès d'une raffinerie, d'un producteur, d'un fournisseur ou d'un artisan partenaire approuvé.",
+        "Le produit est vérifié, documenté et préparé.",
+        "Le client reçoit une confirmation avant livraison, retrait ou stockage.",
+        "Pour les pièces sur commande, la production est confirmée par le partenaire approuvé.",
       ],
       objective: "Objectif d'achat",
       objectiveTitle: "Commencez avec le montant disponible.",
@@ -3054,7 +3081,15 @@ export function BuyerHomePage({
       objectiveCta: "Créer mon objectif d'achat",
       certification: "Certification",
       certificationTitle: "Chaque produit porte une preuve.",
-      certificationBody: "Chaque pièce ou lingot peut être associé à une référence, une photo, un poids, un titre et une preuve digitale vérifiable.",
+      certificationBody: "Les produits peuvent être des lingots issus de raffineries, des lingots ou pièces d'or certifiés, des bijoux ou pièces de collection sur commande, ou des produits fournis par des partenaires approuvés. Chaque produit peut être associé à une référence, une photo, un poids, un titre et une preuve digitale vérifiable.",
+      legalNotice: "Tous les produits en or sont soumis à disponibilité, vérification, revue de conformité et confirmation du paiement. LA BOURSE DE L'OR peut demander des documents KYC/KYB avant de confirmer certaines transactions, et une transaction peut être refusée, retardée ou annulée si les exigences de conformité ne sont pas remplies. Les prix peuvent varier selon le cours international de l'or, les coûts de raffinage, les primes, la logistique, les taxes, les droits et les conditions locales du marché. Le prix affiché peut rester indicatif jusqu'à confirmation finale.",
+      sourcingNotice: "LA BOURSE DE L'OR ne soutient pas le commerce d'or illégal, non documenté, lié à un conflit ou non conforme. Tout sourcing doit respecter les principes de sourcing responsable, AML, sanctions et traçabilité.",
+      refineryNotice: "Certains lingots peuvent être fournis directement par des raffineries approuvées ou des partenaires liés à une raffinerie. Dans ce cas, LA BOURSE DE L'OR facilite la commande digitale, la communication client, la coordination du paiement, la documentation et les options de livraison ou de stockage.",
+      custodyNotice: "Les clients peuvent choisir, lorsque disponible, la livraison, le retrait ou le stockage sécurisé. Les délais de livraison dépendent de la disponibilité, du temps de production, des contrôles de conformité, de la confirmation du paiement, de la logistique, des douanes et des règles locales. Les conditions de stockage, le dépositaire, l'assurance, les frais, les conditions de retrait et les procédures de transfert doivent être confirmés séparément avant activation du service.",
+      madeToOrderNotice: "Pour les bijoux et pièces de collection sur commande, la plateforme transmet les détails au partenaire de production approuvé. Une fois la production terminée, le partenaire confirme la disponibilité par validation interne, puis le client est informé.",
+      ownershipNotice: "Le transfert de propriété intervient uniquement après paiement complet, validation de conformité et confirmation finale par LA BOURSE DE L'OR ou le fournisseur/partenaire raffinerie approuvé concerné.",
+      disclosureNotice: "LA BOURSE DE L'OR ne fournit pas de conseil financier, d'investissement, fiscal ou juridique. L'achat d'or comporte un risque de fluctuation du prix. Les commandes impliquant verrouillage du prix, production sur mesure, allocation raffinerie ou approvisionnement spécial peuvent ne plus être annulables après confirmation. Les détails de commande, documents d'identité, informations de paiement et communications fournisseurs sont traités comme confidentiels et utilisés uniquement pour la commande, la conformité, la logistique et le support. Les raffineries, fournisseurs, artisans, logisticiens et partenaires de stockage approuvés restent des opérateurs indépendants.",
+      footerLegalNotice: "Les produits et services affichés sur cette plateforme sont soumis aux restrictions juridictionnelles, contrôles de conformité, disponibilité et confirmation finale. LA BOURSE DE L'OR se réserve le droit de refuser ou d'annuler toute transaction ne respectant pas les standards légaux, réglementaires, de conformité, de paiement ou de sourcing.",
       certificateExample: "Voir un exemple de certificat",
       proSpace: "Entrer dans l'espace Pro",
       catalogEyebrow: "Aperçu catalogue",
@@ -12216,6 +12251,23 @@ export function BuyerHomePage({
             <p className="mt-2 max-w-[72ch] text-sm leading-relaxed text-white/62">
               {bdoPublicCopy.certificationBody}
             </p>
+            <div className="mt-3 grid gap-2 text-[12px] leading-relaxed text-white/58 md:grid-cols-2">
+              <p className="rounded-2xl border border-white/10 bg-black/25 p-3">
+                {bdoPublicCopy.legalNotice}
+              </p>
+              <p className="rounded-2xl border border-white/10 bg-black/25 p-3">
+                {bdoPublicCopy.refineryNotice}
+              </p>
+              <p className="rounded-2xl border border-white/10 bg-black/25 p-3">
+                {bdoPublicCopy.custodyNotice}
+              </p>
+              <p className="rounded-2xl border border-white/10 bg-black/25 p-3">
+                {bdoPublicCopy.madeToOrderNotice}
+              </p>
+            </div>
+            <p className="mt-3 text-[12px] leading-relaxed text-white/50">
+              {bdoPublicCopy.sourcingNotice} {bdoPublicCopy.ownershipNotice}
+            </p>
             <div className="mt-4 flex flex-wrap gap-2">
               <Button
                 type="button"
@@ -13102,6 +13154,16 @@ export function BuyerHomePage({
   const isDesktopRetailBrowse = isDesktopRetail && marketMode === "marketplace";
   const isExportunityMarketplaceExperience =
     isExportunityTenant && buyerMode === "retail" && marketMode === "marketplace";
+  const isExportunityCommerceMapExperience =
+    isExportunityTenant &&
+    (isExportunityMarketplaceExperience ||
+      location === "/marketplace" ||
+      location === "/store" ||
+      location === "/map" ||
+      location === "/marketplace/map" ||
+      location.startsWith("/wholesale") ||
+      location.startsWith("/pme-exchange") ||
+      location.startsWith("/ready-for-export"));
   const exportunityCategoryContext =
     selectedCategory || getExportunityMarketplacePathCategory();
   const showExportunityLocationMap =
@@ -17350,11 +17412,11 @@ export function BuyerHomePage({
                             : ""
                         }`}
                         onClick={() => navigate("/pme-exchange")}
-                        aria-label="Bourse PME"
+                        aria-label="Ready export"
                       >
                         <BriefcaseBusiness className="h-4 w-4 mr-2" />
                         <span className="text-[12px] font-semibold">
-                          Bourse PME
+                          Ready export
                         </span>
                       </Button>
                     ) : null}
@@ -18083,6 +18145,12 @@ export function BuyerHomePage({
               </div>
               <p className="text-[11px] text-white/50">{language.toUpperCase()} • {currency}</p>
             </div>
+            <p className="mt-3 text-[11px] leading-relaxed text-white/45">
+              {bdoPublicCopy.footerLegalNotice}
+            </p>
+            <p className="mt-2 text-[11px] leading-relaxed text-white/40">
+              {bdoPublicCopy.disclosureNotice}
+            </p>
           </section>
         </div>
       ) : isBdoMobileBuyRoute ? (
@@ -18783,14 +18851,18 @@ export function BuyerHomePage({
                   {language.toUpperCase()} • {currency}
                 </p>
               </div>
+              <p className="mt-3 text-[11px] leading-relaxed text-white/45">
+                {bdoPublicCopy.footerLegalNotice}
+              </p>
+              <p className="mt-2 text-[11px] leading-relaxed text-white/40">
+                {bdoPublicCopy.disclosureNotice}
+              </p>
             </div>
           </div>
         </div>
       ) : null}
 
-      {isExportunityMarketplaceExperience &&
-      showProducts &&
-      !isWholesalePreview && (
+      {isExportunityCommerceMapExperience && showProducts && (
         <div
           className="absolute inset-0 z-40 overflow-hidden bg-[#f7f9fc] safe-area-bottom"
         >
@@ -18798,6 +18870,8 @@ export function BuyerHomePage({
             <ExportunityConversationalCommerce
               onNavigate={(href: string) => navigate(href)}
               isAdmin={session.hasRole("admin")}
+              initialSpace={exportunityInitialSpace}
+              shellMode={exportunityShellMode}
               embeddedShell
             />
           </div>
@@ -18805,7 +18879,7 @@ export function BuyerHomePage({
       )}
 
       {!useBdoInstitutionalLayout &&
-        !isExportunityMarketplaceExperience &&
+        !isExportunityCommerceMapExperience &&
         !isMobile &&
         !isBdoWholesaleDesktop &&
         showProducts &&
@@ -23581,7 +23655,7 @@ export function BuyerHomePage({
               ? [
                   {
                     key: "pme-exchange",
-                    label: "Bourse PME",
+                    label: "Ready export",
                     icon: <BriefcaseBusiness className="h-5 w-5" />,
                     active: location === "/pme-exchange",
                     disabled: false,
@@ -23693,7 +23767,7 @@ export function BuyerHomePage({
                   const isUser = message.role === "user";
                   const messageText =
                     !isUser && message.id === "welcome"
-                      ? "Hello, I'm Tassi. Welcome. What are you looking for today?"
+                      ? "Hello, I'm Tassi. Search for products, shops, delivery, or suppliers around you today."
                       : isUser
                         ? message.content
                         : getConciergeMessageText(message.content);

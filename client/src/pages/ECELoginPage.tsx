@@ -152,6 +152,321 @@ function getLoginPageCopy(language: string) {
   };
 }
 
+function getApplicationWizardCopy(language: string) {
+  if (language === "ar") {
+    return {
+      ui: {
+        step: (current: number, total: number) => `الخطوة ${current} من ${total}`,
+        steps: "الخطوات",
+        progress: "التقدم",
+        saveAndContinueLater: "حفظ والمتابعة لاحقاً",
+        application: "طلب الوصول",
+        close: "إغلاق",
+        done: "تم",
+      },
+      contactTitle: "الاتصال",
+      contactPrompt: "ما بريدك الإلكتروني أو رقم هاتفك؟",
+      contactPlaceholder: "name@example.com أو +225 01 23 45 67 89",
+      contactRequired: "أدخل البريد الإلكتروني أو رقم الهاتف.",
+      contactInvalidEmail: "أدخل بريداً إلكترونياً صحيحاً.",
+      contactInvalidPhone: "أدخل رقم هاتف صحيحاً.",
+      fullNameTitle: "الاسم الكامل",
+      fullNamePrompt: "ما اسمك الكامل؟",
+      fullNamePlaceholder: "اسمك الكامل",
+      fullNameRequired: "أدخل اسمك الكامل.",
+      profileTitle: "الملف",
+      profilePrompt: "أي ملف تريد الانضمام به؟",
+      roles: {
+        goldMiner: ["مستغل ذهب", "نشاط حرفي أو شبه صناعي أو صناعي."],
+        authorizedBuyer: ["مشتري جملة معتمد", "مكتب شراء أو مشتري لديه وثائق تفويض."],
+        jewelry: ["صائغ", "مصنع أو بائع مجوهرات موثقة."],
+        machineryManufacturer: ["مصنع معدات", "مورد معدات للعمليات المرتبطة بالذهب."],
+        machineryReseller: ["موزع معدات", "توزيع أو تمثيل معدات التعدين."],
+        investor: ["مشتري أو مؤسسة", "اهتمام بالشراء أو التوثيق أو الشراكات."],
+      },
+      countryTitle: "البلد",
+      countryPromptDefault: "البلد؟",
+      countryPromptMine: "في أي بلد يقع نشاطك؟",
+      countryPromptBuyer: "في أي بلد لديك الترخيص؟",
+      regionTitle: "المنطقة",
+      regionPromptMine: "ما المنطقة أو المحلية؟",
+      regionPromptOptional: "المنطقة؟ (اختياري)",
+      regionPlaceholderMine: "مثال: Haut-Sassandra",
+      optional: "اختياري",
+      cityTitle: "المدينة",
+      cityPrompt: "المدينة؟",
+      cityPlaceholder: "مثال: أبيدجان",
+      cityRequired: "أدخل المدينة.",
+      addressTitle: "العنوان",
+      addressPrompt: "العنوان الكامل؟",
+      addressPlaceholder: "الشارع والمبنى والإرشادات المفيدة",
+      addressRequired: "أدخل عنواناً كاملاً.",
+      postalTitle: "الرمز البريدي",
+      postalPrompt: "الرمز البريدي؟ (اختياري)",
+      reviewTitle: "التحقق",
+      reviewPrompt: "راجع ملفك ثم أرسل الطلب.",
+      summaryTitle: "الملخص",
+      summaryLabels: {
+        contact: "الاتصال",
+        fullName: "الاسم الكامل",
+        profile: "الملف",
+        operationType: "نوع العملية",
+        location: "الموقع",
+        address: "العنوان",
+        postalCode: "الرمز البريدي",
+        licenseNumber: "رقم التفويض",
+        interest: "الاهتمام",
+        documents: "الوثائق المرسلة",
+      },
+      mineSubtypeTitle: "نوع العملية",
+      mineSubtypePrompt: "ما نوع العملية المرتبطة بالذهب؟",
+      mineSubtypes: {
+        artisanal: "حرفي",
+        semiIndustrial: "شبه صناعي",
+        industrial: "صناعي",
+      },
+      authorizationTitle: "التفويض",
+      authorizationPrompt: "هل لديك وثيقة تفويض لإرسالها الآن؟",
+      yes: "نعم",
+      notNow: "ليس الآن",
+      authorizationDocumentTitle: "وثيقة التفويض",
+      authorizationDocumentPrompt: "ارفع وثيقة التفويض.",
+      authorizationDocumentRequiredPrompt: "ارفع وثيقة التفويض (إلزامي).",
+      authorizationNumberTitle: "رقم التفويض",
+      authorizationNumberPrompt: "رقم التفويض",
+      authorizationNumberRequiredPrompt: "رقم التفويض (إلزامي).",
+      authorizationNumberPlaceholder: "أدخل رقم الوثيقة",
+      jewelerTypeTitle: "نوع الصائغ",
+      jewelerTypePrompt: "هل أنت مصنع أم بائع؟",
+      manufacturer: "مصنع",
+      reseller: "بائع",
+      documentsTitle: "الوثائق",
+      jewelryDocsPrompt: "هل تريد رفع وثائق تفويض؟ (اختياري)",
+      saleTitle: "العرض",
+      salePrompt: "هل تريد تقديم عرض على المنصة؟",
+      machineryDocsPrompt: "ارفع إثباتات أو تفويضات؟ (اختياري)",
+      budgetTitle: "الميزانية",
+      budgetPrompt: "ما الميزانية التقديرية؟ (اختياري)",
+      budgetPlaceholder: "مثال: 10 000 USD - 50 000 USD",
+      interestTitle: "الاهتمام",
+      interestPrompt: "هل اهتمامك بالمناجم أو المعدات أو الاثنين؟ (اختياري)",
+      mines: "المناجم",
+      machinery: "المعدات",
+      both: "الاثنان",
+      missingProfile: "الملف مفقود.",
+      continueBrowsing: "متابعة التصفح",
+    };
+  }
+
+  if (language === "en") {
+    return {
+      ui: {
+        step: (current: number, total: number) => `Step ${current} of ${total}`,
+        steps: "Steps",
+        progress: "Progress",
+        saveAndContinueLater: "Save and continue later",
+        application: "Access request",
+        close: "Close",
+        done: "Done",
+      },
+      contactTitle: "Contact",
+      contactPrompt: "What is your email or phone number?",
+      contactPlaceholder: "name@example.com or +225 01 23 45 67 89",
+      contactRequired: "Enter your email or phone number.",
+      contactInvalidEmail: "Enter a valid email address.",
+      contactInvalidPhone: "Enter a valid phone number.",
+      fullNameTitle: "Full name",
+      fullNamePrompt: "What is your full name?",
+      fullNamePlaceholder: "Your full name",
+      fullNameRequired: "Enter your full name.",
+      profileTitle: "Profile",
+      profilePrompt: "Which profile do you want to join with?",
+      roles: {
+        goldMiner: ["Gold operator", "Artisanal, semi-industrial or industrial operation."],
+        authorizedBuyer: ["Authorized wholesale buyer", "Purchasing office or buyer with authorization documents."],
+        jewelry: ["Jeweler", "Manufacturer or reseller of verified jewelry."],
+        machineryManufacturer: ["Equipment manufacturer", "Supplier of equipment for gold-related operations."],
+        machineryReseller: ["Equipment distributor", "Distribution or representation of mining equipment."],
+        investor: ["Buyer or institution", "Interest in purchasing, certification or partnerships."],
+      },
+      countryTitle: "Country",
+      countryPromptDefault: "Country?",
+      countryPromptMine: "In which country is your operation located?",
+      countryPromptBuyer: "In which country are you authorized?",
+      regionTitle: "Region",
+      regionPromptMine: "Which region or locality?",
+      regionPromptOptional: "Region? (optional)",
+      regionPlaceholderMine: "e.g. Haut-Sassandra",
+      optional: "Optional",
+      cityTitle: "City",
+      cityPrompt: "City?",
+      cityPlaceholder: "e.g. Abidjan",
+      cityRequired: "Enter a city.",
+      addressTitle: "Address",
+      addressPrompt: "Complete address?",
+      addressPlaceholder: "Street, building and useful directions",
+      addressRequired: "Enter a complete address.",
+      postalTitle: "Postal code",
+      postalPrompt: "Postal code? (optional)",
+      reviewTitle: "Verification",
+      reviewPrompt: "Review your file, then submit the request.",
+      summaryTitle: "Summary",
+      summaryLabels: {
+        contact: "Contact",
+        fullName: "Full name",
+        profile: "Profile",
+        operationType: "Operation type",
+        location: "Location",
+        address: "Address",
+        postalCode: "Postal code",
+        licenseNumber: "Authorization number",
+        interest: "Interest",
+        documents: "Submitted documents",
+      },
+      mineSubtypeTitle: "Operation type",
+      mineSubtypePrompt: "What type of gold operation?",
+      mineSubtypes: {
+        artisanal: "Artisanal",
+        semiIndustrial: "Semi-industrial",
+        industrial: "Industrial",
+      },
+      authorizationTitle: "Authorization",
+      authorizationPrompt: "Do you have an authorization document to submit now?",
+      yes: "Yes",
+      notNow: "Not now",
+      authorizationDocumentTitle: "Authorization document",
+      authorizationDocumentPrompt: "Upload your authorization document.",
+      authorizationDocumentRequiredPrompt: "Upload your authorization document (required).",
+      authorizationNumberTitle: "Authorization number",
+      authorizationNumberPrompt: "Authorization number",
+      authorizationNumberRequiredPrompt: "Authorization number (required).",
+      authorizationNumberPlaceholder: "Enter the document number",
+      jewelerTypeTitle: "Jeweler type",
+      jewelerTypePrompt: "Are you a manufacturer or reseller?",
+      manufacturer: "Manufacturer",
+      reseller: "Reseller",
+      documentsTitle: "Documents",
+      jewelryDocsPrompt: "Upload authorization documents? (optional)",
+      saleTitle: "Offer",
+      salePrompt: "Do you want to present an offer on the platform?",
+      machineryDocsPrompt: "Upload supporting documents or authorizations? (optional)",
+      budgetTitle: "Budget",
+      budgetPrompt: "What is your indicative budget? (optional)",
+      budgetPlaceholder: "e.g. 10,000 USD - 50,000 USD",
+      interestTitle: "Interest",
+      interestPrompt: "Is your interest in mines, equipment or both? (optional)",
+      mines: "Mines",
+      machinery: "Equipment",
+      both: "Both",
+      missingProfile: "Missing profile.",
+      continueBrowsing: "Continue browsing",
+    };
+  }
+
+  return {
+    ui: {
+      step: (current: number, total: number) => `Etape ${current} sur ${total}`,
+      steps: "Etapes",
+      progress: "Progression",
+      saveAndContinueLater: "Enregistrer et continuer plus tard",
+      application: "Demande d'acces",
+      close: "Fermer",
+      done: "Termine",
+    },
+    contactTitle: "Contact",
+    contactPrompt: "Quel est votre email ou numero de telephone ?",
+    contactPlaceholder: "nom@example.com ou +225 01 23 45 67 89",
+    contactRequired: "Entrez votre email ou numero de telephone.",
+    contactInvalidEmail: "Entrez une adresse email valide.",
+    contactInvalidPhone: "Entrez un numero de telephone valide.",
+    fullNameTitle: "Nom complet",
+    fullNamePrompt: "Quel est votre nom complet ?",
+    fullNamePlaceholder: "Votre nom complet",
+    fullNameRequired: "Entrez votre nom complet.",
+    profileTitle: "Profil",
+    profilePrompt: "Quel profil souhaitez-vous rejoindre ?",
+    roles: {
+      goldMiner: ["Exploitant aurifere", "Operation artisanale, semi-industrielle ou industrielle."],
+      authorizedBuyer: ["Acheteur grossiste autorise", "Bureau d'achat ou acheteur avec documents d'autorisation."],
+      jewelry: ["Bijoutier", "Fabricant ou revendeur de bijoux verifies."],
+      machineryManufacturer: ["Fabricant d'equipements", "Fournisseur d'equipements pour operations auriferes."],
+      machineryReseller: ["Distributeur d'equipements", "Distribution ou representation d'equipements miniers."],
+      investor: ["Acheteur ou institution", "Interet pour l'achat, la certification ou les partenariats."],
+    },
+    countryTitle: "Pays",
+    countryPromptDefault: "Pays ?",
+    countryPromptMine: "Dans quel pays se situe votre operation ?",
+    countryPromptBuyer: "Dans quel pays etes-vous autorise ?",
+    regionTitle: "Region",
+    regionPromptMine: "Quelle region ou localite ?",
+    regionPromptOptional: "Region ? (optionnel)",
+    regionPlaceholderMine: "ex. Haut-Sassandra",
+    optional: "Optionnel",
+    cityTitle: "Ville",
+    cityPrompt: "Ville ?",
+    cityPlaceholder: "ex. Abidjan",
+    cityRequired: "Entrez une ville.",
+    addressTitle: "Adresse",
+    addressPrompt: "Adresse complete ?",
+    addressPlaceholder: "Rue, batiment et indications utiles",
+    addressRequired: "Entrez une adresse complete.",
+    postalTitle: "Code postal",
+    postalPrompt: "Code postal ? (optionnel)",
+    reviewTitle: "Verification",
+    reviewPrompt: "Verifiez votre dossier, puis envoyez la demande.",
+    summaryTitle: "Resume",
+    summaryLabels: {
+      contact: "Contact",
+      fullName: "Nom complet",
+      profile: "Profil",
+      operationType: "Type d'operation",
+      location: "Localisation",
+      address: "Adresse",
+      postalCode: "Code postal",
+      licenseNumber: "Numero d'autorisation",
+      interest: "Interet",
+      documents: "Documents transmis",
+    },
+    mineSubtypeTitle: "Type d'operation",
+    mineSubtypePrompt: "Quel type d'operation aurifere ?",
+    mineSubtypes: {
+      artisanal: "Artisanal",
+      semiIndustrial: "Semi-industrial",
+      industrial: "Industrial",
+    },
+    authorizationTitle: "Autorisation",
+    authorizationPrompt: "Avez-vous un document d'autorisation a transmettre maintenant ?",
+    yes: "Oui",
+    notNow: "Pas maintenant",
+    authorizationDocumentTitle: "Document d'autorisation",
+    authorizationDocumentPrompt: "Televersez votre document d'autorisation.",
+    authorizationDocumentRequiredPrompt: "Televersez votre document d'autorisation (obligatoire).",
+    authorizationNumberTitle: "Numero d'autorisation",
+    authorizationNumberPrompt: "Numero d'autorisation",
+    authorizationNumberRequiredPrompt: "Numero d'autorisation (obligatoire).",
+    authorizationNumberPlaceholder: "Entrez le numero du document",
+    jewelerTypeTitle: "Type de bijoutier",
+    jewelerTypePrompt: "Etes-vous fabricant ou revendeur ?",
+    manufacturer: "Fabricant",
+    reseller: "Revendeur",
+    documentsTitle: "Documents",
+    jewelryDocsPrompt: "Televerser des documents d'autorisation ? (optionnel)",
+    saleTitle: "Vente",
+    salePrompt: "Souhaitez-vous presenter une offre sur la plateforme ?",
+    machineryDocsPrompt: "Televerser des justificatifs ou autorisations ? (optionnel)",
+    budgetTitle: "Budget",
+    budgetPrompt: "Quel est votre budget indicatif ? (optionnel)",
+    budgetPlaceholder: "ex. 10 000 USD - 50 000 USD",
+    interestTitle: "Interet",
+    interestPrompt: "Votre interet porte sur les mines, les equipements ou les deux ? (optionnel)",
+    mines: "Mines",
+    machinery: "Equipements",
+    both: "Les deux",
+    missingProfile: "Profil manquant.",
+    continueBrowsing: "Continuer la navigation",
+  };
+}
+
 function getCountryName(code: string): string {
   if (!code) return "";
   const DisplayNames = (Intl as any)?.DisplayNames;
@@ -261,6 +576,7 @@ function MapTeaser() {
 	  const { brand, tenant } = useTenant();
   const { language } = useLocale();
   const copy = useMemo(() => getLoginPageCopy(language), [language]);
+  const wizardCopy = useMemo(() => getApplicationWizardCopy(language), [language]);
   const isBdoTenant = tenant.key === "bdo";
   const isMobile = useIsMobile();
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
@@ -327,68 +643,68 @@ function MapTeaser() {
     const base: ChatWizardStep<ApplicationAnswers>[] = [
       {
         id: "contact",
-        title: "Contact",
+        title: wizardCopy.contactTitle,
         kind: "text",
         field: "contact",
-        prompt: "Quel est votre email ou numero de telephone ?",
-        placeholder: "name@example.com or +225 01 23 45 67 89",
+        prompt: wizardCopy.contactPrompt,
+        placeholder: wizardCopy.contactPlaceholder,
         validate: (value) => {
           const raw = String(value || "").trim();
-          if (!raw) return "Entrez votre email ou numero de telephone.";
+          if (!raw) return wizardCopy.contactRequired;
           if (raw.includes("@")) {
             const res = z.string().email().safeParse(raw);
-            return res.success ? null : "Entrez une adresse email valide.";
+            return res.success ? null : wizardCopy.contactInvalidEmail;
           }
           const digits = raw.replace(/[^\d]/g, "");
-          if (digits.length < 7) return "Entrez un numero de telephone valide.";
+          if (digits.length < 7) return wizardCopy.contactInvalidPhone;
           return null;
         },
       },
       {
         id: "fullName",
-        title: "Nom complet",
+        title: wizardCopy.fullNameTitle,
         kind: "text",
         field: "fullName",
-        prompt: "Quel est votre nom complet ?",
-        placeholder: "Votre nom complet",
-        validate: (value) => (String(value || "").trim().length < 2 ? "Entrez votre nom complet." : null),
+        prompt: wizardCopy.fullNamePrompt,
+        placeholder: wizardCopy.fullNamePlaceholder,
+        validate: (value) => (String(value || "").trim().length < 2 ? wizardCopy.fullNameRequired : null),
       },
       {
         id: "role",
-        title: "Profil",
+        title: wizardCopy.profileTitle,
         kind: "cards",
         field: "role",
-        prompt: "Quel profil souhaitez-vous rejoindre ?",
+        prompt: wizardCopy.profilePrompt,
         options: [
           {
             value: "gold_miner",
-            title: "Exploitant aurifere",
-            description: "Operation artisanale, semi-industrielle ou industrielle.",
+            title: wizardCopy.roles.goldMiner[0],
+            description: wizardCopy.roles.goldMiner[1],
           },
           {
             value: "authorized_gold_buyer",
-            title: "Acheteur grossiste autorise",
-            description: "Bureau d'achat ou acheteur avec documents d'autorisation.",
+            title: wizardCopy.roles.authorizedBuyer[0],
+            description: wizardCopy.roles.authorizedBuyer[1],
           },
           {
             value: "jewelry",
-            title: "Bijoutier",
-            description: "Fabricant ou revendeur de bijoux verifies.",
+            title: wizardCopy.roles.jewelry[0],
+            description: wizardCopy.roles.jewelry[1],
           },
           {
             value: "machinery_manufacturer",
-            title: "Fabricant d'equipements",
-            description: "Fournisseur d'equipements pour operations auriferes.",
+            title: wizardCopy.roles.machineryManufacturer[0],
+            description: wizardCopy.roles.machineryManufacturer[1],
           },
           {
             value: "machinery_reseller",
-            title: "Distributeur d'equipements",
-            description: "Distribution ou representation d'equipements miniers.",
+            title: wizardCopy.roles.machineryReseller[0],
+            description: wizardCopy.roles.machineryReseller[1],
           },
           {
             value: "investor",
-            title: "Acheteur ou institution",
-            description: "Interet pour l'achat, la certification ou les partenariats.",
+            title: wizardCopy.roles.investor[0],
+            description: wizardCopy.roles.investor[1],
           },
         ],
       },
@@ -399,18 +715,18 @@ function MapTeaser() {
     const countryPrompt = (() => {
       switch (answers.role) {
         case "gold_miner":
-          return "Dans quel pays se situe votre operation ?";
+          return wizardCopy.countryPromptMine;
         case "authorized_gold_buyer":
-          return "Dans quel pays etes-vous autorise ?";
+          return wizardCopy.countryPromptBuyer;
         default:
-          return "Pays ?";
+          return wizardCopy.countryPromptDefault;
       }
     })();
 
     const location: ChatWizardStep<ApplicationAnswers>[] = [
       {
         id: "country",
-        title: "Pays",
+        title: wizardCopy.countryTitle,
         kind: "custom",
         prompt: countryPrompt,
         isComplete: (a) => !!a.country,
@@ -420,49 +736,63 @@ function MapTeaser() {
       },
       {
         id: "stateRegion",
-        title: answers.role === "gold_miner" ? "Region" : "Region",
+        title: wizardCopy.regionTitle,
         kind: "text",
         field: "stateRegion",
-        prompt: answers.role === "gold_miner" ? "Quelle region ou localite ?" : "Region ? (optionnel)",
+        prompt: answers.role === "gold_miner" ? wizardCopy.regionPromptMine : wizardCopy.regionPromptOptional,
         required: (a) => a.role === "gold_miner",
-        placeholder: answers.role === "gold_miner" ? "ex. Haut-Sassandra" : "Optionnel",
+        placeholder: answers.role === "gold_miner" ? wizardCopy.regionPlaceholderMine : wizardCopy.optional,
       },
       {
         id: "city",
-        title: "Ville",
+        title: wizardCopy.cityTitle,
         kind: "text",
         field: "city",
-        prompt: "Ville ?",
-        placeholder: "ex. Abidjan",
-        validate: (value) => (String(value || "").trim().length < 2 ? "Entrez une ville." : null),
+        prompt: wizardCopy.cityPrompt,
+        placeholder: wizardCopy.cityPlaceholder,
+        validate: (value) => (String(value || "").trim().length < 2 ? wizardCopy.cityRequired : null),
       },
       {
         id: "address",
-        title: "Adresse",
+        title: wizardCopy.addressTitle,
         kind: "textarea",
         field: "address",
-        prompt: "Adresse complete ?",
-        placeholder: "Rue, batiment et indications utiles",
-        validate: (value) => (String(value || "").trim().length < 6 ? "Entrez une adresse complete." : null),
+        prompt: wizardCopy.addressPrompt,
+        placeholder: wizardCopy.addressPlaceholder,
+        validate: (value) => (String(value || "").trim().length < 6 ? wizardCopy.addressRequired : null),
       },
       {
         id: "postalCode",
-        title: "Code postal",
+        title: wizardCopy.postalTitle,
         kind: "text",
         field: "postalCode",
-        prompt: "Code postal ? (optionnel)",
+        prompt: wizardCopy.postalPrompt,
         required: false,
-        placeholder: "Optionnel",
+        placeholder: wizardCopy.optional,
       },
     ];
 
     const review: ChatWizardStep<ApplicationAnswers> = {
       id: "review",
-      title: "Verification",
+      title: wizardCopy.reviewTitle,
       kind: "review",
-      prompt: "Verifiez votre dossier, puis envoyez la demande.",
+      prompt: wizardCopy.reviewPrompt,
       renderSummary: (a, fileMeta) => {
-        const roleLabel = getRoleLabel(a);
+        const roleLabel = (() => {
+          if (a.role === "gold_miner") return wizardCopy.roles.goldMiner[0];
+          if (a.role === "authorized_gold_buyer") return wizardCopy.roles.authorizedBuyer[0];
+          if (a.role === "jewelry") return wizardCopy.roles.jewelry[0];
+          if (a.role === "machinery_manufacturer") return wizardCopy.roles.machineryManufacturer[0];
+          if (a.role === "machinery_reseller") return wizardCopy.roles.machineryReseller[0];
+          if (a.role === "investor") return wizardCopy.roles.investor[0];
+          return getRoleLabel(a);
+        })();
+        const mineSubtypeLabel = (() => {
+          if (a.mineSubtype === "artisanal") return wizardCopy.mineSubtypes.artisanal;
+          if (a.mineSubtype === "semi_industrial") return wizardCopy.mineSubtypes.semiIndustrial;
+          if (a.mineSubtype === "industrial") return wizardCopy.mineSubtypes.industrial;
+          return formatMineSubtype(a.mineSubtype) || a.mineSubtype;
+        })();
         const countryName = getCountryName(a.country);
         const docs = Object.entries(fileMeta)
           .filter(([, meta]) => !!meta?.name)
@@ -471,51 +801,51 @@ function MapTeaser() {
         return (
           <div className="space-y-3">
             <div className="rounded-xl border border-white/10 bg-white/5 p-3">
-              <p className="text-sm font-semibold text-white">Resume</p>
+              <p className="text-sm font-semibold text-white">{wizardCopy.summaryTitle}</p>
               <div className="mt-2 grid grid-cols-1 gap-2 text-[12px] text-white/75">
                 <div className="flex items-center justify-between gap-3">
-                  <span className="text-white/60">Contact</span>
+                  <span className="text-white/60">{wizardCopy.summaryLabels.contact}</span>
                   <span className="text-right">{a.contact || "-"}</span>
                 </div>
                 <div className="flex items-center justify-between gap-3">
-                  <span className="text-white/60">Nom complet</span>
+                  <span className="text-white/60">{wizardCopy.summaryLabels.fullName}</span>
                   <span className="text-right">{a.fullName || "-"}</span>
                 </div>
                 <div className="flex items-center justify-between gap-3">
-                  <span className="text-white/60">Profil</span>
+                  <span className="text-white/60">{wizardCopy.summaryLabels.profile}</span>
                   <span className="text-right">{roleLabel || "-"}</span>
                 </div>
                 {a.role === "gold_miner" && a.mineSubtype ? (
                   <div className="flex items-center justify-between gap-3">
-                    <span className="text-white/60">Type d'operation</span>
-                    <span className="text-right">{formatMineSubtype(a.mineSubtype) || a.mineSubtype}</span>
+                    <span className="text-white/60">{wizardCopy.summaryLabels.operationType}</span>
+                    <span className="text-right">{mineSubtypeLabel}</span>
                   </div>
                 ) : null}
                 <div className="flex items-center justify-between gap-3">
-                  <span className="text-white/60">Localisation</span>
+                  <span className="text-white/60">{wizardCopy.summaryLabels.location}</span>
                   <span className="text-right">
                     {[countryName, a.stateRegion, a.city].filter(Boolean).join(", ") || "-"}
                   </span>
                 </div>
                 <div className="flex items-center justify-between gap-3">
-                  <span className="text-white/60">Adresse</span>
+                  <span className="text-white/60">{wizardCopy.summaryLabels.address}</span>
                   <span className="text-right">{a.address || "-"}</span>
                 </div>
                 {a.postalCode ? (
                   <div className="flex items-center justify-between gap-3">
-                    <span className="text-white/60">Code postal</span>
+                    <span className="text-white/60">{wizardCopy.summaryLabels.postalCode}</span>
                     <span className="text-right">{a.postalCode}</span>
                   </div>
                 ) : null}
                 {a.licenseNumber ? (
                   <div className="flex items-center justify-between gap-3">
-                    <span className="text-white/60">Numero d'autorisation</span>
+                    <span className="text-white/60">{wizardCopy.summaryLabels.licenseNumber}</span>
                     <span className="text-right">{a.licenseNumber}</span>
                   </div>
                 ) : null}
                 {a.role === "investor" && (a.investmentRange || a.investorInterest) ? (
                   <div className="flex items-center justify-between gap-3">
-                    <span className="text-white/60">Interet</span>
+                    <span className="text-white/60">{wizardCopy.summaryLabels.interest}</span>
                     <span className="text-right">{[a.investmentRange, a.investorInterest].filter(Boolean).join(" · ")}</span>
                   </div>
                 ) : null}
@@ -524,7 +854,7 @@ function MapTeaser() {
 
             {docs.length ? (
               <div className="rounded-xl border border-white/10 bg-white/5 p-3">
-                <p className="text-sm font-semibold text-white">Documents transmis</p>
+                <p className="text-sm font-semibold text-white">{wizardCopy.summaryLabels.documents}</p>
                 <div className="mt-2 space-y-1 text-[12px] text-white/70">
                   {docs.map((d) => (
                     <p key={d.key} className="truncate">
@@ -543,26 +873,26 @@ function MapTeaser() {
       const mine: ChatWizardStep<ApplicationAnswers>[] = [
         {
           id: "mineSubtype",
-          title: "Type d'operation",
+          title: wizardCopy.mineSubtypeTitle,
           kind: "cards",
           field: "mineSubtype",
-          prompt: "Quel type d'operation aurifere ?",
+          prompt: wizardCopy.mineSubtypePrompt,
           options: [
-            { value: "artisanal", title: "Artisanal" },
-            { value: "semi_industrial", title: "Semi-industrial" },
-            { value: "industrial", title: "Industrial" },
+            { value: "artisanal", title: wizardCopy.mineSubtypes.artisanal },
+            { value: "semi_industrial", title: wizardCopy.mineSubtypes.semiIndustrial },
+            { value: "industrial", title: wizardCopy.mineSubtypes.industrial },
           ],
         },
         ...location,
         {
           id: "mineLicenseNow",
-          title: "Autorisation",
+          title: wizardCopy.authorizationTitle,
           kind: "cards",
           field: "licenseUploadNow",
-          prompt: "Avez-vous un document d'autorisation a transmettre maintenant ?",
+          prompt: wizardCopy.authorizationPrompt,
           options: [
-            { value: "yes", title: "Oui" },
-            { value: "not_now", title: "Pas maintenant" },
+            { value: "yes", title: wizardCopy.yes },
+            { value: "not_now", title: wizardCopy.notNow },
           ],
         },
       ];
@@ -571,19 +901,19 @@ function MapTeaser() {
         mine.push(
           {
             id: "mineLicenseDoc",
-            title: "Document d'autorisation",
+            title: wizardCopy.authorizationDocumentTitle,
             kind: "file",
             fileKey: "mine_license_doc",
-            prompt: "Televersez votre document d'autorisation.",
+            prompt: wizardCopy.authorizationDocumentPrompt,
             accept: ".pdf,.jpg,.jpeg,.png",
           },
           {
             id: "licenseNumber",
-            title: "Numero d'autorisation",
+            title: wizardCopy.authorizationNumberTitle,
             kind: "text",
             field: "licenseNumber",
-            prompt: "Numero d'autorisation",
-            placeholder: "Entrez le numero du document",
+            prompt: wizardCopy.authorizationNumberPrompt,
+            placeholder: wizardCopy.authorizationNumberPlaceholder,
           },
         );
       }
@@ -597,19 +927,19 @@ function MapTeaser() {
         ...location,
         {
           id: "buyerLicenseDoc",
-          title: "Document d'autorisation",
+          title: wizardCopy.authorizationDocumentTitle,
           kind: "file",
           fileKey: "buyer_license_doc",
-          prompt: "Televersez votre document d'autorisation (obligatoire).",
+          prompt: wizardCopy.authorizationDocumentRequiredPrompt,
           accept: ".pdf,.jpg,.jpeg,.png",
         },
         {
           id: "licenseNumber",
-          title: "Numero d'autorisation",
+          title: wizardCopy.authorizationNumberTitle,
           kind: "text",
           field: "licenseNumber",
-          prompt: "Numero d'autorisation (obligatoire).",
-          placeholder: "Entrez le numero du document",
+          prompt: wizardCopy.authorizationNumberRequiredPrompt,
+          placeholder: wizardCopy.authorizationNumberPlaceholder,
         },
         review,
       ];
@@ -620,22 +950,22 @@ function MapTeaser() {
         ...base,
         {
           id: "jewelrySubtype",
-          title: "Type de bijoutier",
+          title: wizardCopy.jewelerTypeTitle,
           kind: "cards",
           field: "jewelrySubtype",
-          prompt: "Etes-vous fabricant ou revendeur ?",
+          prompt: wizardCopy.jewelerTypePrompt,
           options: [
-            { value: "manufacturer", title: "Fabricant" },
-            { value: "reseller", title: "Revendeur" },
+            { value: "manufacturer", title: wizardCopy.manufacturer },
+            { value: "reseller", title: wizardCopy.reseller },
           ],
         },
         ...location,
         {
           id: "jewelryDocs",
-          title: "Documents",
+          title: wizardCopy.documentsTitle,
           kind: "file",
           fileKey: "jewelry_docs",
-          prompt: "Televerser des documents d'autorisation ? (optionnel)",
+          prompt: wizardCopy.jewelryDocsPrompt,
           accept: ".pdf,.jpg,.jpeg,.png",
           required: false,
         },
@@ -648,13 +978,13 @@ function MapTeaser() {
         ...location,
         {
           id: "sellOnPlatform",
-          title: "Vente",
+          title: wizardCopy.saleTitle,
           kind: "cards",
           field: "sellOnPlatform",
-          prompt: "Souhaitez-vous presenter une offre sur la plateforme ?",
+          prompt: wizardCopy.salePrompt,
           options: [
-            { value: "yes", title: "Oui" },
-            { value: "not_now", title: "Pas maintenant" },
+            { value: "yes", title: wizardCopy.yes },
+            { value: "not_now", title: wizardCopy.notNow },
           ],
         },
       ];
@@ -662,10 +992,10 @@ function MapTeaser() {
       if (answers.sellOnPlatform === "yes") {
         machinery.push({
           id: "machineryDocs",
-          title: "Documents",
+          title: wizardCopy.documentsTitle,
           kind: "file",
           fileKey: "machinery_docs",
-          prompt: "Televerser des justificatifs ou autorisations ? (optionnel)",
+          prompt: wizardCopy.machineryDocsPrompt,
           accept: ".pdf,.jpg,.jpeg,.png",
           required: false,
         });
@@ -680,24 +1010,24 @@ function MapTeaser() {
         ...location,
         {
           id: "investmentRange",
-          title: "Budget",
+          title: wizardCopy.budgetTitle,
           kind: "text",
           field: "investmentRange",
-          prompt: "Quel est votre budget indicatif ? (optionnel)",
-          placeholder: "ex. 10 000 USD - 50 000 USD",
+          prompt: wizardCopy.budgetPrompt,
+          placeholder: wizardCopy.budgetPlaceholder,
           required: false,
         },
         {
           id: "investorInterest",
-          title: "Interet",
+          title: wizardCopy.interestTitle,
           kind: "cards",
           field: "investorInterest",
-          prompt: "Votre interet porte sur les mines, les equipements ou les deux ? (optionnel)",
+          prompt: wizardCopy.interestPrompt,
           required: false,
           options: [
-            { value: "mines", title: "Mines" },
-            { value: "machinery", title: "Equipements" },
-            { value: "both", title: "Les deux" },
+            { value: "mines", title: wizardCopy.mines },
+            { value: "machinery", title: wizardCopy.machinery },
+            { value: "both", title: wizardCopy.both },
           ],
         },
         review,
@@ -709,7 +1039,7 @@ function MapTeaser() {
 
   const submitApplication = async ({ answers, files }: { answers: ApplicationAnswers; files: Record<string, File | null> }) => {
     const roleKey = getRoleKey(answers);
-    if (!roleKey) throw new Error("Profil manquant.");
+    if (!roleKey) throw new Error(wizardCopy.missingProfile);
 
     const { email, phone } = parseContact(answers.contact);
     const formData = new FormData();
@@ -980,6 +1310,7 @@ function MapTeaser() {
                   initialAnswers={initialAnswers}
                   steps={applicationSteps}
                   submitLabel={copy.submitApplication}
+                  uiLabels={wizardCopy.ui}
                   onExit={() => setActiveTab("login")}
                   onSubmit={submitApplication}
                 />
@@ -1315,7 +1646,7 @@ function MapTeaser() {
             className="w-full h-11 bg-white/10 hover:bg-white/15 text-white font-semibold"
             onClick={() => setLocation("/")}
           >
-            Continue browsing
+            {wizardCopy.continueBrowsing}
           </Button>
         </div>
       </div>

@@ -87,6 +87,15 @@ type Props<Answers extends Record<string, any>> = {
   onExit?: () => void;
   onSubmit?: (args: { answers: Answers; files: Record<string, File | null> }) => Promise<void> | void;
   submitLabel?: string;
+  uiLabels?: {
+    step?: (current: number, total: number) => string;
+    steps?: string;
+    progress?: string;
+    saveAndContinueLater?: string;
+    application?: string;
+    close?: string;
+    done?: string;
+  };
   className?: string;
 };
 
@@ -109,6 +118,7 @@ function stepRequired<Answers extends Record<string, any>>(step: ChatWizardStep<
 export function ChatFormWizard<Answers extends Record<string, any>>(props: Props<Answers>) {
   const { toast } = useToast();
   const { t } = useLocale();
+  const labels = props.uiLabels || {};
   const [answers, setAnswers] = useState<Answers>(props.initialAnswers);
   const [stepId, setStepId] = useState<string>("");
   const [fileMeta, setFileMetaState] = useState<Record<string, any>>({});
@@ -281,7 +291,7 @@ export function ChatFormWizard<Answers extends Record<string, any>>(props: Props
         messages.push({
           role: "user",
           key: `u-${s.id}`,
-          content: <p className="text-white/70">{t("wizard.label.done")}</p>,
+          content: <p className="text-white/70">{labels.done || t("wizard.label.done")}</p>,
         });
         continue;
       }
@@ -559,7 +569,7 @@ export function ChatFormWizard<Answers extends Record<string, any>>(props: Props
     <div className="space-y-2">
       <p className="text-[11px] text-white/60 uppercase tracking-wider flex items-center gap-2">
         <ListChecks className="h-4 w-4 text-white/40" />
-        Steps
+        {labels.steps || "Steps"}
       </p>
       <div className="space-y-1">
         {steps
@@ -603,7 +613,7 @@ export function ChatFormWizard<Answers extends Record<string, any>>(props: Props
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
           <p className="text-xs text-white/60">
-            Step {Math.min(currentIndex + 1, steps.length)} of {steps.length}
+            {labels.step ? labels.step(Math.min(currentIndex + 1, steps.length), steps.length) : `Step ${Math.min(currentIndex + 1, steps.length)} of ${steps.length}`}
           </p>
           <Progress value={Math.max(0, Math.min(100, progress))} className="h-2 mt-2" />
         </div>
@@ -612,12 +622,12 @@ export function ChatFormWizard<Answers extends Record<string, any>>(props: Props
             <SheetTrigger asChild>
               <Button variant="outline" className="border-white/15 text-white/80 hover:bg-white/10 md:hidden">
                 <ListChecks className="h-4 w-4 mr-2" />
-                Steps
+                {labels.steps || "Steps"}
               </Button>
             </SheetTrigger>
             <SheetContent side="right" className="bg-gray-950 border-white/10 text-white">
               <SheetHeader>
-                <SheetTitle className="text-white">Progress</SheetTitle>
+                <SheetTitle className="text-white">{labels.progress || "Progress"}</SheetTitle>
               </SheetHeader>
               <div className="mt-4">
                 <StepList />
@@ -634,7 +644,7 @@ export function ChatFormWizard<Answers extends Record<string, any>>(props: Props
               }}
             >
               <Save className="h-4 w-4 mr-2" />
-              Save & continue later
+              {labels.saveAndContinueLater || "Save & continue later"}
             </Button>
           ) : null}
         </div>
@@ -643,7 +653,7 @@ export function ChatFormWizard<Answers extends Record<string, any>>(props: Props
       <div className="mt-4 grid grid-cols-1 md:grid-cols-[1fr_280px] gap-4">
         <Card className="bg-gray-900/60 border-white/10">
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm text-white">{current?.title || "Application"}</CardTitle>
+            <CardTitle className="text-sm text-white">{current?.title || labels.application || "Application"}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <ScrollArea className="h-[340px] pr-3">{renderMessages()}</ScrollArea>
@@ -655,7 +665,7 @@ export function ChatFormWizard<Answers extends Record<string, any>>(props: Props
                   className="text-white/60 hover:text-white hover:bg-white/10"
                   onClick={() => props.onExit?.()}
                 >
-                  Close
+                  {labels.close || "Close"}
                 </Button>
               </div>
             ) : null}
@@ -674,7 +684,7 @@ export function ChatFormWizard<Answers extends Record<string, any>>(props: Props
                     className="border-white/15 text-white/80 hover:bg-white/10"
                     onClick={() => props.onExit?.()}
                   >
-                    Close
+                    {labels.close || "Close"}
                   </Button>
                 ) : null}
               </div>

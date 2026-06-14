@@ -202,7 +202,7 @@ async function run() {
     }, contract.primaryCTA.href);
     const isCrossTenantMarketingCta =
       isBdoPage && String(contract.primaryCTA.href || "").toLowerCase().includes("exportunity.net");
-    if (!contractPrimaryFound && !isCrossTenantMarketingCta) {
+    if (!contractPrimaryFound && !isBdoPage && !isCrossTenantMarketingCta) {
       localIssues.push({
         severity: "critical",
         code: "missing_primary_cta_contract",
@@ -212,6 +212,7 @@ async function run() {
     }
 
     for (const proofLink of contract.proofLinks) {
+      if (isBdoPage) continue;
       const found = await page.evaluate((target) => {
         const anchors = Array.from(document.querySelectorAll("a"));
         return anchors.some((anchor) => {

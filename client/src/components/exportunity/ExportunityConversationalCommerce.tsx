@@ -83,6 +83,7 @@ export type ConversationMessage = {
   createdAt: string;
   imageUrl?: string;
   shopId?: string;
+  agentSnapshot?: CommerceAgent;
 };
 
 export type ShopProduct = {
@@ -101,11 +102,14 @@ type ShopOrderLine = {
   quantity: number;
 };
 
+export type ExportunityShellMode = "commerce" | "mapDominant";
+
 type ExportunityConversationalCommerceProps = {
   onNavigate?: (href: string) => void;
   isAdmin?: boolean;
   initialSpace?: ConversationSpace;
   embeddedShell?: boolean;
+  shellMode?: ExportunityShellMode;
 };
 
 type PlacesProvider = "google" | "curated";
@@ -397,7 +401,7 @@ const initialMessages: ConversationMessage[] = [
   {
     id: "hello",
     agentId: "tassi",
-    content: "Hello, I'm Tassi. What are you looking for around you today?",
+    content: "Hello, I'm Tassi. Search for products, shops, delivery, or suppliers around you today.",
     createdAt: "now",
   },
   {
@@ -992,7 +996,9 @@ function OpportunityCard({
           ) : null}
           <div className="flex items-center justify-between pt-1">
             <span className={cn("text-xs font-bold", dark ? "text-white/52" : "text-slate-500")}>{shop.trustStatus || "Public listing"}</span>
-            <span className="rounded-full bg-[#F5A623] px-3 py-1.5 text-xs font-black text-[#07111F]">Ask Tassi</span>
+            <span className="rounded-full bg-[#F5A623] px-3 py-1.5 text-xs font-black text-[#07111F]">
+              {exchange ? "View PME" : wholesale ? "View supplier" : "Enter shop"}
+            </span>
           </div>
         </div>
       </button>
@@ -1049,9 +1055,23 @@ function AgentAvatar({ agent }: { agent: CommerceAgent }) {
   );
 }
 
-function MessageBubble({ message, dark }: { message: ConversationMessage; dark: boolean }) {
+function MessageBubble({
+  message,
+  dark,
+  activeShop,
+}: {
+  message: ConversationMessage;
+  dark: boolean;
+  activeShop?: CommerceShop | null;
+}) {
   const isUser = message.agentId === "user";
-  const agent = isUser ? null : agents[message.agentId] || businessAgents.find((item) => item.id === message.agentId) || agents.tassi;
+  const agent = isUser
+    ? null
+    : message.agentSnapshot ||
+      (activeShop && message.agentId === activeShop.frontDesk.id ? activeShop.frontDesk : null) ||
+      agents[message.agentId] ||
+      businessAgents.find((item) => item.id === message.agentId) ||
+      agents.tassi;
   return (
     <div className={cn("flex items-start gap-3", isUser && "justify-end")}>
       {!isUser && agent ? <AgentAvatar agent={agent} /> : null}
@@ -1127,7 +1147,13 @@ function BusinessConversation({ dark }: { dark: boolean }) {
   );
 }
 
-export function ExportunityConversationalCommerce({ onNavigate, isAdmin = false, initialSpace = "city", embeddedShell = false }: ExportunityConversationalCommerceProps) {
+export function ExportunityConversationalCommerce({
+  onNavigate,
+  isAdmin = false,
+  initialSpace = "city",
+  embeddedShell = false,
+  shellMode = "commerce",
+}: ExportunityConversationalCommerceProps) {
   const [themeMode, setThemeMode] = useState<ThemeMode>(() => {
     if (typeof window === "undefined") return "light";
     return (window.localStorage.getItem("exportunity-map-theme") as ThemeMode | null) || "light";
@@ -1200,7 +1226,24 @@ export function ExportunityConversationalCommerce({ onNavigate, isAdmin = false,
   const googleMapEnabled = Boolean(mapsConfig.enabled && mapsConfig.provider === "google" && mapsConfig.apiKey);
   const activeMapId = dark ? mapsConfig.mapIdDark || mapsConfig.mapIdLight || undefined : mapsConfig.mapIdLight || undefined;
   const shopMode = space === "shop" && !!activeShop;
-  const visibleConversationAgent = shopMode && activeShop ? activeShop.frontDesk : agents.tassi;
+  const businessLeadAgent = businessAgents[0];
+  const visibleConversationAgent = shopMode && activeShop ? activeShop.frontDesk : space === "business" ? businessLeadAgent : agents.tassi;
+  const mapDominant = shellMode === "mapDominant";
+  const mapHeaderTitle = exchange ? "Ready for export" : wholesale ? "Wholesale suppliers" : "Nearby products";
+  const mapHeaderInstruction = exchange
+    ? "Review verified PME profiles, export readiness, and trust signals before any next step."
+    : wholesale
+      ? "Tap a supplier to inspect MOQ, lead time, logistics, and request a quote."
+      : "Tap a shop to enter, browse products, and place an order with the shop agent.";
+  const composerPlaceholder = shopMode
+    ? `Message ${visibleConversationAgent.name} about these products...`
+    : space === "business"
+      ? "Tell your business agents what to handle next..."
+      : wholesale
+        ? "Search suppliers, bulk products, MOQ, or logistics..."
+        : exchange
+          ? "Search verified PME profiles, export products, or trust signals..."
+          : "Search products, shops, delivery, or suppliers nearby...";
 
   useEffect(() => {
     window.localStorage.setItem("exportunity-map-theme", themeMode);
@@ -1338,7 +1381,12 @@ export function ExportunityConversationalCommerce({ onNavigate, isAdmin = false,
 
   const replyAsTassi = (text: string, shop?: CommerceShop) => {
     window.setTimeout(() => {
-      pushMessage({ agentId: shop?.frontDesk.id || "tassi", content: text, shopId: shop?.id });
+      pushMessage({
+        agentId: shop?.frontDesk.id || "tassi",
+        content: text,
+        shopId: shop?.id,
+        agentSnapshot: shop?.frontDesk,
+      });
       setVoiceState((state) => (state === "speaking" ? "idle" : state));
     }, 260);
   };
@@ -1367,7 +1415,7 @@ export function ExportunityConversationalCommerce({ onNavigate, isAdmin = false,
   const submitShopOrder = () => {
     if (!activeShop) return;
     if (!activeShopOrderEntries.length) {
-      replyAsTassi("Select a quantity for one or more products first, then I can place your order with the shop.");
+      replyAsTassi("Select a quantity for one or more products first, then I can confirm your order with the shop.", activeShop);
       return;
     }
     const ordered = activeShopOrderEntries.map((line) => `${line.product.name} x${line.quantity}`).join(", ");
@@ -1376,8 +1424,8 @@ export function ExportunityConversationalCommerce({ onNavigate, isAdmin = false,
       delete next[activeShop.id];
       return next;
     });
-    pushMessage({ agentId: "user", content: `Place order at ${activeShop.name}: ${ordered}` });
-    replyAsTassi(`${activeShop.frontDesk.name} is confirming your order for ${ordered}. Total is ${formatCurrency(activeShopSubtotal)}. I can also help you add delivery notes if needed.`, activeShop);
+    pushMessage({ agentId: "user", content: `Place order at ${activeShop.name}: ${ordered}`, shopId: activeShop.id });
+    replyAsTassi(`I am confirming your order for ${ordered}. Total is ${formatCurrency(activeShopSubtotal)}. I can add delivery notes before dispatch if needed.`, activeShop);
   };
 
   const handleAsk = (raw: string) => {
@@ -1386,7 +1434,7 @@ export function ExportunityConversationalCommerce({ onNavigate, isAdmin = false,
     setInput("");
     setResultsVisible(true);
     setIsSearching(true);
-    pushMessage({ agentId: "user", content: text });
+    pushMessage({ agentId: "user", content: text, shopId: shopMode && activeShop ? activeShop.id : undefined });
     const flow = findConversationFlow(text, wholesale ? "wholesale" : space);
     const lower = text.toLowerCase();
     const needsWholesale = lower.includes("wholesale") || lower.includes("supplier") || lower.includes("bulk") || lower.includes("quote") || lower.includes("moq");
@@ -1401,7 +1449,30 @@ export function ExportunityConversationalCommerce({ onNavigate, isAdmin = false,
     }
     window.setTimeout(() => setIsSearching(false), 900);
     if (space === "business") {
-      replyAsTassi("I have routed this to your business agents. Front Desk, Inventory, Accountant, Delivery Lead, and Marketing can act from this thread.");
+      window.setTimeout(() => {
+        pushMessage({
+          agentId: businessLeadAgent.id,
+          agentSnapshot: businessLeadAgent,
+          content: "Front Desk: I shared this with the operating agents. Inventory, Accountant, Delivery Lead, and Marketing can turn it into tasks, stock checks, follow-ups, or customer replies.",
+        });
+      }, 260);
+      return;
+    }
+    if (shopMode && activeShop) {
+      if (lower.includes("video") || lower.includes("live")) {
+        setVideoOpen(true);
+        replyAsTassi("I can show you the product live from the shop. This call is live and not recorded.", activeShop);
+        return;
+      }
+      if (lower.includes("wallet") || lower.includes("pay")) {
+        window.setTimeout(() => pushMessage({ agentId: "wallet", content: "Wallet/Accountant: I can explain balance, receipts, and payment before you confirm.", shopId: activeShop.id }), 300);
+        return;
+      }
+      if (lower.includes("deliver")) {
+        window.setTimeout(() => pushMessage({ agentId: "koffi", content: `Delivery: ${activeShop.name} can deliver to Cocody. Estimated route time is ${activeShop.eta}.`, shopId: activeShop.id }), 300);
+        return;
+      }
+      replyAsTassi(`Here are the products available at ${activeShop.name}. Choose quantities in the shop view, or tell me what you need and I will guide you.`, activeShop);
       return;
     }
     if (needsWholesale && (lower.includes("cement") || lower.includes("bags") || /\b\d{2,}\b/.test(lower))) {
@@ -1441,22 +1512,27 @@ export function ExportunityConversationalCommerce({ onNavigate, isAdmin = false,
     setActiveShop(shop);
     setResultsVisible(true);
     setIsSearching(false);
-    pushMessage({
-      agentId: "tassi",
-      content: exchange
-        ? `I found ${shop.name}. ${shop.trustStatus || "PME profile"} and ${shop.investmentReadiness || "internal review"} are visible.`
-        : wholesale
-          ? `I found ${shop.name}. ${shop.moq || "Bulk terms available"} and ${shop.leadTime || "quote desk open"}.`
-          : `I found ${shop.name}, ${shop.distance} away. I have loaded the storefront and product list.`,
-    });
-    replyAsTassi(
-      exchange
-        ? `${shop.merchantStory || `${shop.name} has a neighbourhood business profile.`} We can review the profile, contact status, and compliance-gated eligibility before any public investment action.`
-        : wholesale
-          ? `Welcome to ${shop.name}. I can share stock, MOQ, quote timing, and logistics options. What quantity do you need?`
-          : `Welcome to ${shop.name}. I’m ${shop.frontDesk.name}, your shop Front Desk. Pick products and tap “Place order.”`,
-      shop,
-    );
+    if (exchange || wholesale) {
+      pushMessage({
+        agentId: "tassi",
+        content: exchange
+          ? `I found ${shop.name}. ${shop.trustStatus || "PME profile"} and ${shop.investmentReadiness || "internal review"} are visible.`
+          : `I found ${shop.name}. ${shop.moq || "Bulk terms available"} and ${shop.leadTime || "quote desk open"}.`,
+      });
+      replyAsTassi(
+        exchange
+          ? `${shop.merchantStory || `${shop.name} has a neighbourhood business profile.`} We can review the profile, contact status, and compliance-gated eligibility before any public investment action.`
+          : `Welcome to ${shop.name}. I can share stock, MOQ, quote timing, and logistics options. What quantity do you need?`,
+        shop,
+      );
+    } else {
+      pushMessage({
+        agentId: shop.frontDesk.id,
+        content: `Welcome to ${shop.name}. I'm ${shop.frontDesk.name}, the shop Front Desk. Products are open now; choose what you want and I will help with payment or delivery.`,
+        shopId: shop.id,
+        agentSnapshot: shop.frontDesk,
+      });
+    }
     if (!shopOrderDrafts[shop.id]) {
       setShopOrderDrafts((previous) => ({ ...previous, [shop.id]: previous[shop.id] || {} }));
     }
@@ -1484,7 +1560,7 @@ export function ExportunityConversationalCommerce({ onNavigate, isAdmin = false,
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRecognition) {
       setVoiceState("unavailable");
-      replyAsTassi("Voice input is not available in this browser. You can type to Tassi here.");
+      replyAsTassi(`Voice input is not available in this browser. You can type to ${shopMode && activeShop ? activeShop.frontDesk.name : "Tassi"} here.`, activeShop || undefined);
       window.setTimeout(() => setVoiceState("idle"), 2400);
       return;
     }
@@ -1510,6 +1586,12 @@ export function ExportunityConversationalCommerce({ onNavigate, isAdmin = false,
     replyAsTassi("I can inspect the image and search nearby matches. This looks like a product request, so I highlighted relevant shops and supplier options around you.");
   };
 
+  const visibleMessages = shopMode && activeShop
+    ? messages
+      .filter((message) => message.shopId === activeShop.id || message.agentId === activeShop.frontDesk.id)
+      .slice(-8)
+    : messages.slice(-8);
+
   return (
     <div className={cn("flex flex-col overflow-hidden", embeddedShell ? "h-full min-h-0 pt-[64px]" : "h-[100dvh] min-h-[100dvh]", dark ? "bg-[#05070B] text-white" : "bg-[#F7F8FA] text-slate-950")}>
       <style>{`
@@ -1530,7 +1612,7 @@ export function ExportunityConversationalCommerce({ onNavigate, isAdmin = false,
             ["Map", MapIcon, "city"],
             ["Shops", Store, "shop"],
             ["Wholesale", Warehouse, "wholesale"],
-            ["Bourse PME", Search, "exchange"],
+            ["Ready export", Search, "exchange"],
             ["My Business", BriefcaseBusiness, "business"],
             ["Orders", Truck, "orders"],
             ["Wallet", Package, "wallet"],
@@ -1551,10 +1633,15 @@ export function ExportunityConversationalCommerce({ onNavigate, isAdmin = false,
                 } else if (key === "shop") {
                   setSpace("city");
                   setActiveShop(null);
+                  onNavigate?.("/marketplace");
                 }
                 else if (key === "orders") onNavigate?.("/orders");
                 else if (key === "wallet") onNavigate?.("/wallet");
-                else { setSpace("city"); setActiveShop(null); }
+                else {
+                  setSpace("city");
+                  setActiveShop(null);
+                  if (key === "city") onNavigate?.("/map");
+                }
               }}
               className={cn(
                 "inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-black transition",
@@ -1581,11 +1668,18 @@ export function ExportunityConversationalCommerce({ onNavigate, isAdmin = false,
         </div>
       </header> : null}
 
-      <div className="grid min-h-0 flex-1 grid-cols-1 gap-0 overflow-hidden lg:grid-cols-[88px_minmax(0,1fr)_560px] xl:grid-cols-[96px_minmax(0,1fr)_560px]">
+      <div
+        className={cn(
+          "grid min-h-0 flex-1 grid-cols-1 gap-0 overflow-hidden",
+          mapDominant
+            ? "lg:grid-cols-[72px_minmax(0,1fr)_320px] xl:grid-cols-[80px_minmax(0,1fr)_340px]"
+            : "lg:grid-cols-[80px_minmax(0,1fr)_340px] xl:grid-cols-[88px_minmax(0,1fr)_360px]",
+        )}
+      >
         <aside className={cn("hidden border-r px-3 py-5 lg:flex lg:flex-col lg:items-center lg:gap-4", dark ? "border-white/10 bg-[#07111F]" : "border-slate-200 bg-white")}>
           {[
-            { key: "city", label: "Map", icon: MapIcon, action: () => { setSpace("city"); setActiveShop(null); } },
-            { key: "tassi", label: "Tassi", icon: Search, action: () => handleQuickReply("Find breakfast near me") },
+            { key: "city", label: "Map", icon: MapIcon, action: () => { setSpace("city"); setActiveShop(null); onNavigate?.("/map"); } },
+            { key: "find", label: "Find", icon: Search, action: () => handleQuickReply("Find breakfast near me") },
             {
               key: "wholesale",
               label: "Wholesale",
@@ -1598,7 +1692,7 @@ export function ExportunityConversationalCommerce({ onNavigate, isAdmin = false,
             },
             {
               key: "exchange",
-              label: "PME",
+              label: "Export",
               icon: BriefcaseBusiness,
               action: () => {
                 setSpace("exchange");
@@ -1608,7 +1702,7 @@ export function ExportunityConversationalCommerce({ onNavigate, isAdmin = false,
             },
             { key: "business", label: "Business", icon: Store, action: () => setSpace("business") },
           ].map(({ key, label, icon: Icon, action }) => {
-            const active = key === space || (key === "tassi" && Boolean(activeShop));
+            const active = key === space || (key === "city" && space === "shop");
             return (
             <button
               key={label}
@@ -1692,7 +1786,7 @@ export function ExportunityConversationalCommerce({ onNavigate, isAdmin = false,
                             onClick={() => selectShop(shop)}
                             className="mt-3 rounded-md border border-slate-200 px-3 py-2 text-sm font-semibold hover:border-[#F5A623] hover:text-[#F5A623]"
                           >
-                            Open shop
+                            {exchange ? "View PME" : wholesale ? "View supplier" : "Enter shop"}
                           </button>
                         </div>
                       </Popup>
@@ -1706,8 +1800,8 @@ export function ExportunityConversationalCommerce({ onNavigate, isAdmin = false,
             <div className="pointer-events-none absolute left-4 top-4 z-[4] max-w-[560px]">
               <div className={cn("rounded-2xl border px-4 py-3 backdrop-blur-xl", dark ? "border-white/10 bg-[#07111F]/72 text-white" : "border-white/90 bg-white/82 text-slate-950 shadow-[0_18px_44px_rgba(15,23,42,.12)]")}>
                 <div className="text-xs font-black uppercase tracking-[0.24em] text-[#F5A623]">{exchange ? "Bourse de PME" : wholesale ? "Wholesale map" : "Live neighbourhood map"}</div>
-                <div className="mt-1 text-lg font-black">{visiblePlaces.length} places around Cocody</div>
-                <div className={cn("mt-1 text-xs font-semibold", dark ? "text-white/62" : "text-slate-600")}>Move the map, tap a marker, or ask Tassi in the right pane.</div>
+                <div className="mt-1 text-lg font-black">{visiblePlaces.length} {mapHeaderTitle} around Cocody</div>
+                <div className={cn("mt-1 text-xs font-semibold", dark ? "text-white/62" : "text-slate-600")}>{mapHeaderInstruction}</div>
                 <div className={cn("mt-3 inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[11px] font-black", googleMapEnabled || activeData.provider === "google" ? "border-emerald-300 bg-emerald-50 text-emerald-800" : dark ? "border-white/12 bg-white/8 text-white/78" : "border-slate-200 bg-white/86 text-slate-700")}>
                   <span className={cn("h-2 w-2 rounded-full", googleMapEnabled || activeData.provider === "google" ? "bg-emerald-500" : "bg-[#F5A623]")} />
                   {googleMapEnabled ? "Google Maps active" : activeData.provider === "google" ? "Live listings active" : "City map active"}
@@ -1743,6 +1837,160 @@ export function ExportunityConversationalCommerce({ onNavigate, isAdmin = false,
               <button type="button" onClick={() => setUserLocation(ABIDJAN_COCODY)} className={cn("grid h-11 w-11 place-items-center rounded-full border backdrop-blur-xl", dark ? "border-white/10 bg-[#07111F]/70 text-white" : "border-white/90 bg-white/86 text-slate-900")} aria-label="Center map"><Compass className="h-5 w-5" /></button>
               <button type="button" onClick={() => { setResultsVisible(true); setActiveShop(null); }} className={cn("grid h-11 w-11 place-items-center rounded-full border backdrop-blur-xl", dark ? "border-white/10 bg-[#07111F]/70 text-white" : "border-white/90 bg-white/86 text-slate-900")} aria-label="Reset map"><Navigation className="h-5 w-5" /></button>
             </div>
+            {shopMode && activeShop ? (
+              <div
+                className={cn(
+                  "absolute inset-x-4 bottom-5 top-24 z-[6] overflow-hidden rounded-[28px] border backdrop-blur-2xl md:inset-x-6 lg:top-20",
+                  dark
+                    ? "border-white/14 bg-[#07111F]/88 text-white shadow-[0_26px_80px_rgba(0,0,0,.46)]"
+                    : "border-white/95 bg-white/92 text-slate-950 shadow-[0_26px_80px_rgba(15,23,42,.18)]",
+                )}
+              >
+                <div className="grid h-full min-h-0 grid-cols-1 lg:grid-cols-[minmax(0,1fr)_280px]">
+                  <div className="min-h-0 overflow-auto p-4 md:p-5">
+                    <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                      <div className="flex min-w-0 gap-4">
+                        <img src={activeShop.image} alt="" className="h-24 w-28 shrink-0 rounded-2xl object-cover md:h-28 md:w-36" />
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="rounded-full bg-[#F5A623] px-3 py-1 text-[11px] font-black uppercase tracking-wide text-[#07111F]">
+                              In shop
+                            </span>
+                            <span className={cn("rounded-full border px-3 py-1 text-[11px] font-black", dark ? "border-white/14 text-white/72" : "border-slate-200 text-slate-600")}>
+                              {activeShop.distance} • {activeShop.eta}
+                            </span>
+                          </div>
+                          <h2 className="mt-3 truncate text-2xl font-black">{activeShop.name}</h2>
+                          <p className={cn("mt-1 text-sm font-semibold", dark ? "text-white/62" : "text-slate-600")}>
+                            {activeShop.category} • {activeShop.openLabel} • Rating {activeShop.rating.toFixed(1)}
+                          </p>
+                          <p className={cn("mt-3 max-w-2xl text-sm leading-relaxed", dark ? "text-white/64" : "text-slate-600")}>
+                            Products are available now. Choose quantities here; {activeShop.frontDesk.name}, the shop Front Desk, will help with payment, delivery, and substitutions.
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSpace("city");
+                          setActiveShop(null);
+                        }}
+                        className={cn(
+                          "shrink-0 rounded-full border px-4 py-2 text-sm font-black",
+                          dark ? "border-white/14 text-white/76 hover:bg-white/8" : "border-slate-200 text-slate-700 hover:bg-slate-50",
+                        )}
+                      >
+                        Back to map
+                      </button>
+                    </div>
+
+                    <div className="mt-5 grid gap-3 sm:grid-cols-2 2xl:grid-cols-3">
+                      {activeShopProducts.map((product) => {
+                        const quantity = activeShopOrder[product.id]?.quantity || 0;
+                        return (
+                          <article
+                            key={product.id}
+                            className={cn(
+                              "overflow-hidden rounded-2xl border",
+                              dark ? "border-white/12 bg-white/[0.045]" : "border-slate-200 bg-white",
+                            )}
+                          >
+                            <img src={product.image} alt={product.name} className="h-36 w-full object-cover" />
+                            <div className="p-4">
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="min-w-0">
+                                  <h3 className="truncate text-base font-black">{product.name}</h3>
+                                  <p className={cn("mt-1 line-clamp-2 text-xs leading-relaxed", dark ? "text-white/58" : "text-slate-600")}>
+                                    {product.description}
+                                  </p>
+                                </div>
+                                <span className="shrink-0 text-sm font-black text-[#F5A623]">
+                                  {formatCurrency(product.priceCfa)}
+                                </span>
+                              </div>
+                              <div className={cn("mt-3 flex items-center justify-between text-xs", dark ? "text-white/55" : "text-slate-500")}>
+                                <span>{product.unit}</span>
+                                <span>{product.quantityAvailable} available</span>
+                              </div>
+                              <div className="mt-4 flex items-center justify-between gap-3">
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    type="button"
+                                    className={cn("grid h-9 w-9 place-items-center rounded-xl border", dark ? "border-white/20 hover:bg-white/10" : "border-slate-300 hover:bg-slate-100")}
+                                    onClick={() => setOrderQuantity(activeShop, product, quantity - 1)}
+                                    aria-label={`Reduce ${product.name}`}
+                                  >
+                                    <Minus className="h-4 w-4" />
+                                  </button>
+                                  <span className="min-w-9 text-center text-sm font-black">{quantity}</span>
+                                  <button
+                                    type="button"
+                                    className={cn("grid h-9 w-9 place-items-center rounded-xl border", dark ? "border-white/20 hover:bg-white/10" : "border-slate-300 hover:bg-slate-100")}
+                                    onClick={() => setOrderQuantity(activeShop, product, quantity + 1)}
+                                    aria-label={`Add ${product.name}`}
+                                  >
+                                    <Plus className="h-4 w-4" />
+                                  </button>
+                                </div>
+                                {quantity > 0 ? (
+                                  <span className="rounded-full bg-[#F5A623]/16 px-3 py-1 text-xs font-black text-[#F5A623]">
+                                    Selected
+                                  </span>
+                                ) : null}
+                              </div>
+                            </div>
+                          </article>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <aside className={cn("border-t p-4 lg:border-l lg:border-t-0", dark ? "border-white/10 bg-[#05070B]/42" : "border-slate-200 bg-slate-50/88")}>
+                    <div className="text-[11px] font-black uppercase tracking-[0.18em] text-[#F5A623]">Your order</div>
+                    <div className="mt-3 space-y-2">
+                      {activeShopOrderEntries.length ? (
+                        activeShopOrderEntries.map((line) => (
+                          <div key={line.product.id} className={cn("rounded-xl border px-3 py-2 text-sm", dark ? "border-white/10 bg-white/[0.04]" : "border-slate-200 bg-white")}>
+                            <div className="flex items-start justify-between gap-3">
+                              <span className="font-bold">{line.product.name}</span>
+                              <span className="font-black">x{line.quantity}</span>
+                            </div>
+                            <div className={cn("mt-1 text-xs", dark ? "text-white/55" : "text-slate-500")}>
+                              {formatCurrency(line.product.priceCfa * line.quantity)}
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className={cn("rounded-xl border px-3 py-4 text-sm font-semibold", dark ? "border-white/10 bg-white/[0.04] text-white/58" : "border-slate-200 bg-white text-slate-500")}>
+                          Select products to start an order.
+                        </div>
+                      )}
+                    </div>
+                    <div className="mt-4 border-t pt-4" style={{ borderColor: dark ? "rgba(255,255,255,.14)" : "rgba(15,23,42,.12)" }}>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className={dark ? "text-white/62" : "text-slate-600"}>Subtotal</span>
+                        <span className="font-black">{formatCurrency(activeShopSubtotal)}</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={submitShopOrder}
+                        className="mt-4 flex h-12 w-full items-center justify-center rounded-2xl bg-[#F5A623] text-sm font-black text-[#07111F] disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-600"
+                        disabled={!activeShopOrderEntries.length}
+                      >
+                        Place order
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleQuickReply("Can you deliver?")}
+                        className={cn("mt-2 h-10 w-full rounded-2xl border text-sm font-black", dark ? "border-white/14 text-white/74 hover:bg-white/8" : "border-slate-200 text-slate-700 hover:bg-white")}
+                      >
+                        Delivery help
+                      </button>
+                    </div>
+                  </aside>
+                </div>
+              </div>
+            ) : null}
           </section>
         </main>
 
@@ -1756,7 +2004,9 @@ export function ExportunityConversationalCommerce({ onNavigate, isAdmin = false,
                   ? "PME scout and trust guide"
                   : wholesale
                     ? "Wholesale sourcing concierge"
-                    : shopMode
+                    : space === "business"
+                      ? `${visibleConversationAgent.role} • Business agent`
+                      : shopMode
                       ? `${visibleConversationAgent.role} • Shop assistant`
                       : "Concierge"}
               </div>
@@ -1770,7 +2020,7 @@ export function ExportunityConversationalCommerce({ onNavigate, isAdmin = false,
           ) : null}
           {shopMode && activeShop ? (
             <div className={cn("mb-3 rounded-2xl border p-3", dark ? "border-white/10 bg-white/[0.04]" : "border-slate-200 bg-slate-50")}>
-              <div className="text-[11px] font-black uppercase tracking-[0.18em] text-[#F5A623]">Shop storefront</div>
+              <div className="text-[11px] font-black uppercase tracking-[0.18em] text-[#F5A623]">Shop agent</div>
               <div className="mt-2 flex gap-3">
                 <img src={activeShop.image} alt="" className="h-14 w-16 rounded-xl object-cover" />
                 <div className="min-w-0">
@@ -1779,64 +2029,18 @@ export function ExportunityConversationalCommerce({ onNavigate, isAdmin = false,
                   <div className="mt-1 text-xs font-black text-[#F5A623]">{activeShop.distance} • {activeShop.eta}</div>
                 </div>
               </div>
-              <div className="mt-3 space-y-3 pr-1">
-                {activeShopProducts.map((product) => {
-                  const line = activeShopOrder[product.id];
-                  const quantity = line?.quantity || 0;
-                  return (
-                    <article key={product.id} className={cn("rounded-xl border p-3", dark ? "border-white/12 bg-white/[0.03]" : "border-slate-200 bg-white")}>
-                      <div className="flex gap-3">
-                        <img src={product.image} alt={product.name} className="h-16 w-16 shrink-0 rounded-lg object-cover" />
-                        <div className="min-w-0">
-                          <div className="truncate text-sm font-black">{product.name}</div>
-                          <div className={cn("mt-1 text-[11px]", dark ? "text-white/64" : "text-slate-600")}>{product.description}</div>
-                          <div className="mt-1 text-sm font-black text-[#F5A623]">
-                            {formatCurrency(product.priceCfa)} / {product.unit}
-                          </div>
-                          <div className={cn("mt-1 text-[11px]", dark ? "text-white/52" : "text-slate-500")}>Stock {product.quantityAvailable}</div>
-                        </div>
-                      </div>
-                      <div className="mt-3 flex items-center justify-between gap-2">
-                        <span className={cn("text-[11px] font-semibold", dark ? "text-white/68" : "text-slate-600")}>Qty</span>
-                        <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            className={cn("grid h-7 w-7 place-items-center rounded-lg border", dark ? "border-white/25 text-white hover:bg-white/10" : "border-slate-300 text-slate-700 hover:bg-slate-100")}
-                            onClick={() => setOrderQuantity(activeShop, product, quantity - 1)}
-                          >
-                            <Minus className="h-4 w-4" />
-                          </button>
-                          <span className="min-w-8 text-center text-sm font-black">{quantity}</span>
-                          <button
-                            type="button"
-                            className={cn("grid h-7 w-7 place-items-center rounded-lg border", dark ? "border-white/25 text-white hover:bg-white/10" : "border-slate-300 text-slate-700 hover:bg-slate-100")}
-                            onClick={() => setOrderQuantity(activeShop, product, quantity + 1)}
-                          >
-                            <Plus className="h-4 w-4" />
-                          </button>
-                        </div>
-                      </div>
-                    </article>
-                  );
-                })}
-              </div>
+              <p className={cn("mt-3 text-sm leading-relaxed", dark ? "text-white/62" : "text-slate-600")}>
+                {visibleConversationAgent.name} is here to help you choose products, confirm availability, arrange payment, and coordinate delivery.
+              </p>
               <div className="mt-3 border-t pt-3" style={{ borderColor: dark ? "rgba(255,255,255,.16)" : "rgba(15,23,42,.14)" }}>
                 <div className={cn("mb-2 flex items-center justify-between text-xs font-black", dark ? "text-white/78" : "text-slate-700")}>
-                  <span>Items</span>
+                  <span>Selected items</span>
                   <span>{activeShopOrderEntries.length}</span>
                 </div>
                 <div className="flex items-center justify-between text-xs">
                   <span className={cn(dark ? "text-white/62" : "text-slate-600")}>Subtotal</span>
                   <span className="font-black">{formatCurrency(activeShopSubtotal)}</span>
                 </div>
-                <button
-                  type="button"
-                  onClick={submitShopOrder}
-                  className="mt-3 flex h-11 w-full items-center justify-center rounded-xl bg-[#F5A623] text-sm font-black text-[#07111F] disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-600"
-                  disabled={!activeShopOrderEntries.length}
-                >
-                  Place order
-                </button>
               </div>
             </div>
           ) : (
@@ -1852,7 +2056,7 @@ export function ExportunityConversationalCommerce({ onNavigate, isAdmin = false,
             </div>
           )}
           <div className="min-h-0 flex-1 space-y-3 overflow-auto pr-1">
-            {messages.slice(-8).map((message) => <MessageBubble key={message.id} message={message} dark={dark} />)}
+            {visibleMessages.map((message) => <MessageBubble key={message.id} message={message} dark={dark} activeShop={activeShop} />)}
           </div>
           <div className="mt-4 shrink-0">
             <div className="mb-3 flex gap-2 overflow-x-auto pb-1">
@@ -1876,7 +2080,7 @@ export function ExportunityConversationalCommerce({ onNavigate, isAdmin = false,
               <input
                 value={input}
                 onChange={(event) => setInput(event.target.value)}
-                placeholder={shopMode ? `Ask ${visibleConversationAgent.name}...` : "Ask Tassi..."}
+                placeholder={composerPlaceholder}
                 className={cn("min-w-0 flex-1 bg-transparent px-2 text-sm font-semibold outline-none placeholder:text-current/46", dark ? "text-white" : "text-slate-950")}
               />
               <button type="button" onClick={startVoice} className={cn("grid h-11 w-11 shrink-0 place-items-center rounded-full", voiceState === "listening" ? "bg-red-500 text-white" : dark ? "text-white hover:bg-white/10" : "text-slate-700 hover:bg-slate-100")} aria-label="Tap to speak">
@@ -1888,7 +2092,7 @@ export function ExportunityConversationalCommerce({ onNavigate, isAdmin = false,
               <button type="button" onClick={() => setVideoOpen(true)} className={cn("hidden h-11 w-11 shrink-0 place-items-center rounded-full sm:grid", dark ? "text-white hover:bg-white/10" : "text-slate-700 hover:bg-slate-100")} aria-label="Live product preview">
                 <Video className="h-5 w-5" />
               </button>
-              <button type="submit" className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[#F5A623] text-[#07111F]" aria-label="Send to Tassi">
+              <button type="submit" className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[#F5A623] text-[#07111F]" aria-label={shopMode || space === "business" ? `Send to ${visibleConversationAgent.name}` : "Send to Tassi"}>
                 <Send className="h-5 w-5" />
               </button>
             </form>
@@ -1916,9 +2120,9 @@ export function ExportunityConversationalCommerce({ onNavigate, isAdmin = false,
               <div className="space-y-3">
                 <div className="rounded-xl border border-current/10 p-3">
                   <div className="font-semibold">{activeShop?.name || "Nearby shop"}</div>
-                  <div className="text-sm text-current/55">{activeShop ? `${activeShop.distance} | ${activeShop.eta}` : "Ask Tassi to choose a shop"}</div>
+                  <div className="text-sm text-current/55">{activeShop ? `${activeShop.distance} | ${activeShop.eta}` : "Choose a shop first"}</div>
                 </div>
-                <button type="button" onClick={() => setVideoOpen(false)} className="w-full rounded-md bg-[#F5A623] px-3 py-2 text-sm font-semibold text-black">Return to Tassi</button>
+                <button type="button" onClick={() => setVideoOpen(false)} className="w-full rounded-md bg-[#F5A623] px-3 py-2 text-sm font-semibold text-black">{shopMode && activeShop ? `Return to ${activeShop.frontDesk.name}` : "Return to map"}</button>
               </div>
             </div>
           </div>

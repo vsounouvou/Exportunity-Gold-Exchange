@@ -29,6 +29,38 @@ export function AdminLoginPage() {
   const { login, isAuthenticated, isGuest, user } = useSession();
   const [, setLocation] = useLocation();
   const defaultRoute = tenant.key === "mindbase" ? "/admin/mindbase" : getTenantDefaultRoute(tenant.key);
+  const isBdoTenant = tenant.key === "bdo";
+  const copy = isBdoTenant
+    ? {
+        back: "Retour au site",
+        subtitle: "Console d'administration",
+        headline: "Piloter LA BOURSE DE L'OR",
+        intro:
+          "Accedez aux commandes, paiements, produits, pieces certifiees, controles KYC/KYB, operations wholesale et agents de suivi.",
+        signIn: "Se connecter",
+        description: "Connectez-vous avec votre compte admin.",
+        submit: "Acceder a la console",
+        submitting: "Connexion...",
+        returnHome: "Retour au site public",
+        success: "Connexion reussie",
+        failure: "Connexion impossible",
+        emailPlaceholder: "admin@boursedelor.com",
+      }
+    : {
+        back: "Back to Marketplace",
+        subtitle: "Console d'administration",
+        headline: "Manage Your AI Agent Workforce",
+        intro:
+          "Access the command center for your autonomous AI agents. Monitor conversations, manage tasks, and optimize performance.",
+        signIn: "Sign In",
+        description: "Enter your credentials to access the admin dashboard",
+        submit: "Sign In to Dashboard",
+        submitting: "Signing in...",
+        returnHome: "Return to Public Marketplace",
+        success: "Welcome back!",
+        failure: "Login failed",
+        emailPlaceholder: "admin@example.com",
+      };
 
   useEffect(() => {
     if (isAuthenticated && !isGuest) {
@@ -51,14 +83,14 @@ export function AdminLoginPage() {
     onSuccess: (data) => {
       login(data.token, data.user);
       toast({
-        title: "Welcome back!",
+        title: copy.success,
         description: `Logged in as ${data.user.displayName}`
       });
       setLocation(data.user.mustChangePassword ? "/admin/password" : defaultRoute);
     },
     onError: (error: any) => {
       toast({
-        title: "Login failed",
+        title: copy.failure,
         description: error.message || "Invalid email or password",
         variant: "destructive"
       });
@@ -69,12 +101,19 @@ export function AdminLoginPage() {
     loginMutation.mutate(data);
   };
 
-  const features = [
-    { icon: Bot, title: "Operations Center", description: "Coordinate your AI agents" },
-    { icon: Users, title: "Multi-Agent Meetings", description: "Run automated discussions" },
-    { icon: BarChart3, title: "Performance Analytics", description: "Track agent efficiency" },
-    { icon: Zap, title: "Task Automation", description: "Delegate work to agents" }
-  ];
+  const features = isBdoTenant
+    ? [
+        { icon: BarChart3, title: "Commandes & paiements", description: "Suivre ventes, paniers et paiements" },
+        { icon: Users, title: "KYC / KYB", description: "Controler acheteurs, vendeurs et partenaires" },
+        { icon: Bot, title: "Agents operationnels", description: "Escalade humaine pour les decisions sensibles" },
+        { icon: Zap, title: "Wholesale & pieces", description: "Piloter marche de gros et pieces certifiees" },
+      ]
+    : [
+        { icon: Bot, title: "Operations Center", description: "Coordinate your AI agents" },
+        { icon: Users, title: "Multi-Agent Meetings", description: "Run automated discussions" },
+        { icon: BarChart3, title: "Performance Analytics", description: "Track agent efficiency" },
+        { icon: Zap, title: "Task Automation", description: "Delegate work to agents" },
+      ];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 flex">
@@ -85,19 +124,18 @@ export function AdminLoginPage() {
             className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors mb-12"
           >
             <ArrowLeft className="h-4 w-4" />
-            Back to Marketplace
+            {copy.back}
           </button>
           
           <div className="flex items-center gap-3 mb-8">
-            <BrandLockup subtitle="Console d’administration" />
+            <BrandLockup subtitle={copy.subtitle} />
           </div>
           
           <h2 className="text-4xl font-bold text-white mb-4">
-            Manage Your AI<br />Agent Workforce
+            {copy.headline}
           </h2>
           <p className="text-gray-400 text-lg mb-12">
-            Access the command center for your autonomous AI agents. 
-            Monitor conversations, manage tasks, and optimize performance.
+            {copy.intro}
           </p>
           
           <div className="grid grid-cols-2 gap-4">
@@ -112,7 +150,7 @@ export function AdminLoginPage() {
         </div>
         
         <p className="text-gray-500 text-sm">
-          {brand.name} — Console d’administration
+          {brand.name} - {copy.subtitle}
         </p>
       </div>
 
@@ -120,11 +158,11 @@ export function AdminLoginPage() {
         <Card className="w-full max-w-md bg-gray-900 border-gray-800">
           <CardHeader className="text-center space-y-4">
             <div className="lg:hidden flex items-center justify-center gap-3 mb-4">
-              <BrandLockup subtitle="Console d’administration" />
+              <BrandLockup subtitle={copy.subtitle} />
             </div>
-            <CardTitle className="text-2xl text-white">Sign In</CardTitle>
+            <CardTitle className="text-2xl text-white">{copy.signIn}</CardTitle>
             <CardDescription className="text-gray-400">
-              Enter your credentials to access the admin dashboard
+              {copy.description}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -139,7 +177,7 @@ export function AdminLoginPage() {
                       <FormControl>
                         <Input 
                           type="email" 
-                          placeholder="admin@example.com"
+                          placeholder={copy.emailPlaceholder}
                           className="bg-gray-800 border-gray-700 text-white"
                           {...field} 
                         />
@@ -176,10 +214,10 @@ export function AdminLoginPage() {
                   {loginMutation.isPending ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Signing in...
+                      {copy.submitting}
                     </>
                   ) : (
-                    "Sign In to Dashboard"
+                    copy.submit
                   )}
                 </Button>
               </form>
@@ -209,7 +247,7 @@ export function AdminLoginPage() {
                 className="w-full text-center text-sm text-gray-400 hover:text-white transition-colors"
               >
                 <ArrowLeft className="inline h-4 w-4 mr-1" />
-                Return to Public Marketplace
+                {copy.returnHome}
               </button>
             </div>
           </CardContent>

@@ -27,6 +27,10 @@ const copy = {
     emptyDescription: "Aucune description disponible.",
     brand: "BOURSE DE L'OR",
     proof: "Or physique certifie, prix lie au marche et verification documentaire.",
+    priceNotice:
+      "Prix indicatif jusqu'a confirmation finale. Le total payable peut inclure frais de plateforme, paiement, livraison, assurance, taxes, droits, stockage ou verification selon le produit et le pays.",
+    complianceNotice:
+      "Commande soumise a disponibilite, paiement confirme, verification KYC/KYB si applicable et validation finale par La Bourse de l'Or ou le partenaire approuve.",
     order: "Commander",
     quote: "Demander une cotation",
   },
@@ -39,6 +43,10 @@ const copy = {
     emptyDescription: "No description available.",
     brand: "BOURSE DE L'OR",
     proof: "Certified physical gold, market-linked price and document verification.",
+    priceNotice:
+      "Indicative price until final confirmation. The total payable may include platform, payment, delivery, insurance, taxes, duties, storage, or verification fees depending on the product and country.",
+    complianceNotice:
+      "Order subject to availability, confirmed payment, KYC/KYB verification when applicable, and final validation by La Bourse de l'Or or the approved partner.",
     order: "Order now",
     quote: "Request a quote",
   },
@@ -76,6 +84,26 @@ export default function StoreProductPage({ slug }: { slug: string }) {
   }, [brand.name, product?.title, tenant.key]);
 
   const labels = tenant.key === "met" ? copy.fr : copy[language] || copy.fr;
+  const arProductLegalNotice = {
+    priceNotice:
+      "السعر إرشادي حتى التأكيد النهائي. قد يشمل المبلغ النهائي رسوم المنصة أو الدفع أو التسليم أو التأمين أو الضرائب أو الرسوم أو التخزين أو التحقق حسب المنتج والبلد.",
+    complianceNotice:
+      "الطلب خاضع للتوفر وتأكيد الدفع والتحقق KYC/KYB عند الاقتضاء والتأكيد النهائي من La Bourse de l'Or أو الشريك المعتمد.",
+  };
+  const bdoLegalLabels: { priceNotice: string; complianceNotice: string } = {
+    priceNotice:
+      "priceNotice" in labels && typeof labels.priceNotice === "string"
+        ? labels.priceNotice
+        : language === "ar"
+          ? arProductLegalNotice.priceNotice
+          : copy.fr.priceNotice,
+    complianceNotice:
+      "complianceNotice" in labels && typeof labels.complianceNotice === "string"
+        ? labels.complianceNotice
+        : language === "ar"
+          ? arProductLegalNotice.complianceNotice
+          : copy.fr.complianceNotice,
+  };
   const isBdo = tenant.key === "bdo";
 
   if (query.isLoading) {
@@ -136,6 +164,12 @@ export default function StoreProductPage({ slug }: { slug: string }) {
             <h1 className="text-2xl font-semibold">{product.title}</h1>
             <p className="text-sm text-white/70">{product.subtitle || product.description}</p>
             <div className="text-lg font-semibold text-amber-300">{productPrice}</div>
+            {isBdo ? (
+              <div className="space-y-1 rounded-lg border border-white/10 bg-black/20 p-3 text-xs leading-relaxed text-white/60">
+                <p>{bdoLegalLabels.priceNotice}</p>
+                <p>{bdoLegalLabels.complianceNotice}</p>
+              </div>
+            ) : null}
             <div className="flex flex-wrap gap-2">
               {(product.tags || []).map((tag) => (
                 <span key={tag} className="rounded bg-white/10 px-2 py-1 text-xs text-white/70">

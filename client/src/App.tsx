@@ -988,6 +988,7 @@ function App() {
           <Route path="/sellers" component={SellerDirectoryPage} />
           <Route path="/seller/topup" component={SellerTopupPage} />
           <Route path="/switch" component={SwitchSpacePage} />
+          <Route path="/admin/login" component={AdminLoginPage} />
           <Route path="/admin" component={AdminLoginPage} />
           <Route path="/admin/password" component={AdminPasswordChangePage} />
           <Route path="/admin/dashboard">

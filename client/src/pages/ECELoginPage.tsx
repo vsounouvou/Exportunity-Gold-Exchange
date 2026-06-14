@@ -287,7 +287,7 @@ function MapTeaser() {
 	      login(data.token, data.user);
 	      const params = new URLSearchParams(path.split("?")[1] || "");
 	      const next = normalizeNext(params.get("next"));
-	      setLocation(next || "/");
+	      setLocation(data.user?.mustChangePassword ? "/admin/password" : next || "/");
 	      toast({
 	        title: copy.loginSuccess,
 	        description: `${copy.signedInAs} ${data.user.displayName}`

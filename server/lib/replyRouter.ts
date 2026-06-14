@@ -3,6 +3,7 @@ import { and, desc, eq, isNull, or } from "drizzle-orm";
 import { lbmaPriceCache, messageTemplates } from "@db/schema";
 import { generateAgentResponse } from "./ai-provider";
 import { isAiEnabled } from "./ai-consent";
+import { insertLbmaPriceCacheRow } from "./lbmaPriceCache";
 
 export type ReplyMode = "canned" | "data" | "llm";
 
@@ -79,24 +80,21 @@ async function getLbmaPriceSnapshot() {
   const pricePerGramUsd = (basePrice / TROY_OUNCE_TO_GRAMS).toFixed(4);
   const pricePerKgUsd = ((basePrice / TROY_OUNCE_TO_GRAMS) * 1000).toFixed(4);
 
-  const [newRow] = await db
-    .insert(lbmaPriceCache)
-    .values({
-      pricePerOzUsd,
-      pricePerGramUsd,
-      pricePerKgUsd,
-      pricePerOzEur: (basePrice * FX_RATES.EUR_USD).toFixed(4),
-      pricePerOzAed: (basePrice * FX_RATES.AED_USD).toFixed(4),
-      pricePerOzXof: (basePrice * FX_RATES.XOF_USD).toFixed(4),
-      fxRateEurUsd: FX_RATES.EUR_USD.toFixed(6),
-      fxRateAedUsd: FX_RATES.AED_USD.toFixed(6),
-      fxRateXofUsd: FX_RATES.XOF_USD.toFixed(6),
-      source: "LBMA",
-      fetchedAt: new Date(),
-      validUntil: new Date(Date.now() + 60 * 60 * 1000),
-      metadata: { rawResponse: { synthetic: true } },
-    })
-    .returning();
+  const newRow = await insertLbmaPriceCacheRow({
+    pricePerOzUsd,
+    pricePerGramUsd,
+    pricePerKgUsd,
+    pricePerOzEur: (basePrice * FX_RATES.EUR_USD).toFixed(4),
+    pricePerOzAed: (basePrice * FX_RATES.AED_USD).toFixed(4),
+    pricePerOzXof: (basePrice * FX_RATES.XOF_USD).toFixed(4),
+    fxRateEurUsd: FX_RATES.EUR_USD.toFixed(6),
+    fxRateAedUsd: FX_RATES.AED_USD.toFixed(6),
+    fxRateXofUsd: FX_RATES.XOF_USD.toFixed(6),
+    source: "LBMA",
+    fetchedAt: new Date(),
+    validUntil: new Date(Date.now() + 60 * 60 * 1000),
+    metadata: { rawResponse: { synthetic: true } },
+  });
 
   return newRow ?? cached ?? null;
 }

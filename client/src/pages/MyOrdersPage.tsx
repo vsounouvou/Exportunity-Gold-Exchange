@@ -64,32 +64,6 @@ function safeDate(value: unknown) {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
-function localizeOrderItemName(name: string, language: string) {
-  const value = String(name || "").trim();
-  if (!value) return value;
-
-  const replacements: Array<[RegExp, string]> =
-    language === "ar"
-      ? [
-          [/\bStamped Gold Piece\b/gi, "قطعة ذهب معتمدة"],
-          [/\bStamped Gold Bar\b/gi, "سبيكة ذهب معتمدة"],
-          [/\bStamped Gold\b/gi, "ذهب معتمد"],
-        ]
-      : language === "en"
-        ? [
-            [/\bStamped Gold Piece\b/gi, "Certified Gold Piece"],
-            [/\bStamped Gold Bar\b/gi, "Certified Gold Bar"],
-            [/\bStamped Gold\b/gi, "Certified Gold"],
-          ]
-        : [
-            [/\bStamped Gold Piece\b/gi, "Pièce certifiée"],
-            [/\bStamped Gold Bar\b/gi, "Lingot certifié"],
-            [/\bStamped Gold\b/gi, "Or certifié"],
-          ];
-
-  return replacements.reduce((next, [pattern, replacement]) => next.replace(pattern, replacement), value);
-}
-
 function hasQueryFlag(locationValue: string, key: string) {
   const queryParts: string[] = [];
   if (locationValue.includes("?")) queryParts.push(locationValue.split("?")[1] || "");
@@ -103,42 +77,69 @@ function hasQueryFlag(locationValue: string, key: string) {
   return false;
 }
 
-function orderCopy(language: string) {
+function localizeOrderItemNameStable(name: string, language: string) {
+  const value = String(name || "").trim();
+  if (!value) return value;
+
+  const replacements: Array<[RegExp, string]> =
+    language === "ar"
+      ? [
+          [/\bStamped Gold Piece\b/gi, "\u0642\u0637\u0639\u0629 \u0630\u0647\u0628 \u0645\u0639\u062a\u0645\u062f\u0629"],
+          [/\bStamped Gold Bar\b/gi, "\u0633\u0628\u064a\u0643\u0629 \u0630\u0647\u0628 \u0645\u0639\u062a\u0645\u062f\u0629"],
+          [/\bStamped Gold\b/gi, "\u0630\u0647\u0628 \u0645\u0639\u062a\u0645\u062f"],
+        ]
+      : language === "en"
+        ? [
+            [/\bStamped Gold Piece\b/gi, "Certified Gold Piece"],
+            [/\bStamped Gold Bar\b/gi, "Certified Gold Bar"],
+            [/\bStamped Gold\b/gi, "Certified Gold"],
+          ]
+        : [
+            [/\bStamped Gold Piece\b/gi, "Pi\u00e8ce certifi\u00e9e"],
+            [/\bStamped Gold Bar\b/gi, "Lingot certifi\u00e9"],
+            [/\bStamped Gold\b/gi, "Or certifi\u00e9"],
+          ];
+
+  return replacements.reduce((next, [pattern, replacement]) => next.replace(pattern, replacement), value);
+}
+
+function orderCopyStable(language: string) {
   if (language === "ar") {
     return {
-      backToOrders: "العودة إلى الطلبات",
-      deliveryAddress: "عنوان التسليم",
-      items: "المنتجات",
-      qty: "الكمية",
-      each: "لكل وحدة",
-      payNow: "الدفع عبر الإنترنت متاح لتأكيد هذا الطلب.",
-      walletBalance: "اعتمادات الشراء المتاحة",
-      payWithCredits: "استخدام اعتمادات الشراء",
-      processing: "جار المعالجة...",
-      onlinePayment: "الدفع عبر الإنترنت",
-      onlinePaymentTitle: "الدفع عبر الإنترنت",
-      onlinePaymentDescription: "نفتح الدفع الإلكتروني الآمن لهذا الطلب. يتم تحديث الحالة بعد تأكيد مزود الدفع.",
-      onlinePaymentEyebrow: "المبلغ المستحق",
-      onlinePaymentSummary: "دفع إلكتروني مباشر",
-      loadingOrder: "تحميل الطلب...",
-      failedOrder: "تعذر تحميل تفاصيل الطلب.",
-      back: "رجوع",
-      myOrders: "طلباتي",
-      lookupHelp: "ابحث عن طلباتك بالبريد الإلكتروني أو الهاتف.",
-      email: "البريد الإلكتروني",
-      phone: "الهاتف",
-      signedInAs: "مسجل الدخول باسم",
-      notSignedIn: "غير مسجل الدخول",
-      findOrders: "بحث الطلبات",
-      loadingOrders: "تحميل الطلبات...",
-      failedOrders: "تعذر تحميل الطلبات.",
-      noOrders: "لم يتم العثور على طلبات",
-      noOrdersHelp: "قم بتقديم طلب على المنصة ثم عد إلى هنا لتتبعه.",
-      goToMarketplace: "العودة إلى المنصة",
-      browse: "المنتجات",
-      map: "الخريطة",
-      credits: "الاعتمادات",
-      vault: "الخزنة",
+      backToOrders: "\u0627\u0644\u0639\u0648\u062f\u0629 \u0625\u0644\u0649 \u0627\u0644\u0637\u0644\u0628\u0627\u062a",
+      deliveryAddress: "\u0639\u0646\u0648\u0627\u0646 \u0627\u0644\u062a\u0633\u0644\u064a\u0645",
+      items: "\u0627\u0644\u0645\u0646\u062a\u062c\u0627\u062a",
+      qty: "\u0627\u0644\u0643\u0645\u064a\u0629",
+      each: "\u0644\u0643\u0644 \u0648\u062d\u062f\u0629",
+      payNow: "\u0627\u0644\u062f\u0641\u0639 \u0627\u0644\u0625\u0644\u0643\u062a\u0631\u0648\u0646\u064a \u0645\u062a\u0627\u062d \u0644\u062a\u0623\u0643\u064a\u062f \u0647\u0630\u0627 \u0627\u0644\u0637\u0644\u0628.",
+      walletBalance: "\u0627\u0639\u062a\u0645\u0627\u062f\u0627\u062a \u0627\u0644\u0634\u0631\u0627\u0621 \u0627\u0644\u0645\u062a\u0627\u062d\u0629",
+      payWithCredits: "\u0627\u0633\u062a\u062e\u062f\u0627\u0645 \u0627\u0639\u062a\u0645\u0627\u062f\u0627\u062a \u0627\u0644\u0634\u0631\u0627\u0621",
+      processing: "\u062c\u0627\u0631 \u0627\u0644\u0645\u0639\u0627\u0644\u062c\u0629...",
+      onlinePayment: "\u0627\u0644\u062f\u0641\u0639 \u0627\u0644\u0625\u0644\u0643\u062a\u0631\u0648\u0646\u064a",
+      onlinePaymentTitle: "\u0627\u0644\u062f\u0641\u0639 \u0627\u0644\u0625\u0644\u0643\u062a\u0631\u0648\u0646\u064a",
+      onlinePaymentDescription: "\u0646\u0641\u062a\u062d \u0627\u0644\u062f\u0641\u0639 \u0627\u0644\u0625\u0644\u0643\u062a\u0631\u0648\u0646\u064a \u0627\u0644\u0622\u0645\u0646 \u0644\u0647\u0630\u0627 \u0627\u0644\u0637\u0644\u0628. \u064a\u062a\u0645 \u062a\u062d\u062f\u064a\u062b \u0627\u0644\u062d\u0627\u0644\u0629 \u0628\u0639\u062f \u062a\u0623\u0643\u064a\u062f \u0645\u0632\u0648\u062f \u0627\u0644\u062f\u0641\u0639.",
+      onlinePaymentEyebrow: "\u0627\u0644\u0645\u0628\u0644\u063a \u0627\u0644\u0645\u0633\u062a\u062d\u0642",
+      onlinePaymentSummary: "\u062f\u0641\u0639 \u0625\u0644\u0643\u062a\u0631\u0648\u0646\u064a \u0645\u0628\u0627\u0634\u0631",
+      loadingOrder: "\u062a\u062d\u0645\u064a\u0644 \u0627\u0644\u0637\u0644\u0628...",
+      failedOrder: "\u062a\u0639\u0630\u0631 \u062a\u062d\u0645\u064a\u0644 \u062a\u0641\u0627\u0635\u064a\u0644 \u0627\u0644\u0637\u0644\u0628.",
+      back: "\u0631\u062c\u0648\u0639",
+      myOrders: "\u0637\u0644\u0628\u0627\u062a\u064a",
+      lookupHelp: "\u0627\u0628\u062d\u062b \u0639\u0646 \u0637\u0644\u0628\u0627\u062a\u0643 \u0628\u0627\u0644\u0628\u0631\u064a\u062f \u0627\u0644\u0625\u0644\u0643\u062a\u0631\u0648\u0646\u064a \u0623\u0648 \u0627\u0644\u0647\u0627\u062a\u0641.",
+      email: "\u0627\u0644\u0628\u0631\u064a\u062f \u0627\u0644\u0625\u0644\u0643\u062a\u0631\u0648\u0646\u064a",
+      phone: "\u0627\u0644\u0647\u0627\u062a\u0641",
+      signedInAs: "\u0645\u0633\u062c\u0644 \u0627\u0644\u062f\u062e\u0648\u0644 \u0628\u0627\u0633\u0645",
+      notSignedIn: "\u063a\u064a\u0631 \u0645\u0633\u062c\u0644 \u0627\u0644\u062f\u062e\u0648\u0644",
+      findOrders: "\u0628\u062d\u062b \u0627\u0644\u0637\u0644\u0628\u0627\u062a",
+      loadingOrders: "\u062a\u062d\u0645\u064a\u0644 \u0627\u0644\u0637\u0644\u0628\u0627\u062a...",
+      failedOrders: "\u062a\u0639\u0630\u0631 \u062a\u062d\u0645\u064a\u0644 \u0627\u0644\u0637\u0644\u0628\u0627\u062a.",
+      noOrders: "\u0644\u0645 \u064a\u062a\u0645 \u0627\u0644\u0639\u062b\u0648\u0631 \u0639\u0644\u0649 \u0637\u0644\u0628\u0627\u062a",
+      noOrdersHelp: "\u0642\u0645 \u0628\u062a\u0642\u062f\u064a\u0645 \u0637\u0644\u0628 \u0639\u0644\u0649 \u0627\u0644\u0645\u0646\u0635\u0629 \u062b\u0645 \u0639\u062f \u0625\u0644\u0649 \u0647\u0646\u0627 \u0644\u062a\u062a\u0628\u0639\u0647.",
+      goToMarketplace: "\u0627\u0644\u0639\u0648\u062f\u0629 \u0625\u0644\u0649 \u0627\u0644\u0645\u0646\u062a\u062c\u0627\u062a",
+      browse: "\u0627\u0644\u0645\u0646\u062a\u062c\u0627\u062a",
+      map: "\u0627\u0644\u062e\u0631\u064a\u0637\u0629",
+      credits: "\u0627\u0644\u0627\u0639\u062a\u0645\u0627\u062f\u0627\u062a",
+      vault: "\u0627\u0644\u062e\u0632\u0646\u0629",
+      refresh: "\u062a\u062d\u062f\u064a\u062b",
     };
   }
 
@@ -177,43 +178,45 @@ function orderCopy(language: string) {
       map: "Map",
       credits: "Credits",
       vault: "Vault",
+      refresh: "Refresh",
     };
   }
 
   return {
-    backToOrders: "Retour à mes commandes",
+    backToOrders: "Retour \u00e0 mes commandes",
     deliveryAddress: "Adresse de remise ou livraison",
     items: "Articles",
-    qty: "Qté",
-    each: "unité",
+    qty: "Qt\u00e9",
+    each: "unit\u00e9",
     payNow: "Le paiement en ligne est disponible pour confirmer cette commande.",
-    walletBalance: "Crédits d'achat disponibles",
-    payWithCredits: "Utiliser les crédits d'achat",
+    walletBalance: "Cr\u00e9dits d'achat disponibles",
+    payWithCredits: "Utiliser les cr\u00e9dits d'achat",
     processing: "Traitement...",
     onlinePayment: "Paiement en ligne",
     onlinePaymentTitle: "Paiement en ligne",
-    onlinePaymentDescription: "Nous ouvrons un paiement en ligne sécurisé pour cette commande. Le statut sera mis à jour après confirmation du prestataire.",
-    onlinePaymentEyebrow: "Montant à régler",
+    onlinePaymentDescription: "Nous ouvrons un paiement en ligne s\u00e9curis\u00e9 pour cette commande. Le statut sera mis \u00e0 jour apr\u00e8s confirmation du prestataire.",
+    onlinePaymentEyebrow: "Montant \u00e0 r\u00e9gler",
     onlinePaymentSummary: "Paiement en ligne direct",
     loadingOrder: "Chargement de la commande...",
-    failedOrder: "Impossible de charger les détails de la commande.",
+    failedOrder: "Impossible de charger les d\u00e9tails de la commande.",
     back: "Retour",
     myOrders: "Mes commandes",
-    lookupHelp: "Retrouvez vos commandes par email ou téléphone.",
+    lookupHelp: "Retrouvez vos commandes par email ou t\u00e9l\u00e9phone.",
     email: "Email",
-    phone: "Téléphone",
-    signedInAs: "Connecté comme",
-    notSignedIn: "Non connecté",
+    phone: "T\u00e9l\u00e9phone",
+    signedInAs: "Connect\u00e9 comme",
+    notSignedIn: "Non connect\u00e9",
     findOrders: "Rechercher",
     loadingOrders: "Chargement des commandes...",
     failedOrders: "Impossible de charger les commandes.",
-    noOrders: "Aucune commande trouvée",
+    noOrders: "Aucune commande trouv\u00e9e",
     noOrdersHelp: "Passez une commande sur la plateforme, puis revenez ici pour la suivre.",
     goToMarketplace: "Voir les produits",
     browse: "Produits",
     map: "Carte",
-    credits: "Crédits",
+    credits: "Cr\u00e9dits",
     vault: "Coffre",
+    refresh: "Actualiser",
   };
 }
 
@@ -250,7 +253,7 @@ export default function MyOrdersPage() {
   }, [lookupEmail, lookupPhone]);
 
   const formatMoney = (amount: unknown) => formatAmount(Number(amount ?? 0), "XOF");
-  const copy = useMemo(() => orderCopy(language), [language]);
+  const copy = useMemo(() => orderCopyStable(language), [language]);
 
   const ordersQuery = useQuery<{ orders: OrderSummary[] }>({
     queryKey: ["/api/marketplace/buyer/orders", lookup.email, lookup.phone],
@@ -337,7 +340,7 @@ export default function MyOrdersPage() {
     const created = safeDate(order?.createdAt);
     const dateText = created
       ? new Intl.DateTimeFormat(language, { dateStyle: "medium", timeStyle: "short" }).format(created)
-      : "—";
+      : "-";
 
     const isPending = String(order?.status ?? "pending").toLowerCase() === "pending";
     const orderTotalRounded = Math.max(1, Math.round(Number(order?.total ?? 0)));
@@ -376,13 +379,13 @@ export default function MyOrdersPage() {
               </CardTitle>
               <div className="text-xs text-white/60">
                 <span>{dateText}</span>
-                {data?.seller?.shopName ? <span className="ml-2">• {data.seller.shopName}</span> : null}
+                {data?.seller?.shopName ? <span className="ml-2">- {data.seller.shopName}</span> : null}
               </div>
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="text-sm text-white/70">
                 <div className="text-white/50 text-xs mb-1">{copy.deliveryAddress}</div>
-                <div>{order?.deliveryAddress || "—"}</div>
+                <div>{order?.deliveryAddress || "-"}</div>
               </div>
 
               <div className="border-t border-white/10 pt-3">
@@ -393,7 +396,7 @@ export default function MyOrdersPage() {
                       <div className="w-12 h-12 rounded-lg overflow-hidden border border-white/10 flex-shrink-0">
                         <img
                           src={item.productImage || BDO_ORDER_FALLBACK_IMAGE}
-                          alt={localizeOrderItemName(item.productName, language)}
+                          alt={localizeOrderItemNameStable(item.productName, language)}
                           className="w-full h-full object-cover"
                           onError={(e) => {
                             e.currentTarget.onerror = null;
@@ -402,9 +405,9 @@ export default function MyOrdersPage() {
                         />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <div className="text-sm font-medium text-white truncate">{localizeOrderItemName(item.productName, language)}</div>
+                        <div className="text-sm font-medium text-white truncate">{localizeOrderItemNameStable(item.productName, language)}</div>
                         <div className="text-xs text-white/50">
-                          {copy.qty} {item.quantity} • {formatMoney(item.unitPrice)} {copy.each}
+                          {copy.qty} {item.quantity} - {formatMoney(item.unitPrice)} {copy.each}
                         </div>
                       </div>
                       <div className="text-sm font-semibold text-amber-400">{formatMoney(item.subtotal)}</div>
@@ -513,7 +516,7 @@ export default function MyOrdersPage() {
             disabled={!submitted || ordersQuery.isFetching}
           >
             <RefreshCw className={`h-4 w-4 mr-2 ${ordersQuery.isFetching ? "animate-spin" : ""}`} />
-            Refresh
+            {copy.refresh}
           </Button>
         </div>
 
@@ -586,7 +589,7 @@ export default function MyOrdersPage() {
                   const created = safeDate(o.createdAt);
                   const dateText = created
                     ? new Intl.DateTimeFormat(language, { dateStyle: "medium", timeStyle: "short" }).format(created)
-                    : "—";
+                    : "-";
                   return (
                     <button
                       key={o.orderNumber}
@@ -610,7 +613,7 @@ export default function MyOrdersPage() {
                             <div className="min-w-0">
                               <div className="text-sm font-semibold text-white truncate">{o.orderNumber}</div>
                               <div className="text-xs text-white/50 truncate">
-                                {o.seller?.shopName ? o.seller.shopName : "—"} • {o.itemsCount} item{o.itemsCount === 1 ? "" : "s"}
+                                {o.seller?.shopName ? o.seller.shopName : "-"} - {o.itemsCount} item{o.itemsCount === 1 ? "" : "s"}
                               </div>
                             </div>
                             <div className="text-right flex-shrink-0">
@@ -662,3 +665,4 @@ export default function MyOrdersPage() {
     </div>
   );
 }
+

@@ -182,6 +182,7 @@ function isIgnoredConsoleIssue(text) {
     /status of 401/i.test(value) ||
     /favicon/i.test(value) ||
     /Failed to load resource: net::ERR_BLOCKED_BY_CLIENT/i.test(value) ||
+    /Failed to load resource: the server responded with a status of 5\d\d/i.test(value) ||
     /ResizeObserver loop/i.test(value)
   );
 }
@@ -333,7 +334,8 @@ function routeOk(result) {
   return (
     Object.values(result.checks || {}).every(Boolean) &&
     (result.responseStatus == null || result.responseStatus < 400) &&
-    (result.criticalConsoleIssues || []).length === 0
+    (result.criticalConsoleIssues || []).length === 0 &&
+    (result.serverErrors || []).length === 0
   );
 }
 
@@ -342,11 +344,21 @@ async function auditRoute(context, route, language, scope) {
   await setupLocale(page, language);
   const consoleIssues = [];
   const pageErrors = [];
+  const serverErrors = [];
 
   page.on("console", (msg) => {
     if (["error", "warning"].includes(msg.type())) consoleIssues.push(`${msg.type()}: ${msg.text()}`);
   });
   page.on("pageerror", (error) => pageErrors.push(error.message));
+  page.on("response", (response) => {
+    if (response.status() >= 500) {
+      serverErrors.push({
+        status: response.status(),
+        method: response.request().method(),
+        url: response.url(),
+      });
+    }
+  });
 
   const targetUrl = appendQuery(route, {
     lang: language,
@@ -387,6 +399,7 @@ async function auditRoute(context, route, language, scope) {
 
   result.responseStatus = responseStatus;
   result.navigationError = navigationError;
+  result.serverErrors = serverErrors.slice(-20);
   result.consoleIssues = consoleIssues.slice(-20);
   result.criticalConsoleIssues = [...consoleIssues.filter((issue) => !isIgnoredConsoleIssue(issue)), ...pageErrors].slice(-20);
   result.ok = !navigationError && routeOk(result);
@@ -704,6 +717,10 @@ function writeReports(report) {
       if (item.criticalConsoleIssues?.length) {
         lines.push("- Console:");
         item.criticalConsoleIssues.slice(0, 8).forEach((issue) => lines.push(`  - \`${issue.slice(0, 240)}\``));
+      }
+      if (item.serverErrors?.length) {
+        lines.push("- HTTP 500:");
+        item.serverErrors.slice(0, 8).forEach((issue) => lines.push(`  - \`${issue.method} ${issue.url.slice(0, 240)} (${issue.status})\``));
       }
       lines.push("");
     }

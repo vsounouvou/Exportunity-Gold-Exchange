@@ -79,6 +79,7 @@ function paymentCopy(language: string) {
       approve: "Validez le paiement sur votre t\u00e9l\u00e9phone. Cela prend g\u00e9n\u00e9ralement quelques secondes.",
       preparing: "Pr\u00e9paration du paiement...",
       loadingWidget: "Chargement du module de paiement...",
+      widgetLoadError: "Le module de paiement en ligne ne s'est pas charg\u00e9. Utilisez Mobile Money Push ou r\u00e9essayez apr\u00e8s avoir autoris\u00e9 les scripts de paiement pour ce site.",
       amount: "Montant",
       sandbox: "Sandbox",
       startError: "Impossible de lancer le paiement",
@@ -100,6 +101,7 @@ function paymentCopy(language: string) {
       approve: "\u0623\u0643\u062f \u0627\u0644\u062f\u0641\u0639 \u0639\u0644\u0649 \u0647\u0627\u062a\u0641\u0643. \u064a\u0633\u062a\u063a\u0631\u0642 \u0630\u0644\u0643 \u0639\u0627\u062f\u0629 \u0628\u0636\u0639 \u062b\u0648\u0627\u0646.",
       preparing: "\u062c\u0627\u0631 \u062a\u062d\u0636\u064a\u0631 \u0627\u0644\u062f\u0641\u0639...",
       loadingWidget: "\u062c\u0627\u0631 \u062a\u062d\u0645\u064a\u0644 \u0628\u0648\u0627\u0628\u0629 \u0627\u0644\u062f\u0641\u0639...",
+      widgetLoadError: "\u062a\u0639\u0630\u0631 \u062a\u062d\u0645\u064a\u0644 \u0628\u0648\u0627\u0628\u0629 \u0627\u0644\u062f\u0641\u0639. \u0627\u0633\u062a\u062e\u062f\u0645 \u062f\u0641\u0639 \u0627\u0644\u0647\u0627\u062a\u0641 \u0623\u0648 \u0623\u0639\u062f \u0627\u0644\u0645\u062d\u0627\u0648\u0644\u0629 \u0628\u0639\u062f \u0627\u0644\u0633\u0645\u0627\u062d \u0628\u0633\u0643\u0631\u0628\u062a\u0627\u062a \u0627\u0644\u062f\u0641\u0639.",
       amount: "\u0627\u0644\u0645\u0628\u0644\u063a",
       sandbox: "\u0648\u0636\u0639 \u0627\u0644\u0627\u062e\u062a\u0628\u0627\u0631",
       startError: "\u062a\u0639\u0630\u0631 \u0628\u062f\u0621 \u0627\u0644\u062f\u0641\u0639",
@@ -120,6 +122,7 @@ function paymentCopy(language: string) {
     approve: "Approve the payment on your phone. This usually takes a few seconds.",
     preparing: "Preparing checkout...",
     loadingWidget: "Loading payment widget...",
+    widgetLoadError: "The online payment widget did not load. Use Mobile Money Push or retry after allowing payment scripts for this site.",
     amount: "Amount",
     sandbox: "Sandbox",
     startError: "Failed to start payment",
@@ -176,7 +179,8 @@ export function KkiapayCheckoutButton(props: {
   const [pushError, setPushError] = useState<string | null>(null);
 
   const shouldLoadScript = open && tab === "widget";
-  const { status: scriptStatus } = useScript(shouldLoadScript ? "https://cdn.kkiapay.me/k.js" : null);
+  const { status: scriptStatus, error: scriptError } = useScript(shouldLoadScript ? "https://cdn.kkiapay.me/k.js" : null);
+  const [scriptSlow, setScriptSlow] = useState(false);
 
   const sandbox = useMemo(() => String(widgetInit?.mode || "").toUpperCase() === "SANDBOX", [widgetInit?.mode]);
 
@@ -219,6 +223,16 @@ export function KkiapayCheckoutButton(props: {
       void startWidget();
     }
   }, [open, tab, widgetInit, widgetLoading]);
+
+  useEffect(() => {
+    if (!shouldLoadScript || scriptStatus !== "loading") {
+      setScriptSlow(false);
+      return;
+    }
+
+    const timer = window.setTimeout(() => setScriptSlow(true), 12_000);
+    return () => window.clearTimeout(timer);
+  }, [scriptStatus, shouldLoadScript]);
 
   const submitPush = async () => {
     setPushError(null);
@@ -351,6 +365,10 @@ export function KkiapayCheckoutButton(props: {
                 <div className="flex items-center gap-3 text-sm text-white/60">
                   <Loader2 className="h-4 w-4 animate-spin" />
                   {copy.preparing}
+                </div>
+              ) : scriptStatus === "error" || scriptSlow ? (
+                <div className="rounded-xl border border-rose-400/25 bg-rose-500/10 p-3 text-sm text-rose-100">
+                  {scriptError || copy.widgetLoadError}
                 </div>
               ) : scriptStatus !== "ready" ? (
                 <div className="flex items-center gap-3 text-sm text-white/60">

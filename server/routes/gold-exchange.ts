@@ -40,6 +40,7 @@ import { eq, desc, and, gte, lte, sql, asc, or, ilike } from "drizzle-orm";
 	import { demoCompanyName, isDemoModeRequest } from "./utils/demo-mode";
 	import { getOrCreateWalletAccount } from "../lib/wallet/wallet";
 	import { getFxSnapshot, getUsdConversionRateForCurrency } from "../lib/fx";
+import { insertLbmaPriceCacheRow } from "../lib/lbmaPriceCache";
 import { computeBdoStampedGoldPriceMinor, getBdoCommerceSettings } from "../lib/bdo-commerce";
 
 const router = Router();
@@ -169,7 +170,7 @@ async function getLBMAPrice() {
   const pricePerGramUsd = (basePrice / TROY_OUNCE_TO_GRAMS).toFixed(4);
   const pricePerKgUsd = ((basePrice / TROY_OUNCE_TO_GRAMS) * 1000).toFixed(4);
   
-  const [newPrice] = await db.insert(lbmaPriceCache).values({
+  const newPrice = await insertLbmaPriceCacheRow({
     pricePerOzUsd,
     pricePerGramUsd,
     pricePerKgUsd,
@@ -187,8 +188,9 @@ async function getLBMAPrice() {
       pmSession: false,
       rawResponse: { fxUpdatedAt: fx.updatedAt, fxOverrideApplied: fx.overrideApplied },
     }
-  }).returning();
+  });
   
+  if (!newPrice) throw new Error("LBMA price cache insert failed");
   return newPrice;
 }
 

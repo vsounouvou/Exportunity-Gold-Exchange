@@ -21,8 +21,14 @@ export function useScript(src: string | null | undefined) {
       setError(null);
       return;
     }
+    if (existing?.dataset?.error === "true") {
+      setStatus("error");
+      setError(`Failed to load script: ${src}`);
+      return;
+    }
 
     setStatus("loading");
+    setError(null);
 
     const script = existing ?? document.createElement("script");
     script.src = src;

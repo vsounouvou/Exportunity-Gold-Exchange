@@ -1860,7 +1860,7 @@ function createGoldShopIcon(
     ? null
     : isPureDore && hasDoreLots
       ? doreLots > 1
-        ? `${typeLabel} Â· ${doreLots} lots`
+        ? `${typeLabel} · ${doreLots} lots`
         : typeLabel
       : null;
   const badgeActive = hasStock || isPureDore;
@@ -4573,10 +4573,10 @@ export function BuyerHomePage({
             GPS: {a.lat}, {a.lng}
           </p>
           <p>
-            License: {a.licenseType} Â· {a.licenseNumber}
+            License: {a.licenseType} · {a.licenseNumber}
           </p>
           <p>
-            Issued: {a.licenseIssuedDate} Â· Expires: {a.licenseExpiryDate}
+            Issued: {a.licenseIssuedDate} · Expires: {a.licenseExpiryDate}
           </p>
           <p>Holder: {a.licenseHolderName}</p>
           <p>Operations start: {a.operationsStartDate}</p>

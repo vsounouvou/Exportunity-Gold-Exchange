@@ -229,6 +229,11 @@ async function loginAdmin(context) {
     await page.goto(appendQuery("/admin", { qa: String(now) }), { waitUntil: "domcontentloaded", timeout: 60_000 });
     await waitReady(page);
     if (!/\/dashboard|\/admin\/password/.test(page.url())) {
+      await page
+        .locator("input[type='email'], input[name='email'], input[type='password'], input[name='password']")
+        .first()
+        .waitFor({ state: "visible", timeout: 15_000 })
+        .catch(() => {});
       await page.locator("input[type='email'], input[name='email']").first().fill(adminEmail, { timeout: 12_000 });
       await page.locator("input[type='password'], input[name='password']").first().fill(adminPassword, { timeout: 12_000 });
       await page

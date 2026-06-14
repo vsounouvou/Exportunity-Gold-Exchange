@@ -537,16 +537,21 @@ async function loginAdmin(context) {
     await page.waitForTimeout(800);
 
     if (!/\/dashboard|\/admin\/password/.test(page.url())) {
+      await page
+        .locator("input[type='email'], input[name='email'], input[type='password'], input[name='password']")
+        .first()
+        .waitFor({ state: "visible", timeout: 15_000 })
+        .catch(() => {});
       const emailInput = await firstUsableLocator([
         page.getByLabel(/email/i),
         page.locator("input[type='email']"),
         page.locator("input[name='email']"),
-      ]);
+      ], 6000);
       const passwordInput = await firstUsableLocator([
         page.getByLabel(/password|mot de passe/i),
         page.locator("input[type='password']"),
         page.locator("input[name='password']"),
-      ]);
+      ], 6000);
       if (!emailInput || !passwordInput) throw new Error("Admin login fields not found");
       await emailInput.fill(adminEmail, { timeout: 15_000 });
       await passwordInput.fill(adminPassword, { timeout: 15_000 });

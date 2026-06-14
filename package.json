@@ -94,6 +94,7 @@
     "qa:i18n": "tsx scripts/qa/check-i18n.ts",
     "qa:bdo:production": "node scripts/qa/bdo-production-audit.mjs",
     "qa:bdo:clicks": "node scripts/qa/bdo-click-audit.mjs",
+    "qa:bdo:payment": "node scripts/qa/bdo-payment-smoke.mjs",
     "qa:gold-stamping": "node scripts/qa/gold-stamping-audit.mjs",
     "qa:chairman-smoke-auth": "node scripts/qa/chairman-smoke-auth.mjs",
     "qa:messaging:all-tenants": "tsx scripts/debugAllTenantsMessaging.ts",

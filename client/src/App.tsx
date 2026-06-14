@@ -891,7 +891,7 @@ function App() {
           <Route path="/profile/:rest*" component={() => <MarketingRedirect to="/media/library" />} />
           <Route path="/orders" component={MyOrdersPage} />
           <Route path="/orders/:orderNumber" component={MyOrdersPage} />
-          <Route path="/delivery" component={DeliveryHubPage} />
+          <Route path="/delivery" component={() => (isBdoHost() ? <Redirect to="/store" /> : <DeliveryHubPage />)} />
           <Route path="/marketplace-old" component={MarketplacePage} />
           <Route path="/product/:slug">
             {(params) => <StoreProductPage slug={String((params as any).slug || "")} />}
@@ -975,9 +975,9 @@ function App() {
           <Route path="/qa-mobile" component={QAMobilePage} />
           <Route path="/debug/location" component={DebugLocationPage} />
           <Route path="/debug/hit-test" component={DebugHitTestPage} />
-          <Route path="/application-status" component={ApplicationStatusPage} />
-          <Route path="/apply/shop" component={ShopApplicationPage} />
-          <Route path="/apply/delivery" component={DeliveryApplicationPage} />
+          <Route path="/application-status" component={() => (isBdoHost() ? <Redirect to="/orders" /> : <ApplicationStatusPage />)} />
+          <Route path="/apply/shop" component={() => (isBdoHost() ? <Redirect to="/wholesale/apply" /> : <ShopApplicationPage />)} />
+          <Route path="/apply/delivery" component={() => (isBdoHost() ? <Redirect to="/espace-pro" /> : <DeliveryApplicationPage />)} />
           <Route path="/cadre-conformite" component={CompliancePage} />
           <Route path="/install" component={InstallAppPage} />
           <Route path="/pay/kkiapay/return" component={KkiapayReturnPage} />

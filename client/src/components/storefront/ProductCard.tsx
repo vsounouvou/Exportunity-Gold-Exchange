@@ -4,6 +4,7 @@ import type { TenantKey } from "@/types/tenant";
 import { useTenant } from "@/lib/tenant";
 import { getTenantPlaceholderProductImage } from "@/lib/storefrontIdentity";
 import { useLocale, type Currency } from "@/contexts/LocaleContext";
+import { getBdoProductFallbackImage } from "@/lib/bdoProductVisuals";
 
 const copy = {
   fr: {
@@ -35,6 +36,7 @@ function normalizeCurrencyCode(value: unknown): Currency {
 }
 
 function resolveProductImage(product: StoreProduct, tenantKey: TenantKey) {
+  const fallback = tenantKey === "bdo" ? getBdoProductFallbackImage(product) : getTenantPlaceholderProductImage(tenantKey);
   const media = Array.isArray(product.media) ? product.media : [];
   const fromMedia = media.find((entry) => typeof entry === "string" && entry.trim().length > 0);
   if (fromMedia) return fromMedia;
@@ -49,7 +51,7 @@ function resolveProductImage(product: StoreProduct, tenantKey: TenantKey) {
     (metadata as any)?.image_url,
   ];
   const fromMetadata = candidates.find((entry) => typeof entry === "string" && entry.trim().length > 0);
-  return fromMetadata || getTenantPlaceholderProductImage(tenantKey);
+  return fromMetadata || fallback;
 }
 
 function resolveSellerLabel(product: StoreProduct, labels: typeof copy.fr) {
@@ -93,13 +95,26 @@ export function ProductCard({ product }: { product: StoreProduct }) {
   const { language, formatAmount } = useLocale();
   const labels = copy[language] || copy.fr;
   const cover = resolveProductImage(product, tenant.key);
+  const fallbackCover = tenant.key === "bdo" ? getBdoProductFallbackImage(product) : getTenantPlaceholderProductImage(tenant.key);
   const sellerLabel = resolveSellerLabel(product, labels);
   const price = formatAmount(Number(product.price || 0), normalizeCurrencyCode(product.currency));
+  const isBdo = tenant.key === "bdo";
 
   return (
     <article className="rounded-xl border border-white/10 bg-[#0f172a] p-4 shadow-sm">
+      {isBdo ? <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-[#E8C873]">BOURSE DE L'OR</p> : null}
       <div className="aspect-[4/3] w-full overflow-hidden rounded-lg bg-[#111827]">
-        <img src={cover} alt={product.title} className="h-full w-full object-cover" loading="lazy" />
+        <img
+          src={cover}
+          alt={product.title}
+          className="h-full w-full object-cover"
+          loading="lazy"
+          onError={(event) => {
+            const img = event.currentTarget;
+            if (img.src.includes(fallbackCover)) return;
+            img.src = fallbackCover;
+          }}
+        />
       </div>
       <div className="mt-3 flex items-start justify-between gap-3">
         <div className="min-w-0">

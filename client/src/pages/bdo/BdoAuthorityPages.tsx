@@ -254,85 +254,127 @@ export function BdoVerifierPage() {
   );
 }
 
+type AuthorityTopicKey = "actualites" | "reglementation" | "industrie";
+
+const authorityTopicCopy: Record<string, Record<AuthorityTopicKey, { title: string; subtitle: string; cards: InsightCard[] }>> = {
+  fr: {
+    actualites: {
+      title: "Actualites et marche de l'or",
+      subtitle: "Veille sur le marche de l'or, l'ecosysteme minier africain et les obligations de conformite.",
+      cards: [
+        { title: "Actualites du marche", summary: "Cours internationaux, tendances de demande et signaux de liquidite pour l'or physique certifie." },
+        { title: "Mines d'or en Cote d'Ivoire", summary: "Production, investissements et modernisation du secteur aurifere ivoirien." },
+        { title: "Cadre reglementaire", summary: "Exigences de tracabilite, obligations documentaires et controles qualite." },
+        { title: "Exportation et conformite", summary: "Flux mines, certification, expedition securisee et revue des contreparties." },
+      ],
+    },
+    reglementation: {
+      title: "Cadre legal de l'or",
+      subtitle: "References reglementaires pour les professionnels: mines, negociants, maisons et investisseurs.",
+      cards: [
+        { title: "Reglementation miniere", summary: "Principes de gouvernance, licences, controles et obligations de declaration." },
+        { title: "Tracabilite et audit", summary: "Normes de preuve d'origine et chaine de custody pour chaque lot." },
+        { title: "Conformite KYC/AML", summary: "Verification des contreparties, origine des fonds et revue documentaire." },
+        { title: "Cadre export", summary: "Points de controle avant expedition: qualite, documentation et conformite douaniere." },
+      ],
+    },
+    industrie: {
+      title: "Industrie miniere aurifere",
+      subtitle: "Panorama de l'industrie aurifere africaine avec focus Cote d'Ivoire.",
+      cards: [
+        { title: "Bassins auriferes", summary: "Zones de production, capacites et dynamique de croissance regionale." },
+        { title: "Acteurs de la chaine", summary: "Mines, assayeurs, ateliers de frappe, logisticiens et maisons de distribution." },
+        { title: "Transformation locale", summary: "Structuration d'une valeur ajoutee africaine: certification, estampillage, distribution." },
+        { title: "Intelligence sectorielle", summary: "Risques, opportunites et signaux de marche utiles aux operateurs professionnels." },
+      ],
+    },
+  },
+  en: {
+    actualites: {
+      title: "Gold market news",
+      subtitle: "Market watch for certified physical gold, African mining activity and compliance obligations.",
+      cards: [
+        { title: "Market news", summary: "International gold prices, demand trends and liquidity signals for certified physical gold." },
+        { title: "Gold mining in Cote d'Ivoire", summary: "Production, investment and modernization of the Ivorian gold sector." },
+        { title: "Regulatory framework", summary: "Traceability requirements, document obligations and quality controls." },
+        { title: "Export and compliance", summary: "Mining, certification, secure delivery and counterparty review workflows." },
+      ],
+    },
+    reglementation: {
+      title: "Gold regulatory framework",
+      subtitle: "Regulatory references for miners, traders, dealers, institutions and professional buyers.",
+      cards: [
+        { title: "Mining regulation", summary: "Governance principles, licensing, controls and reporting obligations." },
+        { title: "Traceability and audit", summary: "Origin evidence and custody-chain standards for each lot." },
+        { title: "KYC/AML compliance", summary: "Counterparty checks, source of funds review and document verification." },
+        { title: "Export framework", summary: "Quality, documentation and customs checks before shipment." },
+      ],
+    },
+    industrie: {
+      title: "Gold mining industry",
+      subtitle: "A professional view of the African gold industry with a Cote d'Ivoire focus.",
+      cards: [
+        { title: "Gold regions", summary: "Production areas, capacity and regional growth dynamics." },
+        { title: "Supply-chain actors", summary: "Mines, assayers, minting studios, logistics partners and distribution houses." },
+        { title: "Local transformation", summary: "African value creation through certification, stamping and distribution." },
+        { title: "Sector intelligence", summary: "Risks, opportunities and market signals for professional operators." },
+      ],
+    },
+  },
+  ar: {
+    actualites: {
+      title: "أخبار سوق الذهب",
+      subtitle: "متابعة سوق الذهب المادي المعتمد ونشاط التعدين الأفريقي ومتطلبات الامتثال.",
+      cards: [
+        { title: "أخبار السوق", summary: "أسعار الذهب الدولية واتجاهات الطلب ومؤشرات السيولة للذهب المادي المعتمد." },
+        { title: "تعدين الذهب في كوت ديفوار", summary: "الإنتاج والاستثمارات وتحديث قطاع الذهب في كوت ديفوار." },
+        { title: "الإطار التنظيمي", summary: "متطلبات التتبع والوثائق وضوابط الجودة." },
+        { title: "التصدير والامتثال", summary: "مسارات التعدين والشهادة والتسليم الآمن ومراجعة الأطراف." },
+      ],
+    },
+    reglementation: {
+      title: "الإطار التنظيمي للذهب",
+      subtitle: "مراجع تنظيمية للمهنيين: المناجم والتجار والبيوت والمؤسسات والمشترون المحترفون.",
+      cards: [
+        { title: "تنظيم التعدين", summary: "مبادئ الحوكمة والتراخيص والرقابة والتصريح." },
+        { title: "التتبع والتدقيق", summary: "معايير إثبات الأصل وسلسلة الحيازة لكل دفعة." },
+        { title: "امتثال KYC/AML", summary: "فحص الأطراف ومصدر الأموال والتحقق من الوثائق." },
+        { title: "إطار التصدير", summary: "نقاط مراقبة الجودة والوثائق والجمارك قبل الشحن." },
+      ],
+    },
+    industrie: {
+      title: "صناعة تعدين الذهب",
+      subtitle: "نظرة مهنية على صناعة الذهب الأفريقية مع تركيز على كوت ديفوار.",
+      cards: [
+        { title: "مناطق الذهب", summary: "مناطق الإنتاج والقدرات وديناميكيات النمو الإقليمي." },
+        { title: "أطراف سلسلة القيمة", summary: "المناجم والمحللون وورش الختم وشركاء اللوجستيات وبيوت التوزيع." },
+        { title: "التحويل المحلي", summary: "خلق قيمة أفريقية عبر الشهادة والختم والتوزيع." },
+        { title: "ذكاء القطاع", summary: "المخاطر والفرص وإشارات السوق المفيدة للمهنيين." },
+      ],
+    },
+  },
+};
+
+function getAuthorityTopic(language: string, key: AuthorityTopicKey) {
+  return (authorityTopicCopy[language] || authorityTopicCopy.fr)[key];
+}
+
 export function BdoActualitesPage() {
-  return (
-    <BdoAuthorityLayout
-      title="Actualites & Reglementation"
-      subtitle="Veille sur le marche de l'or, l'ecosysteme minier africain et les obligations de conformite."
-      cards={[
-        {
-          title: "Actualites du marche",
-          summary: "Cours internationaux, tendances de demande et signaux de liquidite pour l'or physique.",
-        },
-        {
-          title: "Mines d'or en Cote d'Ivoire",
-          summary: "Production, investissements et modernisation du secteur aurifere ivoirien.",
-        },
-        {
-          title: "Cadre reglementaire",
-          summary: "Exigences de tracabilite, obligations documentaires et controles qualite.",
-        },
-        {
-          title: "Exportation & conformite",
-          summary: "Flux mines -> certification -> expedition securisee vers les hubs internationaux.",
-        },
-      ]}
-    />
-  );
+  const { language } = useLocale();
+  const copy = getAuthorityTopic(language, "actualites");
+  return <BdoAuthorityLayout title={copy.title} subtitle={copy.subtitle} cards={copy.cards} />;
 }
 
 export function BdoReglementationPage() {
-  return (
-    <BdoAuthorityLayout
-      title="Cadre legal de l'or"
-      subtitle="References reglementaires pour les professionnels: mines, negociants, maisons et investisseurs."
-      cards={[
-        {
-          title: "Reglementation miniere",
-          summary: "Principes de gouvernance, licences, controles et obligations de declaration.",
-        },
-        {
-          title: "Tracabilite et audit",
-          summary: "Normes de preuve d'origine et chaine de custody pour chaque lot.",
-        },
-        {
-          title: "Conformite KYC/AML",
-          summary: "Bonnes pratiques de verification des contreparties dans l'ecosysteme aurifere.",
-        },
-        {
-          title: "Cadre export",
-          summary: "Points de controle avant expedition: qualite, documentation et conformite douaniere.",
-        },
-      ]}
-    />
-  );
+  const { language } = useLocale();
+  const copy = getAuthorityTopic(language, "reglementation");
+  return <BdoAuthorityLayout title={copy.title} subtitle={copy.subtitle} cards={copy.cards} />;
 }
 
 export function BdoIndustrieMinierePage() {
-  return (
-    <BdoAuthorityLayout
-      title="Industrie Miniere"
-      subtitle="Panorama de l'industrie aurifere africaine avec focus Cote d'Ivoire."
-      cards={[
-        {
-          title: "Bassins auriferes",
-          summary: "Zones de production, capacites et dynamique de croissance regionale.",
-        },
-        {
-          title: "Acteurs de la chaine",
-          summary: "Mines, assayeurs, ateliers de frappe, logisticiens et maisons de distribution.",
-        },
-        {
-          title: "Transformation locale",
-          summary: "Structuration d'une valeur ajoutee africaine: certification, estampillage, distribution.",
-        },
-        {
-          title: "Intelligence sectorielle",
-          summary: "Risques, opportunites et signaux de marche utiles aux operateurs professionnels.",
-        },
-      ]}
-    />
-  );
+  const { language } = useLocale();
+  const copy = getAuthorityTopic(language, "industrie");
+  return <BdoAuthorityLayout title={copy.title} subtitle={copy.subtitle} cards={copy.cards} />;
 }
 
 export function BdoEspaceProPage() {

@@ -46,6 +46,11 @@ type TestResult = {
   item?: { id?: string; name: string; city?: string; category?: string; address?: string; rating?: number | string };
 };
 
+type BrowserMapTest = {
+  status: "idle" | "running" | "passed" | "failed";
+  message: string;
+};
+
 type GoogleSettingsResponse = {
   ok: boolean;
   scope: string;
@@ -111,6 +116,10 @@ export default function AdminGooglePlacesIntegrationPage() {
   const [query, setQuery] = useState("restaurants bakery cafe grocery pharmacy");
   const [placeId, setPlaceId] = useState("");
   const [lastResult, setLastResult] = useState<TestResult | null>(null);
+  const [browserMapTest, setBrowserMapTest] = useState<BrowserMapTest>({
+    status: "idle",
+    message: "Run this after saving the browser key to confirm Google accepts it for exportunity.net.",
+  });
 
   const configQuery = useQuery<PlacesConfig>({
     queryKey: ["/api/places/config"],
@@ -193,6 +202,64 @@ export default function AdminGooglePlacesIntegrationPage() {
   const mapIdPresent = Boolean(google?.mapIdPresent);
   const requiredEnv = google?.requiredEnv || [];
   const resultItems = lastResult?.items || (lastResult?.item ? [lastResult.item] : []);
+  const runtimeBrowserKey = browserApiKey.trim() || String(config?.browserApiKey || "").trim();
+
+  const testBrowserMapKey = () => {
+    const key = runtimeBrowserKey;
+    if (!key) {
+      setBrowserMapTest({
+        status: "failed",
+        message: "No browser Maps key is available. Enter and save GOOGLE_MAPS_BROWSER_API_KEY first.",
+      });
+      return;
+    }
+
+    setBrowserMapTest({
+      status: "running",
+      message: "Testing Maps JavaScript API in this browser...",
+    });
+
+    const win = window as Window & { gm_authFailure?: () => void } & Record<string, any>;
+    const callbackName = `__exportunityGoogleMapAdminTest_${Date.now()}`;
+    const previousAuthFailure = win.gm_authFailure;
+    let settled = false;
+    let script: HTMLScriptElement | null = null;
+
+    const settle = (status: BrowserMapTest["status"], message: string) => {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timeout);
+      if (script?.parentNode) script.parentNode.removeChild(script);
+      delete win[callbackName];
+      win.gm_authFailure = previousAuthFailure;
+      setBrowserMapTest({ status, message });
+      toast({
+        title: status === "passed" ? "Browser Maps key accepted" : "Browser Maps key rejected",
+        description: message,
+        variant: status === "failed" ? "destructive" : undefined,
+      });
+    };
+
+    const timeout = window.setTimeout(() => {
+      settle("failed", "Google Maps did not respond in time. Check network access, API restrictions, billing, and Maps JavaScript API enablement.");
+    }, 12_000);
+
+    win[callbackName] = () => {
+      settle("passed", "Google accepted the browser Maps key for this page. If the public map still falls back, refresh /map after deployment/cache clears.");
+    };
+    win.gm_authFailure = () => {
+      settle("failed", "Google rejected the browser key for this domain. Allow https://exportunity.net/* and https://www.exportunity.net/*, enable Maps JavaScript API, and confirm billing/API restrictions.");
+    };
+
+    script = document.createElement("script");
+    script.async = true;
+    script.defer = true;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(key)}&v=weekly&callback=${encodeURIComponent(callbackName)}`;
+    script.onerror = () => {
+      settle("failed", "The Maps JavaScript API script could not be loaded. Check key restrictions, network access, and Google Cloud API enablement.");
+    };
+    document.head.appendChild(script);
+  };
 
   return (
     <div className="min-h-screen bg-[#F7F8FA] p-4 text-slate-950 md:p-6">
@@ -244,10 +311,43 @@ export default function AdminGooglePlacesIntegrationPage() {
               <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3 text-sm leading-relaxed text-slate-600">
                 {config?.message || "Google configuration status is loading."}
               </div>
-              <Button variant="outline" className="border-slate-200 bg-white text-slate-900" onClick={() => configQuery.refetch()} disabled={configQuery.isFetching}>
-                <RefreshCw className={`mr-2 h-4 w-4 ${configQuery.isFetching ? "animate-spin" : ""}`} />
-                Refresh status
-              </Button>
+              <div className="flex flex-wrap gap-2">
+                <Button variant="outline" className="border-slate-200 bg-white text-slate-900" onClick={() => configQuery.refetch()} disabled={configQuery.isFetching}>
+                  <RefreshCw className={`mr-2 h-4 w-4 ${configQuery.isFetching ? "animate-spin" : ""}`} />
+                  Refresh status
+                </Button>
+                <Button
+                  variant="outline"
+                  className="border-slate-200 bg-white text-slate-900"
+                  onClick={testBrowserMapKey}
+                  disabled={browserMapTest.status === "running" || !browserKeyPresent}
+                >
+                  <MapPin className="mr-2 h-4 w-4" />
+                  Test browser map key
+                </Button>
+              </div>
+              <div
+                className={`rounded-2xl border p-3 text-sm leading-relaxed ${
+                  browserMapTest.status === "passed"
+                    ? "border-emerald-200 bg-emerald-50 text-emerald-950"
+                    : browserMapTest.status === "failed"
+                      ? "border-red-200 bg-red-50 text-red-950"
+                      : browserMapTest.status === "running"
+                        ? "border-amber-200 bg-amber-50 text-amber-950"
+                        : "border-slate-200 bg-slate-50 text-slate-600"
+                }`}
+              >
+                <div className="font-black">
+                  {browserMapTest.status === "passed"
+                    ? "Browser key accepted"
+                    : browserMapTest.status === "failed"
+                      ? "Browser key rejected"
+                      : browserMapTest.status === "running"
+                        ? "Testing browser key"
+                        : "Browser key test"}
+                </div>
+                <div className="mt-1">{browserMapTest.message}</div>
+              </div>
             </CardContent>
           </Card>
 

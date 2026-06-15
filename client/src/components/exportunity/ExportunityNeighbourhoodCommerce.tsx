@@ -578,6 +578,29 @@ function makeGoogleMarkerElement(shop: CommerceShop, active: boolean, wholesale:
   return element;
 }
 
+function googleMarkerSvgUrl(shop: CommerceShop, active: boolean, wholesale: boolean, exchange: boolean) {
+  const tone = toneForCategory(shop.category);
+  const visual = visualForCategory(shop.category, wholesale, exchange);
+  const icon = markerSvgForCategory(visual.kind).replace(
+    'viewBox="0 0 24 24" width="26" height="26"',
+    'x="19" y="14" viewBox="0 0 24 24" width="26" height="26" color="#FFFFFF"',
+  );
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="72" height="82" viewBox="0 0 72 82">
+      <defs>
+        <filter id="shadow" x="-40%" y="-30%" width="180%" height="180%">
+          <feDropShadow dx="0" dy="10" stdDeviation="6" flood-color="#111827" flood-opacity=".28"/>
+        </filter>
+      </defs>
+      <path d="M36 77 23 55h26L36 77Z" fill="${tone}" stroke="rgba(255,255,255,.96)" stroke-width="2.4" filter="url(#shadow)"/>
+      <rect x="10" y="5" width="52" height="52" rx="20" fill="${tone}" stroke="${active ? "#F5A623" : "rgba(255,255,255,.96)"}" stroke-width="${active ? 4 : 2.4}" filter="url(#shadow)"/>
+      <circle cx="52" cy="14" r="7" fill="#F5A623" opacity="${active ? ".95" : ".78"}"/>
+      ${icon}
+    </svg>
+  `;
+  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+}
+
 function GoogleMapsPane({
   dark,
   places,
@@ -754,6 +777,11 @@ function GoogleMapsPane({
             map,
             position,
             title: shop.name,
+            icon: {
+              url: googleMarkerSvgUrl(shop, active, wholesale, exchange),
+              scaledSize: new window.google.maps.Size(active ? 72 : 58, active ? 82 : 66),
+              anchor: new window.google.maps.Point(active ? 36 : 29, active ? 77 : 62),
+            },
           });
       marker.addListener("click", () => {
         onSelect(shop);

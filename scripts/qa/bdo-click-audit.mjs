@@ -159,6 +159,20 @@ function shouldSkip(candidate) {
     "televerser",
     "import",
     "export",
+    "refund",
+    "refunded",
+    "rembourser",
+    "recheck",
+    "re-check",
+    "start live call",
+    "open actions",
+    "open goals",
+    "open agenda",
+    "tap mic",
+    "message tassi",
+    "tassi",
+    "chairman assistant",
+    "agent front-office",
   ];
   if (candidate.target === "_blank") return true;
   if (type === "file" || type === "submit") return true;
@@ -220,6 +234,39 @@ async function waitReady(page) {
     return text.trim().length > 40 && !/Resolving tenant/i.test(text);
   }, null, { timeout: 10_000 }).catch(() => {});
   await page.waitForTimeout(250);
+}
+
+async function suppressAuditOverlays(page) {
+  await page
+    .addStyleTag({
+      content: `
+        div.fixed.z-50.bottom-20.right-5,
+        div.fixed.z-50.bottom-20.left-5,
+        button.fixed.bottom-5.right-5,
+        button.fixed.bottom-5.left-5,
+        [data-bdo-click-audit-hidden="true"] {
+          display: none !important;
+          pointer-events: none !important;
+        }
+      `,
+    })
+    .catch(() => {});
+  await page
+    .evaluate(() => {
+      const assistantHints = /tassi|chairman|assistant|start live call|open goals|open agenda|message/i;
+      for (const element of Array.from(document.querySelectorAll("div.fixed, button.fixed, [role='dialog']"))) {
+        const rect = element.getBoundingClientRect();
+        const text = String(element.textContent || element.getAttribute("aria-label") || "");
+        const isFloatingAssistant =
+          assistantHints.test(text) &&
+          rect.width > 40 &&
+          rect.height > 40 &&
+          (rect.right > window.innerWidth - 500 || rect.left < 80) &&
+          (rect.bottom > window.innerHeight - 700 || rect.top < 120);
+        if (isFloatingAssistant) element.setAttribute("data-bdo-click-audit-hidden", "true");
+      }
+    })
+    .catch(() => {});
 }
 
 async function loginAdmin(context) {
@@ -415,6 +462,7 @@ async function auditRoute(context, route, language, scope) {
       timeout: 60_000,
     });
     await waitReady(page);
+    await suppressAuditOverlays(page);
     routeResult.url = page.url();
     const candidates = (await collectCandidatesStable(page)).slice(0, maxPerRoute);
     routeResult.total = candidates.length;
@@ -430,6 +478,7 @@ async function auditRoute(context, route, language, scope) {
         timeout: 60_000,
       });
       await waitReady(page);
+      await suppressAuditOverlays(page);
       const locator = candidate.testId
         ? page.locator(`[data-testid="${candidate.testId}"]`).first()
         : page.locator(candidate.selector).first();

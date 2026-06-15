@@ -605,7 +605,7 @@ async function main() {
           item.consoleIssues.length === 0 &&
           item.pageErrors.length === 0 &&
           item.serverErrors.length === 0,
-      ) && (adminLogin.ok || adminLogin.skipped),
+      ) && Boolean(adminLogin.ok || adminLogin.skipped),
     routeCount: routes.length,
     audited: routes.reduce((sum, item) => sum + item.audited, 0),
     passed: routes.reduce((sum, item) => sum + item.passed, 0),

@@ -17405,11 +17405,11 @@ export function BuyerHomePage({
                       </Button>
                     </div>
 
-                    {isExportunityMarketplaceExperience ? (
+                    {isExportunityCommerceMapExperience ? (
                       <Button
                         variant="ghost"
                         className={`h-9 px-3 text-gray-200 hover:text-white hover:bg-white/10 ${
-                          location === "/ready-for-export"
+                          location === "/ready-for-export" || location.startsWith("/pme-exchange")
                             ? "bg-[#D4AF37]/18 text-[#E8C873] hover:bg-[#D4AF37]/20"
                             : ""
                         }`}

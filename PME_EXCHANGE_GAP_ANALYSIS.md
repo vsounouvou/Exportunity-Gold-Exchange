@@ -7,9 +7,11 @@
 - Google Places client with field masks, rate/day limiter, Text Search, Nearby Search, and Details helper.
 - Google Places mapper/enrichment layer.
 - Curated Abidjan/Cotonou data engine with 200 realistic marketplace/wholesale leads.
+- Intent-aware curated fallback search for buyer and sourcing queries such as breakfast, bread, coffee, groceries, pharmacy, building materials, cement, wholesale suppliers, machinery, packaging, agricultural inputs, logistics, cold storage, manufacturers, and textiles.
 - Public `/api/maps/public-config` and `/api/places/nearby`.
 - Admin `/api/admin/pme-exchange/*` routes for status, summary, leads, map, import, Google tests, campaigns, conversations, profiles, and audit.
 - Admin PME Exchange UI with light-mode dashboard, map, import preview, lead selection, and approval-gated campaign drafts.
+- Public commerce copy now uses Retail marketplace, Wholesale, and Ready for export rather than public-facing PME Exchange language.
 
 ## Remaining Gaps
 
@@ -20,6 +22,7 @@
 - PME Acquisition Agent can be represented in the workflow, but autonomous reply handling and structured answer extraction need a follow-up implementation.
 - Public investment listing is intentionally not enabled.
 - Back-office global color cleanup is still incomplete outside the new PME Exchange page.
+- Current live Google Maps renderer still needs a Google Map ID; current live Google Places import still needs a server Places API key and enable flag.
 
 ## Recommended Next Slice
 

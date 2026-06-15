@@ -525,14 +525,20 @@ function loadGoogleMapsScript(apiKey: string) {
   if (window.__exportunityGoogleMapsPromise) return window.__exportunityGoogleMapsPromise;
 
   window.__exportunityGoogleMapsPromise = new Promise<void>((resolve, reject) => {
+    const rejectAuth = () => {
+      window.__exportunityGoogleMapsPromise = undefined;
+      window.dispatchEvent(new CustomEvent("exportunity:google-maps-auth-failure"));
+      reject(new Error("Google Maps rejected the browser API key"));
+    };
     const existing = document.querySelector<HTMLScriptElement>("script[data-exportunity-google-maps='true']");
     if (existing) {
       existing.addEventListener("load", () => resolve(), { once: true });
       existing.addEventListener("error", () => reject(new Error("Google Maps script failed to load")), { once: true });
+      window.gm_authFailure = rejectAuth;
       return;
     }
 
-    window.gm_authFailure = () => reject(new Error("Google Maps rejected the browser API key"));
+    window.gm_authFailure = rejectAuth;
     const script = document.createElement("script");
     script.dataset.exportunityGoogleMaps = "true";
     script.async = true;
@@ -605,6 +611,16 @@ function GoogleMapsPane({
   const safeUserLocation = validPosition(userLocation) ? userLocation : ABIDJAN_COCODY;
   const safePlaces = places.filter((shop) => validPosition(shop.position));
   const safeActiveShop = activeShop && validPosition(activeShop.position) ? activeShop : null;
+
+  useEffect(() => {
+    const handleAuthFailure = () => {
+      setReady(false);
+      setLoadError("Google Maps rejected the current browser key. OpenStreetMap is active.");
+      onUnavailable?.();
+    };
+    window.addEventListener("exportunity:google-maps-auth-failure", handleAuthFailure);
+    return () => window.removeEventListener("exportunity:google-maps-auth-failure", handleAuthFailure);
+  }, [onUnavailable]);
 
   useEffect(() => {
     let cancelled = false;

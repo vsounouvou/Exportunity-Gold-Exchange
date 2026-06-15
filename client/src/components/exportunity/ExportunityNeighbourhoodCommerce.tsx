@@ -2256,11 +2256,11 @@ export function ExportunityNeighbourhoodCommerce({
                   <div
                     role="button"
                     tabIndex={0}
-                    onClick={() => (wholesale || exchange ? previewShop(shop) : enterShop(shop, product))}
+                    onClick={() => (wholesale || exchange ? previewShop(shop) : enterShop(shop))}
                     onKeyDown={(event) => {
                       if (event.key === "Enter" || event.key === " ") {
                         if (wholesale || exchange) previewShop(shop);
-                        else enterShop(shop, product);
+                        else enterShop(shop);
                       }
                     }}
                     className="block w-full cursor-pointer text-left"
@@ -2291,7 +2291,7 @@ export function ExportunityNeighbourhoodCommerce({
                           <button type="button" onClick={(event) => { event.stopPropagation(); quickAddProduct(shop, product); }} className="grid h-10 place-items-center rounded-2xl border border-[#F5A623]/35 bg-[#F5A623]/14 text-[#F5A623] transition hover:bg-[#F5A623] hover:text-[#07111F]" aria-label={`Add ${product.name} to order`}>
                             <Plus className="h-4 w-4" />
                           </button>
-                          <button type="button" onClick={(event) => { event.stopPropagation(); enterShop(shop, product); }} className={cn("flex h-9 items-center justify-center rounded-2xl border text-xs font-black md:h-10 md:text-sm", dark ? "border-white/14 text-white/74 hover:bg-white/8" : "border-slate-200 text-slate-700 hover:bg-slate-50")}>
+                          <button type="button" onClick={(event) => { event.stopPropagation(); enterShop(shop); }} className={cn("flex h-9 items-center justify-center rounded-2xl border text-xs font-black md:h-10 md:text-sm", dark ? "border-white/14 text-white/74 hover:bg-white/8" : "border-slate-200 text-slate-700 hover:bg-slate-50")}>
                             Open products
                           </button>
                         </div>
@@ -2381,7 +2381,7 @@ export function ExportunityNeighbourhoodCommerce({
                               key={product.id}
                               type="button"
                               onClick={() => {
-                                enterShop(activeShop, product);
+                                enterShop(activeShop);
                               }}
                               className={cn("overflow-hidden rounded-2xl border text-left", dark ? "border-white/10 bg-white/[0.04]" : "border-slate-200 bg-white")}
                               aria-label={`Open ${product.name}`}
@@ -2434,7 +2434,7 @@ export function ExportunityNeighbourhoodCommerce({
                       <button
                         key={`${shop.id}-${product.id}-map-shelf`}
                         type="button"
-                        onClick={() => (wholesale || exchange ? previewShop(shop) : enterShop(shop, product))}
+                        onClick={() => (wholesale || exchange ? previewShop(shop) : enterShop(shop))}
                         className={cn("grid grid-cols-[52px_minmax(0,1fr)] items-center gap-2 rounded-2xl border p-1.5 text-left transition hover:-translate-y-0.5", dark ? "border-white/10 bg-white/[0.04] hover:border-[#F5A623]/50" : "border-slate-200 bg-white hover:border-[#F5A623]/50")}
                       >
                         <img src={product.image || shop.image} alt="" className="h-12 w-12 rounded-xl object-cover" />

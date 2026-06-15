@@ -505,6 +505,7 @@ function StoreRoute() {
       : "city";
   const shellMode =
     location === "/map" ||
+    location === "/marketplace" ||
     location === "/marketplace/map" ||
     location.startsWith("/wholesale") ||
     location.startsWith("/ready-for-export") ||

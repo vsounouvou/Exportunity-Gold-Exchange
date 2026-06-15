@@ -945,6 +945,56 @@ function CategoryTile({
   );
 }
 
+function CinematicCloudLayer({
+  dark,
+  state,
+}: {
+  dark: boolean;
+  state: "idle" | "focusingShop" | "wholesaleMode" | "exchangeMode";
+}) {
+  const baseOpacity = state === "focusingShop" ? "opacity-55" : state === "wholesaleMode" ? "opacity-60" : state === "exchangeMode" ? "opacity-58" : "opacity-70";
+  return (
+    <div className={cn("pointer-events-none absolute inset-0 z-[390] overflow-hidden", baseOpacity)} aria-hidden="true">
+      <div
+        className={cn(
+          "absolute -left-[14%] -top-[18%] h-[42%] w-[52%] rounded-full blur-3xl animate-[exportunity-cloud-drift_18s_ease-in-out_infinite]",
+          dark ? "bg-white/10" : "bg-white/70",
+        )}
+      />
+      <div
+        className={cn(
+          "absolute -right-[18%] top-[2%] h-[54%] w-[58%] rounded-full blur-3xl animate-[exportunity-cloud-drift_22s_ease-in-out_infinite_reverse]",
+          dark ? "bg-[#F5A623]/10" : "bg-[#F5A623]/22",
+        )}
+      />
+      <div
+        className={cn(
+          "absolute bottom-[-24%] left-[18%] h-[46%] w-[72%] rounded-full blur-3xl animate-[exportunity-cloud-drift_26s_ease-in-out_infinite]",
+          dark ? "bg-[#07111F]/52" : "bg-white/62",
+        )}
+      />
+      <div
+        className={cn(
+          "absolute inset-0",
+          state === "focusingShop"
+            ? dark
+              ? "bg-[radial-gradient(circle_at_48%_46%,transparent_0,transparent_22%,rgba(7,17,31,.18)_56%,rgba(5,7,11,.42)_100%)]"
+              : "bg-[radial-gradient(circle_at_48%_46%,transparent_0,transparent_25%,rgba(255,255,255,.08)_55%,rgba(7,17,31,.14)_100%)]"
+            : dark
+              ? "bg-[radial-gradient(circle_at_50%_28%,transparent_0,transparent_38%,rgba(245,166,35,.08)_72%,rgba(5,7,11,.34)_100%)]"
+              : "bg-[radial-gradient(circle_at_50%_24%,transparent_0,transparent_40%,rgba(245,166,35,.045)_72%,rgba(255,255,255,.34)_100%)]",
+        )}
+      />
+      <style>{`
+        @keyframes exportunity-cloud-drift {
+          0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+          50% { transform: translate3d(18px, -10px, 0) scale(1.04); }
+        }
+      `}</style>
+    </div>
+  );
+}
+
 function LiveMapPane({
   dark,
   places,
@@ -981,6 +1031,7 @@ function LiveMapPane({
   const googleReady = isGoogleMapReady(mapsConfig) && !googleRenderFailed;
   const rendererLabel = googleReady ? "Google Maps renderer" : googleRenderFailed ? "Google key rejected" : "OpenStreetMap renderer";
   const rendererDetail = googleRenderFailureReason || provider.label;
+  const cloudState = safeActiveShop ? "focusingShop" : wholesale ? "wholesaleMode" : exchange ? "exchangeMode" : "idle";
   return (
     <section className={cn("relative overflow-hidden rounded-none border-l", dark ? "border-white/10 bg-[#07111F]" : "border-slate-200 bg-white", className)}>
       {googleReady ? (
@@ -1003,7 +1054,7 @@ function LiveMapPane({
           <TileLayer
             key={dark ? "dark" : "light"}
             attribution="&copy; OpenStreetMap &copy; CARTO"
-            url={dark ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" : "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"}
+            url={dark ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" : "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"}
           />
           <MapFocus userLocation={safeUserLocation} activeShop={safeActiveShop} visiblePlaces={safePlaces} />
           <Polyline positions={routePoints} pathOptions={{ color: "#F5A623", weight: 7, opacity: 0.18 }} />
@@ -1026,7 +1077,7 @@ function LiveMapPane({
           })}
         </MapContainer>
       )}
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_25%,transparent_0,transparent_42%,rgba(245,166,35,.06)_70%,rgba(7,17,31,.16)_100%)]" />
+      <CinematicCloudLayer dark={dark} state={cloudState} />
       <div className={cn("absolute left-4 top-4 z-[401] max-w-[min(520px,calc(100%-2rem))] rounded-2xl border px-3.5 py-3 backdrop-blur-xl", dark ? "border-white/12 bg-[#07111F]/78 text-white" : "border-white/90 bg-white/88 text-slate-950 shadow-[0_16px_36px_rgba(15,23,42,.12)]")}>
         <div className="flex flex-wrap items-center gap-2">
           <span className="rounded-full bg-[#F5A623] px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-[#07111F]">
@@ -1594,17 +1645,6 @@ export function ExportunityNeighbourhoodCommerce({
           >
             <ChevronDown className="h-4 w-4 rotate-90" />
           </button>
-        </div>
-        <div className={cn("mt-4 rounded-2xl border p-3 text-sm leading-relaxed", dark ? "border-white/10 bg-white/[0.045] text-white/76" : "border-slate-200 bg-slate-50 text-slate-650")}>
-          {retailShopSelected && activeShop
-                ? `${visibleAgent.name} works for this shop. Products and the order panel are the main flow; this chat is here for stock, substitutions, wallet, delivery, or live preview.`
-            : business
-              ? "Run the business by talking to your agents. They report issues, create actions, and coordinate the shop."
-              : wholesale
-                ? "Find suppliers, request quotes, and keep outreach approval-gated."
-                : exchange
-                  ? "Review export-ready sellers, products, trust proof, and compliance status. Finance stays internal-review only."
-                  : "Tassi helps you find products faster. The center stays focused on products, shops, prices, and delivery."}
         </div>
       </div>
 
@@ -2377,11 +2417,11 @@ export function ExportunityNeighbourhoodCommerce({
                   </div>
                 </section>
               ) : (
-                <section className={cn("absolute bottom-5 left-5 right-5 z-[401] overflow-hidden rounded-[26px] border backdrop-blur-xl lg:right-[380px] xl:right-[400px] 2xl:right-[420px]", dark ? "border-white/12 bg-[#07111F]/88 text-white shadow-[0_26px_80px_rgba(0,0,0,.45)]" : "border-white/90 bg-white/92 text-slate-950 shadow-[0_24px_70px_rgba(15,23,42,.18)]")}>
-                  <div className="flex items-center justify-between gap-3 border-b border-current/10 px-4 py-3">
+                <section className={cn("absolute bottom-5 left-5 z-[401] w-[min(620px,calc(100%-2.5rem))] overflow-hidden rounded-[24px] border backdrop-blur-xl lg:w-[560px] xl:w-[600px]", dark ? "border-white/12 bg-[#07111F]/86 text-white shadow-[0_22px_68px_rgba(0,0,0,.42)]" : "border-white/90 bg-white/90 text-slate-950 shadow-[0_20px_56px_rgba(15,23,42,.16)]")}>
+                  <div className="flex items-center justify-between gap-3 border-b border-current/10 px-3.5 py-2.5">
                     <div>
                       <div className="text-[10px] font-black uppercase tracking-[0.18em] text-[#F5A623]">
-                        {wholesale ? "Supplier map" : exchange ? "Export seller map" : "Products on this map"}
+                        {wholesale ? "Supplier map" : exchange ? "Export seller map" : "Nearby products"}
                       </div>
                       <div className="mt-0.5 text-sm font-black">
                         {wholesale ? "Tap a supplier for MOQ and quote flow" : exchange ? "Tap a seller for products, owner, and proof" : "Tap a product or marker to enter the shop"}
@@ -2389,15 +2429,15 @@ export function ExportunityNeighbourhoodCommerce({
                     </div>
                     <MapPin className="h-5 w-5 shrink-0 text-[#F5A623]" />
                   </div>
-                  <div className="grid gap-2 p-3 sm:grid-cols-2 xl:grid-cols-4">
+                  <div className="grid gap-2 p-2.5 sm:grid-cols-2 xl:grid-cols-4">
                     {mapShelfProducts.map(({ shop, product }) => (
                       <button
                         key={`${shop.id}-${product.id}-map-shelf`}
                         type="button"
                         onClick={() => (wholesale || exchange ? previewShop(shop) : enterShop(shop, product))}
-                        className={cn("grid grid-cols-[62px_minmax(0,1fr)] items-center gap-2 rounded-2xl border p-2 text-left transition hover:-translate-y-0.5", dark ? "border-white/10 bg-white/[0.04] hover:border-[#F5A623]/50" : "border-slate-200 bg-white hover:border-[#F5A623]/50")}
+                        className={cn("grid grid-cols-[52px_minmax(0,1fr)] items-center gap-2 rounded-2xl border p-1.5 text-left transition hover:-translate-y-0.5", dark ? "border-white/10 bg-white/[0.04] hover:border-[#F5A623]/50" : "border-slate-200 bg-white hover:border-[#F5A623]/50")}
                       >
-                        <img src={product.image || shop.image} alt="" className="h-14 w-14 rounded-xl object-cover" />
+                        <img src={product.image || shop.image} alt="" className="h-12 w-12 rounded-xl object-cover" />
                         <span className="min-w-0">
                           <span className="block truncate text-xs font-black">{product.name}</span>
                           <span className={cn("mt-0.5 block truncate text-[11px] font-semibold", dark ? "text-white/58" : "text-slate-600")}>{shop.name}</span>

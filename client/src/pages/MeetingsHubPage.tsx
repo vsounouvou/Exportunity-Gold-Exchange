@@ -36,7 +36,9 @@ type ListMeetingsResponse = {
 type CreateMeetingResponse = {
   ok: boolean;
   meeting: MeetSession;
-  hostInvite: { token: string; link: string; expiresAt: string; inviteId: string };
+  hostInvite?: { token: string; link: string; expiresAt: string; inviteId: string };
+  hostLink?: string;
+  hostToken?: string;
   invites: Array<{ email: string; token: string; link: string; expiresAt: string; inviteId: string; role: string }>;
   internalInvites: Array<{ userId: number; email: string | null; token: string; link: string; expiresAt: string; inviteId: string }>;
 };
@@ -106,6 +108,19 @@ export default function MeetingsHubPage() {
       return json;
     },
     onSuccess: async (result) => {
+      const hostLink = result.hostInvite?.link || result.hostLink;
+      const hostToken = result.hostInvite?.token || result.hostToken;
+      if (!hostLink || !hostToken) {
+        const detail = "Meeting was created, but the host invite link was not returned.";
+        setCreateError(detail);
+        toast({
+          title: "Meeting created without host link",
+          description: detail,
+          variant: "destructive",
+        });
+        await queryClient.invalidateQueries({ queryKey: ["/api/meet/meetings"] });
+        return;
+      }
       await queryClient.invalidateQueries({ queryKey: ["/api/meet/meetings"] });
       setOpenCreate(false);
       setTitle("");
@@ -116,11 +131,11 @@ export default function MeetingsHubPage() {
         description: "Host link copied and meeting is ready to join.",
       });
       try {
-        await navigator.clipboard.writeText(result.hostInvite.link);
+        await navigator.clipboard.writeText(hostLink);
       } catch {
         // noop
       }
-      setLocation(`/m/${encodeURIComponent(result.meeting.id)}?t=${encodeURIComponent(result.hostInvite.token)}`);
+      setLocation(`/m/${encodeURIComponent(result.meeting.id)}?t=${encodeURIComponent(hostToken)}`);
     },
     onError: (error: any) => {
       const detail = error?.message || "Unable to create meeting";

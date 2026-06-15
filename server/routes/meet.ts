@@ -274,6 +274,7 @@ router.post("/meetings", ensureTenantStaff, async (req: any, res) => {
     return res.status(201).json({
       ok: true,
       meeting,
+      hostInvite,
       hostLink: hostInvite.link,
       hostToken: hostInvite.token,
       invites,

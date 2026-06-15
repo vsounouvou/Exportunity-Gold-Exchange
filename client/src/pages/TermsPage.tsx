@@ -16,17 +16,17 @@ const copy = {
       {
         title: "Objet du service",
         body:
-          "La Bourse de l'Or est une plateforme digitale structurée qui connecte les clients à des produits en or physique certifié, des lingots issus de raffineries, des pièces ou lingots documentés, des bijoux vérifiés et des partenaires de production approuvés.",
+          "La Bourse de l'Or est une plateforme digitale structurée qui connecte les clients à des produits en or physique certifié lorsque le processus est confirmé, des lingots liés à des raffineries, des pièces ou lingots documentés, des bijoux vérifiés et des partenaires de production approuvés.",
       },
       {
         title: "Nature des produits",
         body:
-          "Les produits présentés peuvent être des lingots produits par raffinerie, des lingots ou pièces d'or certifiés, des bijoux ou pièces de collection sur commande, ou des produits fournis par des partenaires approuvés.",
+          "Les produits présentés peuvent être des lingots produits par raffinerie, des lingots ou pièces d'or documentés ou certifiés, des bijoux ou pièces de collection sur commande, ou des produits fournis par des partenaires approuvés.",
       },
       {
         title: "Prix et frais",
         body:
-          "Les prix peuvent fluctuer selon le cours international de l'or, le poids, le titre, les coûts de raffinage, les primes, les frais de plateforme, le traitement de paiement, la livraison, l'assurance, les taxes, les droits, les options de stockage et les conditions locales du marché. Le prix affiché peut rester indicatif jusqu'à confirmation finale.",
+          "Les prix peuvent fluctuer selon le cours international de l'or, le poids, le titre, les coûts de raffinage, les primes, les frais de plateforme, le traitement du paiement, la livraison, l'assurance, les taxes, les droits, les options de stockage et les conditions locales du marché. Le prix affiché peut rester indicatif jusqu'à confirmation finale.",
       },
       {
         title: "Commandes et paiement",
@@ -93,12 +93,12 @@ const copy = {
       {
         title: "Service scope",
         body:
-          "La Bourse de l'Or is a structured digital platform connecting customers to certified physical gold products, refinery-produced bullion, documented bars or coins, verified jewelry, and approved production partners.",
+          "La Bourse de l'Or is a structured digital platform connecting customers to certified physical gold products when the certification process is confirmed, refinery-produced or refinery-linked bullion, documented bars or coins, verified jewelry, and approved production partners.",
       },
       {
         title: "Product types",
         body:
-          "Products may include refinery-produced bullion, certified gold bars or coins, made-to-order jewelry or collectible pieces, and products supplied through approved partners.",
+          "Products may include refinery-produced bullion, certified or documented gold bars or coins, made-to-order jewelry or collectible pieces, and products supplied through approved partners.",
       },
       {
         title: "Prices and fees",
@@ -170,12 +170,12 @@ const copy = {
       {
         title: "نطاق الخدمة",
         body:
-          "لا بورص دو لور منصة رقمية منظمة تربط العملاء بمنتجات ذهب مادي موثقة، وسبائك مرتبطة بمصاف معتمدة، وقطع أو سبائك موثقة، ومجوهرات متحقق منها، وشركاء إنتاج معتمدين.",
+          "La Bourse de l'Or منصة رقمية منظمة تربط العملاء بمنتجات ذهب مادي موثقة عندما يتم تأكيد عملية التوثيق، وسبائك مرتبطة بمصافٍ معتمدة، وقطع أو سبائك موثقة، ومجوهرات متحقق منها، وشركاء إنتاج معتمدين.",
       },
       {
         title: "أنواع المنتجات",
         body:
-          "قد تشمل المنتجات سبائك منتجة من مصاف، أو سبائك وقطع ذهبية موثقة، أو مجوهرات وقطع مجموعة مصنوعة حسب الطلب، أو منتجات يوفرها شركاء معتمدون.",
+          "قد تشمل المنتجات سبائك منتجة عبر مصافٍ، أو سبائك وقطع ذهبية موثقة أو معتمدة، أو مجوهرات وقطع مجموعة مصنوعة حسب الطلب، أو منتجات يوفرها شركاء معتمدون.",
       },
       {
         title: "الأسعار والرسوم",
@@ -190,12 +190,12 @@ const copy = {
       {
         title: "المصافي والشركاء المعتمدون",
         body:
-          "قد يتم توريد بعض منتجات السبائك مباشرة من مصاف معتمدة أو شركاء مرتبطين بالمصافي. في هذه الحالة تسهل لا بورص دو لور الطلب الرقمي والتواصل مع العميل وتنسيق الدفع والتوثيق وخيارات التسليم أو التخزين.",
+          "قد يتم توريد بعض منتجات السبائك مباشرة من مصافٍ معتمدة أو شركاء مرتبطين بالمصافي. في هذه الحالة تسهل La Bourse de l'Or الطلب الرقمي والتواصل مع العميل وتنسيق الدفع والتوثيق وخيارات التسليم أو التخزين.",
       },
       {
         title: "التحقق والامتثال",
         body:
-          "تخضع كل منتجات الذهب للتوفر والتحقق ومراجعة الامتثال وتأكيد الدفع. قد تطلب لا بورص دو لور وثائق KYC/KYB أو مصدر الأموال أو مصدر البضائع أو أدلة التتبع قبل تأكيد بعض المعاملات.",
+          "تخضع كل منتجات الذهب للتوفر والتحقق ومراجعة الامتثال وتأكيد الدفع. قد تطلب La Bourse de l'Or وثائق KYC/KYB أو مصدر الأموال أو مصدر البضائع أو أدلة التتبع قبل تأكيد بعض المعاملات.",
       },
       {
         title: "التوريد المسؤول",
@@ -205,7 +205,7 @@ const copy = {
       {
         title: "التوفر والتأكيد والملكية",
         body:
-          "ينتقل حق الملكية فقط بعد السداد الكامل والتحقق من الامتثال والتأكيد النهائي من لا بورص دو لور أو المورد أو شريك المصفاة أو شريك الإنتاج المعتمد ذي الصلة.",
+          "ينتقل حق الملكية فقط بعد السداد الكامل والتحقق من الامتثال والتأكيد النهائي من La Bourse de l'Or أو المورد أو شريك المصفاة أو شريك الإنتاج المعتمد ذي الصلة.",
       },
       {
         title: "التسليم والاستلام والتخزين",
@@ -220,7 +220,7 @@ const copy = {
       {
         title: "المجوهرات والقطع حسب الطلب",
         body:
-          "بالنسبة للمجوهرات والقطع المجموعة المصنوعة حسب الطلب، تنقل المنصة تفاصيل الطلب إلى شريك إنتاج معتمد. بعد اكتمال الإنتاج، يؤكد الشريك الجاهزية من خلال تحقق داخلي ثم يتم إعلام العميل.",
+          "بالنسبة للمجوهرات وقطع المجموعة المصنوعة حسب الطلب، تنقل المنصة تفاصيل الطلب إلى شريك إنتاج معتمد. بعد اكتمال الإنتاج، يؤكد الشريك الجاهزية من خلال تحقق داخلي ثم يتم إعلام العميل.",
       },
       {
         title: "الإلغاء والاسترداد",
@@ -230,12 +230,12 @@ const copy = {
       {
         title: "حدود المسؤولية",
         body:
-          "لا تقدم لا بورص دو لور نصائح مالية أو استثمارية أو ضريبية أو قانونية. شراء الذهب ينطوي على مخاطر تغير السعر. المنصة ليست بنكاً أو صندوق استثمار أو بورصة أوراق مالية أو خدمة تحويل أموال أو منصة عملات رقمية أو مستشاراً مالياً مرخصاً.",
+          "لا تقدم La Bourse de l'Or نصائح مالية أو استثمارية أو ضريبية أو قانونية. شراء الذهب ينطوي على مخاطر تغير السعر. المنصة ليست بنكاً أو صندوق استثمار أو بورصة أوراق مالية أو خدمة تحويل أموال أو منصة عملات رقمية أو مستشاراً مالياً مرخصاً.",
       },
       {
         title: "شركاء مستقلون",
         body:
-          "تبقى المصافي والموردون والحرفيون ومقدمو الخدمات اللوجستية وشركاء الحفظ المعتمدون جهات مستقلة. تنسق لا بورص دو لور تجربة العميل لكنها قد تعتمد على أطراف ثالثة للإنتاج أو التصفية أو الفحص أو التخزين أو اللوجستيات أو التسليم.",
+          "تبقى المصافي والموردون والحرفيون ومقدمو الخدمات اللوجستية وشركاء الحفظ المعتمدون جهات مستقلة. تنسق La Bourse de l'Or تجربة العميل لكنها قد تعتمد على أطراف ثالثة للإنتاج أو التصفية أو الفحص أو التخزين أو اللوجستيات أو التسليم.",
       },
     ],
   },

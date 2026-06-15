@@ -76,8 +76,8 @@ function getGoalPageCopy(language: string) {
     return {
       market: "العودة إلى السوق",
       goals: "أهدافي",
-      coffreTitle: "خزنة الذهب",
-      coffreSubtitle: "كوّن ميزانية شراء الذهب المادي تدريجياً. لا يتم شراء الذهب حتى تؤكد الطلب بالسعر المحدث.",
+      coffreTitle: "مساحة اعتمادات الشراء",
+      coffreSubtitle: "كوّن ميزانية شراء الذهب المادي تدريجياً. لا يتم طلب الذهب أو نقل الملكية حتى تؤكد الطلب بالسعر المحدث وبعد الدفع والامتثال والتأكيد النهائي.",
       goalsTitle: "أهداف شراء الذهب",
       goalsSubtitle: "يتابع كل هدف سعراً مرتبطاً بالسوق. أضف الأموال تدريجياً ثم أكد الطلب عندما تصبح الميزانية جاهزة.",
       authTitle: "سجّل الدخول للوصول إلى خزنة الذهب",
@@ -88,11 +88,11 @@ function getGoalPageCopy(language: string) {
       availableFunds: "الأموال المتاحة",
       activeGoals: "الأهداف النشطة",
       lockedPurchases: "طلبات مؤكدة",
-      vaultedGold: "ذهب في الخزنة",
-      vaultEyebrow: "خزنة الذهب",
-      addFundsTitle: "أضف أموالاً وخصصها لأهداف الشراء",
-      addFundsBody: "يبقى السعر مرتبطاً بالسوق حتى التأكيد. أنت تبني ميزانية المنتج المختار ثم تثبت السعر عند تأكيد الطلب.",
-      addFunds: "إضافة أموال",
+      vaultedGold: "ذهب مؤكد",
+      vaultEyebrow: "اعتمادات الشراء",
+      addFundsTitle: "أضف اعتمادات وخصصها لأهداف الشراء",
+      addFundsBody: "يبقى السعر مرتبطاً بالسوق حتى التأكيد. أنت تبني ميزانية المنتج المختار ثم يتم تحديث السعر عند تأكيد الطلب، مع بقاء التنفيذ خاضعاً للتوفر والدفع والامتثال.",
+      addFunds: "إضافة اعتمادات",
       viewGoals: "عرض أهدافي",
       nearestGoal: "أقرب هدف للاكتمال",
       continueGoal: "متابعة هذا الهدف",
@@ -109,26 +109,26 @@ function getGoalPageCopy(language: string) {
     return {
       market: "Back to market",
       goals: "My objectives",
-      coffreTitle: "Your gold vault",
+      coffreTitle: "Purchase Credits space",
       coffreSubtitle:
-        "Build your physical gold purchase budget progressively. Your gold is not purchased until you confirm the order at a refreshed price.",
+        "Build your physical gold purchase budget progressively. Your gold is not ordered and ownership does not transfer until you confirm the order at a refreshed price, after payment, compliance validation, and final confirmation.",
       goalsTitle: "Gold Purchase Objectives",
       goalsSubtitle:
-        "Each objective follows a market-linked value. Add funds progressively, then confirm the order when the budget is ready.",
-      authTitle: "Sign in to access your gold vault",
+        "Each objective follows a market-linked value. Add credits progressively, then confirm the order when the budget is ready.",
+      authTitle: "Sign in to access your Purchase Credits",
       authBody:
-        "Your Purchase Objectives and progress are linked to your account. Sign in to create an objective, add funds, and confirm the physical gold purchase when ready.",
+        "Your Purchase Objectives and progress are linked to your account. Sign in to create an objective, add credits, and confirm the physical gold order when ready.",
       signIn: "Sign in",
       createAccount: "Create account",
-      availableFunds: "Available funds",
+      availableFunds: "Available credits",
       activeGoals: "Active objectives",
       lockedPurchases: "Confirmed purchases",
-      vaultedGold: "Gold in vault",
-      vaultEyebrow: "Gold vault",
-      addFundsTitle: "Add funds and allocate them to your Purchase Objectives",
+      vaultedGold: "Confirmed gold",
+      vaultEyebrow: "Purchase Credits",
+      addFundsTitle: "Add credits and allocate them to your Purchase Objectives",
       addFundsBody:
-        "The price remains market-linked until confirmation. Build the budget for the selected product, then lock the price when you confirm the order.",
-      addFunds: "Add funds",
+        "The price remains market-linked until confirmation. Build the budget for the selected product, then refresh the price and confirm the order subject to availability, payment, compliance, and final validation.",
+      addFunds: "Add credits",
       viewGoals: "View my objectives",
       nearestGoal: "Most advanced objective",
       continueGoal: "Continue this objective",
@@ -144,30 +144,30 @@ function getGoalPageCopy(language: string) {
   return {
     market: "Retour au marché",
     goals: "Mes objectifs",
-    coffreTitle: "Votre coffre d’or",
+    coffreTitle: "Votre espace de crédits d'achat",
     coffreSubtitle:
-      "Achetez, réservez, accumulez. Vos fonds restent disponibles pour atteindre le lingot visé, puis verrouiller le prix au moment de la confirmation.",
-    goalsTitle: "Mes objectifs d’or",
+      "Constituez progressivement un budget d'achat d'or physique. L'or n'est pas commandé et la propriété ne se transfère pas avant confirmation du prix actualisé, paiement, conformité et validation finale.",
+    goalsTitle: "Mes objectifs d'achat d'or",
     goalsSubtitle:
-      "Chaque objectif suit une valeur de marché dynamique. Vous ajoutez des fonds progressivement, puis vous confirmez l’achat quand le montant est atteint.",
-    authTitle: "Connectez-vous pour accéder à votre coffre d’or",
+      "Chaque objectif suit une valeur de marché dynamique. Vous ajoutez des crédits progressivement, puis vous confirmez la commande lorsque le budget est prêt.",
+    authTitle: "Connectez-vous pour accéder à vos crédits d'achat",
     authBody:
-      "Vos objectifs et votre progression sont liés à votre compte. Connectez-vous pour créer un objectif, ajouter des fonds et confirmer l’achat au bon moment.",
+      "Vos objectifs et votre progression sont liés à votre compte. Connectez-vous pour créer un objectif, ajouter des crédits et confirmer la commande d'or physique lorsque vous êtes prêt.",
     signIn: "Se connecter",
     createAccount: "Créer un compte",
-    availableFunds: "Fonds disponibles",
+    availableFunds: "Crédits disponibles",
     activeGoals: "Objectifs actifs",
-    lockedPurchases: "Achats verrouillés",
-    vaultedGold: "Or en coffre",
-    vaultEyebrow: "Coffre d’or",
-    addFundsTitle: "Ajoutez des fonds et allouez-les à vos objectifs",
+    lockedPurchases: "Commandes confirmées",
+    vaultedGold: "Or confirmé",
+    vaultEyebrow: "Crédits d'achat",
+    addFundsTitle: "Ajoutez des crédits et allouez-les à vos objectifs",
     addFundsBody:
-      "Le prix reste lié au marché jusqu’à la confirmation. Vous financez progressivement le lingot choisi, puis vous verrouillez le prix au moment opportun.",
-    addFunds: "Ajouter des fonds",
+      "Le prix reste lié au marché jusqu'à la confirmation. Vous constituez le budget du produit choisi, puis le prix est actualisé et la commande est confirmée sous réserve de disponibilité, paiement, conformité et validation finale.",
+    addFunds: "Ajouter des crédits",
     viewGoals: "Voir mes objectifs",
     nearestGoal: "Objectif le plus avancé",
     continueGoal: "Continuer cet objectif",
-    noActiveGoal: "Aucun objectif actif. Démarrez un objectif depuis le marché pour commencer votre accumulation.",
+    noActiveGoal: "Aucun objectif actif. Démarrez depuis le marché pour constituer un budget d'achat d'or physique.",
     goalsListTitle: "Objectifs actifs et historiques",
     goalsListBody: "Suivez vos objectifs actifs, prêts à confirmer ou déjà convertis.",
     viewAll: "Tout voir",
@@ -237,7 +237,7 @@ function GoalSummaryCard({ goal }: { goal: GoalItem }) {
                 {goal.status === "ready_to_confirm"
                   ? "Prêt à confirmer"
                   : goal.status === "converted"
-                    ? "Achat confirmé"
+                    ? "Commande confirmée"
                     : goal.status === "refunded"
                       ? "Remboursé"
                       : goal.status === "cancelled"
@@ -245,7 +245,7 @@ function GoalSummaryCard({ goal }: { goal: GoalItem }) {
                         : "En accumulation"}
               </Badge>
             </div>
-            <p className="mt-1 text-sm text-white/60">Prix indicatif ajusté au cours actuel jusqu&apos;à confirmation finale.</p>
+            <p className="mt-1 text-sm text-white/60">Prix indicatif ajusté au cours actuel jusqu&apos;à confirmation finale, disponibilité et conformité.</p>
           </div>
           <div className="text-right">
             <p className="text-xl font-semibold text-[#E8C873]">{formatMoneyMinor(goal.currentTargetPriceMinor, goal.currencyCode)}</p>
@@ -254,12 +254,12 @@ function GoalSummaryCard({ goal }: { goal: GoalItem }) {
         </div>
         <div className="mt-4 space-y-2">
           <div className="flex items-center justify-between text-[12px] text-white/65">
-            <span>Financé</span>
+            <span>Crédits alloués</span>
             <span>{formatMoneyMinor(goal.amountFundedMinor, goal.currencyCode)}</span>
           </div>
           <Progress value={goal.progressPercent} className="h-2 bg-white/10" />
           <div className="flex items-center justify-between text-[12px] text-white/65">
-            <span>Reste à financer</span>
+            <span>Budget restant</span>
             <span>{formatMoneyMinor(goal.remainingMinor, goal.currencyCode)}</span>
           </div>
         </div>
@@ -549,10 +549,10 @@ export function BdoGoalDetailPage({ goalId }: { goalId: string }) {
         queryClient.invalidateQueries({ queryKey: ["/api/gold-exchange/bdo/goals/detail", goalId, session.token] }),
         queryClient.invalidateQueries({ queryKey: ["/api/wallet/summary", session.token] }),
       ]);
-      toast({ title: "Objectif alimenté", description: "Les fonds ont été ajoutés à votre objectif." });
+      toast({ title: "Objectif alimenté", description: "Les crédits ont été ajoutés à votre objectif d'achat." });
     },
     onError: (error: any) => {
-      toast({ title: "Erreur", description: error?.message || "Impossible d’ajouter des fonds.", variant: "destructive" });
+      toast({ title: "Erreur", description: error?.message || "Impossible d'ajouter des crédits.", variant: "destructive" });
     },
   });
 
@@ -569,11 +569,11 @@ export function BdoGoalDetailPage({ goalId }: { goalId: string }) {
         queryClient.invalidateQueries({ queryKey: ["/api/gold-exchange/bdo/goals/detail", goalId, session.token] }),
         queryClient.invalidateQueries({ queryKey: ["/api/gold-exchange/bdo/vault", session.token] }),
       ]);
-      toast({ title: "Achat confirmé", description: "Le prix a été verrouillé et l’unité a été créée dans votre coffre." });
+      toast({ title: "Commande confirmée", description: "Le prix a été validé et l'unité d'or physique est enregistrée après confirmation finale." });
       navigate("/coffre");
     },
     onError: (error: any) => {
-      toast({ title: "Erreur", description: error?.message || "Impossible de confirmer cet achat.", variant: "destructive" });
+      toast({ title: "Erreur", description: error?.message || "Impossible de confirmer cette commande.", variant: "destructive" });
     },
   });
 
@@ -589,7 +589,7 @@ export function BdoGoalDetailPage({ goalId }: { goalId: string }) {
         queryClient.invalidateQueries({ queryKey: ["/api/gold-exchange/bdo/goals/detail", goalId, session.token] }),
         queryClient.invalidateQueries({ queryKey: ["/api/wallet/summary", session.token] }),
       ]);
-      toast({ title: "Objectif annulé", description: "Les fonds alloués ont été remboursés quand c’était nécessaire." });
+      toast({ title: "Objectif annulé", description: "Les crédits alloués ont été reversés lorsque les règles de paiement le permettaient." });
       navigate("/mes-objectifs");
     },
     onError: (error: any) => {
@@ -604,8 +604,8 @@ export function BdoGoalDetailPage({ goalId }: { goalId: string }) {
 
   return (
     <BdoPageShell
-      title={goal ? `Objectif Or — Lingot ${goal.selectedWeightGrams}g` : "Objectif d’or"}
-      subtitle="Le cours évolue avec le marché jusqu’à confirmation. Le prix final est verrouillé uniquement le jour où vous confirmez l’achat."
+      title={goal ? `Objectif d'achat — Lingot ${goal.selectedWeightGrams}g` : "Objectif d'achat"}
+      subtitle="Le cours évolue avec le marché jusqu'à confirmation. Le prix final est actualisé au moment où vous confirmez la commande, sous réserve de disponibilité, paiement, conformité et validation finale."
     >
       {!session.token ? (
         <AuthPrompt />
@@ -623,7 +623,7 @@ export function BdoGoalDetailPage({ goalId }: { goalId: string }) {
                 <h2 className="text-lg font-semibold text-white">Progression et conditions</h2>
                 <div className="mt-4 grid gap-3 md:grid-cols-2">
                   <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                    <p className="text-[11px] uppercase tracking-[0.22em] text-white/45">Montant financé</p>
+                    <p className="text-[11px] uppercase tracking-[0.22em] text-white/45">Crédits alloués</p>
                     <p className="mt-2 text-xl font-semibold text-white">{formatMoneyMinor(goal.amountFundedMinor, goal.currencyCode)}</p>
                   </div>
                   <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
@@ -642,8 +642,8 @@ export function BdoGoalDetailPage({ goalId }: { goalId: string }) {
                   </div>
                 </div>
                 <div className="mt-4 rounded-2xl border border-[#D4AF37]/20 bg-[#D4AF37]/10 p-4 text-sm text-[#F5F3EC]/85">
-                  <p>Le prix évolue avec le marché jusqu’à confirmation.</p>
-                  <p className="mt-2">Le prix final est verrouillé le jour de la confirmation et déclenche la création de l’unité dans votre coffre.</p>
+                  <p>Le prix évolue avec le marché jusqu'à confirmation.</p>
+                  <p className="mt-2">La commande ne démarre qu'après prix actualisé, paiement complet, conformité et validation finale par La Bourse de l'Or ou le partenaire approuvé.</p>
                 </div>
               </CardContent>
             </Card>
@@ -702,9 +702,9 @@ export function BdoGoalDetailPage({ goalId }: { goalId: string }) {
           <div className="space-y-4">
             <Card className="border-white/10 bg-[#07101d]/95">
               <CardContent className="p-5">
-                <h2 className="text-lg font-semibold text-white">Ajouter des fonds à cet objectif</h2>
-                <p className="mt-2 text-sm text-white/65">Le coffre reste disponible pour de nouveaux versements avant la confirmation.</p>
-                <p className="mt-4 text-sm text-white/55">Fonds disponibles: {formatMoneyMinor(Number(walletSummaryQuery.data?.wallet?.balance || 0), "XOF")}</p>
+                <h2 className="text-lg font-semibold text-white">Ajouter des crédits à cet objectif</h2>
+                <p className="mt-2 text-sm text-white/65">Vos crédits d'achat restent disponibles pour de nouveaux versements avant la confirmation.</p>
+                <p className="mt-4 text-sm text-white/55">Crédits disponibles: {formatMoneyMinor(Number(walletSummaryQuery.data?.wallet?.balance || 0), "XOF")}</p>
                 <div className="mt-4 flex flex-wrap gap-2">
                   {quickAmounts.map((amount) => (
                     <Button
@@ -735,7 +735,7 @@ export function BdoGoalDetailPage({ goalId }: { goalId: string }) {
                 </div>
                 <div className="mt-4">
                   <WalletDepositModal
-                    label="Recharger mon coffre"
+                    label="Ajouter des crédits"
                     next={`/objectif/${goal.id}`}
                     buttonClassName="w-full bg-white/10 hover:bg-white/15 text-white"
                   />
@@ -752,7 +752,7 @@ export function BdoGoalDetailPage({ goalId }: { goalId: string }) {
                     disabled={confirmMutation.isPending || goal.status !== "ready_to_confirm"}
                     onClick={() => confirmMutation.mutate()}
                   >
-                    Confirmer l’achat
+                    Confirmer la commande
                   </Button>
                   <Button
                     variant="outline"

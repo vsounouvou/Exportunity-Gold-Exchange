@@ -8,21 +8,24 @@ import type { StoreCollection } from "@/types/storefront";
 
 const copy = {
   fr: {
-    title: "Collections d'or certifie",
-    subtitle: "Selections de pieces, lingots et bijoux verifies par Bourse de l'Or.",
+    title: "Collections d'or documentées",
+    subtitle:
+      "Sélections de lingots, pièces, bijoux vérifiés et produits fournis par des partenaires approuvés. Disponibilité, prix et conformité restent soumis à confirmation finale.",
     loading: "Chargement des collections...",
     brand: "BOURSE DE L'OR",
   },
   en: {
-    title: "Certified gold collections",
-    subtitle: "Selections of verified pieces, bullion and jewelry from Bourse de l'Or.",
+    title: "Documented gold collections",
+    subtitle:
+      "Selections of bullion, pieces, verified jewelry, and products supplied through approved partners. Availability, pricing, and compliance remain subject to final confirmation.",
     loading: "Loading collections...",
     brand: "BOURSE DE L'OR",
   },
   ar: {
-    title: "مجموعات الذهب المعتمد",
-    subtitle: "اختيارات من القطع والسبائك والمجوهرات الموثقة عبر بورصة الذهب.",
-    loading: "جاري تحميل المجموعات...",
+    title: "مجموعات ذهب موثقة",
+    subtitle:
+      "اختيارات من السبائك والقطع والمجوهرات المتحقق منها والمنتجات المقدمة عبر شركاء معتمدين. يبقى التوفر والسعر والامتثال خاضعاً للتأكيد النهائي.",
+    loading: "جارٍ تحميل المجموعات...",
     brand: "BOURSE DE L'OR",
   },
 };

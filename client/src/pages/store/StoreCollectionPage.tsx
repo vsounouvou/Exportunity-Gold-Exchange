@@ -8,22 +8,25 @@ import type { StoreProduct } from "@/types/storefront";
 
 const copy = {
   fr: {
-    defaultDescription: "Selection Bourse de l'Or documentee et verifiable.",
+    defaultDescription: "Sélection BOURSE DE L'OR documentée, vérifiable et soumise à confirmation finale.",
     loading: "Chargement de la collection...",
     brand: "BOURSE DE L'OR",
-    caption: "Pieces certifiees et bijoux verifies avec prix lie au marche.",
+    caption:
+      "Produits en or physique, bijoux vérifiés ou pièces sur commande. Les prix peuvent rester indicatifs jusqu'à validation de disponibilité, paiement et conformité.",
   },
   en: {
-    defaultDescription: "Documented and verifiable Bourse de l'Or selection.",
+    defaultDescription: "Documented, verifiable BOURSE DE L'OR selection subject to final confirmation.",
     loading: "Loading collection...",
     brand: "BOURSE DE L'OR",
-    caption: "Certified pieces and verified jewelry with market-linked pricing.",
+    caption:
+      "Physical gold products, verified jewelry, or made-to-order pieces. Prices may remain indicative until availability, payment, and compliance are validated.",
   },
   ar: {
-    defaultDescription: "اختيار موثق وقابل للتحقق من بورصة الذهب.",
-    loading: "جاري تحميل المجموعة...",
+    defaultDescription: "اختيار موثق وقابل للتحقق من BOURSE DE L'OR وخاضع للتأكيد النهائي.",
+    loading: "جارٍ تحميل المجموعة...",
     brand: "BOURSE DE L'OR",
-    caption: "قطع معتمدة ومجوهرات موثقة بأسعار مرتبطة بالسوق.",
+    caption:
+      "منتجات ذهب مادي أو مجوهرات متحقق منها أو قطع حسب الطلب. قد تبقى الأسعار إرشادية حتى تأكيد التوفر والدفع والامتثال.",
   },
 };
 

@@ -5,25 +5,25 @@ import { cn } from "@/lib/utils";
 
 const footerLabels = {
   fr: {
-    compliance: "Cadre & conformite",
+    compliance: "Cadre & conformité",
     terms: "Conditions",
-    privacy: "Confidentialite",
+    privacy: "Confidentialité",
     notice:
-      "Les produits et services affiches sur cette plateforme sont soumis aux restrictions juridictionnelles, controles de conformite, disponibilite et confirmation finale. La Bourse de l'Or se reserve le droit de refuser ou d'annuler toute transaction qui ne respecte pas les standards legaux, reglementaires, de conformite, de paiement ou de sourcing.",
+      "Les produits et services affichés sur cette plateforme sont soumis aux restrictions juridictionnelles, contrôles de conformité, disponibilité et confirmation finale. La Bourse de l'Or se réserve le droit de refuser, retarder ou annuler toute transaction qui ne respecte pas les standards légaux, réglementaires, de conformité, de paiement ou de sourcing responsable.",
   },
   en: {
     compliance: "Compliance framework",
     terms: "Terms",
     privacy: "Privacy",
     notice:
-      "Products and services displayed on this platform are subject to jurisdictional restrictions, compliance checks, availability, and final confirmation. La Bourse de l'Or reserves the right to refuse or cancel any transaction that does not meet legal, regulatory, compliance, payment, or sourcing standards.",
+      "Products and services displayed on this platform are subject to jurisdictional restrictions, compliance checks, availability, and final confirmation. La Bourse de l'Or reserves the right to refuse, delay, or cancel any transaction that does not meet legal, regulatory, compliance, payment, or responsible sourcing standards.",
   },
   ar: {
     compliance: "إطار الامتثال",
     terms: "الشروط",
     privacy: "الخصوصية",
     notice:
-      "تخضع المنتجات والخدمات المعروضة على هذه المنصة للقيود القانونية وفحوصات الامتثال والتوفر والتأكيد النهائي. تحتفظ La Bourse de l'Or بحق رفض أو إلغاء أي معاملة لا تستوفي المعايير القانونية أو التنظيمية أو معايير الامتثال أو الدفع أو التوريد.",
+      "تخضع المنتجات والخدمات المعروضة على هذه المنصة للقيود القانونية وفحوص الامتثال والتوفر والتأكيد النهائي. تحتفظ La Bourse de l'Or بحق رفض أو تأخير أو إلغاء أي معاملة لا تستوفي المعايير القانونية أو التنظيمية أو معايير الامتثال أو الدفع أو التوريد المسؤول.",
   },
 } as const;
 

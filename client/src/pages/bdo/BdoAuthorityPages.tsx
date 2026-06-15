@@ -14,21 +14,21 @@ function getAuthorityCopy(language: string) {
     return {
       brand: "BOURSE DE L'OR",
       certificationEyebrow: "شهادة BOURSE DE L'OR",
-      certificationTitle: "شهادة وتتبع الذهب المادي",
+      certificationTitle: "توثيق وتتبع الذهب المادي",
       certificationBody:
-        "وثّق قطعة ذهبية بالمعلومات المتاحة أثناء الفحص: الصورة، الوزن، العيار، الأصل المصرح به، رقم الشهادة، رمز QR وسجل التحقق عندما تكون البيانات متاحة.",
+        "يمكن توثيق قطعة ذهبية بالمعلومات المتاحة وقت الفحص: الصورة، الوزن، العيار، الأصل المصرح به، رقم الشهادة، رمز QR وسجل التحقق عند توفر البيانات. لا تعني الشهادة وعداً مالياً أو ضماناً للعائد.",
       verifyPiece: "تحقق من قطعة",
       viewProducts: "عرض المنتجات",
       certificationCards: [
-        ["ما يتم التحقق منه", "الوزن، العيار، الصور، الشهادة، الرقم التسلسلي وعناصر الأصل المتاحة وقت الفحص."],
-        ["QR وجواز الذهب", "يمكن ربط كل قطعة مؤهلة بصفحة تحقق يمكن فتحها برمز أو QR."],
+        ["ما يتم التحقق منه", "الوزن، العيار، الصور، الرقم التسلسلي، الشهادة وعناصر الأصل المتاحة وقت الفحص."],
+        ["QR وجواز الذهب", "يمكن ربط كل قطعة مؤهلة بسجل تحقق يمكن فتحه بالرمز أو QR عند توفر البيانات."],
         ["حدود المسؤولية", "توثق الشهادة العناصر التي تم التحقق منها؛ ولا تستبدل الالتزامات القانونية أو الضريبية أو الجمركية."],
-        ["تصعيد بشري", "الحالات الحساسة تمر بمراجعة بشرية قبل أي تحقق عام أو إجراء معاملاتي."],
+        ["مراجعة بشرية", "الحالات الحساسة تخضع لمراجعة بشرية قبل أي تحقق عام أو إجراء مرتبط بمعاملة."],
       ],
       verifierEyebrow: "التحقق من الشهادة",
       verifierTitle: "تحقق من قطعة",
       verifierBody:
-        "أدخل الرقم التسلسلي أو رمز الشهادة للاطلاع على صفحة مرتبطة بقطعة ذهب معتمدة.",
+        "أدخل الرقم التسلسلي أو رمز الشهادة للاطلاع على السجل المرتبط بمنتج ذهب مادي موثق. قد تتطلب بعض النتائج مراجعة بشرية قبل التأكيد النهائي.",
       certificateCode: "رمز الشهادة",
       verifyNow: "تحقق الآن",
       resultTitle: "نتيجة التحقق",
@@ -36,7 +36,7 @@ function getAuthorityCopy(language: string) {
       ready: "جاهز للاستشارة",
       codeRequired: "الرمز مطلوب",
       resultBody:
-        "يمكن أن تعرض الصفحة المنتج، الوزن، العيار، التاريخ، الصور، الأصل المصرح به، الشهادة والسجل المتاح. تبقى البيانات الحساسة خاضعة لمراجعة بشرية.",
+        "يمكن أن يعرض السجل المنتج والوزن والعيار والتاريخ والصور والأصل المصرح به والشهادة والسجل المتاح. تبقى البيانات الحساسة خاضعة لمراجعة بشرية.",
       resultItems: ["صورة القطعة", "الوزن والعيار", "رقم الشهادة", "السجل المتاح"],
     };
   }
@@ -45,21 +45,21 @@ function getAuthorityCopy(language: string) {
     return {
       brand: "BOURSE DE L'OR",
       certificationEyebrow: "BOURSE DE L'OR certification",
-      certificationTitle: "Certification and traceability for physical gold",
+      certificationTitle: "Documentation and traceability for physical gold",
       certificationBody:
-        "Document a piece with the information available at inspection: photo, weight, title, declared origin, certificate number, QR verification and history when available.",
+        "Document a gold item with the information available at inspection: photo, weight, purity, declared origin, certificate number, QR verification, and history when available. Certification documents verified elements; it is not a financial promise or return guarantee.",
       verifyPiece: "Verify a piece",
       viewProducts: "View products",
       certificationCards: [
-        ["What is verified", "Weight, title, photos, certificate, serial number and available origin elements at the time of inspection."],
-        ["QR and gold passport", "Each eligible piece can be linked to a verification record accessible by code or QR."],
-        ["Liability limits", "Certification documents validated elements; it does not replace legal, tax or customs obligations."],
-        ["Human escalation", "Sensitive cases go through human review before any public or transactional validation."],
+        ["What is verified", "Weight, purity, photos, serial number, certificate, and available origin elements at the time of inspection."],
+        ["QR and gold passport", "Each eligible item can be linked to a verification record accessible by code or QR when data is available."],
+        ["Liability limits", "Certification documents validated elements; it does not replace legal, tax, or customs obligations."],
+        ["Human review", "Sensitive cases go through human review before any public or transactional validation."],
       ],
       verifierEyebrow: "Certificate verification",
       verifierTitle: "Verify a piece",
       verifierBody:
-        "Enter the serial number or certificate code to consult the record linked to a certified gold piece.",
+        "Enter the serial number or certificate code to consult the record linked to a documented physical gold product. Some results may require human review before final confirmation.",
       certificateCode: "Certificate code",
       verifyNow: "Verify now",
       resultTitle: "Verification result",
@@ -67,29 +67,29 @@ function getAuthorityCopy(language: string) {
       ready: "Ready for consultation",
       codeRequired: "Code required",
       resultBody:
-        "The record can display the product, weight, title, date, photos, declared origin, certificate and available history. Sensitive data remains subject to human verification.",
-      resultItems: ["Piece photo", "Weight and title", "Certificate number", "Available history"],
+        "The record can display the product, weight, purity, date, photos, declared origin, certificate, and available history. Sensitive data remains subject to human verification.",
+      resultItems: ["Piece photo", "Weight and purity", "Certificate number", "Available history"],
     };
   }
 
   return {
     brand: "BOURSE DE L'OR",
     certificationEyebrow: "Certification BOURSE DE L'OR",
-    certificationTitle: "Certification et traçabilité de l'or physique",
+    certificationTitle: "Documentation et traçabilité de l'or physique",
     certificationBody:
-      "Documentez une pièce avec les informations disponibles au contrôle : photo, poids, titre, origine déclarée, numéro de certificat, QR de vérification et historique lorsque les données sont disponibles.",
+      "Documentez une pièce avec les informations disponibles au contrôle : photo, poids, titre, origine déclarée, numéro de certificat, QR de vérification et historique lorsque les données sont disponibles. La certification documente des éléments vérifiés; elle ne constitue pas une promesse financière ni une garantie de rendement.",
     verifyPiece: "Vérifier une pièce",
     viewProducts: "Voir les produits",
     certificationCards: [
-      ["Ce qui est vérifié", "Poids, titre, photos, certificat, numéro de série et éléments d'origine disponibles au moment du contrôle."],
-      ["QR et gold passport", "Chaque pièce éligible peut être reliée à une fiche de vérification consultable par code ou QR."],
+      ["Ce qui est vérifié", "Poids, titre, photos, numéro de série, certificat et éléments d'origine disponibles au moment du contrôle."],
+      ["QR et gold passport", "Chaque pièce éligible peut être reliée à une fiche de vérification consultable par code ou QR lorsque les données existent."],
       ["Limites de responsabilité", "La certification documente les éléments validés; elle ne remplace pas les obligations légales, fiscales ou douanières."],
-      ["Escalade humaine", "Les cas sensibles passent par une revue humaine avant toute validation publique ou transactionnelle."],
+      ["Revue humaine", "Les cas sensibles passent par une revue humaine avant toute validation publique ou transactionnelle."],
     ],
     verifierEyebrow: "Vérification certificat",
     verifierTitle: "Vérifier une pièce",
     verifierBody:
-      "Saisissez le numéro de série ou le code certificat pour consulter la fiche liée à une pièce d'or certifiée.",
+      "Saisissez le numéro de série ou le code certificat pour consulter la fiche liée à un produit en or physique documenté. Certains résultats peuvent nécessiter une revue humaine avant confirmation finale.",
     certificateCode: "Code certificat",
     verifyNow: "Vérifier maintenant",
     resultTitle: "Résultat de vérification",
@@ -120,7 +120,7 @@ function BdoAuthorityLayout({
           <p className="mt-2 text-sm text-[#F5F3EC]/90 md:text-base">{subtitle}</p>
           <div className="mt-4 flex flex-wrap gap-2">
             <Link href="/store">
-              <Button className="bg-[#D4AF37] text-black hover:bg-[#E8C873]">Or Estampille</Button>
+              <Button className="bg-[#D4AF37] text-black hover:bg-[#E8C873]">Or Estampillé</Button>
             </Link>
             <Link href="/espace-pro">
               <Button variant="outline" className="border-white/20 text-white hover:bg-white/10">
@@ -174,7 +174,7 @@ export function BdoCertificationPage() {
             <div
               className="min-h-[260px] bg-cover bg-center lg:min-h-full"
               style={{ backgroundImage: "url('/tenants/bdo/official/banners/bdo-banner-certification.jpg')" }}
-              aria-label="Lingot scelle avec certificat et controle de tracabilite BOURSE DE L'OR"
+              aria-label="Lingot scellé avec certificat et contrôle de traçabilité BOURSE DE L'OR"
             />
           </div>
         </section>
@@ -254,90 +254,110 @@ export function BdoVerifierPage() {
   );
 }
 
-type AuthorityTopicKey = "actualites" | "reglementation" | "industrie";
+type AuthorityTopicKey = "actualites" | "reglementation" | "industrie" | "pro";
 
 const authorityTopicCopy: Record<string, Record<AuthorityTopicKey, { title: string; subtitle: string; cards: InsightCard[] }>> = {
   fr: {
     actualites: {
-      title: "Actualites et marche de l'or",
-      subtitle: "Veille sur le marche de l'or, l'ecosysteme minier africain et les obligations de conformite.",
+      title: "Actualités et marché de l'or",
+      subtitle: "Veille sur le marché de l'or physique, l'écosystème minier africain et les obligations de conformité.",
       cards: [
-        { title: "Actualites du marche", summary: "Cours internationaux, tendances de demande et signaux de liquidite pour l'or physique certifie." },
-        { title: "Mines d'or en Cote d'Ivoire", summary: "Production, investissements et modernisation du secteur aurifere ivoirien." },
-        { title: "Cadre reglementaire", summary: "Exigences de tracabilite, obligations documentaires et controles qualite." },
-        { title: "Exportation et conformite", summary: "Flux mines, certification, expedition securisee et revue des contreparties." },
+        { title: "Actualités du marché", summary: "Cours internationaux, tendances de demande et signaux de marché pour l'or physique documenté." },
+        { title: "Mines d'or en Côte d'Ivoire", summary: "Production, structuration et modernisation du secteur aurifère ivoirien." },
+        { title: "Cadre réglementaire", summary: "Exigences de traçabilité, obligations documentaires et contrôles qualité." },
+        { title: "Exportation et conformité", summary: "Flux mines, vérification, expédition sécurisée et revue des contreparties." },
       ],
     },
     reglementation: {
-      title: "Cadre legal de l'or",
-      subtitle: "References reglementaires pour les professionnels: mines, negociants, maisons et investisseurs.",
+      title: "Cadre légal de l'or",
+      subtitle: "Repères réglementaires pour mines, négociants, maisons d'achat, institutions et acheteurs professionnels.",
       cards: [
-        { title: "Reglementation miniere", summary: "Principes de gouvernance, licences, controles et obligations de declaration." },
-        { title: "Tracabilite et audit", summary: "Normes de preuve d'origine et chaine de custody pour chaque lot." },
-        { title: "Conformite KYC/AML", summary: "Verification des contreparties, origine des fonds et revue documentaire." },
-        { title: "Cadre export", summary: "Points de controle avant expedition: qualite, documentation et conformite douaniere." },
+        { title: "Réglementation minière", summary: "Principes de gouvernance, licences, contrôles et obligations de déclaration." },
+        { title: "Traçabilité et audit", summary: "Preuve d'origine et chaîne de conservation documentée pour chaque lot." },
+        { title: "Conformité KYC/AML", summary: "Vérification des contreparties, origine des fonds et revue documentaire." },
+        { title: "Cadre export", summary: "Points de contrôle avant expédition: qualité, documentation et conformité douanière." },
       ],
     },
     industrie: {
-      title: "Industrie miniere aurifere",
-      subtitle: "Panorama de l'industrie aurifere africaine avec focus Cote d'Ivoire.",
+      title: "Industrie minière aurifère",
+      subtitle: "Panorama de l'industrie aurifère africaine avec focus Côte d'Ivoire.",
       cards: [
-        { title: "Bassins auriferes", summary: "Zones de production, capacites et dynamique de croissance regionale." },
-        { title: "Acteurs de la chaine", summary: "Mines, assayeurs, ateliers de frappe, logisticiens et maisons de distribution." },
-        { title: "Transformation locale", summary: "Structuration d'une valeur ajoutee africaine: certification, estampillage, distribution." },
-        { title: "Intelligence sectorielle", summary: "Risques, opportunites et signaux de marche utiles aux operateurs professionnels." },
+        { title: "Bassins aurifères", summary: "Zones de production, capacités et dynamique régionale." },
+        { title: "Acteurs de la chaîne", summary: "Mines, assayeurs, ateliers, logisticiens et maisons de distribution." },
+        { title: "Transformation locale", summary: "Création de valeur africaine par documentation, estampillage, joaillerie et distribution." },
+        { title: "Intelligence sectorielle", summary: "Risques, opportunités et signaux de marché utiles aux opérateurs professionnels." },
+      ],
+    },
+    pro: {
+      title: "Espace Pro",
+      subtitle: "Espace dédié aux professionnels de l'or: mines, négociants, maisons d'achat, fournisseurs, artisans et acheteurs en gros soumis à revue.",
+      cards: [
+        { title: "Sourcing professionnel", summary: "Accès structuré à des contreparties qualifiées avec documentation de traçabilité." },
+        { title: "Exécution encadrée", summary: "Flux de commande, vérification et livraison adaptés aux opérations professionnelles." },
+        { title: "Pilotage des risques", summary: "Cadres de conformité, source des fonds, source des biens et contrôles qualité." },
+        { title: "Support institutionnel", summary: "Accompagnement des maisons, fournisseurs et acheteurs professionnels selon disponibilité et conformité." },
       ],
     },
   },
   en: {
     actualites: {
       title: "Gold market news",
-      subtitle: "Market watch for certified physical gold, African mining activity and compliance obligations.",
+      subtitle: "Market watch for physical gold, African mining activity, and compliance obligations.",
       cards: [
-        { title: "Market news", summary: "International gold prices, demand trends and liquidity signals for certified physical gold." },
-        { title: "Gold mining in Cote d'Ivoire", summary: "Production, investment and modernization of the Ivorian gold sector." },
-        { title: "Regulatory framework", summary: "Traceability requirements, document obligations and quality controls." },
-        { title: "Export and compliance", summary: "Mining, certification, secure delivery and counterparty review workflows." },
+        { title: "Market news", summary: "International gold prices, demand trends, and market signals for documented physical gold." },
+        { title: "Gold mining in Côte d'Ivoire", summary: "Production, structuring, and modernization of the Ivorian gold sector." },
+        { title: "Regulatory framework", summary: "Traceability requirements, document obligations, and quality controls." },
+        { title: "Export and compliance", summary: "Mine flows, verification, secure delivery, and counterparty review workflows." },
       ],
     },
     reglementation: {
       title: "Gold regulatory framework",
-      subtitle: "Regulatory references for miners, traders, dealers, institutions and professional buyers.",
+      subtitle: "Regulatory references for miners, traders, buying houses, institutions, and professional buyers.",
       cards: [
-        { title: "Mining regulation", summary: "Governance principles, licensing, controls and reporting obligations." },
-        { title: "Traceability and audit", summary: "Origin evidence and custody-chain standards for each lot." },
-        { title: "KYC/AML compliance", summary: "Counterparty checks, source of funds review and document verification." },
-        { title: "Export framework", summary: "Quality, documentation and customs checks before shipment." },
+        { title: "Mining regulation", summary: "Governance principles, licensing, controls, and reporting obligations." },
+        { title: "Traceability and audit", summary: "Origin evidence and documented custody-chain standards for each lot." },
+        { title: "KYC/AML compliance", summary: "Counterparty checks, source of funds review, and document verification." },
+        { title: "Export framework", summary: "Quality, documentation, and customs checks before shipment." },
       ],
     },
     industrie: {
       title: "Gold mining industry",
-      subtitle: "A professional view of the African gold industry with a Cote d'Ivoire focus.",
+      subtitle: "A professional view of the African gold industry with a Côte d'Ivoire focus.",
       cards: [
-        { title: "Gold regions", summary: "Production areas, capacity and regional growth dynamics." },
-        { title: "Supply-chain actors", summary: "Mines, assayers, minting studios, logistics partners and distribution houses." },
-        { title: "Local transformation", summary: "African value creation through certification, stamping and distribution." },
-        { title: "Sector intelligence", summary: "Risks, opportunities and market signals for professional operators." },
+        { title: "Gold regions", summary: "Production areas, capacity, and regional dynamics." },
+        { title: "Supply-chain actors", summary: "Mines, assayers, workshops, logistics partners, and distribution houses." },
+        { title: "Local transformation", summary: "African value creation through documentation, stamping, jewelry, and distribution." },
+        { title: "Sector intelligence", summary: "Risks, opportunities, and market signals for professional operators." },
+      ],
+    },
+    pro: {
+      title: "Professional Space",
+      subtitle: "A dedicated space for gold professionals: mines, traders, buying houses, suppliers, artisans, and wholesale buyers subject to review.",
+      cards: [
+        { title: "Professional sourcing", summary: "Structured access to qualified counterparties with traceability documentation." },
+        { title: "Controlled execution", summary: "Order, verification, and delivery flows adapted to professional operations." },
+        { title: "Risk oversight", summary: "Compliance, source of funds, source of goods, and quality-control frameworks." },
+        { title: "Institutional support", summary: "Support for houses, suppliers, and professional buyers depending on availability and compliance." },
       ],
     },
   },
   ar: {
     actualites: {
       title: "أخبار سوق الذهب",
-      subtitle: "متابعة سوق الذهب المادي المعتمد ونشاط التعدين الأفريقي ومتطلبات الامتثال.",
+      subtitle: "متابعة سوق الذهب المادي ونشاط التعدين الأفريقي ومتطلبات الامتثال.",
       cards: [
-        { title: "أخبار السوق", summary: "أسعار الذهب الدولية واتجاهات الطلب ومؤشرات السيولة للذهب المادي المعتمد." },
-        { title: "تعدين الذهب في كوت ديفوار", summary: "الإنتاج والاستثمارات وتحديث قطاع الذهب في كوت ديفوار." },
+        { title: "أخبار السوق", summary: "أسعار الذهب الدولية واتجاهات الطلب ومؤشرات السوق للذهب المادي الموثق." },
+        { title: "تعدين الذهب في كوت ديفوار", summary: "الإنتاج والتنظيم وتحديث قطاع الذهب في كوت ديفوار." },
         { title: "الإطار التنظيمي", summary: "متطلبات التتبع والوثائق وضوابط الجودة." },
-        { title: "التصدير والامتثال", summary: "مسارات التعدين والشهادة والتسليم الآمن ومراجعة الأطراف." },
+        { title: "التصدير والامتثال", summary: "مسارات المناجم والتحقق والتسليم الآمن ومراجعة الأطراف." },
       ],
     },
     reglementation: {
       title: "الإطار التنظيمي للذهب",
-      subtitle: "مراجع تنظيمية للمهنيين: المناجم والتجار والبيوت والمؤسسات والمشترون المحترفون.",
+      subtitle: "مراجع تنظيمية للمناجم والتجار ومكاتب الشراء والمؤسسات والمشترين المهنيين.",
       cards: [
         { title: "تنظيم التعدين", summary: "مبادئ الحوكمة والتراخيص والرقابة والتصريح." },
-        { title: "التتبع والتدقيق", summary: "معايير إثبات الأصل وسلسلة الحيازة لكل دفعة." },
+        { title: "التتبع والتدقيق", summary: "أدلة الأصل وسلسلة الحيازة الموثقة لكل دفعة." },
         { title: "امتثال KYC/AML", summary: "فحص الأطراف ومصدر الأموال والتحقق من الوثائق." },
         { title: "إطار التصدير", summary: "نقاط مراقبة الجودة والوثائق والجمارك قبل الشحن." },
       ],
@@ -346,10 +366,20 @@ const authorityTopicCopy: Record<string, Record<AuthorityTopicKey, { title: stri
       title: "صناعة تعدين الذهب",
       subtitle: "نظرة مهنية على صناعة الذهب الأفريقية مع تركيز على كوت ديفوار.",
       cards: [
-        { title: "مناطق الذهب", summary: "مناطق الإنتاج والقدرات وديناميكيات النمو الإقليمي." },
-        { title: "أطراف سلسلة القيمة", summary: "المناجم والمحللون وورش الختم وشركاء اللوجستيات وبيوت التوزيع." },
-        { title: "التحويل المحلي", summary: "خلق قيمة أفريقية عبر الشهادة والختم والتوزيع." },
+        { title: "مناطق الذهب", summary: "مناطق الإنتاج والقدرات والديناميكيات الإقليمية." },
+        { title: "أطراف سلسلة القيمة", summary: "المناجم والمحللون والورش وشركاء اللوجستيات وبيوت التوزيع." },
+        { title: "التحويل المحلي", summary: "خلق قيمة أفريقية عبر التوثيق والختم والمجوهرات والتوزيع." },
         { title: "ذكاء القطاع", summary: "المخاطر والفرص وإشارات السوق المفيدة للمهنيين." },
+      ],
+    },
+    pro: {
+      title: "المساحة المهنية",
+      subtitle: "مساحة مخصصة لمهنيي الذهب: المناجم والتجار ومكاتب الشراء والموردين والحرفيين والمشترين بالجملة الخاضعين للمراجعة.",
+      cards: [
+        { title: "توريد مهني", summary: "وصول منظم إلى أطراف مؤهلة مع وثائق تتبع." },
+        { title: "تنفيذ منضبط", summary: "مسارات طلب وتحقق وتسليم مناسبة للعمليات المهنية." },
+        { title: "إدارة المخاطر", summary: "أطر امتثال ومصدر أموال ومصدر بضائع وضوابط جودة." },
+        { title: "دعم مؤسسي", summary: "مرافقة البيوت والموردين والمشترين المهنيين حسب التوفر والامتثال." },
       ],
     },
   },
@@ -378,28 +408,7 @@ export function BdoIndustrieMinierePage() {
 }
 
 export function BdoEspaceProPage() {
-  return (
-    <BdoAuthorityLayout
-      title="Espace Pro"
-      subtitle="L'espace dedie aux professionnels de l'or : mines, negociants, maisons, investisseurs et acheteurs en gros."
-      cards={[
-        {
-          title: "Sourcing professionnel",
-          summary: "Acces structure a des contreparties qualifiees avec documentation de tracabilite.",
-        },
-        {
-          title: "Execution securisee",
-          summary: "Flux de commande, verification et livraison adaptes aux operations professionnelles.",
-        },
-        {
-          title: "Pilotage des risques",
-          summary: "Cadres de conformite et controles de qualite integres au parcours transactionnel.",
-        },
-        {
-          title: "Support institutionnel",
-          summary: "Accompagnement des maisons, fonds et acheteurs professionnels sur les transactions d'or.",
-        },
-      ]}
-    />
-  );
+  const { language } = useLocale();
+  const copy = getAuthorityTopic(language, "pro");
+  return <BdoAuthorityLayout title={copy.title} subtitle={copy.subtitle} cards={copy.cards} />;
 }

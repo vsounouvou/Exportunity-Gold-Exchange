@@ -50,6 +50,8 @@ function publicGoogleStatus(status: any) {
     dailyImportLimit: status.dailyImportLimit,
     rateLimitPerMinute: status.rateLimitPerMinute,
     setupRequired: Boolean(status.setupRequired),
+    placesSetupRequired: Boolean(status.placesSetupRequired),
+    mapSetupRequired: Boolean(status.mapSetupRequired),
     requiredEnv: status.requiredEnv,
     limits: status.limits,
   };

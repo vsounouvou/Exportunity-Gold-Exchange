@@ -42,6 +42,8 @@ function publicGoogleStatus(status: any) {
     mapIdPresent: Boolean(status.mapIdPresent),
     mapId: status.mapId || null,
     setupRequired: Boolean(status.setupRequired),
+    placesSetupRequired: Boolean(status.placesSetupRequired),
+    mapSetupRequired: Boolean(status.mapSetupRequired),
     requiredEnv: status.requiredEnv,
     limits: status.limits,
   };
@@ -52,7 +54,7 @@ async function getPublicMapsConfig(req?: any) {
   const browserApiKey = String(status.browserMapKey || "").trim();
   const mapIdLight = String(status.mapIdLight || status.mapId || "").trim();
   const mapIdDark = String(status.mapIdDark || status.mapId || mapIdLight || "").trim();
-  const canRenderGoogleMap = Boolean(browserApiKey && mapIdLight && status.enabled && !status.setupRequired);
+  const canRenderGoogleMap = Boolean(browserApiKey && mapIdLight);
   return {
     provider: canRenderGoogleMap ? "google" : "leaflet",
     enabled: canRenderGoogleMap,
@@ -69,7 +71,7 @@ async function getPublicMapsConfig(req?: any) {
       ? status.enabled
         ? "Google Maps can render in the browser and Google Places is configured for public business discovery."
         : "Google Maps can render in the browser with curated city business markers. Add GOOGLE_PLACES_API_KEY and enable Google Places import when you are ready to use official live business discovery."
-      : "Google Maps/Places setup is incomplete. Leaflet/OpenStreetMap and curated Abidjan/Cotonou data are active until a browser key, map ID, and Places API key are configured.",
+      : "Google Maps renderer setup is incomplete. Leaflet/OpenStreetMap and curated Abidjan/Cotonou data are active until a browser key and map ID are configured; Places import additionally requires a server Places key.",
   };
 }
 

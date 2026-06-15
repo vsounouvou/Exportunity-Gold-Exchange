@@ -28,6 +28,8 @@ type PlacesConfig = {
     browserApiKeyPresent?: boolean;
     mapIdPresent?: boolean;
     setupRequired?: boolean;
+    placesSetupRequired?: boolean;
+    mapSetupRequired?: boolean;
     requiredEnv?: string[];
   };
   message?: string;
@@ -195,12 +197,12 @@ export default function AdminGooglePlacesIntegrationPage() {
               <div className="text-xs font-black uppercase tracking-[0.28em] text-[#F5A623]">Settings / Integrations</div>
               <h1 className="mt-2 text-3xl font-black tracking-tight">Google Maps / Places</h1>
               <p className="mt-2 max-w-3xl text-sm leading-relaxed text-slate-600">
-                Configure the real map renderer and official Google Places lead engine for Exportunity marketplace, wholesale, and Bourse PME discovery. Use production environment variables or the secured admin settings below; full server Places keys are never returned to the browser.
+                Configure the real Google Maps renderer and official Google Places lead engine for Exportunity marketplace, wholesale, and export-ready seller discovery. Maps rendering and Places import are separate: the map needs a browser key plus map ID; Places import needs a server Places key.
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
               <Link href="/admin/pme-exchange/import">
-                <Button className="bg-[#F5A623] font-black text-slate-950 hover:bg-[#F9A800]">Open PME import</Button>
+                <Button className="bg-[#F5A623] font-black text-slate-950 hover:bg-[#F9A800]">Open lead import</Button>
               </Link>
               <a href="https://developers.google.com/maps/documentation/places/web-service/overview" target="_blank" rel="noreferrer">
                 <Button variant="outline" className="border-slate-200 bg-white text-slate-800">
@@ -217,13 +219,13 @@ export default function AdminGooglePlacesIntegrationPage() {
               <CardTitle className="flex items-center justify-between gap-3 text-slate-950">
                 Runtime status
                 <Badge className={google?.enabled ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-900"}>
-                  {google?.enabled ? "Places live" : "Setup required"}
+                  {config?.provider === "google" ? "Maps live" : google?.enabled ? "Places live" : "Setup required"}
                 </Badge>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              <StatusRow ok={config?.provider === "google"} label="Map renderer" value={config?.provider === "google" ? "Google Maps browser renderer active" : "Leaflet/OpenStreetMap fallback active"} />
-              <StatusRow ok={Boolean(config?.placesImportEnabled)} label="Business data source" value={config?.placesImportEnabled ? "Google Places import active" : "Curated city data active until Places import is enabled"} />
+              <StatusRow ok={config?.provider === "google"} label="Map renderer" value={config?.provider === "google" ? "Google Maps browser renderer active" : "Leaflet/OpenStreetMap fallback active until browser key + map ID are configured"} />
+              <StatusRow ok={Boolean(config?.placesImportEnabled)} label="Business data source" value={config?.placesImportEnabled ? "Google Places import active" : "Curated city data active until server Places key + enable flag are configured"} />
               <StatusRow ok={Boolean(google?.browserApiKeyPresent)} label="Browser Maps key" value={saved?.browserApiKeyMasked || maskKey(config?.browserApiKey)} />
               <StatusRow ok={Boolean(google?.placesApiKeyPresent)} label="Server Places key" value={saved?.placesApiKeyMasked || (google?.placesApiKeyPresent ? "Present in runtime configuration" : "Missing: GOOGLE_PLACES_API_KEY or saved admin key")} />
               <StatusRow ok={Boolean(google?.mapIdPresent)} label="Cloud map ID" value={saved?.mapId || config?.mapId || "Required for Google Advanced Markers"} />
@@ -253,7 +255,7 @@ export default function AdminGooglePlacesIntegrationPage() {
                 </div>
               </div>
               <div className="rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm leading-relaxed text-amber-950">
-                Server Places keys are saved masked and are never returned to the browser. Browser Maps keys are public by design and must be restricted by domain in Google Cloud.
+                Server Places keys are saved masked and are never returned to the browser. Browser Maps keys are public by design and must be restricted by domain in Google Cloud. A browser key plus map ID can activate Google Maps even before Places import is enabled.
               </div>
               <div className="grid gap-3 md:grid-cols-2">
                 <label className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-black text-slate-900">

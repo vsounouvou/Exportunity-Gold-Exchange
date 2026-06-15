@@ -85,15 +85,25 @@ export function getGooglePlacesConfig(): GooglePlacesConfig {
 
 export async function getGooglePlacesRuntimeConfig(scope?: string): Promise<GooglePlacesConfig> {
   const env = getGooglePlacesConfig();
-  if (env.enabled || !scope) return env;
+  if (!scope) return env;
+
   const saved = await getSavedGooglePlacesSettings(scope);
-  const placesApiKey = String(saved.placesApiKey || "").trim();
-  const browserMapKey = String(saved.browserApiKey || "").trim();
-  const mapId = String(saved.mapId || saved.mapIdLight || "").trim();
-  const mapIdDark = String(saved.mapIdDark || mapId || "").trim();
+  const savedPlacesApiKey = String(saved.placesApiKey || "").trim();
+  const savedBrowserMapKey = String(saved.browserApiKey || "").trim();
+  const savedMapId = String(saved.mapId || saved.mapIdLight || "").trim();
+  const placesApiKey = env.placesApiKey || savedPlacesApiKey;
+  const browserMapKey = env.browserMapKey || savedBrowserMapKey;
+  const mapId = env.mapId || savedMapId;
+  const mapIdDark = env.mapIdDark || String(saved.mapIdDark || mapId || "").trim();
   const savedEnabled = Boolean(saved.enabled);
+  const enabled = Boolean((env.enabled || savedEnabled) && placesApiKey);
+  const source: GooglePlacesConfig["source"] =
+    savedEnabled || savedPlacesApiKey || savedBrowserMapKey || savedMapId
+      ? "admin_settings"
+      : env.source;
+
   return {
-    enabled: savedEnabled && Boolean(placesApiKey),
+    enabled,
     apiKeyPresent: Boolean(placesApiKey),
     browserMapKeyPresent: Boolean(browserMapKey),
     mapIdPresent: Boolean(mapId),
@@ -108,7 +118,7 @@ export async function getGooglePlacesRuntimeConfig(scope?: string): Promise<Goog
     radiusMeters: Math.max(250, Number(saved.radiusMeters || env.radiusMeters || 7500)),
     dailyImportLimit: Math.max(1, Number(saved.dailyImportLimit || env.dailyImportLimit || 500)),
     rateLimitPerMinute: Math.max(1, Number(saved.rateLimitPerMinute || env.rateLimitPerMinute || 20)),
-    source: placesApiKey || browserMapKey || mapId ? "admin_settings" : env.source,
+    source,
   };
 }
 
@@ -218,11 +228,15 @@ export async function googlePlaceDetails(placeId: string, scope?: string) {
 
 export async function googlePlacesRuntimeStatus(scope?: string) {
   const cfg = await getGooglePlacesRuntimeConfig(scope);
+  const placesSetupRequired = !cfg.enabled;
+  const mapSetupRequired = !(cfg.browserMapKeyPresent && cfg.mapIdPresent);
   return {
     ...cfg,
     provider: cfg.enabled ? "google_places" : "seeded",
     limits: getGooglePlacesImportLimits("places"),
-    setupRequired: !cfg.enabled,
+    setupRequired: placesSetupRequired || mapSetupRequired,
+    placesSetupRequired,
+    mapSetupRequired,
     requiredEnv: [
       "GOOGLE_IMPORT_ENABLED=true or GOOGLE_PLACES_ENABLED=true",
       "GOOGLE_PLACES_API_KEY",

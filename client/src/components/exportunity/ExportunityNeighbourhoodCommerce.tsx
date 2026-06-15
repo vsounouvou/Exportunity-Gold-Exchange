@@ -1019,8 +1019,8 @@ export function ExportunityNeighbourhoodCommerce({
   const [orderDrafts, setOrderDrafts] = useState<Record<string, Record<string, OrderLine>>>({});
   const [placesStatus, setPlacesStatus] = useState<PublicPlacesState>({
     provider: "curated",
-    label: "OpenStreetMap + curated city data",
-    detail: "Google Maps and Google Places can replace or enrich this when configured.",
+    label: "OpenStreetMap active",
+    detail: "Curated Abidjan and Cotonou businesses are live. Google Maps/Places will appear here after production keys are configured.",
   });
   const [mapsConfig, setMapsConfig] = useState<PublicMapsConfig>({
     provider: "leaflet",
@@ -1029,7 +1029,7 @@ export function ExportunityNeighbourhoodCommerce({
     mapRenderer: "leaflet_openstreetmap",
     businessDataProvider: "curated_city_data",
     placesImportEnabled: false,
-    message: "OpenStreetMap is active until a browser-restricted Google Maps key is configured.",
+    message: "OpenStreetMap is active. Google Maps will appear after browser-restricted Google Maps and Places keys are configured.",
   });
   const [videoOpen, setVideoOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -1055,7 +1055,7 @@ export function ExportunityNeighbourhoodCommerce({
       ...wholesaleShops.slice(0, 6).map((shop) => ({
         ...shop,
         investmentReadiness: "Revenue signals",
-        merchantStory: `${shop.name} supplies SMEs and can be reviewed for structured commercial opportunities after verification.`,
+        merchantStory: `${shop.name} supplies local buyers and can be reviewed for structured commercial opportunities after verification.`,
       })),
     ],
     [retailShops, wholesaleShops],
@@ -1148,23 +1148,23 @@ export function ExportunityNeighbourhoodCommerce({
         if (body?.provider === "google") {
           setPlacesStatus({
             provider: "google",
-            label: "Google Places connected",
+            label: "Google Places active",
             detail: "Live public business listings are available.",
             lastSyncTime: body.lastSyncTime,
           });
         } else {
           setPlacesStatus({
             provider: "curated",
-            label: "OpenStreetMap + curated city data",
-            detail: body?.message || "Google Places is not configured yet. Leaflet/OpenStreetMap and seeded city data are active.",
+            label: "OpenStreetMap active",
+            detail: body?.message || "Curated Abidjan and Cotonou businesses are live. Google Places will replace or enrich them after production keys are configured.",
           });
         }
       } catch {
         if (!cancelled) {
           setPlacesStatus({
             provider: "curated",
-            label: "OpenStreetMap + curated city data",
-            detail: "Google Places endpoint is not available in this build. Leaflet/OpenStreetMap and seeded city data are active.",
+            label: "OpenStreetMap active",
+            detail: "Curated city businesses are live. Google Places endpoint could not be reached.",
           });
         }
       }

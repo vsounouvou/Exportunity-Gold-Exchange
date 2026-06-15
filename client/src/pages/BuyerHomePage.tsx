@@ -17409,16 +17409,16 @@ export function BuyerHomePage({
                       <Button
                         variant="ghost"
                         className={`h-9 px-3 text-gray-200 hover:text-white hover:bg-white/10 ${
-                          location === "/pme-exchange"
+                          location === "/ready-for-export"
                             ? "bg-[#D4AF37]/18 text-[#E8C873] hover:bg-[#D4AF37]/20"
                             : ""
                         }`}
-                        onClick={() => navigate("/pme-exchange")}
-                        aria-label="PME Exchange"
+                        onClick={() => navigate("/ready-for-export")}
+                        aria-label="Ready for export"
                       >
                         <BriefcaseBusiness className="h-4 w-4 mr-2" />
                         <span className="text-[12px] font-semibold">
-                          PME Exchange
+                          Ready for export
                         </span>
                       </Button>
                     ) : null}
@@ -23657,12 +23657,12 @@ export function BuyerHomePage({
               ? [
                   {
                     key: "pme-exchange",
-                    label: "PME Exchange",
+                    label: "Ready for export",
                     icon: <BriefcaseBusiness className="h-5 w-5" />,
-                    active: location === "/pme-exchange",
+                    active: location === "/ready-for-export",
                     disabled: false,
                     title: "",
-                    onSelect: () => navigate("/pme-exchange"),
+                    onSelect: () => navigate("/ready-for-export"),
                     activeClasses:
                       "border-[#D4AF37]/46 bg-[#D4AF37]/18 text-[#E8C873]",
                   },

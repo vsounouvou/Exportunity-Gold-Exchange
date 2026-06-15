@@ -265,7 +265,7 @@ const exchangePlaces: CommerceShop[] = [
     ...shop,
     trustStatus: index % 3 === 0 ? "Supplier verification" : shop.trustStatus || "Public listing",
     investmentReadiness: index % 4 === 0 ? "Internal review" : "Commercial opportunity",
-    merchantStory: `${shop.name} supplies local SMEs and can be reviewed for structured commercial opportunities after verification.`,
+    merchantStory: `${shop.name} supplies local buyers and can be reviewed for structured commercial opportunities after verification.`,
   })),
 ];
 
@@ -402,7 +402,7 @@ const districtLabels = [
 
 const cityQuickReplies = ["Find breakfast near me", "Fresh bread", "Coffee nearby", "Organic products", "Building materials", "Need delivery", "Send to family", "Find a pharmacy"];
 const wholesaleQuickReplies = ["Find suppliers near me", "Request a quote", "Building materials wholesale", "Machinery", "Food ingredients", "Packaging", "Logistics help", "Sell wholesale"];
-const exchangeQuickReplies = ["Show verified SMEs", "Fashion near Cocody", "Food businesses", "Women-led shops", "Investment review", "Contact a PME"];
+const exchangeQuickReplies = ["Ready for export", "Verified sellers", "Fashion sellers", "Food exporters", "Women-led shops", "Seller proof"];
 const shopQuickReplies = ["What should I buy first?", "Can you deliver?", "Can I see it live?", "Use my wallet", "Order a sample"];
 const businessQuickReplies = ["Summarize today", "What is low in stock?", "Show today's orders", "Plan a promo", "Assign delivery"];
 
@@ -416,7 +416,7 @@ const initialMessages: ConversationMessage[] = [
   {
     id: "location",
     agentId: "tassi",
-    content: "I can guide you through nearby shops, trusted SMEs, suppliers, delivery, and payment options around Cocody.",
+    content: "I can guide you through nearby shops, trusted sellers, suppliers, delivery, and payment options around Cocody.",
     createdAt: "now",
   },
 ];
@@ -475,7 +475,7 @@ function getCategoryIcon(category: string, wholesale: boolean, exchange = false)
 
 function getCommerceCategoryVisual(category: string, wholesale: boolean, exchange = false): { marker: string; Icon: LucideIcon; label: string } {
   const normalized = category.toLowerCase();
-  if (exchange) return { marker: "PME", Icon: BriefcaseBusiness, label: "PME" };
+  if (exchange) return { marker: "Export", Icon: BriefcaseBusiness, label: "Export" };
   if (normalized.includes("bakery") || normalized.includes("bread")) return { marker: "BR", Icon: Store, label: "Bakery" };
   if (normalized.includes("coffee") || normalized.includes("cafe")) return { marker: "CF", Icon: Coffee, label: "Coffee" };
   if (normalized.includes("restaurant")) return { marker: "FD", Icon: Utensils, label: "Food" };
@@ -493,7 +493,7 @@ function getCommerceCategoryVisual(category: string, wholesale: boolean, exchang
 
 function getCleanCategoryVisual(category: string, wholesale: boolean, exchange = false): { marker: string; Icon: LucideIcon; label: string } {
   const normalized = category.toLowerCase();
-  if (exchange) return { marker: "🏢", Icon: BriefcaseBusiness, label: "PME" };
+  if (exchange) return { marker: "🏢", Icon: BriefcaseBusiness, label: "Export" };
   if (normalized.includes("bakery") || normalized.includes("bread")) return { marker: "🥖", Icon: Store, label: "Bakery" };
   if (normalized.includes("coffee") || normalized.includes("cafe")) return { marker: "☕", Icon: Coffee, label: "Coffee" };
   if (normalized.includes("restaurant")) return { marker: "🍽", Icon: Utensils, label: "Food" };
@@ -528,7 +528,7 @@ function makeShopIcon(shop: CommerceShop, active: boolean, dark: boolean, wholes
   const meta = wholesale && shop.moq ? `${shop.moq} | ${shop.leadTime || shop.eta}` : `${shop.distance} | ${shop.eta}`;
 
   const status = exchange ? shop.investmentReadiness || "Internal review" : shop.openLabel;
-  const trust = exchange ? shop.trustStatus || "PME profile" : shop.trustStatus || "Nearby";
+  const trust = exchange ? shop.trustStatus || "Export-ready profile" : shop.trustStatus || "Nearby";
 
   return L.divIcon({
     className: "exportunity-shop-marker",
@@ -1019,7 +1019,7 @@ function OpportunityCard({
           <div className="flex items-center justify-between pt-1">
             <span className={cn("text-xs font-bold", dark ? "text-white/52" : "text-slate-500")}>{shop.trustStatus || "Public listing"}</span>
             <span className="rounded-full bg-[#F5A623] px-3 py-1.5 text-xs font-black text-[#07111F]">
-              {exchange ? "View PME" : wholesale ? "View supplier" : "Enter shop"}
+              {exchange ? "View seller" : wholesale ? "View supplier" : "Enter shop"}
             </span>
           </div>
         </div>
@@ -1188,8 +1188,8 @@ export function ExportunityConversationalCommerce({
   const [messages, setMessages] = useState<ConversationMessage[]>(() =>
     initialSpace === "exchange"
       ? [
-          { id: "exchange-hi", agentId: "tassi", content: "I'm Tassi. Welcome to the Bourse de PME discovery map.", createdAt: "now" },
-          { id: "exchange-context", agentId: "tassi", content: "I can help you discover trusted local SMEs, read merchant stories, and identify businesses ready for internal verification before any investment feature is shown.", createdAt: "now" },
+          { id: "exchange-hi", agentId: "tassi", content: "I'm Tassi. Welcome to Ready for export.", createdAt: "now" },
+          { id: "exchange-context", agentId: "tassi", content: "I can help you discover trusted sellers, read merchant stories, and identify products ready for export. Finance stays internal-review and compliance-gated.", createdAt: "now" },
         ]
       : initialSpace === "wholesale"
       ? [
@@ -1253,7 +1253,7 @@ export function ExportunityConversationalCommerce({
   const mapDominant = shellMode === "mapDominant";
   const mapHeaderTitle = exchange ? "Ready for export" : wholesale ? "Wholesale suppliers" : "Nearby products";
   const mapHeaderInstruction = exchange
-    ? "Review verified PME profiles, export readiness, and trust signals before any next step."
+    ? "Review export-ready sellers, products, owner proof, and trust signals before any next step."
     : wholesale
       ? "Tap a supplier to inspect MOQ, lead time, logistics, and request a quote."
       : "Tap a shop to enter, browse products, and place an order with the shop agent.";
@@ -1264,7 +1264,7 @@ export function ExportunityConversationalCommerce({
       : wholesale
         ? "Search suppliers, bulk products, MOQ, or logistics..."
         : exchange
-          ? "Search verified PME profiles, export products, or trust signals..."
+          ? "Search export-ready sellers, products, or trust signals..."
           : "Search products, shops, delivery, or suppliers nearby...";
 
   useEffect(() => {
@@ -1384,7 +1384,7 @@ export function ExportunityConversationalCommerce({
   }, [initialSpace]);
 
   useEffect(() => {
-    const pageLabel = activeShop ? `${activeShop.name} conversation` : space === "business" ? "My Business group chat" : exchange ? "Bourse de PME map" : wholesale ? "Wholesale supplier map" : "Exportunity map";
+    const pageLabel = activeShop ? `${activeShop.name} conversation` : space === "business" ? "My Business group chat" : exchange ? "Ready for export map" : wholesale ? "Wholesale supplier map" : "Exportunity map";
     window.dispatchEvent(
       new CustomEvent("chairman-dock:context", {
         detail: {
@@ -1522,7 +1522,7 @@ export function ExportunityConversationalCommerce({
     if (flow) {
       replyAsTassi(flow.assistantPrompt);
     } else {
-      replyAsTassi(needsExchange ? "I highlighted nearby SMEs with trust signals, neighbourhood story, and internal investment-readiness status. Tap one to inspect the merchant before taking any next step." : needsWholesale ? "I found verified suppliers around Abidjan. You can compare MOQ, lead time, distance, and ask for a quote through the conversation." : "I found nearby options and highlighted the best matches on the map. Tap a marker to speak with that shop.");
+      replyAsTassi(needsExchange ? "I highlighted nearby export-ready sellers with trust signals, neighbourhood story, and internal finance-readiness status. Tap one to inspect products and proof before taking any next step." : needsWholesale ? "I found verified suppliers around Abidjan. You can compare MOQ, lead time, distance, and ask for a quote through the conversation." : "I found nearby options and highlighted the best matches on the map. Tap a marker to speak with that shop.");
     }
     if (lower.includes("breakfast") || lower.includes("bread") || lower.includes("coffee") || needsWholesale || needsExchange || lower.includes("material")) {
       window.setTimeout(() => setActiveShop(target), 520);
@@ -1538,12 +1538,12 @@ export function ExportunityConversationalCommerce({
       pushMessage({
         agentId: "tassi",
         content: exchange
-          ? `I found ${shop.name}. ${shop.trustStatus || "PME profile"} and ${shop.investmentReadiness || "internal review"} are visible.`
+          ? `I found ${shop.name}. ${shop.trustStatus || "export-ready profile"} and ${shop.investmentReadiness || "internal review"} are visible.`
           : `I found ${shop.name}. ${shop.moq || "Bulk terms available"} and ${shop.leadTime || "quote desk open"}.`,
       });
       replyAsTassi(
         exchange
-          ? `${shop.merchantStory || `${shop.name} has a neighbourhood business profile.`} We can review the profile, contact status, and compliance-gated eligibility before any public investment action.`
+          ? `${shop.merchantStory || `${shop.name} has a neighbourhood business profile.`} We can review the seller profile, contact status, export readiness, and compliance-gated eligibility before any finance action.`
           : `Welcome to ${shop.name}. I can share stock, MOQ, quote timing, and logistics options. What quantity do you need?`,
         shop,
       );
@@ -1634,7 +1634,7 @@ export function ExportunityConversationalCommerce({
             ["Map", MapIcon, "city"],
             ["Shops", Store, "shop"],
             ["Wholesale", Warehouse, "wholesale"],
-            ["PME Exchange", Search, "exchange"],
+            ["Ready for export", Search, "exchange"],
             ["My Business", BriefcaseBusiness, "business"],
             ["Orders", Truck, "orders"],
             ["Wallet", Package, "wallet"],
@@ -1651,7 +1651,7 @@ export function ExportunityConversationalCommerce({
                 } else if (key === "exchange") {
                   setSpace("exchange");
                   setActiveShop(null);
-                  onNavigate?.("/pme-exchange");
+                  onNavigate?.("/ready-for-export");
                 } else if (key === "shop") {
                   setSpace("city");
                   setActiveShop(null);
@@ -1719,7 +1719,7 @@ export function ExportunityConversationalCommerce({
               action: () => {
                 setSpace("exchange");
                 setActiveShop(null);
-                onNavigate?.("/pme-exchange");
+                onNavigate?.("/ready-for-export");
               },
             },
             { key: "business", label: "Business", icon: Store, action: () => setSpace("business") },
@@ -1808,7 +1808,7 @@ export function ExportunityConversationalCommerce({
                             onClick={() => selectShop(shop)}
                             className="mt-3 rounded-md border border-slate-200 px-3 py-2 text-sm font-semibold hover:border-[#F5A623] hover:text-[#F5A623]"
                           >
-                            {exchange ? "View PME" : wholesale ? "View supplier" : "Enter shop"}
+                            {exchange ? "View seller" : wholesale ? "View supplier" : "Enter shop"}
                           </button>
                         </div>
                       </Popup>
@@ -1821,7 +1821,7 @@ export function ExportunityConversationalCommerce({
             <CinematicCloudLayer dark={dark} mode={cloudMode} />
             <div className="pointer-events-none absolute left-4 top-4 z-[4] max-w-[560px]">
               <div className={cn("rounded-2xl border px-4 py-3 backdrop-blur-xl", dark ? "border-white/10 bg-[#07111F]/72 text-white" : "border-white/90 bg-white/82 text-slate-950 shadow-[0_18px_44px_rgba(15,23,42,.12)]")}>
-                <div className="text-xs font-black uppercase tracking-[0.24em] text-[#F5A623]">{exchange ? "Bourse de PME" : wholesale ? "Wholesale map" : "Live neighbourhood map"}</div>
+                <div className="text-xs font-black uppercase tracking-[0.24em] text-[#F5A623]">{exchange ? "Ready for export" : wholesale ? "Wholesale map" : "Live neighbourhood map"}</div>
                 <div className="mt-1 text-lg font-black">{visiblePlaces.length} {mapHeaderTitle} around Cocody</div>
                 <div className={cn("mt-1 text-xs font-semibold", dark ? "text-white/62" : "text-slate-600")}>{mapHeaderInstruction}</div>
                 <div className={cn("mt-3 inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[11px] font-black", googleMapEnabled || activeData.provider === "google" ? "border-emerald-300 bg-emerald-50 text-emerald-800" : dark ? "border-white/12 bg-white/8 text-white/78" : "border-slate-200 bg-white/86 text-slate-700")}>
@@ -1837,7 +1837,7 @@ export function ExportunityConversationalCommerce({
             </div>
             <div className="absolute left-4 top-32 z-[4] flex max-w-[calc(100%-2rem)] gap-2 overflow-x-auto pb-1">
               {(exchange
-                ? ["Verified SMEs", "Fashion", "Food", "Women-led", "Revenue signals", "Near Cocody"]
+                ? ["Verified sellers", "Fashion", "Food", "Women-led", "Proof signals", "Near Cocody"]
                 : wholesale
                   ? ["Suppliers", "Request a quote", "Materials", "Machinery", "Packaging", "Logistics"]
                   : ["Breakfast", "Fresh bread", "Coffee", "Groceries", "Building materials", "Send to family"]
@@ -2023,7 +2023,7 @@ export function ExportunityConversationalCommerce({
               <div className="font-black">{shopMode ? visibleConversationAgent.name : "Tassi"}</div>
               <div className={cn("text-xs font-semibold", dark ? "text-white/58" : "text-slate-500")}>
                 {exchange
-                  ? "PME scout and trust guide"
+                  ? "Export scout and trust guide"
                   : wholesale
                     ? "Wholesale sourcing concierge"
                     : space === "business"
@@ -2037,7 +2037,7 @@ export function ExportunityConversationalCommerce({
           </div>
           {exchange ? (
             <div className={cn("mb-3 rounded-2xl border p-3 text-xs leading-relaxed", dark ? "border-[#F5A623]/24 bg-[#F5A623]/10 text-white/78" : "border-[#F5A623]/30 bg-[#F5A623]/10 text-slate-700")}>
-              Bourse de PME is discovery and verification first. Investment actions stay internal-review and compliance-gated.
+              Ready for export is discovery and verification first. Finance actions stay internal-review and compliance-gated.
             </div>
           ) : null}
           {shopMode && activeShop ? (
@@ -2070,7 +2070,7 @@ export function ExportunityConversationalCommerce({
               <div className="text-[11px] font-black uppercase tracking-[0.18em] text-[#F5A623]">Current context</div>
               <div className={cn("mt-2 text-sm leading-relaxed", dark ? "text-white/64" : "text-slate-600")}>
                 {exchange
-                  ? "Tassi is scouting PME profiles by trust, story, and verification status."
+                  ? "Tassi is scouting export-ready sellers by trust, story, and verification status."
                   : wholesale
                     ? "Tassi is comparing suppliers, MOQ, lead time, and logistics around Abidjan."
                   : "Tassi is helping you discover nearby shops and services around Cocody."}

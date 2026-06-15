@@ -158,7 +158,7 @@ const businessAgents: CommerceAgent[] = [
 
 const cityQuickReplies = ["Find breakfast near me", "Fresh bread", "Coffee nearby", "Building materials", "Need delivery", "Send to family"];
 const wholesaleQuickReplies = ["Find suppliers near me", "Request a quote", "Building materials wholesale", "Machinery", "Packaging", "Logistics help"];
-const exchangeQuickReplies = ["Verified SMEs", "Ready for export", "Food businesses", "Women-led shops", "Revenue signals", "Compliance review"];
+const exchangeQuickReplies = ["Ready for export", "Verified sellers", "Food exporters", "Women-led shops", "Seller proof", "Compliance review"];
 const shopQuickReplies = ["What should I buy first?", "Can you deliver?", "Use my wallet", "Can I see it live?", "Suggest a bundle"];
 const businessQuickReplies = ["What needs attention?", "Low stock", "Today sales", "Assign delivery", "Plan a promo"];
 
@@ -337,7 +337,7 @@ type CategoryVisualKind =
 
 function visualForCategory(category: string, wholesale: boolean, exchange: boolean): { label: string; marker: string; Icon: LucideIcon; kind: CategoryVisualKind } {
   const value = category.toLowerCase();
-  if (exchange) return { label: "PME", marker: "PME", Icon: BriefcaseBusiness, kind: "pme" };
+  if (exchange) return { label: "Export", marker: "Export", Icon: BriefcaseBusiness, kind: "pme" };
   if (value.includes("bakery") || value.includes("bread")) return { label: "Bakery", marker: "Bakery", Icon: Store, kind: "bakery" };
   if (value.includes("coffee") || value.includes("cafe")) return { label: "Coffee", marker: "Coffee", Icon: Coffee, kind: "coffee" };
   if (value.includes("restaurant")) return { label: "Food", marker: "Food", Icon: Utensils, kind: "food" };
@@ -974,7 +974,7 @@ function LiveMapPane({
       <div className={cn("absolute left-4 right-4 top-4 z-[401] rounded-2xl border p-3 backdrop-blur-xl", dark ? "border-white/12 bg-[#07111F]/78 text-white" : "border-white/90 bg-white/88 text-slate-950 shadow-[0_16px_36px_rgba(15,23,42,.12)]")}>
         <div className="flex items-center justify-between gap-3">
           <div>
-            <div className="text-[11px] font-black uppercase tracking-[0.2em] text-[#F5A623]">{exchange ? "Bourse de PME" : wholesale ? "Wholesale map" : "Neighbourhood map"}</div>
+            <div className="text-[11px] font-black uppercase tracking-[0.2em] text-[#F5A623]">{exchange ? "Ready for export" : wholesale ? "Wholesale map" : "Neighbourhood map"}</div>
             <div className="mt-1 text-sm font-black">{places.length} live locations around Cocody</div>
           </div>
           <Navigation className="h-5 w-5 text-[#F5A623]" />
@@ -1176,7 +1176,7 @@ export function ExportunityNeighbourhoodCommerce({
   }, [wholesale]);
 
   useEffect(() => {
-    const pageLabel = shopMode && activeShop ? `${activeShop.name} shop` : business ? "My Business" : exchange ? "Bourse de PME" : wholesale ? "Wholesale" : "Explore";
+    const pageLabel = shopMode && activeShop ? `${activeShop.name} shop` : business ? "My Business" : exchange ? "Ready for export" : wholesale ? "Wholesale" : "Explore";
     window.dispatchEvent(
       new CustomEvent("chairman-dock:context", {
         detail: {
@@ -1205,7 +1205,7 @@ export function ExportunityNeighbourhoodCommerce({
     setActiveProductDetail(null);
     setAssistantCollapsed(false);
     if (nextSpace === "wholesale") onNavigate?.("/wholesale");
-    if (nextSpace === "exchange") onNavigate?.("/pme-exchange");
+    if (nextSpace === "exchange") onNavigate?.("/ready-for-export");
     if (nextSpace === "city") onNavigate?.("/marketplace");
   };
 
@@ -1337,7 +1337,7 @@ export function ExportunityNeighbourhoodCommerce({
     if (lower.includes("pme") || lower.includes("export") || lower.includes("invest") || lower.includes("verified")) {
       setSpace("exchange");
       setActiveShop(exchangeShops[0]);
-      replyFrom(tassi, "I switched to Bourse de PME. These are commercial profiles with trust and verification status; investment remains internal-review and compliance-gated.");
+      replyFrom(tassi, "I switched to Ready for export. These sellers show products, owner proof, trust signals, and compliance status before any finance is reviewed internally.");
       return;
     }
 
@@ -1432,9 +1432,9 @@ export function ExportunityNeighbourhoodCommerce({
       onClick: () => openSpace("wholesale"),
     },
     {
-      label: "PME Exchange",
-      eyebrow: "Verified sellers",
-      description: "Products, owners, trust proof, and compliance status.",
+      label: "Ready for export",
+      eyebrow: "Export sellers",
+      description: "Products, owners, proof, and compliance status.",
       Icon: BriefcaseBusiness,
       active: exchange,
       onClick: () => openSpace("exchange"),
@@ -1445,7 +1445,7 @@ export function ExportunityNeighbourhoodCommerce({
         ["Export-ready products", Package],
         ["Food sellers", Utensils],
         ["Fashion sellers", Shirt],
-        ["Verified SMEs", BriefcaseBusiness],
+        ["Verified sellers", BriefcaseBusiness],
         ["Compliance review", FileText],
       ]
     : wholesale
@@ -1524,7 +1524,7 @@ export function ExportunityNeighbourhoodCommerce({
           <div className="min-w-0">
             <div className="truncate text-lg font-black">{visibleAgent.name}</div>
             <div className={cn("text-xs font-bold", dark ? "text-white/58" : "text-slate-500")}>
-              {shopMode ? `${visibleAgent.role} for ${activeShop?.name}` : business ? "Business operating agent" : wholesale ? "Wholesale sourcing agent" : exchange ? "PME scout" : "Concierge"}
+              {shopMode ? `${visibleAgent.role} for ${activeShop?.name}` : business ? "Business operating agent" : wholesale ? "Wholesale sourcing agent" : exchange ? "Export scout" : "Concierge"}
             </div>
           </div>
           <span className="ml-auto rounded-full bg-emerald-500/12 px-2 py-1 text-[11px] font-black text-emerald-600">Online</span>
@@ -1545,7 +1545,7 @@ export function ExportunityNeighbourhoodCommerce({
               : wholesale
                 ? "Find suppliers, request quotes, and keep outreach approval-gated."
                 : exchange
-                  ? "Review PME sellers, products, trust proof, and compliance status. Finance stays internal-review only."
+                  ? "Review export-ready sellers, products, trust proof, and compliance status. Finance stays internal-review only."
                   : "Tassi helps you find products faster. The center stays focused on products, shops, prices, and delivery."}
         </div>
       </div>
@@ -1975,13 +1975,13 @@ export function ExportunityNeighbourhoodCommerce({
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="rounded-full bg-[#F5A623] px-3 py-1 text-[11px] font-black uppercase tracking-wide text-[#07111F]">
-                  {exchange ? "Bourse de PME" : wholesale ? "Wholesale" : "Retail marketplace"}
+                  {exchange ? "Ready for export" : wholesale ? "Wholesale" : "Retail marketplace"}
                 </span>
                 <span className={cn("rounded-full border px-3 py-1 text-[11px] font-black", dark ? "border-white/12 text-white/62" : "border-slate-200 text-slate-600")}>Cocody, Abidjan</span>
                 {isAdmin ? <span className="rounded-full bg-emerald-500/12 px-3 py-1 text-[11px] font-black text-emerald-600">Admin view</span> : null}
               </div>
               <h1 className="mt-2 max-w-4xl text-lg font-black leading-tight tracking-tight md:text-2xl">
-                {exchange ? "Browse export-ready PME products and sellers." : wholesale ? "Source suppliers, quantities, MOQ, and routes." : "Buy nearby products from real local shops."}
+                {exchange ? "Browse export-ready products and sellers." : wholesale ? "Source suppliers, quantities, MOQ, and routes." : "Buy nearby products from real local shops."}
               </h1>
               <p className={cn("mt-1 hidden max-w-3xl text-sm leading-relaxed sm:block", dark ? "text-white/64" : "text-slate-600")}>
                 {exchange
@@ -1993,7 +1993,7 @@ export function ExportunityNeighbourhoodCommerce({
             </div>
             <div className={cn("hidden shrink-0 grid-cols-3 gap-2 rounded-[18px] border px-2 py-2 text-center sm:grid md:px-3", dark ? "border-white/10 bg-white/[0.04]" : "border-slate-200 bg-slate-50")}>
               {[
-                [String(visiblePlaces.length), exchange ? "PME sellers" : wholesale ? "suppliers" : "shops"],
+                [String(visiblePlaces.length), exchange ? "sellers" : wholesale ? "suppliers" : "shops"],
                 [String(commerceProducts.length), exchange ? "products" : wholesale ? "offers" : "products"],
                 [googleMapReady ? "Google" : "OSM", "map"],
               ].map(([value, label]) => (
@@ -2056,7 +2056,7 @@ export function ExportunityNeighbourhoodCommerce({
           <section className={cn("grid gap-2 rounded-[22px] border p-3 md:grid-cols-4", dark ? "border-white/12 bg-[#07111F] text-white" : "border-slate-200 bg-white text-slate-950 shadow-[0_12px_26px_rgba(15,23,42,.06)]")}>
             {[
               {
-                label: "PME coverage",
+                label: "Seller coverage",
                 value: `${visiblePlaces.length} profiles`,
                 detail: "People, place, proof, products",
                 ok: true,
@@ -2070,7 +2070,7 @@ export function ExportunityNeighbourhoodCommerce({
               {
                 label: "Google Places",
                 value: mapsConfig.placesImportEnabled ? "Import live" : "Curated data",
-                detail: mapsConfig.placesImportEnabled ? "Public listings can enrich PME leads" : "Server Places key/import env still required",
+                detail: mapsConfig.placesImportEnabled ? "Public listings can enrich seller leads" : "Server Places key/import env still required",
                 ok: Boolean(mapsConfig.placesImportEnabled),
               },
               {
@@ -2124,7 +2124,7 @@ export function ExportunityNeighbourhoodCommerce({
                 {wholesale ? (
                   <button type="button" onClick={() => handleAsk("Request a quote")} className="flex-1 rounded-2xl bg-[#F5A623] px-4 py-3 text-sm font-black text-[#07111F]">Request quote</button>
                 ) : exchange ? (
-                  <button type="button" onClick={() => handleAsk("Review this PME")} className="flex-1 rounded-2xl bg-[#F5A623] px-4 py-3 text-sm font-black text-[#07111F]">Review profile</button>
+                  <button type="button" onClick={() => handleAsk("Review this seller")} className="flex-1 rounded-2xl bg-[#F5A623] px-4 py-3 text-sm font-black text-[#07111F]">Review profile</button>
                 ) : (
                   <>
                     <button type="button" onClick={() => enterShop(activeShop)} className="flex-1 rounded-2xl bg-[#F5A623] px-4 py-3 text-sm font-black text-[#07111F]">Enter shop</button>
@@ -2140,7 +2140,7 @@ export function ExportunityNeighbourhoodCommerce({
         <section>
           <div className="mb-3 flex items-end justify-between gap-4">
             <div>
-              <h2 className="text-xl font-black">{wholesale ? "Supplier offers" : exchange ? "PME profiles" : "Products near you"}</h2>
+              <h2 className="text-xl font-black">{wholesale ? "Supplier offers" : exchange ? "Export-ready sellers" : "Products near you"}</h2>
               <p className={cn("text-sm", dark ? "text-white/56" : "text-slate-600")}>
                 {wholesale ? "Quote-ready suppliers with MOQ and lead time." : exchange ? "People, place, proof, and compliance status before any finance." : "Start with products, then enter the shop when you are ready."}
               </p>
@@ -2186,7 +2186,7 @@ export function ExportunityNeighbourhoodCommerce({
                       <p className={cn("mt-1 line-clamp-1 text-[11px] leading-relaxed md:mt-2 md:text-xs", dark ? "text-white/56" : "text-slate-600")}>{product.description}</p>
                       <div className="mt-2 flex items-center justify-between gap-3 md:mt-4">
                         <span className={cn("text-xs font-bold", dark ? "text-white/52" : "text-slate-500")}>{shop.category} - {shop.openLabel}</span>
-                        <span className="rounded-full bg-[#F5A623]/16 px-2.5 py-1 text-[11px] font-black text-[#F5A623] md:px-3 md:py-1.5 md:text-xs">{wholesale ? "Quote" : exchange ? "Review PME" : "Ready"}</span>
+                        <span className="rounded-full bg-[#F5A623]/16 px-2.5 py-1 text-[11px] font-black text-[#F5A623] md:px-3 md:py-1.5 md:text-xs">{wholesale ? "Quote" : exchange ? "Review seller" : "Ready"}</span>
                       </div>
                       {!wholesale && !exchange ? (
                         <div className="mt-2 grid grid-cols-[44px_minmax(0,1fr)] gap-2 md:mt-3">
@@ -2263,7 +2263,7 @@ export function ExportunityNeighbourhoodCommerce({
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
                           <div className="text-[10px] font-black uppercase tracking-[0.18em] text-[#F5A623]">
-                            {wholesale ? "Selected supplier" : exchange ? "Selected PME" : "Selected shop"}
+                            {wholesale ? "Selected supplier" : exchange ? "Selected seller" : "Selected shop"}
                           </div>
                           <h2 className="mt-1 truncate text-xl font-black">{activeShop.name}</h2>
                           <p className={cn("mt-1 truncate text-sm font-semibold", dark ? "text-white/62" : "text-slate-600")}>{activeShop.category}</p>
@@ -2306,8 +2306,8 @@ export function ExportunityNeighbourhoodCommerce({
                           </>
                         ) : exchange ? (
                           <>
-                            <button type="button" onClick={() => handleAsk("Review this PME")} className="h-10 rounded-2xl bg-[#F5A623] text-sm font-black text-[#07111F]">Review profile</button>
-                            <button type="button" onClick={() => setAssistantCollapsed(false)} className={cn("h-10 rounded-2xl border text-sm font-black", dark ? "border-white/14 text-white/74 hover:bg-white/8" : "border-slate-200 text-slate-700 hover:bg-slate-50")}>PME analyst</button>
+                            <button type="button" onClick={() => handleAsk("Review this seller")} className="h-10 rounded-2xl bg-[#F5A623] text-sm font-black text-[#07111F]">Review profile</button>
+                            <button type="button" onClick={() => setAssistantCollapsed(false)} className={cn("h-10 rounded-2xl border text-sm font-black", dark ? "border-white/14 text-white/74 hover:bg-white/8" : "border-slate-200 text-slate-700 hover:bg-slate-50")}>Export analyst</button>
                           </>
                         ) : (
                           <>
@@ -2324,10 +2324,10 @@ export function ExportunityNeighbourhoodCommerce({
                   <div className="flex items-center justify-between gap-3 border-b border-current/10 px-4 py-3">
                     <div>
                       <div className="text-[10px] font-black uppercase tracking-[0.18em] text-[#F5A623]">
-                        {wholesale ? "Supplier map" : exchange ? "PME map" : "Products on this map"}
+                        {wholesale ? "Supplier map" : exchange ? "Export seller map" : "Products on this map"}
                       </div>
                       <div className="mt-0.5 text-sm font-black">
-                        {wholesale ? "Tap a supplier for MOQ and quote flow" : exchange ? "Tap a PME for products, owner, and proof" : "Tap a product or marker to enter the shop"}
+                        {wholesale ? "Tap a supplier for MOQ and quote flow" : exchange ? "Tap a seller for products, owner, and proof" : "Tap a product or marker to enter the shop"}
                       </div>
                     </div>
                     <MapPin className="h-5 w-5 shrink-0 text-[#F5A623]" />
@@ -2436,7 +2436,7 @@ function Header({
     ["Retail", "city", Store],
     ["Map", "city", MapIcon],
     ["Wholesale", "wholesale", Warehouse],
-    ["PME Exchange", "exchange", BriefcaseBusiness],
+    ["Ready for export", "exchange", BriefcaseBusiness],
     ["My Business", "business", BriefcaseBusiness],
   ];
   return (
@@ -2455,9 +2455,9 @@ function Header({
                 onNavigate?.("/map");
                 return;
               }
-              if (label === "PME Exchange") {
+              if (label === "Ready for export") {
                 setSpace("exchange");
-                onNavigate?.("/pme-exchange");
+                onNavigate?.("/ready-for-export");
                 return;
               }
               setSpace(space);

@@ -102,7 +102,7 @@ type ShopOrderLine = {
   quantity: number;
 };
 
-export type ExportunityShellMode = "commerce" | "mapDominant";
+export type ExportunityShellMode = "commerce" | "mapDominant" | "mapFull";
 
 type ExportunityConversationalCommerceProps = {
   onNavigate?: (href: string) => void;

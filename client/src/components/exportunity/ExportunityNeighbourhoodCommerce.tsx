@@ -1150,7 +1150,8 @@ export function ExportunityNeighbourhoodCommerce({
   const exchange = space === "exchange";
   const business = space === "business";
   const shopMode = space === "shop" && !!activeShop;
-  const mapDominant = shellMode === "mapDominant";
+  const mapFull = shellMode === "mapFull";
+  const mapDominant = shellMode === "mapDominant" || mapFull;
 
   const retailShops = useMemo(() => getSeededBusinessPlaces({ city: "Abidjan", type: "marketplace" }).map(seededToShop), []);
   const wholesaleShops = useMemo(() => getSeededBusinessPlaces({ city: "Abidjan", type: "wholesale" }).map(seededToShop), []);
@@ -1524,7 +1525,7 @@ export function ExportunityNeighbourhoodCommerce({
   };
 
   const commerceProducts = visiblePlaces.flatMap((shop) => productsForShop(shop).slice(0, 2).map((product) => ({ shop, product }))).slice(0, wholesale ? 8 : 12);
-  const mapShelfProducts = commerceProducts.slice(0, 4);
+  const mapShelfProducts = mapFull ? [] : commerceProducts.slice(0, 4);
   const modeTabs: Array<{ label: string; eyebrow: string; description: string; Icon: LucideIcon; active: boolean; onClick: () => void }> = [
     {
       label: "Retail products",
@@ -2227,8 +2228,8 @@ export function ExportunityNeighbourhoodCommerce({
                   <button type="button" onClick={() => handleAsk("Review this seller")} className="flex-1 rounded-2xl bg-[#F5A623] px-4 py-3 text-sm font-black text-[#07111F]">Review profile</button>
                 ) : (
                   <>
-                    <button type="button" onClick={() => enterShop(activeShop)} className="flex-1 rounded-2xl bg-[#F5A623] px-4 py-3 text-sm font-black text-[#07111F]">Open products</button>
-                    <button type="button" onClick={() => quickAddProduct(activeShop, productsForShop(activeShop)[0])} className={cn("flex-1 rounded-2xl border px-4 py-3 text-sm font-black", dark ? "border-white/14 text-white/72" : "border-slate-200 bg-white text-slate-700")}>Add top product</button>
+                    <button type="button" onClick={() => enterShop(activeShop)} className="flex-1 rounded-2xl bg-[#F5A623] px-4 py-3 text-sm font-black text-[#07111F]">Enter shop</button>
+                    <button type="button" onClick={() => setAssistantCollapsed(false)} className={cn("flex-1 rounded-2xl border px-4 py-3 text-sm font-black", dark ? "border-white/14 text-white/72" : "border-slate-200 bg-white text-slate-700")}>Ask Front Desk</button>
                   </>
                 )}
                 <button type="button" onClick={() => setActiveShop(null)} className={cn("rounded-2xl border px-4 py-3 text-sm font-black", dark ? "border-white/14 text-white/72" : "border-slate-200 bg-white text-slate-700")}>Close</button>
@@ -2294,7 +2295,7 @@ export function ExportunityNeighbourhoodCommerce({
                             <Plus className="h-4 w-4" />
                           </button>
                           <button type="button" onClick={(event) => { event.stopPropagation(); enterShop(shop); }} className={cn("flex h-9 items-center justify-center rounded-2xl border text-xs font-black md:h-10 md:text-sm", dark ? "border-white/14 text-white/74 hover:bg-white/8" : "border-slate-200 text-slate-700 hover:bg-slate-50")}>
-                            Open products
+                            Enter shop
                           </button>
                         </div>
                       ) : null}
@@ -2410,15 +2411,15 @@ export function ExportunityNeighbourhoodCommerce({
                           </>
                         ) : (
                           <>
-                            <button type="button" onClick={() => enterShop(activeShop)} className="h-10 rounded-2xl bg-[#F5A623] text-sm font-black text-[#07111F]">Open products</button>
-                            <button type="button" onClick={() => quickAddProduct(activeShop, productsForShop(activeShop)[0])} className={cn("h-10 rounded-2xl border text-sm font-black", dark ? "border-white/14 text-white/74 hover:bg-white/8" : "border-slate-200 text-slate-700 hover:bg-slate-50")}>Add top product</button>
+                            <button type="button" onClick={() => enterShop(activeShop)} className="h-10 rounded-2xl bg-[#F5A623] text-sm font-black text-[#07111F]">Enter shop</button>
+                            <button type="button" onClick={() => setAssistantCollapsed(false)} className={cn("h-10 rounded-2xl border text-sm font-black", dark ? "border-white/14 text-white/74 hover:bg-white/8" : "border-slate-200 text-slate-700 hover:bg-slate-50")}>Ask Front Desk</button>
                           </>
                         )}
                       </div>
                     </div>
                   </div>
                 </section>
-              ) : (
+              ) : mapShelfProducts.length ? (
                 <section className={cn("absolute bottom-5 left-5 z-[401] w-[min(620px,calc(100%-2.5rem))] overflow-hidden rounded-[24px] border backdrop-blur-xl lg:w-[560px] xl:w-[600px]", dark ? "border-white/12 bg-[#07111F]/86 text-white shadow-[0_22px_68px_rgba(0,0,0,.42)]" : "border-white/90 bg-white/90 text-slate-950 shadow-[0_20px_56px_rgba(15,23,42,.16)]")}>
                   <div className="flex items-center justify-between gap-3 border-b border-current/10 px-3.5 py-2.5">
                     <div>
@@ -2449,7 +2450,7 @@ export function ExportunityNeighbourhoodCommerce({
                     ))}
                   </div>
                 </section>
-              )}
+              ) : null}
             </div>
           )}
           {assistantPane}

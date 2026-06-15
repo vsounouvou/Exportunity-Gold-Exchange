@@ -504,14 +504,14 @@ function StoreRoute() {
       ? "exchange"
       : "city";
   const shellMode =
-    location === "/map" ||
-    location === "/marketplace" ||
-    location === "/marketplace/map" ||
-    location.startsWith("/wholesale") ||
-    location.startsWith("/ready-for-export") ||
-    location.startsWith("/pme-exchange")
-      ? "mapDominant"
-      : "commerce";
+    location === "/map" || location === "/marketplace/map" || location.startsWith("/wholesale/map")
+      ? "mapFull"
+      : location === "/marketplace" ||
+          location.startsWith("/wholesale") ||
+          location.startsWith("/ready-for-export") ||
+          location.startsWith("/pme-exchange")
+        ? "mapDominant"
+        : "commerce";
   return <StorePage initialSpace={initialSpace} shellMode={shellMode} />;
 }
 

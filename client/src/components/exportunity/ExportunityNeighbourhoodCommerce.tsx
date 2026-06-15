@@ -1068,8 +1068,9 @@ export function ExportunityNeighbourhoodCommerce({
   const orderDraft = activeShop ? orderDrafts[activeShop.id] || {} : {};
   const orderLines = Object.values(orderDraft);
   const subtotal = orderLines.reduce((sum, line) => sum + line.product.priceCfa * line.quantity, 0);
-  const visibleAgent = shopMode && activeShop ? activeShop.frontDesk : business ? businessAgents[0] : wholesale ? supplierAgent : tassi;
-  const quickReplies = shopMode ? shopQuickReplies : business ? businessQuickReplies : exchange ? exchangeQuickReplies : wholesale ? wholesaleQuickReplies : cityQuickReplies;
+  const retailShopSelected = Boolean(activeShop && !business && !wholesale && !exchange);
+  const visibleAgent = retailShopSelected && activeShop ? activeShop.frontDesk : business ? businessAgents[0] : wholesale ? supplierAgent : tassi;
+  const quickReplies = retailShopSelected ? shopQuickReplies : business ? businessQuickReplies : exchange ? exchangeQuickReplies : wholesale ? wholesaleQuickReplies : cityQuickReplies;
   const showRightMap = !shopMode && !business;
   const googleMapReady = isGoogleMapReady(mapsConfig);
 
@@ -1176,18 +1177,18 @@ export function ExportunityNeighbourhoodCommerce({
   }, [wholesale]);
 
   useEffect(() => {
-    const pageLabel = shopMode && activeShop ? `${activeShop.name} shop` : business ? "My Business" : exchange ? "Ready for export" : wholesale ? "Wholesale" : "Explore";
+    const pageLabel = retailShopSelected && activeShop ? `${activeShop.name} shop` : business ? "My Business" : exchange ? "Ready for export" : wholesale ? "Wholesale" : "Explore";
     window.dispatchEvent(
       new CustomEvent("chairman-dock:context", {
         detail: {
-          pageKey: shopMode && activeShop ? `shop:${activeShop.id}` : business ? "exportunity-business" : exchange ? "exportunity-pme-exchange" : wholesale ? "exportunity-wholesale" : "exportunity-marketplace",
+          pageKey: retailShopSelected && activeShop ? `shop:${activeShop.id}` : business ? "exportunity-business" : exchange ? "exportunity-pme-exchange" : wholesale ? "exportunity-wholesale" : "exportunity-marketplace",
           pageLabel,
           managerName: visibleAgent.name,
           managerRole: visibleAgent.role,
         },
       }),
     );
-  }, [activeShop, business, exchange, shopMode, visibleAgent.name, visibleAgent.role, wholesale]);
+  }, [activeShop, business, exchange, retailShopSelected, visibleAgent.name, visibleAgent.role, wholesale]);
 
   const pushMessage = (message: Omit<ConversationMessage, "id" | "createdAt">) => {
     setMessages((current) => [...current.slice(-9), { ...message, id: `${Date.now()}-${Math.random()}`, createdAt: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) }]);
@@ -1293,9 +1294,9 @@ export function ExportunityNeighbourhoodCommerce({
     if (!text) return;
     const lower = text.toLowerCase();
     setInput("");
-    pushMessage({ agentId: "user", content: text, shopId: shopMode && activeShop ? activeShop.id : undefined });
+    pushMessage({ agentId: "user", content: text, shopId: retailShopSelected && activeShop ? activeShop.id : undefined });
 
-    if (shopMode && activeShop) {
+    if (retailShopSelected && activeShop) {
       if (lower.includes("availability") || lower.includes("available") || lower.includes("stock") || lower.includes("check")) {
         const product =
           activeProductDetail ||
@@ -1400,7 +1401,7 @@ export function ExportunityNeighbourhoodCommerce({
     previewShop(shop);
   };
 
-  const conversationMessages = shopMode && activeShop
+  const conversationMessages = retailShopSelected && activeShop
     ? messages.filter((message) => message.shopId === activeShop.id || message.agentId === activeShop.frontDesk.id || message.agentId === "user").slice(-8)
     : messages.slice(-8);
 
@@ -1493,7 +1494,7 @@ export function ExportunityNeighbourhoodCommerce({
             type="button"
             onClick={() => setAssistantCollapsed(false)}
             className={cn("grid h-11 w-11 place-items-center rounded-2xl border", dark ? "border-white/12 bg-white/[0.05] text-white hover:bg-white/10" : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50")}
-            aria-label="Expand Tassi command pane"
+            aria-label={`Expand ${visibleAgent.name} command pane`}
           >
             <MessageCircle className="h-5 w-5" />
           </button>
@@ -1524,7 +1525,7 @@ export function ExportunityNeighbourhoodCommerce({
           <div className="min-w-0">
             <div className="truncate text-lg font-black">{visibleAgent.name}</div>
             <div className={cn("text-xs font-bold", dark ? "text-white/58" : "text-slate-500")}>
-              {shopMode ? `${visibleAgent.role} for ${activeShop?.name}` : business ? "Business operating agent" : wholesale ? "Wholesale sourcing agent" : exchange ? "Export scout" : "Concierge"}
+              {retailShopSelected ? `${visibleAgent.role} for ${activeShop?.name}` : business ? "Business operating agent" : wholesale ? "Wholesale sourcing agent" : exchange ? "Export scout" : "Concierge"}
             </div>
           </div>
           <span className="ml-auto rounded-full bg-emerald-500/12 px-2 py-1 text-[11px] font-black text-emerald-600">Online</span>
@@ -1538,7 +1539,7 @@ export function ExportunityNeighbourhoodCommerce({
           </button>
         </div>
         <div className={cn("mt-4 rounded-2xl border p-3 text-sm leading-relaxed", dark ? "border-white/10 bg-white/[0.045] text-white/76" : "border-slate-200 bg-slate-50 text-slate-650")}>
-          {shopMode && activeShop
+          {retailShopSelected && activeShop
             ? `${visibleAgent.name} works for this shop. The shelf and order panel are the main flow; use this chat only for stock, substitutions, wallet, delivery, or live preview.`
             : business
               ? "Run the business by talking to your agents. They report issues, create actions, and coordinate the shop."
@@ -1583,7 +1584,7 @@ export function ExportunityNeighbourhoodCommerce({
               ref={inputRef}
               value={input}
               onChange={(event) => setInput(event.target.value)}
-              placeholder={shopMode ? `Ask ${visibleAgent.name} about this shop...` : "Find products near me..."}
+              placeholder={retailShopSelected ? `Ask ${visibleAgent.name} about products in ${activeShop?.name}...` : "Find products near me..."}
               className={cn("min-w-0 flex-1 bg-transparent text-sm font-semibold outline-none placeholder:text-current/50", dark ? "text-white" : "text-slate-950")}
             />
           </div>
@@ -1619,7 +1620,7 @@ export function ExportunityNeighbourhoodCommerce({
         { label: "Nearby", Icon: MapIcon, active: false, onClick: () => { openSpace("city"); onNavigate?.("/map"); } },
         { label: "Ask", Icon: MessageCircle, active: false, onClick: () => { setAssistantCollapsed(false); window.setTimeout(() => inputRef.current?.focus(), 50); } },
         { label: "Orders", Icon: ShoppingBag, active: false, onClick: () => onNavigate?.("/orders") },
-        { label: "Invest", Icon: BriefcaseBusiness, active: exchange, onClick: () => openSpace("exchange") },
+        { label: "Export", Icon: BriefcaseBusiness, active: exchange, onClick: () => openSpace("exchange") },
       ].map(({ label, Icon, active, onClick }) => (
         <button
           key={label}
@@ -1651,7 +1652,7 @@ export function ExportunityNeighbourhoodCommerce({
           ref={inputRef}
           value={input}
           onChange={(event) => setInput(event.target.value)}
-          placeholder={shopMode ? `Ask ${visibleAgent.name} about this shop...` : "Ask Tassi to find products..."}
+          placeholder={retailShopSelected && activeShop ? `Ask ${visibleAgent.name} about ${activeShop.name}...` : "Ask Tassi to find products..."}
           className={cn("min-w-0 flex-1 bg-transparent px-1 text-sm font-semibold outline-none placeholder:text-current/46", dark ? "text-white" : "text-slate-950")}
         />
         <button type="button" onClick={startVoice} className={cn("grid h-9 w-9 shrink-0 place-items-center rounded-full", voiceState === "listening" ? "bg-red-500 text-white" : dark ? "text-white hover:bg-white/10" : "text-slate-700 hover:bg-slate-100")} aria-label="Tap to speak">
@@ -2074,7 +2075,7 @@ export function ExportunityNeighbourhoodCommerce({
                 ok: Boolean(mapsConfig.placesImportEnabled),
               },
               {
-                label: "Investment",
+                label: "Compliance",
                 value: "Compliance gated",
                 detail: "No public offers before legal approval",
                 ok: true,
@@ -2128,7 +2129,7 @@ export function ExportunityNeighbourhoodCommerce({
                 ) : (
                   <>
                     <button type="button" onClick={() => enterShop(activeShop)} className="flex-1 rounded-2xl bg-[#F5A623] px-4 py-3 text-sm font-black text-[#07111F]">Enter shop</button>
-                    <button type="button" onClick={() => quickAddProduct(activeShop, productsForShop(activeShop)[0])} className={cn("flex-1 rounded-2xl border px-4 py-3 text-sm font-black", dark ? "border-white/14 text-white/72" : "border-slate-200 bg-white text-slate-700")}>Quick add</button>
+                    <button type="button" onClick={() => quickAddProduct(activeShop, productsForShop(activeShop)[0])} className={cn("flex-1 rounded-2xl border px-4 py-3 text-sm font-black", dark ? "border-white/14 text-white/72" : "border-slate-200 bg-white text-slate-700")}>Add first item</button>
                   </>
                 )}
                 <button type="button" onClick={() => setActiveShop(null)} className={cn("rounded-2xl border px-4 py-3 text-sm font-black", dark ? "border-white/14 text-white/72" : "border-slate-200 bg-white text-slate-700")}>Close</button>
@@ -2190,7 +2191,7 @@ export function ExportunityNeighbourhoodCommerce({
                       </div>
                       {!wholesale && !exchange ? (
                         <div className="mt-2 grid grid-cols-[44px_minmax(0,1fr)] gap-2 md:mt-3">
-                          <button type="button" onClick={(event) => { event.stopPropagation(); quickAddProduct(shop, product); }} className="grid h-10 place-items-center rounded-2xl border border-[#F5A623]/35 bg-[#F5A623]/14 text-[#F5A623] transition hover:bg-[#F5A623] hover:text-[#07111F]" aria-label={`Quick add ${product.name}`}>
+                          <button type="button" onClick={(event) => { event.stopPropagation(); quickAddProduct(shop, product); }} className="grid h-10 place-items-center rounded-2xl border border-[#F5A623]/35 bg-[#F5A623]/14 text-[#F5A623] transition hover:bg-[#F5A623] hover:text-[#07111F]" aria-label={`Add ${product.name} to order`}>
                             <Plus className="h-4 w-4" />
                           </button>
                           <button type="button" onClick={(event) => { event.stopPropagation(); enterShop(shop); }} className={cn("flex h-9 items-center justify-center rounded-2xl border text-xs font-black md:h-10 md:text-sm", dark ? "border-white/14 text-white/74 hover:bg-white/8" : "border-slate-200 text-slate-700 hover:bg-slate-50")}>
@@ -2312,7 +2313,7 @@ export function ExportunityNeighbourhoodCommerce({
                         ) : (
                           <>
                             <button type="button" onClick={() => enterShop(activeShop)} className="h-10 rounded-2xl bg-[#F5A623] text-sm font-black text-[#07111F]">Enter shop</button>
-                            <button type="button" onClick={() => quickAddProduct(activeShop, productsForShop(activeShop)[0])} className={cn("h-10 rounded-2xl border text-sm font-black", dark ? "border-white/14 text-white/74 hover:bg-white/8" : "border-slate-200 text-slate-700 hover:bg-slate-50")}>Quick add</button>
+                            <button type="button" onClick={() => quickAddProduct(activeShop, productsForShop(activeShop)[0])} className={cn("h-10 rounded-2xl border text-sm font-black", dark ? "border-white/14 text-white/74 hover:bg-white/8" : "border-slate-200 text-slate-700 hover:bg-slate-50")}>Add first item</button>
                           </>
                         )}
                       </div>

@@ -596,7 +596,7 @@ function GoogleMapsPane({
   wholesale: boolean;
   exchange: boolean;
   onSelect: (shop: CommerceShop) => void;
-  onUnavailable?: () => void;
+  onUnavailable?: (reason?: string) => void;
   mapsConfig: PublicMapsConfig;
 }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -614,9 +614,10 @@ function GoogleMapsPane({
 
   useEffect(() => {
     const handleAuthFailure = () => {
+      const reason = "Google Maps key rejected. OpenStreetMap is active.";
       setReady(false);
-      setLoadError("Google Maps rejected the current browser key. OpenStreetMap is active.");
-      onUnavailable?.();
+      setLoadError(reason);
+      onUnavailable?.(reason);
     };
     window.addEventListener("exportunity:google-maps-auth-failure", handleAuthFailure);
     return () => window.removeEventListener("exportunity:google-maps-auth-failure", handleAuthFailure);
@@ -637,9 +638,10 @@ function GoogleMapsPane({
       })
       .catch((error: Error) => {
         if (!cancelled) {
+          const reason = error.message || "Google Maps could not load.";
           setReady(false);
-          setLoadError(error.message || "Google Maps could not load.");
-          onUnavailable?.();
+          setLoadError(reason);
+          onUnavailable?.(reason);
         }
       });
     return () => {
@@ -652,9 +654,10 @@ function GoogleMapsPane({
     const timer = window.setTimeout(() => {
       const text = containerRef.current?.innerText || "";
       if (/didn't load Google Maps correctly|Oops! Something went wrong/i.test(text)) {
+        const reason = "Google Maps key rejected. OpenStreetMap is active.";
         setReady(false);
-        setLoadError("Google Maps rejected the current browser key. OpenStreetMap is active.");
-        onUnavailable?.();
+        setLoadError(reason);
+        onUnavailable?.(reason);
       }
     }, 1800);
     return () => window.clearTimeout(timer);
@@ -942,10 +945,14 @@ function LiveMapPane({
   const safeActiveShop = activeShop && validPosition(activeShop.position) ? activeShop : null;
   const routePoints = safeActiveShop ? [safeUserLocation, safeActiveShop.position] : [safeUserLocation, safePlaces[0]?.position || safeUserLocation];
   const [googleRenderFailed, setGoogleRenderFailed] = useState(false);
+  const [googleRenderFailureReason, setGoogleRenderFailureReason] = useState<string | null>(null);
   useEffect(() => {
     setGoogleRenderFailed(false);
+    setGoogleRenderFailureReason(null);
   }, [mapsConfig.browserApiKey, mapsConfig.provider]);
   const googleReady = isGoogleMapReady(mapsConfig) && !googleRenderFailed;
+  const rendererLabel = googleReady ? "Google Maps renderer" : googleRenderFailed ? "Google key rejected" : "OpenStreetMap renderer";
+  const rendererDetail = googleRenderFailureReason || provider.label;
   return (
     <section className={cn("relative overflow-hidden rounded-none border-l", dark ? "border-white/10 bg-[#07111F]" : "border-slate-200 bg-white", className)}>
       {googleReady ? (
@@ -957,7 +964,10 @@ function LiveMapPane({
           wholesale={wholesale}
           exchange={exchange}
           onSelect={onSelect}
-          onUnavailable={() => setGoogleRenderFailed(true)}
+          onUnavailable={(reason) => {
+            setGoogleRenderFailed(true);
+            setGoogleRenderFailureReason(reason || "Google Maps could not render. OpenStreetMap is active.");
+          }}
           mapsConfig={mapsConfig}
         />
       ) : (
@@ -998,14 +1008,14 @@ function LiveMapPane({
           <Navigation className="h-5 w-5 text-[#F5A623]" />
         </div>
         <div className="mt-2 flex flex-wrap gap-2">
-          <div className={cn("inline-flex rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em]", googleReady ? "bg-emerald-500/14 text-emerald-600" : "bg-[#F5A623]/16 text-[#9a5f00]")}>
-            {googleReady ? "Google Maps renderer" : "OpenStreetMap renderer"}
+          <div className={cn("inline-flex rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em]", googleReady ? "bg-emerald-500/14 text-emerald-600" : googleRenderFailed ? "bg-red-500/12 text-red-600" : "bg-[#F5A623]/16 text-[#9a5f00]")}>
+            {rendererLabel}
           </div>
           <div className={cn("inline-flex rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em]", provider.provider === "google" ? "bg-emerald-500/14 text-emerald-600" : "bg-slate-500/12 text-slate-600")}>
             {provider.provider === "google" ? "Google Places data" : "Curated business data"}
           </div>
         </div>
-        <div className={cn("mt-2 text-xs font-semibold", dark ? "text-white/60" : "text-slate-600")}>{provider.label}</div>
+        <div className={cn("mt-2 text-xs font-semibold", googleRenderFailed ? "text-red-600" : dark ? "text-white/60" : "text-slate-600")}>{rendererDetail}</div>
         <div className={cn("mt-1 line-clamp-2 text-[11px] leading-snug", dark ? "text-white/45" : "text-slate-500")}>{provider.detail}</div>
       </div>
     </section>

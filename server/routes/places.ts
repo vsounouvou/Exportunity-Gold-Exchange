@@ -44,6 +44,7 @@ function publicGoogleStatus(status: any) {
     setupRequired: Boolean(status.setupRequired),
     placesSetupRequired: Boolean(status.placesSetupRequired),
     mapSetupRequired: Boolean(status.mapSetupRequired),
+    advancedMapSetupRequired: Boolean(status.advancedMapSetupRequired),
     requiredEnv: status.requiredEnv,
     limits: status.limits,
   };
@@ -54,7 +55,7 @@ async function getPublicMapsConfig(req?: any) {
   const browserApiKey = String(status.browserMapKey || "").trim();
   const mapIdLight = String(status.mapIdLight || status.mapId || "").trim();
   const mapIdDark = String(status.mapIdDark || status.mapId || mapIdLight || "").trim();
-  const canRenderGoogleMap = Boolean(browserApiKey && mapIdLight);
+  const canRenderGoogleMap = Boolean(browserApiKey);
   return {
     provider: canRenderGoogleMap ? "google" : "leaflet",
     enabled: canRenderGoogleMap,
@@ -70,8 +71,10 @@ async function getPublicMapsConfig(req?: any) {
     message: canRenderGoogleMap
       ? status.enabled
         ? "Google Maps can render in the browser and Google Places is configured for public business discovery."
-        : "Google Maps can render in the browser with curated city business markers. Add GOOGLE_PLACES_API_KEY and enable Google Places import when you are ready to use official live business discovery."
-      : "Google Maps renderer setup is incomplete. Leaflet/OpenStreetMap and curated Abidjan/Cotonou data are active until a browser key and map ID are configured; Places import additionally requires a server Places key.",
+        : mapIdLight
+          ? "Google Maps can render in the browser with curated city business markers. Add GOOGLE_PLACES_API_KEY and enable Google Places import when you are ready to use official live business discovery."
+          : "Google Maps can render in the browser with default styling and curated city business markers. Add a Google Map ID for cloud styling and Advanced Markers; add GOOGLE_PLACES_API_KEY for official live business discovery."
+      : "Google Maps renderer setup is incomplete. Leaflet/OpenStreetMap and curated Abidjan/Cotonou data are active until a browser-safe Maps key is configured; Places import additionally requires a server Places key.",
   };
 }
 

@@ -86,6 +86,9 @@ type PublicMapsConfig = {
     browserApiKeyPresent?: boolean;
     mapIdPresent?: boolean;
     setupRequired?: boolean;
+    mapSetupRequired?: boolean;
+    placesSetupRequired?: boolean;
+    advancedMapSetupRequired?: boolean;
     requiredEnv?: string[];
   };
   message?: string;
@@ -95,8 +98,7 @@ function isGoogleMapReady(config: PublicMapsConfig) {
   return (
     config.provider === "google" &&
     config.enabled !== false &&
-    config.google?.enabled !== false &&
-    !config.google?.setupRequired &&
+    !config.google?.mapSetupRequired &&
     Boolean(config.browserApiKey)
   );
 }

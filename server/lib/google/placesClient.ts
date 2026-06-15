@@ -229,7 +229,8 @@ export async function googlePlaceDetails(placeId: string, scope?: string) {
 export async function googlePlacesRuntimeStatus(scope?: string) {
   const cfg = await getGooglePlacesRuntimeConfig(scope);
   const placesSetupRequired = !cfg.enabled;
-  const mapSetupRequired = !(cfg.browserMapKeyPresent && cfg.mapIdPresent);
+  const mapSetupRequired = !cfg.browserMapKeyPresent;
+  const advancedMapSetupRequired = Boolean(cfg.browserMapKeyPresent && !cfg.mapIdPresent);
   return {
     ...cfg,
     provider: cfg.enabled ? "google_places" : "seeded",
@@ -237,11 +238,12 @@ export async function googlePlacesRuntimeStatus(scope?: string) {
     setupRequired: placesSetupRequired || mapSetupRequired,
     placesSetupRequired,
     mapSetupRequired,
+    advancedMapSetupRequired,
     requiredEnv: [
       "GOOGLE_IMPORT_ENABLED=true or GOOGLE_PLACES_ENABLED=true",
       "GOOGLE_PLACES_API_KEY",
       "NEXT_PUBLIC_GOOGLE_MAPS_API_KEY or GOOGLE_MAPS_BROWSER_API_KEY",
-      "NEXT_PUBLIC_GOOGLE_MAP_ID or GOOGLE_MAPS_MAP_ID",
+      "NEXT_PUBLIC_GOOGLE_MAP_ID or GOOGLE_MAPS_MAP_ID (optional for cloud styling and Advanced Markers)",
       "GOOGLE_PLACES_DEFAULT_COUNTRY",
       "GOOGLE_PLACES_DEFAULT_LANGUAGE",
       "GOOGLE_PLACES_DEFAULT_CITY",

@@ -151,6 +151,12 @@ const supplierAgent: CommerceAgent = {
   avatarUrl: "https://images.unsplash.com/photo-1531384441138-2736e62e0919?auto=format&fit=crop&w=220&q=85",
 };
 
+const exportScoutAgent: CommerceAgent = {
+  ...tassi,
+  id: "export-scout",
+  role: "Export scout",
+};
+
 const businessAgents: CommerceAgent[] = [
   { id: "front-desk", name: "Front Desk", role: "Customer flow", status: "online", color: "#f97316", avatarUrl: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=220&q=85" },
   { id: "inventory", name: "Inventory", role: "Stock", status: "online", color: "#2563eb" },
@@ -165,6 +171,32 @@ const wholesaleQuickReplies = ["Find suppliers near me", "Request a quote", "Bui
 const exchangeQuickReplies = ["Ready for export", "Verified sellers", "Food exporters", "Women-led shops", "Seller proof", "Compliance review"];
 const shopQuickReplies = ["What should I buy first?", "Can you deliver?", "Use my wallet", "Can I see it live?", "Suggest a bundle"];
 const businessQuickReplies = ["What needs attention?", "Low stock", "Today sales", "Assign delivery", "Plan a promo"];
+
+function openingMessagesForSpace(nextSpace: ConversationSpace): ConversationMessage[] {
+  const now = "now";
+  if (nextSpace === "wholesale") {
+    return [
+      { id: "hello-wholesale", agentId: supplierAgent.id, content: "Hello, I'm Kone. Are you buying wholesale, looking for a supplier, or trying to sell in bulk?", createdAt: now, agentSnapshot: supplierAgent },
+      { id: "options-wholesale", agentId: supplierAgent.id, content: "Tell me the product, quantity, delivery location, and urgency. I will map suppliers, show MOQ and lead time, then prepare a quote request for your approval.", createdAt: now, agentSnapshot: supplierAgent },
+    ];
+  }
+  if (nextSpace === "exchange") {
+    return [
+      { id: "hello-export", agentId: exportScoutAgent.id, content: "Hello, I'm Tassi. This is the Ready for export map: verified sellers, product proof, owner stories, and compliance status before any opportunity is promoted.", createdAt: now, agentSnapshot: exportScoutAgent },
+      { id: "options-export", agentId: exportScoutAgent.id, content: "Start with export-ready food, verified sellers, women-led businesses, seller proof, or compliance review. Investment-style opportunities stay internal until legal approval.", createdAt: now, agentSnapshot: exportScoutAgent },
+    ];
+  }
+  if (nextSpace === "business") {
+    return [
+      { id: "hello-business", agentId: businessAgents[0].id, content: "Welcome to My Business. Your operating agents are here for customers, inventory, accounting, delivery, marketing, and support.", createdAt: now, agentSnapshot: businessAgents[0] },
+      { id: "options-business", agentId: "inventory", content: "Ask what needs attention, review low stock, assign delivery, prepare a promotion, or turn a customer issue into a task.", createdAt: now, agentSnapshot: businessAgents[1] },
+    ];
+  }
+  return [
+    { id: "hello", agentId: "tassi", content: "Hello, I'm Tassi. What are you looking for around you today?", createdAt: now, agentSnapshot: tassi },
+    { id: "options", agentId: "tassi", content: "You can start with breakfast, fresh bread, coffee, building materials, delivery, or wholesale suppliers.", createdAt: now, agentSnapshot: tassi },
+  ];
+}
 
 const productLibrary: Record<string, ShopProduct[]> = {
   Bakery: [
@@ -425,6 +457,55 @@ function productKey(shop: CommerceShop) {
 }
 
 function productsForShop(shop: CommerceShop): ShopProduct[] {
+  if (shop.investmentReadiness) {
+    return [
+      {
+        id: `${shop.id}-export-pack`,
+        name: `${shop.category} export pack`,
+        description: "Export-ready product lot pending final seller confirmation and compliance review.",
+        category: "Export-ready products",
+        unit: "lot",
+        priceCfa: 185000,
+        quantityAvailable: 18,
+        image: shop.image,
+      },
+      {
+        id: `${shop.id}-proof-sample`,
+        name: "Verified seller sample",
+        description: "Sample order with owner story, location proof, and seller verification notes attached.",
+        category: "Seller proof",
+        unit: "sample",
+        priceCfa: 12500,
+        quantityAvailable: 40,
+        image: shop.image,
+      },
+      {
+        id: `${shop.id}-buyer-intro`,
+        name: "Buyer introduction pack",
+        description: "Product photos, supplier profile, payment terms, and logistics estimate for serious buyers.",
+        category: "Trade profile",
+        unit: "pack",
+        priceCfa: 0,
+        quantityAvailable: 1,
+        image: shop.image,
+      },
+    ];
+  }
+  if (shop.moq || shop.leadTime || shop.frontDesk.role === "Supplier Desk") {
+    return [
+      ...(productLibrary[productKey(shop)] || []),
+      {
+        id: `${shop.id}-supplier-quote`,
+        name: `${shop.category} quote request`,
+        description: `Collect quantity, destination, budget, and urgency before approved supplier outreach. MOQ: ${shop.moq || "confirm with supplier"}.`,
+        category: "Wholesale quote",
+        unit: "request",
+        priceCfa: 0,
+        quantityAvailable: 1,
+        image: shop.image,
+      },
+    ].slice(0, 3);
+  }
   const products = productLibrary[productKey(shop)];
   if (products?.length) return products;
   return [
@@ -1124,10 +1205,7 @@ export function ExportunityNeighbourhoodCommerce({
   const [input, setInput] = useState("");
   const [voiceState, setVoiceState] = useState<"idle" | "listening" | "unavailable">("idle");
   const [assistantCollapsed, setAssistantCollapsed] = useState(false);
-  const [messages, setMessages] = useState<ConversationMessage[]>([
-    { id: "hello", agentId: "tassi", content: "Hello, I'm Tassi. What are you looking for around you today?", createdAt: "now", agentSnapshot: tassi },
-    { id: "options", agentId: "tassi", content: "You can start with breakfast, fresh bread, coffee, building materials, delivery, or wholesale suppliers.", createdAt: "now", agentSnapshot: tassi },
-  ]);
+  const [messages, setMessages] = useState<ConversationMessage[]>(() => openingMessagesForSpace(initialSpace));
   const [orderDrafts, setOrderDrafts] = useState<Record<string, Record<string, OrderLine>>>({});
   const [placesStatus, setPlacesStatus] = useState<PublicPlacesState>({
     provider: "curated",
@@ -1182,7 +1260,7 @@ export function ExportunityNeighbourhoodCommerce({
   const orderLines = Object.values(orderDraft);
   const subtotal = orderLines.reduce((sum, line) => sum + line.product.priceCfa * line.quantity, 0);
   const retailShopSelected = Boolean(activeShop && !business && !wholesale && !exchange);
-  const visibleAgent = retailShopSelected && activeShop ? activeShop.frontDesk : business ? businessAgents[0] : wholesale ? supplierAgent : tassi;
+  const visibleAgent = retailShopSelected && activeShop ? activeShop.frontDesk : business ? businessAgents[0] : wholesale ? supplierAgent : exchange ? exportScoutAgent : tassi;
   const quickReplies = retailShopSelected ? shopQuickReplies : business ? businessQuickReplies : exchange ? exchangeQuickReplies : wholesale ? wholesaleQuickReplies : cityQuickReplies;
   const showRightMap = !shopMode && !business;
   const googleMapReady = isGoogleMapReady(mapsConfig);
@@ -1196,6 +1274,7 @@ export function ExportunityNeighbourhoodCommerce({
     setActiveShop(null);
     setActiveProductDetail(null);
     setAssistantCollapsed(false);
+    setMessages(openingMessagesForSpace(initialSpace));
   }, [initialSpace, shellMode]);
 
   useEffect(() => {
@@ -1318,6 +1397,7 @@ export function ExportunityNeighbourhoodCommerce({
     setActiveShop(null);
     setActiveProductDetail(null);
     setAssistantCollapsed(false);
+    setMessages(openingMessagesForSpace(nextSpace));
     if (nextSpace === "wholesale") onNavigate?.("/wholesale");
     if (nextSpace === "exchange") onNavigate?.("/ready-for-export");
     if (nextSpace === "city") onNavigate?.("/marketplace");
@@ -1598,6 +1678,15 @@ export function ExportunityNeighbourhoodCommerce({
       : assistantCollapsed
         ? "lg:grid-cols-[minmax(0,1fr)_72px] xl:grid-cols-[minmax(0,1fr)_72px]"
         : "lg:grid-cols-[minmax(0,1fr)_292px] xl:grid-cols-[minmax(0,1fr)_304px]";
+  const composerPlaceholder = retailShopSelected
+    ? `Search this shelf or ask ${visibleAgent.name}...`
+    : wholesale
+      ? "Search suppliers, MOQ, lead time, or request a quote..."
+      : exchange
+        ? "Search export products, verified sellers, or seller proof..."
+        : business
+          ? "Ask your business agents what needs attention..."
+          : "Search products near me...";
 
   const assistantPane = (
     <aside className={cn("hidden min-h-0 flex-col border-l lg:flex", assistantCollapsed && "items-center", dark ? "border-white/10 bg-[#07111F] text-white" : "border-slate-200 bg-white text-slate-950")}>
@@ -1686,7 +1775,7 @@ export function ExportunityNeighbourhoodCommerce({
               ref={inputRef}
               value={input}
               onChange={(event) => setInput(event.target.value)}
-              placeholder={retailShopSelected ? `Search this shelf or ask ${visibleAgent.name}...` : "Search products near me..."}
+              placeholder={composerPlaceholder}
               className={cn("min-w-0 flex-1 bg-transparent text-sm font-semibold outline-none placeholder:text-current/50", dark ? "text-white" : "text-slate-950")}
             />
           </div>
@@ -1754,7 +1843,7 @@ export function ExportunityNeighbourhoodCommerce({
           ref={inputRef}
           value={input}
           onChange={(event) => setInput(event.target.value)}
-          placeholder={retailShopSelected && activeShop ? `Search shelf or ask ${visibleAgent.name}...` : "Search products or ask Tassi..."}
+          placeholder={composerPlaceholder}
           className={cn("min-w-0 flex-1 bg-transparent px-1 text-sm font-semibold outline-none placeholder:text-current/46", dark ? "text-white" : "text-slate-950")}
         />
         <button type="button" onClick={startVoice} className={cn("grid h-9 w-9 shrink-0 place-items-center rounded-full", voiceState === "listening" ? "bg-red-500 text-white" : dark ? "text-white hover:bg-white/10" : "text-slate-700 hover:bg-slate-100")} aria-label="Tap to speak">

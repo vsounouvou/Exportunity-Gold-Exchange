@@ -24,12 +24,15 @@ type PlacesConfig = {
   mapIdDark?: string | null;
   google?: {
     enabled?: boolean;
+    apiKeyPresent?: boolean;
     placesApiKeyPresent?: boolean;
+    browserMapKeyPresent?: boolean;
     browserApiKeyPresent?: boolean;
     mapIdPresent?: boolean;
     setupRequired?: boolean;
     placesSetupRequired?: boolean;
     mapSetupRequired?: boolean;
+    advancedMapSetupRequired?: boolean;
     requiredEnv?: string[];
   };
   message?: string;
@@ -185,6 +188,9 @@ export default function AdminGooglePlacesIntegrationPage() {
   const config = configQuery.data;
   const google = settingsQuery.data?.runtime || config?.google;
   const saved = settingsQuery.data?.saved;
+  const browserKeyPresent = Boolean(google?.browserApiKeyPresent || google?.browserMapKeyPresent);
+  const placesKeyPresent = Boolean(google?.placesApiKeyPresent || google?.apiKeyPresent);
+  const mapIdPresent = Boolean(google?.mapIdPresent);
   const requiredEnv = google?.requiredEnv || [];
   const resultItems = lastResult?.items || (lastResult?.item ? [lastResult.item] : []);
 
@@ -197,7 +203,7 @@ export default function AdminGooglePlacesIntegrationPage() {
               <div className="text-xs font-black uppercase tracking-[0.28em] text-[#F5A623]">Settings / Integrations</div>
               <h1 className="mt-2 text-3xl font-black tracking-tight">Google Maps / Places</h1>
               <p className="mt-2 max-w-3xl text-sm leading-relaxed text-slate-600">
-                Configure the real Google Maps renderer and official Google Places lead engine for Exportunity marketplace, wholesale, and export-ready seller discovery. Maps rendering and Places import are separate: the map needs a browser key plus map ID; Places import needs a server Places key.
+                Configure the real Google Maps renderer and official Google Places lead engine for Exportunity marketplace, wholesale, and export-ready seller discovery. Maps rendering and Places import are separate: the map needs a browser-safe Maps key; a Map ID is optional for cloud styling and Advanced Markers; Places import needs a server Places key.
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -224,11 +230,17 @@ export default function AdminGooglePlacesIntegrationPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              <StatusRow ok={config?.provider === "google"} label="Map renderer" value={config?.provider === "google" ? "Google Maps browser renderer active" : "Leaflet/OpenStreetMap fallback active until browser key + map ID are configured"} />
+              <StatusRow ok={config?.provider === "google"} label="Map renderer config" value={config?.provider === "google" ? "Google Maps is selected by configuration. If the public map says GOOGLE KEY REJECTED, fix browser key restrictions in Google Cloud." : "Leaflet/OpenStreetMap fallback active until a browser-safe Maps key is configured"} />
               <StatusRow ok={Boolean(config?.placesImportEnabled)} label="Business data source" value={config?.placesImportEnabled ? "Google Places import active" : "Curated city data active until server Places key + enable flag are configured"} />
-              <StatusRow ok={Boolean(google?.browserApiKeyPresent)} label="Browser Maps key" value={saved?.browserApiKeyMasked || maskKey(config?.browserApiKey)} />
-              <StatusRow ok={Boolean(google?.placesApiKeyPresent)} label="Server Places key" value={saved?.placesApiKeyMasked || (google?.placesApiKeyPresent ? "Present in runtime configuration" : "Missing: GOOGLE_PLACES_API_KEY or saved admin key")} />
-              <StatusRow ok={Boolean(google?.mapIdPresent)} label="Cloud map ID" value={saved?.mapId || config?.mapId || "Required for Google Advanced Markers"} />
+              <StatusRow ok={browserKeyPresent} label="Browser Maps key" value={saved?.browserApiKeyMasked || maskKey(config?.browserApiKey)} />
+              <StatusRow ok={placesKeyPresent} label="Server Places key" value={saved?.placesApiKeyMasked || (placesKeyPresent ? "Present in runtime configuration" : "Missing: GOOGLE_PLACES_API_KEY or saved admin key")} />
+              <StatusRow ok={mapIdPresent} label="Cloud map ID (optional)" value={saved?.mapId || config?.mapId || "Missing: base map can still render, but cloud styling and Advanced Markers need a Map ID"} />
+              <div className="rounded-2xl border border-red-200 bg-red-50 p-3 text-sm leading-relaxed text-red-950">
+                <div className="font-black">If the public map shows "GOOGLE KEY REJECTED"</div>
+                <div className="mt-1">
+                  In Google Cloud, allow the browser key for <span className="font-mono font-black">https://exportunity.net/*</span> and <span className="font-mono font-black">https://www.exportunity.net/*</span>, enable the Maps JavaScript API, and restrict this browser key to browser use only. Places import still needs the separate server Places key below.
+                </div>
+              </div>
               <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3 text-sm leading-relaxed text-slate-600">
                 {config?.message || "Google configuration status is loading."}
               </div>
@@ -255,7 +267,7 @@ export default function AdminGooglePlacesIntegrationPage() {
                 </div>
               </div>
               <div className="rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm leading-relaxed text-amber-950">
-                Server Places keys are saved masked and are never returned to the browser. Browser Maps keys are public by design and must be restricted by domain in Google Cloud. A browser key plus map ID can activate Google Maps even before Places import is enabled.
+                Server Places keys are saved masked and are never returned to the browser. Browser Maps keys are public by design and must be restricted by domain in Google Cloud. A browser key activates the Google base map; a Map ID adds cloud styling and Advanced Markers; Places import can remain disabled until lead import is approved.
               </div>
               <div className="grid gap-3 md:grid-cols-2">
                 <label className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-black text-slate-900">
@@ -276,7 +288,7 @@ export default function AdminGooglePlacesIntegrationPage() {
                 </div>
                 <div>
                   <Label className="text-slate-700">Google Cloud map ID</Label>
-                  <Input value={mapId} onChange={(event) => setMapId(event.target.value)} placeholder="Required for styled Google map markers" className="mt-1 border-slate-200 bg-white text-slate-950" />
+                  <Input value={mapId} onChange={(event) => setMapId(event.target.value)} placeholder="Optional: enables styled Google maps and Advanced Markers" className="mt-1 border-slate-200 bg-white text-slate-950" />
                 </div>
                 <div>
                   <Label className="text-slate-700">Search radius meters</Label>

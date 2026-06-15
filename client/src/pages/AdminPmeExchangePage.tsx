@@ -75,6 +75,9 @@ type StatusResponse = {
     browserMapKeyPresent: boolean;
     mapIdPresent: boolean;
     setupRequired: boolean;
+    placesSetupRequired?: boolean;
+    mapSetupRequired?: boolean;
+    advancedMapSetupRequired?: boolean;
     requiredEnv: string[];
     limits: { minute: { limit: number; used: number }; day: { limit: number; used: number } };
   };
@@ -166,6 +169,15 @@ function Shell({ children }: { children: React.ReactNode }) {
 function PriorityCenter({ status, summary }: { status?: StatusResponse; summary?: SummaryResponse }) {
   const items = [
     {
+      title: "Google Maps renderer",
+      ok: Boolean(status?.google?.browserMapKeyPresent && !status?.google?.mapSetupRequired),
+      body: status?.google?.browserMapKeyPresent
+        ? "A browser Maps key is configured. If the public map says GOOGLE KEY REJECTED, fix domain/API restrictions in Google Cloud."
+        : "Public maps are using OpenStreetMap until a browser-safe Google Maps key is configured.",
+      action: "Open Google settings",
+      href: "/admin/settings/integrations/google-maps",
+    },
+    {
       title: "Google Places API",
       ok: Boolean(status?.google?.enabled),
       body: status?.google?.enabled ? "Live Google business discovery is active." : "Marketplace and PME import are using curated city data until Google Places is configured.",
@@ -196,7 +208,7 @@ function PriorityCenter({ status, summary }: { status?: StatusResponse; summary?
   ];
 
   return (
-    <div className="grid gap-4 lg:grid-cols-4">
+    <div className="grid gap-4 lg:grid-cols-5">
       {items.map((item) => (
         <Card key={item.title} className="border-slate-200 bg-white shadow-sm">
           <CardContent className="p-4">

@@ -52,6 +52,7 @@ function publicGoogleStatus(status: any) {
     setupRequired: Boolean(status.setupRequired),
     placesSetupRequired: Boolean(status.placesSetupRequired),
     mapSetupRequired: Boolean(status.mapSetupRequired),
+    advancedMapSetupRequired: Boolean(status.advancedMapSetupRequired),
     requiredEnv: status.requiredEnv,
     limits: status.limits,
   };

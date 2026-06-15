@@ -90,6 +90,74 @@ function normalize(value: string) {
     .trim();
 }
 
+const queryStopWords = new Set([
+  "a",
+  "an",
+  "and",
+  "around",
+  "best",
+  "buy",
+  "de",
+  "des",
+  "du",
+  "find",
+  "for",
+  "i",
+  "in",
+  "la",
+  "le",
+  "les",
+  "me",
+  "near",
+  "nearby",
+  "need",
+  "of",
+  "show",
+  "the",
+  "this",
+  "to",
+  "want",
+]);
+
+const queryIntentAliases: Array<[string[], string[]]> = [
+  [["breakfast", "petit dejeuner", "morning"], ["bakery", "boulangerie", "pain", "fournil", "cafe", "restaurant", "meal takeaway", "pause matin"]],
+  [["bread", "pain", "bakery", "boulangerie"], ["bakery", "boulangerie", "pain", "fournil", "food store"]],
+  [["coffee", "cafe", "espresso"], ["cafe", "coffee", "kiosque cafe", "pause matin"]],
+  [["lunch", "dinner", "meal", "food", "restaurant", "maquis"], ["restaurant", "maquis", "cuisine", "meal takeaway", "table locale"]],
+  [["grocery", "groceries", "supermarket", "epicerie"], ["grocery", "supermarket", "epicerie", "marche frais", "panier local"]],
+  [["organic", "bio", "natural"], ["organic", "bio", "jardin", "terroir", "nature"]],
+  [["pharmacy", "pharmacie", "medicine", "health"], ["pharmacy", "pharmacie", "sante", "health"]],
+  [["electronics", "phone", "speaker", "bluetooth", "tech"], ["electronics", "electronique", "digital", "tech mobile"]],
+  [["fashion", "clothes", "tailor", "tailleur"], ["fashion", "clothing", "tailleur", "atelier mode"]],
+  [["gift", "gifts", "souvenir"], ["gift", "cadeau", "souvenir", "present"]],
+  [["home", "house", "deco", "furniture"], ["home goods", "maison", "deco"]],
+  [["building", "hardware", "materials", "cement", "ciment", "iron", "fer", "construction"], ["building materials", "hardware", "quincaillerie", "depot chantier", "materiaux", "btp", "ciments", "fer"]],
+  [["wholesale", "bulk", "supplier", "distributor", "depot", "warehouse", "gros"], ["wholesale", "supplier", "distributor", "warehouse", "depot", "gros"]],
+  [["machinery", "machine", "equipment"], ["machinery", "machines", "industrial equipment", "meca supply"]],
+  [["packaging", "carton", "sachet"], ["packaging", "emballages", "cartons", "sachet"]],
+  [["agriculture", "agricultural", "farm", "seed", "fertilizer", "engrais"], ["agricultural", "agri", "semences", "engrais", "ferme"]],
+  [["logistics", "delivery", "freight", "cargo", "transport"], ["logistics", "route express", "cargo", "transit", "delivery"]],
+  [["cold", "storage", "froid"], ["cold storage", "froid", "stockage frais", "chaine froide"]],
+  [["manufacturer", "factory", "fabrique"], ["manufacturer", "fabrique", "atelier industrie", "production"]],
+  [["textile", "fabric", "tissus"], ["textile", "tissus", "fils"]],
+];
+
+function getQueryTerms(query: string) {
+  if (!query) return [];
+
+  const terms = new Set<string>();
+  const words = query.split(" ").filter((word) => word.length > 1 && !queryStopWords.has(word));
+
+  for (const [triggers, aliases] of queryIntentAliases) {
+    if (triggers.some((trigger) => query.includes(normalize(trigger)))) {
+      aliases.forEach((alias) => terms.add(normalize(alias)));
+    }
+  }
+
+  words.forEach((word) => terms.add(word));
+  return [...terms].filter(Boolean);
+}
+
 function offsetCoord(base: number, index: number, salt: number) {
   const wave = Math.sin((index + 1) * (salt + 3)) * 0.0065;
   const step = ((index % 7) - 3) * 0.0026;
@@ -170,15 +238,16 @@ export function filterSeedPmeLeads(input?: { city?: string; kind?: string; query
   const city = String(input?.city || "").trim().toLowerCase();
   const kind = String(input?.kind || "").trim().toLowerCase();
   const query = normalize(String(input?.query || ""));
+  const queryTerms = getQueryTerms(query);
   const limit = Math.min(Math.max(Number(input?.limit || 80), 1), 200);
 
   return getSeedPmeLeads()
     .filter((lead) => (!city || lead.city.toLowerCase() === city))
     .filter((lead) => (!kind || lead.kind === kind || (kind === "supplier" && lead.kind === "wholesale")))
     .filter((lead) => {
-      if (!query) return true;
-      const haystack = normalize([lead.name, lead.category, lead.primaryType, lead.city, lead.district, lead.description].join(" "));
-      return query.split(" ").every((part) => haystack.includes(part));
+      if (!queryTerms.length) return true;
+      const haystack = normalize([lead.name, lead.category, lead.primaryType, lead.city, lead.district, lead.description, ...lead.types].join(" "));
+      return queryTerms.some((part) => haystack.includes(part));
     })
     .slice(0, limit);
 }

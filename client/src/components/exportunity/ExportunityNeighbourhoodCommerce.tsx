@@ -971,7 +971,7 @@ function LiveMapPane({
         </MapContainer>
       )}
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_25%,transparent_0,transparent_42%,rgba(245,166,35,.06)_70%,rgba(7,17,31,.16)_100%)]" />
-      <div className={cn("absolute left-4 right-4 top-4 rounded-2xl border p-3 backdrop-blur-xl", dark ? "border-white/12 bg-[#07111F]/78 text-white" : "border-white/90 bg-white/88 text-slate-950 shadow-[0_16px_36px_rgba(15,23,42,.12)]")}>
+      <div className={cn("absolute left-4 right-4 top-4 z-[401] rounded-2xl border p-3 backdrop-blur-xl", dark ? "border-white/12 bg-[#07111F]/78 text-white" : "border-white/90 bg-white/88 text-slate-950 shadow-[0_16px_36px_rgba(15,23,42,.12)]")}>
         <div className="flex items-center justify-between gap-3">
           <div>
             <div className="text-[11px] font-black uppercase tracking-[0.2em] text-[#F5A623]">{exchange ? "Bourse de PME" : wholesale ? "Wholesale map" : "Neighbourhood map"}</div>
@@ -1033,6 +1033,7 @@ export function ExportunityNeighbourhoodCommerce({
   });
   const [videoOpen, setVideoOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
 
   const dark = themeMode === "dark";
   const wholesale = space === "wholesale";
@@ -1478,14 +1479,14 @@ export function ExportunityNeighbourhoodCommerce({
       : "lg:grid-cols-[minmax(0,1fr)_280px] xl:grid-cols-[minmax(0,1fr)_300px]"
     : showRightMap
       ? assistantCollapsed
-        ? "lg:grid-cols-[72px_minmax(0,1fr)_320px] xl:grid-cols-[72px_minmax(0,1fr)_360px] 2xl:grid-cols-[72px_minmax(0,1fr)_390px]"
-        : "lg:grid-cols-[292px_minmax(0,1fr)_320px] xl:grid-cols-[304px_minmax(0,1fr)_360px] 2xl:grid-cols-[316px_minmax(0,1fr)_390px]"
+        ? "lg:grid-cols-[minmax(0,1fr)_320px_72px] xl:grid-cols-[minmax(0,1fr)_360px_72px] 2xl:grid-cols-[minmax(0,1fr)_390px_72px]"
+        : "lg:grid-cols-[minmax(0,1fr)_320px_292px] xl:grid-cols-[minmax(0,1fr)_360px_304px] 2xl:grid-cols-[minmax(0,1fr)_390px_316px]"
       : assistantCollapsed
-        ? "lg:grid-cols-[72px_minmax(0,1fr)] xl:grid-cols-[72px_minmax(0,1fr)]"
-        : "lg:grid-cols-[292px_minmax(0,1fr)] xl:grid-cols-[304px_minmax(0,1fr)]";
+        ? "lg:grid-cols-[minmax(0,1fr)_72px] xl:grid-cols-[minmax(0,1fr)_72px]"
+        : "lg:grid-cols-[minmax(0,1fr)_292px] xl:grid-cols-[minmax(0,1fr)_304px]";
 
   const assistantPane = (
-    <aside className={cn("hidden min-h-0 flex-col lg:flex", mapDominant ? "border-l" : "border-r", assistantCollapsed && "items-center", dark ? "border-white/10 bg-[#07111F] text-white" : "border-slate-200 bg-white text-slate-950")}>
+    <aside className={cn("hidden min-h-0 flex-col border-l lg:flex", assistantCollapsed && "items-center", dark ? "border-white/10 bg-[#07111F] text-white" : "border-slate-200 bg-white text-slate-950")}>
       {assistantCollapsed ? (
         <div className="flex h-full w-full flex-col items-center gap-3 p-3">
           <button
@@ -1579,6 +1580,7 @@ export function ExportunityNeighbourhoodCommerce({
           <div className={cn("flex items-center gap-2 rounded-2xl px-3 py-2.5", dark ? "bg-white/[0.055]" : "bg-slate-50")}>
             <Search className={cn("h-4 w-4 shrink-0", dark ? "text-white/48" : "text-slate-400")} />
             <input
+              ref={inputRef}
               value={input}
               onChange={(event) => setInput(event.target.value)}
               placeholder={shopMode ? `Ask ${visibleAgent.name} about this shop...` : "Find products near me..."}
@@ -1610,8 +1612,31 @@ export function ExportunityNeighbourhoodCommerce({
     </aside>
   );
 
+  const mobileBottomNav = !shopMode ? (
+    <nav className={cn("fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+8px)] z-50 grid grid-cols-5 rounded-[24px] border px-1.5 py-1.5 lg:hidden", dark ? "border-white/10 bg-[#07111F] text-white shadow-[0_-18px_44px_rgba(0,0,0,.34)]" : "border-slate-200 bg-white text-slate-950 shadow-[0_-18px_44px_rgba(15,23,42,.16)]")} aria-label="Exportunity mobile navigation">
+      {[
+        { label: "Explore", Icon: Store, active: !wholesale && !exchange && !business, onClick: () => openSpace("city") },
+        { label: "Nearby", Icon: MapIcon, active: false, onClick: () => { openSpace("city"); onNavigate?.("/map"); } },
+        { label: "Ask", Icon: MessageCircle, active: false, onClick: () => { setAssistantCollapsed(false); window.setTimeout(() => inputRef.current?.focus(), 50); } },
+        { label: "Orders", Icon: ShoppingBag, active: false, onClick: () => onNavigate?.("/orders") },
+        { label: "Invest", Icon: BriefcaseBusiness, active: exchange, onClick: () => openSpace("exchange") },
+      ].map(({ label, Icon, active, onClick }) => (
+        <button
+          key={label}
+          type="button"
+          onClick={onClick}
+          className={cn("flex min-w-0 flex-col items-center justify-center gap-0.5 rounded-[18px] px-1 py-1.5 text-[10px] font-black transition", active ? "bg-[#F5A623] text-[#07111F]" : dark ? "text-white/66 hover:bg-white/8 hover:text-white" : "text-slate-600 hover:bg-slate-50 hover:text-slate-950")}
+          aria-current={active ? "page" : undefined}
+        >
+          <Icon className="h-5 w-5" />
+          <span className="truncate">{label}</span>
+        </button>
+      ))}
+    </nav>
+  ) : null;
+
   const mobileComposer = (
-    <div className={cn("fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+10px)] z-50 rounded-[26px] border p-1.5 lg:hidden", dark ? "border-white/10 bg-[#07111F]/96 text-white shadow-[0_-18px_44px_rgba(0,0,0,.32)]" : "border-[#F5A623]/45 bg-white/96 text-slate-950 shadow-[0_-18px_44px_rgba(15,23,42,.16)]")}>
+    <div className={cn("fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+78px)] z-50 rounded-[26px] border p-1.5 lg:hidden", dark ? "border-white/10 bg-[#07111F] text-white shadow-[0_-18px_44px_rgba(0,0,0,.32)]" : "border-[#F5A623]/45 bg-white text-slate-950 shadow-[0_-18px_44px_rgba(15,23,42,.16)]")}>
       <form
         onSubmit={(event) => {
           event.preventDefault();
@@ -1623,6 +1648,7 @@ export function ExportunityNeighbourhoodCommerce({
           <Paperclip className="h-5 w-5" />
         </button>
         <input
+          ref={inputRef}
           value={input}
           onChange={(event) => setInput(event.target.value)}
           placeholder={shopMode ? `Ask ${visibleAgent.name} about this shop...` : "Ask Tassi to find products..."}
@@ -1643,6 +1669,30 @@ export function ExportunityNeighbourhoodCommerce({
       ) : null}
     </div>
   );
+
+  const mobileShopOrderBar = shopMode && activeShop && orderLines.length ? (
+    <div className={cn("fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+10px)] z-50 rounded-[24px] border p-3 lg:hidden", dark ? "border-white/12 bg-[#07111F] text-white shadow-[0_-18px_44px_rgba(0,0,0,.36)]" : "border-[#F5A623]/45 bg-white text-slate-950 shadow-[0_-18px_44px_rgba(15,23,42,.18)]")}>
+      <div className="flex items-center gap-3">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <span className="rounded-full bg-[#F5A623]/18 px-2.5 py-1 text-[11px] font-black text-[#F5A623]">
+              {orderLines.reduce((sum, line) => sum + line.quantity, 0)} selected
+            </span>
+            <span className={cn("truncate text-xs font-bold", dark ? "text-white/58" : "text-slate-500")}>{activeShop.name}</span>
+          </div>
+          <div className="mt-1 flex items-baseline gap-2">
+            <span className="text-lg font-black">{formatMoney(subtotal)}</span>
+            <span className={cn("truncate text-xs font-semibold", dark ? "text-white/54" : "text-slate-500")}>
+              {orderLines[0]?.product.name}{orderLines.length > 1 ? ` +${orderLines.length - 1}` : ""} · {activeShop.eta}
+            </span>
+          </div>
+        </div>
+        <button type="button" onClick={placeOrder} className="h-12 shrink-0 rounded-2xl bg-[#F5A623] px-5 text-sm font-black text-[#07111F] shadow-[0_12px_28px_rgba(245,166,35,.3)] transition hover:bg-[#F9A800]">
+          Place order
+        </button>
+      </div>
+    </div>
+  ) : null;
 
   const shopCenter = shopMode && activeShop ? (
     <main className={cn("min-h-0 overflow-auto pb-28 lg:pb-0", dark ? "bg-[#05070B]" : "bg-[#F7F8FA]")}>
@@ -1700,13 +1750,13 @@ export function ExportunityNeighbourhoodCommerce({
                             <span>{product.unit}</span>
                             <span>{product.quantityAvailable} available</span>
                           </div>
-                          <div className="mt-3 flex items-center justify-between gap-3 md:mt-4">
+                          <div className="relative z-10 mt-3 flex items-center justify-between gap-3 md:mt-4">
                             <div className="flex items-center gap-2">
                               <button type="button" onClick={() => updateQuantity(activeShop, product, quantity - 1)} className={cn("grid h-8 w-8 place-items-center rounded-xl border md:h-9 md:w-9", dark ? "border-white/20 hover:bg-white/10" : "border-slate-300 hover:bg-slate-100")} aria-label={`Reduce ${product.name}`}>
                                 <Minus className="h-4 w-4" />
                               </button>
                               <span className="min-w-8 text-center text-sm font-black md:min-w-9">{quantity}</span>
-                              <button type="button" onClick={() => updateQuantity(activeShop, product, quantity + 1)} className={cn("grid h-8 w-8 place-items-center rounded-xl border md:h-9 md:w-9", dark ? "border-white/20 hover:bg-white/10" : "border-slate-300 hover:bg-slate-100")} aria-label={`Add ${product.name}`}>
+                              <button type="button" onClick={() => updateQuantity(activeShop, product, quantity + 1)} className="grid h-8 w-8 place-items-center rounded-xl bg-[#F5A623] text-[#07111F] shadow-[0_10px_22px_rgba(245,166,35,.28)] transition hover:bg-[#F9A800] md:h-9 md:w-9" aria-label={`Add ${product.name}`}>
                                 <Plus className="h-4 w-4" />
                               </button>
                             </div>
@@ -1836,7 +1886,7 @@ export function ExportunityNeighbourhoodCommerce({
                     <div className={dark ? "text-white/55" : "text-slate-500"}>delivery</div>
                   </div>
                 </div>
-                <div className="grid grid-cols-[1fr_1fr] gap-2">
+                <div className={cn("sticky bottom-0 z-20 -mx-4 -mb-4 grid grid-cols-[1fr_1fr] gap-2 border-t p-4 backdrop-blur-xl", dark ? "border-white/10 bg-[#07111F]/95" : "border-slate-200 bg-white/95")}>
                   <button
                     type="button"
                     onClick={() => {
@@ -1956,14 +2006,14 @@ export function ExportunityNeighbourhoodCommerce({
           </div>
         </section>
 
-        <section className="grid grid-cols-3 gap-2 md:gap-3">
+        <section className="flex gap-2 overflow-x-auto pb-1 md:grid md:grid-cols-3 md:gap-3 md:overflow-visible md:pb-0">
           {modeTabs.map(({ label, eyebrow, description, Icon, active, onClick }) => (
             <button
               key={label}
               type="button"
               onClick={onClick}
               className={cn(
-                "group flex min-h-[62px] flex-col items-center justify-center gap-1 rounded-[18px] border p-1.5 text-center transition hover:-translate-y-0.5 md:min-h-[94px] md:flex-row md:justify-start md:gap-3 md:rounded-[24px] md:p-3 md:text-left",
+                "group flex min-h-[48px] min-w-[132px] shrink-0 items-center justify-start gap-2 rounded-full border px-2.5 py-2 text-left transition hover:-translate-y-0.5 md:min-h-[94px] md:min-w-0 md:flex-row md:gap-3 md:rounded-[24px] md:p-3",
                 active
                   ? "border-[#F5A623] bg-[#F5A623] text-[#07111F] shadow-[0_18px_42px_rgba(245,166,35,.22)]"
                   : dark
@@ -1972,13 +2022,13 @@ export function ExportunityNeighbourhoodCommerce({
               )}
               aria-pressed={active}
             >
-              <span className={cn("grid h-8 w-8 shrink-0 place-items-center rounded-[14px] md:h-14 md:w-14 md:rounded-[20px]", active ? "bg-[#07111F] text-[#F5A623]" : "bg-[#F5A623]/16 text-[#F5A623]")}>
+              <span className={cn("grid h-8 w-8 shrink-0 place-items-center rounded-full md:h-14 md:w-14 md:rounded-[20px]", active ? "bg-[#07111F] text-[#F5A623]" : "bg-[#F5A623]/16 text-[#F5A623]")}>
                 <Icon className="h-4 w-4 md:h-7 md:w-7" />
               </span>
               <span className="min-w-0">
-                <span className={cn("hidden text-[10px] font-black uppercase tracking-[0.16em] sm:block", active ? "text-[#07111F]/62" : dark ? "text-white/45" : "text-slate-500")}>{eyebrow}</span>
-                <span className="mt-0.5 block text-[10px] font-black leading-tight md:text-base">{label}</span>
-                <span className={cn("mt-1 hidden line-clamp-2 text-xs font-semibold leading-snug sm:block", active ? "text-[#07111F]/72" : dark ? "text-white/56" : "text-slate-600")}>{description}</span>
+                <span className={cn("hidden text-[10px] font-black uppercase tracking-[0.16em] lg:block", active ? "text-[#07111F]/62" : dark ? "text-white/45" : "text-slate-500")}>{eyebrow}</span>
+                <span className="block truncate text-[11px] font-black leading-tight md:mt-0.5 md:text-base">{label}</span>
+                <span className={cn("mt-1 hidden line-clamp-2 text-xs font-semibold leading-snug xl:block", active ? "text-[#07111F]/72" : dark ? "text-white/56" : "text-slate-600")}>{description}</span>
               </span>
             </button>
           ))}
@@ -2136,12 +2186,12 @@ export function ExportunityNeighbourhoodCommerce({
                       <p className={cn("mt-1 line-clamp-1 text-[11px] leading-relaxed md:mt-2 md:text-xs", dark ? "text-white/56" : "text-slate-600")}>{product.description}</p>
                       <div className="mt-2 flex items-center justify-between gap-3 md:mt-4">
                         <span className={cn("text-xs font-bold", dark ? "text-white/52" : "text-slate-500")}>{shop.category} - {shop.openLabel}</span>
-                        <span className="rounded-full bg-[#F5A623] px-2.5 py-1 text-[11px] font-black text-[#07111F] md:px-3 md:py-1.5 md:text-xs">{wholesale ? "Quote" : exchange ? "Review PME" : "Enter shop"}</span>
+                        <span className="rounded-full bg-[#F5A623]/16 px-2.5 py-1 text-[11px] font-black text-[#F5A623] md:px-3 md:py-1.5 md:text-xs">{wholesale ? "Quote" : exchange ? "Review PME" : "Ready"}</span>
                       </div>
                       {!wholesale && !exchange ? (
-                        <div className="mt-2 grid grid-cols-[minmax(0,1fr)_96px] gap-2 md:mt-3">
-                          <button type="button" onClick={(event) => { event.stopPropagation(); quickAddProduct(shop, product); }} className="flex h-9 items-center justify-center rounded-2xl bg-[#F5A623] text-xs font-black text-[#07111F] md:h-10 md:text-sm">
-                            Add to order
+                        <div className="mt-2 grid grid-cols-[44px_minmax(0,1fr)] gap-2 md:mt-3">
+                          <button type="button" onClick={(event) => { event.stopPropagation(); quickAddProduct(shop, product); }} className="grid h-10 place-items-center rounded-2xl border border-[#F5A623]/35 bg-[#F5A623]/14 text-[#F5A623] transition hover:bg-[#F5A623] hover:text-[#07111F]" aria-label={`Quick add ${product.name}`}>
+                            <Plus className="h-4 w-4" />
                           </button>
                           <button type="button" onClick={(event) => { event.stopPropagation(); enterShop(shop); }} className={cn("flex h-9 items-center justify-center rounded-2xl border text-xs font-black md:h-10 md:text-sm", dark ? "border-white/14 text-white/74 hover:bg-white/8" : "border-slate-200 text-slate-700 hover:bg-slate-50")}>
                             Enter shop
@@ -2305,7 +2355,12 @@ export function ExportunityNeighbourhoodCommerce({
           )}
           {assistantPane}
         </div>
-        {!shopMode ? mobileComposer : null}
+        {!shopMode ? (
+          <>
+            {mobileComposer}
+            {mobileBottomNav}
+          </>
+        ) : mobileShopOrderBar}
       </div>
     );
   }
@@ -2318,13 +2373,18 @@ export function ExportunityNeighbourhoodCommerce({
       <div
         className={cn("grid min-h-0 flex-1 grid-cols-1", shellGridClass)}
       >
-        {assistantPane}
         {shopCenter || businessCenter || discoveryCenter}
         {showRightMap ? (
           <LiveMapPane dark={dark} places={visiblePlaces} activeShop={activeShop} userLocation={userLocation} wholesale={wholesale} exchange={exchange} onSelect={selectPlaceFromMap} provider={placesStatus} mapsConfig={mapsConfig} className="hidden lg:block" />
         ) : null}
+        {assistantPane}
       </div>
-      {!shopMode ? mobileComposer : null}
+      {!shopMode ? (
+        <>
+          {mobileComposer}
+          {mobileBottomNav}
+        </>
+      ) : mobileShopOrderBar}
       {videoOpen ? (
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/55 p-4 backdrop-blur-sm">
           <div className={cn("w-full max-w-2xl overflow-hidden rounded-2xl border", dark ? "border-white/12 bg-[#07111F] text-white" : "border-white bg-white text-slate-950")}>

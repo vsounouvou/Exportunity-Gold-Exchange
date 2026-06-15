@@ -1027,24 +1027,25 @@ function LiveMapPane({
         </MapContainer>
       )}
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_25%,transparent_0,transparent_42%,rgba(245,166,35,.06)_70%,rgba(7,17,31,.16)_100%)]" />
-      <div className={cn("absolute left-4 right-4 top-4 z-[401] rounded-2xl border p-3 backdrop-blur-xl", dark ? "border-white/12 bg-[#07111F]/78 text-white" : "border-white/90 bg-white/88 text-slate-950 shadow-[0_16px_36px_rgba(15,23,42,.12)]")}>
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <div className="text-[11px] font-black uppercase tracking-[0.2em] text-[#F5A623]">{exchange ? "Ready for export" : wholesale ? "Wholesale map" : "Neighbourhood map"}</div>
-            <div className="mt-1 text-sm font-black">{places.length} live locations around Cocody</div>
-          </div>
-          <Navigation className="h-5 w-5 text-[#F5A623]" />
+      <div className={cn("absolute left-4 top-4 z-[401] max-w-[min(520px,calc(100%-2rem))] rounded-2xl border px-3.5 py-3 backdrop-blur-xl", dark ? "border-white/12 bg-[#07111F]/78 text-white" : "border-white/90 bg-white/88 text-slate-950 shadow-[0_16px_36px_rgba(15,23,42,.12)]")}>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="rounded-full bg-[#F5A623] px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-[#07111F]">
+            {exchange ? "Ready for export" : wholesale ? "Wholesale" : "Nearby"}
+          </span>
+          <span className="text-sm font-black">{places.length} live locations around Cocody</span>
+          <Navigation className="ml-auto h-4 w-4 text-[#F5A623]" />
         </div>
         <div className="mt-2 flex flex-wrap gap-2">
-          <div className={cn("inline-flex rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em]", googleReady ? "bg-emerald-500/14 text-emerald-600" : googleRenderFailed ? "bg-red-500/12 text-red-600" : "bg-[#F5A623]/16 text-[#9a5f00]")}>
+          <span className={cn("inline-flex rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em]", googleReady ? "bg-emerald-500/14 text-emerald-600" : googleRenderFailed ? "bg-red-500/12 text-red-600" : "bg-[#F5A623]/16 text-[#9a5f00]")}>
             {rendererLabel}
-          </div>
-          <div className={cn("inline-flex rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em]", provider.provider === "google" ? "bg-emerald-500/14 text-emerald-600" : "bg-slate-500/12 text-slate-600")}>
-            {provider.provider === "google" ? "Google Places data" : "Curated business data"}
-          </div>
+          </span>
+          <span className={cn("inline-flex rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em]", provider.provider === "google" ? "bg-emerald-500/14 text-emerald-600" : "bg-slate-500/12 text-slate-600")}>
+            {provider.provider === "google" ? "Google Places" : "Curated data"}
+          </span>
         </div>
-        <div className={cn("mt-2 text-xs font-semibold", googleRenderFailed ? "text-red-600" : dark ? "text-white/60" : "text-slate-600")}>{rendererDetail}</div>
-        <div className={cn("mt-1 line-clamp-2 text-[11px] leading-snug", dark ? "text-white/45" : "text-slate-500")}>{provider.detail}</div>
+        {googleRenderFailed ? (
+          <div className="mt-2 line-clamp-1 text-xs font-bold text-red-600">{rendererDetail}</div>
+        ) : null}
       </div>
     </section>
   );

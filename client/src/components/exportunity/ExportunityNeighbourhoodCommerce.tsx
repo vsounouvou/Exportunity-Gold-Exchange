@@ -1218,11 +1218,11 @@ export function ExportunityNeighbourhoodCommerce({
     if (space === "shop") setSpace(wholesale ? "wholesale" : exchange ? "exchange" : "city");
   };
 
-  const enterShop = (shop: CommerceShop) => {
+  const enterShop = (shop: CommerceShop, initialProduct?: ShopProduct) => {
     setActiveShop(shop);
     setSpace("shop");
     setAssistantCollapsed(true);
-    setActiveProductDetail(null);
+    setActiveProductDetail(initialProduct || null);
     if (!orderDrafts[shop.id]) {
       setOrderDrafts((current) => ({ ...current, [shop.id]: current[shop.id] || {} }));
     }
@@ -1586,7 +1586,7 @@ export function ExportunityNeighbourhoodCommerce({
               ref={inputRef}
               value={input}
               onChange={(event) => setInput(event.target.value)}
-              placeholder={retailShopSelected ? `Ask ${visibleAgent.name} about products in ${activeShop?.name}...` : "Find products near me..."}
+              placeholder={retailShopSelected ? `Search this shelf or ask ${visibleAgent.name}...` : "Search products near me..."}
               className={cn("min-w-0 flex-1 bg-transparent text-sm font-semibold outline-none placeholder:text-current/50", dark ? "text-white" : "text-slate-950")}
             />
           </div>
@@ -1620,7 +1620,7 @@ export function ExportunityNeighbourhoodCommerce({
       {[
         { label: "Explore", Icon: Store, active: !wholesale && !exchange && !business, onClick: () => openSpace("city") },
         { label: "Nearby", Icon: MapIcon, active: false, onClick: () => { openSpace("city"); onNavigate?.("/map"); } },
-        { label: "Ask", Icon: MessageCircle, active: false, onClick: () => { setAssistantCollapsed(false); window.setTimeout(() => inputRef.current?.focus(), 50); } },
+        { label: "Help", Icon: MessageCircle, active: false, onClick: () => { setAssistantCollapsed(false); window.setTimeout(() => inputRef.current?.focus(), 50); } },
         { label: "Orders", Icon: ShoppingBag, active: false, onClick: () => onNavigate?.("/orders") },
         { label: "Export", Icon: BriefcaseBusiness, active: exchange, onClick: () => openSpace("exchange") },
       ].map(({ label, Icon, active, onClick }) => (
@@ -1654,7 +1654,7 @@ export function ExportunityNeighbourhoodCommerce({
           ref={inputRef}
           value={input}
           onChange={(event) => setInput(event.target.value)}
-          placeholder={retailShopSelected && activeShop ? `Ask ${visibleAgent.name} about ${activeShop.name}...` : "Ask Tassi to find products..."}
+          placeholder={retailShopSelected && activeShop ? `Search shelf or ask ${visibleAgent.name}...` : "Search products or ask Tassi..."}
           className={cn("min-w-0 flex-1 bg-transparent px-1 text-sm font-semibold outline-none placeholder:text-current/46", dark ? "text-white" : "text-slate-950")}
         />
         <button type="button" onClick={startVoice} className={cn("grid h-9 w-9 shrink-0 place-items-center rounded-full", voiceState === "listening" ? "bg-red-500 text-white" : dark ? "text-white hover:bg-white/10" : "text-slate-700 hover:bg-slate-100")} aria-label="Tap to speak">
@@ -2130,8 +2130,8 @@ export function ExportunityNeighbourhoodCommerce({
                   <button type="button" onClick={() => handleAsk("Review this seller")} className="flex-1 rounded-2xl bg-[#F5A623] px-4 py-3 text-sm font-black text-[#07111F]">Review profile</button>
                 ) : (
                   <>
-                    <button type="button" onClick={() => enterShop(activeShop)} className="flex-1 rounded-2xl bg-[#F5A623] px-4 py-3 text-sm font-black text-[#07111F]">Enter shop</button>
-                    <button type="button" onClick={() => quickAddProduct(activeShop, productsForShop(activeShop)[0])} className={cn("flex-1 rounded-2xl border px-4 py-3 text-sm font-black", dark ? "border-white/14 text-white/72" : "border-slate-200 bg-white text-slate-700")}>Add first item</button>
+                    <button type="button" onClick={() => enterShop(activeShop)} className="flex-1 rounded-2xl bg-[#F5A623] px-4 py-3 text-sm font-black text-[#07111F]">Open products</button>
+                    <button type="button" onClick={() => quickAddProduct(activeShop, productsForShop(activeShop)[0])} className={cn("flex-1 rounded-2xl border px-4 py-3 text-sm font-black", dark ? "border-white/14 text-white/72" : "border-slate-200 bg-white text-slate-700")}>Add top product</button>
                   </>
                 )}
                 <button type="button" onClick={() => setActiveShop(null)} className={cn("rounded-2xl border px-4 py-3 text-sm font-black", dark ? "border-white/14 text-white/72" : "border-slate-200 bg-white text-slate-700")}>Close</button>
@@ -2161,11 +2161,11 @@ export function ExportunityNeighbourhoodCommerce({
                   <div
                     role="button"
                     tabIndex={0}
-                    onClick={() => (wholesale || exchange ? previewShop(shop) : enterShop(shop))}
+                    onClick={() => (wholesale || exchange ? previewShop(shop) : enterShop(shop, product))}
                     onKeyDown={(event) => {
                       if (event.key === "Enter" || event.key === " ") {
                         if (wholesale || exchange) previewShop(shop);
-                        else enterShop(shop);
+                        else enterShop(shop, product);
                       }
                     }}
                     className="block w-full cursor-pointer text-left"
@@ -2196,8 +2196,8 @@ export function ExportunityNeighbourhoodCommerce({
                           <button type="button" onClick={(event) => { event.stopPropagation(); quickAddProduct(shop, product); }} className="grid h-10 place-items-center rounded-2xl border border-[#F5A623]/35 bg-[#F5A623]/14 text-[#F5A623] transition hover:bg-[#F5A623] hover:text-[#07111F]" aria-label={`Add ${product.name} to order`}>
                             <Plus className="h-4 w-4" />
                           </button>
-                          <button type="button" onClick={(event) => { event.stopPropagation(); enterShop(shop); }} className={cn("flex h-9 items-center justify-center rounded-2xl border text-xs font-black md:h-10 md:text-sm", dark ? "border-white/14 text-white/74 hover:bg-white/8" : "border-slate-200 text-slate-700 hover:bg-slate-50")}>
-                            Enter shop
+                          <button type="button" onClick={(event) => { event.stopPropagation(); enterShop(shop, product); }} className={cn("flex h-9 items-center justify-center rounded-2xl border text-xs font-black md:h-10 md:text-sm", dark ? "border-white/14 text-white/74 hover:bg-white/8" : "border-slate-200 text-slate-700 hover:bg-slate-50")}>
+                            Open products
                           </button>
                         </div>
                       ) : null}
@@ -2286,8 +2286,7 @@ export function ExportunityNeighbourhoodCommerce({
                               key={product.id}
                               type="button"
                               onClick={() => {
-                                setActiveProductDetail(product);
-                                enterShop(activeShop);
+                                enterShop(activeShop, product);
                               }}
                               className={cn("overflow-hidden rounded-2xl border text-left", dark ? "border-white/10 bg-white/[0.04]" : "border-slate-200 bg-white")}
                               aria-label={`Open ${product.name}`}
@@ -2314,8 +2313,8 @@ export function ExportunityNeighbourhoodCommerce({
                           </>
                         ) : (
                           <>
-                            <button type="button" onClick={() => enterShop(activeShop)} className="h-10 rounded-2xl bg-[#F5A623] text-sm font-black text-[#07111F]">Enter shop</button>
-                            <button type="button" onClick={() => quickAddProduct(activeShop, productsForShop(activeShop)[0])} className={cn("h-10 rounded-2xl border text-sm font-black", dark ? "border-white/14 text-white/74 hover:bg-white/8" : "border-slate-200 text-slate-700 hover:bg-slate-50")}>Add first item</button>
+                            <button type="button" onClick={() => enterShop(activeShop)} className="h-10 rounded-2xl bg-[#F5A623] text-sm font-black text-[#07111F]">Open products</button>
+                            <button type="button" onClick={() => quickAddProduct(activeShop, productsForShop(activeShop)[0])} className={cn("h-10 rounded-2xl border text-sm font-black", dark ? "border-white/14 text-white/74 hover:bg-white/8" : "border-slate-200 text-slate-700 hover:bg-slate-50")}>Add top product</button>
                           </>
                         )}
                       </div>
@@ -2340,7 +2339,7 @@ export function ExportunityNeighbourhoodCommerce({
                       <button
                         key={`${shop.id}-${product.id}-map-shelf`}
                         type="button"
-                        onClick={() => (wholesale || exchange ? previewShop(shop) : enterShop(shop))}
+                        onClick={() => (wholesale || exchange ? previewShop(shop) : enterShop(shop, product))}
                         className={cn("grid grid-cols-[62px_minmax(0,1fr)] items-center gap-2 rounded-2xl border p-2 text-left transition hover:-translate-y-0.5", dark ? "border-white/10 bg-white/[0.04] hover:border-[#F5A623]/50" : "border-slate-200 bg-white hover:border-[#F5A623]/50")}
                       >
                         <img src={product.image || shop.image} alt="" className="h-14 w-14 rounded-xl object-cover" />

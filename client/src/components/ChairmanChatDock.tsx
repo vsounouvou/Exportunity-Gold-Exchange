@@ -91,19 +91,19 @@ type DockLayout = {
   collapsed: boolean;
 };
 
-const DOCK_LAYOUT_STORAGE_KEY = "exportunity:chairman-chat-dock-layout:v2";
-const MIN_DOCK_WIDTH = 320;
-const MIN_DOCK_HEIGHT = 360;
-const DEFAULT_DOCK_WIDTH = 340;
-const DEFAULT_DOCK_HEIGHT = 440;
+const DOCK_LAYOUT_STORAGE_KEY = "exportunity:chairman-chat-dock-layout:v3";
+const MIN_DOCK_WIDTH = 300;
+const MIN_DOCK_HEIGHT = 320;
+const DEFAULT_DOCK_WIDTH = 324;
+const DEFAULT_DOCK_HEIGHT = 392;
 
 function getDefaultDockLayout(): DockLayout {
   if (typeof window === "undefined") {
     return { x: 24, y: 96, width: DEFAULT_DOCK_WIDTH, height: DEFAULT_DOCK_HEIGHT, collapsed: false };
   }
   return {
-    x: Math.max(16, window.innerWidth - DEFAULT_DOCK_WIDTH - 20),
-    y: Math.max(80, window.innerHeight - DEFAULT_DOCK_HEIGHT - 76),
+    x: Math.max(16, window.innerWidth - DEFAULT_DOCK_WIDTH - 18),
+    y: Math.max(80, window.innerHeight - DEFAULT_DOCK_HEIGHT - 92),
     width: Math.min(DEFAULT_DOCK_WIDTH, Math.max(MIN_DOCK_WIDTH, window.innerWidth - 32)),
     height: Math.min(DEFAULT_DOCK_HEIGHT, Math.max(MIN_DOCK_HEIGHT, window.innerHeight - 120)),
     collapsed: false,
@@ -809,6 +809,35 @@ export function ChairmanChatDock() {
     setDockLayout(getDefaultDockLayout());
   };
 
+  const snapDockToSide = () => {
+    if (typeof window === "undefined") return;
+    const width = Math.min(360, Math.max(MIN_DOCK_WIDTH, window.innerWidth - 32));
+    setDockLayout(
+      clampDockLayout({
+        x: window.innerWidth - width - 16,
+        y: 82,
+        width,
+        height: Math.min(Math.max(MIN_DOCK_HEIGHT, window.innerHeight - 112), window.innerHeight - 96),
+        collapsed: false,
+      }),
+    );
+  };
+
+  const snapDockToBottom = () => {
+    if (typeof window === "undefined") return;
+    const width = Math.min(620, Math.max(MIN_DOCK_WIDTH, window.innerWidth - 32));
+    const height = Math.min(340, Math.max(MIN_DOCK_HEIGHT, window.innerHeight - 112));
+    setDockLayout(
+      clampDockLayout({
+        x: Math.max(16, (window.innerWidth - width) / 2),
+        y: Math.max(16, window.innerHeight - height - 16),
+        width,
+        height,
+        collapsed: false,
+      }),
+    );
+  };
+
   const handleDockPointerDown = (event: any) => {
     if (isMobile || dockLayout.collapsed) return;
     const target = event.target as HTMLElement | null;
@@ -896,7 +925,7 @@ export function ChairmanChatDock() {
           setIsOpen(true);
         }}
       >
-        Tassi
+        Tassi assistant
       </button>
 
       {isOpen && (
@@ -986,6 +1015,30 @@ export function ChairmanChatDock() {
                   >
                     {dockLayout.collapsed ? <Maximize2 className="h-4 w-4" /> : <Minimize2 className="h-4 w-4" />}
                   </Button>
+                  {!dockLayout.collapsed ? (
+                    <>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 px-2 text-[11px] font-semibold text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+                        onClick={snapDockToSide}
+                        title="Snap assistant to the right side"
+                      >
+                        Side
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 px-2 text-[11px] font-semibold text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+                        onClick={snapDockToBottom}
+                        title="Snap assistant to the bottom"
+                      >
+                        Bottom
+                      </Button>
+                    </>
+                  ) : null}
                 </>
               ) : null}
               <Button

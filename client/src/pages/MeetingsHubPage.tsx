@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { formatDistanceToNowStrict } from "date-fns";
-import { Plus, Video, Link as LinkIcon, RefreshCw } from "lucide-react";
+import { AlertTriangle, Plus, Video, Link as LinkIcon, RefreshCw } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -70,6 +70,7 @@ export default function MeetingsHubPage() {
   const [title, setTitle] = useState("");
   const [emailsRaw, setEmailsRaw] = useState("");
   const [recordingEnabled, setRecordingEnabled] = useState(true);
+  const [createError, setCreateError] = useState<string | null>(null);
 
   const { data, isLoading, isRefetching, refetch } = useQuery<ListMeetingsResponse>({
     queryKey: ["/api/meet/meetings"],
@@ -89,6 +90,7 @@ export default function MeetingsHubPage() {
 
   const createMeeting = useMutation({
     mutationFn: async () => {
+      setCreateError(null);
       const payload = {
         title: title.trim(),
         emails: parseEmailList(emailsRaw),
@@ -108,6 +110,7 @@ export default function MeetingsHubPage() {
       setOpenCreate(false);
       setTitle("");
       setEmailsRaw("");
+      setCreateError(null);
       toast({
         title: "Meeting created",
         description: "Host link copied and meeting is ready to join.",
@@ -120,9 +123,11 @@ export default function MeetingsHubPage() {
       setLocation(`/m/${encodeURIComponent(result.meeting.id)}?t=${encodeURIComponent(result.hostInvite.token)}`);
     },
     onError: (error: any) => {
+      const detail = error?.message || "Unable to create meeting";
+      setCreateError(detail);
       toast({
         title: "Create failed",
-        description: error?.message || "Unable to create meeting",
+        description: detail,
         variant: "destructive",
       });
     },
@@ -190,7 +195,13 @@ export default function MeetingsHubPage() {
               <RefreshCw className={`mr-2 h-4 w-4 ${isRefetching ? "animate-spin" : ""}`} />
               Refresh
             </Button>
-            <Dialog open={openCreate} onOpenChange={setOpenCreate}>
+            <Dialog
+              open={openCreate}
+              onOpenChange={(nextOpen) => {
+                setOpenCreate(nextOpen);
+                if (!nextOpen) setCreateError(null);
+              }}
+            >
               <DialogTrigger asChild>
                 <Button className="bg-[#F5A623] text-slate-950 hover:bg-[#F9A800]">
                   <Plus className="mr-2 h-4 w-4" />
@@ -205,6 +216,22 @@ export default function MeetingsHubPage() {
                   </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4">
+                  {createError ? (
+                    <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800">
+                      <div className="flex items-start gap-2">
+                        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                        <div>
+                          <p className="font-semibold">Meeting could not be created.</p>
+                          <p className="mt-1">{createError}</p>
+                          {/MEET_INVITE_SECRET|JWT_SECRET|SESSION_SECRET/i.test(createError) ? (
+                            <p className="mt-1 text-xs text-rose-700">
+                              Configure `MEET_INVITE_SECRET` in production, or provide a valid `JWT_SECRET` / `SESSION_SECRET` fallback, then retry.
+                            </p>
+                          ) : null}
+                        </div>
+                      </div>
+                    </div>
+                  ) : null}
                   <div className="space-y-2">
                     <Label htmlFor="meeting-title" className="text-slate-700">Title</Label>
                     <Input

@@ -1006,6 +1006,7 @@ function LiveMapPane({
   className,
   provider,
   mapsConfig,
+  showDiagnostics = false,
 }: {
   dark: boolean;
   places: CommerceShop[];
@@ -1017,6 +1018,7 @@ function LiveMapPane({
   className?: string;
   provider: PublicPlacesState;
   mapsConfig: PublicMapsConfig;
+  showDiagnostics?: boolean;
 }) {
   const safeUserLocation = validPosition(userLocation) ? userLocation : ABIDJAN_COCODY;
   const safePlaces = places.filter((shop) => validPosition(shop.position));
@@ -1029,7 +1031,7 @@ function LiveMapPane({
     setGoogleRenderFailureReason(null);
   }, [mapsConfig.browserApiKey, mapsConfig.provider]);
   const googleReady = isGoogleMapReady(mapsConfig) && !googleRenderFailed;
-  const rendererLabel = googleReady ? "Google Maps renderer" : googleRenderFailed ? "Google key rejected" : "OpenStreetMap renderer";
+  const rendererLabel = googleReady ? "Google Maps" : showDiagnostics && googleRenderFailed ? "Google key rejected" : "OpenStreetMap";
   const rendererDetail = googleRenderFailureReason || provider.label;
   const cloudState = safeActiveShop ? "focusingShop" : wholesale ? "wholesaleMode" : exchange ? "exchangeMode" : "idle";
   return (
@@ -1087,14 +1089,14 @@ function LiveMapPane({
           <Navigation className="ml-auto h-4 w-4 text-[#F5A623]" />
         </div>
         <div className="mt-2 flex flex-wrap gap-2">
-          <span className={cn("inline-flex rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em]", googleReady ? "bg-emerald-500/14 text-emerald-600" : googleRenderFailed ? "bg-red-500/12 text-red-600" : "bg-[#F5A623]/16 text-[#9a5f00]")}>
+          <span className={cn("inline-flex rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em]", googleReady ? "bg-emerald-500/14 text-emerald-600" : showDiagnostics && googleRenderFailed ? "bg-red-500/12 text-red-600" : "bg-[#F5A623]/16 text-[#9a5f00]")}>
             {rendererLabel}
           </span>
           <span className={cn("inline-flex rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em]", provider.provider === "google" ? "bg-emerald-500/14 text-emerald-600" : "bg-slate-500/12 text-slate-600")}>
             {provider.provider === "google" ? "Google Places" : "Curated data"}
           </span>
         </div>
-        {googleRenderFailed ? (
+        {showDiagnostics && googleRenderFailed ? (
           <div className="mt-2 line-clamp-1 text-xs font-bold text-red-600">{rendererDetail}</div>
         ) : null}
       </div>

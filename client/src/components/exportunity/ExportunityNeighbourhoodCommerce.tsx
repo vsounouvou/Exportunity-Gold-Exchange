@@ -2356,6 +2356,41 @@ export function ExportunityNeighbourhoodCommerce({
           {shopCenter || (
             <div className="relative min-h-0">
               <LiveMapPane dark={dark} places={visiblePlaces} activeShop={activeShop} userLocation={userLocation} wholesale={wholesale} exchange={exchange} onSelect={selectPlaceFromMap} provider={placesStatus} mapsConfig={mapsConfig} className="h-full" />
+              {mapFull && !activeShop ? (
+                <section className={cn("absolute bottom-5 left-5 z-[401] w-[min(720px,calc(100%-2.5rem))] overflow-hidden rounded-[26px] border p-2.5 backdrop-blur-xl lg:w-[620px]", dark ? "border-white/12 bg-[#07111F]/86 text-white shadow-[0_22px_68px_rgba(0,0,0,.42)]" : "border-white/90 bg-white/92 text-slate-950 shadow-[0_20px_56px_rgba(15,23,42,.16)]")}>
+                  <div className="mb-2 flex items-center justify-between gap-3 px-1">
+                    <div>
+                      <div className="text-[10px] font-black uppercase tracking-[0.18em] text-[#F5A623]">
+                        {wholesale ? "Supplier categories" : exchange ? "Seller categories" : "Shop categories"}
+                      </div>
+                      <div className="text-sm font-black">
+                        {wholesale ? "Start with a supplier type or request a quote" : exchange ? "Find export-ready products and verified seller profiles" : "Pick what you want to buy nearby"}
+                      </div>
+                    </div>
+                    <MapPin className="h-5 w-5 shrink-0 text-[#F5A623]" />
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 md:grid-cols-5">
+                    {categoryTiles.slice(0, 5).map(([label]) => {
+                      const text = String(label);
+                      const visual = visualForCategory(text, wholesale, exchange);
+                      return (
+                        <button
+                          key={text}
+                          type="button"
+                          onClick={() => handleAsk(text)}
+                          className={cn("group flex min-w-0 items-center gap-2 rounded-2xl border p-2 text-left transition hover:-translate-y-0.5", dark ? "border-white/10 bg-white/[0.05] hover:border-[#F5A623]/55" : "border-slate-200 bg-white hover:border-[#F5A623]/60 hover:shadow-[0_12px_28px_rgba(15,23,42,.08)]")}
+                        >
+                          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-[#F5A623] text-[#07111F] shadow-[0_12px_28px_rgba(245,166,35,.22)]" dangerouslySetInnerHTML={{ __html: markerSvgForCategory(visual.kind) }} />
+                          <span className="min-w-0">
+                            <span className="block truncate text-xs font-black">{text}</span>
+                            <span className={cn("block truncate text-[10px] font-bold", dark ? "text-white/52" : "text-slate-500")}>{categoryHint(text, wholesale, exchange)}</span>
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </section>
+              ) : null}
               {activeShop ? (
                 <section className={cn("absolute bottom-5 left-5 right-5 z-[401] overflow-hidden rounded-[26px] border backdrop-blur-xl lg:right-auto lg:w-[430px]", dark ? "border-white/12 bg-[#07111F]/88 text-white shadow-[0_26px_80px_rgba(0,0,0,.45)]" : "border-white/90 bg-white/92 text-slate-950 shadow-[0_24px_70px_rgba(15,23,42,.18)]")}>
                   <div className="grid grid-cols-[116px_minmax(0,1fr)]">

@@ -1039,7 +1039,7 @@ export function ExportunityNeighbourhoodCommerce({
   const [userLocation, setUserLocation] = useState<[number, number]>(ABIDJAN_COCODY);
   const [input, setInput] = useState("");
   const [voiceState, setVoiceState] = useState<"idle" | "listening" | "unavailable">("idle");
-  const [assistantCollapsed, setAssistantCollapsed] = useState(() => shellMode === "mapDominant" && initialSpace === "city");
+  const [assistantCollapsed, setAssistantCollapsed] = useState(false);
   const [messages, setMessages] = useState<ConversationMessage[]>([
     { id: "hello", agentId: "tassi", content: "Hello, I'm Tassi. What are you looking for around you today?", createdAt: "now", agentSnapshot: tassi },
     { id: "options", agentId: "tassi", content: "You can start with breakfast, fresh bread, coffee, building materials, delivery, or wholesale suppliers.", createdAt: "now", agentSnapshot: tassi },
@@ -1110,7 +1110,7 @@ export function ExportunityNeighbourhoodCommerce({
     setSpace(initialSpace);
     setActiveShop(null);
     setActiveProductDetail(null);
-    setAssistantCollapsed(shellMode === "mapDominant" && initialSpace === "city");
+    setAssistantCollapsed(false);
   }, [initialSpace, shellMode]);
 
   useEffect(() => {
@@ -1505,7 +1505,7 @@ export function ExportunityNeighbourhoodCommerce({
   const shellGridClass = mapDominant
     ? assistantCollapsed
       ? "lg:grid-cols-[minmax(0,1fr)_72px]"
-      : "lg:grid-cols-[minmax(0,1fr)_280px] xl:grid-cols-[minmax(0,1fr)_300px]"
+      : "lg:grid-cols-[minmax(0,1fr)_340px] xl:grid-cols-[minmax(0,1fr)_360px] 2xl:grid-cols-[minmax(0,1fr)_380px]"
     : showRightMap
       ? assistantCollapsed
         ? "lg:grid-cols-[minmax(0,1fr)_320px_72px] xl:grid-cols-[minmax(0,1fr)_360px_72px] 2xl:grid-cols-[minmax(0,1fr)_390px_72px]"
@@ -1568,7 +1568,7 @@ export function ExportunityNeighbourhoodCommerce({
         </div>
         <div className={cn("mt-4 rounded-2xl border p-3 text-sm leading-relaxed", dark ? "border-white/10 bg-white/[0.045] text-white/76" : "border-slate-200 bg-slate-50 text-slate-650")}>
           {retailShopSelected && activeShop
-            ? `${visibleAgent.name} works for this shop. The shelf and order panel are the main flow; use this chat only for stock, substitutions, wallet, delivery, or live preview.`
+                ? `${visibleAgent.name} works for this shop. Products and the order panel are the main flow; this chat is here for stock, substitutions, wallet, delivery, or live preview.`
             : business
               ? "Run the business by talking to your agents. They report issues, create actions, and coordinate the shop."
               : wholesale
@@ -1646,7 +1646,7 @@ export function ExportunityNeighbourhoodCommerce({
       {[
         { label: "Explore", Icon: Store, active: !wholesale && !exchange && !business, onClick: () => openSpace("city") },
         { label: "Nearby", Icon: MapIcon, active: false, onClick: () => { openSpace("city"); onNavigate?.("/map"); } },
-        { label: "Help", Icon: MessageCircle, active: false, onClick: () => { setAssistantCollapsed(false); window.setTimeout(() => inputRef.current?.focus(), 50); } },
+        { label: "Chat", Icon: MessageCircle, active: false, onClick: () => { setAssistantCollapsed(false); window.setTimeout(() => inputRef.current?.focus(), 50); } },
         { label: "Orders", Icon: ShoppingBag, active: false, onClick: () => onNavigate?.("/orders") },
         { label: "Export", Icon: BriefcaseBusiness, active: exchange, onClick: () => openSpace("exchange") },
       ].map(({ label, Icon, active, onClick }) => (
@@ -2330,12 +2330,12 @@ export function ExportunityNeighbourhoodCommerce({
                         {wholesale ? (
                           <>
                             <button type="button" onClick={() => handleAsk("Request a quote")} className="h-10 rounded-2xl bg-[#F5A623] text-sm font-black text-[#07111F]">Request quote</button>
-                            <button type="button" onClick={() => setAssistantCollapsed(false)} className={cn("h-10 rounded-2xl border text-sm font-black", dark ? "border-white/14 text-white/74 hover:bg-white/8" : "border-slate-200 text-slate-700 hover:bg-slate-50")}>Supplier help</button>
+                            <button type="button" onClick={() => setAssistantCollapsed(false)} className={cn("h-10 rounded-2xl border text-sm font-black", dark ? "border-white/14 text-white/74 hover:bg-white/8" : "border-slate-200 text-slate-700 hover:bg-slate-50")}>Supplier chat</button>
                           </>
                         ) : exchange ? (
                           <>
                             <button type="button" onClick={() => handleAsk("Review this seller")} className="h-10 rounded-2xl bg-[#F5A623] text-sm font-black text-[#07111F]">Review profile</button>
-                            <button type="button" onClick={() => setAssistantCollapsed(false)} className={cn("h-10 rounded-2xl border text-sm font-black", dark ? "border-white/14 text-white/74 hover:bg-white/8" : "border-slate-200 text-slate-700 hover:bg-slate-50")}>Export analyst</button>
+                            <button type="button" onClick={() => setAssistantCollapsed(false)} className={cn("h-10 rounded-2xl border text-sm font-black", dark ? "border-white/14 text-white/74 hover:bg-white/8" : "border-slate-200 text-slate-700 hover:bg-slate-50")}>Seller analyst</button>
                           </>
                         ) : (
                           <>
@@ -2348,7 +2348,7 @@ export function ExportunityNeighbourhoodCommerce({
                   </div>
                 </section>
               ) : (
-                <section className={cn("absolute bottom-5 left-5 right-5 z-[401] overflow-hidden rounded-[26px] border backdrop-blur-xl lg:right-[320px] xl:right-[340px]", dark ? "border-white/12 bg-[#07111F]/88 text-white shadow-[0_26px_80px_rgba(0,0,0,.45)]" : "border-white/90 bg-white/92 text-slate-950 shadow-[0_24px_70px_rgba(15,23,42,.18)]")}>
+                <section className={cn("absolute bottom-5 left-5 right-5 z-[401] overflow-hidden rounded-[26px] border backdrop-blur-xl lg:right-[380px] xl:right-[400px] 2xl:right-[420px]", dark ? "border-white/12 bg-[#07111F]/88 text-white shadow-[0_26px_80px_rgba(0,0,0,.45)]" : "border-white/90 bg-white/92 text-slate-950 shadow-[0_24px_70px_rgba(15,23,42,.18)]")}>
                   <div className="flex items-center justify-between gap-3 border-b border-current/10 px-4 py-3">
                     <div>
                       <div className="text-[10px] font-black uppercase tracking-[0.18em] text-[#F5A623]">

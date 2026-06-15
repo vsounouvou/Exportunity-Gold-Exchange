@@ -312,7 +312,68 @@ export default function AdminAgentsOsPage() {
   };
 
   return (
-    <div className="p-4 lg:p-6 space-y-4">
+    <div className="agents-os-light min-h-screen space-y-4 p-4 lg:p-6">
+      <style>{`
+        .agents-os-light {
+          background: #f7f8fa;
+          color: #111827;
+        }
+        .agents-os-light .bg-gray-900,
+        .agents-os-light .bg-gray-900\\/50,
+        .agents-os-light .bg-gray-900\\/60,
+        .agents-os-light .bg-gray-900\\/70,
+        .agents-os-light .bg-gray-900\\/80,
+        .agents-os-light .bg-gray-950,
+        .agents-os-light .bg-gray-950\\/30,
+        .agents-os-light .bg-gray-950\\/40,
+        .agents-os-light .bg-gray-950\\/50,
+        .agents-os-light .bg-gray-950\\/70 {
+          background: #ffffff !important;
+        }
+        .agents-os-light .border-gray-800,
+        .agents-os-light .border-gray-800\\/70,
+        .agents-os-light .border-gray-800\\/80,
+        .agents-os-light .border-gray-700 {
+          border-color: rgba(15, 23, 42, 0.12) !important;
+        }
+        .agents-os-light .text-white,
+        .agents-os-light .text-gray-100,
+        .agents-os-light .text-gray-200,
+        .agents-os-light .text-gray-300 {
+          color: #111827 !important;
+        }
+        .agents-os-light .text-gray-400,
+        .agents-os-light .text-gray-500 {
+          color: #4b5563 !important;
+        }
+        .agents-os-light input,
+        .agents-os-light textarea,
+        .agents-os-light [role="combobox"] {
+          background: #ffffff !important;
+          color: #111827 !important;
+          border-color: rgba(15, 23, 42, 0.16) !important;
+        }
+        .agents-os-light [role="tablist"] {
+          background: #ffffff !important;
+          border-color: rgba(15, 23, 42, 0.12) !important;
+          box-shadow: 0 16px 40px rgba(15, 23, 42, 0.08);
+        }
+        .agents-os-light [role="tab"] {
+          color: #334155 !important;
+        }
+        .agents-os-light [role="tab"][data-state="active"] {
+          background: #f5a623 !important;
+          color: #07111f !important;
+        }
+        .agents-os-light .bg-amber-500,
+        .agents-os-light .hover\\:bg-amber-600:hover {
+          background: #f5a623 !important;
+          color: #07111f !important;
+        }
+        .agents-os-light .bg-emerald-600\\/20 {
+          background: rgba(22, 163, 74, 0.12) !important;
+        }
+      `}</style>
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
           <h1 className="text-2xl font-semibold text-white">Agents OS</h1>

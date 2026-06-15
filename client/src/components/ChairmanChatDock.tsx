@@ -17,7 +17,10 @@ import {
   FileUp,
   History,
   Loader2,
+  Maximize2,
   MessageSquare,
+  Minimize2,
+  Move,
   Paperclip,
   PhoneCall,
   Send,
@@ -80,6 +83,62 @@ type ManagerContextPayload = {
   managerRole?: string | null;
 };
 
+type DockLayout = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  collapsed: boolean;
+};
+
+const DOCK_LAYOUT_STORAGE_KEY = "exportunity:chairman-chat-dock-layout:v2";
+const MIN_DOCK_WIDTH = 320;
+const MIN_DOCK_HEIGHT = 360;
+const DEFAULT_DOCK_WIDTH = 340;
+const DEFAULT_DOCK_HEIGHT = 440;
+
+function getDefaultDockLayout(): DockLayout {
+  if (typeof window === "undefined") {
+    return { x: 24, y: 96, width: DEFAULT_DOCK_WIDTH, height: DEFAULT_DOCK_HEIGHT, collapsed: false };
+  }
+  return {
+    x: Math.max(16, window.innerWidth - DEFAULT_DOCK_WIDTH - 20),
+    y: Math.max(80, window.innerHeight - DEFAULT_DOCK_HEIGHT - 76),
+    width: Math.min(DEFAULT_DOCK_WIDTH, Math.max(MIN_DOCK_WIDTH, window.innerWidth - 32)),
+    height: Math.min(DEFAULT_DOCK_HEIGHT, Math.max(MIN_DOCK_HEIGHT, window.innerHeight - 120)),
+    collapsed: false,
+  };
+}
+
+function clampDockLayout(next: DockLayout): DockLayout {
+  if (typeof window === "undefined") return next;
+  const width = Math.min(Math.max(next.width, MIN_DOCK_WIDTH), Math.max(MIN_DOCK_WIDTH, window.innerWidth - 24));
+  const height = Math.min(Math.max(next.height, MIN_DOCK_HEIGHT), Math.max(MIN_DOCK_HEIGHT, window.innerHeight - 32));
+  return {
+    ...next,
+    width,
+    height,
+    x: Math.min(Math.max(12, next.x), Math.max(12, window.innerWidth - width - 12)),
+    y: Math.min(Math.max(12, next.y), Math.max(12, window.innerHeight - height - 12)),
+  };
+}
+
+function readStoredDockLayout(): DockLayout {
+  if (typeof window === "undefined") return getDefaultDockLayout();
+  try {
+    const stored = window.localStorage.getItem(DOCK_LAYOUT_STORAGE_KEY);
+    if (!stored) return getDefaultDockLayout();
+    const parsed = JSON.parse(stored) as Partial<DockLayout>;
+    return clampDockLayout({
+      ...getDefaultDockLayout(),
+      ...parsed,
+      collapsed: Boolean(parsed.collapsed),
+    });
+  } catch {
+    return getDefaultDockLayout();
+  }
+}
+
 function formatTimestamp(value?: string | null) {
   if (!value) return "";
   try {
@@ -91,11 +150,11 @@ function formatTimestamp(value?: string | null) {
 
 function statusTone(status: string) {
   const normalized = String(status || "").toUpperCase();
-  if (normalized === "SUCCEEDED") return "border-emerald-500/40 text-emerald-300";
-  if (normalized === "FAILED") return "border-rose-500/40 text-rose-300";
-  if (normalized === "RUNNING") return "border-blue-500/40 text-blue-300";
-  if (normalized === "REQUIRES_APPROVAL") return "border-amber-500/40 text-amber-300";
-  return "border-white/20 text-white/70";
+  if (normalized === "SUCCEEDED") return "border-emerald-200 bg-emerald-50 text-emerald-700";
+  if (normalized === "FAILED") return "border-rose-200 bg-rose-50 text-rose-700";
+  if (normalized === "RUNNING") return "border-blue-200 bg-blue-50 text-blue-700";
+  if (normalized === "REQUIRES_APPROVAL") return "border-amber-200 bg-amber-50 text-amber-700";
+  return "border-slate-200 bg-slate-50 text-slate-600";
 }
 
 function extractMessageAttachments(message?: AssistantMessage | null): ChatAttachment[] {
@@ -257,11 +316,26 @@ export function ChairmanChatDock() {
   const [composerError, setComposerError] = useState<string | null>(null);
   const [assistantThinking, setAssistantThinking] = useState(false);
   const [isEnsuringThread, setIsEnsuringThread] = useState(false);
+  const [dockLayout, setDockLayout] = useState<DockLayout>(() => readStoredDockLayout());
   const messagesScrollRef = useRef<HTMLDivElement | null>(null);
   const attachmentInputRef = useRef<HTMLInputElement | null>(null);
+  const dockDragRef = useRef<{ pointerId: number; startX: number; startY: number; originX: number; originY: number } | null>(null);
   const maxAttachmentBytes = 20 * 1024 * 1024;
 
   const headers = useMemo(() => ({ "x-chairman-admin-override": "1" }), []);
+
+  useEffect(() => {
+    if (isMobile || typeof window === "undefined") return;
+    setDockLayout((current) => clampDockLayout(current));
+    const handleResize = () => setDockLayout((current) => clampDockLayout(current));
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [isMobile]);
+
+  useEffect(() => {
+    if (isMobile || typeof window === "undefined") return;
+    window.localStorage.setItem(DOCK_LAYOUT_STORAGE_KEY, JSON.stringify(dockLayout));
+  }, [dockLayout, isMobile]);
 
   useEffect(() => {
     const handleOpen = (event: Event) => {
@@ -273,6 +347,7 @@ export function ChairmanChatDock() {
         managerName: typeof detail?.managerName === "string" ? detail.managerName : null,
         managerRole: typeof detail?.managerRole === "string" ? detail.managerRole : null,
       });
+      setDockLayout((current) => ({ ...current, collapsed: false }));
       setIsOpen(true);
     };
     const handleContext = (event: Event) => {
@@ -726,12 +801,100 @@ export function ChairmanChatDock() {
     liveCallMutation.mutate({ toE164: phone.trim(), agentKey });
   };
 
+  const toggleDockCollapsed = () => {
+    setDockLayout((current) => ({ ...current, collapsed: !current.collapsed }));
+  };
+
+  const resetDockLayout = () => {
+    setDockLayout(getDefaultDockLayout());
+  };
+
+  const handleDockPointerDown = (event: any) => {
+    if (isMobile || dockLayout.collapsed) return;
+    const target = event.target as HTMLElement | null;
+    if (target?.closest("button,input,textarea,a,[role='tab'],[data-no-drag='true']")) return;
+    dockDragRef.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      originX: dockLayout.x,
+      originY: dockLayout.y,
+    };
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
+
+  const handleDockPointerMove = (event: any) => {
+    const drag = dockDragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    setDockLayout((current) =>
+      clampDockLayout({
+        ...current,
+        x: drag.originX + event.clientX - drag.startX,
+        y: drag.originY + event.clientY - drag.startY,
+      }),
+    );
+  };
+
+  const handleDockPointerUp = (event: any) => {
+    const drag = dockDragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    dockDragRef.current = null;
+    try {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    } catch {
+      // ignore stale capture
+    }
+  };
+
+  const handleDockResize = (event: any) => {
+    if (isMobile || dockLayout.collapsed) return;
+    const startX = event.clientX;
+    const startY = event.clientY;
+    const startLayout = dockLayout;
+    const pointerId = event.pointerId;
+    event.currentTarget.setPointerCapture(pointerId);
+
+    const handleMove = (moveEvent: PointerEvent) => {
+      setDockLayout((current) =>
+        clampDockLayout({
+          ...current,
+          width: startLayout.width + moveEvent.clientX - startX,
+          height: startLayout.height + moveEvent.clientY - startY,
+        }),
+      );
+    };
+    const handleUp = () => {
+      window.removeEventListener("pointermove", handleMove);
+      window.removeEventListener("pointerup", handleUp);
+    };
+    window.addEventListener("pointermove", handleMove);
+    window.addEventListener("pointerup", handleUp, { once: true });
+  };
+
+  const desktopDockStyle = isMobile
+    ? undefined
+    : dockLayout.collapsed
+      ? {
+          left: dockLayout.x,
+          top: dockLayout.y,
+          width: 260,
+        }
+      : {
+          left: dockLayout.x,
+          top: dockLayout.y,
+          width: dockLayout.width,
+          height: dockLayout.height,
+        };
+
   return (
     <>
       <button
         type="button"
-        className="fixed bottom-5 right-5 z-40 rounded-full bg-blue-600 text-white px-4 py-3 shadow-lg hover:bg-blue-500"
-        onClick={() => setIsOpen(true)}
+        className="fixed bottom-5 right-5 z-40 rounded-full border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-950 shadow-lg hover:bg-slate-50"
+        onClick={() => {
+          setDockLayout((current) => ({ ...current, collapsed: false }));
+          setIsOpen(true);
+        }}
       >
         Tassi
       </button>
@@ -741,12 +904,24 @@ export function ChairmanChatDock() {
           className={`fixed z-50 ${
             isMobile
               ? "inset-0 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]"
-              : "bottom-20 right-5 w-[380px] h-[560px] rounded-2xl border border-white/10"
-          } bg-[#0B0F19] text-white shadow-2xl flex flex-col`}
+              : dockLayout.collapsed
+                ? "rounded-full border border-slate-200"
+                : "rounded-2xl border border-slate-200"
+          } bg-white text-slate-950 shadow-2xl flex flex-col`}
+          style={desktopDockStyle}
         >
-          <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
+          <div
+            className={`flex items-center justify-between gap-3 px-4 py-3 ${
+              dockLayout.collapsed && !isMobile ? "" : "border-b border-slate-200"
+            } ${isMobile ? "" : "cursor-move select-none"}`}
+            onPointerDown={handleDockPointerDown}
+            onPointerMove={handleDockPointerMove}
+            onPointerUp={handleDockPointerUp}
+            onPointerCancel={handleDockPointerUp}
+            title={isMobile ? undefined : "Drag to move assistant"}
+          >
             <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-full bg-white/10 flex items-center justify-center">
+              <div className="h-10 w-10 rounded-full bg-slate-100 flex items-center justify-center overflow-hidden">
                 {agent?.avatarUrl ? (
                   <img
                     src={agent.avatarUrl}
@@ -754,19 +929,22 @@ export function ChairmanChatDock() {
                     className="h-10 w-10 rounded-full object-cover"
                   />
                 ) : (
-                  <Sparkles className="h-5 w-5 text-blue-300" />
+                  <Sparkles className="h-5 w-5 text-[#F5A623]" />
                 )}
               </div>
               <div>
                 <div className="text-sm font-semibold flex items-center gap-2">
                   <span>{assistantName}</span>
-                  <Badge variant="outline" className="border-white/20 text-[10px] text-white/70">
+                  {!dockLayout.collapsed || isMobile ? (
+                  <Badge variant="outline" className="border-slate-200 text-[10px] text-slate-600">
                     {isTassiAssistant(assistantName, agent?.role)
                       ? "Tassi (Global)"
                       : "Tenant-scoped"}
                   </Badge>
+                  ) : null}
                 </div>
-                <div className="text-xs text-white/60 flex items-center gap-2">
+                {!dockLayout.collapsed || isMobile ? (
+                <div className="text-xs text-slate-500 flex items-center gap-2">
                   <span>Chairman Assistant</span>
                   <span
                     className={`h-1.5 w-1.5 rounded-full ${
@@ -775,30 +953,60 @@ export function ChairmanChatDock() {
                   />
                   <span>{threadStatusText}</span>
                   {agent?.status ? (
-                    <Badge variant="outline" className="border-white/20 text-white/60 text-[10px]">
+                    <Badge variant="outline" className="border-slate-200 text-slate-500 text-[10px]">
                       {agent.status}
                     </Badge>
                   ) : null}
                 </div>
+                ) : (
+                  <div className="text-xs text-slate-500">Collapsed</div>
+                )}
               </div>
             </div>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="text-white/70 hover:text-white"
-              onClick={() => setIsOpen(false)}
-            >
-              <X className="h-5 w-5" />
-            </Button>
+            <div className="flex items-center gap-1" data-no-drag="true">
+              {!isMobile ? (
+                <>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+                    onClick={resetDockLayout}
+                    title="Reset position"
+                  >
+                    <Move className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+                    onClick={toggleDockCollapsed}
+                    title={dockLayout.collapsed ? "Expand assistant" : "Collapse assistant"}
+                  >
+                    {dockLayout.collapsed ? <Maximize2 className="h-4 w-4" /> : <Minimize2 className="h-4 w-4" />}
+                  </Button>
+                </>
+              ) : null}
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+                onClick={() => setIsOpen(false)}
+              >
+                <X className="h-5 w-5" />
+              </Button>
+            </div>
           </div>
 
+          {dockLayout.collapsed && !isMobile ? null : (
           <Tabs
             value={activeTab}
             onValueChange={(value) => setActiveTab(value as "chat" | "history" | "actions")}
             className="flex-1 flex flex-col min-h-0"
           >
-            <TabsList className="grid grid-cols-3 bg-white/5 text-xs rounded-none shrink-0">
+            <TabsList className="grid grid-cols-3 bg-slate-100 text-xs rounded-none shrink-0">
               <TabsTrigger value="chat" className="gap-1">
                 <MessageSquare className="h-4 w-4" />
                 Chat
@@ -819,7 +1027,7 @@ export function ChairmanChatDock() {
                   type="button"
                   size="sm"
                   variant="outline"
-                  className="border-white/15 text-white/80 hover:text-white hover:bg-white/10 shrink-0"
+                  className="border-slate-200 bg-white text-slate-700 hover:bg-slate-50 shrink-0"
                   onClick={handleStartLiveCall}
                   disabled={liveCallMutation.isPending}
                 >
@@ -836,7 +1044,7 @@ export function ChairmanChatDock() {
                     type="button"
                     size="sm"
                     variant="outline"
-                    className="border-white/15 text-white/80 hover:text-white hover:bg-white/10 shrink-0"
+                    className="border-slate-200 bg-white text-slate-700 hover:bg-slate-50 shrink-0"
                     onClick={() => navigateMutation.mutate({ path: action.path, label: action.label })}
                     disabled={navigateMutation.isPending}
                   >
@@ -848,7 +1056,7 @@ export function ChairmanChatDock() {
 
               <div ref={messagesScrollRef} className="min-h-0 flex-1 overflow-y-auto space-y-3 pr-1">
                 {orderedMessages.length === 0 ? (
-                  <div className="text-sm text-white/60">Start a conversation with {assistantName}.</div>
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600">Start a conversation with {assistantName}. Upload files, ask for decisions, or create tasks from the current page.</div>
                 ) : (
                   orderedMessages.map((msg) => (
                     <div
@@ -859,10 +1067,10 @@ export function ChairmanChatDock() {
                         className={`max-w-[80%] rounded-2xl px-3 py-2 text-sm ${
                           msg.senderType === "user"
                             ? "bg-blue-600 text-white"
-                            : "bg-white/10 text-white"
+                            : "bg-slate-100 text-slate-900"
                         }`}
                       >
-                        <div className="text-[11px] text-white/60 mb-1">
+                        <div className={`text-[11px] mb-1 ${msg.senderType === "user" ? "text-white/70" : "text-slate-500"}`}>
                           {msg.senderName || (msg.senderType === "user" ? "You" : agent?.displayName || "Assistant")} |{" "}
                           {formatTimestamp(msg.createdAt)}
                         </div>
@@ -876,20 +1084,20 @@ export function ChairmanChatDock() {
                                   href={attachment.url}
                                   target="_blank"
                                   rel="noreferrer"
-                                  className="block rounded-lg border border-white/15 bg-black/20 px-2 py-1 text-[11px] text-blue-200 hover:text-blue-100"
+                                  className="block rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] text-blue-700 hover:text-blue-900"
                                 >
                                   <div className="flex items-center gap-1">
                                     <Paperclip className="h-3 w-3" />
                                     <span className="truncate">{attachment.name}</span>
                                     {typeof attachment.size === "number" ? (
-                                      <span className="text-white/50">({Math.max(0, Math.round(attachment.size / 1024))} KB)</span>
+                                      <span className="text-slate-500">({Math.max(0, Math.round(attachment.size / 1024))} KB)</span>
                                     ) : null}
                                   </div>
                                 </a>
                               ) : (
                                 <div
                                   key={`${msg.id}-${attachment.id}-${attachment.name}`}
-                                  className="block rounded-lg border border-white/10 bg-black/20 px-2 py-1 text-[11px] text-white/55"
+                                  className="block rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] text-slate-600"
                                 >
                                   <div className="flex items-center gap-1">
                                     <Paperclip className="h-3 w-3" />
@@ -906,9 +1114,9 @@ export function ChairmanChatDock() {
                 )}
                 {assistantThinking ? (
                   <div className="flex justify-start">
-                    <div className="max-w-[80%] rounded-2xl px-3 py-2 text-sm bg-white/10 text-white">
-                      <div className="text-[11px] text-white/60 mb-1">{assistantName}</div>
-                      <div className="inline-flex items-center gap-2 text-white/80">
+                    <div className="max-w-[80%] rounded-2xl bg-slate-100 px-3 py-2 text-sm text-slate-900">
+                      <div className="text-[11px] text-slate-500 mb-1">{assistantName}</div>
+                      <div className="inline-flex items-center gap-2 text-slate-700">
                         <Loader2 className="h-3.5 w-3.5 animate-spin" />
                         <span>Thinking...</span>
                       </div>
@@ -922,13 +1130,13 @@ export function ChairmanChatDock() {
                   {pendingAttachments.map((attachment) => (
                     <div
                       key={`${attachment.id}-${attachment.name}`}
-                      className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-2 py-1 text-xs text-white/80 shrink-0"
+                      className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-2 py-1 text-xs text-slate-700 shrink-0"
                     >
                       <Paperclip className="h-3 w-3" />
                       <span className="max-w-[170px] truncate">{attachment.name}</span>
                       <button
                         type="button"
-                        className="text-white/60 hover:text-white"
+                        className="text-slate-500 hover:text-slate-900"
                         onClick={() =>
                           setPendingAttachments((prev) =>
                             prev.filter((item) => !(item.id === attachment.id && item.name === attachment.name)),
@@ -948,7 +1156,7 @@ export function ChairmanChatDock() {
                   event.preventDefault();
                   handleSend();
                 }}
-                className={`shrink-0 flex items-center gap-2 border-t border-white/10 bg-[#0B0F19]/95 backdrop-blur supports-[backdrop-filter]:bg-[#0B0F19]/80 pt-2 ${
+                className={`shrink-0 flex items-center gap-2 border-t border-slate-200 bg-white/95 pt-2 ${
                   isMobile ? "pb-[env(safe-area-inset-bottom)]" : ""
                 }`}
               >
@@ -963,7 +1171,7 @@ export function ChairmanChatDock() {
                   type="button"
                   variant="outline"
                   size="icon"
-                  className="h-11 w-11 border-white/15 text-white/80 hover:text-white hover:bg-white/10 shrink-0"
+                  className="h-11 w-11 border-slate-200 bg-white text-slate-700 hover:bg-slate-50 shrink-0"
                   onClick={handleAttachmentPick}
                   disabled={uploadAttachmentMutation.isPending}
                   aria-label="Attach file"
@@ -992,7 +1200,7 @@ export function ChairmanChatDock() {
                   }}
                   placeholder={isThreadReady ? `Message ${assistantName}...` : `Message ${assistantName}... (thread auto-creates)`}
                   disabled={uploadAttachmentMutation.isPending}
-                  className="h-11 bg-white/5 border-white/10 text-white placeholder:text-white/40"
+                  className="h-11 border-slate-300 bg-white text-slate-950 placeholder:text-slate-400"
                 />
                 <Button
                   type="submit"
@@ -1008,13 +1216,13 @@ export function ChairmanChatDock() {
                 </Button>
               </form>
               {composerError ? (
-                <div className="shrink-0 text-xs text-rose-300 flex items-center justify-between gap-2">
+                <div className="shrink-0 text-xs text-rose-600 flex items-center justify-between gap-2">
                   <span className="truncate">{composerError}</span>
                   <Button
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className="h-7 px-2 text-[11px] text-white/80 hover:text-white"
+                    className="h-7 px-2 text-[11px] text-slate-700 hover:text-slate-950"
                     onClick={handleRetryConnection}
                   >
                     Retry
@@ -1022,10 +1230,10 @@ export function ChairmanChatDock() {
                 </div>
               ) : null}
               {threadQuery.isError ? (
-                <div className="shrink-0 text-xs text-rose-300">Unable to load chat thread. Refresh or reopen the dock.</div>
+                <div className="shrink-0 text-xs text-rose-600">Unable to load chat thread. Refresh or reopen the dock.</div>
               ) : null}
               {!threadQuery.isError && !isThreadReady ? (
-                <div className="shrink-0 text-xs text-white/60">
+                <div className="shrink-0 text-xs text-slate-500">
                   {isEnsuringThread ? "Preparing secure thread..." : "Thread will auto-create on your first message."}
                 </div>
               ) : null}
@@ -1034,7 +1242,7 @@ export function ChairmanChatDock() {
             <TabsContent value="history" className="mt-0 flex-1 p-4 overflow-y-auto min-h-0">
               <div className="space-y-2">
                 {threads.length === 0 ? (
-                  <div className="text-sm text-white/60">No threads yet.</div>
+                  <div className="text-sm text-slate-500">No threads yet.</div>
                 ) : (
                   threads.map((thread) => (
                     <button
@@ -1043,7 +1251,7 @@ export function ChairmanChatDock() {
                       className={`w-full rounded-xl border px-3 py-2 text-left ${
                         Number(thread.id) === stableActiveThreadId
                           ? "border-blue-500/60 bg-blue-500/10"
-                          : "border-white/10 hover:border-white/30"
+                          : "border-slate-200 bg-white hover:border-slate-300"
                       }`}
                       onClick={() => {
                         setActiveThreadId(Number(thread.id));
@@ -1053,7 +1261,7 @@ export function ChairmanChatDock() {
                       <div className="text-sm font-semibold">
                         {thread.assistantDisplayName || agent?.displayName || "Chairman Assistant"}
                       </div>
-                      <div className="text-xs text-white/60 line-clamp-2">
+                      <div className="text-xs text-slate-500 line-clamp-2">
                         {thread.lastMessage?.content || "No messages yet"}
                       </div>
                     </button>
@@ -1065,10 +1273,10 @@ export function ChairmanChatDock() {
             <TabsContent value="actions" className="mt-0 flex-1 p-4 overflow-y-auto min-h-0">
               <div className="space-y-3">
                 {runs.length === 0 ? (
-                  <div className="text-sm text-white/60">No action runs yet.</div>
+                  <div className="text-sm text-slate-500">No action runs yet.</div>
                 ) : (
                   runs.map((run) => (
-                    <div key={`${run.source || "chairman"}-${run.id}`} className="rounded-xl border border-white/10 p-3">
+                    <div key={`${run.source || "chairman"}-${run.id}`} className="rounded-xl border border-slate-200 bg-white p-3">
                       <div className="flex items-center justify-between">
                         <div className="text-sm font-semibold">{run.actionKey}</div>
                         <Badge variant="outline" className={statusTone(run.status)}>
@@ -1076,16 +1284,16 @@ export function ChairmanChatDock() {
                         </Badge>
                       </div>
                       {run.createdAt ? (
-                        <div className="text-xs text-white/50 mt-1">{formatTimestamp(run.createdAt)}</div>
+                        <div className="text-xs text-slate-500 mt-1">{formatTimestamp(run.createdAt)}</div>
                       ) : null}
                       {run.evidence && run.evidence.length > 0 ? (
                         <div className="mt-2 space-y-2">
                           {run.evidence.map((evidence) => (
                             <div
                               key={evidence.id}
-                              className="rounded-lg bg-white/5 px-2.5 py-2 text-[11px] text-white/70"
+                              className="rounded-lg bg-slate-50 px-2.5 py-2 text-[11px] text-slate-700"
                             >
-                              <div className="text-white/60 mb-1">{evidence.evidenceType || "Evidence"}</div>
+                              <div className="text-slate-500 mb-1">{evidence.evidenceType || "Evidence"}</div>
                               <pre className="whitespace-pre-wrap break-words">
                                 {JSON.stringify(evidence.payload ?? {}, null, 2)}
                               </pre>
@@ -1099,6 +1307,17 @@ export function ChairmanChatDock() {
               </div>
             </TabsContent>
           </Tabs>
+          )}
+          {!isMobile && !dockLayout.collapsed ? (
+            <div
+              className="absolute bottom-1 right-1 h-5 w-5 cursor-nwse-resize rounded-br-2xl text-slate-400"
+              onPointerDown={handleDockResize}
+              title="Resize assistant"
+              data-no-drag="true"
+            >
+              <div className="absolute bottom-1 right-1 h-3 w-3 border-b-2 border-r-2 border-slate-300" />
+            </div>
+          ) : null}
         </div>
       )}
     </>

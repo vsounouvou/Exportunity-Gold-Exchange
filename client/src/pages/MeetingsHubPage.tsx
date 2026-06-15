@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { resolveApiUrl } from "@/lib/runtimeConfig";
+import { apiRequest } from "@/lib/queryClient";
 
 type MeetStatus = "scheduled" | "live" | "ended";
 
@@ -57,9 +57,9 @@ function parseEmailList(raw: string) {
 }
 
 function statusClass(status: MeetStatus) {
-  if (status === "live") return "bg-emerald-500/15 text-emerald-300 border-emerald-500/30";
-  if (status === "scheduled") return "bg-blue-500/15 text-blue-300 border-blue-500/30";
-  return "bg-zinc-500/15 text-zinc-300 border-zinc-500/30";
+  if (status === "live") return "bg-emerald-50 text-emerald-700 border-emerald-200";
+  if (status === "scheduled") return "bg-blue-50 text-blue-700 border-blue-200";
+  return "bg-slate-100 text-slate-600 border-slate-200";
 }
 
 export default function MeetingsHubPage() {
@@ -74,9 +74,7 @@ export default function MeetingsHubPage() {
   const { data, isLoading, isRefetching, refetch } = useQuery<ListMeetingsResponse>({
     queryKey: ["/api/meet/meetings"],
     queryFn: async () => {
-      const response = await fetch(resolveApiUrl("/api/meet/meetings"));
-      if (!response.ok) throw new Error(`Failed to load meetings (${response.status})`);
-      return (await response.json()) as ListMeetingsResponse;
+      return (await apiRequest("/api/meet/meetings")) as ListMeetingsResponse;
     },
   });
 
@@ -96,13 +94,11 @@ export default function MeetingsHubPage() {
         emails: parseEmailList(emailsRaw),
         recordingEnabled,
       };
-      const response = await fetch(resolveApiUrl("/api/meet/meetings"), {
+      const json = (await apiRequest("/api/meet/meetings", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
-      });
-      const json = (await response.json()) as CreateMeetingResponse & { message?: string };
-      if (!response.ok || !json.ok) {
+      })) as CreateMeetingResponse & { message?: string };
+      if (!json.ok) {
         throw new Error(json.message || "Failed to create meeting");
       }
       return json;
@@ -134,13 +130,11 @@ export default function MeetingsHubPage() {
 
   const joinAsHost = useMutation({
     mutationFn: async (meetingId: string) => {
-      const response = await fetch(resolveApiUrl(`/api/meet/meetings/${encodeURIComponent(meetingId)}/join-token`), {
+      const json = (await apiRequest(`/api/meet/meetings/${encodeURIComponent(meetingId)}/join-token`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ role: "host" }),
-      });
-      const json = (await response.json()) as JoinTokenResponse & { message?: string };
-      if (!response.ok || !json.ok) throw new Error(json.message || "Failed to create join token");
+      })) as JoinTokenResponse & { message?: string };
+      if (!json.ok) throw new Error(json.message || "Failed to create join token");
       return json;
     },
     onSuccess: (result) => {
@@ -157,13 +151,11 @@ export default function MeetingsHubPage() {
 
   const copyHostLink = useMutation({
     mutationFn: async (meetingId: string) => {
-      const response = await fetch(resolveApiUrl(`/api/meet/meetings/${encodeURIComponent(meetingId)}/join-token`), {
+      const json = (await apiRequest(`/api/meet/meetings/${encodeURIComponent(meetingId)}/join-token`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ role: "host" }),
-      });
-      const json = (await response.json()) as JoinTokenResponse & { message?: string };
-      if (!response.ok || !json.ok) throw new Error(json.message || "Failed to issue host link");
+      })) as JoinTokenResponse & { message?: string };
+      if (!json.ok) throw new Error(json.message || "Failed to issue host link");
       await navigator.clipboard.writeText(json.link);
       return json;
     },
@@ -186,57 +178,57 @@ export default function MeetingsHubPage() {
   ];
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] bg-gray-950">
+    <div className="min-h-[calc(100vh-4rem)] bg-[#F7F8FA] text-slate-950">
       <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
         <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-2xl font-semibold text-white">Exportunity Meet</h1>
-            <p className="text-sm text-gray-400">Create secure meeting links, host calls, and generate AI recaps.</p>
+            <h1 className="text-2xl font-semibold text-slate-950">Exportunity Meet</h1>
+            <p className="text-sm text-slate-600">Create secure meeting links, host calls, and generate AI recaps.</p>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" className="border-gray-700 bg-gray-900 text-gray-200" onClick={() => refetch()} disabled={isRefetching}>
+            <Button variant="outline" className="border-slate-200 bg-white text-slate-800 hover:bg-slate-50" onClick={() => refetch()} disabled={isRefetching}>
               <RefreshCw className={`mr-2 h-4 w-4 ${isRefetching ? "animate-spin" : ""}`} />
               Refresh
             </Button>
             <Dialog open={openCreate} onOpenChange={setOpenCreate}>
               <DialogTrigger asChild>
-                <Button className="bg-blue-600 hover:bg-blue-500">
+                <Button className="bg-[#F5A623] text-slate-950 hover:bg-[#F9A800]">
                   <Plus className="mr-2 h-4 w-4" />
                   Create meeting
                 </Button>
               </DialogTrigger>
-              <DialogContent className="border-gray-800 bg-gray-950 text-gray-100 sm:max-w-xl">
+              <DialogContent className="border-slate-200 bg-white text-slate-950 sm:max-w-xl">
                 <DialogHeader>
                   <DialogTitle>New meeting</DialogTitle>
-                  <DialogDescription className="text-gray-400">
+                  <DialogDescription className="text-slate-600">
                     Create a secure room and optionally issue attendee links in one step.
                   </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="meeting-title">Title</Label>
+                    <Label htmlFor="meeting-title" className="text-slate-700">Title</Label>
                     <Input
                       id="meeting-title"
                       value={title}
                       onChange={(event) => setTitle(event.target.value)}
                       placeholder="Weekly operations review"
-                      className="border-gray-700 bg-gray-900"
+                      className="border-slate-300 bg-white text-slate-950 placeholder:text-slate-400"
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="meeting-emails">Guest emails (optional)</Label>
+                    <Label htmlFor="meeting-emails" className="text-slate-700">Guest emails (optional)</Label>
                     <textarea
                       id="meeting-emails"
                       value={emailsRaw}
                       onChange={(event) => setEmailsRaw(event.target.value)}
-                      className="min-h-[90px] w-full rounded-md border border-gray-700 bg-gray-900 px-3 py-2 text-sm text-gray-100 outline-none ring-blue-500/30 focus:ring"
+                      className="min-h-[90px] w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 outline-none ring-[#F5A623]/30 placeholder:text-slate-400 focus:ring"
                       placeholder="partner@company.com, investor@domain.com"
                     />
                   </div>
-                  <div className="flex items-center justify-between rounded-md border border-gray-800 bg-gray-900 px-3 py-2">
+                  <div className="flex items-center justify-between rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
                     <div>
-                      <p className="text-sm font-medium text-gray-100">Enable recording</p>
-                      <p className="text-xs text-gray-400">Used for transcript and AI summary generation.</p>
+                      <p className="text-sm font-medium text-slate-900">Enable recording</p>
+                      <p className="text-xs text-slate-500">Used for transcript and AI summary generation.</p>
                     </div>
                     <Switch checked={recordingEnabled} onCheckedChange={setRecordingEnabled} />
                   </div>
@@ -245,7 +237,7 @@ export default function MeetingsHubPage() {
                   <Button
                     onClick={() => createMeeting.mutate()}
                     disabled={!title.trim() || createMeeting.isPending}
-                    className="bg-blue-600 hover:bg-blue-500"
+                    className="bg-[#F5A623] text-slate-950 hover:bg-[#F9A800]"
                   >
                     {createMeeting.isPending ? "Creating..." : "Create & join"}
                   </Button>
@@ -256,29 +248,29 @@ export default function MeetingsHubPage() {
         </div>
 
         {isLoading ? (
-          <div className="rounded-lg border border-gray-800 bg-gray-900 p-6 text-sm text-gray-300">Loading meetings...</div>
+          <div className="rounded-lg border border-slate-200 bg-white p-6 text-sm text-slate-600 shadow-sm">Loading meetings...</div>
         ) : (
           <div className="space-y-6">
             {sections.map((section) => (
               <div key={section.title} className="space-y-3">
-                <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-400">{section.title}</h2>
+                <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">{section.title}</h2>
                 {section.items.length === 0 ? (
-                  <div className="rounded-lg border border-dashed border-gray-800 bg-gray-900/60 p-5 text-sm text-gray-500">{section.empty}</div>
+                  <div className="rounded-lg border border-dashed border-slate-300 bg-white p-5 text-sm text-slate-500">{section.empty}</div>
                 ) : (
                   <div className="grid gap-3 md:grid-cols-2">
                     {section.items.map((meeting) => (
-                      <Card key={meeting.id} className="border-gray-800 bg-gray-900">
+                      <Card key={meeting.id} className="border-slate-200 bg-white shadow-sm">
                         <CardHeader className="pb-3">
                           <div className="flex items-start justify-between gap-2">
-                            <CardTitle className="text-base text-gray-100">{meeting.title}</CardTitle>
+                            <CardTitle className="text-base text-slate-950">{meeting.title}</CardTitle>
                             <Badge className={statusClass(meeting.status)}>{meeting.status}</Badge>
                           </div>
-                          <CardDescription className="text-gray-400">
+                          <CardDescription className="text-slate-500">
                             Created {formatDistanceToNowStrict(new Date(meeting.createdAt), { addSuffix: true })}
                           </CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-3">
-                          <div className="flex flex-wrap gap-2 text-xs text-gray-400">
+                          <div className="flex flex-wrap gap-2 text-xs text-slate-500">
                             <span>Room: {meeting.id.slice(0, 8)}</span>
                             <span>{meeting.recordingEnabled ? "Recording on" : "Recording off"}</span>
                             <span>{meeting.locked ? "Locked" : "Open"}</span>
@@ -286,7 +278,7 @@ export default function MeetingsHubPage() {
                           <div className="flex flex-wrap gap-2">
                             <Button
                               size="sm"
-                              className="bg-blue-600 hover:bg-blue-500"
+                              className="bg-[#F5A623] text-slate-950 hover:bg-[#F9A800]"
                               onClick={() => joinAsHost.mutate(meeting.id)}
                               disabled={joinAsHost.isPending}
                             >
@@ -296,7 +288,7 @@ export default function MeetingsHubPage() {
                             <Button
                               size="sm"
                               variant="outline"
-                              className="border-gray-700 bg-transparent text-gray-200 hover:bg-gray-800"
+                              className="border-slate-200 bg-white text-slate-800 hover:bg-slate-50"
                               onClick={() => copyHostLink.mutate(meeting.id)}
                               disabled={copyHostLink.isPending}
                             >

@@ -299,6 +299,47 @@ export async function ensureMindbaseTables() {
   await db.execute(sql`create index if not exists mindbase_workspaces_tenant_name_idx on mindbase_workspaces(tenant_id, name);`);
 
   await db.execute(sql`
+    create table if not exists mindbase_integration_connections (
+      id uuid primary key default gen_random_uuid(),
+      tenant_id integer not null references tenants(id) on delete cascade,
+      user_id integer not null references ece_users(id) on delete cascade,
+      workspace_id uuid references mindbase_workspaces(id) on delete set null,
+      provider text not null,
+      integration_id text not null,
+      account_label text,
+      status text not null default 'connected',
+      scopes jsonb not null default '[]'::jsonb,
+      token_ciphertext text not null,
+      token_iv text not null,
+      token_auth_tag text not null,
+      token_meta jsonb not null default '{}'::jsonb,
+      expires_at timestamptz,
+      last_verified_at timestamptz,
+      revoked_at timestamptz,
+      created_at timestamptz not null default now(),
+      updated_at timestamptz not null default now()
+    );
+  `);
+  await db.execute(sql`alter table mindbase_integration_connections add column if not exists workspace_id uuid references mindbase_workspaces(id) on delete set null;`);
+  await db.execute(sql`alter table mindbase_integration_connections add column if not exists account_label text;`);
+  await db.execute(sql`alter table mindbase_integration_connections add column if not exists token_meta jsonb not null default '{}'::jsonb;`);
+  await db.execute(sql`alter table mindbase_integration_connections add column if not exists expires_at timestamptz;`);
+  await db.execute(sql`alter table mindbase_integration_connections add column if not exists last_verified_at timestamptz;`);
+  await db.execute(sql`alter table mindbase_integration_connections add column if not exists revoked_at timestamptz;`);
+  await db.execute(sql`
+    create unique index if not exists mindbase_integration_connections_tenant_user_integration_unique
+    on mindbase_integration_connections(tenant_id, user_id, integration_id);
+  `);
+  await db.execute(sql`
+    create index if not exists mindbase_integration_connections_tenant_user_status_idx
+    on mindbase_integration_connections(tenant_id, user_id, status);
+  `);
+  await db.execute(sql`
+    create index if not exists mindbase_integration_connections_workspace_idx
+    on mindbase_integration_connections(workspace_id);
+  `);
+
+  await db.execute(sql`
     create table if not exists mindbase_workspace_members (
       id uuid primary key default gen_random_uuid(),
       tenant_id integer not null references tenants(id) on delete cascade,

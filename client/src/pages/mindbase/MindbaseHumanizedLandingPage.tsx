@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "wouter";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   Brain,
   BriefcaseBusiness,
@@ -13,8 +13,10 @@ import {
   Home,
   Lock,
   Mail,
+  Maximize2,
   Menu,
   Mic,
+  Minimize2,
   Moon,
   Paperclip,
   Send,
@@ -108,6 +110,22 @@ type LaunchWorkspaceRecord = {
   }>;
 };
 
+type IntegrationRuntimeStatus = {
+  id: string;
+  provider: string;
+  enabled: boolean;
+  configured: boolean;
+  status: string;
+  missingEnv?: string[];
+  message: string;
+  connectUrl?: string | null;
+};
+
+type IntegrationStatusResponse = {
+  ok: boolean;
+  integrations?: Record<string, IntegrationRuntimeStatus>;
+};
+
 const THEME_STORAGE_KEY = "mindbase_theme_mode";
 const SESSION_STORAGE_KEY = "mindbase_onboarding_session_v1";
 const INVALID_COMPANY_ANSWERS = new Set([
@@ -157,6 +175,9 @@ const WORKSPACE_SUGGESTIONS = [
   "Open workspace",
   "Connect Gmail",
   "Connect Google Drive",
+  "Connect Facebook",
+  "Connect Instagram",
+  "Connect payments",
   "Invite my team",
   "Add my first customer",
   "Keep setting up in chat",
@@ -450,8 +471,15 @@ export default function MindbaseHumanizedLandingPage() {
   const [accountNotice, setAccountNotice] = useState("");
   const [reasoningModeReady, setReasoningModeReady] = useState(false);
   const [selectedAgent, setSelectedAgent] = useState<StarterAgent | null>(null);
+  const [chatFocusMode, setChatFocusMode] = useState(false);
   const messageEndRef = useRef<HTMLDivElement | null>(null);
   const t = modeCopy[theme];
+  const integrationStatusQuery = useQuery<IntegrationStatusResponse>({
+    queryKey: ["/api/mindbase/integrations/status"],
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
+  });
+  const integrationRuntimeById = integrationStatusQuery.data?.integrations || {};
 
   useEffect(() => {
     if (typeof window !== "undefined")
@@ -498,6 +526,11 @@ export default function MindbaseHumanizedLandingPage() {
   useEffect(() => {
     messageEndRef.current?.scrollIntoView({ block: "end", behavior: "smooth" });
   }, [messages.length]);
+
+  useEffect(() => {
+    if (step !== "command" && step !== "connect" && step !== "done")
+      setChatFocusMode(false);
+  }, [step]);
 
   useEffect(() => {
     if (typeof window === "undefined" || organizationDraft) return;
@@ -749,6 +782,41 @@ export default function MindbaseHumanizedLandingPage() {
         ),
     );
     if (!card) return false;
+    const runtime = integrationRuntimeById[card.id];
+    if (runtime) {
+      const missing = runtime.missingEnv?.length
+        ? `\nMissing: ${runtime.missingEnv.join(", ")}`
+        : "";
+      setConnectedTools((current) => ({
+        ...current,
+        [card.id]: runtime.status,
+      }));
+      pushConversation(sourceText, [
+        makeMessage(
+          "system",
+          `${card.title}\nStatus: ${runtime.status}\nProvider: ${runtime.provider}\nWhat it enables: ${card.copy}\nSecurity: ${card.security}${missing}`,
+        ),
+        makeMessage(
+          "adjoa",
+          runtime.enabled
+            ? `${runtime.message}\n\nI will still ask before any agent uses this connection for external action.`
+            : `${runtime.message}\n\nYou can continue running the workspace in chat while this setup is completed.`,
+        ),
+      ]);
+      if (runtime.enabled && runtime.connectUrl && typeof window !== "undefined") {
+        window.setTimeout(() => {
+          const target = new URL(runtime.connectUrl || "/mindbase", window.location.origin);
+          if (target.pathname.startsWith("/api/mindbase/integrations/")) {
+            target.searchParams.set(
+              "returnTo",
+              `${window.location.pathname}${window.location.search}`,
+            );
+          }
+          window.location.assign(target.toString());
+        }, 350);
+      }
+      return true;
+    }
     if (card.fallback) {
       setConnectedTools((current) => ({
         ...current,
@@ -879,7 +947,7 @@ export default function MindbaseHumanizedLandingPage() {
       return;
     }
     if (
-      /connect gmail|connect google drive|connect drive|connect calendar|connect whatsapp|invite my team|invite your team|upload documents|add my first customer|add customers/i.test(
+      /connect gmail|connect google drive|connect drive|connect calendar|connect whatsapp|connect instagram|connect facebook|connect payments|payment collection|collect payments|invite my team|invite your team|upload documents|add my first customer|add customers/i.test(
         value,
       )
     ) {
@@ -1131,6 +1199,49 @@ export default function MindbaseHumanizedLandingPage() {
     Upload,
     BriefcaseBusiness,
   ];
+  const isWorkspaceMode =
+    step === "command" || step === "connect" || step === "done";
+  const activeAgentRoster = agents.filter((agent) => agent.active).slice(0, 5);
+  const isFocusedWorkspace = isWorkspaceMode && chatFocusMode;
+  const topBarClass = isWorkspaceMode
+    ? "h-10 py-1 md:px-3"
+    : "h-[68px] py-3 md:px-8";
+  const topBarInnerClass = isWorkspaceMode
+    ? "w-full max-w-none"
+    : "max-w-[1500px]";
+  const mainShellClass = isWorkspaceMode
+    ? isFocusedWorkspace
+      ? "h-screen w-full max-w-none grid-cols-1 gap-0 overflow-hidden p-0"
+      : "h-[calc(100vh-40px)] w-full max-w-none grid-cols-1 gap-2 overflow-hidden px-2 pb-2 pt-1.5 md:px-3 md:pb-3"
+    : "h-[calc(100vh-68px)] max-w-[1500px] grid-cols-1 gap-4 overflow-hidden px-4 pb-20 pt-4 md:grid-cols-[minmax(0,1fr)_340px] md:px-6 md:pb-4 lg:grid-cols-[220px_minmax(0,1fr)_380px] xl:px-8";
+  const chatHeaderClass = isWorkspaceMode
+    ? isFocusedWorkspace
+      ? "px-2 py-1 md:px-3"
+      : "px-2 py-1 md:px-3"
+    : "px-4 py-4 md:px-6";
+  const chatScrollClass = isWorkspaceMode
+    ? isFocusedWorkspace
+      ? "space-y-3 px-3 py-2 md:px-5 xl:px-6"
+      : "space-y-3 px-3 py-2 md:px-5 xl:px-6"
+    : "space-y-5 px-4 py-5 md:px-8";
+  const chatBubbleClass = isWorkspaceMode
+    ? isFocusedWorkspace
+      ? "max-w-[98%] md:max-w-[1040px] xl:max-w-[1220px]"
+      : "max-w-[96%] md:max-w-[900px] xl:max-w-[1040px]"
+    : "max-w-[86%] md:max-w-[640px]";
+  const composerClass = isWorkspaceMode
+    ? isFocusedWorkspace
+      ? "p-1.5 md:p-2"
+      : "p-2 md:p-2.5"
+    : "p-3 md:p-5";
+  const suggestionStripClass = isWorkspaceMode
+    ? "mb-2 flex gap-2 overflow-x-auto pb-1"
+    : "mb-3 flex flex-wrap gap-2";
+  const suggestionButtonClass = isWorkspaceMode
+    ? "h-8 shrink-0 rounded-[12px] px-3 text-xs"
+    : "h-9 rounded-[14px] px-3 text-xs md:h-10 md:text-sm";
+  const inputControlClass = isWorkspaceMode ? "h-10" : "h-11";
+  const iconButtonClass = isWorkspaceMode ? "h-9 w-9" : "h-10 w-10";
 
   return (
     <div
@@ -1140,72 +1251,80 @@ export default function MindbaseHumanizedLandingPage() {
           "Inter, Roboto, system-ui, -apple-system, Segoe UI, sans-serif",
       }}
     >
-      <header
-        className={`sticky top-0 z-40 h-[68px] border-b px-4 py-3 backdrop-blur-xl md:px-8 ${t.top}`}
-      >
-        <div className="mx-auto flex h-full max-w-[1500px] items-center justify-between gap-4">
-          <Link href={mindbasePath("/")}>
-            <a aria-label="MindBase home">
-              <MindbaseLogo tone={theme === "dark" ? "dark" : "light"} />
-            </a>
-          </Link>
-          <nav className="hidden items-center gap-1 lg:flex">
-            {[
-              ["Marketplace", "/discover"],
-              ["Build", "/build/chat"],
-              ["Workspaces", "/workspaces"],
-              ["Pricing", "/pricing"],
-              ["Docs/API", "/docs/api"],
-            ].map(([label, href]) => (
-              <Link key={href} href={mindbasePath(href)}>
-                <a
-                  className={`rounded-full px-4 py-2 text-sm font-medium ${t.muted} ${t.navHover}`}
-                >
-                  {label}
-                </a>
-              </Link>
-            ))}
-          </nav>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              className={`inline-flex h-10 w-10 items-center justify-center rounded-full border ${t.chip}`}
-              onClick={() =>
-                setTheme((current) => (current === "dark" ? "light" : "dark"))
-              }
-            >
-              {theme === "dark" ? (
-                <Sun className="h-4 w-4" />
-              ) : (
-                <Moon className="h-4 w-4" />
-              )}
-            </button>
-            <Link href={mindbasePath("/login?next=%2Fmindbase")}>
-              <a
-                className={`hidden rounded-[12px] border px-4 py-2 text-sm font-semibold md:inline-flex ${t.chip}`}
+      {!isFocusedWorkspace ? (
+        <header
+          className={`sticky top-0 z-40 border-b px-4 backdrop-blur-xl ${topBarClass} ${t.top}`}
+        >
+          <div className={`mx-auto flex h-full ${topBarInnerClass} items-center justify-between gap-4`}>
+            <Link href={mindbasePath("/")}>
+              <a aria-label="MindBase home">
+                <MindbaseLogo compact={isWorkspaceMode} tone={theme === "dark" ? "dark" : "light"} />
+              </a>
+            </Link>
+            {!isWorkspaceMode ? (
+              <nav className="hidden items-center gap-1 lg:flex">
+                {[
+                  ["Marketplace", "/discover"],
+                  ["Build", "/build/chat"],
+                  ["Workspaces", "/workspaces"],
+                  ["Pricing", "/pricing"],
+                  ["Docs/API", "/docs/api"],
+                ].map(([label, href]) => (
+                  <Link key={href} href={mindbasePath(href)}>
+                    <a
+                      className={`rounded-full px-4 py-2 text-sm font-medium ${t.muted} ${t.navHover}`}
+                    >
+                      {label}
+                    </a>
+                  </Link>
+                ))}
+              </nav>
+            ) : null}
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                className={`inline-flex ${isWorkspaceMode ? "h-7 w-7" : "h-10 w-10"} items-center justify-center rounded-full border ${t.chip}`}
+                onClick={() =>
+                  setTheme((current) => (current === "dark" ? "light" : "dark"))
+                }
               >
-                Sign in
-              </a>
-            </Link>
-            <Link href={mindbasePath("/register?next=%2Fmindbase")}>
-              <a className="hidden rounded-[12px] bg-[linear-gradient(135deg,#075DFF,#18A8FF)] px-4 py-2 text-sm font-semibold text-white shadow-[0_0_22px_rgba(11,101,255,0.35)] md:inline-flex">
-                Create account
-              </a>
-            </Link>
-            <button
-              type="button"
-              className={`inline-flex h-10 w-10 items-center justify-center rounded-full border lg:hidden ${t.chip}`}
-              aria-label="Open menu"
-            >
-              <Menu className="h-5 w-5" />
-            </button>
+                {theme === "dark" ? (
+                  <Sun className="h-4 w-4" />
+                ) : (
+                  <Moon className="h-4 w-4" />
+                )}
+              </button>
+              {!isWorkspaceMode ? (
+                <>
+                  <Link href={mindbasePath("/login?next=%2Fmindbase")}>
+                    <a
+                      className={`hidden rounded-[12px] border px-4 py-2 text-sm font-semibold md:inline-flex ${t.chip}`}
+                    >
+                      Sign in
+                    </a>
+                  </Link>
+                  <Link href={mindbasePath("/register?next=%2Fmindbase")}>
+                    <a className="hidden rounded-[12px] bg-[linear-gradient(135deg,#075DFF,#18A8FF)] px-4 py-2 text-sm font-semibold text-white shadow-[0_0_22px_rgba(11,101,255,0.35)] md:inline-flex">
+                      Create account
+                    </a>
+                  </Link>
+                </>
+              ) : null}
+              <button
+                type="button"
+                className={`inline-flex ${isWorkspaceMode ? "h-7 w-7" : "h-10 w-10"} items-center justify-center rounded-full border lg:hidden ${t.chip}`}
+                aria-label="Open menu"
+              >
+                <Menu className={isWorkspaceMode ? "h-4 w-4" : "h-5 w-5"} />
+              </button>
+            </div>
           </div>
-        </div>
-      </header>
+        </header>
+      ) : null}
 
-      <main className="mx-auto grid h-[calc(100vh-68px)] max-w-[1500px] grid-cols-1 gap-4 overflow-hidden px-4 pb-20 pt-4 md:grid-cols-[minmax(0,1fr)_340px] md:px-6 md:pb-4 lg:grid-cols-[220px_minmax(0,1fr)_380px] xl:px-8">
+      <main className={`mx-auto grid ${mainShellClass}`}>
         <aside
-          className={`hidden min-h-0 overflow-hidden rounded-[24px] border p-4 lg:block ${t.panel}`}
+          className={`${isWorkspaceMode ? "hidden" : "hidden lg:block"} min-h-0 overflow-hidden rounded-[24px] border p-4 ${t.panel}`}
         >
           <div className="flex flex-col items-center border-b border-current/10 pb-5 text-center">
             <PortraitAvatar agent={starterAgentById.adjoa} size="lg" active />
@@ -1243,50 +1362,101 @@ export default function MindbaseHumanizedLandingPage() {
         </aside>
 
         <section
-          className={`min-h-0 overflow-hidden rounded-[26px] border ${t.panel}`}
+          className={`min-h-0 overflow-hidden border ${isFocusedWorkspace ? "rounded-none" : isWorkspaceMode ? "rounded-[16px]" : "rounded-[26px]"} ${t.panel}`}
         >
           <div className={`relative flex h-full min-h-0 flex-col ${t.chat}`}>
-            <div className="relative shrink-0 border-b border-current/10 px-4 py-4 md:px-6">
-              <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className={`relative shrink-0 border-b border-current/10 ${chatHeaderClass}`}>
+              <div className={`flex ${isWorkspaceMode ? "items-center" : "flex-wrap items-start"} justify-between ${isWorkspaceMode ? "gap-2" : "gap-3"}`}>
                 <div>
-                  <p
-                    className={`text-xs font-semibold uppercase tracking-[0.18em] ${t.muted}`}
+                  {!isWorkspaceMode ? (
+                    <p
+                      className={`text-xs font-semibold uppercase tracking-[0.18em] ${t.muted}`}
+                    >
+                      Welcome to MindBase
+                    </p>
+                  ) : null}
+                  <h1
+                    className={
+                      isWorkspaceMode
+                        ? "text-sm font-semibold leading-tight md:text-base"
+                        : "mt-2 max-w-2xl text-2xl font-semibold leading-tight tracking-[-0.02em] md:text-3xl xl:text-4xl"
+                    }
                   >
-                    Welcome to MindBase
-                  </p>
-                  <h1 className="mt-2 max-w-2xl text-2xl font-semibold leading-tight tracking-[-0.02em] md:text-3xl xl:text-4xl">
-                    Build the AI team that helps run your company.
+                    {isWorkspaceMode
+                      ? "Command center"
+                      : "Build the AI team that helps run your company."}
                   </h1>
-                  <p
-                    className={`mt-2 max-w-xl text-sm md:text-base ${t.muted}`}
-                  >
-                    Create your company brain. Hire AI agents. Connect your
-                    tools. Start operating.
-                  </p>
+                  {!isWorkspaceMode ? (
+                    <p
+                      className={`mt-2 max-w-xl text-sm md:text-base ${t.muted}`}
+                    >
+                      Create your company brain. Hire AI agents. Connect your
+                      tools. Start operating.
+                    </p>
+                  ) : null}
                 </div>
+                {isWorkspaceMode && activeAgentRoster.length ? (
+                  <div className="hidden min-w-0 flex-1 items-center justify-center gap-1 md:flex">
+                    {activeAgentRoster.map((agent) => (
+                      <button
+                        key={agent.id}
+                        type="button"
+                        className={`inline-flex h-7 min-w-0 items-center gap-1 rounded-full border px-2 text-xs ${t.chip}`}
+                        onClick={() => setSelectedAgent(agent)}
+                      >
+                        <span
+                          className="h-2 w-2 shrink-0 rounded-full"
+                          style={{ backgroundColor: agent.accent }}
+                        />
+                        <span className="max-w-[72px] truncate font-semibold">
+                          {agent.name}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
                 <div
-                  className={`inline-flex rounded-full border p-1 text-xs ${t.chip}`}
+                  className={`inline-flex rounded-full border ${isWorkspaceMode ? "p-0.5" : "p-1"} text-xs ${t.chip}`}
                 >
                   <button
                     type="button"
-                    className={`rounded-full px-3 py-1.5 font-semibold ${!reasoningModeReady ? "bg-[#0B65FF] text-white" : ""}`}
+                    className={`rounded-full font-semibold ${isWorkspaceMode ? "px-2 py-1" : "px-3 py-1.5"} ${!reasoningModeReady ? "bg-[#0B65FF] text-white" : ""}`}
                     onClick={() => setReasoningModeReady(false)}
                   >
                     <Zap className="mr-1 inline h-3 w-3" />
-                    Fast setup
+                    {isWorkspaceMode ? "Fast" : "Fast setup"}
                   </button>
                   <button
                     type="button"
-                    className={`rounded-full px-3 py-1.5 font-semibold ${reasoningModeReady ? "bg-[#0B65FF] text-white" : ""}`}
+                    className={`rounded-full font-semibold ${isWorkspaceMode ? "px-2 py-1" : "px-3 py-1.5"} ${reasoningModeReady ? "bg-[#0B65FF] text-white" : ""}`}
                     onClick={() => setReasoningModeReady(true)}
                   >
-                    Deep strategy
+                    {isWorkspaceMode ? "Deep" : "Deep strategy"}
                   </button>
                 </div>
+                {isWorkspaceMode ? (
+                  <button
+                    type="button"
+                    className={`inline-flex h-7 w-7 items-center justify-center rounded-full border ${t.chip}`}
+                    aria-label={
+                      chatFocusMode ? "Exit full chat view" : "Expand chat view"
+                    }
+                    title={
+                      chatFocusMode ? "Exit full chat view" : "Expand chat view"
+                    }
+                    onClick={() => setChatFocusMode((current) => !current)}
+                  >
+                    {chatFocusMode ? (
+                      <Minimize2 className="h-4 w-4" />
+                    ) : (
+                      <Maximize2 className="h-4 w-4" />
+                    )}
+                  </button>
+                ) : null}
               </div>
             </div>
 
-            <div className="relative min-h-0 flex-1 space-y-5 overflow-y-auto px-4 py-5 md:px-8">
+            <div className={`relative min-h-0 flex-1 overflow-y-auto ${chatScrollClass}`}>
               {messages.map((message) => {
                 const isUser = message.role === "user";
                 const isSystem = message.role === "system";
@@ -1303,7 +1473,7 @@ export default function MindbaseHumanizedLandingPage() {
                       />
                     ) : null}
                     <div
-                      className={`max-w-[86%] whitespace-pre-line rounded-[22px] border px-4 py-3 text-sm leading-6 md:max-w-[640px] ${isUser ? t.userBubble : isSystem ? t.systemBubble : t.agentBubble}`}
+                      className={`${chatBubbleClass} whitespace-pre-line rounded-[22px] border px-4 py-3 text-sm leading-6 ${isUser ? t.userBubble : isSystem ? t.systemBubble : t.agentBubble}`}
                     >
                       {!isUser ? (
                         <div className="mb-1 flex flex-wrap items-center gap-2 text-xs">
@@ -1340,16 +1510,16 @@ export default function MindbaseHumanizedLandingPage() {
             </div>
 
             <div
-              className={`relative shrink-0 border-t border-current/10 p-3 backdrop-blur-xl md:p-5 ${t.top}`}
+              className={`relative shrink-0 border-t border-current/10 backdrop-blur-xl ${composerClass} ${t.top}`}
             >
               {suggestions.length ? (
-                <div className="mb-3 flex flex-wrap gap-2">
+                <div className={suggestionStripClass}>
                   {suggestions.map((choice) => (
                     <Button
                       key={choice}
                       type="button"
                       variant="outline"
-                      className={`h-9 rounded-[14px] px-3 text-xs md:h-10 md:text-sm ${t.chip}`}
+                      className={`${suggestionButtonClass} ${t.chip}`}
                       onClick={() => handleUserAnswer(choice)}
                     >
                       {choice}
@@ -1453,7 +1623,7 @@ export default function MindbaseHumanizedLandingPage() {
                 >
                   <button
                     type="button"
-                    className={`inline-flex h-10 w-10 items-center justify-center rounded-full ${t.muted}`}
+                    className={`inline-flex ${iconButtonClass} items-center justify-center rounded-full ${t.muted}`}
                     aria-label="Attach file"
                   >
                     <Paperclip className="h-5 w-5" />
@@ -1462,18 +1632,18 @@ export default function MindbaseHumanizedLandingPage() {
                     value={input}
                     onChange={(event) => setInput(event.target.value)}
                     placeholder="Tell MindBase what you want to build..."
-                    className={`h-11 flex-1 border-0 bg-transparent px-1 shadow-none focus-visible:ring-0 ${theme === "dark" ? "text-white placeholder:text-slate-500" : "text-slate-950 placeholder:text-slate-400"}`}
+                    className={`${inputControlClass} flex-1 border-0 bg-transparent px-1 shadow-none focus-visible:ring-0 ${theme === "dark" ? "text-white placeholder:text-slate-500" : "text-slate-950 placeholder:text-slate-400"}`}
                   />
                   <button
                     type="button"
-                    className={`hidden h-10 w-10 items-center justify-center rounded-full md:inline-flex ${t.muted}`}
+                    className={`hidden ${iconButtonClass} items-center justify-center rounded-full md:inline-flex ${t.muted}`}
                     aria-label="Voice input"
                   >
                     <Mic className="h-4 w-4" />
                   </button>
                   <Button
                     type="submit"
-                    className="h-11 w-11 rounded-full bg-[linear-gradient(135deg,#075DFF,#18A8FF)] p-0 text-white shadow-[0_0_24px_rgba(11,101,255,0.36)]"
+                    className={`${inputControlClass} ${isWorkspaceMode ? "w-10" : "w-11"} rounded-full bg-[linear-gradient(135deg,#075DFF,#18A8FF)] p-0 text-white shadow-[0_0_24px_rgba(11,101,255,0.36)]`}
                   >
                     <Send className="h-5 w-5" />
                   </Button>
@@ -1483,7 +1653,7 @@ export default function MindbaseHumanizedLandingPage() {
           </div>
         </section>
 
-        <aside className="hidden min-h-0 space-y-4 overflow-y-auto md:block">
+        <aside className={`${isWorkspaceMode ? "hidden" : "hidden md:block"} min-h-0 space-y-4 overflow-y-auto`}>
           <div className={`rounded-[22px] border p-4 ${t.panel}`}>
             <div className="mb-4 flex items-center justify-between gap-3">
               <h2 className="flex items-center gap-2 text-lg font-semibold">
@@ -1645,7 +1815,11 @@ export default function MindbaseHumanizedLandingPage() {
             <div className="mt-4 grid gap-2">
               {integrationCards.map((card, index) => {
                 const ActionIcon = actionIcons[index] || Command;
-                const cardStatus = connectedTools[card.id] || card.status;
+                const runtime = integrationRuntimeById[card.id];
+                const cardStatus =
+                  connectedTools[card.id] || runtime?.status || card.status;
+                const cardReady =
+                  runtime?.enabled || cardStatus === "Ready";
                 return (
                   <button
                     key={card.id}
@@ -1658,7 +1832,7 @@ export default function MindbaseHumanizedLandingPage() {
                       <span className="flex items-center justify-between gap-2">
                         <span className="font-semibold">{card.title}</span>
                         <span
-                          className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${statusClass(cardStatus === "Ready" ? "Ready" : "Waiting", theme)}`}
+                          className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${statusClass(cardReady ? "Ready" : "Waiting", theme)}`}
                         >
                           {cardStatus}
                         </span>
@@ -1673,8 +1847,23 @@ export default function MindbaseHumanizedLandingPage() {
                       >
                         {card.security}
                       </span>
-                      <span className="mt-2 inline-flex rounded-full bg-[#0B65FF] px-2.5 py-1 text-[11px] font-semibold text-white">
-                        {card.action}
+                      {runtime?.missingEnv?.length ? (
+                        <span
+                          className={`mt-2 block text-[11px] leading-4 ${theme === "dark" ? "text-amber-200" : "text-amber-700"}`}
+                        >
+                          Missing: {runtime.missingEnv.join(", ")}
+                        </span>
+                      ) : null}
+                      <span
+                        className={`mt-2 inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+                          cardReady
+                            ? "bg-[#0B65FF] text-white"
+                            : theme === "dark"
+                              ? "bg-white/10 text-slate-200"
+                              : "bg-slate-100 text-slate-700"
+                        }`}
+                      >
+                        {cardReady ? card.action : "Setup needed"}
                       </span>
                     </span>
                     <ChevronRight className={`mt-0.5 h-4 w-4 ${t.muted}`} />
@@ -1703,7 +1892,7 @@ export default function MindbaseHumanizedLandingPage() {
       </main>
 
       <nav
-        className={`fixed bottom-0 left-0 right-0 z-40 grid grid-cols-5 border-t px-2 py-2 backdrop-blur-xl md:hidden ${t.top}`}
+        className={`${isWorkspaceMode ? "hidden" : "fixed"} bottom-0 left-0 right-0 z-40 grid grid-cols-5 border-t px-2 py-2 backdrop-blur-xl md:hidden ${t.top}`}
       >
         {[
           [Home, "Chat", "chat"],

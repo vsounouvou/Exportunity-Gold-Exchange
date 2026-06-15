@@ -4,7 +4,7 @@ import { Router } from "express";
 import { and, eq, inArray } from "drizzle-orm";
 import { db } from "@db";
 import { eceUsers, meetParticipants } from "@db/schema";
-import { ensureTenantAdmin, ensureTenantStaff, resolveTenantStaffFromRequest } from "./utils/auth";
+import { ensureTenantStaff, resolveTenantStaffFromRequest } from "./utils/auth";
 import {
   addMeetArtifact,
   addParticipantsByUserIds,
@@ -174,7 +174,7 @@ router.get("/meetings", ensureTenantStaff, async (req: any, res) => {
   }
 });
 
-router.post("/meetings", ensureTenantAdmin, async (req: any, res) => {
+router.post("/meetings", ensureTenantStaff, async (req: any, res) => {
   try {
     const tenant = req.tenant;
     const staffUser = req.staffUser;

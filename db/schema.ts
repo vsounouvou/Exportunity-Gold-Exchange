@@ -119,6 +119,9 @@ export * from "./schema/mindbase";
 // Export Maison en Terre tenant commerce/cms tables
 export * from "./schema/met";
 
+// Export PME Exchange lead, outreach, and profile tables
+export * from "./schema/pme-exchange";
+
 // Export Action Router tables (background action requests + results)
 export * from "./schema/actions";
 

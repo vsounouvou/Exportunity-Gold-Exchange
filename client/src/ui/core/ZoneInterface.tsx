@@ -3,12 +3,20 @@ import { BuyerHomePage } from "@/pages/BuyerHomePage";
 import { useTenant } from "@/lib/tenant";
 import { hasTenantModule, getTenantConfigByKey } from "../../../../tenants/index";
 import { getTenantUXConfig } from "@/config/tenantUX";
+import type { ConversationSpace, ExportunityShellMode } from "@/components/exportunity/ExportunityConversationalCommerce";
 
-export function ZoneInterface() {
+type ZoneInterfaceProps = {
+  initialSpace?: ConversationSpace;
+  shellMode?: ExportunityShellMode;
+};
+
+export function ZoneInterface({ initialSpace = "city", shellMode = "commerce" }: ZoneInterfaceProps) {
   const { tenant } = useTenant();
   const config = useMemo(() => getTenantConfigByKey(tenant.key), [tenant.key]);
   const tenantUx = useMemo(() => getTenantUXConfig(tenant.key), [tenant.key]);
-  const mapEnabled = tenantUx.showMap && hasTenantModule(tenant.key, "map");
+  const isBdoWholesaleShell = tenant.key === "bdo" && initialSpace === "wholesale";
+  const mapEnabled =
+    (tenantUx.showMap || isBdoWholesaleShell) && hasTenantModule(tenant.key, "map");
   const storefrontHero = tenantUx.heroMode === "BANNER" ? config?.storefrontHero || null : null;
 
   return (
@@ -20,6 +28,8 @@ export function ZoneInterface() {
         storefrontHero={storefrontHero}
         showGoldChart={tenantUx.showGoldChart}
         showNewsBanner={tenantUx.showNewsBanner}
+        exportunityInitialSpace={initialSpace}
+        exportunityShellMode={shellMode}
       />
     </div>
   );

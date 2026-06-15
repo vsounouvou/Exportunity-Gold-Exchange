@@ -37,31 +37,85 @@ function withMarketingQuery(href: string) {
 
 type ActiveKey = string;
 
+const ACTIVE_NAV_ALIASES: Record<ActiveKey, ActiveKey> = {
+  invest: "platforms",
+  journey: "company",
+  media: "archive",
+  platform: "platforms",
+  proof: "archive",
+  solutions: "what",
+  story: "company",
+  talk: "work",
+  useCases: "what",
+};
+
 const NAV_ITEMS: Array<{ key: ActiveKey; label: string; href: string }> = [
-  { key: "platform", label: "Platform", href: "/#mission" },
-  { key: "solutions", label: "Solutions", href: "/solutions" },
-  { key: "journey", label: "Journey", href: "/journey" },
+  { key: "home", label: "Home", href: "/" },
+  { key: "company", label: "Company", href: "/company" },
+  { key: "what", label: "What We Do", href: "/what-we-do" },
+  { key: "platforms", label: "Platforms", href: "/platforms" },
+  { key: "archive", label: "Archive", href: "/archive" },
+  { key: "stack", label: "Operating Stack", href: "/operating-stack" },
+  { key: "work", label: "Work With Us", href: "/work-with-us" },
 ];
 
-const FOOTER_ITEMS: Array<{ label: string; href: string }> = [
-  { label: "Platform", href: "/platform" },
-  { label: "Solutions", href: "/solutions" },
-  { label: "Journey", href: "/journey" },
+const FOOTER_GROUPS: Array<{ title: string; items: Array<{ label: string; href: string }> }> = [
+  {
+    title: "Company",
+    items: [
+      { label: "Home", href: "/" },
+      { label: "Company", href: "/company" },
+      { label: "Archive", href: "/archive" },
+      { label: "Work With Us", href: "/work-with-us" },
+      { label: "Contact", href: "/contact" },
+    ],
+  },
+  {
+    title: "Activities",
+    items: [
+      { label: "Trade", href: "/what-we-do" },
+      { label: "Gold & Mining", href: "/gold-mining" },
+      { label: "Machinery", href: "/machinery" },
+      { label: "Government & Institutions", href: "/government-institutions" },
+      { label: "B2B Operations", href: "/what-we-do" },
+      { label: "B2G Advisory", href: "/government-institutions" },
+    ],
+  },
+  {
+    title: "Platforms",
+    items: [
+      { label: "Platforms", href: "/platforms" },
+      { label: "Bourse de l'Or", href: "/gold-mining" },
+      { label: "Maison en Terre", href: "/platforms" },
+      { label: "rayOn", href: "/platforms" },
+      { label: "XportCARD", href: "/platforms" },
+      { label: "MindBase", href: "/platforms" },
+      { label: "House of Zogue", href: "/platforms" },
+    ],
+  },
+  {
+    title: "Access",
+    items: [
+      { label: "Platform Access", href: "/platform" },
+      { label: "Operating Stack", href: "/operating-stack" },
+      { label: "Request Access", href: "/work-with-us" },
+    ],
+  },
 ];
 
 const LOGIN_CHOICES: Array<{ label: string; href: string; description: string }> = [
   {
-    label: "Marketplace Login",
+    label: "Marketplace access",
     href: "https://exportunity.net/login",
     description: "Retail and marketplace user access.",
   },
   {
-    label: "Pro Workspace Login",
+    label: "Pro workspace access",
     href: "https://exportunity.net/pro/login",
     description: "Operator and partner professional workspace.",
   },
   {
-    label: "Gold Professionals Login",
+    label: "Gold workflow access",
     href: "https://boursedelor.com/login",
     description: "Bourse de l'Or access for gold workflows.",
   },
@@ -69,17 +123,17 @@ const LOGIN_CHOICES: Array<{ label: string; href: string; description: string }>
 
 const PLATFORM_CHOICES: Array<{ label: string; href: string; description: string }> = [
   {
-    label: "Open Marketplace",
+    label: "Open marketplace",
     href: "https://exportunity.net/zone",
     description: "Buy and sell products.",
   },
   {
-    label: "Open Gold Trade",
+    label: "Open gold workflows",
     href: "https://boursedelor.com",
     description: "Commodity and gold operations.",
   },
   {
-    label: "Open Pro Workspace",
+    label: "Open pro workspace",
     href: "https://exportunity.net/pro/",
     description: "Professional execution environment.",
   },
@@ -96,6 +150,7 @@ export function MarketingShell({
   const [isTalkOpen, setIsTalkOpen] = useState(false);
   const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [isPlatformOpen, setIsPlatformOpen] = useState(false);
+  const normalizedActive = active ? ACTIVE_NAV_ALIASES[active] || active : active;
 
   useEffect(() => {
     if (pathname === "/talk") setIsTalkOpen(true);
@@ -117,7 +172,7 @@ export function MarketingShell({
   const linkClass = (key: ActiveKey) =>
     cn(
       "rounded-full px-3 py-2 text-sm font-medium transition-colors",
-      active === key ? "bg-white/15 text-white" : "text-white/70 hover:bg-white/10 hover:text-white",
+      normalizedActive === key ? "bg-white/15 text-white" : "text-white/70 hover:bg-white/10 hover:text-white",
     );
 
   const openTalk = () => setIsTalkOpen(true);
@@ -129,11 +184,12 @@ export function MarketingShell({
   };
 
   return (
-    <div className="relative min-h-screen overflow-x-hidden bg-[#04070d] text-white">
+    <div className="relative min-h-screen overflow-x-hidden bg-[#050505] text-white">
       <div
-        className="pointer-events-none fixed inset-0 -z-10 bg-[radial-gradient(circle_at_8%_12%,rgba(67,146,255,0.24),transparent_30%),radial-gradient(circle_at_84%_18%,rgba(16,185,129,0.16),transparent_34%),radial-gradient(circle_at_50%_80%,rgba(245,158,11,0.1),transparent_40%),linear-gradient(180deg,#03060d_0%,#070b14_45%,#090d18_100%)]"
+        className="pointer-events-none fixed inset-0 -z-10 bg-[linear-gradient(180deg,#050505_0%,#090806_42%,#10100d_100%)]"
         aria-hidden
       />
+      <div className="pointer-events-none fixed inset-0 -z-10 bg-[linear-gradient(90deg,rgba(255,255,255,0.035)_1px,transparent_1px),linear-gradient(180deg,rgba(255,255,255,0.025)_1px,transparent_1px)] bg-[size:96px_96px] opacity-30" aria-hidden />
 
       <header className="sticky top-0 z-40 border-b border-white/10 bg-[#04070d]/80 backdrop-blur-xl">
         <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-4 px-4 py-4 md:px-8">
@@ -152,18 +208,17 @@ export function MarketingShell({
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={() => setIsLoginOpen(true)}
+              onClick={() => setIsPlatformOpen(true)}
               className="rounded-full border border-white/30 bg-transparent px-3 py-2 text-sm font-medium text-white hover:bg-white/10"
             >
-                Member login
+              Platform Access
             </button>
-            <button
-              type="button"
-              onClick={openTalk}
+            <Link
+              href={withMarketingQuery("/contact")}
               className="rounded-full bg-amber-400 px-3 py-2 text-sm font-semibold text-slate-950 hover:bg-amber-300"
             >
-              Talk to us
-            </button>
+              Contact
+            </Link>
           </div>
         </div>
 
@@ -187,17 +242,17 @@ export function MarketingShell({
         type="button"
         onClick={openTalk}
         className="fixed bottom-5 right-5 z-40 rounded-full border border-white/30 bg-[#0b1222]/95 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-black/40 backdrop-blur hover:bg-[#111b33]"
-        aria-label="Talk to us"
+        aria-label="Contact Exportunity"
       >
-        Talk to us
+        Contact
       </button>
 
       <Dialog open={isLoginOpen} onOpenChange={setIsLoginOpen}>
         <DialogContent className="max-w-xl border-white/10 bg-[#070b14] text-white">
           <DialogHeader>
-            <DialogTitle className="text-xl">Choose your login</DialogTitle>
+            <DialogTitle className="text-xl">Platform access</DialogTitle>
             <DialogDescription className="text-white/70">
-              Select the workspace that matches your mission.
+              Select the workspace that matches the operation.
             </DialogDescription>
           </DialogHeader>
           <div className="grid grid-cols-1 gap-3">
@@ -218,9 +273,9 @@ export function MarketingShell({
       <Dialog open={isPlatformOpen} onOpenChange={setIsPlatformOpen}>
         <DialogContent className="max-w-xl border-white/10 bg-[#070b14] text-white">
           <DialogHeader>
-            <DialogTitle className="text-xl">Open platform</DialogTitle>
+            <DialogTitle className="text-xl">Platform access</DialogTitle>
             <DialogDescription className="text-white/70">
-              Pick where you want to work right now.
+              Open a public platform or request operator access.
             </DialogDescription>
           </DialogHeader>
           <div className="grid grid-cols-1 gap-3">
@@ -244,42 +299,32 @@ export function MarketingShell({
             variant="widget"
             autoStart
             className="h-[calc(100vh-2rem)]"
-            systemMessage="What are you trying to do today?"
+            systemMessage="What kind of Exportunity support do you need?"
           />
         </SheetContent>
       </Sheet>
 
       <footer className="mt-16 border-t border-white/10 bg-black/20 backdrop-blur">
-        <div className="mx-auto grid w-full max-w-7xl grid-cols-1 gap-6 px-4 py-10 md:grid-cols-3 md:px-8">
+        <div className="mx-auto grid w-full max-w-7xl grid-cols-1 gap-8 px-4 py-10 md:grid-cols-[1.15fr_repeat(4,1fr)] md:px-8">
           <div>
             <div className="text-sm font-semibold text-white">Exportunity Group Ltd</div>
             <div className="mt-2 text-sm leading-relaxed text-white/70">
-              London, United Kingdom
+              Platforms for trade, gold, machinery, payments, advisory, and execution.
             </div>
           </div>
 
-          <div className="space-y-2 text-sm text-white/70">
-            <div className="font-semibold text-white">Links</div>
-            <div className="flex flex-col gap-1">
-              {FOOTER_ITEMS.map((item) => (
-                <Link key={item.href} href={withMarketingQuery(item.href)} className="hover:text-white">
-                  {item.label}
-                </Link>
-              ))}
+          {FOOTER_GROUPS.map((group) => (
+            <div key={group.title} className="space-y-2 text-sm text-white/70">
+              <div className="font-semibold text-white">{group.title}</div>
+              <div className="flex flex-col gap-1">
+                {group.items.map((item) => (
+                  <Link key={`${group.title}-${item.href}-${item.label}`} href={withMarketingQuery(item.href)} className="hover:text-white">
+                    {item.label}
+                  </Link>
+                ))}
+              </div>
             </div>
-          </div>
-
-          <div className="space-y-2 text-sm text-white/70">
-            <div className="font-semibold text-white">Access</div>
-            <div className="flex flex-col gap-1">
-              <button type="button" onClick={() => setIsPlatformOpen(true)} className="text-left hover:text-white">
-                Open platform
-              </button>
-              <button type="button" onClick={openTalk} className="text-left hover:text-white">
-                Talk to us
-              </button>
-            </div>
-          </div>
+          ))}
         </div>
       </footer>
     </div>

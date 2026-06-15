@@ -75,6 +75,7 @@ import imageAssetsRouter from "./routes/image-assets";
 import adminMarketplaceRouter from "./routes/admin-marketplace";
 import adminAgentsOsRouter from "./routes/admin-agents-os";
 import adminBourseRouter from "./routes/admin-bourse";
+import adminPmeExchangeRouter from "./routes/admin-pme-exchange";
 import adminAgentTasksRouter from "./routes/admin-agent-tasks";
 import intelligenceGovernanceRouter from "./routes/intelligence-governance";
 import adminIaRouter from "./routes/admin-ia";
@@ -104,6 +105,7 @@ import transcriptionRouter from "./routes/transcription";
 import brainstormRouter from "./routes/brainstorm";
 import workstationsRouter from "./routes/workstations";
 import settingsRouter from "./routes/settings";
+import placesRouter from "./routes/places";
 import publicRouter from "./routes/public";
 import storefrontRouter from "./routes/storefront";
 import bulkQuotesRouter from "./routes/bulk-quotes";
@@ -1028,6 +1030,8 @@ export function registerRoutes(app: Express): Server {
   app.use("/api/admin/marketplace", adminMarketplaceRouter);
   // Bourse admin tools (mines realism, etc.)
   app.use("/api/admin/bourse", adminBourseRouter);
+  // PME Exchange lead engine, Google Places import, and approval-gated outreach
+  app.use("/api/admin/pme-exchange", adminPmeExchangeRouter);
   // Headless agent task runner (budgets + logs)
   app.use("/api/admin/agent-tasks", adminAgentTasksRouter);
   // Governed intelligence hierarchy (policies, tasks, cron army, audit, token ledger)
@@ -1075,6 +1079,8 @@ export function registerRoutes(app: Express): Server {
   app.use("/", investRouter);
   // Tenant-scoped settings (feature flags, onboarding copy, etc.)
   app.use("/", settingsRouter);
+  // Map/place provider config and nearby business discovery
+  app.use("/", placesRouter);
   // DB-backed navigation/page registry (master menus + browse-all)
   app.use("/api/page-registry", pageRegistryRouter);
   app.use("/", cadastreRouter);

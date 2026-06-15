@@ -110,31 +110,32 @@ export function AdminLoginPage() {
     },
   };
   const bdoLanguage = language === "en" || language === "ar" ? language : "fr";
+  const useLightAdminShell = !isBdoTenant;
   const copy = isBdoTenant
     ? bdoCopy[bdoLanguage]
     : {
         back: "Back to Marketplace",
-        subtitle: "Console d'administration",
-        headline: "Manage Your AI Agent Workforce",
+        subtitle: "Operations console",
+        headline: "Run Exportunity operations",
         intro:
-          "Access the command center for your autonomous AI agents. Monitor conversations, manage tasks, and optimize performance.",
+          "Manage marketplace orders, PME Exchange leads, supplier outreach, Google Places imports, Twilio messages, and business agents from one readable back office.",
         signIn: "Sign In",
-        description: "Enter your credentials to access the admin dashboard",
-        submit: "Sign In to Dashboard",
+        description: "Enter your credentials to access the Exportunity operations center",
+        submit: "Open Operations Center",
         submitting: "Signing in...",
         returnHome: "Return to Public Marketplace",
         success: "Welcome back!",
         failure: "Login failed",
-        emailPlaceholder: "admin@example.com",
+        emailPlaceholder: "admin@exportunity.net",
         passwordLabel: "Password",
         passwordPlaceholder: "Enter your password",
         changePassword: "Need to change password?",
         setupLink: "Have a setup link?",
         features: [
-          { icon: Bot, title: "Operations Center", description: "Coordinate your AI agents" },
-          { icon: Users, title: "Multi-Agent Meetings", description: "Run automated discussions" },
-          { icon: BarChart3, title: "Performance Analytics", description: "Track agent efficiency" },
-          { icon: Zap, title: "Task Automation", description: "Delegate work to agents" },
+          { icon: BarChart3, title: "Commerce cockpit", description: "Track orders, shops, suppliers, and PME leads" },
+          { icon: Users, title: "PME Exchange", description: "Review verified sellers, outreach, and onboarding" },
+          { icon: Bot, title: "Business agents", description: "Coordinate Tassi, sourcing, finance, and operations agents" },
+          { icon: Zap, title: "Integrations", description: "Monitor Google Places, Twilio, tasks, and automations" },
         ],
       };
 
@@ -143,6 +144,18 @@ export function AdminLoginPage() {
       setLocation(user?.mustChangePassword ? "/admin/password" : defaultRoute);
     }
   }, [defaultRoute, isAuthenticated, isGuest, setLocation, user]);
+
+  useEffect(() => {
+    if (!useLightAdminShell) return;
+    const previousBackground = document.body.style.background;
+    const previousColor = document.body.style.color;
+    document.body.style.background = "#F7F8FA";
+    document.body.style.color = "#111827";
+    return () => {
+      document.body.style.background = previousBackground;
+      document.body.style.color = previousColor;
+    };
+  }, [useLightAdminShell]);
 
   const form = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
@@ -180,12 +193,12 @@ export function AdminLoginPage() {
   const features = copy.features;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 flex">
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-amber-900/20 to-gray-900 p-12 flex-col justify-between">
+    <div className={useLightAdminShell ? "flex min-h-screen w-full bg-[#F7F8FA] text-slate-950" : "min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 flex"}>
+      <div className={useLightAdminShell ? "hidden lg:flex lg:w-1/2 flex-col justify-between border-r border-slate-200 bg-white p-12" : "hidden lg:flex lg:w-1/2 bg-gradient-to-br from-amber-900/20 to-gray-900 p-12 flex-col justify-between"}>
         <div>
           <button 
             onClick={() => setLocation("/")}
-            className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors mb-12"
+            className={useLightAdminShell ? "mb-12 flex items-center gap-2 text-slate-600 transition-colors hover:text-slate-950" : "flex items-center gap-2 text-gray-400 hover:text-white transition-colors mb-12"}
           >
             <ArrowLeft className="h-4 w-4" />
             {copy.back}
@@ -195,37 +208,37 @@ export function AdminLoginPage() {
             <BrandLockup subtitle={copy.subtitle} />
           </div>
           
-          <h2 className="text-4xl font-bold text-white mb-4">
+          <h2 className={useLightAdminShell ? "mb-4 text-4xl font-bold tracking-tight text-slate-950" : "text-4xl font-bold text-white mb-4"}>
             {copy.headline}
           </h2>
-          <p className="text-gray-400 text-lg mb-12">
+          <p className={useLightAdminShell ? "mb-12 max-w-xl text-lg leading-relaxed text-slate-600" : "text-gray-400 text-lg mb-12"}>
             {copy.intro}
           </p>
           
           <div className="grid grid-cols-2 gap-4">
             {features.map((feature, i) => (
-              <div key={i} className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
+              <div key={i} className={useLightAdminShell ? "rounded-2xl border border-slate-200 bg-[#F7F8FA] p-4 shadow-[0_12px_30px_rgba(15,23,42,.06)]" : "bg-gray-800/50 border border-gray-700 rounded-lg p-4"}>
                 <feature.icon className="h-8 w-8 text-amber-500 mb-3" />
-                <h3 className="text-white font-medium mb-1">{feature.title}</h3>
-                <p className="text-gray-400 text-sm">{feature.description}</p>
+                <h3 className={useLightAdminShell ? "mb-1 font-semibold text-slate-950" : "text-white font-medium mb-1"}>{feature.title}</h3>
+                <p className={useLightAdminShell ? "text-sm text-slate-600" : "text-gray-400 text-sm"}>{feature.description}</p>
               </div>
             ))}
           </div>
         </div>
         
-        <p className="text-gray-500 text-sm">
+        <p className={useLightAdminShell ? "text-sm font-semibold text-slate-500" : "text-gray-500 text-sm"}>
           {brand.name} - {copy.subtitle}
         </p>
       </div>
 
       <div className="flex-1 flex items-center justify-center p-6">
-        <Card className="w-full max-w-md bg-gray-900 border-gray-800">
+        <Card className={useLightAdminShell ? "w-full max-w-md border-slate-200 bg-white shadow-[0_24px_70px_rgba(15,23,42,.12)]" : "w-full max-w-md bg-gray-900 border-gray-800"}>
           <CardHeader className="text-center space-y-4">
             <div className="lg:hidden flex items-center justify-center gap-3 mb-4">
               <BrandLockup subtitle={copy.subtitle} />
             </div>
-            <CardTitle className="text-2xl text-white">{copy.signIn}</CardTitle>
-            <CardDescription className="text-gray-400">
+            <CardTitle className={useLightAdminShell ? "text-2xl text-slate-950" : "text-2xl text-white"}>{copy.signIn}</CardTitle>
+            <CardDescription className={useLightAdminShell ? "text-slate-600" : "text-gray-400"}>
               {copy.description}
             </CardDescription>
           </CardHeader>
@@ -237,12 +250,12 @@ export function AdminLoginPage() {
                   name="email"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-gray-300">Email</FormLabel>
+                      <FormLabel className={useLightAdminShell ? "text-slate-700" : "text-gray-300"}>Email</FormLabel>
                       <FormControl>
                         <Input 
                           type="email" 
                           placeholder={copy.emailPlaceholder}
-                          className="bg-gray-800 border-gray-700 text-white"
+                          className={useLightAdminShell ? "border-slate-300 bg-white text-slate-950 placeholder:text-slate-400 focus-visible:ring-[#F5A623]" : "bg-gray-800 border-gray-700 text-white"}
                           {...field} 
                         />
                       </FormControl>
@@ -256,12 +269,12 @@ export function AdminLoginPage() {
                   name="password"
                   render={({ field }) => (
                     <FormItem>
-                        <FormLabel className="text-gray-300">{copy.passwordLabel}</FormLabel>
+                        <FormLabel className={useLightAdminShell ? "text-slate-700" : "text-gray-300"}>{copy.passwordLabel}</FormLabel>
                       <FormControl>
                         <Input 
                           type="password" 
                           placeholder={copy.passwordPlaceholder}
-                          className="bg-gray-800 border-gray-700 text-white"
+                          className={useLightAdminShell ? "border-slate-300 bg-white text-slate-950 placeholder:text-slate-400 focus-visible:ring-[#F5A623]" : "bg-gray-800 border-gray-700 text-white"}
                           {...field} 
                         />
                       </FormControl>
@@ -287,28 +300,28 @@ export function AdminLoginPage() {
               </form>
             </Form>
 
-            <div className="mt-4 text-center text-xs text-gray-400">
+            <div className={useLightAdminShell ? "mt-4 text-center text-xs text-slate-600" : "mt-4 text-center text-xs text-gray-400"}>
               <button
                 type="button"
                 onClick={() => setLocation("/admin/password")}
-                className="underline underline-offset-2 hover:text-white"
+                className={useLightAdminShell ? "underline underline-offset-2 hover:text-slate-950" : "underline underline-offset-2 hover:text-white"}
               >
                 {copy.changePassword}
               </button>
-              <span className="mx-2 text-gray-600">|</span>
+              <span className={useLightAdminShell ? "mx-2 text-slate-300" : "mx-2 text-gray-600"}>|</span>
               <button
                 type="button"
                 onClick={() => setLocation("/setup-password")}
-                className="underline underline-offset-2 hover:text-white"
+                className={useLightAdminShell ? "underline underline-offset-2 hover:text-slate-950" : "underline underline-offset-2 hover:text-white"}
               >
                 {copy.setupLink}
               </button>
             </div>
             
-            <div className="mt-6 pt-6 border-t border-gray-800">
+            <div className={useLightAdminShell ? "mt-6 border-t border-slate-200 pt-6" : "mt-6 pt-6 border-t border-gray-800"}>
               <button 
                 onClick={() => setLocation("/")}
-                className="w-full text-center text-sm text-gray-400 hover:text-white transition-colors"
+                className={useLightAdminShell ? "w-full text-center text-sm font-semibold text-slate-600 transition-colors hover:text-slate-950" : "w-full text-center text-sm text-gray-400 hover:text-white transition-colors"}
               >
                 <ArrowLeft className="inline h-4 w-4 mr-1" />
                 {copy.returnHome}

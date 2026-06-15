@@ -21,8 +21,8 @@ export const bdoTenantConfig: TenantConfig = {
     eyebrow: "Bourse de l'Or",
     title: "Acheter de l'or physique certifie.",
     subtitle:
-      "BOURSE DE L'OR connecte produits en or, certification, verification de certificat, livraison securisee et espaces professionnels.",
-    ctaPrimary: { label: "Or Estampille", href: "/store" },
+      "BOURSE DE L'OR est une plateforme digitale structuree pour acheter, documenter et verifier l'or physique, les lingots issus de partenaires raffinerie, les bijoux verifies et les pieces de collection.",
+    ctaPrimary: { label: "Produits en or", href: "/store" },
     ctaSecondary: { label: "Espace Pro", href: "/espace-pro" },
     backgroundStyle: "from-[#0B0B0D] via-[#0D1B2A] to-[#0B0B0D]",
   },
@@ -48,16 +48,16 @@ export const bdoTenantConfig: TenantConfig = {
     deliveryRadiusKm: 150,
   },
   storefrontIdentity: {
-    platformLabel: "Bourse de l'Or - Or Estampille",
-    retailModeLabel: "Or Estampille",
+    platformLabel: "Bourse de l'Or - Or physique documente",
+    retailModeLabel: "Or physique documente",
     sections: [
-      { slug: "stamped", title: "Or Estampille", subtitle: "Pieces et lingots certifies, frappes a la demande", limit: 40 },
-      { slug: "jewelry", title: "Bijoux en or", subtitle: "Pieces verifiees, realisees sur commande", limit: 40 },
-      { slug: "gold-art", title: "Or d'art", subtitle: "Creations patrimoniales et pieces de collection", limit: 24 },
+      { slug: "stamped", title: "Or physique documente", subtitle: "Lingots et pieces soumis a disponibilite, verification et confirmation finale", limit: 40 },
+      { slug: "jewelry", title: "Bijoux en or", subtitle: "Bijoux verifies ou realises sur commande par des partenaires approuves", limit: 40 },
+      { slug: "gold-art", title: "Pieces de collection", subtitle: "Creations patrimoniales et collections documentees selon les informations disponibles", limit: 24 },
     ],
     categoryVisuals: [
       { slug: "dore", label: "Dore", icon: "gem", accent: "#D4AF37", image: "/product-images/dore-nuggets-01.png" },
-      { slug: "stamped", label: "Or Estampille", icon: "shield", accent: "#E8C873", image: "/product-images/stamped-bar-01.png" },
+      { slug: "stamped", label: "Or documente", icon: "shield", accent: "#E8C873", image: "/product-images/stamped-bar-01.png" },
       { slug: "jewelry", label: "Bijoux en or", icon: "sparkles", accent: "#D4AF37", image: "/product-images/jewelry-chain.png" },
       { slug: "gold-art", label: "Or d'art", icon: "palette", accent: "#E8C873", image: "/product-images/art-medallion.png" },
     ],

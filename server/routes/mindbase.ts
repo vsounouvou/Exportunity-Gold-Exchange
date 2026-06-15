@@ -18,6 +18,7 @@ import {
   mindbaseCreditsLedger,
   mindbaseEmailMessages,
   mindbaseEmailThreads,
+  mindbaseIntegrationConnections,
   mindbaseMindbases,
   mindbaseOrganizations,
   mindbaseProfileDrafts,
@@ -43,6 +44,8 @@ import {
   computeCreditsCostPerMessage,
   selectWorkspaceAgentRoute,
 } from "../lib/mindbase/prompting";
+import { getFlutterwaveKeys } from "../lib/flutterwave/config";
+import { getKkiapayConfig } from "../lib/kkiapay/config";
 import { creditWallet, debitWallet, getWalletBalance } from "../lib/wallet/ledger";
 import { getOrCreateWalletAccount } from "../lib/wallet/wallet";
 import { ensureTenantAdmin, ensureTenantStaff } from "./utils/auth";
@@ -161,6 +164,403 @@ async function listMindbaseRoles(tenantId: number, userId: number): Promise<Mind
 function asText(value: unknown) {
   const normalized = String(value ?? "").trim();
   return normalized || null;
+}
+
+function presentEnv(name: string) {
+  return Boolean(String(process.env[name] || "").trim());
+}
+
+function missingEnv(names: string[]) {
+  return names.filter((name) => !presentEnv(name));
+}
+
+function getIntegrationSecret() {
+  const secret = String(
+    process.env.MINDBASE_INTEGRATION_SECRET ||
+      process.env.MINDBASE_JWT_SECRET ||
+      process.env.SESSION_SECRET ||
+      "",
+  ).trim();
+  if (!secret) {
+    throw new Error("MINDBASE_INTEGRATION_SECRET or MINDBASE_JWT_SECRET is required for MindBase integrations");
+  }
+  return secret;
+}
+
+function hmacHex(value: string) {
+  return crypto.createHmac("sha256", getIntegrationSecret()).update(value).digest("hex");
+}
+
+function safeReturnTo(value: unknown) {
+  const raw = asText(value) || "/mindbase";
+  if (raw.startsWith("/") && !raw.startsWith("//")) return raw;
+  return "/mindbase";
+}
+
+function encryptIntegrationTokenPayload(payload: Record<string, unknown>) {
+  const key = crypto.createHash("sha256").update(getIntegrationSecret()).digest();
+  const iv = crypto.randomBytes(12);
+  const cipher = crypto.createCipheriv("aes-256-gcm", key, iv);
+  cipher.setAAD(Buffer.from("mindbase-integration-token-v1", "utf8"));
+  const plaintext = Buffer.from(JSON.stringify(payload), "utf8");
+  const ciphertext = Buffer.concat([cipher.update(plaintext), cipher.final()]);
+  return {
+    ciphertext: ciphertext.toString("base64"),
+    iv: iv.toString("base64"),
+    authTag: cipher.getAuthTag().toString("base64"),
+  };
+}
+
+function decodeJwtPayload(token: unknown): Record<string, unknown> | null {
+  const parts = String(token || "").split(".");
+  if (parts.length < 2) return null;
+  try {
+    const parsed = JSON.parse(Buffer.from(parts[1], "base64url").toString("utf8"));
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function normalizeScopeList(value: unknown, fallback: string[] = []) {
+  if (Array.isArray(value)) {
+    return value.map((entry) => String(entry || "").trim()).filter(Boolean);
+  }
+  const fromText = String(value || "")
+    .split(/[,\s]+/)
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+  return fromText.length ? Array.from(new Set(fromText)) : fallback;
+}
+
+function integrationRuntimeStatus(input: {
+  id: string;
+  provider: string;
+  requiredEnv: string[];
+  enabledMessage: string;
+  disabledMessage: string;
+  adminPath?: string;
+  connectUrl?: string;
+}) {
+  const missing = missingEnv(input.requiredEnv);
+  const configured = missing.length === 0;
+  return {
+    id: input.id,
+    provider: input.provider,
+    enabled: configured,
+    configured,
+    status: configured ? "Ready" : "Setup needed",
+    missingEnv: missing,
+    message: configured ? input.enabledMessage : input.disabledMessage,
+    adminPath: input.adminPath,
+    connectUrl: configured ? input.connectUrl || null : null,
+  };
+}
+
+const MINDBASE_GOOGLE_SCOPES: Record<string, string[]> = {
+  gmail: [
+    "openid",
+    "email",
+    "profile",
+    "https://www.googleapis.com/auth/gmail.modify",
+  ],
+  calendar: [
+    "openid",
+    "email",
+    "profile",
+    "https://www.googleapis.com/auth/calendar.events",
+  ],
+  drive: [
+    "openid",
+    "email",
+    "profile",
+    "https://www.googleapis.com/auth/drive.file",
+  ],
+};
+
+const MINDBASE_META_SCOPES: Record<string, string[]> = {
+  facebook: ["pages_show_list", "pages_read_engagement", "pages_manage_metadata"],
+  instagram: ["pages_show_list", "instagram_basic", "instagram_manage_comments"],
+};
+
+function requestOrigin(req: any) {
+  const forwardedProto = String(req.headers?.["x-forwarded-proto"] || "").split(",")[0]?.trim();
+  const forwardedHost = String(req.headers?.["x-forwarded-host"] || "").split(",")[0]?.trim();
+  const proto = forwardedProto || req.protocol || "https";
+  const host = forwardedHost || req.get?.("host") || req.headers?.host;
+  return host ? `${proto}://${host}` : "";
+}
+
+function encodeIntegrationState(input: {
+  tenantId: number;
+  userId: number;
+  integrationId: string;
+  returnTo?: string | null;
+  workspaceId?: string | null;
+}) {
+  const payload = Buffer.from(
+    JSON.stringify({
+      tenantId: input.tenantId,
+      userId: input.userId,
+      integrationId: input.integrationId,
+      workspaceId: input.workspaceId || null,
+      returnTo: safeReturnTo(input.returnTo),
+      issuedAt: Date.now(),
+    }),
+    "utf8",
+  ).toString("base64url");
+  return Buffer.from(
+    JSON.stringify({
+      payload,
+      sig: hmacHex(payload),
+    }),
+    "utf8",
+  ).toString("base64url");
+}
+
+function decodeIntegrationState(value: unknown): Record<string, unknown> | null {
+  const raw = String(value || "").trim();
+  if (!raw) return null;
+  try {
+    const envelope = JSON.parse(Buffer.from(raw, "base64url").toString("utf8"));
+    if (!envelope || typeof envelope !== "object" || Array.isArray(envelope)) return null;
+    const payload = String((envelope as any).payload || "").trim();
+    const sig = String((envelope as any).sig || "").trim();
+    if (!payload || !sig || !timingSafeEqualHex(sig, hmacHex(payload))) return null;
+    const parsed = JSON.parse(Buffer.from(payload, "base64url").toString("utf8"));
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return null;
+    const issuedAt = Number((parsed as any).issuedAt || 0);
+    if (!Number.isFinite(issuedAt) || issuedAt <= 0 || Date.now() - issuedAt > 60 * 60_000) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function escapeHtml(value: unknown) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+type OAuthTokenExchangeResult = {
+  provider: string;
+  tokenPayload: Record<string, unknown>;
+  scopes: string[];
+  accountLabel: string | null;
+  tokenMeta: Record<string, unknown>;
+  expiresAt: Date | null;
+};
+
+type MindbaseIntegrationConnectionRow = typeof mindbaseIntegrationConnections.$inferSelect;
+
+function compactRecord(input: Record<string, unknown>) {
+  return Object.fromEntries(
+    Object.entries(input).filter(([, value]) => value !== undefined && value !== null && value !== ""),
+  );
+}
+
+function connectionAccountLabel(connection: MindbaseIntegrationConnectionRow) {
+  return asText(connection.accountLabel) || asText((connection.tokenMeta as any)?.accountEmail) || asText((connection.tokenMeta as any)?.accountName);
+}
+
+function withStoredConnectionStatus<T extends ReturnType<typeof integrationRuntimeStatus>>(
+  runtime: T,
+  connection: MindbaseIntegrationConnectionRow | null | undefined,
+) {
+  if (!connection || connection.revokedAt || String(connection.status || "").toLowerCase() !== "connected") return runtime;
+  const tokenMeta = (connection.tokenMeta || {}) as Record<string, unknown>;
+  const expiresAtMs = connection.expiresAt ? new Date(connection.expiresAt).getTime() : 0;
+  const expiredWithoutRefresh =
+    expiresAtMs > 0 &&
+    expiresAtMs <= Date.now() &&
+    tokenMeta.hasRefreshToken !== true;
+  const accountLabel = connectionAccountLabel(connection);
+  return {
+    ...runtime,
+    enabled: !expiredWithoutRefresh,
+    connected: !expiredWithoutRefresh,
+    status: expiredWithoutRefresh
+      ? "Reconnect needed"
+      : runtime.configured
+        ? "Connected"
+        : "Connected, setup warning",
+    accountLabel,
+    connectedAt: connection.createdAt?.toISOString?.() || null,
+    expiresAt: connection.expiresAt?.toISOString?.() || null,
+    message: expiredWithoutRefresh
+      ? `${runtime.provider} authorization expired. Reconnect ${runtime.id} before agents use it.`
+      : runtime.configured
+        ? `${runtime.provider} is connected${accountLabel ? ` as ${accountLabel}` : ""}. Agents will still ask before using it for external action.`
+        : `${runtime.provider} connection is stored${accountLabel ? ` for ${accountLabel}` : ""}, but server setup still has missing environment variables for refresh or action use.`,
+  };
+}
+
+async function exchangeGoogleOAuthCode(input: {
+  code: string;
+  integrationId: string;
+  origin: string;
+}): Promise<OAuthTokenExchangeResult> {
+  const clientId = String(process.env.GOOGLE_CLIENT_ID || "").trim();
+  const clientSecret = String(process.env.GOOGLE_CLIENT_SECRET || "").trim();
+  if (!clientId || !clientSecret) {
+    throw new Error(`Google OAuth is not configured: ${missingEnv(["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET"]).join(", ")}`);
+  }
+  const redirectUri = `${input.origin}/api/mindbase/integrations/google/callback`;
+  const body = new URLSearchParams({
+    client_id: clientId,
+    client_secret: clientSecret,
+    code: input.code,
+    grant_type: "authorization_code",
+    redirect_uri: redirectUri,
+  });
+  const response = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "content-type": "application/x-www-form-urlencoded" },
+    body,
+  });
+  const tokenPayload = (await response.json().catch(() => ({}))) as Record<string, unknown>;
+  if (!response.ok || !asText(tokenPayload.access_token)) {
+    const providerMessage = asText(tokenPayload.error_description) || asText(tokenPayload.error) || `HTTP ${response.status}`;
+    throw new Error(`Google OAuth token exchange failed: ${providerMessage}`);
+  }
+  const idPayload = decodeJwtPayload(tokenPayload.id_token);
+  const scopes = normalizeScopeList(tokenPayload.scope, MINDBASE_GOOGLE_SCOPES[input.integrationId] || []);
+  const accountEmail = asText(idPayload?.email);
+  const accountName = asText(idPayload?.name);
+  const expiresIn = toInt(tokenPayload.expires_in, 0);
+  return {
+    provider: "google",
+    tokenPayload,
+    scopes,
+    accountLabel: accountEmail || accountName || "Google account",
+    tokenMeta: compactRecord({
+      tokenType: asText(tokenPayload.token_type),
+      scope: scopes,
+      accountEmail,
+      accountName,
+      hasRefreshToken: Boolean(asText(tokenPayload.refresh_token)),
+    }),
+    expiresAt: expiresIn > 0 ? new Date(Date.now() + expiresIn * 1000) : null,
+  };
+}
+
+async function exchangeMetaOAuthCode(input: {
+  code: string;
+  integrationId: string;
+  origin: string;
+}): Promise<OAuthTokenExchangeResult> {
+  const appId = String(process.env.META_APP_ID || "").trim();
+  const appSecret = String(process.env.META_APP_SECRET || "").trim();
+  if (!appId || !appSecret) {
+    throw new Error(`Meta OAuth is not configured: ${missingEnv(["META_APP_ID", "META_APP_SECRET"]).join(", ")}`);
+  }
+  const graphVersion = String(process.env.META_GRAPH_VERSION || "v19.0").trim() || "v19.0";
+  const redirectUri = `${input.origin}/api/mindbase/integrations/meta/callback`;
+  const url = new URL(`https://graph.facebook.com/${graphVersion}/oauth/access_token`);
+  url.searchParams.set("client_id", appId);
+  url.searchParams.set("redirect_uri", redirectUri);
+  url.searchParams.set("client_secret", appSecret);
+  url.searchParams.set("code", input.code);
+  const response = await fetch(url.toString());
+  const tokenPayload = (await response.json().catch(() => ({}))) as Record<string, unknown>;
+  if (!response.ok || !asText(tokenPayload.access_token)) {
+    const providerError = (tokenPayload.error || {}) as Record<string, unknown>;
+    const providerMessage = asText(providerError.message) || asText(tokenPayload.error) || `HTTP ${response.status}`;
+    throw new Error(`Meta OAuth token exchange failed: ${providerMessage}`);
+  }
+
+  let profile: Record<string, unknown> | null = null;
+  try {
+    const profileUrl = new URL(`https://graph.facebook.com/${graphVersion}/me`);
+    profileUrl.searchParams.set("fields", "id,name");
+    profileUrl.searchParams.set("access_token", String(tokenPayload.access_token));
+    const profileResponse = await fetch(profileUrl.toString());
+    if (profileResponse.ok) {
+      const parsed = (await profileResponse.json().catch(() => null)) as Record<string, unknown> | null;
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) profile = parsed;
+    }
+  } catch {
+    profile = null;
+  }
+
+  const scopes = normalizeScopeList(tokenPayload.scope, MINDBASE_META_SCOPES[input.integrationId] || []);
+  const accountName = asText(profile?.name);
+  const accountId = asText(profile?.id);
+  const expiresIn = toInt(tokenPayload.expires_in, 0);
+  return {
+    provider: "meta",
+    tokenPayload,
+    scopes,
+    accountLabel: accountName || accountId || "Meta account",
+    tokenMeta: compactRecord({
+      tokenType: asText(tokenPayload.token_type),
+      scope: scopes,
+      accountName,
+      providerAccountId: accountId,
+      hasRefreshToken: Boolean(asText(tokenPayload.refresh_token)),
+    }),
+    expiresAt: expiresIn > 0 ? new Date(Date.now() + expiresIn * 1000) : null,
+  };
+}
+
+async function saveIntegrationConnection(input: {
+  tenantId: number;
+  userId: number;
+  workspaceId?: string | null;
+  integrationId: string;
+  exchange: OAuthTokenExchangeResult;
+}) {
+  const encrypted = encryptIntegrationTokenPayload(input.exchange.tokenPayload);
+  const now = new Date();
+  const [connection] = await db
+    .insert(mindbaseIntegrationConnections)
+    .values({
+      tenantId: input.tenantId,
+      userId: input.userId,
+      workspaceId: input.workspaceId || null,
+      provider: input.exchange.provider,
+      integrationId: input.integrationId,
+      accountLabel: input.exchange.accountLabel,
+      status: "connected",
+      scopes: input.exchange.scopes,
+      tokenCiphertext: encrypted.ciphertext,
+      tokenIv: encrypted.iv,
+      tokenAuthTag: encrypted.authTag,
+      tokenMeta: input.exchange.tokenMeta,
+      expiresAt: input.exchange.expiresAt,
+      lastVerifiedAt: now,
+      revokedAt: null,
+      createdAt: now,
+      updatedAt: now,
+    })
+    .onConflictDoUpdate({
+      target: [
+        mindbaseIntegrationConnections.tenantId,
+        mindbaseIntegrationConnections.userId,
+        mindbaseIntegrationConnections.integrationId,
+      ],
+      set: {
+        workspaceId: input.workspaceId || null,
+        provider: input.exchange.provider,
+        accountLabel: input.exchange.accountLabel,
+        status: "connected",
+        scopes: input.exchange.scopes,
+        tokenCiphertext: encrypted.ciphertext,
+        tokenIv: encrypted.iv,
+        tokenAuthTag: encrypted.authTag,
+        tokenMeta: input.exchange.tokenMeta,
+        expiresAt: input.exchange.expiresAt,
+        lastVerifiedAt: now,
+        revokedAt: null,
+        updatedAt: now,
+      },
+    })
+    .returning();
+  return connection;
 }
 
 function toInt(value: unknown, fallback: number) {
@@ -1553,6 +1953,361 @@ router.post("/api/mindbase/onboarding/workspace", async (req: any, res) => {
 router.get("/api/mindbase/health", async (_req, res) => {
   await ensureMindbaseTables();
   res.json({ ok: true, service: "mindbase" });
+});
+
+router.get("/api/mindbase/integrations/status", async (req: any, res) => {
+  try {
+    await ensureMindbaseTables();
+    if (!checkRateLimit(req, res, "mindbase-integrations-status", 120, 60_000)) return;
+    const tenant = requireTenant(req, res);
+    if (!tenant) return;
+
+    const user = await resolveSessionUser(req).catch(() => null);
+    const connections = user
+      ? await db.query.mindbaseIntegrationConnections.findMany({
+          where: and(
+            eq(mindbaseIntegrationConnections.tenantId, tenant.id),
+            eq(mindbaseIntegrationConnections.userId, user.id),
+            isNull(mindbaseIntegrationConnections.revokedAt),
+          ),
+          orderBy: [desc(mindbaseIntegrationConnections.updatedAt)],
+          limit: 50,
+        })
+      : [];
+    const connectionByIntegration = new Map<string, MindbaseIntegrationConnectionRow>();
+    for (const connection of connections) {
+      const key = String(connection.integrationId || "").trim().toLowerCase();
+      if (key && !connectionByIntegration.has(key)) connectionByIntegration.set(key, connection);
+    }
+
+    const tenantKey = tenant.key as any;
+    const flutterwave = getFlutterwaveKeys(tenantKey);
+    const kkiapay = getKkiapayConfig(tenantKey);
+    const kkiapayMissing = [
+      !kkiapay.publicKey ? "KIKI_PUBLIC_KEY or KKIAPAY_PUBLIC_KEY" : "",
+      !kkiapay.privateKey ? "KIKI_PRIVATE_KEY or KKIAPAY_PRIVATE_KEY" : "",
+      !kkiapay.secret ? "KIKI_SECRET or KKIAPAY_SECRET" : "",
+    ].filter(Boolean);
+    const flutterwaveMissing =
+      flutterwave.version === "v4"
+        ? [
+            !flutterwave.clientId ? "FLW_CLIENT_ID or FLUTTERWAVE_CLIENT_ID" : "",
+            !flutterwave.clientSecret ? "FLW_CLIENT_SECRET or FLUTTERWAVE_CLIENT_SECRET" : "",
+            !flutterwave.encryptionKey ? "FLW_ENCRYPTION_KEY or FLUTTERWAVE_ENCRYPTION_KEY" : "",
+          ].filter(Boolean)
+        : [!flutterwave.secretKey ? "FLW_SECRET_KEY or FLUTTERWAVE_SECRET_KEY" : ""].filter(Boolean);
+    const paymentConfigured = flutterwave.configured || kkiapayMissing.length === 0;
+    const paymentMissing = paymentConfigured ? [] : [...flutterwaveMissing, ...kkiapayMissing];
+    const runtimes = {
+      gmail: integrationRuntimeStatus({
+        id: "gmail",
+        provider: "google",
+        requiredEnv: ["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET"],
+        enabledMessage: "Google OAuth credentials are present. Gmail connection can be enabled from the OAuth flow.",
+        disabledMessage: "Google OAuth credentials are missing. Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET.",
+        connectUrl: "/api/mindbase/integrations/gmail/connect",
+      }),
+      calendar: integrationRuntimeStatus({
+        id: "calendar",
+        provider: "google",
+        requiredEnv: ["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET"],
+        enabledMessage: "Google OAuth credentials are present. Calendar connection can be enabled from the OAuth flow.",
+        disabledMessage: "Google OAuth credentials are missing. Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET.",
+        connectUrl: "/api/mindbase/integrations/calendar/connect",
+      }),
+      drive: integrationRuntimeStatus({
+        id: "drive",
+        provider: "google",
+        requiredEnv: ["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET"],
+        enabledMessage: "Google OAuth credentials are present. Drive can feed the company brain once scopes are approved.",
+        disabledMessage: "Google Drive needs GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET.",
+        connectUrl: "/api/mindbase/integrations/drive/connect",
+      }),
+      whatsapp: integrationRuntimeStatus({
+        id: "whatsapp",
+        provider: "twilio",
+        requiredEnv: ["TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN", "TWILIO_WHATSAPP_FROM"],
+        enabledMessage: "Twilio WhatsApp credentials are present. Agents can request approval before messaging customers.",
+        disabledMessage: "WhatsApp needs TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and TWILIO_WHATSAPP_FROM.",
+      }),
+      facebook: integrationRuntimeStatus({
+        id: "facebook",
+        provider: "meta",
+        requiredEnv: ["META_APP_ID", "META_APP_SECRET"],
+        enabledMessage: "Meta app credentials are present. Facebook page connection can be enabled.",
+        disabledMessage: "Facebook needs META_APP_ID and META_APP_SECRET.",
+        connectUrl: "/api/mindbase/integrations/facebook/connect",
+      }),
+      instagram: integrationRuntimeStatus({
+        id: "instagram",
+        provider: "meta",
+        requiredEnv: ["META_APP_ID", "META_APP_SECRET"],
+        enabledMessage: "Meta app credentials are present. Instagram business connection can be enabled.",
+        disabledMessage: "Instagram needs META_APP_ID and META_APP_SECRET.",
+        connectUrl: "/api/mindbase/integrations/instagram/connect",
+      }),
+      payments: {
+        id: "payments",
+        provider: paymentConfigured
+          ? flutterwave.configured
+            ? `flutterwave-${flutterwave.version}`
+            : "kkiapay"
+          : "flutterwave/kkiapay",
+        enabled: paymentConfigured,
+        configured: paymentConfigured,
+        status: paymentConfigured ? "Ready" : "Setup needed",
+        missingEnv: paymentMissing,
+        message: paymentConfigured
+          ? "At least one payment provider is configured. MindBase can guide payment collection setup."
+          : "Payment collection needs Flutterwave or Kkiapay credentials.",
+        connectUrl: paymentConfigured ? "/wallet" : null,
+      },
+    };
+
+    res.json({
+      ok: true,
+      integrations: {
+        gmail: withStoredConnectionStatus(runtimes.gmail, connectionByIntegration.get("gmail")),
+        calendar: withStoredConnectionStatus(runtimes.calendar, connectionByIntegration.get("calendar")),
+        drive: withStoredConnectionStatus(runtimes.drive, connectionByIntegration.get("drive")),
+        whatsapp: runtimes.whatsapp,
+        facebook: withStoredConnectionStatus(runtimes.facebook, connectionByIntegration.get("facebook")),
+        instagram: withStoredConnectionStatus(runtimes.instagram, connectionByIntegration.get("instagram")),
+        payments: runtimes.payments,
+      },
+      payments: {
+        flutterwave: {
+          configured: flutterwave.configured,
+          mode: flutterwave.mode,
+          version: flutterwave.version,
+          missingEnv: flutterwave.configured ? [] : flutterwaveMissing,
+        },
+        kkiapay: {
+          configured: kkiapayMissing.length === 0,
+          mode: kkiapay.mode,
+          missingEnv: kkiapayMissing,
+        },
+      },
+    });
+  } catch (error: any) {
+    console.error("[MindBase] integrations status failed", error);
+    res.status(500).json({
+      ok: false,
+      message: error?.message || "Failed to load MindBase integration status",
+    });
+  }
+});
+
+router.get("/api/mindbase/integrations/:id/connect", async (req: any, res) => {
+  try {
+    await ensureMindbaseTables();
+    if (!checkRateLimit(req, res, "mindbase-integration-connect", 60, 60_000)) return;
+    const tenant = requireTenant(req, res);
+    if (!tenant) return;
+    const user = await requireSessionUser(req, res);
+    if (!user) return;
+
+    const integrationId = String(req.params?.id || "").trim().toLowerCase();
+    const origin = requestOrigin(req);
+    const returnTo = safeReturnTo(req.query?.returnTo);
+    const workspaceId = asUuid(req.query?.workspaceId ?? req.query?.workspace_id);
+    const state = encodeIntegrationState({
+      tenantId: tenant.id,
+      userId: user.id,
+      integrationId,
+      returnTo,
+      workspaceId,
+    });
+
+    if (integrationId === "payments") {
+      return res.redirect(302, "/wallet");
+    }
+
+    if (MINDBASE_GOOGLE_SCOPES[integrationId]) {
+      const clientId = String(process.env.GOOGLE_CLIENT_ID || "").trim();
+      const clientSecret = String(process.env.GOOGLE_CLIENT_SECRET || "").trim();
+      if (!clientId || !clientSecret) {
+        return res.status(503).json({
+          ok: false,
+          message: "Google OAuth is not configured",
+          missingEnv: missingEnv(["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET"]),
+        });
+      }
+      const redirectUri = `${origin}/api/mindbase/integrations/google/callback`;
+      const url = new URL("https://accounts.google.com/o/oauth2/v2/auth");
+      url.searchParams.set("client_id", clientId);
+      url.searchParams.set("redirect_uri", redirectUri);
+      url.searchParams.set("response_type", "code");
+      url.searchParams.set("access_type", "offline");
+      url.searchParams.set("prompt", "consent");
+      url.searchParams.set("scope", MINDBASE_GOOGLE_SCOPES[integrationId].join(" "));
+      url.searchParams.set("state", state);
+      return res.redirect(302, url.toString());
+    }
+
+    if (MINDBASE_META_SCOPES[integrationId]) {
+      const appId = String(process.env.META_APP_ID || "").trim();
+      const appSecret = String(process.env.META_APP_SECRET || "").trim();
+      if (!appId || !appSecret) {
+        return res.status(503).json({
+          ok: false,
+          message: "Meta OAuth is not configured",
+          missingEnv: missingEnv(["META_APP_ID", "META_APP_SECRET"]),
+        });
+      }
+      const graphVersion = String(process.env.META_GRAPH_VERSION || "v19.0").trim() || "v19.0";
+      const redirectUri = `${origin}/api/mindbase/integrations/meta/callback`;
+      const url = new URL(`https://www.facebook.com/${graphVersion}/dialog/oauth`);
+      url.searchParams.set("client_id", appId);
+      url.searchParams.set("redirect_uri", redirectUri);
+      url.searchParams.set("response_type", "code");
+      url.searchParams.set("scope", MINDBASE_META_SCOPES[integrationId].join(","));
+      url.searchParams.set("state", state);
+      return res.redirect(302, url.toString());
+    }
+
+    return res.status(404).json({ ok: false, message: "Unknown MindBase integration" });
+  } catch (error: any) {
+    console.error("[MindBase] integration connect failed", error);
+    res.status(500).json({
+      ok: false,
+      message: error?.message || "Failed to start MindBase integration",
+    });
+  }
+});
+
+router.get("/api/mindbase/integrations/:provider/callback", async (req: any, res) => {
+  try {
+    await ensureMindbaseTables();
+    if (!checkRateLimit(req, res, "mindbase-integration-callback", 60, 60_000)) return;
+    const tenant = requireTenant(req, res);
+    if (!tenant) return;
+
+    const provider = String(req.params?.provider || "").trim().toLowerCase();
+    const state = decodeIntegrationState(req.query?.state);
+    const error = asText(req.query?.error);
+    const returnTo = safeReturnTo(state?.returnTo);
+    const integrationId = String(state?.integrationId || provider || "integration").trim().toLowerCase();
+    const render = (status: number, title: string, detail: string, accountLabel?: string | null) =>
+      res
+        .status(status)
+        .type("html")
+        .send(`<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>${escapeHtml(title)}</title>
+    <style>
+      body { margin: 0; font-family: Inter, system-ui, -apple-system, Segoe UI, sans-serif; background: #f6f8fb; color: #07111d; }
+      main { min-height: 100vh; display: grid; place-items: center; padding: 24px; }
+      section { max-width: 560px; border: 1px solid #dbe3ef; border-radius: 18px; background: white; padding: 28px; box-shadow: 0 24px 80px rgba(15,23,42,.10); }
+      h1 { margin: 0 0 12px; font-size: 24px; line-height: 1.2; }
+      p { margin: 0 0 18px; color: #475569; line-height: 1.6; }
+      a { display: inline-flex; border-radius: 999px; background: #0b65ff; color: white; padding: 10px 16px; text-decoration: none; font-weight: 700; font-size: 14px; }
+      code { background: #eef3fb; border-radius: 8px; padding: 2px 6px; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section>
+        <h1>${escapeHtml(title)}</h1>
+        <p><strong>Integration:</strong> <code>${escapeHtml(integrationId)}</code></p>
+        ${accountLabel ? `<p><strong>Account:</strong> <code>${escapeHtml(accountLabel)}</code></p>` : ""}
+        <p>${escapeHtml(detail)}</p>
+        <a href="${escapeHtml(returnTo)}">Return to MindBase</a>
+      </section>
+    </main>
+  </body>
+</html>`);
+
+    if (error) {
+      return render(400, "MindBase connection was not completed", `Provider returned: ${error}`);
+    }
+    if (!state) {
+      return render(400, "MindBase connection was not completed", "The authorization state was missing, expired, or invalid. Start the connection again from your MindBase workspace.");
+    }
+
+    const stateTenantId = Number(state.tenantId || 0);
+    const stateUserId = Number(state.userId || 0);
+    if (!Number.isFinite(stateTenantId) || stateTenantId !== tenant.id || !Number.isFinite(stateUserId) || stateUserId <= 0) {
+      return render(400, "MindBase connection was not completed", "The authorization state does not match this MindBase tenant.");
+    }
+
+    const sessionUser = await resolveSessionUser(req).catch(() => null);
+    if (sessionUser && sessionUser.id !== stateUserId) {
+      return render(401, "MindBase connection was not completed", "This browser is signed in as a different user than the one who started the connection.");
+    }
+
+    const code = asText(req.query?.code);
+    if (!code) {
+      return render(400, "MindBase connection was not completed", "No authorization code was returned. Try connecting again from your MindBase workspace.");
+    }
+
+    const workspaceId = asUuid(state.workspaceId);
+    if (workspaceId) {
+      const membership = await resolveWorkspaceMembership({ tenantId: tenant.id, workspaceId, userId: stateUserId });
+      if (!membership) {
+        return render(403, "MindBase connection was not completed", "This user does not have access to the workspace attached to the connection request.");
+      }
+    }
+
+    const origin = requestOrigin(req);
+    const exchange =
+      provider === "google"
+        ? await exchangeGoogleOAuthCode({ code, integrationId, origin })
+        : provider === "meta"
+          ? await exchangeMetaOAuthCode({ code, integrationId, origin })
+          : null;
+    if (!exchange) {
+      return render(404, "MindBase connection was not completed", "This integration provider is not supported yet.");
+    }
+    const connection = await saveIntegrationConnection({
+      tenantId: tenant.id,
+      userId: stateUserId,
+      workspaceId,
+      integrationId,
+      exchange,
+    });
+    const accountLabel = connectionAccountLabel(connection);
+    return render(
+      200,
+      "MindBase connection is ready",
+      `${integrationId} is connected. Agents can now request permission before using this company account for external actions.`,
+      accountLabel,
+    );
+  } catch (error: any) {
+    console.error("[MindBase] integration callback failed", error);
+    const detail = error?.message || "Failed to complete MindBase integration callback";
+    res
+      .status(500)
+      .type("html")
+      .send(`<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>MindBase connection failed</title>
+    <style>
+      body { margin: 0; font-family: Inter, system-ui, -apple-system, Segoe UI, sans-serif; background: #f6f8fb; color: #07111d; }
+      main { min-height: 100vh; display: grid; place-items: center; padding: 24px; }
+      section { max-width: 560px; border: 1px solid #dbe3ef; border-radius: 18px; background: white; padding: 28px; box-shadow: 0 24px 80px rgba(15,23,42,.10); }
+      h1 { margin: 0 0 12px; font-size: 24px; line-height: 1.2; }
+      p { margin: 0 0 18px; color: #475569; line-height: 1.6; }
+      a { display: inline-flex; border-radius: 999px; background: #0b65ff; color: white; padding: 10px 16px; text-decoration: none; font-weight: 700; font-size: 14px; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section>
+        <h1>MindBase connection failed</h1>
+        <p>${escapeHtml(detail)}</p>
+        <a href="/mindbase">Return to MindBase</a>
+      </section>
+    </main>
+  </body>
+</html>`);
+  }
 });
 
 router.post("/api/mindbase/auth/register", async (req: any, res) => {

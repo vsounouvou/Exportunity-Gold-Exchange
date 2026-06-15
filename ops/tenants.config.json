@@ -42,6 +42,8 @@
     "exportunity": {
       "domain": "https://exportunity.net",
       "composeProject": "exportunity",
+      "hostPort": "5002",
+      "proxyAlias": "exportunity-app",
       "remoteDeployRoot": "/var/www/exportunity"
     },
     "mindbase": {

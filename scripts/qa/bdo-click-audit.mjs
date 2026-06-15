@@ -342,7 +342,13 @@ async function collectCandidates(page) {
         if (parentClickable && parentClickable !== element) return null;
         const rect = element.getBoundingClientRect();
         const style = window.getComputedStyle(element);
+        const inViewport =
+          rect.bottom > 0 &&
+          rect.right > 0 &&
+          rect.top < window.innerHeight &&
+          rect.left < window.innerWidth;
         const visible =
+          inViewport &&
           rect.width >= 16 &&
           rect.height >= 16 &&
           style.display !== "none" &&
@@ -372,6 +378,7 @@ async function collectCandidates(page) {
           target: element.getAttribute("target") || "",
           type: element.getAttribute("type") || "",
           tag: element.tagName.toLowerCase(),
+          className: String(element.getAttribute("class") || ""),
           currentLike,
         };
       })
@@ -493,13 +500,22 @@ async function auditRoute(context, route, language, scope) {
       }
       await locator.scrollIntoViewIfNeeded({ timeout: 5000 }).catch(() => {});
       const hit = await hitTest(locator).catch((error) => ({ ok: false, top: String(error?.message || error), x: 0, y: 0 }));
+      const isLeafletMarker = /leaflet-marker-icon/.test(String(candidate.className || candidate.selector || ""));
+      if (isLeafletMarker && !hit.ok) {
+        routeResult.skipped += 1;
+        continue;
+      }
       const before = await signature(page);
       let requestCount = 0;
       const onRequest = () => { requestCount += 1; };
       page.on("request", onRequest);
       let clickError = "";
       try {
-        await locator.click({ timeout: 5000 });
+        if (isLeafletMarker) {
+          await page.mouse.click(hit.x, hit.y);
+        } else {
+          await locator.click({ timeout: 5000 });
+        }
         await page.waitForTimeout(500);
       } catch (error) {
         clickError = String(error?.message || error);

@@ -452,7 +452,62 @@ export default function AdminDashboardPage() {
   ];
 
   return (
-    <div className="p-4 md:p-6 space-y-6 pb-24">
+    <div className="admin-dashboard-light p-4 md:p-6 space-y-6 pb-24">
+      <style>{`
+        .admin-dashboard-light {
+          min-height: 100vh;
+          background: #f7f8fa;
+          color: #111827;
+        }
+        .admin-dashboard-light .bg-gray-900,
+        .admin-dashboard-light .bg-gray-900\\/50,
+        .admin-dashboard-light .bg-gray-900\\/60,
+        .admin-dashboard-light .bg-gray-900\\/70,
+        .admin-dashboard-light .bg-gray-950,
+        .admin-dashboard-light .bg-gray-950\\/30,
+        .admin-dashboard-light .bg-gray-950\\/40,
+        .admin-dashboard-light .bg-gray-950\\/70,
+        .admin-dashboard-light .bg-gray-900\\/80 {
+          background: #ffffff !important;
+        }
+        .admin-dashboard-light .border-gray-800,
+        .admin-dashboard-light .border-gray-800\\/70,
+        .admin-dashboard-light .border-gray-800\\/80,
+        .admin-dashboard-light .border-gray-700 {
+          border-color: rgba(15, 23, 42, 0.12) !important;
+        }
+        .admin-dashboard-light .text-white,
+        .admin-dashboard-light .text-gray-100,
+        .admin-dashboard-light .text-gray-200,
+        .admin-dashboard-light .text-gray-300 {
+          color: #111827 !important;
+        }
+        .admin-dashboard-light .text-gray-400,
+        .admin-dashboard-light .text-gray-500 {
+          color: #4b5563 !important;
+        }
+        .admin-dashboard-light input,
+        .admin-dashboard-light textarea,
+        .admin-dashboard-light [role="combobox"] {
+          background: #ffffff !important;
+          color: #111827 !important;
+          border-color: rgba(15, 23, 42, 0.16) !important;
+        }
+        .admin-dashboard-light .bg-black\\/40,
+        .admin-dashboard-light .bg-red-950\\/40 {
+          background: #fff7ed !important;
+          color: #7f1d1d !important;
+        }
+        .admin-dashboard-light .bg-amber-500,
+        .admin-dashboard-light .hover\\:bg-amber-600:hover {
+          background: #f5a623 !important;
+          color: #07111f !important;
+        }
+        .admin-dashboard-light .bg-green-600 {
+          background: #16a34a !important;
+          color: #ffffff !important;
+        }
+      `}</style>
       <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-white">Admin Dashboard</h1>

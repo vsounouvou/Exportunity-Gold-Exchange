@@ -8,25 +8,25 @@ import type { StoreProduct } from "@/types/storefront";
 
 const copy = {
   fr: {
-    defaultDescription: "Sélection BOURSE DE L'OR documentée, vérifiable et soumise à confirmation finale.",
+    defaultDescription: "Sélection BOURSE DE L'OR documentée, vérifiable et soumise à disponibilité, conformité, paiement et confirmation finale.",
     loading: "Chargement de la collection...",
     brand: "BOURSE DE L'OR",
     caption:
-      "Produits en or physique, bijoux vérifiés ou pièces sur commande. Les prix peuvent rester indicatifs jusqu'à validation de disponibilité, paiement et conformité.",
+      "Produits en or physique, lingots issus de partenaires approuvés, bijoux vérifiés ou pièces sur commande. Les prix peuvent rester indicatifs jusqu'à validation de disponibilité, paiement, conformité, livraison ou stockage.",
   },
   en: {
-    defaultDescription: "Documented, verifiable BOURSE DE L'OR selection subject to final confirmation.",
+    defaultDescription: "Documented, verifiable BOURSE DE L'OR selection subject to availability, compliance, payment, and final confirmation.",
     loading: "Loading collection...",
     brand: "BOURSE DE L'OR",
     caption:
-      "Physical gold products, verified jewelry, or made-to-order pieces. Prices may remain indicative until availability, payment, and compliance are validated.",
+      "Physical gold products, bullion from approved partners, verified jewelry, or made-to-order pieces. Prices may remain indicative until availability, payment, compliance, delivery, or storage is validated.",
   },
   ar: {
-    defaultDescription: "اختيار موثق وقابل للتحقق من BOURSE DE L'OR وخاضع للتأكيد النهائي.",
+    defaultDescription: "اختيار موثق وقابل للتحقق من BOURSE DE L'OR وخاضع للتوفر والامتثال والدفع والتأكيد النهائي.",
     loading: "جارٍ تحميل المجموعة...",
     brand: "BOURSE DE L'OR",
     caption:
-      "منتجات ذهب مادي أو مجوهرات متحقق منها أو قطع حسب الطلب. قد تبقى الأسعار إرشادية حتى تأكيد التوفر والدفع والامتثال.",
+      "منتجات ذهب مادي أو سبائك من شركاء معتمدين أو مجوهرات متحقق منها أو قطع حسب الطلب. قد تبقى الأسعار إرشادية حتى تأكيد التوفر والدفع والامتثال والتسليم أو التخزين.",
   },
 };
 

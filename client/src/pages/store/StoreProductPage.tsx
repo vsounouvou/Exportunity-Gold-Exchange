@@ -26,11 +26,11 @@ const copy = {
     description: "Description",
     emptyDescription: "Aucune description disponible.",
     brand: "BOURSE DE L'OR",
-    proof: "Or physique certifié, bijoux vérifiés, prix lié au marché et documentation avant confirmation.",
+    proof: "Or physique documenté, bijoux vérifiés, prix lié au marché et documentation avant confirmation.",
     priceNotice:
-      "Prix indicatif jusqu'à confirmation finale. Le total payable peut inclure le prix du produit physique, le spread de plateforme, les frais de paiement, livraison, assurance, taxes, droits, stockage, vérification, raffinage, prime ou conditions locales du marché.",
+      "Prix indicatif jusqu'à confirmation finale. Le total payable peut inclure le prix du produit physique, le spread de plateforme, les frais de paiement, livraison, assurance, taxes, droits, stockage, vérification, raffinage, primes et conditions locales du marché.",
     complianceNotice:
-      "Commande soumise à disponibilité, vérification, revue de conformité, paiement confirmé et validation finale par La Bourse de l'Or ou le partenaire approuvé. Des documents KYC/KYB, source des fonds ou source des biens peuvent être demandés. L'or physique n'est acquis et la propriété ne se transfère qu'après paiement complet, validation de conformité et confirmation finale; certaines commandes confirmées peuvent ne plus être annulables.",
+      "Commande soumise à disponibilité, vérification, revue de conformité, paiement confirmé et validation finale par La Bourse de l'Or ou le partenaire approuvé. Des documents KYC/KYB, source des fonds, source des biens ou traçabilité peuvent être demandés. Certains lingots peuvent provenir de raffineries approuvées ou de partenaires liés à une raffinerie; les bijoux et pièces sur commande sont validés par le partenaire de production. Livraison, retrait, stockage, assurance, délais, annulation et remboursement doivent être confirmés avant activation ou paiement final. L'or physique n'est acquis et la propriété ne se transfère qu'après paiement complet, conformité validée et confirmation finale. La plateforme ne fournit pas de conseil financier, fiscal, juridique ou d'investissement.",
     order: "Commander",
     quote: "Demander une cotation",
   },
@@ -42,11 +42,11 @@ const copy = {
     description: "Description",
     emptyDescription: "No description available.",
     brand: "BOURSE DE L'OR",
-    proof: "Certified physical gold, verified jewelry, market-linked pricing and documentation before confirmation.",
+    proof: "Documented physical gold, verified jewelry, market-linked pricing and documentation before confirmation.",
     priceNotice:
-      "Indicative price until final confirmation. The total payable may include the physical product price, platform spread, payment processing, delivery, insurance, taxes, duties, storage, verification, refining costs, premiums, or local market conditions.",
+      "Indicative price until final confirmation. The total payable may include the physical product price, platform spread, payment processing, delivery, insurance, taxes, duties, storage, verification, refining costs, premiums, and local market conditions.",
     complianceNotice:
-      "Order subject to availability, verification, compliance review, confirmed payment, and final validation by La Bourse de l'Or or the approved partner. KYC/KYB, source of funds, or source of goods documents may be requested. Physical gold is not acquired and ownership does not transfer until full payment, compliance validation, and final confirmation; some confirmed orders may not be cancellable.",
+      "Order subject to availability, verification, compliance review, confirmed payment, and final validation by La Bourse de l'Or or the approved partner. KYC/KYB, source of funds, source of goods, or traceability documents may be requested. Certain bullion products may come from approved refineries or refinery-linked partners; made-to-order jewelry and collectible pieces are validated by the production partner. Delivery, collection, storage, insurance, timing, cancellation, and refund terms must be confirmed before activation or final payment. Physical gold is not acquired and ownership does not transfer until full payment, compliance validation, and final confirmation. The platform does not provide financial, tax, legal, or investment advice.",
     order: "Order now",
     quote: "Request a quote",
   },
@@ -62,7 +62,7 @@ const copy = {
     priceNotice:
       "السعر إرشادي حتى التأكيد النهائي. قد يشمل المبلغ النهائي سعر المنتج المادي وهامش المنصة ومعالجة الدفع والتسليم والتأمين والضرائب والرسوم والتخزين والتحقق وتكاليف التصفية والعلاوات وظروف السوق المحلية.",
     complianceNotice:
-      "الطلب خاضع للتوفر والتحقق ومراجعة الامتثال وتأكيد الدفع والتأكيد النهائي من BOURSE DE L'OR أو الشريك المعتمد. قد تُطلب وثائق KYC/KYB أو مصدر الأموال أو مصدر البضائع. لا يتم اقتناء الذهب المادي ولا تنتقل الملكية إلا بعد السداد الكامل والتحقق من الامتثال والتأكيد النهائي؛ وقد لا تكون بعض الطلبات المؤكدة قابلة للإلغاء.",
+      "الطلب خاضع للتوفر والتحقق ومراجعة الامتثال وتأكيد الدفع والتأكيد النهائي من BOURSE DE L'OR أو الشريك المعتمد. قد تُطلب وثائق KYC/KYB أو مصدر الأموال أو مصدر البضائع أو أدلة التتبع. قد تأتي بعض السبائك من مصافٍ معتمدة أو شركاء مرتبطين بالمصافي؛ وتُعتمد المجوهرات والقطع المصنوعة حسب الطلب من شريك الإنتاج. يجب تأكيد التسليم أو الاستلام أو التخزين أو التأمين أو المواعيد أو الإلغاء أو الاسترداد قبل التفعيل أو الدفع النهائي. لا يتم اقتناء الذهب المادي ولا تنتقل الملكية إلا بعد السداد الكامل والتحقق من الامتثال والتأكيد النهائي. لا تقدم المنصة نصائح مالية أو ضريبية أو قانونية أو استثمارية.",
     order: "اطلب الآن",
     quote: "طلب تسعير",
   },

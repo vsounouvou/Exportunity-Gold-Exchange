@@ -158,6 +158,15 @@ function formatDistanceEta(position: [number, number]) {
   };
 }
 
+function isFinitePosition(position: unknown): position is [number, number] {
+  return (
+    Array.isArray(position) &&
+    position.length === 2 &&
+    Number.isFinite(Number(position[0])) &&
+    Number.isFinite(Number(position[1]))
+  );
+}
+
 const agents: Record<string, CommerceAgent> = {
   tassi: {
     id: "tassi",
@@ -598,16 +607,29 @@ function MapFocus({
   const map = useMap();
 
   useEffect(() => {
-    if (activeShop) {
-      map.flyTo(activeShop.position, 15, { duration: 1.15, easeLinearity: 0.18 });
-      return;
+    const safeUserLocation: [number, number] = isFinitePosition(userLocation)
+      ? [Number(userLocation[0]), Number(userLocation[1])]
+      : ABIDJAN_COCODY;
+    const safePlaces = places.filter((shop) => isFinitePosition(shop.position));
+
+    try {
+      const size = map.getSize();
+      if (!Number.isFinite(size.x) || !Number.isFinite(size.y) || size.x <= 0 || size.y <= 0) return;
+      if (activeShop && isFinitePosition(activeShop.position)) {
+        map.flyTo([Number(activeShop.position[0]), Number(activeShop.position[1])], 15, { duration: 1.15, easeLinearity: 0.18 });
+        return;
+      }
+      if (resultsVisible) {
+        const bounds = L.latLngBounds([safeUserLocation, ...safePlaces.map((shop) => [Number(shop.position[0]), Number(shop.position[1])] as [number, number])]);
+        if (bounds.isValid()) {
+          map.flyToBounds(bounds, { padding: [44, 44], maxZoom: 13, duration: 1.05, easeLinearity: 0.18 });
+          return;
+        }
+      }
+      map.flyTo(safeUserLocation, 14, { duration: 0.95, easeLinearity: 0.18 });
+    } catch {
+      map.setView(safeUserLocation, 14, { animate: false });
     }
-    if (resultsVisible) {
-      const bounds = L.latLngBounds([userLocation, ...places.map((shop) => shop.position)]);
-      map.flyToBounds(bounds, { padding: [44, 44], maxZoom: 13, duration: 1.05, easeLinearity: 0.18 });
-      return;
-    }
-    map.flyTo(userLocation, 14, { duration: 0.95, easeLinearity: 0.18 });
   }, [activeShop, map, places, resultsVisible, userLocation]);
 
   return null;
@@ -1612,7 +1634,7 @@ export function ExportunityConversationalCommerce({
             ["Map", MapIcon, "city"],
             ["Shops", Store, "shop"],
             ["Wholesale", Warehouse, "wholesale"],
-            ["Ready export", Search, "exchange"],
+            ["PME Exchange", Search, "exchange"],
             ["My Business", BriefcaseBusiness, "business"],
             ["Orders", Truck, "orders"],
             ["Wallet", Package, "wallet"],

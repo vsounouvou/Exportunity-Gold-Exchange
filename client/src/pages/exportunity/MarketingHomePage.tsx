@@ -1,424 +1,310 @@
-import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Redirect } from "wouter";
+import { useEffect } from "react";
+import { Link, Redirect } from "wouter";
 
-import { Input } from "@/components/ui/input";
 import { MarketingShell, isExportunityMarketingHost } from "@/components/exportunity/MarketingShell";
-import {
-  GlassCard,
-  HeroPanel,
-  MarketingContainer,
-  MarketingLead,
-  MarketingTitle,
-} from "@/components/exportunity/marketing-ui";
-import marketingSiteConfig from "@/content/marketing/site";
-import { fetchInvestmentOpportunities } from "@/lib/marketing-api";
-import { apiRequest } from "@/lib/queryClient";
+import { MarketingContainer, MarketingKicker, MarketingLead, MarketingTitle, setMarketingPageMetadata } from "@/components/exportunity/marketing-ui";
 
-type MissionTile = {
-  id: string;
-  title: string;
-  text: string;
-  href?: string;
-  kind: "link" | "talk";
-  tags: string[];
-  authHint?: string;
-};
+const HERO_IMAGE = "/brand-assets/generated/operating-stack-hero.png";
+const GOLD_IMAGE = "/brand-assets/generated/gold-mining-visual.png";
+const MACHINERY_IMAGE = "/brand-assets/generated/machinery-visual.png";
+const GOVERNMENT_IMAGE = "/brand-assets/generated/government-advisory-visual.png";
+const PAYMENTS_IMAGE = "/brand-assets/generated/payments-wallet-visual.png";
 
-const MISSION_TILES: MissionTile[] = [
+const PROOF_STRIP = [
+  { value: "2012", label: "Company foundation" },
+  { value: "XportCARD", label: "Payments history" },
+  { value: "rayOn", label: "SME commerce record" },
+  { value: "Bourse de l'Or", label: "Gold platform direction" },
+];
+
+const ACTIVITIES = [
   {
-    id: "marketplace",
-    title: "Buy & Sell (Marketplace)",
-    text: "Everyday products, wholesale, and supply sourcing.",
-    href: "https://exportunity.net/zone",
-    kind: "link",
-    tags: ["marketplace", "products", "retail", "wholesale", "buy", "sell"],
+    title: "Trade platforms",
+    text: "We build platforms that connect sellers, buyers, producers, and traders.",
+    href: "/what-we-do",
   },
   {
-    id: "gold",
-    title: "Gold Trade (Bourse de l'Or)",
-    text: "Buy, sell, and manage gold workflows with compliance.",
-    href: "https://boursedelor.com",
-    kind: "link",
-    tags: ["gold", "trade", "bourse", "commodities"],
+    title: "Gold and mining",
+    text: "We support gold-related workflows with sourcing, verification, transaction coordination, and market access.",
+    href: "/gold-mining",
   },
   {
-    id: "pro",
-    title: "Professional Workspace (Pro)",
-    text: "Professional workspace for operators and partners.",
-    href: "https://exportunity.net/pro/",
-    kind: "link",
-    tags: ["pro", "workspace", "operations"],
-    authHint: "Login required",
+    title: "Machinery and equipment",
+    text: "We help operators access machinery, equipment, financing pathways, and procurement support.",
+    href: "/machinery",
   },
   {
-    id: "wallet",
-    title: "Wallet & Escrow",
-    text: "Balances, escrow, settlements, and transfers.",
-    href: "https://exportunity.net/app/wallet",
-    kind: "link",
-    tags: ["wallet", "escrow", "payments", "settlement"],
-    authHint: "Login required",
+    title: "Government and institutions",
+    text: "We advise public and institutional partners on trade, investment, digital systems, and execution.",
+    href: "/government-institutions",
   },
   {
-    id: "contracts",
-    title: "Contracts & Compliance",
-    text: "Create enforceable digital contracts and approvals.",
-    href: "https://exportunity.net/app/contracts",
-    kind: "link",
-    tags: ["contracts", "compliance", "approvals"],
-    authHint: "Login required",
+    title: "Payments and wallets",
+    text: "We have built payment access tools for SMEs and cross-border activity.",
+    href: "/platforms",
   },
   {
-    id: "machinery",
-    title: "Machinery & Equipment",
-    text: "Equipment sourcing and operational procurement.",
-    href: "https://exportunity.net/app/machinery/catalog",
-    kind: "link",
-    tags: ["machinery", "equipment", "procurement"],
-    authHint: "Login required",
-  },
-  {
-    id: "invest",
-    title: "Invest / Opportunities",
-    text: "Structured opportunities and deal routing.",
-    href: "https://exportunity.net/app/invest/opportunities",
-    kind: "link",
-    tags: ["invest", "opportunities", "capital"],
-    authHint: "Login required",
-  },
-  {
-    id: "talk",
-    title: "Talk to an Operator",
-    text: "Get routed instantly to the right platform.",
-    kind: "talk",
-    tags: ["talk", "operator", "support", "routing", "help"],
+    title: "Operating systems",
+    text: "We connect messages, tasks, approvals, payments, records, and follow-up in one operational layer.",
+    href: "/operating-stack",
   },
 ];
 
-function formatNumber(value: unknown) {
-  const n = Number(value);
-  if (!Number.isFinite(n)) return "N/A";
-  return new Intl.NumberFormat("en-US").format(Math.round(n));
+const PUBLIC_RECORDS = [
+  "Trade events and market access",
+  "XportCARD and payments",
+  "rayOn and SME commerce",
+  "Advisory and institutions",
+  "Bourse de l'Or and gold",
+  "Machinery and equipment support",
+];
+
+const OPERATING_FIELDS = [
+  {
+    title: "Gold workflows",
+    text: "Records, verification coordination, buyers, suppliers, and transaction steps.",
+    image: GOLD_IMAGE,
+    href: "/gold-mining",
+  },
+  {
+    title: "Machinery access",
+    text: "Requests, supplier coordination, financing pathways, delivery, and follow-up.",
+    image: MACHINERY_IMAGE,
+    href: "/machinery",
+  },
+  {
+    title: "Institutional advisory",
+    text: "Trade programs, platform strategy, SME systems, records, and execution.",
+    image: GOVERNMENT_IMAGE,
+    href: "/government-institutions",
+  },
+  {
+    title: "Payments history",
+    text: "XportCARD, wallet direction, transaction records, and platform-linked settlement.",
+    image: PAYMENTS_IMAGE,
+    href: "/platforms",
+  },
+];
+
+const PLATFORMS = [
+  {
+    title: "Bourse de l'Or",
+    text: "Gold products, document records, transaction management, and market coordination.",
+    href: "/gold-mining",
+    status: "Platform direction",
+  },
+  {
+    title: "Maison en Terre",
+    text: "Construction materials, production, stock, and orders.",
+    href: "/platforms",
+    status: "Connected platform",
+  },
+  {
+    title: "rayOn",
+    text: "Local commerce, seller tools, payments, training, and delivery workflows.",
+    href: "/platforms",
+    status: "Archive and platform record",
+  },
+  {
+    title: "XportCARD",
+    text: "Payment access, wallet direction, and transaction history.",
+    href: "/platforms",
+    status: "Payments history",
+  },
+  {
+    title: "MindBase",
+    text: "Agents, tasks, workflows, and internal operations.",
+    href: "/operating-stack",
+    status: "Operating stack",
+  },
+  {
+    title: "House of Zogue",
+    text: "Creative, cultural, and luxury products.",
+    href: "/platforms",
+    status: "Connected platform",
+  },
+];
+
+const ARCHIVE_IMAGES = [
+  {
+    src: "/assets/exportunity/2759c4ea629c90837245379ae826bfce6ed7401205fe4a975b45bda4553cd577.jpg",
+    title: "Investment summit record",
+    caption: "Archive image from Exportunity public records. Context pending verification before final publication.",
+  },
+  {
+    src: "/assets/exportunity/519f378b430f043d854a92e22300af362625c1982a1744d473515bb102e4cfdb.jpg",
+    title: "Founder media record",
+    caption: "Public media still connected to Exportunity leadership records. Context pending verification.",
+  },
+];
+
+function PrimaryLink({ href, children }: { href: string; children: string }) {
+  return (
+    <Link href={href} className="inline-flex min-h-11 items-center justify-center rounded-lg bg-amber-400 px-5 py-3 text-sm font-semibold text-stone-950 hover:bg-amber-300">
+      {children}
+    </Link>
+  );
 }
 
-function formatMoney(value: unknown, currency = "XOF") {
-  const amount = Number(value);
-  if (!Number.isFinite(amount)) return "Price on request";
-  try {
-    return new Intl.NumberFormat("fr-FR", {
-      style: "currency",
-      currency: String(currency || "XOF"),
-      maximumFractionDigits: 0,
-    }).format(amount);
-  } catch {
-    return `${Math.round(amount)} ${currency || "XOF"}`;
-  }
-}
-
-function triggerEvent(name: "marketing:open-talk" | "marketing:open-platform-launcher") {
-  if (typeof window === "undefined") return;
-  window.dispatchEvent(new Event(name));
+function SecondaryLink({ href, children }: { href: string; children: string }) {
+  return (
+    <Link href={href} className="inline-flex min-h-11 items-center justify-center rounded-lg border border-white/25 px-5 py-3 text-sm font-semibold text-white hover:bg-white/10">
+      {children}
+    </Link>
+  );
 }
 
 export default function MarketingHomePage() {
-  if (!isExportunityMarketingHost()) return <Redirect to="/zone" />;
+  const isMarketingHost = isExportunityMarketingHost();
 
-  const [search, setSearch] = useState("");
-
-  const goldQuery = useQuery({
-    queryKey: ["marketing-home-gold-price"],
-    queryFn: () => apiRequest("/api/marketplace/gold-price", { method: "GET" }),
-    refetchInterval: 60_000,
-  });
-
-  const opportunitiesQuery = useQuery({
-    queryKey: ["marketing-home-opportunities"],
-    queryFn: () => fetchInvestmentOpportunities({ limit: 200 }),
-    refetchInterval: 120_000,
-  });
-
-  const nearbyProductsQuery = useQuery({
-    queryKey: ["marketing-home-nearby-products"],
-    queryFn: () =>
-      apiRequest("/api/marketplace/buyer/nearby?lat=5.349&lng=-4.017&radius=3000&limit=24&productsPerSeller=5", {
-        method: "GET",
-      }),
-    refetchInterval: 120_000,
-  });
-
-  const catalogProductsQuery = useQuery({
-    queryKey: ["marketing-home-catalog-products"],
-    queryFn: () => apiRequest("/api/marketplace/shop-products?limit=16", { method: "GET" }),
-    refetchInterval: 120_000,
-  });
-
-  const opportunityItems = Array.isArray(opportunitiesQuery.data?.items) ? opportunitiesQuery.data.items : [];
-  const nearbyShops = Array.isArray(nearbyProductsQuery.data?.shops) ? nearbyProductsQuery.data.shops : [];
-
-  const nearbyProducts = useMemo(() => {
-    const dedupe = new Set<string>();
-    const rows: Array<{
-      id: string;
-      name: string;
-      image: string | null;
-      price: unknown;
-      currency: string | null;
-      shopName: string | null;
-      categoryName: string | null;
-      distanceText: string | null;
-    }> = [];
-
-    for (const shop of nearbyShops as any[]) {
-      const products = Array.isArray(shop?.products) ? shop.products : [];
-      for (const product of products) {
-        const id = String(product?.id ?? "").trim();
-        if (!id || dedupe.has(id)) continue;
-        dedupe.add(id);
-        rows.push({
-          id,
-          name: String(product?.name || "Unnamed product"),
-          image:
-            typeof product?.image === "string"
-              ? product.image
-              : Array.isArray(product?.images) && typeof product.images[0] === "string"
-                ? product.images[0]
-                : null,
-          price: product?.price,
-          currency: String(product?.currency || "XOF"),
-          shopName: String(shop?.shopName || ""),
-          categoryName: String(product?.categoryName || ""),
-          distanceText: String(shop?.distanceText || ""),
-        });
-      }
-    }
-
-    return rows.slice(0, 8);
-  }, [nearbyShops]);
-
-  const catalogRows = Array.isArray(catalogProductsQuery.data) ? catalogProductsQuery.data : [];
-  const catalogProducts = useMemo(() => {
-    return catalogRows
-      .map((row: any) => {
-        const product = row?.product || row || {};
-        const seller = row?.seller || {};
-        const images = Array.isArray(product?.images) ? product.images : [];
-        const firstImage = images.find((item: unknown) => typeof item === "string" && item.trim()) as string | undefined;
-        return {
-          id: String(product?.id || ""),
-          name: String(product?.name || "Unnamed product"),
-          image: firstImage || null,
-          price: product?.price,
-          currency: String(product?.currency || "XOF"),
-          shopName: String(seller?.shopName || "Marketplace seller"),
-          categoryName: String(row?.category?.name || product?.categoryName || ""),
-          distanceText: null as string | null,
-        };
-      })
-      .filter((item) => item.id)
-      .slice(0, 8);
-  }, [catalogRows]);
-
-  const products = nearbyProducts.length ? nearbyProducts : catalogProducts;
-  const productsSource = nearbyProducts.length ? "nearby sellers" : "active marketplace listings";
-  const productsError =
-    nearbyProductsQuery.error instanceof Error && catalogProductsQuery.error instanceof Error
-      ? nearbyProductsQuery.error.message || catalogProductsQuery.error.message
-      : null;
-
-  const activeOpportunities = opportunityItems.filter(
-    (item: any) => String(item?.status || "").toLowerCase() === "published",
-  ).length;
-
-  const countriesActive = useMemo(
-    () =>
-      new Set(
-        opportunityItems
-          .map((item: any) => String(item?.country || "").trim())
-          .filter(Boolean),
-      ).size,
-    [opportunityItems],
-  );
-
-  const signalCards = [
-    {
-      title: "Gold price (USD / oz)",
-      value: formatNumber(goldQuery.data?.lbma?.priceUSD),
-    },
-    {
-      title: "Gold 22K (XOF / g)",
-      value: formatNumber(goldQuery.data?.local?.refined22K?.priceXOF),
-    },
-    {
-      title: "USD / XOF",
-      value: formatNumber(goldQuery.data?.fxRates?.XOF),
-    },
-    {
-      title: "Active opportunities",
-      value: `${formatNumber(activeOpportunities)} in ${formatNumber(countriesActive)} countries`,
-    },
-  ];
-
-  const filteredTiles = useMemo(() => {
-    const normalized = search.trim().toLowerCase();
-    if (!normalized) return MISSION_TILES;
-    return MISSION_TILES.filter((tile) => {
-      return (
-        tile.title.toLowerCase().includes(normalized) ||
-        tile.text.toLowerCase().includes(normalized) ||
-        tile.tags.some((tag) => tag.toLowerCase().includes(normalized))
-      );
+  useEffect(() => {
+    if (!isMarketingHost) return;
+    setMarketingPageMetadata({
+      title: "Exportunity \u2014 Trade, Gold, Machinery, Payments, and Execution",
+      description: "Exportunity builds and operates platforms for African trade, gold, machinery, payments, advisory, and operational execution.",
+      image: HERO_IMAGE,
     });
-  }, [search]);
+  }, [isMarketingHost]);
+
+  if (!isMarketingHost) return <Redirect to="/zone" />;
 
   return (
     <MarketingShell active="home">
-      <MarketingContainer className="pt-10 md:pt-14">
-        <HeroPanel image={marketingSiteConfig.images?.hero} imageAlt="Exportunity gateway">
-          <div className="max-w-4xl space-y-5">
-            <MarketingTitle className="text-4xl md:text-6xl">One gateway. Many platforms. Built for execution.</MarketingTitle>
-            <MarketingLead>
-              Choose what you want to do. Exportunity routes you to the right platform instantly.
+      <section className="relative min-h-[720px] overflow-hidden border-b border-white/10">
+        <img src={HERO_IMAGE} alt="Abstract Exportunity operating stack visual" className="absolute inset-0 h-full w-full object-cover opacity-80" />
+        <div className="absolute inset-0 bg-[linear-gradient(90deg,#050505_0%,rgba(5,5,5,0.92)_35%,rgba(5,5,5,0.62)_68%,rgba(5,5,5,0.18)_100%)]" />
+        <MarketingContainer className="relative flex min-h-[720px] items-center py-20">
+          <div className="max-w-4xl space-y-6">
+            <MarketingKicker>EXPORTUNITY GROUP</MarketingKicker>
+            <MarketingTitle className="text-5xl md:text-7xl">Platforms for trade, gold, machinery, and execution.</MarketingTitle>
+            <MarketingLead className="max-w-2xl">
+              Exportunity builds and operates digital platforms for African trade, payments, advisory, and operational workflows.
             </MarketingLead>
-
-            <div className="flex flex-wrap items-center gap-3">
-              <button
-                type="button"
-                onClick={() => triggerEvent("marketing:open-platform-launcher")}
-                className="rounded-xl bg-amber-400 px-5 py-3 text-sm font-semibold text-slate-950 hover:bg-amber-300"
-              >
-                Open platform
-              </button>
-              <button
-                type="button"
-                onClick={() => triggerEvent("marketing:open-talk")}
-                className="rounded-xl border border-white/30 bg-transparent px-5 py-3 text-sm font-semibold text-white hover:bg-white/10"
-              >
-                Talk to us
-              </button>
+            <p className="max-w-2xl text-base leading-relaxed text-white/70">
+              The company connects producers, miners, suppliers, buyers, businesses, and institutions through practical systems.
+            </p>
+            <div className="flex flex-wrap gap-3 pt-2">
+              <PrimaryLink href="/what-we-do">Explore what we do</PrimaryLink>
+              <SecondaryLink href="/platform">Platform access</SecondaryLink>
             </div>
           </div>
-        </HeroPanel>
+        </MarketingContainer>
+      </section>
+
+      <MarketingContainer className="-mt-10 relative z-10">
+        <div className="grid grid-cols-2 overflow-hidden rounded-lg border border-white/12 bg-[#0c0b08]/95 shadow-2xl shadow-black/30 backdrop-blur md:grid-cols-4">
+          {PROOF_STRIP.map((item) => (
+            <div key={item.label} className="border-b border-r border-white/10 p-4 md:border-b-0 md:p-5">
+              <div className="text-xl font-semibold text-amber-200">{item.value}</div>
+              <div className="mt-1 text-xs uppercase tracking-[0.14em] text-white/55">{item.label}</div>
+            </div>
+          ))}
+        </div>
       </MarketingContainer>
 
-      <MarketingContainer className="py-8" id="mission">
-        <GlassCard className="space-y-5">
-          <div className="space-y-2">
-            <h2 className="text-2xl font-semibold md:text-3xl">What do you want to do today?</h2>
-            <p className="text-sm text-white/70">Find a tool or service in one step.</p>
-          </div>
+      <MarketingContainer className="py-16">
+        <div className="mb-8 max-w-3xl">
+          <MarketingKicker>WHAT EXPORTUNITY DOES</MarketingKicker>
+          <h2 className="mt-3 text-3xl font-semibold text-white md:text-5xl">A practical operating company.</h2>
+          <p className="mt-4 text-base leading-relaxed text-white/70">
+            Exportunity connects trade activity to platforms, records, approvals, payments, and follow-up.
+          </p>
+        </div>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {ACTIVITIES.map((item) => (
+            <Link key={item.title} href={item.href} className="group rounded-lg border border-white/10 bg-white/[0.035] p-5 transition hover:border-amber-300/45 hover:bg-white/[0.055]">
+              <h3 className="text-lg font-semibold text-white">{item.title}</h3>
+              <p className="mt-3 text-sm leading-6 text-white/70">{item.text}</p>
+              <div className="mt-5 text-sm font-semibold text-amber-200 group-hover:text-amber-100">Open platform</div>
+            </Link>
+          ))}
+        </div>
+      </MarketingContainer>
 
-          <div className="space-y-2">
-            <Input
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Find a tool / service"
-              className="border-white/15 bg-black/30 text-white placeholder:text-white/45"
-            />
-            {search.trim() ? (
-              <div className="rounded-xl border border-white/10 bg-black/30 p-3 text-xs text-white/70">
-                {filteredTiles.length
-                  ? `Found ${filteredTiles.length} mission${filteredTiles.length > 1 ? "s" : ""}.`
-                  : "No direct match. Try terms like gold, wallet, machinery, or contracts."}
+      <MarketingContainer className="pb-16">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-4">
+          {OPERATING_FIELDS.map((field) => (
+            <Link key={field.title} href={field.href} className="group overflow-hidden rounded-lg border border-white/10 bg-[#0b0a08] transition hover:border-amber-300/45">
+              <img src={field.image} alt={`${field.title} visual`} className="aspect-[4/3] w-full object-cover opacity-90 transition group-hover:scale-[1.02]" loading="lazy" />
+              <div className="p-4">
+                <h3 className="text-base font-semibold text-white">{field.title}</h3>
+                <p className="mt-2 text-sm leading-6 text-white/70">{field.text}</p>
               </div>
-            ) : null}
-          </div>
-
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-4">
-            {filteredTiles.map((tile) =>
-              tile.kind === "talk" ? (
-                <button
-                  key={tile.id}
-                  type="button"
-                  onClick={() => triggerEvent("marketing:open-talk")}
-                  className="rounded-2xl border border-white/10 bg-black/30 p-5 text-left transition-all hover:-translate-y-0.5 hover:border-white/30"
-                >
-                  <div className="text-base font-semibold text-white">{tile.title}</div>
-                  <div className="mt-2 text-sm text-white/75">{tile.text}</div>
-                </button>
-              ) : (
-                <a
-                  key={tile.id}
-                  href={tile.href}
-                  className="rounded-2xl border border-white/10 bg-black/30 p-5 transition-all hover:-translate-y-0.5 hover:border-white/30"
-                >
-                  <div className="text-base font-semibold text-white">{tile.title}</div>
-                  <div className="mt-2 text-sm text-white/75">{tile.text}</div>
-                  {tile.authHint ? <div className="mt-3 text-xs text-amber-200">{tile.authHint}</div> : null}
-                </a>
-              ),
-            )}
-          </div>
-        </GlassCard>
+            </Link>
+          ))}
+        </div>
       </MarketingContainer>
 
-      <MarketingContainer className="pb-8">
-        <GlassCard className="space-y-5">
-          <h2 className="text-xl font-semibold md:text-2xl">Live signals</h2>
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-4">
-            {signalCards.map((item) => (
-              <div key={item.title} className="rounded-xl border border-white/10 bg-black/30 p-4">
-                <div className="text-[11px] uppercase tracking-[0.12em] text-white/60">{item.title}</div>
-                <div className="mt-2 text-lg font-semibold text-white">{item.value}</div>
-              </div>
-            ))}
-          </div>
-        </GlassCard>
-      </MarketingContainer>
-
-      <MarketingContainer className="pb-8">
-        <GlassCard className="space-y-5">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <h2 className="text-2xl font-semibold md:text-3xl">Products live now</h2>
-              <p className="mt-2 text-sm text-white/75">Showing {productsSource}. Open Zone for full map, filters, and checkout.</p>
-            </div>
-            <a href="https://exportunity.net/zone" className="rounded-xl border border-white/20 px-4 py-2 text-sm font-semibold text-white hover:bg-white/10">
-              Open Zone marketplace
-            </a>
-          </div>
-
-          {nearbyProductsQuery.isLoading && catalogProductsQuery.isLoading ? (
-            <div className="rounded-2xl border border-white/10 bg-black/20 p-4 text-sm text-white/70">Loading live products...</div>
-          ) : null}
-
-          {productsError ? (
-            <div className="rounded-2xl border border-amber-400/40 bg-amber-400/10 p-4 text-sm text-amber-100">
-              Product preview is temporarily unavailable. {productsError}
-            </div>
-          ) : null}
-
-          {!productsError && !nearbyProductsQuery.isLoading && !catalogProductsQuery.isLoading && products.length === 0 ? (
-            <div className="rounded-2xl border border-white/10 bg-black/20 p-4 text-sm text-white/70">
-              No products were returned in this snapshot. Open Zone and refresh your location to see full inventory.
-            </div>
-          ) : null}
-
-          {!productsError && products.length > 0 ? (
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-4">
-              {products.slice(0, 8).map((product) => (
-                <div key={product.id} className="rounded-2xl border border-white/10 bg-black/30 p-3">
-                  <div className="aspect-[4/3] overflow-hidden rounded-xl bg-white/5">
-                    {product.image ? (
-                      <img src={product.image} alt={product.name} className="h-full w-full object-cover" loading="lazy" />
-                    ) : (
-                      <div className="flex h-full items-center justify-center text-xs text-white/40">No image</div>
-                    )}
-                  </div>
-                  <div className="mt-3">
-                    <div className="line-clamp-2 text-sm font-semibold text-white">{product.name}</div>
-                    <div className="mt-1 text-xs text-white/65">
-                      {product.shopName || "Marketplace seller"}
-                      {product.distanceText ? ` ? ${product.distanceText}` : ""}
-                    </div>
-                    <div className="mt-1 text-xs text-white/50">{product.categoryName || "General goods"}</div>
-                    <div className="mt-2 text-sm font-semibold text-amber-300">{formatMoney(product.price, product.currency || "XOF")}</div>
-                  </div>
+      <MarketingContainer className="pb-16">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[0.95fr_1.05fr]">
+          <div className="rounded-lg border border-white/10 bg-[#0b0a08] p-6 md:p-8">
+            <MarketingKicker>PUBLIC RECORD</MarketingKicker>
+            <h2 className="mt-3 text-3xl font-semibold text-white md:text-4xl">A company with a public record.</h2>
+            <p className="mt-4 text-base leading-relaxed text-white/70">
+              Exportunity's work includes trade promotion, SME platforms, payment tools, advisory activity, media features, and platform development.
+            </p>
+            <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {PUBLIC_RECORDS.map((item) => (
+                <div key={item} className="rounded-lg border border-white/10 bg-black/25 px-4 py-3 text-sm text-white/75">
+                  {item}
                 </div>
               ))}
             </div>
-          ) : null}
-        </GlassCard>
+            <div className="mt-6">
+              <SecondaryLink href="/archive">View archive</SecondaryLink>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            {ARCHIVE_IMAGES.map((item) => (
+              <figure key={item.src} className="overflow-hidden rounded-lg border border-white/10 bg-black/30">
+                <img src={item.src} alt={item.title} className="aspect-[4/3] w-full object-cover" loading="lazy" />
+                <figcaption className="p-4">
+                  <div className="text-sm font-semibold text-white">{item.title}</div>
+                  <p className="mt-2 text-xs leading-5 text-white/60">{item.caption}</p>
+                </figcaption>
+              </figure>
+            ))}
+          </div>
+        </div>
+      </MarketingContainer>
+
+      <MarketingContainer className="pb-16">
+        <div className="mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-end">
+          <div>
+            <MarketingKicker>ACTIVE AND CONNECTED PLATFORMS</MarketingKicker>
+            <h2 className="mt-3 text-3xl font-semibold text-white md:text-5xl">Platforms with operating roles.</h2>
+          </div>
+          <SecondaryLink href="/platforms">Open platform</SecondaryLink>
+        </div>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {PLATFORMS.map((platform) => (
+            <Link key={platform.title} href={platform.href} className="rounded-lg border border-white/10 bg-[#0b0a08] p-5 transition hover:border-amber-300/45">
+              <div className="text-[11px] uppercase tracking-[0.16em] text-amber-200/75">{platform.status}</div>
+              <h3 className="mt-3 text-xl font-semibold text-white">{platform.title}</h3>
+              <p className="mt-3 text-sm leading-6 text-white/70">{platform.text}</p>
+              <div className="mt-6 inline-flex rounded-lg bg-amber-400 px-4 py-2 text-sm font-semibold text-stone-950">Open platform</div>
+            </Link>
+          ))}
+        </div>
+      </MarketingContainer>
+
+      <MarketingContainer className="pb-20">
+        <div className="rounded-lg border border-amber-300/25 bg-[#171207] p-6 md:p-10">
+          <MarketingKicker>WORK WITH EXPORTUNITY</MarketingKicker>
+          <div className="mt-4 grid grid-cols-1 gap-6 lg:grid-cols-[1fr_auto] lg:items-end">
+            <div>
+              <h2 className="text-3xl font-semibold text-white md:text-5xl">Trade, gold, machinery, advisory, or platform access.</h2>
+              <p className="mt-4 max-w-3xl text-base leading-relaxed text-white/70">
+                Contact the team for trade, gold, machinery, advisory, platform access, or institutional collaboration.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              <PrimaryLink href="/contact">Contact</PrimaryLink>
+              <SecondaryLink href="/work-with-us">Request access</SecondaryLink>
+            </div>
+          </div>
+        </div>
       </MarketingContainer>
     </MarketingShell>
   );

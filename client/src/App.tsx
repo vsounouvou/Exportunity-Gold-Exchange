@@ -220,6 +220,7 @@ const MindbaseAdminSettingsPage = lazyPage(() => import("@/pages/mindbase/Mindba
 
 // Exportunity marketing clone (exportunity.com)
 const ExportunityMarketingHomePage = lazyPage(() => import("@/pages/exportunity/MarketingHomePage"));
+const ExportunityMarketingVitrinePage = lazyPage(() => import("@/pages/exportunity/MarketingVitrinePage"));
 const ExportunityMarketingAboutPage = lazyPage(() => import("@/pages/exportunity/MarketingAboutPage"));
 const ExportunityMarketingStoryPage = lazyPage(() => import("@/pages/exportunity/MarketingStoryPage"));
 const ExportunityMarketingFounderStoryPage = lazyPage(() => import("@/pages/exportunity/MarketingFounderStoryPage"));
@@ -318,6 +319,7 @@ const BdoIndustrieMinierePage = lazyPage(() => import("@/pages/bdo/BdoAuthorityP
 const BdoCertificationPage = lazyPage(() => import("@/pages/bdo/BdoAuthorityPages"), "BdoCertificationPage");
 const BdoVerifierPage = lazyPage(() => import("@/pages/bdo/BdoAuthorityPages"), "BdoVerifierPage");
 const BdoEspaceProDashboardPage = lazyPage(() => import("@/pages/bdo/BdoProPages"), "BdoEspaceProDashboardPage");
+const BdoWholesaleMarketPage = lazyPage(() => import("@/pages/bdo/BdoProPages"), "BdoWholesaleMarketPage");
 const BdoProMapPage = lazyPage(() => import("@/pages/bdo/BdoProPages"), "BdoProMapPage");
 const BdoProIntelligencePage = lazyPage(() => import("@/pages/bdo/BdoProPages"), "BdoProIntelligencePage");
 const BdoProBureauxPage = lazyPage(() => import("@/pages/bdo/BdoProPages"), "BdoProBureauxPage");
@@ -356,6 +358,7 @@ const AdminTwilioControlCenterPage = lazyPage(
   () => import("@/pages/AdminTwilioControlCenterPage"),
   "AdminTwilioControlCenterPage",
 );
+const AdminGooglePlacesIntegrationPage = lazyPage(() => import("@/pages/AdminGooglePlacesIntegrationPage"));
 const AdminTwilioLogsPage = lazyPage(() => import("@/pages/AdminTwilioLogsPage"));
   const AdminCommunicationsInboxPage = lazyPage(
     () => import("@/pages/AdminCommunicationsInboxPage"),
@@ -402,6 +405,7 @@ const AdminAssetStudioPage = lazyPage(() => import("@/pages/AdminAssetStudioPage
 const AdminMediaDebugPage = lazyPage(() => import("@/pages/AdminMediaDebugPage"));
 const AdminMarketplaceProductsPage = lazyPage(() => import("@/pages/AdminMarketplaceProductsPage"));
 const AdminMarketplacePaymentsPage = lazyPage(() => import("@/pages/AdminMarketplacePaymentsPage"));
+const AdminPmeExchangePage = lazyPage(() => import("@/pages/AdminPmeExchangePage"));
 const AdminSystemUpdatePage = lazyPage(() => import("@/pages/AdminSystemUpdatePage"));
 const AdminMapIconsPage = lazyPage(() => import("@/pages/AdminMapIconsPage"));
 const AdminMapSettingsPage = lazyPage(() => import("@/pages/AdminMapSettingsPage"));
@@ -474,6 +478,8 @@ const DefaultLanding = () => <Redirect to="/zone" />;
 
 function RootPublicRoute() {
   const { tenant } = useTenant();
+  if (isExportunityMarketingHost()) return <ExportunityMarketingHomePage />;
+
   const config = getTenantConfigByKey(tenant.key);
   if (!config) return <Redirect to="/store" />;
 
@@ -487,16 +493,29 @@ function RootPublicRoute() {
   if (tenant.key === "mindbase") return <MindbaseLandingPage />;
   if (tenant.key === "zogueland") return <Redirect to="/store" />;
   if (tenant.key === "zone" || tenant.key === "rayon1km") return <Redirect to="/zone" />;
-  if (tenant.key === "exportunity" && isExportunityMarketingHost()) return <ExportunityMarketingHomePage />;
   return <Redirect to={getTenantHomeRoute(tenant.key)} />;
 }
 
 function StoreRoute() {
-  return <StorePage />;
+  const [location] = useLocation();
+  const initialSpace = location.startsWith("/wholesale")
+    ? "wholesale"
+    : location.startsWith("/pme-exchange") || location.startsWith("/ready-for-export")
+      ? "exchange"
+      : "city";
+  const shellMode =
+    location === "/map" ||
+    location === "/marketplace/map" ||
+    location.startsWith("/wholesale")
+      ? "mapDominant"
+      : "commerce";
+  return <StorePage initialSpace={initialSpace} shellMode={shellMode} />;
 }
 
 function BdoWholesaleRoute() {
-  return isBdoHost() ? <StoreRoute /> : <Redirect to="/zone" />;
+  const { tenant } = useTenant();
+  if (isBdoHost() || tenant.key === "bdo") return <StoreRoute />;
+  return tenant.key === "exportunity" ? <StoreRoute /> : <Redirect to="/zone" />;
 }
 
 function CollectionsRoute() {
@@ -785,6 +804,8 @@ function App() {
           <Route path="/zone/:rest*" component={StoreRoute} />
           <Route path="/map" component={StoreRoute} />
           <Route path="/marketplace/map" component={StoreRoute} />
+          <Route path="/pme-exchange" component={StoreRoute} />
+          <Route path="/ready-for-export" component={StoreRoute} />
           <Route path="/retail" component={RetailAliasRedirect} />
           <Route path="/retail/:rest*" component={RetailAliasRedirect} />
           <Route path="/marketplace" component={StoreRoute} />
@@ -821,6 +842,17 @@ function App() {
           <Route path="/how-it-works" component={() => <MarketingRedirect to="/platform" />} />
 
           {/* Exportunity marketing clone routes (exportunity.com) */}
+          <Route path="/company" component={ExportunityMarketingVitrinePage} />
+          <Route path="/what-we-do" component={ExportunityMarketingVitrinePage} />
+          <Route path="/platforms" component={ExportunityMarketingVitrinePage} />
+          <Route path="/gold-mining" component={ExportunityMarketingVitrinePage} />
+          <Route path="/gold" component={() => <MarketingRedirect to="/gold-mining" />} />
+          <Route path="/government-institutions" component={ExportunityMarketingVitrinePage} />
+          <Route path="/government" component={() => <MarketingRedirect to="/government-institutions" />} />
+          <Route path="/archive" component={ExportunityMarketingVitrinePage} />
+          <Route path="/operating-stack" component={ExportunityMarketingVitrinePage} />
+          <Route path="/work-with-us" component={ExportunityMarketingVitrinePage} />
+          <Route path="/contact" component={ExportunityMarketingContactPage} />
           <Route path="/story" component={() => <MarketingRedirect to="/journey" />} />
           <Route path="/journey" component={ExportunityMarketingStoryPage} />
           <Route path="/story/founder" component={ExportunityMarketingFounderStoryPage} />
@@ -858,7 +890,7 @@ function App() {
           <Route path="/contracts" component={() => <MarketingOrAuthRedirect marketingTo="/platform?module=contracts" authTo="/auth?next=/app/contracts" />} />
           <Route path="/business" component={() => <MarketingOrAuthRedirect marketingTo="/platform?module=business" authTo="/auth?next=/app" />} />
           <Route path="/ops" component={() => <MarketingOrAuthRedirect marketingTo="/platform?module=business" authTo="/auth?next=/app" />} />
-          <Route path="/machinery" component={() => <MarketingOrAuthRedirect marketingTo="/platform?module=machinery" authTo="/auth?next=/app/machinery/catalog" />} />
+          <Route path="/machinery" component={() => (isExportunityMarketingHost() ? <ExportunityMarketingVitrinePage /> : <MarketingOrAuthRedirect marketingTo="/platform?module=machinery" authTo="/auth?next=/app/machinery/catalog" />)} />
           <Route path="/invest" component={() => <MarketingOrAuthRedirect marketingTo="/platform?module=invest" authTo="/auth?next=/app/invest/opportunities" />} />
           <Route path="/compliance" component={() => <MarketingOrAuthRedirect marketingTo="/platform?module=compliance" authTo="/auth?next=/app/governance/logs" />} />
           <Route path="/communications" component={() => <MarketingOrAuthRedirect marketingTo="/platform?module=communications" authTo="/auth?next=/app/messaging" />} />
@@ -1618,6 +1650,12 @@ function App() {
             <AdminTwilioControlCenterPage />
           </ProtectedRoute>
         </Route>
+
+        <Route path="/admin/settings/integrations/google-maps">
+          <ProtectedRoute>
+            <AdminGooglePlacesIntegrationPage />
+          </ProtectedRoute>
+        </Route>
         
         <Route path="/admin-users">
           <ProtectedRoute>
@@ -1724,6 +1762,54 @@ function App() {
         <Route path="/admin/marketplace/products">
           <ProtectedRoute>
             <AdminMarketplaceProductsPage />
+          </ProtectedRoute>
+        </Route>
+
+        <Route path="/admin/pme-exchange">
+          <ProtectedRoute>
+            <AdminPmeExchangePage />
+          </ProtectedRoute>
+        </Route>
+
+        <Route path="/admin/pme-exchange/map">
+          <ProtectedRoute>
+            <AdminPmeExchangePage />
+          </ProtectedRoute>
+        </Route>
+
+        <Route path="/admin/pme-exchange/leads">
+          <ProtectedRoute>
+            <AdminPmeExchangePage />
+          </ProtectedRoute>
+        </Route>
+
+        <Route path="/admin/pme-exchange/import">
+          <ProtectedRoute>
+            <AdminPmeExchangePage />
+          </ProtectedRoute>
+        </Route>
+
+        <Route path="/admin/pme-exchange/campaigns">
+          <ProtectedRoute>
+            <AdminPmeExchangePage />
+          </ProtectedRoute>
+        </Route>
+
+        <Route path="/admin/pme-exchange/conversations">
+          <ProtectedRoute>
+            <AdminPmeExchangePage />
+          </ProtectedRoute>
+        </Route>
+
+        <Route path="/admin/pme-exchange/profiles">
+          <ProtectedRoute>
+            <AdminPmeExchangePage />
+          </ProtectedRoute>
+        </Route>
+
+        <Route path="/admin/pme-exchange/audit">
+          <ProtectedRoute>
+            <AdminPmeExchangePage />
           </ProtectedRoute>
         </Route>
 

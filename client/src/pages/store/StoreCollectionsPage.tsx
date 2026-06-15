@@ -10,21 +10,21 @@ const copy = {
   fr: {
     title: "Collections d'or documentées",
     subtitle:
-      "Sélections de lingots, pièces, bijoux vérifiés et produits fournis par des partenaires approuvés. Disponibilité, prix et conformité restent soumis à confirmation finale.",
+      "Sélections de lingots issus de raffineries ou partenaires approuvés, pièces documentées, bijoux vérifiés et créations sur commande. Disponibilité, prix, conformité, paiement, livraison ou stockage restent soumis à confirmation finale.",
     loading: "Chargement des collections...",
     brand: "BOURSE DE L'OR",
   },
   en: {
     title: "Documented gold collections",
     subtitle:
-      "Selections of bullion, pieces, verified jewelry, and products supplied through approved partners. Availability, pricing, and compliance remain subject to final confirmation.",
+      "Selections of refinery-produced or approved-partner bullion, documented pieces, verified jewelry, and made-to-order creations. Availability, pricing, compliance, payment, delivery, or storage remain subject to final confirmation.",
     loading: "Loading collections...",
     brand: "BOURSE DE L'OR",
   },
   ar: {
     title: "مجموعات ذهب موثقة",
     subtitle:
-      "اختيارات من السبائك والقطع والمجوهرات المتحقق منها والمنتجات المقدمة عبر شركاء معتمدين. يبقى التوفر والسعر والامتثال خاضعاً للتأكيد النهائي.",
+      "اختيارات من سبائك مصفاة أو شركاء معتمدين، وقطع موثقة، ومجوهرات متحقق منها، وإبداعات حسب الطلب. يبقى التوفر والسعر والامتثال والدفع والتسليم أو التخزين خاضعاً للتأكيد النهائي.",
     loading: "جارٍ تحميل المجموعات...",
     brand: "BOURSE DE L'OR",
   },

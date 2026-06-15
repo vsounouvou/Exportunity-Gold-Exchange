@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from "react";
+﻿import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
 
@@ -97,8 +97,9 @@ type DirectoryResponse = {
 type LeafletDeps = {
   MapContainer: any;
   TileLayer: any;
-  CircleMarker: any;
+  Marker: any;
   Popup: any;
+  divIcon: any;
 };
 
 const tierLabels: Record<string, string> = {
@@ -129,6 +130,222 @@ function mapNodeTone(nodeType: string) {
   if (nodeType === "mine" || nodeType === "artisanal_zone") return "#7A5A18";
   if (nodeType === "association" || nodeType === "regional_supply_node") return "#F5F3EC";
   return "#D4AF37";
+}
+
+function mapNodeShortCode(nodeType: string) {
+  if (nodeType === "bureau_achat") return "BA";
+  if (nodeType === "exporter" || nodeType === "export_hub") return "EX";
+  if (nodeType === "mine") return "Au";
+  if (nodeType === "artisanal_zone") return "ZA";
+  if (nodeType === "association") return "AS";
+  if (nodeType === "regional_supply_node") return "SR";
+  if (nodeType === "logistics_hub") return "LG";
+  if (nodeType === "equipment_node") return "EQ";
+  return "OR";
+}
+
+function createMapNodeIcon(divIcon: LeafletDeps["divIcon"], node: ProMapNode, large = false) {
+  const color = mapNodeTone(node.nodeType);
+  const size = large ? 38 : 32;
+  const innerSize = large ? 28 : 24;
+  const label = mapNodeShortCode(node.nodeType);
+  const html =
+    '<span style="width:' + size + 'px;height:' + size + 'px;display:grid;place-items:center;border-radius:12px;background:linear-gradient(145deg,#050505,#0D1B2A);border:1px solid ' + color + ';box-shadow:0 10px 24px rgba(0,0,0,.42);">' +
+    '<span style="width:' + innerSize + 'px;height:' + innerSize + 'px;display:grid;place-items:center;border-radius:9px;background:linear-gradient(145deg,' + color + ',#F5F3EC);color:#0B0B0D;font-size:10px;font-weight:900;letter-spacing:0;font-family:Montserrat,Arial,sans-serif;">' + label + '</span>' +
+    '</span>';
+  return divIcon({
+    className: "bdl-map-marker",
+    html,
+    iconSize: [size, size],
+    iconAnchor: [size / 2, size / 2],
+    popupAnchor: [0, -size / 2],
+  });
+}
+
+const PUBLIC_WHOLESALE_NODES: ProMapNode[] = [
+  {
+    id: "public-mine-ity",
+    nodeType: "mine",
+    layers: ["mine"],
+    name: "Signal minier Ouest - Ity",
+    slug: "signal-minier-ity",
+    description: "Zone de production aurifere a examiner avec documents, disponibilite et revue de conformite avant toute operation.",
+    country: "CI",
+    region: "Montagnes",
+    city: "Zouan-Hounien",
+    latitude: 6.841,
+    longitude: -8.118,
+    verificationStatus: "verified",
+    companyName: "Zone de sourcing documentee",
+    contactName: null,
+    contactPhone: null,
+    contactWhatsapp: null,
+    contactEmail: null,
+    wholesaleReady: true,
+    metadata: { publicPreview: true, layer: "mine" },
+  },
+  {
+    id: "public-artisanal-bouafle",
+    nodeType: "artisanal_zone",
+    layers: ["artisanal_zone"],
+    name: "Zone artisanale encadree - Marahoue",
+    slug: "zone-artisanale-marahoue",
+    description: "Signal de sourcing necessitant verification d'origine, controle qualite et validation documentaire.",
+    country: "CI",
+    region: "Marahoue",
+    city: "Bouafle",
+    latitude: 6.982,
+    longitude: -5.744,
+    verificationStatus: "pending",
+    companyName: "Sourcing responsable",
+    contactName: null,
+    contactPhone: null,
+    contactWhatsapp: null,
+    contactEmail: null,
+    wholesaleReady: true,
+    metadata: { publicPreview: true, layer: "artisanal_zone" },
+  },
+  {
+    id: "public-supply-bouake",
+    nodeType: "regional_supply_node",
+    layers: ["regional_supply_node", "bureau_achat"],
+    name: "Noeud d'approvisionnement de Bouake",
+    slug: "noeud-approvisionnement-bouake-public",
+    description: "Consolidation des flux de sourcing, preparation documentaire et coordination pour demandes en gros.",
+    country: "CI",
+    region: "Gbeke",
+    city: "Bouake",
+    latitude: 7.689,
+    longitude: -5.03,
+    verificationStatus: "verified",
+    companyName: "Desk sourcing BOURSE DE L'OR",
+    contactName: null,
+    contactPhone: null,
+    contactWhatsapp: null,
+    contactEmail: null,
+    wholesaleReady: true,
+    metadata: { publicPreview: true, layer: "regional_supply_node" },
+  },
+  {
+    id: "public-association-korhogo",
+    nodeType: "association",
+    layers: ["association", "regional_supply_node"],
+    name: "Association acheteurs auriferes du Nord",
+    slug: "association-acheteurs-nord-public",
+    description: "Reseau regional pour qualification de contreparties, origine declaree et demandes structurees.",
+    country: "CI",
+    region: "Poro",
+    city: "Korhogo",
+    latitude: 9.458,
+    longitude: -5.629,
+    verificationStatus: "verified",
+    companyName: "Reseau professionnel Nord",
+    contactName: null,
+    contactPhone: null,
+    contactWhatsapp: null,
+    contactEmail: null,
+    wholesaleReady: true,
+    metadata: { publicPreview: true, layer: "association" },
+  },
+  {
+    id: "public-export-abidjan",
+    nodeType: "export_hub",
+    layers: ["export_hub", "exporter"],
+    name: "Hub export et conformite - Abidjan",
+    slug: "hub-export-abidjan-public",
+    description: "Coordination paiement, documentation, verification, livraison ou stockage selon disponibilite et conformite.",
+    country: "CI",
+    region: "Abidjan",
+    city: "Abidjan",
+    latitude: 5.3364,
+    longitude: -4.0267,
+    verificationStatus: "verified",
+    companyName: "Cellule export BOURSE DE L'OR",
+    contactName: null,
+    contactPhone: null,
+    contactWhatsapp: null,
+    contactEmail: null,
+    wholesaleReady: true,
+    metadata: { publicPreview: true, layer: "export_hub" },
+  },
+  {
+    id: "public-logistics-san-pedro",
+    nodeType: "logistics_hub",
+    layers: ["logistics_hub"],
+    name: "Plateforme logistique San Pedro",
+    slug: "plateforme-logistique-san-pedro-public",
+    description: "Point de coordination logistique pour lots professionnels, inspection et acheminement encadre.",
+    country: "CI",
+    region: "San-Pedro",
+    city: "San-Pedro",
+    latitude: 4.7485,
+    longitude: -6.6363,
+    verificationStatus: "pending",
+    companyName: "Logistique partenaire",
+    contactName: null,
+    contactPhone: null,
+    contactWhatsapp: null,
+    contactEmail: null,
+    wholesaleReady: false,
+    metadata: { publicPreview: true, layer: "logistics_hub" },
+  },
+  {
+    id: "public-equipment-yamoussoukro",
+    nodeType: "equipment_node",
+    layers: ["equipment_node"],
+    name: "Support equipement - Yamoussoukro",
+    slug: "support-equipement-yamoussoukro-public",
+    description: "Signal pour futurs besoins equipements, maintenance et support terrain des operateurs verifies.",
+    country: "CI",
+    region: "Yamoussoukro",
+    city: "Yamoussoukro",
+    latitude: 6.8276,
+    longitude: -5.2893,
+    verificationStatus: "verified",
+    companyName: "Support operations",
+    contactName: null,
+    contactPhone: null,
+    contactWhatsapp: null,
+    contactEmail: null,
+    wholesaleReady: false,
+    metadata: { publicPreview: true, layer: "equipment_node" },
+  },
+];
+
+function summarizeMapNodes(nodes: ProMapNode[]) {
+  const verifiedBureaux = nodes.filter((item) => item.layers.includes("bureau_achat") && item.verificationStatus === "verified").length;
+  const verifiedExporters = nodes.filter((item) => item.layers.includes("exporter") && item.verificationStatus === "verified").length;
+  const activeRegions = new Set(nodes.map((item) => String(item.country || "") + ":" + String(item.region || "")).filter((value) => value !== ":")).size;
+  const sourcingNodes = nodes.filter((item) => item.layers.some((layer) => ["mine", "artisanal_zone", "association", "regional_supply_node"].includes(layer))).length;
+  return { verifiedBureaux, verifiedExporters, activeRegions, sourcingNodes, totalVisibleNodes: nodes.length };
+}
+
+function buildWholesaleSummary(nodes: ProMapNode[]): ProSummaryResponse {
+  return {
+    ok: true,
+    profile: {
+      id: "public-wholesale-preview",
+      role: "wholesale_preview",
+      membershipTier: "free",
+      verificationStatus: "public_preview",
+      companyName: "BOURSE DE L'OR",
+      country: "CI",
+      canAccessMap: true,
+      canViewSupplyContacts: false,
+      canViewMineLayer: true,
+      canViewBureauLayer: true,
+      canViewExportLayer: true,
+    },
+    map: {
+      variant: "source",
+      title: "Marche de gros aurifere",
+      subtitle: "Cartographie des mines, zones de sourcing, bureaux d'achat, hubs export et opportunites professionnelles.",
+      defaultTypes: ["mine", "artisanal_zone", "association", "regional_supply_node", "bureau_achat", "export_hub", "logistics_hub", "equipment_node"],
+      locked: false,
+      lockedMessage: null,
+    },
+    stats: summarizeMapNodes(nodes),
+  };
 }
 
 function getBdoProCopy(language: string) {
@@ -284,13 +501,15 @@ function useLeafletDeps(enabled: boolean) {
     if (!enabled) return;
     let cancelled = false;
     (async () => {
-      const [, reactLeaflet] = await Promise.all([import("leaflet/dist/leaflet.css"), import("react-leaflet")]);
+      await import("leaflet/dist/leaflet.css");
+      const [leaflet, reactLeaflet] = await Promise.all([import("leaflet"), import("react-leaflet")]);
       if (cancelled) return;
       setDeps({
         MapContainer: (reactLeaflet as any).MapContainer,
         TileLayer: (reactLeaflet as any).TileLayer,
-        CircleMarker: (reactLeaflet as any).CircleMarker,
+        Marker: (reactLeaflet as any).Marker,
         Popup: (reactLeaflet as any).Popup,
+        divIcon: (leaflet as any).divIcon,
       });
     })().catch(() => undefined);
     return () => {
@@ -460,7 +679,7 @@ function MapCard({
   interactive?: boolean;
   heightClass?: string;
 }) {
-  const deps = useLeafletDeps(nodes.length > 0);
+  const deps = useLeafletDeps(true);
   const center = useMemo<[number, number]>(() => {
     if (!nodes.length) return [7.54, -5.55];
     const total = nodes.reduce(
@@ -505,7 +724,7 @@ function MapCard({
             <div className="flex h-full items-center justify-center text-sm text-white/55">Chargement de la carte...</div>
           ) : (
             (() => {
-              const { MapContainer, TileLayer, CircleMarker, Popup } = deps;
+              const { MapContainer, TileLayer, Marker, Popup, divIcon } = deps;
               return (
                 <MapContainer center={center} zoom={6} className="h-full w-full" zoomControl={interactive}>
                   <TileLayer
@@ -513,16 +732,10 @@ function MapCard({
                     url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
                   />
                   {nodes.map((node) => (
-                    <CircleMarker
+                    <Marker
                       key={node.id}
-                      center={[node.latitude, node.longitude]}
-                      radius={interactive ? 8 : 6}
-                      pathOptions={{
-                        color: mapNodeTone(node.nodeType),
-                        fillColor: mapNodeTone(node.nodeType),
-                        fillOpacity: 0.85,
-                        weight: 1,
-                      }}
+                      position={[node.latitude, node.longitude]}
+                      icon={createMapNodeIcon(divIcon, node, interactive)}
                     >
                       <Popup>
                         <div className="min-w-[220px] text-sm text-slate-900">
@@ -531,7 +744,7 @@ function MapCard({
                           {node.description ? <div className="mt-2 text-xs text-slate-700">{node.description}</div> : null}
                         </div>
                       </Popup>
-                    </CircleMarker>
+                    </Marker>
                   ))}
                 </MapContainer>
               );
@@ -667,6 +880,201 @@ function ProDashboardContent() {
         />
       </div>
     </div>
+  );
+}
+
+type WholesaleAgentMessage = { role: "assistant" | "user"; text: string };
+
+function wholesaleAgentReply(input: string) {
+  const lower = input.toLowerCase();
+  if (lower.includes("mine") || lower.includes("zone")) {
+    return "Je peux filtrer les zones minieres et signaux de sourcing. Les details sensibles restent soumis a verification Pro, KYC/KYB et revue de conformite.";
+  }
+  if (lower.includes("cotation") || lower.includes("prix") || lower.includes("offre")) {
+    return "Pour une cotation wholesale, il faut preciser le poids vise, le titre, le pays de livraison ou stockage, puis confirmer disponibilite, paiement et conformite.";
+  }
+  if (lower.includes("equip") || lower.includes("machine")) {
+    return "Je peux aussi orienter les demandes d'equipement aurifere vers les noeuds de support et partenaires qualifies lorsque le module est actif.";
+  }
+  return "Je peux vous aider a reperer bureaux d'achat, zones de sourcing, hubs export et demandes de gros. Selectionnez un filtre ou indiquez le volume recherche.";
+}
+
+function WholesaleSourcingAgent({ onTypeSelect }: { onTypeSelect: (types: string[]) => void }) {
+  const [draft, setDraft] = useState("");
+  const [messages, setMessages] = useState<WholesaleAgentMessage[]>([
+    {
+      role: "assistant",
+      text: "Bonjour. Je suis l'agent sourcing BOURSE DE L'OR. Je peux orienter une demande de gros vers mines, bureaux d'achat, hubs export ou support equipement, sous reserve de verification.",
+    },
+  ]);
+
+  function sendMessage(text: string) {
+    const clean = text.trim();
+    if (!clean) return;
+    setMessages((current) => [...current, { role: "user", text: clean }, { role: "assistant", text: wholesaleAgentReply(clean) }]);
+    setDraft("");
+  }
+
+  function onSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    sendMessage(draft);
+  }
+
+  const quickActions = [
+    { label: "Voir les mines", types: ["mine", "artisanal_zone", "association"] },
+    { label: "Bureaux d'achat", types: ["bureau_achat", "regional_supply_node"] },
+    { label: "Hubs export", types: ["export_hub", "logistics_hub"] },
+    { label: "Equipements", types: ["equipment_node"] },
+  ];
+
+  return (
+    <Card className="border-[#D4AF37]/20 bg-[#0D1B2A]/88">
+      <CardContent className="p-4">
+        <p className="text-[11px] uppercase tracking-[0.24em] text-[#E8C873]/85">Agent sourcing</p>
+        <h2 className="mt-2 font-['Cinzel'] text-lg font-semibold text-white">Bourse de l'Or Concierge Pro</h2>
+        <p className="mt-2 text-sm text-white/62">Assistance pour demandes de gros, sourcing responsable, documentation et orientation vers les contreparties verifiees.</p>
+        <div className="mt-4 grid grid-cols-2 gap-2">
+          {quickActions.map((action) => (
+            <button
+              key={action.label}
+              type="button"
+              onClick={() => {
+                onTypeSelect(action.types);
+                sendMessage(action.label);
+              }}
+              className="rounded-xl border border-[#D4AF37]/20 bg-white/5 px-3 py-2 text-left text-xs font-semibold text-[#F5F3EC] hover:bg-[#D4AF37]/10"
+            >
+              {action.label}
+            </button>
+          ))}
+        </div>
+        <div className="mt-4 max-h-[260px] space-y-2 overflow-auto pr-1">
+          {messages.map((message, index) => (
+            <div
+              key={String(index) + message.role}
+              className={message.role === "assistant" ? "rounded-2xl border border-white/10 bg-white/6 p-3 text-sm text-white/72" : "ml-8 rounded-2xl bg-[#D4AF37] p-3 text-sm font-medium text-[#0B0B0D]"}
+            >
+              {message.text}
+            </div>
+          ))}
+        </div>
+        <form onSubmit={onSubmit} className="mt-4 flex gap-2">
+          <input
+            value={draft}
+            onChange={(event) => setDraft(event.target.value)}
+            placeholder="Demande: 5 kg 22K, export, mine, cotation..."
+            className="min-w-0 flex-1 rounded-xl border border-white/10 bg-[#050505] px-3 py-2 text-sm text-white outline-none placeholder:text-white/35 focus:border-[#D4AF37]/70"
+          />
+          <Button type="submit" className="bg-[#D4AF37] text-[#0B0B0D] hover:bg-[#E8C873]">Envoyer</Button>
+        </form>
+      </CardContent>
+    </Card>
+  );
+}
+
+export function BdoWholesaleMarketPage() {
+  const { isAuthenticated } = useSession();
+  const allTypes = useMemo(
+    () => ["mine", "artisanal_zone", "association", "regional_supply_node", "bureau_achat", "export_hub", "logistics_hub", "equipment_node"],
+    [],
+  );
+  const [types, setTypes] = useState<string[]>(allTypes);
+  const [verifiedOnly, setVerifiedOnly] = useState(false);
+  const [wholesaleReady, setWholesaleReady] = useState(false);
+  const summaryQuery = useProSummary(isAuthenticated);
+  const summary = summaryQuery.data ?? null;
+
+  const params = useMemo(() => {
+    const qs = new URLSearchParams();
+    if (types.length) qs.set("types", types.join(","));
+    if (verifiedOnly) qs.set("verifiedOnly", "1");
+    if (wholesaleReady) qs.set("wholesaleReady", "1");
+    return qs.toString();
+  }, [types, verifiedOnly, wholesaleReady]);
+
+  const nodesQuery = useQuery<ProMapResponse>({
+    queryKey: ["/api/v2/pro/map/nodes", "wholesale", params],
+    enabled: Boolean(isAuthenticated && summary && !summary.map.locked),
+    staleTime: 30_000,
+    queryFn: () => apiRequest('/api/v2/pro/map/nodes?' + params),
+  });
+
+  const sourceNodes = nodesQuery.data?.items?.length ? nodesQuery.data.items : PUBLIC_WHOLESALE_NODES;
+  const visibleNodes = useMemo(
+    () =>
+      sourceNodes.filter((node) => {
+        if (types.length && !node.layers.some((layer) => types.includes(layer)) && !types.includes(node.nodeType)) return false;
+        if (verifiedOnly && node.verificationStatus !== "verified") return false;
+        if (wholesaleReady && !node.wholesaleReady) return false;
+        return true;
+      }),
+    [sourceNodes, types, verifiedOnly, wholesaleReady],
+  );
+  const displaySummary = useMemo(() => buildWholesaleSummary(visibleNodes), [visibleNodes]);
+
+  return (
+    <ProShell
+      title="Marche de gros aurifere"
+      subtitle="Cartographie des mines, zones de sourcing, bureaux d'achat, hubs export, logistique et opportunites professionnelles. Les contacts et details sensibles restent soumis a verification Pro."
+    >
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_390px]">
+        <div className="space-y-4">
+          <ProStats summary={displaySummary} />
+          <Card className="border-[#D4AF37]/15 bg-[#0D1B2A]/82">
+            <CardContent className="flex flex-wrap gap-2 p-4">
+              {allTypes.map((type) => {
+                const active = types.includes(type);
+                return (
+                  <Button
+                    key={type}
+                    type="button"
+                    size="sm"
+                    variant={active ? "default" : "outline"}
+                    className={active ? "bg-[#D4AF37] text-[#0B0B0D] hover:bg-[#E8C873]" : "border-[#D4AF37]/25 text-[#F5F3EC] hover:bg-[#D4AF37]/10"}
+                    onClick={() => setTypes((current) => (current.includes(type) ? current.filter((entry) => entry !== type) : [...current, type]))}
+                  >
+                    {type.replace(/_/g, " ")}
+                  </Button>
+                );
+              })}
+              <Button
+                type="button"
+                size="sm"
+                variant={verifiedOnly ? "default" : "outline"}
+                className={verifiedOnly ? "bg-[#D4AF37] text-[#0B0B0D] hover:bg-[#E8C873]" : "border-[#D4AF37]/25 text-[#F5F3EC] hover:bg-[#D4AF37]/10"}
+                onClick={() => setVerifiedOnly((value) => !value)}
+              >
+                Verifies seulement
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={wholesaleReady ? "default" : "outline"}
+                className={wholesaleReady ? "bg-[#D4AF37] text-[#0B0B0D] hover:bg-[#E8C873]" : "border-[#D4AF37]/25 text-[#F5F3EC] hover:bg-[#D4AF37]/10"}
+                onClick={() => setWholesaleReady((value) => !value)}
+              >
+                Pret pour le gros
+              </Button>
+            </CardContent>
+          </Card>
+          <MapCard nodes={visibleNodes} summary={displaySummary} interactive heightClass="h-[640px]" />
+        </div>
+        <div className="space-y-4">
+          <WholesaleSourcingAgent onTypeSelect={setTypes} />
+          <Card className="border-[#D4AF37]/15 bg-[#0D1B2A]/82">
+            <CardContent className="p-4 text-sm text-white/64">
+              <p className="text-[11px] uppercase tracking-[0.24em] text-[#E8C873]/85">Acces et conformite</p>
+              <h2 className="mt-2 text-lg font-semibold text-white">Carte publique, details verifies</h2>
+              <p className="mt-2">La carte affiche une vue de travail. Les contacts, volumes disponibles, offres et documents ne sont visibles qu'apres connexion Pro, verification et validation de conformite.</p>
+              <div className="mt-4 flex flex-col gap-2">
+                <Link href="/pro/login"><Button className="w-full bg-[#D4AF37] text-[#0B0B0D] hover:bg-[#E8C873]">Acceder a l'espace Pro</Button></Link>
+                <Link href="/wholesale/apply"><Button variant="outline" className="w-full border-[#D4AF37]/25 text-[#F5F3EC] hover:bg-[#D4AF37]/10">Demander un acces wholesale</Button></Link>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </ProShell>
   );
 }
 

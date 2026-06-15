@@ -25,6 +25,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
 import { resolveApiUrl } from "@/lib/runtimeConfig";
 
 type MeetParticipantRole = "host" | "cohost" | "attendee" | "observer";
@@ -199,9 +200,8 @@ export default function MeetRoomPage() {
     enabled: Boolean(meetingId),
     queryFn: async () => {
       const suffix = inviteToken ? `?t=${encodeURIComponent(inviteToken)}` : "";
-      const response = await fetch(resolveApiUrl(`/api/meet/meetings/${encodeURIComponent(meetingId)}${suffix}`));
-      const json = (await response.json()) as MeetSnapshotResponse & { message?: string };
-      if (!response.ok || !json.ok) throw new Error(json.message || "Failed to load meeting");
+      const json = (await apiRequest(`/api/meet/meetings/${encodeURIComponent(meetingId)}${suffix}`)) as MeetSnapshotResponse & { message?: string };
+      if (!json.ok) throw new Error(json.message || "Failed to load meeting");
       return json;
     },
     refetchInterval: joined ? 15_000 : 30_000,
@@ -233,13 +233,11 @@ export default function MeetRoomPage() {
 
   const ensureJoinToken = useMutation({
     mutationFn: async () => {
-      const response = await fetch(resolveApiUrl(`/api/meet/meetings/${encodeURIComponent(meetingId)}/join-token`), {
+      const json = (await apiRequest(`/api/meet/meetings/${encodeURIComponent(meetingId)}/join-token`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ role: "host" }),
-      });
-      const json = (await response.json()) as { ok: boolean; token?: string; message?: string };
-      if (!response.ok || !json.ok || !json.token) {
+      })) as { ok: boolean; token?: string; message?: string };
+      if (!json.ok || !json.token) {
         throw new Error(json.message || "Unable to create join token");
       }
       return json.token;
@@ -248,11 +246,10 @@ export default function MeetRoomPage() {
 
   const generateSummary = useMutation({
     mutationFn: async () => {
-      const response = await fetch(resolveApiUrl(`/api/meet/meetings/${encodeURIComponent(meetingId)}/summary`), {
+      const json = (await apiRequest(`/api/meet/meetings/${encodeURIComponent(meetingId)}/summary`, {
         method: "POST",
-      });
-      const json = (await response.json()) as { ok: boolean; message?: string };
-      if (!response.ok || !json.ok) throw new Error(json.message || "Failed to generate summary");
+      })) as { ok: boolean; message?: string };
+      if (!json.ok) throw new Error(json.message || "Failed to generate summary");
       return json;
     },
     onSuccess: async () => {
@@ -266,11 +263,10 @@ export default function MeetRoomPage() {
 
   const endMeeting = useMutation({
     mutationFn: async () => {
-      const response = await fetch(resolveApiUrl(`/api/meet/meetings/${encodeURIComponent(meetingId)}/end`), {
+      const json = (await apiRequest(`/api/meet/meetings/${encodeURIComponent(meetingId)}/end`, {
         method: "POST",
-      });
-      const json = (await response.json()) as { ok: boolean; message?: string };
-      if (!response.ok || !json.ok) throw new Error(json.message || "Failed to end meeting");
+      })) as { ok: boolean; message?: string };
+      if (!json.ok) throw new Error(json.message || "Failed to end meeting");
       return json;
     },
     onSuccess: async () => {
@@ -284,13 +280,11 @@ export default function MeetRoomPage() {
 
   const toggleLock = useMutation({
     mutationFn: async (locked: boolean) => {
-      const response = await fetch(resolveApiUrl(`/api/meet/meetings/${encodeURIComponent(meetingId)}/lock`), {
+      const json = (await apiRequest(`/api/meet/meetings/${encodeURIComponent(meetingId)}/lock`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ locked }),
-      });
-      const json = (await response.json()) as { ok: boolean; message?: string };
-      if (!response.ok || !json.ok) throw new Error(json.message || "Failed to update lock");
+      })) as { ok: boolean; message?: string };
+      if (!json.ok) throw new Error(json.message || "Failed to update lock");
       return json;
     },
     onSuccess: async () => {
@@ -318,13 +312,11 @@ export default function MeetRoomPage() {
       if (socketRef.current) {
         await withSocketHostAction("muteParticipant", { participantId: participant.id, isMuted });
       } else {
-        const response = await fetch(resolveApiUrl(`/api/meet/meetings/${encodeURIComponent(meetingId)}/mute`), {
+        const json = await apiRequest(`/api/meet/meetings/${encodeURIComponent(meetingId)}/mute`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ participantId: participant.id, isMuted }),
         });
-        const json = await response.json();
-        if (!response.ok || !json?.ok) throw new Error(json?.message || "Mute request failed");
+        if (!json?.ok) throw new Error(json?.message || "Mute request failed");
       }
       setParticipants((prev) =>
         sortParticipants(prev.map((item) => (item.id === participant.id ? { ...item, isMuted } : item))),
@@ -339,13 +331,11 @@ export default function MeetRoomPage() {
       if (socketRef.current) {
         await withSocketHostAction("kickParticipant", { participantId: participant.id });
       } else {
-        const response = await fetch(resolveApiUrl(`/api/meet/meetings/${encodeURIComponent(meetingId)}/kick`), {
+        const json = await apiRequest(`/api/meet/meetings/${encodeURIComponent(meetingId)}/kick`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ participantId: participant.id }),
         });
-        const json = await response.json();
-        if (!response.ok || !json?.ok) throw new Error(json?.message || "Kick request failed");
+        if (!json?.ok) throw new Error(json?.message || "Kick request failed");
       }
       setParticipants((prev) =>
         sortParticipants(

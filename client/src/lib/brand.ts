@@ -62,7 +62,7 @@ export const BRAND_MAP: Record<TenantKey, BrandInfo> = {
     metaDescription:
       "Exportunity marketplace combines export-ready catalogs with wholesale sourcing on a shared wallet foundation.",
     complianceNotice: "Access subject to Exportunity compliance controls.",
-    tagline: "Marketplace + Wholesale",
+    tagline: "Retail + Wholesale + Export",
     productScope: "MULTI_CATEGORY",
     conciergeScope: "MULTI_CATEGORY",
     landing: "browse-first",
@@ -79,7 +79,7 @@ export const BRAND_MAP: Record<TenantKey, BrandInfo> = {
     metaDescription:
       "Marketplace is the retail and wholesale layer of Exportunity.",
     complianceNotice: "Access subject to Exportunity compliance controls.",
-    tagline: "Marketplace + wholesale",
+    tagline: "Retail + wholesale + export",
     productScope: "MULTI_CATEGORY",
     conciergeScope: "MULTI_CATEGORY",
     landing: "browse-first",

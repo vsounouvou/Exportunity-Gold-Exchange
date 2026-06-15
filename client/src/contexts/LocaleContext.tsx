@@ -60,7 +60,7 @@ function getTenantTranslationOverrides(
   if (tenantKey === "bdo") {
     const bdoSubtitle =
       language === "fr"
-        ? "Unités d'or d'investissement estampillées • Lingots certifiés et scellés"
+        ? "Unités d'or physique documentées • Lingots certifiés et scellés"
         : language === "ar"
           ? "وحدات ذهب مادي موثقة • سبائك معتمدة ومختومة"
           : "Certified physical gold units • Certified and sealed bullion";
@@ -82,16 +82,18 @@ function getTenantTranslationOverrides(
       "sections.doreLots.title": proLabel,
       "sections.doreLots.subtitle":
         language === "fr"
-          ? "L'espace dédié aux professionnels de l'or : mines, négociants, maisons, investisseurs et acheteurs en gros."
-          : "Professional gold counterparties and institutional sourcing flows.",
+          ? "L'espace dédié aux professionnels de l'or : mines, négociants, maisons, fournisseurs et acheteurs qualifiés."
+          : language === "ar"
+            ? "مساحة مهنية للمناجم والتجار والموردين والمشترين المؤهلين."
+            : "Professional gold counterparties, suppliers, and qualified buyer sourcing flows.",
       "buyer.panel.wholesaleDore.title": proLabel,
       "buyer.panel.wholesaleMarketplace.title": proLabel,
       "buyer.panel.wholesaleMarketplace.subtitle":
         language === "fr"
-          ? "Mines, négociants, maisons, investisseurs et acheteurs en gros."
+          ? "Mines, négociants, maisons, fournisseurs et acheteurs qualifiés."
           : language === "ar"
             ? "مناجم وتجار ومشترون مؤسسيون في مسار مهني منفصل."
-          : "Mines, traders, maisons, investors, and institutional buyers.",
+          : "Mines, traders, maisons, suppliers, and qualified buyers.",
       "wholesale.preview.title":
         language === "fr"
           ? "Aperçu Espace Pro (accès contrôlé)"
@@ -106,13 +108,49 @@ function getTenantTranslationOverrides(
             : "Request Professional Space access",
       "nav.wallet":
         language === "fr"
-          ? "Mon Portefeuille"
+          ? "Crédits d'achat"
           : language === "ar"
-            ? "محفظتي"
-            : "My Wallet",
+            ? "اعتمادات الشراء"
+            : "Purchase Credits",
+      "nav.investments":
+        language === "fr"
+          ? "Opportunités de sourcing"
+          : language === "ar"
+            ? "فرص التوريد"
+            : "Sourcing opportunities",
       "sections.stamped.title": retailTitle,
       "buyer.panel.retailGold.title": retailTitle,
       "buyer.panel.retailGold.subtitle": bdoSubtitle,
+      "investments.subtitle":
+        language === "fr"
+          ? "Permis cadastre vérifiés - signaux de sourcing et besoins opérationnels"
+          : language === "ar"
+            ? "تصاريح موثقة - إشارات توريد واحتياجات تشغيلية"
+            : "Cadastre-verified permits - sourcing signals and operational needs",
+      "investments.field.capitalRequired":
+        language === "fr"
+          ? "Besoin opérationnel estimé"
+          : language === "ar"
+            ? "الاحتياج التشغيلي التقديري"
+            : "Estimated operational need",
+      "investments.returnModel.rotationIndicative":
+        language === "fr"
+          ? "Modèle opérationnel indicatif"
+          : language === "ar"
+            ? "نموذج تشغيلي تقديري"
+            : "Indicative operating model",
+      "investments.actions.viewOpportunity":
+        language === "fr"
+          ? "Voir le signal"
+          : language === "ar"
+            ? "عرض الإشارة"
+            : "View signal",
+      "cadastre.claimRule":
+        language === "fr"
+          ? "Les permis doivent exister dans le cadastre officiel. Sans référence cadastre : pas de publication, pas de discussion, pas de demande professionnelle."
+          : language === "ar"
+            ? "يجب أن تكون التصاريح موجودة في السجل الرسمي. بدون مرجع سجل: لا نشر ولا محادثة ولا طلب مهني."
+            : "Permits must exist in the official cadastre. No cadastre reference = no listing, no chat, no professional request.",
     };
   }
 

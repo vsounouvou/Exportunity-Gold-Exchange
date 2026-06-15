@@ -70,6 +70,45 @@ type PublicPlacesState = {
   lastSyncTime?: string;
 };
 
+type PublicMapsConfig = {
+  provider: "google" | "leaflet";
+  enabled?: boolean;
+  browserApiKey?: string | null;
+  mapRenderer?: "google_maps" | "leaflet_openstreetmap";
+  businessDataProvider?: "google_places" | "curated_city_data";
+  placesImportEnabled?: boolean;
+  mapId?: string | null;
+  mapIdLight?: string | null;
+  mapIdDark?: string | null;
+  google?: {
+    enabled?: boolean;
+    placesApiKeyPresent?: boolean;
+    browserApiKeyPresent?: boolean;
+    mapIdPresent?: boolean;
+    setupRequired?: boolean;
+    requiredEnv?: string[];
+  };
+  message?: string;
+};
+
+function isGoogleMapReady(config: PublicMapsConfig) {
+  return (
+    config.provider === "google" &&
+    config.enabled !== false &&
+    config.google?.enabled !== false &&
+    !config.google?.setupRequired &&
+    Boolean(config.browserApiKey)
+  );
+}
+
+declare global {
+  interface Window {
+    google?: any;
+    __exportunityGoogleMapsPromise?: Promise<void>;
+    gm_authFailure?: () => void;
+  }
+}
+
 const ABIDJAN_COCODY: [number, number] = [5.35995, -4.00826];
 
 const tassi: CommerceAgent = {
@@ -143,7 +182,7 @@ const productLibrary: Record<string, ShopProduct[]> = {
       unit: "piece",
       priceCfa: 500,
       quantityAvailable: 120,
-      image: "https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&w=900&q=80",
+      image: "https://images.unsplash.com/photo-1555507036-ab1f4038808a?auto=format&fit=crop&w=900&q=80",
     },
     {
       id: "bread-3",
@@ -264,6 +303,10 @@ function distanceEta(position: [number, number]) {
   };
 }
 
+function validPosition(position: [number, number] | undefined | null): position is [number, number] {
+  return Array.isArray(position) && Number.isFinite(position[0]) && Number.isFinite(position[1]);
+}
+
 function toneForCategory(category: string) {
   const value = category.toLowerCase();
   if (value.includes("coffee") || value.includes("cafe")) return "#7c3f1d";
@@ -276,21 +319,57 @@ function toneForCategory(category: string) {
   return "#F5A623";
 }
 
-function visualForCategory(category: string, wholesale: boolean, exchange: boolean): { label: string; marker: string; Icon: LucideIcon } {
+type CategoryVisualKind =
+  | "bakery"
+  | "coffee"
+  | "food"
+  | "organic"
+  | "pharmacy"
+  | "fashion"
+  | "gift"
+  | "materials"
+  | "industry"
+  | "logistics"
+  | "packaging"
+  | "pme"
+  | "supplier"
+  | "shop";
+
+function visualForCategory(category: string, wholesale: boolean, exchange: boolean): { label: string; marker: string; Icon: LucideIcon; kind: CategoryVisualKind } {
   const value = category.toLowerCase();
-  if (exchange) return { label: "PME", marker: "PME", Icon: BriefcaseBusiness };
-  if (value.includes("bakery") || value.includes("bread")) return { label: "Bakery", marker: "BR", Icon: Store };
-  if (value.includes("coffee") || value.includes("cafe")) return { label: "Coffee", marker: "CF", Icon: Coffee };
-  if (value.includes("restaurant")) return { label: "Food", marker: "FD", Icon: Utensils };
-  if (value.includes("organic") || value.includes("grocery") || value.includes("food")) return { label: "Groceries", marker: "GR", Icon: Leaf };
-  if (value.includes("pharmacy")) return { label: "Pharmacy", marker: "RX", Icon: Pill };
-  if (value.includes("fashion") || value.includes("textile")) return { label: "Fashion", marker: "ST", Icon: Shirt };
-  if (value.includes("gift")) return { label: "Gifts", marker: "GF", Icon: Gift };
-  if (value.includes("hardware") || value.includes("building") || value.includes("construction")) return { label: "Materials", marker: "MT", Icon: Hammer };
-  if (value.includes("machinery") || value.includes("industrial")) return { label: "Industry", marker: "IN", Icon: Factory };
-  if (value.includes("logistics") || value.includes("warehouse")) return { label: "Logistics", marker: "LG", Icon: Truck };
-  if (value.includes("packaging")) return { label: "Packaging", marker: "PK", Icon: Package };
-  return wholesale ? { label: "Supplier", marker: "WH", Icon: Warehouse } : { label: "Shop", marker: "SH", Icon: Store };
+  if (exchange) return { label: "PME", marker: "PME", Icon: BriefcaseBusiness, kind: "pme" };
+  if (value.includes("bakery") || value.includes("bread")) return { label: "Bakery", marker: "Bakery", Icon: Store, kind: "bakery" };
+  if (value.includes("coffee") || value.includes("cafe")) return { label: "Coffee", marker: "Coffee", Icon: Coffee, kind: "coffee" };
+  if (value.includes("restaurant")) return { label: "Food", marker: "Food", Icon: Utensils, kind: "food" };
+  if (value.includes("organic") || value.includes("grocery") || value.includes("food")) return { label: "Groceries", marker: "Groceries", Icon: Leaf, kind: "organic" };
+  if (value.includes("pharmacy")) return { label: "Pharmacy", marker: "Pharmacy", Icon: Pill, kind: "pharmacy" };
+  if (value.includes("fashion") || value.includes("textile")) return { label: "Fashion", marker: "Fashion", Icon: Shirt, kind: "fashion" };
+  if (value.includes("gift")) return { label: "Gifts", marker: "Gifts", Icon: Gift, kind: "gift" };
+  if (value.includes("hardware") || value.includes("building") || value.includes("construction")) return { label: "Materials", marker: "Materials", Icon: Hammer, kind: "materials" };
+  if (value.includes("machinery") || value.includes("industrial")) return { label: "Industry", marker: "Industry", Icon: Factory, kind: "industry" };
+  if (value.includes("logistics") || value.includes("warehouse")) return { label: "Logistics", marker: "Logistics", Icon: Truck, kind: "logistics" };
+  if (value.includes("packaging")) return { label: "Packaging", marker: "Packaging", Icon: Package, kind: "packaging" };
+  return wholesale ? { label: "Supplier", marker: "Supplier", Icon: Warehouse, kind: "supplier" } : { label: "Shop", marker: "Shop", Icon: Store, kind: "shop" };
+}
+
+function markerSvgForCategory(kind: CategoryVisualKind) {
+  const paths: Record<CategoryVisualKind, string> = {
+    bakery: '<path d="M6 15c0-3.3 2.7-6 6-6s6 2.7 6 6v3H6v-3Z"/><path d="M9 11.5v5"/><path d="M12 9.5v7"/><path d="M15 11.5v5"/>',
+    coffee: '<path d="M6 9h10v5a4 4 0 0 1-4 4h-2a4 4 0 0 1-4-4V9Z"/><path d="M16 10h1.5a2.5 2.5 0 0 1 0 5H16"/><path d="M8 5v2"/><path d="M12 5v2"/>',
+    food: '<path d="M7 5v14"/><path d="M5 5v5a2 2 0 0 0 4 0V5"/><path d="M15 5v14"/><path d="M15 5c2 1 3 3 3 6v1h-3"/>',
+    organic: '<path d="M6 14c6-8 11-8 13-7-1 8-6 11-13 10"/><path d="M6 17c2-4 5-6 9-8"/>',
+    pharmacy: '<path d="M12 5v14"/><path d="M5 12h14"/><rect x="5" y="5" width="14" height="14" rx="4"/>',
+    fashion: '<path d="M8 7 6 9l2 3v7h8v-7l2-3-2-2-2 2h-4L8 7Z"/><path d="M10 7a2 2 0 0 0 4 0"/>',
+    gift: '<rect x="5" y="9" width="14" height="10" rx="2"/><path d="M12 9v10"/><path d="M5 13h14"/><path d="M9 9c-2 0-3-1-3-2s1-2 2-2c2 0 3 4 4 4"/><path d="M15 9c2 0 3-1 3-2s-1-2-2-2c-2 0-3 4-4 4"/>',
+    materials: '<path d="m14 6 4 4-8 8H6v-4l8-8Z"/><path d="m13 7 4 4"/><path d="M5 20h14"/>',
+    industry: '<path d="M4 19V9l5 3V9l5 3V7h6v12H4Z"/><path d="M7 16h2"/><path d="M12 16h2"/><path d="M17 16h1"/>',
+    logistics: '<path d="M4 8h10v8H4z"/><path d="M14 11h3l3 3v2h-6z"/><path d="M7 18a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Z"/><path d="M17 18a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Z"/>',
+    packaging: '<path d="M5 8 12 4l7 4v8l-7 4-7-4V8Z"/><path d="m5 8 7 4 7-4"/><path d="M12 12v8"/>',
+    pme: '<path d="M5 20V6h14v14"/><path d="M8 9h2"/><path d="M14 9h2"/><path d="M8 13h2"/><path d="M14 13h2"/><path d="M10 20v-4h4v4"/>',
+    supplier: '<path d="M4 20V9l8-5 8 5v11"/><path d="M8 20v-7h8v7"/><path d="M10 16h4"/>',
+    shop: '<path d="M5 10h14l-1-5H6l-1 5Z"/><path d="M6 10v10h12V10"/><path d="M9 20v-5h6v5"/><path d="M7 10a2 2 0 0 0 4 0 2 2 0 0 0 4 0 2 2 0 0 0 4 0"/>',
+  };
+  return `<svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">${paths[kind]}</svg>`;
 }
 
 function frontDeskFor(place: SeededBusinessPlace, index: number): CommerceAgent {
@@ -368,6 +447,32 @@ function productsForShop(shop: CommerceShop): ShopProduct[] {
   ];
 }
 
+function numericSeed(value: string) {
+  return value.split("").reduce((sum, char) => sum + char.charCodeAt(0), 0);
+}
+
+function merchantIdentity(shop: CommerceShop) {
+  const names = ["Awa", "Mariam", "Koffi", "Iya", "Serge", "Aminata", "Noah", "Fatou"];
+  const seed = numericSeed(shop.id || shop.name);
+  const ownerName = names[seed % names.length];
+  const years = 2 + (seed % 11);
+  const district = shop.district || "Cocody";
+  const story =
+    shop.merchantStory ||
+    `${ownerName} runs ${shop.name} in ${district}. Customers come for ${shop.category.toLowerCase()} products, quick answers, and reliable local delivery.`;
+  return {
+    ownerName,
+    years,
+    story,
+    portraitUrl: shop.frontDesk.avatarUrl || tassi.avatarUrl,
+    proof: [
+      `${years} years in ${district}`,
+      `${shop.rating.toFixed(1)} rating from ${shop.ratingCount} signals`,
+      shop.trustStatus || "Neighbourhood trust building",
+    ],
+  };
+}
+
 function formatMoney(value: number) {
   return `${Intl.NumberFormat("en-US").format(Math.round(value))} XAF`;
 }
@@ -381,8 +486,8 @@ function makePinIcon(shop: CommerceShop, active: boolean, dark: boolean, wholesa
     iconAnchor: active ? [37, 62] : [27, 44],
     popupAnchor: [0, -44],
     html: `
-      <button type="button" aria-label="${shop.name}" style="position:relative;display:grid;place-items:center;width:${active ? 64 : 48}px;height:${active ? 64 : 48}px;border-radius:22px;border:2px solid ${active ? "#F5A623" : "rgba(255,255,255,.95)"};background:${tone};color:white;box-shadow:0 0 0 ${active ? 10 : 5}px rgba(245,166,35,.16),0 18px 34px rgba(0,0,0,.24);font-family:Inter,system-ui,sans-serif;font-size:${exchange ? 12 : 14}px;font-weight:950;">
-        ${visual.marker}
+      <button type="button" aria-label="${shop.name}" style="position:relative;display:grid;place-items:center;width:${active ? 64 : 48}px;height:${active ? 64 : 48}px;border-radius:22px;border:2px solid ${active ? "#F5A623" : "rgba(255,255,255,.95)"};background:${tone};color:white;box-shadow:0 0 0 ${active ? 10 : 5}px rgba(245,166,35,.16),0 18px 34px rgba(0,0,0,.24);font-family:Inter,system-ui,sans-serif;font-size:${active ? 26 : 21}px;font-weight:950;">
+        ${markerSvgForCategory(visual.kind)}
         <span style="position:absolute;left:50%;bottom:-10px;transform:translateX(-50%) rotate(45deg);width:18px;height:18px;border-right:2px solid rgba(255,255,255,.95);border-bottom:2px solid rgba(255,255,255,.95);background:${tone};"></span>
       </button>
     `,
@@ -403,15 +508,291 @@ function makeUserIcon() {
   });
 }
 
+function escapeHtml(value: string) {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function loadGoogleMapsScript(apiKey: string) {
+  if (typeof window === "undefined") return Promise.reject(new Error("Google Maps requires a browser"));
+  if (window.google?.maps) return Promise.resolve();
+  if (window.__exportunityGoogleMapsPromise) return window.__exportunityGoogleMapsPromise;
+
+  window.__exportunityGoogleMapsPromise = new Promise<void>((resolve, reject) => {
+    const existing = document.querySelector<HTMLScriptElement>("script[data-exportunity-google-maps='true']");
+    if (existing) {
+      existing.addEventListener("load", () => resolve(), { once: true });
+      existing.addEventListener("error", () => reject(new Error("Google Maps script failed to load")), { once: true });
+      return;
+    }
+
+    window.gm_authFailure = () => reject(new Error("Google Maps rejected the browser API key"));
+    const script = document.createElement("script");
+    script.dataset.exportunityGoogleMaps = "true";
+    script.async = true;
+    script.defer = true;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&v=weekly&libraries=marker`;
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error("Google Maps script failed to load"));
+    document.head.appendChild(script);
+  });
+
+  return window.__exportunityGoogleMapsPromise;
+}
+
+function makeGoogleMarkerElement(shop: CommerceShop, active: boolean, wholesale: boolean, exchange: boolean) {
+  const element = document.createElement("button");
+  const tone = toneForCategory(shop.category);
+  const visual = visualForCategory(shop.category, wholesale, exchange);
+  element.type = "button";
+  element.setAttribute("aria-label", shop.name);
+  element.style.cssText = [
+    "position:relative",
+    "display:grid",
+    "place-items:center",
+    `width:${active ? 62 : 48}px`,
+    `height:${active ? 62 : 48}px`,
+    "border-radius:22px",
+    `border:2px solid ${active ? "#F5A623" : "rgba(255,255,255,.96)"}`,
+    `background:${tone}`,
+    "color:white",
+    `box-shadow:0 0 0 ${active ? 10 : 5}px rgba(245,166,35,.16),0 18px 34px rgba(0,0,0,.24)`,
+    "font-family:Inter,system-ui,sans-serif",
+    `font-size:${active ? 25 : 20}px`,
+    "font-weight:950",
+    "cursor:pointer",
+  ].join(";");
+  element.innerHTML = `${markerSvgForCategory(visual.kind)}<span style="position:absolute;left:50%;bottom:-10px;transform:translateX(-50%) rotate(45deg);width:18px;height:18px;border-right:2px solid rgba(255,255,255,.95);border-bottom:2px solid rgba(255,255,255,.95);background:${tone};"></span>`;
+  return element;
+}
+
+function GoogleMapsPane({
+  dark,
+  places,
+  activeShop,
+  userLocation,
+  wholesale,
+  exchange,
+  onSelect,
+  onUnavailable,
+  mapsConfig,
+}: {
+  dark: boolean;
+  places: CommerceShop[];
+  activeShop: CommerceShop | null;
+  userLocation: [number, number];
+  wholesale: boolean;
+  exchange: boolean;
+  onSelect: (shop: CommerceShop) => void;
+  onUnavailable?: () => void;
+  mapsConfig: PublicMapsConfig;
+}) {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const mapRef = useRef<any>(null);
+  const routeRef = useRef<any>(null);
+  const infoWindowRef = useRef<any>(null);
+  const markerRefs = useRef<any[]>([]);
+  const [ready, setReady] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const apiKey = mapsConfig.browserApiKey || "";
+  const mapId = (dark ? mapsConfig.mapIdDark || mapsConfig.mapId : mapsConfig.mapIdLight || mapsConfig.mapId) || undefined;
+  const safeUserLocation = validPosition(userLocation) ? userLocation : ABIDJAN_COCODY;
+  const safePlaces = places.filter((shop) => validPosition(shop.position));
+  const safeActiveShop = activeShop && validPosition(activeShop.position) ? activeShop : null;
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!apiKey) {
+      setLoadError("Google Maps needs a browser-restricted key. OpenStreetMap is available as fallback.");
+      return;
+    }
+    void loadGoogleMapsScript(apiKey)
+      .then(() => {
+        if (!cancelled) {
+          setReady(true);
+          setLoadError(null);
+        }
+      })
+      .catch((error: Error) => {
+        if (!cancelled) {
+          setReady(false);
+          setLoadError(error.message || "Google Maps could not load.");
+          onUnavailable?.();
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [apiKey]);
+
+  useEffect(() => {
+    if (!ready || !containerRef.current) return;
+    const timer = window.setTimeout(() => {
+      const text = containerRef.current?.innerText || "";
+      if (/didn't load Google Maps correctly|Oops! Something went wrong/i.test(text)) {
+        setReady(false);
+        setLoadError("Google Maps rejected the current browser key. OpenStreetMap is active.");
+        onUnavailable?.();
+      }
+    }, 1800);
+    return () => window.clearTimeout(timer);
+  }, [onUnavailable, ready]);
+
+  useEffect(() => {
+    if (!ready || !containerRef.current || !window.google?.maps) return;
+    const center = { lat: safeUserLocation[0], lng: safeUserLocation[1] };
+    const mapOptions: Record<string, unknown> = {
+      center,
+      zoom: 13,
+      clickableIcons: true,
+      fullscreenControl: false,
+      mapTypeControl: false,
+      streetViewControl: false,
+      gestureHandling: "greedy",
+    };
+    if (mapId) {
+      mapOptions.mapId = mapId;
+    } else {
+      mapOptions.styles = dark
+        ? [
+            { elementType: "geometry", stylers: [{ color: "#0A1628" }] },
+            { elementType: "labels.text.fill", stylers: [{ color: "#CBD5E1" }] },
+            { featureType: "road", elementType: "geometry", stylers: [{ color: "#1E293B" }] },
+            { featureType: "water", elementType: "geometry", stylers: [{ color: "#020617" }] },
+            { featureType: "poi.business", stylers: [{ visibility: "on" }] },
+          ]
+        : [
+            { elementType: "geometry", stylers: [{ color: "#F7F8FA" }] },
+            { elementType: "labels.text.fill", stylers: [{ color: "#334155" }] },
+            { featureType: "road", elementType: "geometry", stylers: [{ color: "#FFFFFF" }] },
+            { featureType: "water", elementType: "geometry", stylers: [{ color: "#D8EEF8" }] },
+            { featureType: "poi.business", stylers: [{ visibility: "on" }] },
+          ];
+    }
+    if (!mapRef.current) {
+      mapRef.current = new window.google.maps.Map(containerRef.current, mapOptions);
+      infoWindowRef.current = new window.google.maps.InfoWindow();
+    } else {
+      mapRef.current.setOptions(mapOptions);
+    }
+    window.setTimeout(() => {
+      if (!mapRef.current || !window.google?.maps) return;
+      window.google.maps.event.trigger(mapRef.current, "resize");
+      mapRef.current.setCenter(center);
+    }, 80);
+  }, [dark, mapId, ready, safeUserLocation]);
+
+  useEffect(() => {
+    if (!ready || !mapRef.current || !window.google?.maps) return;
+    const map = mapRef.current;
+    markerRefs.current.forEach((marker) => {
+      if (marker?.setMap) marker.setMap(null);
+      if ("map" in marker) marker.map = null;
+    });
+    markerRefs.current = [];
+    if (routeRef.current?.setMap) routeRef.current.setMap(null);
+
+    const activePosition = safeActiveShop?.position || safePlaces[0]?.position || safeUserLocation;
+    const routePoints = [
+      { lat: safeUserLocation[0], lng: safeUserLocation[1] },
+      { lat: activePosition[0], lng: activePosition[1] },
+    ];
+    routeRef.current = new window.google.maps.Polyline({
+      map,
+      path: routePoints,
+      strokeColor: "#F5A623",
+      strokeOpacity: 0.88,
+      strokeWeight: 4,
+      geodesic: true,
+    });
+
+    const userMarker = new window.google.maps.Marker({
+      map,
+      position: routePoints[0],
+      title: "You are here",
+      label: { text: "You", color: "#ffffff", fontWeight: "900" },
+    });
+    markerRefs.current.push(userMarker);
+
+    const canUseAdvancedMarkers = Boolean(mapId && window.google.maps.marker?.AdvancedMarkerElement);
+    safePlaces.forEach((shop) => {
+      const active = safeActiveShop?.id === shop.id;
+      const position = { lat: shop.position[0], lng: shop.position[1] };
+      const marker = canUseAdvancedMarkers
+        ? new window.google.maps.marker.AdvancedMarkerElement({
+            map,
+            position,
+            title: shop.name,
+            content: makeGoogleMarkerElement(shop, active, wholesale, exchange),
+          })
+        : new window.google.maps.Marker({
+            map,
+            position,
+            title: shop.name,
+          });
+      marker.addListener("click", () => {
+        onSelect(shop);
+        infoWindowRef.current?.setContent(`
+          <div style="width:220px;font-family:Inter,system-ui,sans-serif;">
+            <img src="${escapeHtml(shop.image)}" alt="" style="width:100%;height:92px;object-fit:cover;border-radius:12px;margin-bottom:8px;" />
+            <div style="font-weight:900;color:#0f172a;">${escapeHtml(shop.name)}</div>
+            <div style="font-size:13px;color:#64748b;">${escapeHtml(shop.category)}</div>
+            <div style="margin-top:5px;font-size:13px;font-weight:800;color:#111827;">${escapeHtml(shop.distance)} - ${escapeHtml(shop.eta)}</div>
+          </div>
+        `);
+        infoWindowRef.current?.open({ map, anchor: marker });
+      });
+      markerRefs.current.push(marker);
+    });
+
+    if (safeActiveShop) {
+      map.panTo({ lat: safeActiveShop.position[0], lng: safeActiveShop.position[1] });
+      map.setZoom(15);
+      return;
+    }
+    const bounds = new window.google.maps.LatLngBounds();
+    bounds.extend(routePoints[0]);
+    safePlaces.slice(0, 12).forEach((shop) => bounds.extend({ lat: shop.position[0], lng: shop.position[1] }));
+    if (!bounds.isEmpty()) map.fitBounds(bounds, 72);
+  }, [exchange, mapId, onSelect, ready, safeActiveShop, safePlaces, safeUserLocation, wholesale]);
+
+  return (
+    <div className="absolute inset-0 h-full min-h-[320px] w-full">
+      <div ref={containerRef} className="absolute inset-0 h-full min-h-[320px] w-full" style={{ minHeight: 320 }} />
+      {loadError ? (
+        <div className={cn("absolute bottom-4 left-4 max-w-[280px] rounded-2xl border px-3 py-2 text-xs font-semibold shadow-lg", dark ? "border-white/12 bg-[#07111F]/90 text-white/76" : "border-slate-200 bg-white/92 text-slate-700")}>
+          {loadError}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function MapFocus({ userLocation, activeShop, visiblePlaces }: { userLocation: [number, number]; activeShop: CommerceShop | null; visiblePlaces: CommerceShop[] }) {
   const map = useMap();
   useEffect(() => {
-    if (activeShop) {
-      map.flyTo(activeShop.position, 15, { duration: 0.85, easeLinearity: 0.18 });
-      return;
+    const safeUserLocation = validPosition(userLocation) ? userLocation : ABIDJAN_COCODY;
+    const safeVisiblePlaces = visiblePlaces.filter((shop) => validPosition(shop.position));
+    try {
+      const size = map.getSize();
+      if (!Number.isFinite(size.x) || !Number.isFinite(size.y) || size.x <= 0 || size.y <= 0) return;
+      if (activeShop && validPosition(activeShop.position)) {
+        map.flyTo(activeShop.position, 15, { duration: 0.85, easeLinearity: 0.18 });
+        return;
+      }
+      const bounds = L.latLngBounds([safeUserLocation, ...safeVisiblePlaces.map((shop) => shop.position)]);
+      if (bounds.isValid()) {
+        map.flyToBounds(bounds, { padding: [42, 42], maxZoom: 13, duration: 0.85, easeLinearity: 0.18 });
+        return;
+      }
+      map.setView(safeUserLocation, 13, { animate: false });
+    } catch {
+      map.setView(safeUserLocation, 13, { animate: false });
     }
-    const bounds = L.latLngBounds([userLocation, ...visiblePlaces.map((shop) => shop.position)]);
-    map.flyToBounds(bounds, { padding: [42, 42], maxZoom: 13, duration: 0.85, easeLinearity: 0.18 });
   }, [activeShop, map, userLocation, visiblePlaces]);
   return null;
 }
@@ -454,20 +835,63 @@ function MessageBubble({ message, dark, agent }: { message: ConversationMessage;
   );
 }
 
-function CategoryTile({ label, Icon, dark, onClick }: { label: string; Icon: LucideIcon; dark: boolean; onClick: () => void }) {
+function categoryHint(label: string, wholesale: boolean, exchange: boolean) {
+  const value = label.toLowerCase();
+  if (exchange) {
+    if (value.includes("export")) return "Export-ready profiles";
+    if (value.includes("revenue")) return "Sales signals";
+    if (value.includes("compliance")) return "Internal review";
+    return "Verified business stories";
+  }
+  if (wholesale) {
+    if (value.includes("quote")) return "Collect quantity and route";
+    if (value.includes("machinery")) return "Equipment and parts";
+    if (value.includes("logistics")) return "Routes and delivery";
+    return "MOQ, lead time, trust";
+  }
+  if (value.includes("breakfast")) return "Food open now";
+  if (value.includes("bread")) return "Bakeries nearby";
+  if (value.includes("coffee")) return "Cafe options";
+  if (value.includes("organic")) return "Fresh local stock";
+  if (value.includes("pharmacy")) return "Health shops";
+  if (value.includes("material")) return "Hardware nearby";
+  return "Nearby options";
+}
+
+function CategoryTile({
+  label,
+  Icon,
+  kind,
+  hint,
+  dark,
+  onClick,
+}: {
+  label: string;
+  Icon: LucideIcon;
+  kind: CategoryVisualKind;
+  hint: string;
+  dark: boolean;
+  onClick: () => void;
+}) {
   return (
     <button
       type="button"
       onClick={onClick}
       className={cn(
-        "group flex min-w-[118px] items-center gap-3 rounded-2xl border px-3 py-3 text-left transition hover:-translate-y-0.5",
-        dark ? "border-white/10 bg-white/[0.045] text-white hover:border-[#F5A623]/50" : "border-slate-200 bg-white text-slate-900 hover:border-[#F5A623]/55 hover:shadow-[0_16px_34px_rgba(15,23,42,.09)]",
+        "group grid min-w-[132px] grid-cols-[40px_minmax(0,1fr)] items-center gap-2 overflow-hidden rounded-[18px] border px-2 py-2 text-left transition hover:-translate-y-0.5 md:min-w-[152px] md:grid-cols-[50px_minmax(0,1fr)] md:rounded-[22px] md:px-3 md:py-2.5",
+        dark ? "border-white/10 bg-[linear-gradient(135deg,rgba(245,166,35,.16),rgba(255,255,255,.045))] text-white hover:border-[#F5A623]/60" : "border-slate-200 bg-[linear-gradient(135deg,#fff7e8,#ffffff_52%,#f8fafc)] text-slate-900 hover:border-[#F5A623]/65 hover:shadow-[0_18px_38px_rgba(15,23,42,.11)]",
       )}
     >
-      <span className="grid h-11 w-11 place-items-center rounded-2xl bg-[#F5A623]/16 text-[#F5A623] transition group-hover:bg-[#F5A623] group-hover:text-[#07111F]">
-        <Icon className="h-5 w-5" />
+      <span className="relative grid h-10 w-10 place-items-center rounded-[16px] bg-[#F5A623] text-[#07111F] shadow-[0_14px_30px_rgba(245,166,35,.22)] transition group-hover:scale-[1.04] md:h-[50px] md:w-[50px] md:rounded-[20px]">
+        <span className="grid h-7 w-7 place-items-center rounded-xl bg-white/22 text-[#07111F] md:h-9 md:w-9 md:rounded-2xl" dangerouslySetInnerHTML={{ __html: markerSvgForCategory(kind) }} />
+        <span className={cn("absolute -right-1 -top-1 grid h-6 w-6 place-items-center rounded-full border shadow-sm md:h-7 md:w-7", dark ? "border-[#07111F] bg-[#07111F] text-[#F5A623]" : "border-white bg-white text-[#F5A623]")}>
+          <Icon className="h-3 w-3 md:h-3.5 md:w-3.5" />
+        </span>
       </span>
-      <span className="text-sm font-black">{label}</span>
+      <span className="min-w-0">
+        <span className="block text-[11px] font-black leading-tight md:text-xs">{label}</span>
+        <span className={cn("mt-0.5 block truncate text-[10px] font-bold md:text-[11px]", dark ? "text-white/52" : "text-slate-500")}>{hint}</span>
+      </span>
     </button>
   );
 }
@@ -482,6 +906,7 @@ function LiveMapPane({
   onSelect,
   className,
   provider,
+  mapsConfig,
 }: {
   dark: boolean;
   places: CommerceShop[];
@@ -492,36 +917,59 @@ function LiveMapPane({
   onSelect: (shop: CommerceShop) => void;
   className?: string;
   provider: PublicPlacesState;
+  mapsConfig: PublicMapsConfig;
 }) {
-  const routePoints = activeShop ? [userLocation, activeShop.position] : [userLocation, places[0]?.position || userLocation];
+  const safeUserLocation = validPosition(userLocation) ? userLocation : ABIDJAN_COCODY;
+  const safePlaces = places.filter((shop) => validPosition(shop.position));
+  const safeActiveShop = activeShop && validPosition(activeShop.position) ? activeShop : null;
+  const routePoints = safeActiveShop ? [safeUserLocation, safeActiveShop.position] : [safeUserLocation, safePlaces[0]?.position || safeUserLocation];
+  const [googleRenderFailed, setGoogleRenderFailed] = useState(false);
+  useEffect(() => {
+    setGoogleRenderFailed(false);
+  }, [mapsConfig.browserApiKey, mapsConfig.provider]);
+  const googleReady = isGoogleMapReady(mapsConfig) && !googleRenderFailed;
   return (
     <section className={cn("relative overflow-hidden rounded-none border-l", dark ? "border-white/10 bg-[#07111F]" : "border-slate-200 bg-white", className)}>
-      <MapContainer center={userLocation} zoom={13} className="h-full min-h-[320px] w-full" zoomControl={false}>
-        <TileLayer
-          key={dark ? "dark" : "light"}
-          attribution="&copy; OpenStreetMap &copy; CARTO"
-          url={dark ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" : "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"}
+      {googleReady ? (
+        <GoogleMapsPane
+          dark={dark}
+          places={safePlaces}
+          activeShop={safeActiveShop}
+          userLocation={safeUserLocation}
+          wholesale={wholesale}
+          exchange={exchange}
+          onSelect={onSelect}
+          onUnavailable={() => setGoogleRenderFailed(true)}
+          mapsConfig={mapsConfig}
         />
-        <MapFocus userLocation={userLocation} activeShop={activeShop} visiblePlaces={places} />
-        <Polyline positions={routePoints} pathOptions={{ color: "#F5A623", weight: 7, opacity: 0.18 }} />
-        <Polyline positions={routePoints} pathOptions={{ color: "#F5A623", weight: 3, opacity: 0.85, dashArray: "14 14" }} />
-        <Marker position={userLocation} icon={makeUserIcon()} />
-        {places.map((shop) => {
-          const active = activeShop?.id === shop.id;
-          return (
-            <Marker key={`${shop.id}-${active}-${dark}`} position={shop.position} icon={makePinIcon(shop, active, dark, wholesale, exchange)} eventHandlers={{ click: () => onSelect(shop) }}>
-              <Popup>
-                <div className="w-[220px]">
-                  <img src={shop.image} alt="" className="mb-2 h-24 w-full rounded-lg object-cover" />
-                  <div className="font-black">{shop.name}</div>
-                  <div className="text-sm text-slate-500">{shop.category}</div>
-                  <div className="mt-1 text-sm font-semibold">{shop.distance} - {shop.eta}</div>
-                </div>
-              </Popup>
-            </Marker>
-          );
-        })}
-      </MapContainer>
+      ) : (
+        <MapContainer center={safeUserLocation} zoom={13} className="h-full min-h-[320px] w-full" zoomControl={false}>
+          <TileLayer
+            key={dark ? "dark" : "light"}
+            attribution="&copy; OpenStreetMap &copy; CARTO"
+            url={dark ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" : "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"}
+          />
+          <MapFocus userLocation={safeUserLocation} activeShop={safeActiveShop} visiblePlaces={safePlaces} />
+          <Polyline positions={routePoints} pathOptions={{ color: "#F5A623", weight: 7, opacity: 0.18 }} />
+          <Polyline positions={routePoints} pathOptions={{ color: "#F5A623", weight: 3, opacity: 0.85, dashArray: "14 14" }} />
+          <Marker position={safeUserLocation} icon={makeUserIcon()} />
+          {safePlaces.map((shop) => {
+            const active = safeActiveShop?.id === shop.id;
+            return (
+              <Marker key={`${shop.id}-${active}-${dark}`} position={shop.position} icon={makePinIcon(shop, active, dark, wholesale, exchange)} eventHandlers={{ click: () => onSelect(shop) }}>
+                <Popup>
+                  <div className="w-[220px]">
+                    <img src={shop.image} alt="" className="mb-2 h-24 w-full rounded-lg object-cover" />
+                    <div className="font-black">{shop.name}</div>
+                    <div className="text-sm text-slate-500">{shop.category}</div>
+                    <div className="mt-1 text-sm font-semibold">{shop.distance} - {shop.eta}</div>
+                  </div>
+                </Popup>
+              </Marker>
+            );
+          })}
+        </MapContainer>
+      )}
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_25%,transparent_0,transparent_42%,rgba(245,166,35,.06)_70%,rgba(7,17,31,.16)_100%)]" />
       <div className={cn("absolute left-4 right-4 top-4 rounded-2xl border p-3 backdrop-blur-xl", dark ? "border-white/12 bg-[#07111F]/78 text-white" : "border-white/90 bg-white/88 text-slate-950 shadow-[0_16px_36px_rgba(15,23,42,.12)]")}>
         <div className="flex items-center justify-between gap-3">
@@ -531,7 +979,16 @@ function LiveMapPane({
           </div>
           <Navigation className="h-5 w-5 text-[#F5A623]" />
         </div>
+        <div className="mt-2 flex flex-wrap gap-2">
+          <div className={cn("inline-flex rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em]", googleReady ? "bg-emerald-500/14 text-emerald-600" : "bg-[#F5A623]/16 text-[#9a5f00]")}>
+            {googleReady ? "Google Maps renderer" : "OpenStreetMap renderer"}
+          </div>
+          <div className={cn("inline-flex rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em]", provider.provider === "google" ? "bg-emerald-500/14 text-emerald-600" : "bg-slate-500/12 text-slate-600")}>
+            {provider.provider === "google" ? "Google Places data" : "Curated business data"}
+          </div>
+        </div>
         <div className={cn("mt-2 text-xs font-semibold", dark ? "text-white/60" : "text-slate-600")}>{provider.label}</div>
+        <div className={cn("mt-1 line-clamp-2 text-[11px] leading-snug", dark ? "text-white/45" : "text-slate-500")}>{provider.detail}</div>
       </div>
     </section>
   );
@@ -550,9 +1007,11 @@ export function ExportunityNeighbourhoodCommerce({
   });
   const [space, setSpace] = useState<ConversationSpace>(initialSpace);
   const [activeShop, setActiveShop] = useState<CommerceShop | null>(null);
+  const [activeProductDetail, setActiveProductDetail] = useState<ShopProduct | null>(null);
   const [userLocation, setUserLocation] = useState<[number, number]>(ABIDJAN_COCODY);
   const [input, setInput] = useState("");
   const [voiceState, setVoiceState] = useState<"idle" | "listening" | "unavailable">("idle");
+  const [assistantCollapsed, setAssistantCollapsed] = useState(() => shellMode === "mapDominant" && initialSpace === "city");
   const [messages, setMessages] = useState<ConversationMessage[]>([
     { id: "hello", agentId: "tassi", content: "Hello, I'm Tassi. What are you looking for around you today?", createdAt: "now", agentSnapshot: tassi },
     { id: "options", agentId: "tassi", content: "You can start with breakfast, fresh bread, coffee, building materials, delivery, or wholesale suppliers.", createdAt: "now", agentSnapshot: tassi },
@@ -560,8 +1019,17 @@ export function ExportunityNeighbourhoodCommerce({
   const [orderDrafts, setOrderDrafts] = useState<Record<string, Record<string, OrderLine>>>({});
   const [placesStatus, setPlacesStatus] = useState<PublicPlacesState>({
     provider: "curated",
-    label: "Curated Abidjan data",
-    detail: "Google Places can replace or enrich this when configured.",
+    label: "OpenStreetMap + curated city data",
+    detail: "Google Maps and Google Places can replace or enrich this when configured.",
+  });
+  const [mapsConfig, setMapsConfig] = useState<PublicMapsConfig>({
+    provider: "leaflet",
+    enabled: false,
+    browserApiKey: null,
+    mapRenderer: "leaflet_openstreetmap",
+    businessDataProvider: "curated_city_data",
+    placesImportEnabled: false,
+    message: "OpenStreetMap is active until a browser-restricted Google Maps key is configured.",
   });
   const [videoOpen, setVideoOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -596,13 +1064,13 @@ export function ExportunityNeighbourhoodCommerce({
   const visiblePlaces = useMemo(() => placePool.slice(0, mapDominant ? 18 : wholesale || exchange ? 12 : 10), [exchange, mapDominant, placePool, wholesale]);
   const selectedProducts = useMemo(() => (activeShop ? productsForShop(activeShop) : []), [activeShop]);
   const activeShopImage = activeShop ? selectedProducts[0]?.image || activeShop.image : undefined;
-  const heroImage = activeShopImage || (visiblePlaces[0] ? productsForShop(visiblePlaces[0])[0]?.image || visiblePlaces[0].image : undefined);
   const orderDraft = activeShop ? orderDrafts[activeShop.id] || {} : {};
   const orderLines = Object.values(orderDraft);
   const subtotal = orderLines.reduce((sum, line) => sum + line.product.priceCfa * line.quantity, 0);
   const visibleAgent = shopMode && activeShop ? activeShop.frontDesk : business ? businessAgents[0] : wholesale ? supplierAgent : tassi;
   const quickReplies = shopMode ? shopQuickReplies : business ? businessQuickReplies : exchange ? exchangeQuickReplies : wholesale ? wholesaleQuickReplies : cityQuickReplies;
   const showRightMap = !shopMode && !business;
+  const googleMapReady = isGoogleMapReady(mapsConfig);
 
   useEffect(() => {
     window.localStorage.setItem("exportunity-map-theme", themeMode);
@@ -611,15 +1079,60 @@ export function ExportunityNeighbourhoodCommerce({
   useEffect(() => {
     setSpace(initialSpace);
     setActiveShop(null);
-  }, [initialSpace]);
+    setActiveProductDetail(null);
+    setAssistantCollapsed(shellMode === "mapDominant" && initialSpace === "city");
+  }, [initialSpace, shellMode]);
 
   useEffect(() => {
     if (!navigator.geolocation) return;
     navigator.geolocation.getCurrentPosition(
-      (position) => setUserLocation([position.coords.latitude, position.coords.longitude]),
+      (position) => {
+        const nextLocation: [number, number] = [position.coords.latitude, position.coords.longitude];
+        if (validPosition(nextLocation)) setUserLocation(nextLocation);
+      },
       () => undefined,
       { enableHighAccuracy: false, timeout: 4000, maximumAge: 1000 * 60 * 10 },
     );
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadMapsConfig() {
+      try {
+        const response = await fetch("/api/maps/public-config");
+        const body = (await response.json()) as PublicMapsConfig;
+        if (cancelled) return;
+        setMapsConfig({
+          provider: body?.provider === "google" ? "google" : "leaflet",
+          enabled: Boolean(body?.enabled),
+          browserApiKey: body?.browserApiKey || null,
+          mapRenderer: body?.mapRenderer,
+          businessDataProvider: body?.businessDataProvider,
+          placesImportEnabled: Boolean(body?.placesImportEnabled),
+          mapId: body?.mapId || body?.mapIdLight || null,
+          mapIdLight: body?.mapIdLight || body?.mapId || null,
+          mapIdDark: body?.mapIdDark || body?.mapId || body?.mapIdLight || null,
+          google: body?.google,
+          message: body?.message,
+        });
+      } catch {
+        if (!cancelled) {
+          setMapsConfig({
+            provider: "leaflet",
+            enabled: false,
+            browserApiKey: null,
+            mapRenderer: "leaflet_openstreetmap",
+            businessDataProvider: "curated_city_data",
+            placesImportEnabled: false,
+            message: "Google Maps configuration could not be read. OpenStreetMap is active.",
+          });
+        }
+      }
+    }
+    void loadMapsConfig();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -641,16 +1154,16 @@ export function ExportunityNeighbourhoodCommerce({
         } else {
           setPlacesStatus({
             provider: "curated",
-            label: "Curated Abidjan data",
-            detail: body?.message || "Google Places is not configured yet. Seeded city data is active.",
+            label: "OpenStreetMap + curated city data",
+            detail: body?.message || "Google Places is not configured yet. Leaflet/OpenStreetMap and seeded city data are active.",
           });
         }
       } catch {
         if (!cancelled) {
           setPlacesStatus({
             provider: "curated",
-            label: "Curated Abidjan data",
-            detail: "Google Places endpoint is not available in this build. Seeded city data is active.",
+            label: "OpenStreetMap + curated city data",
+            detail: "Google Places endpoint is not available in this build. Leaflet/OpenStreetMap and seeded city data are active.",
           });
         }
       }
@@ -688,6 +1201,8 @@ export function ExportunityNeighbourhoodCommerce({
   const openSpace = (nextSpace: ConversationSpace) => {
     setSpace(nextSpace);
     setActiveShop(null);
+    setActiveProductDetail(null);
+    setAssistantCollapsed(false);
     if (nextSpace === "wholesale") onNavigate?.("/wholesale");
     if (nextSpace === "exchange") onNavigate?.("/pme-exchange");
     if (nextSpace === "city") onNavigate?.("/marketplace");
@@ -695,12 +1210,15 @@ export function ExportunityNeighbourhoodCommerce({
 
   const previewShop = (shop: CommerceShop) => {
     setActiveShop(shop);
+    setActiveProductDetail(null);
     if (space === "shop") setSpace(wholesale ? "wholesale" : exchange ? "exchange" : "city");
   };
 
   const enterShop = (shop: CommerceShop) => {
     setActiveShop(shop);
     setSpace("shop");
+    setAssistantCollapsed(true);
+    setActiveProductDetail(null);
     if (!orderDrafts[shop.id]) {
       setOrderDrafts((current) => ({ ...current, [shop.id]: current[shop.id] || {} }));
     }
@@ -708,7 +1226,7 @@ export function ExportunityNeighbourhoodCommerce({
       agentId: shop.frontDesk.id,
       agentSnapshot: shop.frontDesk,
       shopId: shop.id,
-      content: `Welcome to ${shop.name}. I'm ${shop.frontDesk.name}, the shop Front Desk. Products are ready here; select what you want and I will help with availability, payment, and delivery.`,
+      content: `Welcome to ${shop.name}. I'm ${shop.frontDesk.name}. The products are open in front of you; pick quantities and I will help with freshness, substitutions, payment, and delivery only when needed.`,
     });
   };
 
@@ -722,6 +1240,34 @@ export function ExportunityNeighbourhoodCommerce({
       if (Object.keys(shopDraft).length) next[shop.id] = shopDraft;
       else delete next[shop.id];
       return next;
+    });
+  };
+
+  const quickAddProduct = (shop: CommerceShop, product?: ShopProduct) => {
+    if (!product) {
+      enterShop(shop);
+      replyFrom(shop.frontDesk, "I opened the shop for you. Choose a product and I will help confirm the order.", shop);
+      return;
+    }
+    setActiveShop(shop);
+    setSpace("shop");
+    setAssistantCollapsed(true);
+    setOrderDrafts((current) => {
+      const next = { ...current };
+      const shopDraft = { ...(current[shop.id] || {}) };
+      const currentQuantity = shopDraft[product.id]?.quantity || 0;
+      shopDraft[product.id] = {
+        product,
+        quantity: Math.min(product.quantityAvailable, currentQuantity + 1),
+      };
+      next[shop.id] = shopDraft;
+      return next;
+    });
+    pushMessage({
+      agentId: shop.frontDesk.id,
+      agentSnapshot: shop.frontDesk,
+      shopId: shop.id,
+      content: `${product.name} is in your order at ${shop.name}. You can adjust quantity, add more products, ask me a question, or confirm from the order panel.`,
     });
   };
 
@@ -749,6 +1295,14 @@ export function ExportunityNeighbourhoodCommerce({
     pushMessage({ agentId: "user", content: text, shopId: shopMode && activeShop ? activeShop.id : undefined });
 
     if (shopMode && activeShop) {
+      if (lower.includes("availability") || lower.includes("available") || lower.includes("stock") || lower.includes("check")) {
+        const product =
+          activeProductDetail ||
+          selectedProducts.find((item) => lower.includes(item.name.toLowerCase().slice(0, 6))) ||
+          selectedProducts[0];
+        replyFrom(activeShop.frontDesk, `${product?.name || "This item"} is available at ${activeShop.name}. Select the quantity you want, then confirm from the order panel.`, activeShop);
+        return;
+      }
       if (lower.includes("deliver")) {
         replyFrom(deliveryAgent, `${activeShop.name} can deliver around Cocody. Route estimate: ${activeShop.eta}.`, activeShop);
         return;
@@ -792,7 +1346,7 @@ export function ExportunityNeighbourhoodCommerce({
         ? retailShops.find((shop) => /hardware|building/i.test(shop.category))
         : retailShops[0];
     if (target) setActiveShop(target);
-    replyFrom(tassi, "I found nearby products and shops. Pick a product in the center, or tap a shop to preview and enter it.");
+    replyFrom(tassi, "I found nearby products and shops. Tap a product or shop to enter, choose items, and place an order. The shop agent helps only when you need it.");
   };
 
   const handleQuickReply = (reply: string) => {
@@ -837,6 +1391,14 @@ export function ExportunityNeighbourhoodCommerce({
     replyFrom(tassi, "I attached the image to this conversation and highlighted nearby shops that can help match it.");
   };
 
+  const selectPlaceFromMap = (shop: CommerceShop) => {
+    if (!wholesale && !exchange) {
+      enterShop(shop);
+      return;
+    }
+    previewShop(shop);
+  };
+
   const conversationMessages = shopMode && activeShop
     ? messages.filter((message) => message.shopId === activeShop.id || message.agentId === activeShop.frontDesk.id || message.agentId === "user").slice(-8)
     : messages.slice(-8);
@@ -850,13 +1412,40 @@ export function ExportunityNeighbourhoodCommerce({
   };
 
   const commerceProducts = visiblePlaces.flatMap((shop) => productsForShop(shop).slice(0, 2).map((product) => ({ shop, product }))).slice(0, wholesale ? 8 : 12);
+  const mapShelfProducts = commerceProducts.slice(0, 4);
+  const modeTabs: Array<{ label: string; eyebrow: string; description: string; Icon: LucideIcon; active: boolean; onClick: () => void }> = [
+    {
+      label: "Retail products",
+      eyebrow: "Retail",
+      description: "Nearby shops, prices, delivery, and product shelves.",
+      Icon: Store,
+      active: !wholesale && !exchange,
+      onClick: () => openSpace("city"),
+    },
+    {
+      label: "Wholesale",
+      eyebrow: "Bulk quote",
+      description: "Suppliers, MOQ, lead time, and approval-gated outreach.",
+      Icon: Warehouse,
+      active: wholesale,
+      onClick: () => openSpace("wholesale"),
+    },
+    {
+      label: "PME Exchange",
+      eyebrow: "Verified sellers",
+      description: "Products, owners, trust proof, and compliance status.",
+      Icon: BriefcaseBusiness,
+      active: exchange,
+      onClick: () => openSpace("exchange"),
+    },
+  ];
   const categoryTiles = exchange
     ? [
+        ["Export-ready products", Package],
+        ["Food sellers", Utensils],
+        ["Fashion sellers", Shirt],
         ["Verified SMEs", BriefcaseBusiness],
-        ["Food", Utensils],
-        ["Fashion", Shirt],
-        ["Revenue signals", FileText],
-        ["Export-ready", Package],
+        ["Compliance review", FileText],
       ]
     : wholesale
       ? [
@@ -875,8 +1464,59 @@ export function ExportunityNeighbourhoodCommerce({
           ["Materials", Hammer],
         ];
 
+  const assistantRailActions: Array<{ label: string; Icon: LucideIcon; onClick: () => void }> = [
+    { label: "Retail", Icon: Store, onClick: () => openSpace("city") },
+    { label: "Wholesale", Icon: Warehouse, onClick: () => openSpace("wholesale") },
+    { label: "Export", Icon: BriefcaseBusiness, onClick: () => openSpace("exchange") },
+    { label: "Voice", Icon: Mic, onClick: startVoice },
+    { label: "Photo", Icon: Camera, onClick: () => fileInputRef.current?.click() },
+  ];
+
+  const shellGridClass = mapDominant
+    ? assistantCollapsed
+      ? "lg:grid-cols-[minmax(0,1fr)_72px]"
+      : "lg:grid-cols-[minmax(0,1fr)_280px] xl:grid-cols-[minmax(0,1fr)_300px]"
+    : showRightMap
+      ? assistantCollapsed
+        ? "lg:grid-cols-[72px_minmax(0,1fr)_320px] xl:grid-cols-[72px_minmax(0,1fr)_360px] 2xl:grid-cols-[72px_minmax(0,1fr)_390px]"
+        : "lg:grid-cols-[292px_minmax(0,1fr)_320px] xl:grid-cols-[304px_minmax(0,1fr)_360px] 2xl:grid-cols-[316px_minmax(0,1fr)_390px]"
+      : assistantCollapsed
+        ? "lg:grid-cols-[72px_minmax(0,1fr)] xl:grid-cols-[72px_minmax(0,1fr)]"
+        : "lg:grid-cols-[292px_minmax(0,1fr)] xl:grid-cols-[304px_minmax(0,1fr)]";
+
   const assistantPane = (
-    <aside className={cn("flex min-h-0 flex-col border-r", dark ? "border-white/10 bg-[#07111F] text-white" : "border-slate-200 bg-white text-slate-950")}>
+    <aside className={cn("hidden min-h-0 flex-col lg:flex", mapDominant ? "border-l" : "border-r", assistantCollapsed && "items-center", dark ? "border-white/10 bg-[#07111F] text-white" : "border-slate-200 bg-white text-slate-950")}>
+      {assistantCollapsed ? (
+        <div className="flex h-full w-full flex-col items-center gap-3 p-3">
+          <button
+            type="button"
+            onClick={() => setAssistantCollapsed(false)}
+            className={cn("grid h-11 w-11 place-items-center rounded-2xl border", dark ? "border-white/12 bg-white/[0.05] text-white hover:bg-white/10" : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50")}
+            aria-label="Expand Tassi command pane"
+          >
+            <MessageCircle className="h-5 w-5" />
+          </button>
+          <AgentAvatar agent={visibleAgent} size="md" />
+          {assistantRailActions.map(({ Icon: RailIcon, label, onClick }) => {
+            return (
+              <button
+                key={label}
+                type="button"
+                onClick={onClick}
+                className={cn("grid h-11 w-11 place-items-center rounded-2xl border transition hover:-translate-y-0.5", dark ? "border-white/12 bg-white/[0.04] text-white/70 hover:border-[#F5A623]/60 hover:text-white" : "border-slate-200 bg-white text-slate-600 hover:border-[#F5A623]/60 hover:text-slate-950")}
+                title={label}
+                aria-label={label}
+              >
+                <RailIcon className="h-5 w-5" />
+              </button>
+            );
+          })}
+          <div className="mt-auto [writing-mode:vertical-rl] rotate-180 text-[10px] font-black uppercase tracking-[0.22em] text-[#F5A623]">
+            {visibleAgent.name}
+          </div>
+        </div>
+      ) : (
+        <>
       <div className="border-b border-current/10 p-4">
         <div className="flex items-center gap-3">
           <AgentAvatar agent={visibleAgent} size="lg" />
@@ -887,17 +1527,25 @@ export function ExportunityNeighbourhoodCommerce({
             </div>
           </div>
           <span className="ml-auto rounded-full bg-emerald-500/12 px-2 py-1 text-[11px] font-black text-emerald-600">Online</span>
+          <button
+            type="button"
+            onClick={() => setAssistantCollapsed(true)}
+            className={cn("grid h-9 w-9 place-items-center rounded-full border", dark ? "border-white/12 text-white/62 hover:bg-white/8" : "border-slate-200 text-slate-600 hover:bg-slate-50")}
+            aria-label="Collapse command pane"
+          >
+            <ChevronDown className="h-4 w-4 rotate-90" />
+          </button>
         </div>
         <div className={cn("mt-4 rounded-2xl border p-3 text-sm leading-relaxed", dark ? "border-white/10 bg-white/[0.045] text-white/76" : "border-slate-200 bg-slate-50 text-slate-650")}>
           {shopMode && activeShop
-            ? `${visibleAgent.name} is guiding this shop. Pick products in the center and use chat only when you need help.`
+            ? `${visibleAgent.name} works for this shop. The shelf and order panel are the main flow; use this chat only for stock, substitutions, wallet, delivery, or live preview.`
             : business
               ? "Run the business by talking to your agents. They report issues, create actions, and coordinate the shop."
               : wholesale
                 ? "Find suppliers, request quotes, and keep outreach approval-gated."
                 : exchange
-                  ? "Discover verified PME profiles. Investment stays hidden until compliance approval."
-                  : "Use Tassi to search faster. Products and shops stay in the center so buying remains clear."}
+                  ? "Review PME sellers, products, trust proof, and compliance status. Finance stays internal-review only."
+                  : "Tassi helps you find products faster. The center stays focused on products, shops, prices, and delivery."}
         </div>
       </div>
 
@@ -925,62 +1573,104 @@ export function ExportunityNeighbourhoodCommerce({
             event.preventDefault();
             handleAsk(input);
           }}
-          className={cn("flex items-center gap-2 rounded-3xl border-2 p-2", dark ? "border-[#F5A623]/34 bg-[#05070B]" : "border-[#F5A623]/55 bg-white")}
+          className={cn("space-y-2 rounded-3xl border-2 p-2.5", dark ? "border-[#F5A623]/34 bg-[#05070B]" : "border-[#F5A623]/55 bg-white shadow-[0_10px_24px_rgba(245,166,35,.12)]")}
         >
-          <button type="button" onClick={() => fileInputRef.current?.click()} className={cn("grid h-10 w-10 shrink-0 place-items-center rounded-full", dark ? "text-white hover:bg-white/10" : "text-slate-700 hover:bg-slate-100")} aria-label="Attach file">
-            <Paperclip className="h-5 w-5" />
-          </button>
           <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={(event) => handlePhoto(event.target.files?.[0])} />
-          <input
-            value={input}
-            onChange={(event) => setInput(event.target.value)}
-            placeholder={shopMode ? `Message ${visibleAgent.name}...` : "Ask Tassi anything around you..."}
-            className={cn("min-w-0 flex-1 bg-transparent px-1 text-sm font-semibold outline-none placeholder:text-current/46", dark ? "text-white" : "text-slate-950")}
-          />
-          <button type="button" onClick={startVoice} className={cn("grid h-10 w-10 shrink-0 place-items-center rounded-full", voiceState === "listening" ? "bg-red-500 text-white" : dark ? "text-white hover:bg-white/10" : "text-slate-700 hover:bg-slate-100")} aria-label="Tap to speak">
-            {voiceState === "listening" ? <Square className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
-          </button>
-          <button type="button" onClick={() => fileInputRef.current?.click()} className={cn("grid h-10 w-10 shrink-0 place-items-center rounded-full", dark ? "text-white hover:bg-white/10" : "text-slate-700 hover:bg-slate-100")} aria-label="Photo search">
-            <Camera className="h-5 w-5" />
-          </button>
-          <button type="submit" className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#F5A623] text-[#07111F]" aria-label={`Send to ${visibleAgent.name}`}>
-            <Send className="h-5 w-5" />
-          </button>
+          <div className={cn("flex items-center gap-2 rounded-2xl px-3 py-2.5", dark ? "bg-white/[0.055]" : "bg-slate-50")}>
+            <Search className={cn("h-4 w-4 shrink-0", dark ? "text-white/48" : "text-slate-400")} />
+            <input
+              value={input}
+              onChange={(event) => setInput(event.target.value)}
+              placeholder={shopMode ? `Ask ${visibleAgent.name} about this shop...` : "Find products near me..."}
+              className={cn("min-w-0 flex-1 bg-transparent text-sm font-semibold outline-none placeholder:text-current/50", dark ? "text-white" : "text-slate-950")}
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <button type="button" onClick={() => fileInputRef.current?.click()} className={cn("grid h-9 w-9 shrink-0 place-items-center rounded-full", dark ? "text-white hover:bg-white/10" : "text-slate-700 hover:bg-slate-100")} aria-label="Attach file">
+              <Paperclip className="h-4 w-4" />
+            </button>
+            <button type="button" onClick={startVoice} className={cn("grid h-9 w-9 shrink-0 place-items-center rounded-full", voiceState === "listening" ? "bg-red-500 text-white" : dark ? "text-white hover:bg-white/10" : "text-slate-700 hover:bg-slate-100")} aria-label="Tap to speak">
+              {voiceState === "listening" ? <Square className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+            </button>
+            <button type="button" onClick={() => fileInputRef.current?.click()} className={cn("grid h-9 w-9 shrink-0 place-items-center rounded-full", dark ? "text-white hover:bg-white/10" : "text-slate-700 hover:bg-slate-100")} aria-label="Photo search">
+              <Camera className="h-4 w-4" />
+            </button>
+            <button type="submit" className="ml-auto inline-flex h-9 items-center gap-2 rounded-full bg-[#F5A623] px-4 text-sm font-black text-[#07111F]" aria-label={`Send to ${visibleAgent.name}`}>
+              <span>Send</span>
+              <Send className="h-4 w-4" />
+            </button>
+          </div>
         </form>
         {voiceState === "listening" || voiceState === "unavailable" ? (
           <div className={cn("mt-2 text-xs font-bold", voiceState === "listening" ? "text-red-500" : dark ? "text-white/58" : "text-slate-500")}>{voiceState === "listening" ? "Listening..." : "Voice is unavailable in this browser."}</div>
         ) : null}
       </div>
+        </>
+      )}
     </aside>
   );
 
+  const mobileComposer = (
+    <div className={cn("fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+10px)] z-50 rounded-[26px] border p-1.5 lg:hidden", dark ? "border-white/10 bg-[#07111F]/96 text-white shadow-[0_-18px_44px_rgba(0,0,0,.32)]" : "border-[#F5A623]/45 bg-white/96 text-slate-950 shadow-[0_-18px_44px_rgba(15,23,42,.16)]")}>
+      <form
+        onSubmit={(event) => {
+          event.preventDefault();
+          handleAsk(input);
+        }}
+        className={cn("flex items-center gap-1.5 rounded-3xl border-2 p-1.5", dark ? "border-[#F5A623]/34 bg-[#05070B]" : "border-[#F5A623]/55 bg-white")}
+      >
+        <button type="button" onClick={() => fileInputRef.current?.click()} className={cn("grid h-9 w-9 shrink-0 place-items-center rounded-full", dark ? "text-white hover:bg-white/10" : "text-slate-700 hover:bg-slate-100")} aria-label="Attach product photo">
+          <Paperclip className="h-5 w-5" />
+        </button>
+        <input
+          value={input}
+          onChange={(event) => setInput(event.target.value)}
+          placeholder={shopMode ? `Ask ${visibleAgent.name} about this shop...` : "Ask Tassi to find products..."}
+          className={cn("min-w-0 flex-1 bg-transparent px-1 text-sm font-semibold outline-none placeholder:text-current/46", dark ? "text-white" : "text-slate-950")}
+        />
+        <button type="button" onClick={startVoice} className={cn("grid h-9 w-9 shrink-0 place-items-center rounded-full", voiceState === "listening" ? "bg-red-500 text-white" : dark ? "text-white hover:bg-white/10" : "text-slate-700 hover:bg-slate-100")} aria-label="Tap to speak">
+          {voiceState === "listening" ? <Square className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+        </button>
+        <button type="button" onClick={() => fileInputRef.current?.click()} className={cn("grid h-9 w-9 shrink-0 place-items-center rounded-full", dark ? "text-white hover:bg-white/10" : "text-slate-700 hover:bg-slate-100")} aria-label="Photo search">
+          <Camera className="h-5 w-5" />
+        </button>
+        <button type="submit" className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[#F5A623] text-[#07111F]" aria-label={`Send to ${visibleAgent.name}`}>
+          <Send className="h-5 w-5" />
+        </button>
+      </form>
+      {voiceState === "listening" || voiceState === "unavailable" ? (
+        <div className={cn("mt-2 text-xs font-bold", voiceState === "listening" ? "text-red-500" : dark ? "text-white/58" : "text-slate-500")}>{voiceState === "listening" ? "Listening..." : "Voice is unavailable in this browser."}</div>
+      ) : null}
+    </div>
+  );
+
   const shopCenter = shopMode && activeShop ? (
-    <main className={cn("min-h-0 overflow-auto", dark ? "bg-[#05070B]" : "bg-[#F7F8FA]")}>
-      <div className="p-4 md:p-6">
-        <button type="button" onClick={() => setSpace(wholesale ? "wholesale" : exchange ? "exchange" : "city")} className={cn("mb-4 inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-black", dark ? "border-white/12 text-white/72 hover:bg-white/8" : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50")}>
+    <main className={cn("min-h-0 overflow-auto pb-28 lg:pb-0", dark ? "bg-[#05070B]" : "bg-[#F7F8FA]")}>
+      <div className="p-3 md:p-6">
+        <button type="button" onClick={() => setSpace(wholesale ? "wholesale" : exchange ? "exchange" : "city")} className={cn("mb-3 inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-black md:mb-4", dark ? "border-white/12 text-white/72 hover:bg-white/8" : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50")}>
           <ArrowLeft className="h-4 w-4" /> Back to discovery
         </button>
-        <section className={cn("overflow-hidden rounded-[28px] border", dark ? "border-white/12 bg-[#07111F] text-white" : "border-slate-200 bg-white text-slate-950 shadow-[0_18px_46px_rgba(15,23,42,.08)]")}>
+        <section className={cn("overflow-hidden rounded-[24px] border md:rounded-[28px]", dark ? "border-white/12 bg-[#07111F] text-white" : "border-slate-200 bg-white text-slate-950 shadow-[0_18px_46px_rgba(15,23,42,.08)]")}>
           <div className="grid gap-0 xl:grid-cols-[minmax(0,1fr)_310px]">
             <div className="min-w-0">
-              <div className="relative h-56 overflow-hidden">
+              <div className="relative h-40 overflow-hidden md:h-56">
                 <img src={activeShopImage || activeShop.image} alt="" className="h-full w-full object-cover" />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
-                <div className="absolute bottom-5 left-5 right-5 text-white">
-                  <div className="mb-3 inline-flex rounded-full bg-[#F5A623] px-3 py-1 text-[11px] font-black uppercase tracking-wide text-[#07111F]">Inside shop</div>
-                  <h1 className="text-3xl font-black">{activeShop.name}</h1>
-                  <p className="mt-1 text-sm font-semibold text-white/78">{activeShop.category} - {activeShop.openLabel} - {activeShop.distance} - {activeShop.eta}</p>
+                <div className="absolute bottom-4 left-4 right-4 text-white md:bottom-5 md:left-5 md:right-5">
+                  <div className="mb-2 inline-flex rounded-full bg-[#F5A623] px-3 py-1 text-[10px] font-black uppercase tracking-wide text-[#07111F] md:mb-3 md:text-[11px]">Products inside shop</div>
+                  <h1 className="text-2xl font-black md:text-3xl">{activeShop.name}</h1>
+                  <p className="mt-0.5 text-xs font-semibold text-white/78 md:mt-1 md:text-sm">{activeShop.category} - {activeShop.openLabel} - {activeShop.distance} - {activeShop.eta}</p>
                 </div>
               </div>
-              <div className="p-5">
-                <div className="grid gap-4 md:grid-cols-[1fr_220px]">
+              <div className="p-4 md:p-5">
+                <div className="grid gap-3 md:grid-cols-[1fr_220px] md:gap-4">
                   <div>
-                    <h2 className="text-xl font-black">Products available now</h2>
-                    <p className={cn("mt-1 text-sm", dark ? "text-white/62" : "text-slate-600")}>
-                      Pick quantities first. {activeShop.frontDesk.name} is available for questions, substitutions, payment, and delivery.
+                    <h2 className="text-lg font-black md:text-xl">Choose products</h2>
+                    <p className={cn("mt-1 text-xs leading-relaxed md:text-sm", dark ? "text-white/62" : "text-slate-600")}>
+                      Pick quantities, then confirm from the order panel. {activeShop.frontDesk.name} is here for availability, substitutions, payment, and delivery.
                     </p>
                   </div>
-                  <div className={cn("rounded-2xl border p-3", dark ? "border-white/10 bg-white/[0.04]" : "border-slate-200 bg-slate-50")}>
+                  <div className={cn("rounded-2xl border p-2.5 md:p-3", dark ? "border-white/10 bg-white/[0.04]" : "border-slate-200 bg-slate-50")}>
                     <div className="flex items-center gap-3">
                       <AgentAvatar agent={activeShop.frontDesk} />
                       <div>
@@ -990,31 +1680,33 @@ export function ExportunityNeighbourhoodCommerce({
                     </div>
                   </div>
                 </div>
-                <div className="mt-5 grid gap-4 sm:grid-cols-2 2xl:grid-cols-3">
+                <div className="mt-4 grid gap-3 sm:grid-cols-2 md:mt-5 md:gap-4 2xl:grid-cols-3">
                   {selectedProducts.map((product) => {
                     const quantity = orderDraft[product.id]?.quantity || 0;
                     return (
-                      <article key={product.id} className={cn("overflow-hidden rounded-2xl border", dark ? "border-white/12 bg-white/[0.04]" : "border-slate-200 bg-white")}>
-                        <img src={product.image} alt={product.name} className="h-36 w-full object-cover" />
-                        <div className="p-4">
-                          <div className="flex items-start justify-between gap-3">
+                      <article key={product.id} className={cn("overflow-hidden rounded-2xl border transition hover:-translate-y-0.5", dark ? "border-white/12 bg-white/[0.04] hover:border-[#F5A623]/45" : "border-slate-200 bg-white hover:border-[#F5A623]/45 hover:shadow-[0_18px_44px_rgba(15,23,42,.08)]")}>
+                        <button type="button" onClick={() => setActiveProductDetail(product)} className="block w-full text-left" aria-label={`View ${product.name}`}>
+                          <img src={product.image} alt={product.name} className="h-24 w-full object-cover md:h-36" />
+                        </button>
+                        <div className="p-3 md:p-4">
+                          <button type="button" onClick={() => setActiveProductDetail(product)} className="flex w-full items-start justify-between gap-3 text-left" aria-label={`Open ${product.name} details`}>
                             <div className="min-w-0">
-                              <h3 className="truncate text-base font-black">{product.name}</h3>
-                              <p className={cn("mt-1 line-clamp-2 text-xs leading-relaxed", dark ? "text-white/58" : "text-slate-600")}>{product.description}</p>
+                              <h3 className="truncate text-sm font-black md:text-base">{product.name}</h3>
+                              <p className={cn("mt-0.5 line-clamp-1 text-[11px] leading-relaxed md:mt-1 md:line-clamp-2 md:text-xs", dark ? "text-white/58" : "text-slate-600")}>{product.description}</p>
                             </div>
-                            <span className="shrink-0 text-sm font-black text-[#F5A623]">{formatMoney(product.priceCfa)}</span>
-                          </div>
-                          <div className={cn("mt-3 flex items-center justify-between text-xs", dark ? "text-white/55" : "text-slate-500")}>
+                            <span className="shrink-0 text-xs font-black text-[#F5A623] md:text-sm">{formatMoney(product.priceCfa)}</span>
+                          </button>
+                          <div className={cn("mt-2 flex items-center justify-between text-[11px] md:mt-3 md:text-xs", dark ? "text-white/55" : "text-slate-500")}>
                             <span>{product.unit}</span>
                             <span>{product.quantityAvailable} available</span>
                           </div>
-                          <div className="mt-4 flex items-center justify-between gap-3">
+                          <div className="mt-3 flex items-center justify-between gap-3 md:mt-4">
                             <div className="flex items-center gap-2">
-                              <button type="button" onClick={() => updateQuantity(activeShop, product, quantity - 1)} className={cn("grid h-9 w-9 place-items-center rounded-xl border", dark ? "border-white/20 hover:bg-white/10" : "border-slate-300 hover:bg-slate-100")} aria-label={`Reduce ${product.name}`}>
+                              <button type="button" onClick={() => updateQuantity(activeShop, product, quantity - 1)} className={cn("grid h-8 w-8 place-items-center rounded-xl border md:h-9 md:w-9", dark ? "border-white/20 hover:bg-white/10" : "border-slate-300 hover:bg-slate-100")} aria-label={`Reduce ${product.name}`}>
                                 <Minus className="h-4 w-4" />
                               </button>
-                              <span className="min-w-9 text-center text-sm font-black">{quantity}</span>
-                              <button type="button" onClick={() => updateQuantity(activeShop, product, quantity + 1)} className={cn("grid h-9 w-9 place-items-center rounded-xl border", dark ? "border-white/20 hover:bg-white/10" : "border-slate-300 hover:bg-slate-100")} aria-label={`Add ${product.name}`}>
+                              <span className="min-w-8 text-center text-sm font-black md:min-w-9">{quantity}</span>
+                              <button type="button" onClick={() => updateQuantity(activeShop, product, quantity + 1)} className={cn("grid h-8 w-8 place-items-center rounded-xl border md:h-9 md:w-9", dark ? "border-white/20 hover:bg-white/10" : "border-slate-300 hover:bg-slate-100")} aria-label={`Add ${product.name}`}>
                                 <Plus className="h-4 w-4" />
                               </button>
                             </div>
@@ -1025,10 +1717,42 @@ export function ExportunityNeighbourhoodCommerce({
                     );
                   })}
                 </div>
+                {(() => {
+                  const identity = merchantIdentity(activeShop);
+                  return (
+                    <div className={cn("mt-5 rounded-2xl border p-4", dark ? "border-white/10 bg-white/[0.035]" : "border-slate-200 bg-slate-50")}>
+                      <div className="grid gap-4 md:grid-cols-[68px_minmax(0,1fr)]">
+                        <img src={identity.portraitUrl} alt={`${identity.ownerName}, ${activeShop.name}`} className="h-16 w-16 rounded-2xl object-cover" />
+                        <div className="min-w-0">
+                          <div className="text-[11px] font-black uppercase tracking-[0.18em] text-[#F5A623]">Shop owner and trust</div>
+                          <h2 className="mt-1 text-xl font-black">{identity.ownerName} at {activeShop.name}</h2>
+                          <p className={cn("mt-1 text-sm leading-relaxed", dark ? "text-white/62" : "text-slate-600")}>{identity.story}</p>
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            {identity.proof.map((item) => (
+                              <span key={item} className={cn("rounded-full border px-3 py-1 text-xs font-black", dark ? "border-white/12 bg-white/[0.04] text-white/72" : "border-slate-200 bg-white text-slate-700")}>{item}</span>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             </div>
             <aside className={cn("border-t p-5 xl:border-l xl:border-t-0", dark ? "border-white/10 bg-[#05070B]/42" : "border-slate-200 bg-slate-50/86")}>
               <div className="text-[11px] font-black uppercase tracking-[0.18em] text-[#F5A623]">Your order</div>
+              <div className={cn("mt-3 rounded-2xl border p-3", dark ? "border-white/10 bg-white/[0.04]" : "border-slate-200 bg-white")}>
+                <div className="flex items-start gap-3">
+                  <AgentAvatar agent={activeShop.frontDesk} size="sm" />
+                  <div className="min-w-0">
+                    <div className="text-sm font-black">{activeShop.frontDesk.name}</div>
+                    <div className={cn("text-xs font-bold", dark ? "text-white/52" : "text-slate-500")}>Shop Front Desk</div>
+                    <p className={cn("mt-2 text-xs leading-relaxed", dark ? "text-white/66" : "text-slate-600")}>
+                      Welcome to {activeShop.name}. Pick products from the shelf; I can confirm freshness, substitutions, wallet payment, and delivery before you place the order.
+                    </p>
+                  </div>
+                </div>
+              </div>
               <div className="mt-4 space-y-2">
                 {orderLines.length ? (
                   orderLines.map((line) => (
@@ -1041,13 +1765,32 @@ export function ExportunityNeighbourhoodCommerce({
                     </div>
                   ))
                 ) : (
-                  <div className={cn("rounded-xl border px-3 py-4 text-sm font-semibold", dark ? "border-white/10 bg-white/[0.04] text-white/58" : "border-slate-200 bg-white text-slate-500")}>Select products to start.</div>
+                <div className={cn("rounded-xl border px-3 py-4 text-sm font-semibold", dark ? "border-white/10 bg-white/[0.04] text-white/64" : "border-slate-200 bg-white text-slate-600")}>
+                  Choose products from the shelf. Your order appears here with quantities and subtotal.
+                </div>
                 )}
               </div>
+              {!orderLines.length ? (
+                <div className="mt-3 grid gap-2">
+                  {["What is fresh?", "Best seller", "Use wallet"].map((prompt) => (
+                    <button
+                      key={prompt}
+                      type="button"
+                      onClick={() => handleAsk(prompt)}
+                      className={cn("h-10 rounded-2xl border text-sm font-black", dark ? "border-white/14 text-white/74 hover:bg-white/8" : "border-slate-200 bg-white text-slate-700 hover:border-[#F5A623]/50")}
+                    >
+                      {prompt}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
               <div className="mt-4 border-t pt-4" style={{ borderColor: dark ? "rgba(255,255,255,.14)" : "rgba(15,23,42,.12)" }}>
                 <div className="flex items-center justify-between text-sm">
                   <span className={dark ? "text-white/62" : "text-slate-600"}>Subtotal</span>
                   <span className="font-black">{formatMoney(subtotal)}</span>
+                </div>
+                <div className={cn("mt-2 rounded-xl border px-3 py-2 text-xs font-bold", dark ? "border-white/10 bg-white/[0.04] text-white/58" : "border-slate-200 bg-white text-slate-600")}>
+                  Delivery estimate: {activeShop.eta}. The shop confirms payment and delivery details after you place the order.
                 </div>
                 <button type="button" onClick={placeOrder} disabled={!orderLines.length} className="mt-4 flex h-12 w-full items-center justify-center rounded-2xl bg-[#F5A623] text-sm font-black text-[#07111F] disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-600">
                   Place order
@@ -1059,17 +1802,81 @@ export function ExportunityNeighbourhoodCommerce({
             </aside>
           </div>
         </section>
+        {activeProductDetail ? (
+          <section className={cn("fixed inset-x-3 bottom-[118px] z-40 mx-auto max-w-3xl overflow-hidden rounded-[26px] border shadow-[0_28px_80px_rgba(15,23,42,.28)] lg:absolute lg:inset-auto lg:bottom-6 lg:right-6 lg:w-[440px]", dark ? "border-white/12 bg-[#07111F] text-white" : "border-slate-200 bg-white text-slate-950")}>
+            <div className="grid max-h-[72vh] overflow-auto">
+              <div className="relative h-44">
+                <img src={activeProductDetail.image} alt={activeProductDetail.name} className="h-full w-full object-cover" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/5 to-transparent" />
+                <button type="button" onClick={() => setActiveProductDetail(null)} className="absolute right-3 top-3 rounded-full bg-white/92 px-3 py-2 text-xs font-black text-slate-950">Close</button>
+                <div className="absolute bottom-4 left-4 right-4 text-white">
+                  <div className="text-[11px] font-black uppercase tracking-[0.18em] text-[#F5A623]">Product detail</div>
+                  <h3 className="mt-1 text-2xl font-black">{activeProductDetail.name}</h3>
+                </div>
+              </div>
+              <div className="space-y-4 p-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <div className="text-xl font-black text-[#F5A623]">{formatMoney(activeProductDetail.priceCfa)}</div>
+                    <p className={cn("mt-1 text-sm leading-relaxed", dark ? "text-white/62" : "text-slate-600")}>{activeProductDetail.description}</p>
+                  </div>
+                  <span className={cn("shrink-0 rounded-full border px-3 py-1 text-xs font-black", dark ? "border-white/12 bg-white/[0.05]" : "border-slate-200 bg-slate-50")}>{activeProductDetail.unit}</span>
+                </div>
+                <div className={cn("grid grid-cols-3 gap-2 rounded-2xl border p-3 text-center text-xs", dark ? "border-white/10 bg-white/[0.04]" : "border-slate-200 bg-slate-50")}>
+                  <div>
+                    <div className="font-black">{activeProductDetail.quantityAvailable}</div>
+                    <div className={dark ? "text-white/55" : "text-slate-500"}>available</div>
+                  </div>
+                  <div>
+                    <div className="font-black">{activeShop?.distance}</div>
+                    <div className={dark ? "text-white/55" : "text-slate-500"}>distance</div>
+                  </div>
+                  <div>
+                    <div className="font-black">{activeShop?.eta}</div>
+                    <div className={dark ? "text-white/55" : "text-slate-500"}>delivery</div>
+                  </div>
+                </div>
+                <div className="grid grid-cols-[1fr_1fr] gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (activeShop && activeProductDetail) {
+                        updateQuantity(activeShop, activeProductDetail, (orderDraft[activeProductDetail.id]?.quantity || 0) + 1);
+                        replyFrom(activeShop.frontDesk, `${activeProductDetail.name} is available. I added one to your order; adjust quantity before confirming if needed.`, activeShop);
+                      }
+                    }}
+                    className="h-12 rounded-2xl bg-[#F5A623] text-sm font-black text-[#07111F]"
+                  >
+                    Add to order
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (activeShop) handleAsk(`Check availability for ${activeProductDetail.name}`);
+                    }}
+                    className={cn("h-12 rounded-2xl border text-sm font-black", dark ? "border-white/14 text-white/74 hover:bg-white/8" : "border-slate-200 text-slate-700 hover:bg-slate-50")}
+                  >
+                    Check availability
+                  </button>
+                </div>
+                <div className={cn("rounded-2xl border p-3 text-sm leading-relaxed", dark ? "border-white/10 bg-white/[0.04] text-white/62" : "border-slate-200 bg-slate-50 text-slate-600")}>
+                  {activeShop?.frontDesk.name || "The shop Front Desk"} can confirm freshness, substitutions, delivery notes, and wallet payment before checkout.
+                </div>
+              </div>
+            </div>
+          </section>
+        ) : null}
       </div>
     </main>
   ) : null;
 
   const businessCenter = business ? (
-    <main className={cn("min-h-0 overflow-auto p-4 md:p-6", dark ? "bg-[#05070B]" : "bg-[#F7F8FA]")}>
+    <main className={cn("min-h-0 overflow-auto p-4 pb-56 md:p-6 lg:pb-6", dark ? "bg-[#05070B]" : "bg-[#F7F8FA]")}>
       <section className={cn("rounded-[28px] border p-5", dark ? "border-white/12 bg-[#07111F] text-white" : "border-slate-200 bg-white text-slate-950 shadow-[0_18px_46px_rgba(15,23,42,.08)]")}>
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
-            <div className="text-[11px] font-black uppercase tracking-[0.22em] text-[#F5A623]">My Business</div>
-            <h1 className="mt-2 text-3xl font-black">Agent operating room</h1>
+                  <div className="text-[11px] font-black uppercase tracking-[0.22em] text-[#F5A623]">My Business</div>
+                  <h1 className="mt-2 text-3xl font-black">Business team room</h1>
             <p className={cn("mt-1 text-sm", dark ? "text-white/60" : "text-slate-600")}>Talk to Front Desk, Inventory, Accountant, Delivery Lead, and Marketing from one business conversation.</p>
           </div>
           <div className="flex -space-x-2">
@@ -1111,11 +1918,11 @@ export function ExportunityNeighbourhoodCommerce({
   ) : null;
 
   const discoveryCenter = !shopMode && !business ? (
-    <main className={cn("min-h-0 overflow-auto", dark ? "bg-[#05070B]" : "bg-[#F7F8FA]")}>
-      <div className="space-y-5 p-4 md:p-6">
-        <section className={cn("overflow-hidden rounded-[30px] border", dark ? "border-white/12 bg-[#07111F] text-white" : "border-slate-200 bg-white text-slate-950 shadow-[0_18px_46px_rgba(15,23,42,.08)]")}>
-          <div className="grid gap-0 xl:grid-cols-[minmax(0,1fr)_260px]">
-            <div className="p-5 md:p-6">
+    <main className={cn("min-h-0 overflow-auto pb-72 lg:pb-0", dark ? "bg-[#05070B]" : "bg-[#F7F8FA]")}>
+      <div className="space-y-2.5 p-3 md:space-y-5 md:p-6">
+        <section className={cn("overflow-hidden rounded-[20px] border p-2.5 md:rounded-[26px] md:p-4", dark ? "border-white/12 bg-[#07111F] text-white" : "border-slate-200 bg-white text-slate-950 shadow-[0_18px_46px_rgba(15,23,42,.08)]")}>
+          <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+            <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="rounded-full bg-[#F5A623] px-3 py-1 text-[11px] font-black uppercase tracking-wide text-[#07111F]">
                   {exchange ? "Bourse de PME" : wholesale ? "Wholesale" : "Retail marketplace"}
@@ -1123,45 +1930,140 @@ export function ExportunityNeighbourhoodCommerce({
                 <span className={cn("rounded-full border px-3 py-1 text-[11px] font-black", dark ? "border-white/12 text-white/62" : "border-slate-200 text-slate-600")}>Cocody, Abidjan</span>
                 {isAdmin ? <span className="rounded-full bg-emerald-500/12 px-3 py-1 text-[11px] font-black text-emerald-600">Admin view</span> : null}
               </div>
-              <h1 className="mt-4 max-w-3xl text-3xl font-black tracking-tight md:text-5xl">
-                {exchange ? "Discover verified PME stories before investment." : wholesale ? "Find suppliers, stock, MOQ, and routes." : "Buy nearby products from real local shops."}
+              <h1 className="mt-2 max-w-4xl text-lg font-black leading-tight tracking-tight md:text-2xl">
+                {exchange ? "Browse export-ready PME products and sellers." : wholesale ? "Source suppliers, quantities, MOQ, and routes." : "Buy nearby products from real local shops."}
               </h1>
-              <p className={cn("mt-3 max-w-2xl text-base leading-relaxed", dark ? "text-white/64" : "text-slate-600")}>
+              <p className={cn("mt-1 hidden max-w-3xl text-sm leading-relaxed sm:block", dark ? "text-white/64" : "text-slate-600")}>
                 {exchange
-                  ? "Profiles show people, place, proof, products, and compliance status. Public investment remains gated."
+                  ? "Start with products and sellers, then review people, place, proof, and compliance status. Finance remains admin-only until approved."
                   : wholesale
-                    ? "Supplier discovery is quote-first and outreach is controlled by approval, audit logs, and opt-out rules."
-                    : "Products are central. The map shows where they are, while Tassi and shop agents help only when needed."}
+                    ? "Search suppliers, compare lead time and distance, then request a quote through an approval-gated workflow."
+                    : "Pick a product, enter the shop, adjust quantities, and let the shop Front Desk help only when useful."}
               </p>
             </div>
-            <div className="relative hidden min-h-[240px] overflow-hidden xl:block">
-              <img src={heroImage} alt="" className="h-full w-full object-cover" />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
-              <div className="absolute bottom-4 left-4 right-4 text-white">
-                <div className="text-xs font-black uppercase tracking-[0.16em] text-[#F5A623]">Selected</div>
-                <div className="mt-1 text-xl font-black">{activeShop?.name || visiblePlaces[0]?.name}</div>
-                <div className="text-sm text-white/72">{activeShop?.distance || visiblePlaces[0]?.distance} - {activeShop?.eta || visiblePlaces[0]?.eta}</div>
-              </div>
+            <div className={cn("hidden shrink-0 grid-cols-3 gap-2 rounded-[18px] border px-2 py-2 text-center sm:grid md:px-3", dark ? "border-white/10 bg-white/[0.04]" : "border-slate-200 bg-slate-50")}>
+              {[
+                [String(visiblePlaces.length), exchange ? "PME sellers" : wholesale ? "suppliers" : "shops"],
+                [String(commerceProducts.length), exchange ? "products" : wholesale ? "offers" : "products"],
+                [googleMapReady ? "Google" : "OSM", "map"],
+              ].map(([value, label]) => (
+                <div key={label} className="min-w-[76px]">
+                  <div className="text-base font-black">{value}</div>
+                  <div className={cn("mt-0.5 text-[10px] font-black uppercase tracking-[0.14em]", dark ? "text-white/48" : "text-slate-500")}>{label}</div>
+                </div>
+              ))}
             </div>
           </div>
         </section>
 
-        <div className="flex gap-3 overflow-x-auto pb-1">
-          {categoryTiles.map(([label, Icon]) => (
-            <CategoryTile key={String(label)} label={String(label)} Icon={Icon as LucideIcon} dark={dark} onClick={() => handleQuickReply(String(label))} />
+        <section className="grid grid-cols-3 gap-2 md:gap-3">
+          {modeTabs.map(({ label, eyebrow, description, Icon, active, onClick }) => (
+            <button
+              key={label}
+              type="button"
+              onClick={onClick}
+              className={cn(
+                "group flex min-h-[62px] flex-col items-center justify-center gap-1 rounded-[18px] border p-1.5 text-center transition hover:-translate-y-0.5 md:min-h-[94px] md:flex-row md:justify-start md:gap-3 md:rounded-[24px] md:p-3 md:text-left",
+                active
+                  ? "border-[#F5A623] bg-[#F5A623] text-[#07111F] shadow-[0_18px_42px_rgba(245,166,35,.22)]"
+                  : dark
+                    ? "border-white/10 bg-[#07111F] text-white hover:border-[#F5A623]/55"
+                    : "border-slate-200 bg-white text-slate-950 hover:border-[#F5A623]/55 hover:shadow-[0_14px_34px_rgba(15,23,42,.08)]",
+              )}
+              aria-pressed={active}
+            >
+              <span className={cn("grid h-8 w-8 shrink-0 place-items-center rounded-[14px] md:h-14 md:w-14 md:rounded-[20px]", active ? "bg-[#07111F] text-[#F5A623]" : "bg-[#F5A623]/16 text-[#F5A623]")}>
+                <Icon className="h-4 w-4 md:h-7 md:w-7" />
+              </span>
+              <span className="min-w-0">
+                <span className={cn("hidden text-[10px] font-black uppercase tracking-[0.16em] sm:block", active ? "text-[#07111F]/62" : dark ? "text-white/45" : "text-slate-500")}>{eyebrow}</span>
+                <span className="mt-0.5 block text-[10px] font-black leading-tight md:text-base">{label}</span>
+                <span className={cn("mt-1 hidden line-clamp-2 text-xs font-semibold leading-snug sm:block", active ? "text-[#07111F]/72" : dark ? "text-white/56" : "text-slate-600")}>{description}</span>
+              </span>
+            </button>
           ))}
+        </section>
+
+        <div className="flex gap-3 overflow-x-auto pb-1">
+          {categoryTiles.map(([label, Icon]) => {
+            const text = String(label);
+            const visual = visualForCategory(text, wholesale, exchange);
+            return (
+              <CategoryTile
+                key={text}
+                label={text}
+                Icon={Icon as LucideIcon}
+                kind={visual.kind}
+                hint={categoryHint(text, wholesale, exchange)}
+                dark={dark}
+                onClick={() => handleQuickReply(text)}
+              />
+            );
+          })}
         </div>
+
+        {exchange ? (
+          <section className={cn("grid gap-2 rounded-[22px] border p-3 md:grid-cols-4", dark ? "border-white/12 bg-[#07111F] text-white" : "border-slate-200 bg-white text-slate-950 shadow-[0_12px_26px_rgba(15,23,42,.06)]")}>
+            {[
+              {
+                label: "PME coverage",
+                value: `${visiblePlaces.length} profiles`,
+                detail: "People, place, proof, products",
+                ok: true,
+              },
+              {
+                label: "Google Maps",
+                value: googleMapReady ? "Renderer active" : "OSM fallback",
+                detail: googleMapReady ? "Browser map key is verified for the public map" : "Google setup is incomplete; OpenStreetMap is active",
+                ok: googleMapReady,
+              },
+              {
+                label: "Google Places",
+                value: mapsConfig.placesImportEnabled ? "Import live" : "Curated data",
+                detail: mapsConfig.placesImportEnabled ? "Public listings can enrich PME leads" : "Server Places key/import env still required",
+                ok: Boolean(mapsConfig.placesImportEnabled),
+              },
+              {
+                label: "Investment",
+                value: "Compliance gated",
+                detail: "No public offers before legal approval",
+                ok: true,
+              },
+            ].map((item) => (
+              <div key={item.label} className={cn("rounded-2xl border px-3 py-2", dark ? "border-white/10 bg-white/[0.04]" : "border-slate-200 bg-slate-50")}>
+                <div className="flex items-center justify-between gap-2">
+                  <div className={cn("text-[11px] font-black uppercase tracking-[0.16em]", dark ? "text-white/50" : "text-slate-500")}>{item.label}</div>
+                  <span className={cn("h-2.5 w-2.5 rounded-full", item.ok ? "bg-emerald-500" : "bg-amber-500")} />
+                </div>
+                <div className="mt-1 text-sm font-black">{item.value}</div>
+                <div className={cn("mt-0.5 line-clamp-2 text-[11px] leading-snug", dark ? "text-white/56" : "text-slate-600")}>{item.detail}</div>
+              </div>
+            ))}
+          </section>
+        ) : null}
 
         {activeShop ? (
           <section className={cn("rounded-[26px] border p-4", dark ? "border-[#F5A623]/24 bg-[#F5A623]/10 text-white" : "border-[#F5A623]/35 bg-[#F5A623]/10 text-slate-950")}>
-            <div className="grid gap-4 lg:grid-cols-[170px_minmax(0,1fr)_220px] lg:items-center">
+            <div className="grid gap-4 lg:grid-cols-[170px_minmax(0,1fr)_260px] lg:items-center">
               <img src={activeShopImage || activeShop.image} alt="" className="h-32 w-full rounded-2xl object-cover lg:h-28" />
               <div className="min-w-0">
-                <div className="text-[11px] font-black uppercase tracking-[0.18em] text-[#F5A623]">Quick peek</div>
+                      <div className="text-[11px] font-black uppercase tracking-[0.18em] text-[#F5A623]">{wholesale || exchange ? "Quick review" : "Ready to buy"}</div>
                 <h2 className="mt-1 truncate text-2xl font-black">{activeShop.name}</h2>
                 <p className={cn("mt-1 text-sm font-semibold", dark ? "text-white/62" : "text-slate-600")}>
                   {activeShop.category} - Rating {activeShop.rating.toFixed(1)} - {activeShop.distance} - {activeShop.eta}
                 </p>
+                {(() => {
+                  const identity = merchantIdentity(activeShop);
+                  return (
+                    <div className="mt-3 flex items-center gap-3">
+                      <img src={identity.portraitUrl} alt={`${identity.ownerName}, ${activeShop.name}`} className="h-10 w-10 rounded-full object-cover ring-2 ring-[#F5A623]/40" />
+                      <div className="min-w-0">
+                        <div className="text-sm font-black">{identity.ownerName}</div>
+                        <div className={cn("truncate text-xs", dark ? "text-white/58" : "text-slate-600")}>{identity.years} years in {activeShop.district || "Cocody"} - {activeShop.trustStatus || "Trust building"}</div>
+                      </div>
+                    </div>
+                  );
+                })()}
                 <div className="mt-3 flex flex-wrap gap-2">
                   {productsForShop(activeShop).slice(0, 3).map((product) => (
                     <span key={product.id} className={cn("rounded-full border px-3 py-1 text-xs font-black", dark ? "border-white/14 bg-white/[0.05]" : "border-slate-200 bg-white")}>{product.name}</span>
@@ -1174,7 +2076,10 @@ export function ExportunityNeighbourhoodCommerce({
                 ) : exchange ? (
                   <button type="button" onClick={() => handleAsk("Review this PME")} className="flex-1 rounded-2xl bg-[#F5A623] px-4 py-3 text-sm font-black text-[#07111F]">Review profile</button>
                 ) : (
-                  <button type="button" onClick={() => enterShop(activeShop)} className="flex-1 rounded-2xl bg-[#F5A623] px-4 py-3 text-sm font-black text-[#07111F]">Enter shop</button>
+                  <>
+                    <button type="button" onClick={() => enterShop(activeShop)} className="flex-1 rounded-2xl bg-[#F5A623] px-4 py-3 text-sm font-black text-[#07111F]">Enter shop</button>
+                    <button type="button" onClick={() => quickAddProduct(activeShop, productsForShop(activeShop)[0])} className={cn("flex-1 rounded-2xl border px-4 py-3 text-sm font-black", dark ? "border-white/14 text-white/72" : "border-slate-200 bg-white text-slate-700")}>Quick add</button>
+                  </>
                 )}
                 <button type="button" onClick={() => setActiveShop(null)} className={cn("rounded-2xl border px-4 py-3 text-sm font-black", dark ? "border-white/14 text-white/72" : "border-slate-200 bg-white text-slate-700")}>Close</button>
               </div>
@@ -1190,8 +2095,8 @@ export function ExportunityNeighbourhoodCommerce({
                 {wholesale ? "Quote-ready suppliers with MOQ and lead time." : exchange ? "People, place, proof, and compliance status before any finance." : "Start with products, then enter the shop when you are ready."}
               </p>
             </div>
-            <button type="button" onClick={() => onNavigate?.("/map")} className={cn("hidden items-center gap-2 rounded-full border px-4 py-2 text-sm font-black md:inline-flex", dark ? "border-white/12 text-white/72" : "border-slate-200 bg-white text-slate-700")}>
-              <MapIcon className="h-4 w-4" /> Open map
+            <button type="button" onClick={() => onNavigate?.("/map")} className={cn("inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-black", dark ? "border-white/12 text-white/72" : "border-slate-200 bg-white text-slate-700")}>
+              <MapIcon className="h-4 w-4" /> <span className="hidden sm:inline">Open map</span><span className="sm:hidden">Map</span>
             </button>
           </div>
           <div className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-3">
@@ -1200,8 +2105,19 @@ export function ExportunityNeighbourhoodCommerce({
               const Icon = visual.Icon;
               return (
                 <article key={`${shop.id}-${product.id}`} className={cn("overflow-hidden rounded-2xl border transition hover:-translate-y-0.5", dark ? "border-white/12 bg-[#07111F] hover:border-[#F5A623]/45" : "border-slate-200 bg-white hover:border-[#F5A623]/45 hover:shadow-[0_18px_44px_rgba(15,23,42,.09)]")}>
-                  <button type="button" onClick={() => previewShop(shop)} className="block w-full text-left">
-                    <div className="relative h-36 overflow-hidden">
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => (wholesale || exchange ? previewShop(shop) : enterShop(shop))}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        if (wholesale || exchange) previewShop(shop);
+                        else enterShop(shop);
+                      }
+                    }}
+                    className="block w-full cursor-pointer text-left"
+                  >
+                    <div className="relative h-24 overflow-hidden md:h-32">
                       <img src={product.image || shop.image} alt="" className="h-full w-full object-cover transition duration-500 hover:scale-105" />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/58 via-black/4 to-transparent" />
                       <span className="absolute left-3 top-3 grid h-10 w-10 place-items-center rounded-full bg-white/92 text-[#F5A623] shadow">
@@ -1209,26 +2125,42 @@ export function ExportunityNeighbourhoodCommerce({
                       </span>
                       <span className="absolute right-3 top-3 rounded-full bg-white/92 px-2 py-1 text-[11px] font-black text-slate-900">{shop.distance} - {shop.eta}</span>
                     </div>
-                    <div className="p-4">
+                    <div className="p-3 md:p-4">
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
-                          <h3 className="truncate text-base font-black">{product.name}</h3>
-                          <p className={cn("mt-1 truncate text-sm", dark ? "text-white/58" : "text-slate-500")}>{shop.name}</p>
+                          <h3 className="truncate text-sm font-black md:text-base">{product.name}</h3>
+                          <p className={cn("mt-0.5 truncate text-xs md:mt-1 md:text-sm", dark ? "text-white/58" : "text-slate-500")}>{shop.name}</p>
                         </div>
-                        <span className="shrink-0 text-sm font-black text-[#F5A623]">{formatMoney(product.priceCfa)}</span>
+                        <span className="shrink-0 text-xs font-black text-[#F5A623] md:text-sm">{formatMoney(product.priceCfa)}</span>
                       </div>
-                      <p className={cn("mt-2 line-clamp-2 text-xs leading-relaxed", dark ? "text-white/56" : "text-slate-600")}>{product.description}</p>
-                      <div className="mt-4 flex items-center justify-between gap-3">
+                      <p className={cn("mt-1 line-clamp-1 text-[11px] leading-relaxed md:mt-2 md:text-xs", dark ? "text-white/56" : "text-slate-600")}>{product.description}</p>
+                      <div className="mt-2 flex items-center justify-between gap-3 md:mt-4">
                         <span className={cn("text-xs font-bold", dark ? "text-white/52" : "text-slate-500")}>{shop.category} - {shop.openLabel}</span>
-                        <span className="rounded-full bg-[#F5A623] px-3 py-1.5 text-xs font-black text-[#07111F]">{wholesale ? "Quote" : exchange ? "Review" : "View"}</span>
+                        <span className="rounded-full bg-[#F5A623] px-2.5 py-1 text-[11px] font-black text-[#07111F] md:px-3 md:py-1.5 md:text-xs">{wholesale ? "Quote" : exchange ? "Review PME" : "Enter shop"}</span>
                       </div>
+                      {!wholesale && !exchange ? (
+                        <div className="mt-2 grid grid-cols-[minmax(0,1fr)_96px] gap-2 md:mt-3">
+                          <button type="button" onClick={(event) => { event.stopPropagation(); quickAddProduct(shop, product); }} className="flex h-9 items-center justify-center rounded-2xl bg-[#F5A623] text-xs font-black text-[#07111F] md:h-10 md:text-sm">
+                            Add to order
+                          </button>
+                          <button type="button" onClick={(event) => { event.stopPropagation(); enterShop(shop); }} className={cn("flex h-9 items-center justify-center rounded-2xl border text-xs font-black md:h-10 md:text-sm", dark ? "border-white/14 text-white/74 hover:bg-white/8" : "border-slate-200 text-slate-700 hover:bg-slate-50")}>
+                            Enter shop
+                          </button>
+                        </div>
+                      ) : null}
                     </div>
-                  </button>
+                  </div>
                 </article>
               );
             })}
           </div>
         </section>
+
+        {showRightMap ? (
+          <div className="h-56 overflow-hidden rounded-[26px] border border-slate-200 shadow-[0_16px_34px_rgba(15,23,42,.08)] lg:hidden">
+            <LiveMapPane dark={dark} places={visiblePlaces} activeShop={activeShop} userLocation={userLocation} wholesale={wholesale} exchange={exchange} onSelect={selectPlaceFromMap} provider={placesStatus} mapsConfig={mapsConfig} className="h-full border-l-0" />
+          </div>
+        ) : null}
 
         <section>
           <h2 className="mb-3 text-xl font-black">{wholesale ? "Supplier map list" : exchange ? "Merchant trust list" : "Nearby shops"}</h2>
@@ -1237,7 +2169,7 @@ export function ExportunityNeighbourhoodCommerce({
               const visual = visualForCategory(shop.category, wholesale, exchange);
               const Icon = visual.Icon;
               return (
-                <button key={shop.id} type="button" onClick={() => previewShop(shop)} className={cn("flex gap-3 rounded-2xl border p-3 text-left transition hover:-translate-y-0.5", activeShop?.id === shop.id ? "border-[#F5A623]" : dark ? "border-white/10 bg-[#07111F]" : "border-slate-200 bg-white")}>
+                <button key={shop.id} type="button" onClick={() => (wholesale || exchange ? previewShop(shop) : enterShop(shop))} className={cn("flex gap-3 rounded-2xl border p-3 text-left transition hover:-translate-y-0.5", activeShop?.id === shop.id ? "border-[#F5A623]" : dark ? "border-white/10 bg-[#07111F]" : "border-slate-200 bg-white")}>
                   <img src={shop.image} alt="" className="h-20 w-24 shrink-0 rounded-xl object-cover" />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-start gap-2">
@@ -1267,12 +2199,113 @@ export function ExportunityNeighbourhoodCommerce({
     return (
       <div className={cn("flex flex-col overflow-hidden", embeddedShell ? "h-full min-h-0 pt-[64px]" : "h-[100dvh] min-h-[100dvh]", dark ? "bg-[#05070B] text-white" : "bg-[#F7F8FA] text-slate-950")}>
         {!embeddedShell ? (
-          <Header dark={dark} themeMode={themeMode} setThemeMode={setThemeMode} setSpace={openSpace} isAdmin={isAdmin} />
+          <Header dark={dark} themeMode={themeMode} setThemeMode={setThemeMode} setSpace={openSpace} onNavigate={onNavigate} isAdmin={isAdmin} />
         ) : null}
-        <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[340px_minmax(0,1fr)]">
+        <div className={cn("grid min-h-0 flex-1 grid-cols-1", shellGridClass)}>
+          {shopCenter || (
+            <div className="relative min-h-0">
+              <LiveMapPane dark={dark} places={visiblePlaces} activeShop={activeShop} userLocation={userLocation} wholesale={wholesale} exchange={exchange} onSelect={selectPlaceFromMap} provider={placesStatus} mapsConfig={mapsConfig} className="h-full" />
+              {activeShop ? (
+                <section className={cn("absolute bottom-5 left-5 right-5 z-[401] overflow-hidden rounded-[26px] border backdrop-blur-xl lg:right-auto lg:w-[430px]", dark ? "border-white/12 bg-[#07111F]/88 text-white shadow-[0_26px_80px_rgba(0,0,0,.45)]" : "border-white/90 bg-white/92 text-slate-950 shadow-[0_24px_70px_rgba(15,23,42,.18)]")}>
+                  <div className="grid grid-cols-[116px_minmax(0,1fr)]">
+                    <img src={activeShop.image} alt="" className="h-full min-h-[148px] w-full object-cover" />
+                    <div className="min-w-0 p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="text-[10px] font-black uppercase tracking-[0.18em] text-[#F5A623]">
+                            {wholesale ? "Selected supplier" : exchange ? "Selected PME" : "Selected shop"}
+                          </div>
+                          <h2 className="mt-1 truncate text-xl font-black">{activeShop.name}</h2>
+                          <p className={cn("mt-1 truncate text-sm font-semibold", dark ? "text-white/62" : "text-slate-600")}>{activeShop.category}</p>
+                        </div>
+                        <button type="button" onClick={() => setActiveShop(null)} className={cn("rounded-full border px-2.5 py-1 text-xs font-black", dark ? "border-white/12 text-white/70 hover:bg-white/8" : "border-slate-200 text-slate-600 hover:bg-slate-50")}>Close</button>
+                      </div>
+                      <div className="mt-3 flex flex-wrap gap-2 text-xs font-black">
+                        <span className="rounded-full bg-[#F5A623]/16 px-2.5 py-1 text-[#F5A623]">{activeShop.distance} - {activeShop.eta}</span>
+                        <span className={cn("rounded-full px-2.5 py-1", dark ? "bg-white/[0.06] text-white/72" : "bg-slate-100 text-slate-700")}>Rating {activeShop.rating.toFixed(1)} ({activeShop.ratingCount})</span>
+                        {activeShop.moq ? <span className={cn("rounded-full px-2.5 py-1", dark ? "bg-white/[0.06] text-white/72" : "bg-slate-100 text-slate-700")}>{activeShop.moq}</span> : null}
+                        {activeShop.leadTime ? <span className={cn("rounded-full px-2.5 py-1", dark ? "bg-white/[0.06] text-white/72" : "bg-slate-100 text-slate-700")}>{activeShop.leadTime}</span> : null}
+                      </div>
+                      {!wholesale && !exchange ? (
+                        <div className="mt-3 grid grid-cols-3 gap-2">
+                          {productsForShop(activeShop).slice(0, 3).map((product) => (
+                            <button
+                              key={product.id}
+                              type="button"
+                              onClick={() => {
+                                setActiveProductDetail(product);
+                                enterShop(activeShop);
+                              }}
+                              className={cn("overflow-hidden rounded-2xl border text-left", dark ? "border-white/10 bg-white/[0.04]" : "border-slate-200 bg-white")}
+                              aria-label={`Open ${product.name}`}
+                            >
+                              <img src={product.image} alt="" className="h-12 w-full object-cover" />
+                              <div className="min-w-0 px-2 py-1.5">
+                                <div className="truncate text-[11px] font-black">{product.name}</div>
+                                <div className="truncate text-[10px] font-bold text-[#F5A623]">{formatMoney(product.priceCfa)}</div>
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      ) : null}
+                      <div className="mt-3 grid grid-cols-2 gap-2">
+                        {wholesale ? (
+                          <>
+                            <button type="button" onClick={() => handleAsk("Request a quote")} className="h-10 rounded-2xl bg-[#F5A623] text-sm font-black text-[#07111F]">Request quote</button>
+                            <button type="button" onClick={() => setAssistantCollapsed(false)} className={cn("h-10 rounded-2xl border text-sm font-black", dark ? "border-white/14 text-white/74 hover:bg-white/8" : "border-slate-200 text-slate-700 hover:bg-slate-50")}>Supplier help</button>
+                          </>
+                        ) : exchange ? (
+                          <>
+                            <button type="button" onClick={() => handleAsk("Review this PME")} className="h-10 rounded-2xl bg-[#F5A623] text-sm font-black text-[#07111F]">Review profile</button>
+                            <button type="button" onClick={() => setAssistantCollapsed(false)} className={cn("h-10 rounded-2xl border text-sm font-black", dark ? "border-white/14 text-white/74 hover:bg-white/8" : "border-slate-200 text-slate-700 hover:bg-slate-50")}>PME analyst</button>
+                          </>
+                        ) : (
+                          <>
+                            <button type="button" onClick={() => enterShop(activeShop)} className="h-10 rounded-2xl bg-[#F5A623] text-sm font-black text-[#07111F]">Enter shop</button>
+                            <button type="button" onClick={() => quickAddProduct(activeShop, productsForShop(activeShop)[0])} className={cn("h-10 rounded-2xl border text-sm font-black", dark ? "border-white/14 text-white/74 hover:bg-white/8" : "border-slate-200 text-slate-700 hover:bg-slate-50")}>Quick add</button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </section>
+              ) : (
+                <section className={cn("absolute bottom-5 left-5 right-5 z-[401] overflow-hidden rounded-[26px] border backdrop-blur-xl lg:right-[320px] xl:right-[340px]", dark ? "border-white/12 bg-[#07111F]/88 text-white shadow-[0_26px_80px_rgba(0,0,0,.45)]" : "border-white/90 bg-white/92 text-slate-950 shadow-[0_24px_70px_rgba(15,23,42,.18)]")}>
+                  <div className="flex items-center justify-between gap-3 border-b border-current/10 px-4 py-3">
+                    <div>
+                      <div className="text-[10px] font-black uppercase tracking-[0.18em] text-[#F5A623]">
+                        {wholesale ? "Supplier map" : exchange ? "PME map" : "Products on this map"}
+                      </div>
+                      <div className="mt-0.5 text-sm font-black">
+                        {wholesale ? "Tap a supplier for MOQ and quote flow" : exchange ? "Tap a PME for products, owner, and proof" : "Tap a product or marker to enter the shop"}
+                      </div>
+                    </div>
+                    <MapPin className="h-5 w-5 shrink-0 text-[#F5A623]" />
+                  </div>
+                  <div className="grid gap-2 p-3 sm:grid-cols-2 xl:grid-cols-4">
+                    {mapShelfProducts.map(({ shop, product }) => (
+                      <button
+                        key={`${shop.id}-${product.id}-map-shelf`}
+                        type="button"
+                        onClick={() => (wholesale || exchange ? previewShop(shop) : enterShop(shop))}
+                        className={cn("grid grid-cols-[62px_minmax(0,1fr)] items-center gap-2 rounded-2xl border p-2 text-left transition hover:-translate-y-0.5", dark ? "border-white/10 bg-white/[0.04] hover:border-[#F5A623]/50" : "border-slate-200 bg-white hover:border-[#F5A623]/50")}
+                      >
+                        <img src={product.image || shop.image} alt="" className="h-14 w-14 rounded-xl object-cover" />
+                        <span className="min-w-0">
+                          <span className="block truncate text-xs font-black">{product.name}</span>
+                          <span className={cn("mt-0.5 block truncate text-[11px] font-semibold", dark ? "text-white/58" : "text-slate-600")}>{shop.name}</span>
+                          <span className="mt-0.5 block truncate text-[11px] font-black text-[#F5A623]">{formatMoney(product.priceCfa)}</span>
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </section>
+              )}
+            </div>
+          )}
           {assistantPane}
-          <LiveMapPane dark={dark} places={visiblePlaces} activeShop={activeShop} userLocation={userLocation} wholesale={wholesale} exchange={exchange} onSelect={previewShop} provider={placesStatus} />
         </div>
+        {!shopMode ? mobileComposer : null}
       </div>
     );
   }
@@ -1280,22 +2313,18 @@ export function ExportunityNeighbourhoodCommerce({
   return (
     <div className={cn("flex flex-col overflow-hidden", embeddedShell ? "h-full min-h-0 pt-[64px]" : "h-[100dvh] min-h-[100dvh]", dark ? "bg-[#05070B] text-white" : "bg-[#F7F8FA] text-slate-950")}>
       {!embeddedShell ? (
-        <Header dark={dark} themeMode={themeMode} setThemeMode={setThemeMode} setSpace={openSpace} isAdmin={isAdmin} />
+        <Header dark={dark} themeMode={themeMode} setThemeMode={setThemeMode} setSpace={openSpace} onNavigate={onNavigate} isAdmin={isAdmin} />
       ) : null}
       <div
-        className={cn(
-          "grid min-h-0 flex-1 grid-cols-1",
-          showRightMap
-            ? "lg:grid-cols-[340px_minmax(0,1fr)_320px] xl:grid-cols-[360px_minmax(0,1fr)_360px]"
-            : "lg:grid-cols-[340px_minmax(0,1fr)] xl:grid-cols-[360px_minmax(0,1fr)]",
-        )}
+        className={cn("grid min-h-0 flex-1 grid-cols-1", shellGridClass)}
       >
         {assistantPane}
         {shopCenter || businessCenter || discoveryCenter}
         {showRightMap ? (
-          <LiveMapPane dark={dark} places={visiblePlaces} activeShop={activeShop} userLocation={userLocation} wholesale={wholesale} exchange={exchange} onSelect={previewShop} provider={placesStatus} className="hidden lg:block" />
+          <LiveMapPane dark={dark} places={visiblePlaces} activeShop={activeShop} userLocation={userLocation} wholesale={wholesale} exchange={exchange} onSelect={selectPlaceFromMap} provider={placesStatus} mapsConfig={mapsConfig} className="hidden lg:block" />
         ) : null}
       </div>
+      {!shopMode ? mobileComposer : null}
       {videoOpen ? (
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/55 p-4 backdrop-blur-sm">
           <div className={cn("w-full max-w-2xl overflow-hidden rounded-2xl border", dark ? "border-white/12 bg-[#07111F] text-white" : "border-white bg-white text-slate-950")}>
@@ -1333,19 +2362,21 @@ function Header({
   themeMode,
   setThemeMode,
   setSpace,
+  onNavigate,
   isAdmin,
 }: {
   dark: boolean;
   themeMode: ThemeMode;
   setThemeMode: (mode: ThemeMode) => void;
   setSpace: (space: ConversationSpace) => void;
+  onNavigate?: (href: string) => void;
   isAdmin: boolean;
 }) {
   const nav: Array<[string, ConversationSpace, LucideIcon]> = [
-    ["Explore", "city", Store],
+    ["Retail", "city", Store],
     ["Map", "city", MapIcon],
     ["Wholesale", "wholesale", Warehouse],
-    ["Ready export", "exchange", BriefcaseBusiness],
+    ["PME Exchange", "exchange", BriefcaseBusiness],
     ["My Business", "business", BriefcaseBusiness],
   ];
   return (
@@ -1355,7 +2386,24 @@ function Header({
       </button>
       <nav className="hidden min-w-0 flex-1 items-center justify-center gap-1 lg:flex">
         {nav.map(([label, space, Icon]) => (
-          <button key={label} type="button" onClick={() => setSpace(space)} className={cn("inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-black transition", dark ? "text-white/68 hover:bg-white/8 hover:text-white" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900")}>
+          <button
+            key={label}
+            type="button"
+            onClick={() => {
+              if (label === "Map") {
+                setSpace("city");
+                onNavigate?.("/map");
+                return;
+              }
+              if (label === "PME Exchange") {
+                setSpace("exchange");
+                onNavigate?.("/pme-exchange");
+                return;
+              }
+              setSpace(space);
+            }}
+            className={cn("inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-black transition", dark ? "text-white/68 hover:bg-white/8 hover:text-white" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900")}
+          >
             <Icon className="h-4 w-4" />
             {label}
           </button>

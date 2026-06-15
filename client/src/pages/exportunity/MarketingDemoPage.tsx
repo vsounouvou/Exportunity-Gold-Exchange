@@ -22,6 +22,7 @@ export default function MarketingDemoPage() {
   if (!isExportunityMarketingHost()) return <Redirect to="/zone" />;
 
   const platformHref = useMarketingPlatformHref();
+  const primaryPlatformHref = "https://exportunity.net/app";
 
   const shotsQuery = useQuery({
     queryKey: ["marketing-demo-shots"],
@@ -61,12 +62,22 @@ export default function MarketingDemoPage() {
             <MarketingTitle className="text-4xl md:text-5xl">See real workflows in two minutes.</MarketingTitle>
             <MarketingLead>No login needed. Walk the execution flow step by step.</MarketingLead>
             <div className="flex flex-wrap gap-3">
-              <a href={platformHref} target="_blank" rel="noreferrer">
+              <a href={primaryPlatformHref} target="_blank" rel="noreferrer">
                 <Button className="bg-amber-400 text-slate-950 hover:bg-amber-300">Open Platform</Button>
               </a>
+              {platformHref !== primaryPlatformHref ? (
+                <a href={platformHref} target="_blank" rel="noreferrer" className="sr-only">
+                  Open current platform context
+                </a>
+              ) : null}
               <Link href="/talk">
                 <Button variant="secondary" className="border border-white/20 bg-white/10 text-white hover:bg-white/20">
                   Request guided demo
+                </Button>
+              </Link>
+              <Link href="/media?tab=screenshots">
+                <Button variant="outline" className="border-white/30 bg-transparent text-white hover:bg-white/10">
+                  View screenshots
                 </Button>
               </Link>
             </div>

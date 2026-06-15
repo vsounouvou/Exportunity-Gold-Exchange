@@ -816,6 +816,15 @@ function trimDataUrlPreview(dataUrl: string) {
   return /^data:image\//i.test(String(dataUrl || "").trim());
 }
 
+function isFiniteMapPoint(point: unknown): point is [number, number] {
+  return (
+    Array.isArray(point) &&
+    point.length === 2 &&
+    Number.isFinite(Number(point[0])) &&
+    Number.isFinite(Number(point[1]))
+  );
+}
+
 function LocationUpdater({
   position,
   zoom,
@@ -827,8 +836,9 @@ function LocationUpdater({
 }) {
   const map = useMap();
   useEffect(() => {
+    if (!isFiniteMapPoint(position)) return;
     const nextZoom = typeof zoom === "number" ? zoom : map.getZoom();
-    map.setView(position, nextZoom, { animate: true });
+    map.setView([Number(position[0]), Number(position[1])], nextZoom, { animate: true });
   }, [map, position, zoom]);
   return null;
 }
@@ -851,7 +861,7 @@ function MapFitBounds({
     if (!points || points.length === 0) return;
     const latLngs = points
       .map((p) =>
-        Array.isArray(p) && p.length === 2 ? L.latLng(p[0], p[1]) : null,
+        isFiniteMapPoint(p) ? L.latLng(Number(p[0]), Number(p[1])) : null,
       )
       .filter(Boolean) as any[];
     if (latLngs.length === 0) return;
@@ -2242,9 +2252,9 @@ function createWholesaleNodeIcon(
   const chipLabel = escapeMarkerHtml(options.chipLabel);
   const tone = escapeMarkerHtml(options.tone);
   const shellShadow = selected
-    ? "0 0 0 1px rgba(232,200,115,0.42), 0 10px 22px rgba(0,0,0,0.42)"
+    ? "0 0 0 2px rgba(232,200,115,0.54), 0 12px 24px rgba(0,0,0,0.44)"
     : glow
-      ? "0 0 0 1px rgba(212,175,55,0.22), 0 8px 18px rgba(0,0,0,0.38)"
+      ? "0 0 0 1px rgba(212,175,55,0.20), 0 9px 18px rgba(0,0,0,0.36)"
       : "0 8px 16px rgba(0,0,0,0.34)";
   const chipBackground =
     chipStyle === "signal"
@@ -2261,20 +2271,7 @@ function createWholesaleNodeIcon(
       : "1px solid rgba(255,255,255,0.1)";
 
   return L.divIcon({
-    html: `<div style="position:relative;width:${size}px;height:${size + 18}px;">
-      <div style="
-        position:absolute;
-        top:-5px;
-        left:50%;
-        width:${size + 10}px;
-        height:${size + 10}px;
-        transform:translateX(-50%);
-        border-radius:999px;
-        background:radial-gradient(circle, rgba(232,200,115,0.34) 0%, rgba(212,175,55,0.12) 42%, rgba(212,175,55,0) 72%);
-        filter:blur(1px);
-        opacity:${glow || selected ? "0.95" : "0.62"};
-        pointer-events:none;
-      "></div>
+    html: `<div style="position:relative;width:${size}px;height:${size + 18}px;pointer-events:none;">
       <div style="
         position:absolute;
         top:2px;
@@ -2284,30 +2281,19 @@ function createWholesaleNodeIcon(
         transform:translateX(-50%) ${wrapperTransform === "none" ? "" : wrapperTransform};
         border-radius:${borderRadius};
         border:${selected ? "2px" : "1.4px"} solid rgba(232,200,115,0.92);
-        background:radial-gradient(circle at 34% 18%, rgba(255,246,190,0.24), rgba(212,175,55,0.08) 36%, rgba(11,11,13,0.97) 72%), linear-gradient(180deg, rgba(11,11,13,0.98), rgba(11,11,13,0.96));
+        background:linear-gradient(180deg, rgba(11,11,13,0.98), rgba(5,5,5,0.96));
         box-shadow:${shellShadow}, inset 0 1px 0 rgba(255,255,255,0.04);
         display:flex;
         align-items:center;
         justify-content:center;
         overflow:hidden;
+        pointer-events:none;
       ">
         <div style="
           position:absolute;
           inset:4px;
           border-radius:inherit;
-          border:1px solid rgba(255,235,168,0.22);
-          pointer-events:none;
-        "></div>
-        <div style="
-          position:absolute;
-          top:8px;
-          left:11px;
-          width:${Math.max(9, Math.round(coreSize * 0.24))}px;
-          height:${Math.max(3, Math.round(coreSize * 0.09))}px;
-          border-radius:999px;
-          background:rgba(255,248,205,0.62);
-          transform:rotate(-28deg);
-          filter:blur(0.4px);
+          border:1px solid rgba(255,235,168,0.18);
           pointer-events:none;
         "></div>
         <div style="
@@ -2320,6 +2306,7 @@ function createWholesaleNodeIcon(
         border-radius:999px;
         color:white;
         transform:${contentTransform};
+        pointer-events:none;
       ">${options.innerHtml}</div>
       </div>
       <div style="
@@ -2342,6 +2329,7 @@ function createWholesaleNodeIcon(
         white-space:nowrap;
         text-align:center;
         box-shadow:${chipShadow};
+        pointer-events:none;
       ">${chipLabel}</div>
     </div>`,
     className: "wholesale-node-marker",
@@ -2725,10 +2713,10 @@ export function BuyerHomePage({
       : "Poids vérifié • Atelier certifié • Traçabilité claire";
   const bdoHeroSupportCopy =
     language === "ar"
-      ? "الدفع عبر الهاتف أو البطاقة أو الخزنة. التسليم متاح حاليا في كوت ديفوار، والدولي قريبا."
+      ? "الدفع عبر الهاتف أو البطاقة أو اعتمادات الشراء. التسليم متاح حاليا في كوت ديفوار، والتسليم الدولي يؤكد حسب المنتج واللوائح."
       : language === "en"
-        ? "Pay by mobile money, card, or purchase credits. Delivery is currently available in Côte d'Ivoire, with international delivery coming soon."
-      : "Paiement par mobile money, carte bancaire ou coffre. Livraison disponible en Côte d'Ivoire pour le moment, international bientôt.";
+        ? "Pay by mobile money, card, or purchase credits. Delivery is currently available in Côte d'Ivoire; international delivery is confirmed case by case according to product, logistics, and regulations."
+      : "Paiement par mobile money, carte bancaire ou crédits d'achat. Livraison disponible en Côte d'Ivoire pour le moment; l'international est confirmé au cas par cas selon le produit, la logistique et la réglementation.";
   const bdoTrustBadges =
     language === "ar"
       ? ["وزن متحقق", "ورشة معتمدة", "تتبع واضح"]
@@ -2820,12 +2808,12 @@ export function BuyerHomePage({
           collection: "مجموعات وقطع مميزة",
         },
         catalogIntro: {
-          lingots: "قطع مختومة 18K-22K مع سعر نهائي ظاهر وإمكانية هدف شراء.",
+          lingots: "قطع مختومة 18K-22K مع سعر ظاهر يخضع للتأكيد النهائي وإمكانية هدف شراء.",
           pieces: "صف القطعة أو النقش أو الطلب. يساعدك المساعد في إعداد ملف التصنيع.",
           collection: "إصدارات مميزة وقطع محدودة جاهزة للاستكشاف أو الشراء.",
         },
         categoryTiles: {
-          lingots: { label: "ذهب مادي معتمد", subtitle: "قطع مختومة 18K-22K مع سعر نهائي ظاهر وشراء مباشر.", badgeText: undefined },
+          lingots: { label: "ذهب مادي معتمد", subtitle: "قطع مختومة 18K-22K مع سعر ظاهر يخضع للتأكيد النهائي ومسار طلب واضح.", badgeText: undefined },
           collection: { label: "مجموعات وتواقيع", subtitle: "إصدارات مميزة وقطع محدودة جاهزة للشراء.", badgeText: undefined },
           pieces: { label: "قطعة مخصصة", subtitle: "حضّر طلب تصنيع واضح بمساعدة المساعد.", badgeText: "حسب الطلب" },
         },
@@ -2861,7 +2849,7 @@ export function BuyerHomePage({
         signature: "توقيع",
         priceLabel: "سعر القطعة",
         finalObject: "منتج معتمد",
-        priceCaption: "السعر النهائي ظاهر. مرجع 24K معروض بشكل منفصل.",
+        priceCaption: "السعر ظاهر قبل التأكيد النهائي. مرجع 24K معروض بشكل منفصل.",
         activeGoal: "هدف نشط",
         allocated: "مخصص",
         remaining: "المتبقي",
@@ -2959,13 +2947,13 @@ export function BuyerHomePage({
           pieces: "Create a custom piece",
           collection: "Collections and signature pieces",
         },
-        catalogIntro: {
-          lingots: "Stamped 18K-22K pieces with final price displayed and Purchase Objective available.",
+      catalogIntro: {
+          lingots: "Stamped 18K-22K pieces with visible pricing subject to final confirmation and Purchase Objective available.",
           pieces: "Describe the piece, engraving or intention. The assistant prepares the production brief.",
           collection: "Signature editions, limited series and premium pieces ready to discover or purchase.",
         },
         categoryTiles: {
-          lingots: { label: "Certified physical gold", subtitle: "Stamped 18K-22K pieces with final displayed price and direct purchase.", badgeText: undefined },
+          lingots: { label: "Certified physical gold", subtitle: "Stamped 18K-22K pieces with visible pricing subject to final confirmation and a clear order path.", badgeText: undefined },
           collection: { label: "Collections & signatures", subtitle: "Signature editions, limited series and premium pieces ready to purchase.", badgeText: undefined },
           pieces: { label: "Custom piece", subtitle: "Prepare a clear production brief guided by the assistant.", badgeText: "Custom" },
         },
@@ -3001,7 +2989,7 @@ export function BuyerHomePage({
         signature: "Signature",
         priceLabel: "Piece price",
         finalObject: "Certified finished item",
-        priceCaption: "Final price shown. 24K reference shown separately.",
+        priceCaption: "Visible price before final confirmation. 24K reference shown separately.",
         activeGoal: "Active objective",
         allocated: "allocated",
         remaining: "remaining",
@@ -3098,13 +3086,13 @@ export function BuyerHomePage({
         pieces: "Créer une pièce sur mesure",
         collection: "Collections & pièces signatures",
       },
-      catalogIntro: {
-        lingots: "Pièces estampées 18K-22K, prix final affiché et objectif d'achat possible.",
+        catalogIntro: {
+        lingots: "Pièces estampées 18K-22K, prix visible soumis à confirmation finale et objectif d'achat possible.",
         pieces: "Décrivez la pièce, la gravure ou l'intention. L'assistant prépare le brief de fabrication.",
         collection: "Éditions signatures, séries limitées et pièces premium prêtes à être découvertes ou acquises.",
       },
       categoryTiles: {
-        lingots: { label: "Or physique certifié", subtitle: "Pièces estampées 18K-22K avec prix final affiché et achat direct.", badgeText: undefined },
+        lingots: { label: "Or physique certifié", subtitle: "Pièces estampées 18K-22K avec prix visible soumis à confirmation finale et parcours de commande clair.", badgeText: undefined },
         collection: { label: "Collections & signatures", subtitle: "Éditions signatures, séries limitées et pièces premium prêtes à l'achat.", badgeText: undefined },
         pieces: { label: "Pièce sur mesure", subtitle: "Préparez un brief clair pour une création certifiée guidée par l'assistant.", badgeText: "Sur mesure" },
       },
@@ -3140,7 +3128,7 @@ export function BuyerHomePage({
       signature: "Signature",
       priceLabel: "Prix de la pièce",
       finalObject: "Objet fini certifié",
-      priceCaption: "Prix final affiché. Référence 24K séparée.",
+      priceCaption: "Prix visible avant confirmation finale. Référence 24K séparée.",
       activeGoal: "Objectif actif",
       allocated: "alloués",
       remaining: "reste",
@@ -3207,8 +3195,8 @@ export function BuyerHomePage({
     language === "ar"
       ? "تجمع Bourse de l'Or بين قطع ذهبية معتمدة، أسعار واضحة، تتبع مرئي، ومسار شراء منظم من الاكتشاف حتى التأكيد."
       : language === "en"
-        ? "BOURSE DE L'OR brings together certified African gold pieces and bullion, with visible final pricing, traceability, and a clear acquisition path."
-      : "Bourse de l'Or réunit des pièces et lingots en or africain certifié, avec prix final affiché, traçabilité visible et parcours d'acquisition clair.";
+        ? "BOURSE DE L'OR brings together certified African gold pieces and bullion, with visible pricing, traceability, and a clear confirmation path."
+      : "Bourse de l'Or réunit des pièces et lingots en or africain certifié, avec prix visible, traçabilité et parcours de confirmation clair.";
   const bdoHomepageTrustBadges = bdoPublicCopy.homepageTrustBadges;
   const wholesaleDeskLocale = useMemo(() => {
     if (language === "ar") {
@@ -4607,13 +4595,13 @@ export function BuyerHomePage({
     },
     {
       id: "returnModel",
-      title: "Return Model",
+      title: "Commercial Model",
       kind: "cards",
       field: "preferredReturnModel",
-      prompt: "Preferred return model (label)?",
+      prompt: "Preferred operating model (label)?",
       options: [
-        { value: "Return per rotation", title: "Return per rotation" },
-        { value: "Production share", title: "Production share" },
+        { value: "Operating premium per rotation", title: "Operating premium per rotation" },
+        { value: "Production-linked supply", title: "Production-linked supply" },
         { value: "Offtake-linked premium", title: "Offtake-linked premium" },
       ],
     },
@@ -9903,12 +9891,26 @@ export function BuyerHomePage({
     isBdoMobileExperience &&
     (/^\/or(?:\/|$)/.test(location) || /^\/achat-or(?:\/|$)/.test(location));
   const isBdoMobileHomeRoute = isBdoMobileExperience && !isBdoMobileBuyRoute;
+  const isExportunityMobileCommerceRoute =
+    isMobile &&
+    isExportunityTenant &&
+    ((buyerMode === "retail" && marketMode === "marketplace") ||
+      location === "/marketplace" ||
+      location === "/store" ||
+      location === "/map" ||
+      location === "/marketplace/map" ||
+      location.startsWith("/wholesale") ||
+      location.startsWith("/pme-exchange") ||
+      location.startsWith("/ready-for-export"));
   const showBdoDesktopLayout =
     useBdoInstitutionalLayout &&
     !isBdoMobileExperience &&
     (showProducts || isBdoRetailShellRoute);
   const suppressFloatingMobileChrome =
-    isBdoMobileExperience || isBdoWholesaleMobileExperience;
+    isBdoMobileExperience ||
+    isBdoWholesaleMobileExperience ||
+    isExportunityMobileCommerceRoute;
+  const suppressParentMobileBottomNav = isExportunityMobileCommerceRoute;
   useEffect(() => {
     if (useBdoInstitutionalLayout && currency === "GBP") {
       setCurrency("XOF");
@@ -13788,16 +13790,16 @@ export function BuyerHomePage({
       if (bdoWholesaleView === "mine") {
         return {
           eyebrow: "Opérations minières",
-          title: "Production, machines et investisseurs",
+          title: "Production, machines et acheteurs qualifiés",
           summary:
-            "Voyez les demandes d'investissement, les équipements et les lots suivis autour de votre activité.",
+            "Voyez les besoins de financement opérationnel, les équipements et les lots suivis autour de votre activité.",
         };
       }
       return {
         eyebrow: "Marché de gros",
         title: "Bureaux d'achat et mines en recherche",
         summary:
-          "Consultez les bureaux d'achat actifs, les mines visibles et les besoins d'investissement sur une seule carte.",
+          "Consultez les bureaux d'achat actifs, les mines visibles et les besoins de sourcing sur une seule carte.",
       };
     }
     switch (wholesaleRouteSection) {
@@ -13810,10 +13812,10 @@ export function BuyerHomePage({
         };
       case "investments":
         return {
-          eyebrow: "Opportunités d'investissement",
-          title: "Sites, permis et besoins en capital suivis",
+          eyebrow: "Opportunités de sourcing",
+          title: "Sites, permis et besoins opérationnels suivis",
           summary:
-            "Analysez les opportunités validées et ouvrez les fiches sans perdre le contexte cartographique.",
+            "Analysez les signaux validés et ouvrez les fiches sans perdre le contexte cartographique.",
         };
       case "apply":
         return {
@@ -13854,14 +13856,14 @@ export function BuyerHomePage({
       if (bdoWholesaleView === "mine") {
         return [
           { label: "Machines", value: String(visibleMachinery.length) },
-          { label: "Invest.", value: String(visibleOpportunities.length) },
+          { label: "Sourcing", value: String(visibleOpportunities.length) },
           { label: "Bureaux", value: String(shops.length) },
         ];
       }
       return [
         { label: "Bureaux", value: String(shops.length) },
         { label: "Mines", value: String(cadastrePermitsForMap.length) },
-        { label: "Invest.", value: String(visibleOpportunities.length) },
+        { label: "Sourcing", value: String(visibleOpportunities.length) },
       ];
     }
     return [
@@ -13898,20 +13900,20 @@ export function BuyerHomePage({
     bdoWholesaleView === "buyer"
       ? "Montre-moi les mines actives, la production déclarée et les bureaux d'achat à suivre aujourd'hui."
       : bdoWholesaleView === "mine"
-        ? "Montre-moi les investisseurs, les machines et les acheteurs à activer pour ma mine."
-        : "Montre-moi les bureaux d'achat actifs et les mines qui recherchent un investisseur.";
+        ? "Montre-moi les acheteurs qualifiés, les machines et les partenaires à activer pour ma mine."
+        : "Montre-moi les bureaux d'achat actifs et les mines qui recherchent un partenaire de sourcing.";
   const bdoWholesalePrimaryActionLabel =
     bdoWholesaleView === "buyer"
       ? "Voir les mines"
       : bdoWholesaleView === "mine"
-        ? "Voir les investisseurs"
+        ? "Voir les acheteurs"
         : "Voir les bureaux";
   const bdoWholesaleViewLabel =
     bdoWholesaleView === "buyer"
       ? "Vue bureau d'achat"
       : bdoWholesaleView === "mine"
         ? "Vue mine"
-        : "Vue investisseur";
+        : "Vue sourcing";
   const bdoWholesaleInsightCards = useMemo(() => {
     if (!isBdoUnifiedWholesale)
       return [] as Array<{
@@ -14088,8 +14090,8 @@ export function BuyerHomePage({
       return [
         {
           id: "mine-investors",
-          title: "Investisseurs visibles",
-          subtitle: "Opportunités ouvertes et capital mobilisable.",
+          title: "Acheteurs qualifiés visibles",
+          subtitle: "Signaux ouverts, sourcing et besoins opérationnels.",
           tone: "emerald" as const,
           items: opportunityItems,
         },
@@ -14113,9 +14115,9 @@ export function BuyerHomePage({
     return [
       {
         id: "investor-opportunities",
-        title: "Mines à financer",
+        title: "Mines à qualifier",
         subtitle:
-          "Mines visibles avec besoin d'investissement ou de partenariat.",
+          "Mines visibles avec besoin de sourcing, d'équipement ou de partenariat.",
         tone: "emerald" as const,
         items: opportunityItems.length ? opportunityItems : mineItems,
       },
@@ -17412,11 +17414,11 @@ export function BuyerHomePage({
                             : ""
                         }`}
                         onClick={() => navigate("/pme-exchange")}
-                        aria-label="Ready export"
+                        aria-label="PME Exchange"
                       >
                         <BriefcaseBusiness className="h-4 w-4 mr-2" />
                         <span className="text-[12px] font-semibold">
-                          Ready export
+                          PME Exchange
                         </span>
                       </Button>
                     ) : null}
@@ -23655,7 +23657,7 @@ export function BuyerHomePage({
               ? [
                   {
                     key: "pme-exchange",
-                    label: "Ready export",
+                    label: "PME Exchange",
                     icon: <BriefcaseBusiness className="h-5 w-5" />,
                     active: location === "/pme-exchange",
                     disabled: false,
@@ -23847,6 +23849,7 @@ export function BuyerHomePage({
 
       {!suppressFloatingMobileChrome &&
       !isBdoWholesaleDesktop &&
+      !isExportunityCommerceMapExperience &&
       !isExportunityMarketplaceExperience ? (
         <button
           type="button"
@@ -23905,7 +23908,7 @@ export function BuyerHomePage({
         </button>
       ) : null}
 
-      {!suppressFloatingMobileChrome && conciergeOpen && !modalBlockingConcierge && (
+      {!suppressFloatingMobileChrome && !isExportunityCommerceMapExperience && conciergeOpen && !modalBlockingConcierge && (
         <div
           className={`fixed inset-0 flex items-end ${
             isMobile
@@ -25135,8 +25138,8 @@ export function BuyerHomePage({
                                   : `${wholesaleVisibleVerifiedCount} source vérifiée`
                               } sont visibles dans le périmètre courant.`
                           : language === "en"
-                            ? "The map shows density first, then the desk helps you compare the best sourcing or investment route."
-                            : "La carte révèle d'abord la densité, puis le desk vous aide à comparer la meilleure route de sourcing ou d'investissement."}
+                            ? "The map shows density first, then the desk helps you compare the best sourcing or qualified buyer route."
+                            : "La carte révèle d'abord la densité, puis le desk vous aide à comparer la meilleure route de sourcing ou d'acheteurs qualifiés."}
                       </p>
                     </div>
 
@@ -25576,7 +25579,7 @@ export function BuyerHomePage({
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <p className="text-[10px] uppercase tracking-[0.22em] text-[#E8C873]/70">
-                          Rayons investisseurs
+                          Rayons sourcing
                         </p>
                         <p className="mt-1 text-sm font-semibold text-[#F5F3EC]">
                           Mines, bureaux, equipement, contrats
@@ -25799,15 +25802,15 @@ export function BuyerHomePage({
                             {conciergeProfile.roleLabel}
                           </p>
                           <p className="mt-1 text-lg font-semibold text-[#F5F3EC]">
-                            {bdoText("Desk wholesale investisseurs", "Investor wholesale desk", "مكتب الجملة للمستثمرين")}
+                            {bdoText("Desk wholesale sourcing", "Sourcing wholesale desk", "مكتب الجملة للتوريد")}
                           </p>
                         </div>
                       </div>
                       <p className="mt-3 max-w-[68ch] text-sm leading-relaxed text-[#F5F3EC]/66">
                         {bdoText(
-                          "Indiquez le volume voulu, la zone, le profil de mine, le bureau de sortie ou le besoin machine. Le desk assemble la shortlist, le contrat type, le funding et la route de paiement.",
-                          "Share the target volume, area, mine profile, exit office or machinery need. The desk prepares the shortlist, draft contract, funding and payment route.",
-                          "حدد الحجم المطلوب والمنطقة ونوع المنجم ومكتب الخروج أو احتياج المعدات. يجهز المكتب القائمة المختصرة والعقد والتمويل ومسار الدفع.",
+                          "Indiquez le volume voulu, la zone, le profil de mine, le bureau de sortie ou le besoin machine. Le desk assemble la shortlist, le contrat type, la documentation et la route de paiement.",
+                          "Share the target volume, area, mine profile, exit office or machinery need. The desk prepares the shortlist, draft contract, documentation and payment route.",
+                          "حدد الحجم المطلوب والمنطقة ونوع المنجم ومكتب الخروج أو احتياج المعدات. يجهز المكتب القائمة المختصرة والعقد والوثائق ومسار الدفع.",
                         )}
                       </p>
                     </div>
@@ -26506,8 +26509,9 @@ export function BuyerHomePage({
                     Contract terms (digitally managed)
                   </p>
                   <p className="mt-2 text-sm text-white/80">
-                    Participation is explicit and time-bound. Payouts are linked
-                    to confirmed revenue events (purchase orders / offtake).
+                    Professional participation is explicit and time-bound.
+                    Service settlement is linked to documented order events
+                    (purchase orders / offtake).
                   </p>
                   <div className="mt-3 flex flex-wrap gap-2">
                     <Button
@@ -26567,7 +26571,7 @@ export function BuyerHomePage({
                     Participation
                   </p>
                   <p className="mt-2 text-sm text-white/80">
-                    Participation soumise à revue. Toute offre reste indicative
+                    Demande professionnelle soumise à revue. Toute offre reste indicative
                     jusqu'à validation, documentation et conformité.
                   </p>
                   <div className="mt-3 flex flex-wrap gap-2">
@@ -26599,7 +26603,7 @@ export function BuyerHomePage({
                         setParticipateOpen(true);
                       }}
                     >
-                      Participate
+                      Request review
                     </Button>
                     {!isVerifiedInvestor && (
                       <Button
@@ -26610,7 +26614,7 @@ export function BuyerHomePage({
                           else
                             toast({
                               title: "Locked",
-                              description: "Requires Verified Investor role.",
+                              description: "Requires approved professional role.",
                             });
                         }}
                       >
@@ -26642,11 +26646,11 @@ export function BuyerHomePage({
         <DialogContent className="bg-gradient-to-b from-[#0a0f14] to-black border-white/10 text-white max-w-3xl">
           <DialogHeader>
             <DialogTitle className="text-white">
-              Contract Preview (digitally managed)
+              Commercial Contract Preview (digitally managed)
             </DialogTitle>
             <DialogDescription className="text-white/60">
-              This preview uses compliance-safe language (revenue share / return
-              per rotation).
+              This preview uses compliance-safe language for documented sourcing,
+              offtake, service fees, and human review.
             </DialogDescription>
           </DialogHeader>
           <div className="flex flex-wrap gap-2">
@@ -26664,7 +26668,7 @@ export function BuyerHomePage({
               }
               onClick={() => setParticipateTemplateKey("revenue_share")}
             >
-              Revenue share (time-bound)
+              Production-linked service model
             </Button>
             <Button
               size="sm"
@@ -26680,7 +26684,7 @@ export function BuyerHomePage({
               }
               onClick={() => setParticipateTemplateKey("premium_per_rotation")}
             >
-              Return per rotation (indicative)
+              Rotation-based operating premium
             </Button>
           </div>
           <div className="rounded-xl border border-white/10 bg-white/5 p-3 max-h-[50vh] overflow-auto">
@@ -26694,19 +26698,19 @@ Authorized Bureau d’Achat: (selected during participation)
 Start date: (on activation)
 End date: (time-bound)
 
-Return model: ${
+Commercial model: ${
                 participateTemplateKey === "revenue_share"
-                  ? "revenue share (% of confirmed net revenue)"
-                  : "return per rotation (indicative) (% of principal, rotation-based)"
+                  ? "production-linked service model"
+                  : "rotation-based operating premium (indicative)"
               }
-Payout frequency: ${participateTemplateKey === "revenue_share" ? "per confirmed sale" : "per rotation"}
+Settlement frequency: ${participateTemplateKey === "revenue_share" ? "per confirmed sale" : "per rotation"}
 
-Compliance note: This is a digitally managed contract linking payouts to confirmed revenue events (purchase orders / offtake).
+Compliance note: This is a digitally managed commercial contract linking service settlement to confirmed order events (purchase orders / offtake).
 Only authorized buyers can execute purchase orders via the platform.
 
 Signatures
 - Party A: Mine (owner/licensed entity)
-- Party B: Investor
+- Party B: Qualified partner
 - Party C (optional): Authorized Bureau d’Achat`}
             </pre>
           </div>
@@ -26726,11 +26730,11 @@ Signatures
         <DialogContent className="bg-gradient-to-b from-[#0a0f14] to-black border-white/10 text-white max-w-3xl">
           <DialogHeader>
             <DialogTitle className="text-white">
-              Create Digital Contract
+              Create Commercial Contract
             </DialogTitle>
             <DialogDescription className="text-white/60">
-              Investment participation is explicit + time-bound, and payouts
-              link to revenue events.
+              Professional participation is explicit, time-bound, compliance-reviewed,
+              and linked to documented order events.
             </DialogDescription>
           </DialogHeader>
 
@@ -26752,7 +26756,7 @@ Signatures
               {participateStep === 1 && (
                 <div className="space-y-3">
                   <p className="text-sm text-white/80">
-                    Choose a contract template
+                    Choose a commercial contract template
                   </p>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                     <Button
@@ -26768,7 +26772,7 @@ Signatures
                       }
                       onClick={() => setParticipateTemplateKey("revenue_share")}
                     >
-                      Revenue share (time-bound)
+                      Production-linked service model
                     </Button>
                     <Button
                       variant={
@@ -26785,7 +26789,7 @@ Signatures
                         setParticipateTemplateKey("premium_per_rotation")
                       }
                     >
-                      Return per rotation (indicative)
+                      Rotation-based operating premium
                     </Button>
                   </div>
                   <div className="flex justify-end gap-2">
@@ -26902,8 +26906,8 @@ Signatures
                     <div>
                       Template:{" "}
                       {participateTemplateKey === "revenue_share"
-                        ? "Revenue share (time-bound)"
-                        : "Return per rotation (indicative)"}
+                        ? "Production-linked service model"
+                        : "Rotation-based operating premium"}
                     </div>
                     <div>Bureau: #{participateBureauId || "?"}</div>
                   </div>
@@ -27038,7 +27042,7 @@ Signatures
                         }
                       }}
                     >
-                      Sign (Investor)
+                      Sign (Partner)
                     </Button>
                   </div>
                   <p className="text-[12px] text-white/60">
@@ -29137,7 +29141,7 @@ Signatures
                     />
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-white/70 text-xs">Amount needed (USD)</Label>
+                    <Label className="text-white/70 text-xs">Operational need (USD)</Label>
                     <Input
                       value={mineListingForm.amountNeededUsd}
                       onChange={(e) => setMineListingForm((p) => ({ ...p, amountNeededUsd: e.target.value }))}
@@ -29154,14 +29158,14 @@ Signatures
                     />
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-white/70 text-xs">Preferred return model (label)</Label>
+                    <Label className="text-white/70 text-xs">Preferred operating model (label)</Label>
                     <select
                       className="h-10 w-full rounded-md bg-black/30 border border-white/10 text-white/80 text-[12px] px-2"
                       value={mineListingForm.preferredReturnModel}
                       onChange={(e) => setMineListingForm((p) => ({ ...p, preferredReturnModel: e.target.value }))}
                     >
-                      <option value="Return per rotation">Return per rotation</option>
-                      <option value="Production share">Production share</option>
+                      <option value="Operating premium per rotation">Operating premium per rotation</option>
+                      <option value="Production-linked supply">Production-linked supply</option>
                       <option value="Offtake-linked premium">Offtake-linked premium</option>
                     </select>
                   </div>
@@ -29235,14 +29239,16 @@ Signatures
         </DialogContent>
       </Dialog>
 
-      {isBdoMobileExperience || isBdoWholesaleMobileExperience ? (
+      {!suppressParentMobileBottomNav &&
+      (isBdoMobileExperience || isBdoWholesaleMobileExperience) ? (
         <MobileBottomNavSpacer />
       ) : null}
-      <MobileBottomNav
-        activeKey={navActiveKey}
-        items={
-          isBdoWholesaleMobileExperience
-            ? [
+      {!suppressParentMobileBottomNav ? (
+        <MobileBottomNav
+          activeKey={navActiveKey}
+          items={
+            isBdoWholesaleMobileExperience
+              ? [
                 {
                   key: "map" as const,
                   label: "Carte",
@@ -29292,9 +29298,9 @@ Signatures
                     setWholesaleApplyOpen(true);
                   },
                 },
-              ]
-            : isBdoMobileExperience
-              ? [
+                ]
+              : isBdoMobileExperience
+                ? [
                   {
                     key: "home" as const,
                     label: "Accueil",
@@ -29342,8 +29348,8 @@ Signatures
                       navigate("/coffre");
                     },
                   },
-                ]
-              : [
+                  ]
+                : [
                   {
                     key: "browse" as const,
                     label: t("common.browse"),
@@ -29402,9 +29408,10 @@ Signatures
                       setVaultOpen(true);
                     },
                   },
-                ]
-        }
-      />
+                  ]
+          }
+        />
+      ) : null}
     </div>
   );
 }

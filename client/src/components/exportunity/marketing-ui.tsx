@@ -1,6 +1,35 @@
 import type { ComponentPropsWithoutRef, ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
+export function setMarketingPageMetadata({
+  title,
+  description,
+  image,
+}: {
+  title: string;
+  description: string;
+  image?: string | null;
+}) {
+  if (typeof document === "undefined") return;
+
+  document.title = title;
+
+  const ensureMeta = (selector: string, attrs: Record<string, string>, content: string) => {
+    let el = document.head.querySelector(selector) as HTMLMetaElement | null;
+    if (!el) {
+      el = document.createElement("meta");
+      Object.entries(attrs).forEach(([key, value]) => el?.setAttribute(key, value));
+      document.head.appendChild(el);
+    }
+    el.setAttribute("content", content);
+  };
+
+  ensureMeta('meta[name="description"]', { name: "description" }, description);
+  ensureMeta('meta[property="og:title"]', { property: "og:title" }, title);
+  ensureMeta('meta[property="og:description"]', { property: "og:description" }, description);
+  if (image) ensureMeta('meta[property="og:image"]', { property: "og:image" }, image);
+}
+
 export function MarketingContainer({ className, children, ...props }: ComponentPropsWithoutRef<"section">) {
   return (
     <section {...props} className={cn("mx-auto w-full max-w-7xl px-4 md:px-8", className)}>

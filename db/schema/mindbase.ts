@@ -320,6 +320,43 @@ export const mindbaseWorkspaces = pgTable(
   }),
 );
 
+export const mindbaseIntegrationConnections = pgTable(
+  "mindbase_integration_connections",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: integer("tenant_id")
+      .references(() => tenants.id, { onDelete: "cascade" })
+      .notNull(),
+    userId: integer("user_id")
+      .references(() => eceUsers.id, { onDelete: "cascade" })
+      .notNull(),
+    workspaceId: uuid("workspace_id").references(() => mindbaseWorkspaces.id, { onDelete: "set null" }),
+    provider: text("provider").notNull(),
+    integrationId: text("integration_id").notNull(),
+    accountLabel: text("account_label"),
+    status: text("status").notNull().default("connected"),
+    scopes: jsonb("scopes").$type<string[]>().notNull().default([]),
+    tokenCiphertext: text("token_ciphertext").notNull(),
+    tokenIv: text("token_iv").notNull(),
+    tokenAuthTag: text("token_auth_tag").notNull(),
+    tokenMeta: jsonb("token_meta").$type<Record<string, unknown>>().notNull().default({}),
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
+    lastVerifiedAt: timestamp("last_verified_at", { withTimezone: true }),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    byTenantUserIntegration: uniqueIndex("mindbase_integration_connections_tenant_user_integration_unique").on(
+      t.tenantId,
+      t.userId,
+      t.integrationId,
+    ),
+    byTenantUserStatus: index("mindbase_integration_connections_tenant_user_status_idx").on(t.tenantId, t.userId, t.status),
+    byWorkspace: index("mindbase_integration_connections_workspace_idx").on(t.workspaceId),
+  }),
+);
+
 export const mindbaseOrganizations = pgTable(
   "mindbase_organizations",
   {

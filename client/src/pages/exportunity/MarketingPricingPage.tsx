@@ -26,7 +26,7 @@ export default function MarketingPricingPage() {
       <MarketingContainer className="py-10 pb-14">
         <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
           <GlassCard>
-            <h3 className="text-lg font-semibold">Member login</h3>
+            <h3 className="text-lg font-semibold">Workspace access</h3>
             <p className="mt-2 text-sm text-white/75">Access your current workspace, agents, and trade operations.</p>
             <a href={marketingSiteConfig.memberLoginLink} target="_blank" rel="noreferrer" className="mt-4 inline-flex">
               <Button className="bg-amber-400 text-slate-950 hover:bg-amber-300">Log in</Button>
@@ -41,10 +41,10 @@ export default function MarketingPricingPage() {
           </GlassCard>
           <GlassCard>
             <h3 className="text-lg font-semibold">Sales advisory</h3>
-            <p className="mt-2 text-sm text-white/75">Need a tailored configuration? Talk to our team for deployment scope and pricing.</p>
+            <p className="mt-2 text-sm text-white/75">Need a tailored configuration? Contact the team for deployment scope and pricing.</p>
             <div className="mt-4 inline-flex">
-              <Link href="/talk">
-                <Button variant="outline" className="border-white/30 bg-transparent text-white hover:bg-white/10">Contact sales</Button>
+              <Link href="/contact">
+                <Button variant="outline" className="border-white/30 bg-transparent text-white hover:bg-white/10">Contact</Button>
               </Link>
             </div>
           </GlassCard>

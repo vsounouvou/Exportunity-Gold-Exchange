@@ -216,14 +216,16 @@ export function AdminTwilioControlCenterPage() {
   });
 
   return (
-    <div className="p-6 space-y-6 max-w-6xl mx-auto">
-      <div>
-        <h1 className="text-2xl font-bold text-white">Twilio Control Center</h1>
-        <p className="text-gray-400 text-sm">Tenant: {tenant?.name || "-"}</p>
-      </div>
+    <div className="min-h-screen bg-[#F7F8FA] p-4 text-slate-950 md:p-6">
+      <div className="mx-auto max-w-6xl space-y-6">
+        <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_16px_40px_rgba(15,23,42,.08)]">
+          <div className="text-xs font-black uppercase tracking-[0.28em] text-[#F5A623]">Settings / Communications</div>
+          <h1 className="mt-2 text-3xl font-black tracking-tight text-slate-950">Twilio Control Center</h1>
+          <p className="mt-2 text-sm text-slate-600">Tenant: {tenant?.name || "-"}. Configure WhatsApp, SMS, Verify, sender profiles, and approved test sends with clear audit visibility.</p>
+        </section>
 
-      <Card className="bg-gray-900/50 border-gray-800">
-        <CardHeader><CardTitle className="text-white">Runtime health</CardTitle></CardHeader>
+      <Card className="border-slate-200 bg-white shadow-sm">
+        <CardHeader><CardTitle className="text-slate-950">Runtime health</CardTitle></CardHeader>
         <CardContent className="space-y-3">
           <div className="flex flex-wrap gap-2">
             <Badge variant={cfg?.accountSidPresent ? "default" : "destructive"}>Account SID</Badge>
@@ -233,19 +235,19 @@ export function AdminTwilioControlCenterPage() {
             <Badge variant={profile?.verifyServiceSid || cfg?.verifyServiceSidPresent ? "default" : "secondary"}>Verify</Badge>
             {profile?.useSandboxForDev ? <Badge variant="secondary">Sandbox fallback</Badge> : <Badge variant="default">Production-first</Badge>}
           </div>
-          <div className="text-xs text-gray-400">
-            Status callback: <span className="text-gray-200">{cfg?.webhookPath || "/api/webhooks/twilio/status"}</span>
+          <div className="text-xs text-slate-500">
+            Status callback: <span className="font-mono text-slate-800">{cfg?.webhookPath || "/api/webhooks/twilio/status"}</span>
           </div>
         </CardContent>
       </Card>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        <Card className="bg-gray-900/50 border-gray-800">
-          <CardHeader><CardTitle className="text-white">Tenant messaging profile</CardTitle></CardHeader>
+        <Card className="border-slate-200 bg-white shadow-sm">
+          <CardHeader><CardTitle className="text-slate-950">Tenant messaging profile</CardTitle></CardHeader>
           <CardContent className="space-y-4">
             <div className="flex flex-wrap gap-3">
-              <div className="rounded-lg border border-gray-800 bg-gray-950/30 px-3 py-2 flex items-center gap-3"><span className="text-sm text-white">Active</span><Switch checked={profileActive} onCheckedChange={(v) => setProfileActive(Boolean(v))} /></div>
-              <div className="rounded-lg border border-gray-800 bg-gray-950/30 px-3 py-2 flex items-center gap-3"><span className="text-sm text-white">Sandbox fallback</span><Switch checked={profileSandbox} onCheckedChange={(v) => setProfileSandbox(Boolean(v))} /></div>
+              <div className="flex items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2"><span className="text-sm font-medium text-slate-800">Active</span><Switch checked={profileActive} onCheckedChange={(v) => setProfileActive(Boolean(v))} /></div>
+              <div className="flex items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2"><span className="text-sm font-medium text-slate-800">Sandbox fallback</span><Switch checked={profileSandbox} onCheckedChange={(v) => setProfileSandbox(Boolean(v))} /></div>
             </div>
             <div className="flex flex-wrap gap-2">
               {(["sms", "whatsapp", "verify_sms", "verify_whatsapp"] as const).map((entry) => (
@@ -253,63 +255,64 @@ export function AdminTwilioControlCenterPage() {
               ))}
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div><Label className="text-gray-300">SMS from</Label><Input value={profileSmsFrom} onChange={(e) => setProfileSmsFrom(e.target.value)} className="bg-gray-950 border-gray-800 text-white" /></div>
-              <div><Label className="text-gray-300">WhatsApp from</Label><Input value={profileWhatsAppFrom} onChange={(e) => setProfileWhatsAppFrom(e.target.value)} className="bg-gray-950 border-gray-800 text-white" /></div>
-              <div><Label className="text-gray-300">Messaging Service SID</Label><Input value={profileMessagingServiceSid} onChange={(e) => setProfileMessagingServiceSid(e.target.value)} className="bg-gray-950 border-gray-800 text-white" /></div>
-              <div><Label className="text-gray-300">Verify Service SID</Label><Input value={profileVerifyServiceSid} onChange={(e) => setProfileVerifyServiceSid(e.target.value)} className="bg-gray-950 border-gray-800 text-white" /></div>
-              <div><Label className="text-gray-300">Sender label</Label><Input value={profileSenderLabel} onChange={(e) => setProfileSenderLabel(e.target.value)} className="bg-gray-950 border-gray-800 text-white" /></div>
-              <div><Label className="text-gray-300">WhatsApp sender status</Label><Input value={profileWhatsappStatus} onChange={(e) => setProfileWhatsappStatus(e.target.value)} className="bg-gray-950 border-gray-800 text-white" /></div>
+              <div><Label className="text-slate-700">SMS from</Label><Input value={profileSmsFrom} onChange={(e) => setProfileSmsFrom(e.target.value)} className="border-slate-200 bg-white text-slate-950" /></div>
+              <div><Label className="text-slate-700">WhatsApp from</Label><Input value={profileWhatsAppFrom} onChange={(e) => setProfileWhatsAppFrom(e.target.value)} className="border-slate-200 bg-white text-slate-950" /></div>
+              <div><Label className="text-slate-700">Messaging Service SID</Label><Input value={profileMessagingServiceSid} onChange={(e) => setProfileMessagingServiceSid(e.target.value)} className="border-slate-200 bg-white text-slate-950" /></div>
+              <div><Label className="text-slate-700">Verify Service SID</Label><Input value={profileVerifyServiceSid} onChange={(e) => setProfileVerifyServiceSid(e.target.value)} className="border-slate-200 bg-white text-slate-950" /></div>
+              <div><Label className="text-slate-700">Sender label</Label><Input value={profileSenderLabel} onChange={(e) => setProfileSenderLabel(e.target.value)} className="border-slate-200 bg-white text-slate-950" /></div>
+              <div><Label className="text-slate-700">WhatsApp sender status</Label><Input value={profileWhatsappStatus} onChange={(e) => setProfileWhatsappStatus(e.target.value)} className="border-slate-200 bg-white text-slate-950" /></div>
             </div>
-            <div><Label className="text-gray-300">Default signature</Label><Textarea value={profileSignature} onChange={(e) => setProfileSignature(e.target.value)} className="bg-gray-950 border-gray-800 text-white min-h-[90px]" /></div>
-            <Button onClick={() => saveProfileMutation.mutate()} disabled={saveProfileMutation.isPending}>{saveProfileMutation.isPending ? "Saving..." : "Save tenant profile"}</Button>
+            <div><Label className="text-slate-700">Default signature</Label><Textarea value={profileSignature} onChange={(e) => setProfileSignature(e.target.value)} className="min-h-[90px] border-slate-200 bg-white text-slate-950" /></div>
+            <Button className="bg-[#F5A623] font-black text-slate-950 hover:bg-[#F9A800]" onClick={() => saveProfileMutation.mutate()} disabled={saveProfileMutation.isPending}>{saveProfileMutation.isPending ? "Saving..." : "Save tenant profile"}</Button>
           </CardContent>
         </Card>
 
-        <Card className="bg-gray-900/50 border-gray-800">
-          <CardHeader><CardTitle className="text-white">Agent sender profile</CardTitle></CardHeader>
+        <Card className="border-slate-200 bg-white shadow-sm">
+          <CardHeader><CardTitle className="text-slate-950">Agent sender profile</CardTitle></CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div><Label className="text-gray-300">Agent key</Label><Input value={senderAgentKey} onChange={(e) => setSenderAgentKey(e.target.value)} className="bg-gray-950 border-gray-800 text-white" /></div>
-              <div><Label className="text-gray-300">Display name</Label><Input value={senderDisplayName} onChange={(e) => setSenderDisplayName(e.target.value)} className="bg-gray-950 border-gray-800 text-white" /></div>
+              <div><Label className="text-slate-700">Agent key</Label><Input value={senderAgentKey} onChange={(e) => setSenderAgentKey(e.target.value)} className="border-slate-200 bg-white text-slate-950" /></div>
+              <div><Label className="text-slate-700">Display name</Label><Input value={senderDisplayName} onChange={(e) => setSenderDisplayName(e.target.value)} className="border-slate-200 bg-white text-slate-950" /></div>
             </div>
-            <div><Label className="text-gray-300">Signature</Label><Textarea value={senderSignature} onChange={(e) => setSenderSignature(e.target.value)} className="bg-gray-950 border-gray-800 text-white min-h-[80px]" /></div>
+            <div><Label className="text-slate-700">Signature</Label><Textarea value={senderSignature} onChange={(e) => setSenderSignature(e.target.value)} className="min-h-[80px] border-slate-200 bg-white text-slate-950" /></div>
             <div className="grid grid-cols-2 gap-2">
-              <div className="rounded-lg border border-gray-800 bg-gray-950/30 px-3 py-2 flex items-center justify-between"><span className="text-sm text-white">Active</span><Switch checked={senderActive} onCheckedChange={(v) => setSenderActive(Boolean(v))} /></div>
-              <div className="rounded-lg border border-gray-800 bg-gray-950/30 px-3 py-2 flex items-center justify-between"><span className="text-sm text-white">Fallback</span><Switch checked={senderFallback} onCheckedChange={(v) => setSenderFallback(Boolean(v))} /></div>
-              <div className="rounded-lg border border-gray-800 bg-gray-950/30 px-3 py-2 flex items-center justify-between"><span className="text-sm text-white">SMS</span><Switch checked={senderSmsAllowed} onCheckedChange={(v) => setSenderSmsAllowed(Boolean(v))} /></div>
-              <div className="rounded-lg border border-gray-800 bg-gray-950/30 px-3 py-2 flex items-center justify-between"><span className="text-sm text-white">WhatsApp</span><Switch checked={senderWhatsAppAllowed} onCheckedChange={(v) => setSenderWhatsAppAllowed(Boolean(v))} /></div>
-              <div className="rounded-lg border border-gray-800 bg-gray-950/30 px-3 py-2 flex items-center justify-between"><span className="text-sm text-white">Verify SMS</span><Switch checked={senderVerifySmsAllowed} onCheckedChange={(v) => setSenderVerifySmsAllowed(Boolean(v))} /></div>
-              <div className="rounded-lg border border-gray-800 bg-gray-950/30 px-3 py-2 flex items-center justify-between"><span className="text-sm text-white">Verify WA</span><Switch checked={senderVerifyWhatsAppAllowed} onCheckedChange={(v) => setSenderVerifyWhatsAppAllowed(Boolean(v))} /></div>
+              <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-3 py-2"><span className="text-sm font-medium text-slate-800">Active</span><Switch checked={senderActive} onCheckedChange={(v) => setSenderActive(Boolean(v))} /></div>
+              <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-3 py-2"><span className="text-sm font-medium text-slate-800">Fallback</span><Switch checked={senderFallback} onCheckedChange={(v) => setSenderFallback(Boolean(v))} /></div>
+              <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-3 py-2"><span className="text-sm font-medium text-slate-800">SMS</span><Switch checked={senderSmsAllowed} onCheckedChange={(v) => setSenderSmsAllowed(Boolean(v))} /></div>
+              <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-3 py-2"><span className="text-sm font-medium text-slate-800">WhatsApp</span><Switch checked={senderWhatsAppAllowed} onCheckedChange={(v) => setSenderWhatsAppAllowed(Boolean(v))} /></div>
+              <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-3 py-2"><span className="text-sm font-medium text-slate-800">Verify SMS</span><Switch checked={senderVerifySmsAllowed} onCheckedChange={(v) => setSenderVerifySmsAllowed(Boolean(v))} /></div>
+              <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-3 py-2"><span className="text-sm font-medium text-slate-800">Verify WA</span><Switch checked={senderVerifyWhatsAppAllowed} onCheckedChange={(v) => setSenderVerifyWhatsAppAllowed(Boolean(v))} /></div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div><Label className="text-gray-300">SMS override</Label><Input value={senderSmsFrom} onChange={(e) => setSenderSmsFrom(e.target.value)} className="bg-gray-950 border-gray-800 text-white" /></div>
-              <div><Label className="text-gray-300">WhatsApp override</Label><Input value={senderWhatsAppFrom} onChange={(e) => setSenderWhatsAppFrom(e.target.value)} className="bg-gray-950 border-gray-800 text-white" /></div>
+              <div><Label className="text-slate-700">SMS override</Label><Input value={senderSmsFrom} onChange={(e) => setSenderSmsFrom(e.target.value)} className="border-slate-200 bg-white text-slate-950" /></div>
+              <div><Label className="text-slate-700">WhatsApp override</Label><Input value={senderWhatsAppFrom} onChange={(e) => setSenderWhatsAppFrom(e.target.value)} className="border-slate-200 bg-white text-slate-950" /></div>
             </div>
-            <Button onClick={() => saveAgentSenderMutation.mutate()} disabled={saveAgentSenderMutation.isPending || !senderAgentKey.trim()}>{saveAgentSenderMutation.isPending ? "Saving..." : "Save agent sender"}</Button>
-            <ScrollArea className="h-[180px] pr-3"><div className="space-y-2">{(agentSendersQuery.data?.items ?? []).map((item) => <button key={item.id} type="button" onClick={() => loadAgentSender(item)} className="w-full text-left rounded-lg border border-gray-800 bg-gray-950/30 px-3 py-2 hover:bg-gray-950/50"><div className="text-sm text-white font-semibold">{item.agentKey || `agent:${item.agentId}`}</div><div className="text-xs text-gray-500 mt-1">{(item.allowedChannels || []).join(", ")}</div></button>)}</div></ScrollArea>
+            <Button className="bg-[#F5A623] font-black text-slate-950 hover:bg-[#F9A800]" onClick={() => saveAgentSenderMutation.mutate()} disabled={saveAgentSenderMutation.isPending || !senderAgentKey.trim()}>{saveAgentSenderMutation.isPending ? "Saving..." : "Save agent sender"}</Button>
+            <ScrollArea className="h-[180px] pr-3"><div className="space-y-2">{(agentSendersQuery.data?.items ?? []).map((item) => <button key={item.id} type="button" onClick={() => loadAgentSender(item)} className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-left hover:bg-white"><div className="text-sm font-semibold text-slate-950">{item.agentKey || `agent:${item.agentId}`}</div><div className="mt-1 text-xs text-slate-500">{(item.allowedChannels || []).join(", ")}</div></button>)}</div></ScrollArea>
           </CardContent>
         </Card>
       </div>
 
-      <Card className="bg-gray-900/50 border-gray-800">
-        <CardHeader><CardTitle className="text-white">Test send</CardTitle></CardHeader>
+      <Card className="border-slate-200 bg-white shadow-sm">
+        <CardHeader><CardTitle className="text-slate-950">Test send</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <div><Label className="text-gray-300">Recipient</Label><Input value={testTo} onChange={(e) => setTestTo(e.target.value)} placeholder="+2250100000229" className="bg-gray-950 border-gray-800 text-white" /></div>
-            <div><Label className="text-gray-300">Channel / mode</Label><div className="flex flex-wrap gap-2 mt-2"><Button type="button" variant={testChannel === "whatsapp" ? "default" : "secondary"} onClick={() => setTestChannel("whatsapp")}>WhatsApp</Button><Button type="button" variant={testChannel === "sms" ? "default" : "secondary"} onClick={() => { setTestChannel("sms"); setTestMode("text"); }} disabled={!canSendSms}>SMS</Button><Button type="button" variant={testMode === "text" ? "default" : "secondary"} onClick={() => setTestMode("text")}>Text</Button><Button type="button" variant={testMode === "template" ? "default" : "secondary"} onClick={() => setTestMode("template")} disabled={testChannel !== "whatsapp"}>Template</Button></div></div>
+            <div><Label className="text-slate-700">Recipient</Label><Input value={testTo} onChange={(e) => setTestTo(e.target.value)} placeholder="+2250100000229" className="border-slate-200 bg-white text-slate-950" /></div>
+            <div><Label className="text-slate-700">Channel / mode</Label><div className="flex flex-wrap gap-2 mt-2"><Button type="button" variant={testChannel === "whatsapp" ? "default" : "secondary"} onClick={() => setTestChannel("whatsapp")}>WhatsApp</Button><Button type="button" variant={testChannel === "sms" ? "default" : "secondary"} onClick={() => { setTestChannel("sms"); setTestMode("text"); }} disabled={!canSendSms}>SMS</Button><Button type="button" variant={testMode === "text" ? "default" : "secondary"} onClick={() => setTestMode("text")}>Text</Button><Button type="button" variant={testMode === "template" ? "default" : "secondary"} onClick={() => setTestMode("template")} disabled={testChannel !== "whatsapp"}>Template</Button></div></div>
             <div className="flex items-end"><Button onClick={() => sendTestMutation.mutate()} disabled={sendTestMutation.isPending || !testTo.trim() || (testChannel === "sms" ? !canSendSms : !canSendWhatsApp) || (testMode === "template" && !testContentSid.trim())}>{sendTestMutation.isPending ? "Sending..." : "Send test"}</Button></div>
           </div>
-          <div><Label className="text-gray-300">Message</Label><Input value={testMessage} onChange={(e) => setTestMessage(e.target.value)} placeholder={defaultMessage} className="bg-gray-950 border-gray-800 text-white" /></div>
-          {testMode === "template" ? <div className="grid grid-cols-1 md:grid-cols-2 gap-3"><div><Label className="text-gray-300">Content SID</Label><Input value={testContentSid} onChange={(e) => setTestContentSid(e.target.value)} className="bg-gray-950 border-gray-800 text-white" /></div><div><Label className="text-gray-300">Content variables JSON</Label><Textarea value={testContentVariables} onChange={(e) => setTestContentVariables(e.target.value)} className="bg-gray-950 border-gray-800 text-white min-h-[88px]" /></div></div> : null}
-          {lastSendResult ? <pre className="text-[11px] text-gray-300 bg-black/40 border border-gray-800 rounded-lg p-3 overflow-auto">{JSON.stringify(lastSendResult, null, 2)}</pre> : null}
-          <div className="flex items-center gap-2"><Link href="/admin/communications/twilio/logs"><Button type="button" variant="secondary">View logs</Button></Link><span className="text-xs text-gray-500">Inbound: /api/webhooks/twilio/sms/inbound and /api/webhooks/twilio/whatsapp/inbound</span></div>
+          <div><Label className="text-slate-700">Message</Label><Input value={testMessage} onChange={(e) => setTestMessage(e.target.value)} placeholder={defaultMessage} className="border-slate-200 bg-white text-slate-950" /></div>
+          {testMode === "template" ? <div className="grid grid-cols-1 md:grid-cols-2 gap-3"><div><Label className="text-slate-700">Content SID</Label><Input value={testContentSid} onChange={(e) => setTestContentSid(e.target.value)} className="border-slate-200 bg-white text-slate-950" /></div><div><Label className="text-slate-700">Content variables JSON</Label><Textarea value={testContentVariables} onChange={(e) => setTestContentVariables(e.target.value)} className="min-h-[88px] border-slate-200 bg-white text-slate-950" /></div></div> : null}
+          {lastSendResult ? <pre className="overflow-auto rounded-lg border border-slate-200 bg-slate-50 p-3 text-[11px] text-slate-700">{JSON.stringify(lastSendResult, null, 2)}</pre> : null}
+          <div className="flex items-center gap-2"><Link href="/admin/communications/twilio/logs"><Button type="button" variant="secondary">View logs</Button></Link><span className="text-xs text-slate-500">Inbound: /api/webhooks/twilio/sms/inbound and /api/webhooks/twilio/whatsapp/inbound</span></div>
         </CardContent>
       </Card>
 
-      <Card className="bg-gray-900/50 border-gray-800">
-        <CardHeader><CardTitle className="text-white">Recent webhook events</CardTitle></CardHeader>
-        <CardContent><ScrollArea className="h-[320px] pr-4"><div className="space-y-2">{(eventsQuery.data?.items ?? []).map((e) => <div key={e.id} className="rounded-lg border border-gray-800 bg-gray-950/30 p-3"><div className="flex items-center justify-between gap-2"><div className="text-sm text-white">{e.eventType}</div><div className="text-xs text-gray-500">{new Date(e.eventAt).toLocaleString()}</div></div><pre className="mt-2 text-xs text-gray-400 whitespace-pre-wrap break-words">{JSON.stringify(e.data ?? {}, null, 2)}</pre></div>)}</div></ScrollArea></CardContent>
+      <Card className="border-slate-200 bg-white shadow-sm">
+        <CardHeader><CardTitle className="text-slate-950">Recent webhook events</CardTitle></CardHeader>
+        <CardContent><ScrollArea className="h-[320px] pr-4"><div className="space-y-2">{(eventsQuery.data?.items ?? []).map((e) => <div key={e.id} className="rounded-lg border border-slate-200 bg-slate-50 p-3"><div className="flex items-center justify-between gap-2"><div className="text-sm font-semibold text-slate-950">{e.eventType}</div><div className="text-xs text-slate-500">{new Date(e.eventAt).toLocaleString()}</div></div><pre className="mt-2 whitespace-pre-wrap break-words text-xs text-slate-600">{JSON.stringify(e.data ?? {}, null, 2)}</pre></div>)}</div></ScrollArea></CardContent>
       </Card>
+      </div>
     </div>
   );
 }

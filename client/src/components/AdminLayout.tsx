@@ -422,7 +422,6 @@ export function AdminLayout({ children }: AdminLayoutProps) {
     if (managerDispatchRef.current === dispatchKey) return;
     managerDispatchRef.current = dispatchKey;
     window.dispatchEvent(new CustomEvent("chairman-dock:context", { detail }));
-    window.dispatchEvent(new CustomEvent("chairman-dock:open", { detail }));
   }, [managerContextQuery.data, managerPageKey]);
 
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -554,11 +553,11 @@ export function AdminLayout({ children }: AdminLayoutProps) {
       {sidebarGroups.map((group) => {
         const isCollapsed = isEntryCollapsed(group.groupId, mobile);
         return (
-          <div key={group.groupId} className="rounded-lg border border-gray-800/70 bg-gray-900/40">
+          <div key={group.groupId} className="admin-shell-nav-card rounded-lg border">
             <button
               type="button"
               aria-expanded={!isCollapsed}
-              className="w-full px-3 py-2 flex items-center justify-between text-left text-xs font-semibold text-gray-300 uppercase tracking-wide"
+              className="admin-shell-nav-button flex w-full items-center justify-between px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide"
               onClick={() => toggleGroup(group.groupId)}
             >
               <span>{group.label}</span>
@@ -575,8 +574,8 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                         className={cn(
                           "mx-2 flex items-center gap-2 rounded-md px-2 py-1.5 text-[13px] cursor-pointer transition-colors",
                           isActive
-                            ? "bg-amber-500/20 text-amber-300 border border-amber-500/30"
-                            : "text-gray-300 hover:bg-gray-800/80 hover:text-white",
+                            ? "admin-shell-active border"
+                            : "admin-shell-nav-item hover:bg-slate-50",
                         )}
                       >
                         <item.icon className="h-3.5 w-3.5 shrink-0" />
@@ -589,11 +588,11 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                 {group.subgroups.map((subgroup) => {
                   const subgroupCollapsed = isEntryCollapsed(subgroup.id, mobile);
                   return (
-                    <div key={subgroup.id} className="mx-2 rounded-md border border-gray-800/80 bg-gray-950/70">
+                    <div key={subgroup.id} className="admin-shell-nav-subgroup mx-2 rounded-md border">
                       <button
                         type="button"
                         aria-expanded={!subgroupCollapsed}
-                        className="w-full px-2 py-1.5 flex items-center justify-between text-left text-[11px] font-medium text-gray-400 uppercase tracking-wide"
+                        className="admin-shell-nav-button flex w-full items-center justify-between px-2 py-1.5 text-left text-[11px] font-medium uppercase tracking-wide"
                         onClick={() => toggleGroup(subgroup.id)}
                       >
                         <span>{subgroup.label}</span>
@@ -610,8 +609,8 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                                   className={cn(
                                     "mx-1.5 mb-1 flex items-center gap-2 rounded-md px-2 py-1.5 text-[13px] cursor-pointer transition-colors",
                                     isActive
-                                      ? "bg-amber-500/20 text-amber-300 border border-amber-500/30"
-                                      : "text-gray-300 hover:bg-gray-800/80 hover:text-white",
+                                      ? "admin-shell-active border"
+                                      : "admin-shell-nav-item hover:bg-slate-50",
                                   )}
                                 >
                                   <item.icon className="h-3.5 w-3.5 shrink-0" />
@@ -631,7 +630,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
         );
       })}
       {!sidebarGroups.length ? (
-        <div className="rounded-lg border border-gray-800 bg-gray-900/60 p-3 text-xs text-gray-400">
+        <div className="admin-shell-nav-card admin-shell-muted rounded-lg border p-3 text-xs">
           {adminCopy(language, "noPages")}
         </div>
       ) : null}
@@ -642,36 +641,82 @@ export function AdminLayout({ children }: AdminLayoutProps) {
     <UserProvider>
       <CompanyProvider>
         <ChairmanProvider>
-          <div className="min-h-screen flex flex-col bg-gray-950 [--admin-header-height:calc(3.5rem+env(safe-area-inset-top,0px))]">
+          <div className="exportunity-admin-shell min-h-screen flex flex-col bg-[#F7F8FA] text-slate-950 [--admin-header-height:calc(3.5rem+env(safe-area-inset-top,0px))]">
+            <style>{`
+              .exportunity-admin-shell header,
+              .exportunity-admin-shell .admin-shell-sidebar,
+              .exportunity-admin-shell .admin-shell-subnav,
+              .exportunity-admin-shell .admin-shell-context {
+                background: rgba(255,255,255,0.94) !important;
+                border-color: rgba(15,23,42,0.12) !important;
+                color: #111827 !important;
+              }
+              .exportunity-admin-shell .admin-shell-nav-card,
+              .exportunity-admin-shell .admin-shell-nav-subgroup,
+              .exportunity-admin-shell .admin-shell-dropdown {
+                background: #ffffff !important;
+                border-color: rgba(15,23,42,0.12) !important;
+                color: #111827 !important;
+              }
+              .exportunity-admin-shell .admin-shell-nav-button,
+              .exportunity-admin-shell .admin-shell-muted,
+              .exportunity-admin-shell .admin-shell-link-muted {
+                color: #4b5563 !important;
+              }
+              .exportunity-admin-shell .admin-shell-nav-item {
+                color: #334155 !important;
+              }
+              .exportunity-admin-shell .admin-shell-nav-item:hover {
+                background: #f8fafc !important;
+                color: #111827 !important;
+              }
+              .exportunity-admin-shell .admin-shell-active {
+                background: rgba(245,166,35,0.16) !important;
+                border-color: rgba(245,166,35,0.45) !important;
+                color: #07111f !important;
+              }
+              .exportunity-admin-shell .admin-shell-search {
+                background: #ffffff !important;
+                border-color: rgba(15,23,42,0.16) !important;
+                color: #111827 !important;
+              }
+              .exportunity-admin-shell .admin-shell-search::placeholder {
+                color: #64748b !important;
+              }
+              .exportunity-admin-shell .admin-shell-brand-text,
+              .exportunity-admin-shell .admin-shell-strong {
+                color: #111827 !important;
+              }
+            `}</style>
       {/* Top Navigation Bar */}
-      <header className="sticky top-0 z-50 border-b border-gray-800 bg-gray-900/95 backdrop-blur supports-[backdrop-filter]:bg-gray-900/75 pt-safe">
+      <header className="sticky top-0 z-50 border-b border-slate-200 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/85 pt-safe">
         <div className="flex h-14 items-center px-4 gap-4">
           {/* Mobile Menu */}
           <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
             <SheetTrigger asChild className="lg:hidden">
-              <Button variant="ghost" size="icon" className="text-gray-400" aria-label={t("common.menu")}>
+              <Button variant="ghost" size="icon" className="text-slate-600 hover:text-slate-950" aria-label={t("common.menu")}>
                 <Menu className="h-5 w-5" />
               </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="w-64 bg-gray-900 border-gray-800 p-4">
+            <SheetContent side="left" className="w-64 border-slate-200 bg-white p-4 text-slate-950">
               <div className="mb-6">
                 <h2 className="text-lg font-semibold text-amber-500">{brand.name}</h2>
-                <p className="text-xs text-gray-500">{adminCopy(language, "allPages")}</p>
+                <p className="admin-shell-muted text-xs">{adminCopy(language, "allPages")}</p>
                 <div className="relative mt-3">
-                  <Search className="h-4 w-4 text-gray-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
                   <input
                     type="search"
                     value={sidebarQuery}
                     onChange={(event) => setSidebarQuery(event.target.value)}
                     placeholder={adminCopy(language, "searchPages")}
-                    className="w-full h-9 rounded-md bg-gray-950 border border-gray-800 pl-9 pr-3 text-sm text-gray-100 placeholder:text-gray-500 focus:outline-none focus:ring-1 focus:ring-amber-500/60"
+                    className="admin-shell-search h-9 w-full rounded-md border pl-9 pr-3 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500/60"
                   />
                 </div>
               </div>
               <ScrollArea className="h-[calc(100vh-180px)]">
                 <NavLinks mobile onNavigate={() => setMobileOpen(false)} />
               </ScrollArea>
-              <div className="pt-4 border-t border-gray-800 mt-4">
+              <div className="mt-4 border-t border-slate-200 pt-4">
                 <Link href="/" onClick={() => setMobileOpen(false)}>
                   <div className="flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 transition-colors cursor-pointer">
                     <ShoppingBag className="h-4 w-4" />
@@ -688,7 +733,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
               <div className="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
                 <BrandMark title={brand.name} className="h-4 w-4 text-amber-400" />
               </div>
-              <span className="hidden sm:inline font-semibold text-white">{brand.name}</span>
+              <span className="admin-shell-brand-text hidden font-semibold sm:inline">{brand.name}</span>
             </div>
           </Link>
 
@@ -705,7 +750,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                   "hidden md:flex",
                   operationsQuickAccessActive
                     ? "bg-amber-500/20 text-amber-400"
-                    : "text-gray-400 hover:text-gray-200"
+                    : "text-slate-600 hover:text-slate-950"
                 )}
                 data-testid="top-quick-operations-hq"
               >
@@ -724,7 +769,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                   "hidden md:flex",
                   inboxQuickAccessActive
                     ? "bg-amber-500/20 text-amber-400"
-                    : "text-gray-400 hover:text-gray-200"
+                    : "text-slate-600 hover:text-slate-950"
                 )}
                 data-testid="top-quick-inbox"
               >
@@ -743,7 +788,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                   "hidden md:flex",
                   internalAgentsQuickAccessActive
                     ? "bg-amber-500/20 text-amber-400"
-                    : "text-gray-400 hover:text-gray-200"
+                    : "text-slate-600 hover:text-slate-950"
                 )}
                 data-testid="top-quick-internal-agents"
               >
@@ -757,7 +802,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
             asChild
             variant="ghost"
             size="sm"
-            className={cn("hidden md:flex", "text-gray-400 hover:text-gray-200")}
+            className={cn("hidden md:flex", "text-slate-600 hover:text-slate-950")}
           >
             <a href="https://mail.exportunity.net/" target="_blank" rel="noreferrer">
               <Mail className="h-4 w-4 mr-2" />
@@ -765,7 +810,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
             </a>
           </Button>
 
-          <div className="hidden sm:flex items-center gap-2 rounded-full border border-amber-500/20 bg-amber-500/10 px-2 py-1 text-[11px] font-medium text-amber-100">
+          <div className="hidden items-center gap-2 rounded-full border border-amber-500/30 bg-amber-500/12 px-2 py-1 text-[11px] font-bold text-slate-900 sm:flex">
             {adminCopy(language, "adminInterface")}
           </div>
 
@@ -776,7 +821,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
               <Button
                 variant="ghost"
                 size="icon"
-                className="relative text-gray-400 hover:text-gray-200"
+                className="relative text-slate-600 hover:text-slate-950"
                 aria-label={adminCopy(language, "notifications")}
               >
                 <Bell className="h-4 w-4" />
@@ -787,9 +832,9 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                 ) : null}
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-96 max-w-[90vw] bg-gray-900 border-gray-800">
-              <DropdownMenuLabel className="text-white">{adminCopy(language, "notifications")}</DropdownMenuLabel>
-              <DropdownMenuSeparator className="bg-gray-800" />
+            <DropdownMenuContent align="end" className="admin-shell-dropdown w-96 max-w-[90vw]">
+              <DropdownMenuLabel className="admin-shell-strong">{adminCopy(language, "notifications")}</DropdownMenuLabel>
+              <DropdownMenuSeparator className="bg-slate-200" />
               <div className="max-h-[420px] overflow-auto">
                 {notificationItems.length ? (
                   notificationItems.map((item) => {
@@ -802,7 +847,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                       <DropdownMenuItem
                         key={n.id}
                         className={cn(
-                          "cursor-pointer whitespace-normal p-0 focus:bg-gray-800",
+                          "cursor-pointer whitespace-normal p-0 focus:bg-slate-100",
                           !n.readAt ? "bg-amber-500/5" : "",
                         )}
                         onClick={() => {
@@ -811,15 +856,15 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                       >
                         <div className="w-full p-3">
                           <div className="flex items-center justify-between gap-2">
-                            <span className="text-sm font-medium text-gray-100 truncate">
+                            <span className="truncate text-sm font-medium text-slate-950">
                               {n.title || adminCopy(language, "systemNotification")}
                             </span>
                             {!n.readAt ? <span className="h-2 w-2 rounded-full bg-amber-400" /> : null}
                           </div>
-                          <p className="mt-1 text-xs text-gray-300 line-clamp-2">
+                          <p className="mt-1 line-clamp-2 text-xs text-slate-600">
                             {n.message || adminCopy(language, "noMessage")}
                           </p>
-                          <div className="mt-1 text-[11px] text-gray-500 flex items-center justify-between gap-2">
+                          <div className="mt-1 flex items-center justify-between gap-2 text-[11px] text-slate-500">
                             <span>{new Date(n.createdAt).toLocaleString()}</span>
                             <span className="truncate">{deliverySummary || n.status}</span>
                           </div>
@@ -828,10 +873,10 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                     );
                   })
                 ) : (
-                  <div className="p-3 text-sm text-gray-400">{adminCopy(language, "noNotifications")}</div>
+                  <div className="p-3 text-sm text-slate-500">{adminCopy(language, "noNotifications")}</div>
                 )}
               </div>
-              <DropdownMenuSeparator className="bg-gray-800" />
+              <DropdownMenuSeparator className="bg-slate-200" />
               <DropdownMenuItem asChild className="cursor-pointer">
                 <Link href="/admin/notifications">
                   <Bell className="h-4 w-4 mr-2" />
@@ -854,14 +899,14 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                 </Avatar>
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56 bg-gray-900 border-gray-800">
+            <DropdownMenuContent align="end" className="admin-shell-dropdown w-56">
               <DropdownMenuLabel>
                 <div className="flex flex-col">
-                  <span className="font-medium text-white">{user?.displayName || "User"}</span>
-                  <span className="text-xs text-gray-500">{user?.email}</span>
+                  <span className="font-medium text-slate-950">{user?.displayName || "User"}</span>
+                  <span className="text-xs text-slate-500">{user?.email}</span>
                 </div>
               </DropdownMenuLabel>
-              <DropdownMenuSeparator className="bg-gray-800" />
+              <DropdownMenuSeparator className="bg-slate-200" />
               <DropdownMenuItem asChild className="cursor-pointer">
                 <Link href="/profile">
                   <User className="h-4 w-4 mr-2" />
@@ -880,7 +925,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                   {adminCopy(language, "updateReset")}
                 </Link>
               </DropdownMenuItem>
-              <DropdownMenuSeparator className="bg-gray-800" />
+              <DropdownMenuSeparator className="bg-slate-200" />
               <DropdownMenuItem 
                 className="cursor-pointer text-red-400 focus:text-red-400"
                 onClick={() => {
@@ -899,37 +944,37 @@ export function AdminLayout({ children }: AdminLayoutProps) {
       <div className="flex flex-1 min-h-0">
         <aside
           className={cn(
-            "hidden lg:flex h-[calc(100vh-var(--admin-header-height))] shrink-0 flex-col border-r border-gray-800 bg-gray-900/70 transition-all duration-200",
+            "admin-shell-sidebar hidden h-[calc(100vh-var(--admin-header-height))] shrink-0 flex-col border-r transition-all duration-200 lg:flex",
             sidebarCollapsed ? "w-16" : "w-80",
           )}
         >
-          <div className="p-3 border-b border-gray-800">
+          <div className="border-b border-slate-200 p-3">
             <div className="flex items-center gap-2 mb-2">
               <Button
                 type="button"
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 text-gray-300 hover:text-white"
+                className="h-8 w-8 text-slate-600 hover:text-slate-950"
                 aria-label={adminCopy(language, sidebarCollapsed ? "openSidebar" : "closeSidebar")}
                 onClick={() => setSidebarCollapsed((prev) => !prev)}
               >
                 {sidebarCollapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
               </Button>
               {!sidebarCollapsed ? (
-                <span className="text-xs font-semibold tracking-wide uppercase text-gray-300">
+                <span className="text-xs font-semibold uppercase tracking-wide text-slate-600">
                   {adminCopy(language, "allPages")}
                 </span>
               ) : null}
             </div>
             {!sidebarCollapsed ? (
               <div className="relative">
-                <Search className="h-4 w-4 text-gray-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
                 <input
                   type="search"
                   value={sidebarQuery}
                   onChange={(event) => setSidebarQuery(event.target.value)}
                   placeholder={adminCopy(language, "searchPages")}
-                  className="w-full h-9 rounded-md bg-gray-950 border border-gray-800 pl-9 pr-3 text-sm text-gray-100 placeholder:text-gray-500 focus:outline-none focus:ring-1 focus:ring-amber-500/60"
+                  className="admin-shell-search h-9 w-full rounded-md border pl-9 pr-3 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500/60"
                 />
               </div>
             ) : null}
@@ -941,8 +986,8 @@ export function AdminLayout({ children }: AdminLayoutProps) {
             ) : (
               <div className="space-y-2">
                 {sidebarGroups.map((group) => (
-                  <div key={group.groupId} className="rounded-md border border-gray-800/80 bg-gray-900/70 p-2">
-                    <div className="text-[10px] uppercase tracking-wide text-gray-400 text-center">{group.label[0]}</div>
+                  <div key={group.groupId} className="admin-shell-nav-card rounded-md border p-2">
+                    <div className="admin-shell-muted text-center text-[10px] uppercase tracking-wide">{group.label[0]}</div>
                   </div>
                 ))}
               </div>
@@ -952,7 +997,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
 
         <main className="flex-1 min-w-0 overflow-auto">
           {standardAdminIa.length ? (
-            <div className="border-b border-gray-800 bg-gray-950/70 px-4 py-2">
+            <div className="admin-shell-subnav border-b px-4 py-2">
               <div className="flex items-center gap-2 overflow-x-auto">
                 {standardAdminIa.map((item) => {
                   const destination = resolveTenantAdminAliasDestination(tenant.key, item.key);
@@ -967,8 +1012,8 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                         className={cn(
                           "whitespace-nowrap rounded-md border px-3 py-1.5 text-xs transition-colors",
                           active
-                            ? "border-amber-500/40 bg-amber-500/20 text-amber-200"
-                            : "border-gray-800 bg-gray-900/60 text-gray-300 hover:bg-gray-800/80 hover:text-white",
+                            ? "admin-shell-active"
+                            : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-950",
                         )}
                       >
                         {adminNavLabel(language, item.label)}
@@ -980,17 +1025,17 @@ export function AdminLayout({ children }: AdminLayoutProps) {
             </div>
           ) : null}
           {managerPageKey && managerContextQuery.data?.page ? (
-            <div className="border-b border-gray-800 bg-gray-900/70 px-4 py-2 text-xs">
-              <div className="flex flex-wrap items-center gap-3 text-gray-300">
+            <div className="admin-shell-context border-b px-4 py-2 text-xs">
+              <div className="flex flex-wrap items-center gap-3 text-slate-600">
                 <span>
                   {adminCopy(language, "department")}:{" "}
-                  <span className="text-white font-medium">
+                  <span className="font-medium text-slate-950">
                     {adminNavLabel(language, managerContextQuery.data.page.label)}
                   </span>
                 </span>
                 <span>
                   {adminCopy(language, "manager")}:{" "}
-                  <span className="text-white font-medium">
+                  <span className="font-medium text-slate-950">
                     {managerContextQuery.data.item?.manager_name || adminCopy(language, "notAssigned")}
                   </span>
                 </span>
@@ -1002,7 +1047,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                 </span>
                 <span>
                   {adminCopy(language, "lastReport")}:{" "}
-                  <span className="text-gray-200">
+                  <span className="text-slate-700">
                     {managerContextQuery.data.item?.last_report_at
                       ? new Date(managerContextQuery.data.item.last_report_at).toLocaleString()
                       : "n/a"}

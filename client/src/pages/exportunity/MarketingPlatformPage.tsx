@@ -70,8 +70,8 @@ export default function MarketingPlatformPage() {
               <Link href={openHref}>
                 <a className="rounded-lg bg-amber-400 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-amber-300">Open</a>
               </Link>
-              <Link href="/talk">
-                <a className="rounded-lg border border-white/30 px-4 py-2 text-sm font-semibold text-white hover:bg-white/10">Talk to us</a>
+              <Link href="/contact">
+                <a className="rounded-lg border border-white/30 px-4 py-2 text-sm font-semibold text-white hover:bg-white/10">Contact</a>
               </Link>
             </div>
           </div>

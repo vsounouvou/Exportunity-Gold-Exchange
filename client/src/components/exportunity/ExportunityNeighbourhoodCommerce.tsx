@@ -99,7 +99,9 @@ function isGoogleMapReady(config: PublicMapsConfig) {
     config.provider === "google" &&
     config.enabled !== false &&
     !config.google?.mapSetupRequired &&
-    Boolean(config.browserApiKey)
+    !config.google?.advancedMapSetupRequired &&
+    Boolean(config.browserApiKey) &&
+    Boolean(config.mapId || config.mapIdLight || config.mapIdDark)
   );
 }
 
@@ -952,25 +954,25 @@ function CinematicCloudLayer({
   dark: boolean;
   state: "idle" | "focusingShop" | "wholesaleMode" | "exchangeMode";
 }) {
-  const baseOpacity = state === "focusingShop" ? "opacity-55" : state === "wholesaleMode" ? "opacity-60" : state === "exchangeMode" ? "opacity-58" : "opacity-70";
+  const baseOpacity = state === "focusingShop" ? "opacity-35" : state === "wholesaleMode" ? "opacity-38" : state === "exchangeMode" ? "opacity-36" : "opacity-40";
   return (
     <div className={cn("pointer-events-none absolute inset-0 z-[390] overflow-hidden", baseOpacity)} aria-hidden="true">
       <div
         className={cn(
-          "absolute -left-[14%] -top-[18%] h-[42%] w-[52%] rounded-full blur-3xl animate-[exportunity-cloud-drift_18s_ease-in-out_infinite]",
-          dark ? "bg-white/10" : "bg-white/70",
+          "absolute -left-[24%] -top-[26%] h-[42%] w-[52%] rounded-full blur-3xl animate-[exportunity-cloud-drift_18s_ease-in-out_infinite]",
+          dark ? "bg-white/10" : "bg-white/48",
         )}
       />
       <div
         className={cn(
-          "absolute -right-[18%] top-[2%] h-[54%] w-[58%] rounded-full blur-3xl animate-[exportunity-cloud-drift_22s_ease-in-out_infinite_reverse]",
-          dark ? "bg-[#F5A623]/10" : "bg-[#F5A623]/22",
+          "absolute -right-[30%] top-[-6%] h-[54%] w-[58%] rounded-full blur-3xl animate-[exportunity-cloud-drift_22s_ease-in-out_infinite_reverse]",
+          dark ? "bg-[#F5A623]/10" : "bg-[#F5A623]/14",
         )}
       />
       <div
         className={cn(
-          "absolute bottom-[-24%] left-[18%] h-[46%] w-[72%] rounded-full blur-3xl animate-[exportunity-cloud-drift_26s_ease-in-out_infinite]",
-          dark ? "bg-[#07111F]/52" : "bg-white/62",
+          "absolute bottom-[-34%] left-[14%] h-[42%] w-[72%] rounded-full blur-3xl animate-[exportunity-cloud-drift_26s_ease-in-out_infinite]",
+          dark ? "bg-[#07111F]/42" : "bg-white/36",
         )}
       />
       <div
@@ -978,11 +980,11 @@ function CinematicCloudLayer({
           "absolute inset-0",
           state === "focusingShop"
             ? dark
-              ? "bg-[radial-gradient(circle_at_48%_46%,transparent_0,transparent_22%,rgba(7,17,31,.18)_56%,rgba(5,7,11,.42)_100%)]"
-              : "bg-[radial-gradient(circle_at_48%_46%,transparent_0,transparent_25%,rgba(255,255,255,.08)_55%,rgba(7,17,31,.14)_100%)]"
+              ? "bg-[radial-gradient(circle_at_48%_46%,transparent_0,transparent_34%,rgba(7,17,31,.08)_66%,rgba(5,7,11,.24)_100%)]"
+              : "bg-[radial-gradient(circle_at_48%_46%,transparent_0,transparent_38%,rgba(255,255,255,.04)_66%,rgba(7,17,31,.07)_100%)]"
             : dark
-              ? "bg-[radial-gradient(circle_at_50%_28%,transparent_0,transparent_38%,rgba(245,166,35,.08)_72%,rgba(5,7,11,.34)_100%)]"
-              : "bg-[radial-gradient(circle_at_50%_24%,transparent_0,transparent_40%,rgba(245,166,35,.045)_72%,rgba(255,255,255,.34)_100%)]",
+              ? "bg-[radial-gradient(circle_at_50%_28%,transparent_0,transparent_48%,rgba(245,166,35,.04)_78%,rgba(5,7,11,.18)_100%)]"
+              : "bg-[radial-gradient(circle_at_50%_24%,transparent_0,transparent_52%,rgba(245,166,35,.025)_78%,rgba(255,255,255,.15)_100%)]",
         )}
       />
       <style>{`

@@ -558,7 +558,11 @@ async function loginAdmin(context) {
       const submit = page
         .getByRole("button", { name: /sign in|se connecter|acc[eé]der|login|connexion|console/i })
         .first();
-      await submit.click({ timeout: 15_000 });
+      const submitFallback = await firstUsableLocator([
+        page.getByRole("button", { name: /sign in|se connecter|acc[e\u00e9]der|login|connexion|console|\u0627\u0644\u062f\u062e\u0648\u0644|\u062f\u062e\u0648\u0644|\u0627\u0644\u0644\u0648\u062d\u0629/i }),
+        page.locator("button[type='submit']"),
+      ], 8000);
+      await (submitFallback || submit).click({ timeout: 15_000 });
       await page.waitForFunction(() => Boolean(localStorage.getItem("ece_session")), null, { timeout: 40_000 }).catch(() => {});
       await page.waitForURL(/\/dashboard|\/admin\/password|\/admin\/email|\/admin|\/store|\/$/, { timeout: 15_000 }).catch(() => {});
       await page.waitForTimeout(1500);

@@ -94,6 +94,7 @@
     "qa:i18n": "tsx scripts/qa/check-i18n.ts",
     "qa:bdo:production": "node scripts/qa/bdo-production-audit.mjs",
     "qa:bdo:clicks": "node scripts/qa/bdo-click-audit.mjs",
+    "qa:bdo:clicks:batched": "node scripts/qa/bdo-batched-click-audit.mjs",
     "qa:bdo:payment": "node scripts/qa/bdo-payment-smoke.mjs",
     "qa:bdo:all": "npm run qa:i18n && npm run qa:bdo:production && npm run qa:bdo:payment",
     "qa:gold-stamping": "node scripts/qa/gold-stamping-audit.mjs",

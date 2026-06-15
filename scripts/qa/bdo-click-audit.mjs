@@ -283,10 +283,15 @@ async function loginAdmin(context) {
         .catch(() => {});
       await page.locator("input[type='email'], input[name='email']").first().fill(adminEmail, { timeout: 12_000 });
       await page.locator("input[type='password'], input[name='password']").first().fill(adminPassword, { timeout: 12_000 });
-      await page
-        .getByRole("button", { name: /sign in|se connecter|acc[eé]der|login|connexion|console/i })
-        .first()
-        .click({ timeout: 12_000 });
+      const submitByType = page.locator("button[type='submit']").first();
+      if (await submitByType.isVisible({ timeout: 4000 }).catch(() => false)) {
+        await submitByType.click({ timeout: 12_000 });
+      } else {
+        await page
+          .getByRole("button", { name: /sign in|se connecter|acc[e\u00e9]der|login|connexion|console|\u0627\u0644\u062f\u062e\u0648\u0644|\u062f\u062e\u0648\u0644|\u0627\u0644\u0644\u0648\u062d\u0629/i })
+          .first()
+          .click({ timeout: 12_000 });
+      }
       await page.waitForFunction(() => Boolean(localStorage.getItem("ece_session")), null, { timeout: 30_000 }).catch(() => {});
       await page.waitForTimeout(1200);
     }

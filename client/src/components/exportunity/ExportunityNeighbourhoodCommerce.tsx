@@ -1804,8 +1804,8 @@ export function ExportunityNeighbourhoodCommerce({
       : "lg:grid-cols-[minmax(0,1fr)_340px] xl:grid-cols-[minmax(0,1fr)_360px] 2xl:grid-cols-[minmax(0,1fr)_380px]"
     : showRightMap
       ? assistantCollapsed
-        ? "lg:grid-cols-[400px_minmax(0,1fr)_72px] xl:grid-cols-[440px_minmax(0,1fr)_72px] 2xl:grid-cols-[500px_minmax(0,1fr)_72px]"
-        : "lg:grid-cols-[400px_minmax(0,1fr)_320px] xl:grid-cols-[440px_minmax(0,1fr)_340px] 2xl:grid-cols-[500px_minmax(0,1fr)_360px]"
+        ? "lg:grid-cols-[420px_minmax(0,1fr)_72px] xl:grid-cols-[460px_minmax(0,1fr)_72px] 2xl:grid-cols-[500px_minmax(0,1fr)_72px]"
+        : "lg:grid-cols-[420px_minmax(0,1fr)_300px] xl:grid-cols-[460px_minmax(0,1fr)_316px] 2xl:grid-cols-[500px_minmax(0,1fr)_336px]"
       : assistantCollapsed
         ? "lg:grid-cols-[minmax(0,1fr)_72px] xl:grid-cols-[minmax(0,1fr)_72px]"
         : "lg:grid-cols-[minmax(0,1fr)_292px] xl:grid-cols-[minmax(0,1fr)_304px]";
@@ -2294,9 +2294,9 @@ export function ExportunityNeighbourhoodCommerce({
 
   const discoveryCenter = !shopMode && !business ? (
     <main className={cn("min-h-0 overflow-auto pb-72 lg:pb-0", dark ? "bg-[#05070B]" : "bg-[#F7F8FA]")}>
-      <div className="space-y-2.5 p-3 md:space-y-5 md:p-6">
-        <section className={cn("overflow-hidden rounded-[20px] border p-2.5 md:rounded-[26px] md:p-4", dark ? "border-white/12 bg-[#07111F] text-white" : "border-slate-200 bg-white text-slate-950 shadow-[0_18px_46px_rgba(15,23,42,.08)]")}>
-          <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+      <div className="space-y-3 p-3 md:p-4">
+        <section className={cn("overflow-hidden rounded-[20px] border p-3 md:rounded-[24px] md:p-4", dark ? "border-white/12 bg-[#07111F] text-white" : "border-slate-200 bg-white text-slate-950 shadow-[0_18px_46px_rgba(15,23,42,.08)]")}>
+          <div className="space-y-3">
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="rounded-full bg-[#F5A623] px-3 py-1 text-[11px] font-black uppercase tracking-wide text-[#07111F]">
@@ -2305,24 +2305,24 @@ export function ExportunityNeighbourhoodCommerce({
                 <span className={cn("rounded-full border px-3 py-1 text-[11px] font-black", dark ? "border-white/12 text-white/62" : "border-slate-200 text-slate-600")}>Cocody, Abidjan</span>
                 {isAdmin ? <span className="rounded-full bg-emerald-500/12 px-3 py-1 text-[11px] font-black text-emerald-600">Admin view</span> : null}
               </div>
-              <h1 className="mt-2 max-w-4xl text-lg font-black leading-tight tracking-tight md:text-2xl">
-                {exchange ? exchangeHeroTitle : wholesale ? "Source suppliers, quantities, MOQ, and routes." : "Buy nearby products from real local shops."}
+              <h1 className="mt-2 text-xl font-black leading-tight tracking-tight md:text-2xl">
+                {exchange ? exchangeHeroTitle : wholesale ? "Supplier offers around you" : "Products around Cocody"}
               </h1>
-              <p className={cn("mt-1 hidden max-w-3xl text-sm leading-relaxed sm:block", dark ? "text-white/64" : "text-slate-600")}>
+              <p className={cn("mt-1 text-sm leading-relaxed", dark ? "text-white/64" : "text-slate-600")}>
                 {exchange
                   ? exchangeHeroHint
                   : wholesale
                     ? "Search suppliers, compare lead time and distance, then request a quote through an approval-gated workflow."
-                    : "Pick a product, enter the shop, adjust quantities, and let the shop Front Desk help only when useful."}
+                    : "Pick a product first. Enter the shop for the full shelf, quantities, delivery, and the shop Front Desk."}
               </p>
             </div>
-            <div className={cn("hidden shrink-0 grid-cols-3 gap-2 rounded-[18px] border px-2 py-2 text-center sm:grid md:px-3", dark ? "border-white/10 bg-white/[0.04]" : "border-slate-200 bg-slate-50")}>
+            <div className={cn("grid grid-cols-3 gap-2 rounded-[18px] border px-2 py-2 text-center md:px-3", dark ? "border-white/10 bg-white/[0.04]" : "border-slate-200 bg-slate-50")}>
               {[
                 [String(visiblePlaces.length), exchange ? "sellers" : wholesale ? "suppliers" : "shops"],
                 [String(commerceProducts.length), exchange ? "products" : wholesale ? "offers" : "products"],
                 [placesStatus.provider === "google" && googleMapReady ? "Google" : "OSM", "map"],
               ].map(([value, label]) => (
-                <div key={label} className="min-w-[76px]">
+                <div key={label} className="min-w-0">
                   <div className="text-base font-black">{value}</div>
                   <div className={cn("mt-0.5 text-[10px] font-black uppercase tracking-[0.14em]", dark ? "text-white/48" : "text-slate-500")}>{label}</div>
                 </div>
@@ -2338,7 +2338,7 @@ export function ExportunityNeighbourhoodCommerce({
               type="button"
               onClick={onClick}
               className={cn(
-                "group flex min-h-[58px] min-w-[172px] shrink-0 items-center justify-start gap-2 rounded-[22px] border px-2.5 py-2 text-left transition hover:-translate-y-0.5 md:min-w-[198px] md:gap-3 md:p-3",
+                "group flex min-h-[54px] min-w-[156px] shrink-0 items-center justify-start gap-2 rounded-[20px] border px-2.5 py-2 text-left transition hover:-translate-y-0.5 md:min-w-[176px] md:gap-2.5 md:p-2.5",
                 active
                   ? "border-[#F5A623] bg-[#F5A623] text-[#07111F] shadow-[0_18px_42px_rgba(245,166,35,.22)]"
                   : dark
@@ -2347,12 +2347,12 @@ export function ExportunityNeighbourhoodCommerce({
               )}
               aria-pressed={active}
             >
-              <span className={cn("grid h-8 w-8 shrink-0 place-items-center rounded-full md:h-14 md:w-14 md:rounded-[20px]", active ? "bg-[#07111F] text-[#F5A623]" : "bg-[#F5A623]/16 text-[#F5A623]")}>
-                <Icon className="h-4 w-4 md:h-7 md:w-7" />
+              <span className={cn("grid h-8 w-8 shrink-0 place-items-center rounded-full md:h-10 md:w-10 md:rounded-[16px]", active ? "bg-[#07111F] text-[#F5A623]" : "bg-[#F5A623]/16 text-[#F5A623]")}>
+                <Icon className="h-4 w-4 md:h-5 md:w-5" />
               </span>
               <span className="min-w-0">
                 <span className={cn("block text-[10px] font-black uppercase tracking-[0.16em]", active ? "text-[#07111F]/62" : dark ? "text-white/45" : "text-slate-500")}>{eyebrow}</span>
-                <span className="block truncate text-[11px] font-black leading-tight md:mt-0.5 md:text-base">{label}</span>
+                <span className="block truncate text-[11px] font-black leading-tight md:mt-0.5 md:text-sm">{label}</span>
                 <span className={cn("mt-1 hidden line-clamp-2 text-xs font-semibold leading-snug 2xl:block", active ? "text-[#07111F]/72" : dark ? "text-white/56" : "text-slate-600")}>{description}</span>
               </span>
             </button>

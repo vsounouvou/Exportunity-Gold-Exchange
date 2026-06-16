@@ -1770,8 +1770,8 @@ export function ExportunityNeighbourhoodCommerce({
       : "lg:grid-cols-[minmax(0,1fr)_340px] xl:grid-cols-[minmax(0,1fr)_360px] 2xl:grid-cols-[minmax(0,1fr)_380px]"
     : showRightMap
       ? assistantCollapsed
-        ? "lg:grid-cols-[minmax(0,1fr)_320px_72px] xl:grid-cols-[minmax(0,1fr)_360px_72px] 2xl:grid-cols-[minmax(0,1fr)_390px_72px]"
-        : "lg:grid-cols-[minmax(0,1fr)_320px_292px] xl:grid-cols-[minmax(0,1fr)_360px_304px] 2xl:grid-cols-[minmax(0,1fr)_390px_316px]"
+        ? "lg:grid-cols-[400px_minmax(0,1fr)_72px] xl:grid-cols-[440px_minmax(0,1fr)_72px] 2xl:grid-cols-[500px_minmax(0,1fr)_72px]"
+        : "lg:grid-cols-[400px_minmax(0,1fr)_320px] xl:grid-cols-[440px_minmax(0,1fr)_340px] 2xl:grid-cols-[500px_minmax(0,1fr)_360px]"
       : assistantCollapsed
         ? "lg:grid-cols-[minmax(0,1fr)_72px] xl:grid-cols-[minmax(0,1fr)_72px]"
         : "lg:grid-cols-[minmax(0,1fr)_292px] xl:grid-cols-[minmax(0,1fr)_304px]";
@@ -2286,7 +2286,7 @@ export function ExportunityNeighbourhoodCommerce({
               {[
                 [String(visiblePlaces.length), exchange ? "sellers" : wholesale ? "suppliers" : "shops"],
                 [String(commerceProducts.length), exchange ? "products" : wholesale ? "offers" : "products"],
-                [googleMapReady ? "Google" : "OSM", "map"],
+                [placesStatus.provider === "google" && googleMapReady ? "Google" : "OSM", "map"],
               ].map(([value, label]) => (
                 <div key={label} className="min-w-[76px]">
                   <div className="text-base font-black">{value}</div>
@@ -2297,14 +2297,14 @@ export function ExportunityNeighbourhoodCommerce({
           </div>
         </section>
 
-        <section className="flex gap-2 overflow-x-auto pb-1 md:grid md:grid-cols-4 md:gap-3 md:overflow-visible md:pb-0">
+        <section className="flex gap-2 overflow-x-auto pb-1">
           {modeTabs.map(({ label, eyebrow, description, Icon, active, onClick }) => (
             <button
               key={label}
               type="button"
               onClick={onClick}
               className={cn(
-                "group flex min-h-[48px] min-w-[132px] shrink-0 items-center justify-start gap-2 rounded-full border px-2.5 py-2 text-left transition hover:-translate-y-0.5 md:min-h-[94px] md:min-w-0 md:flex-row md:gap-3 md:rounded-[24px] md:p-3",
+                "group flex min-h-[58px] min-w-[172px] shrink-0 items-center justify-start gap-2 rounded-[22px] border px-2.5 py-2 text-left transition hover:-translate-y-0.5 md:min-w-[198px] md:gap-3 md:p-3",
                 active
                   ? "border-[#F5A623] bg-[#F5A623] text-[#07111F] shadow-[0_18px_42px_rgba(245,166,35,.22)]"
                   : dark
@@ -2317,9 +2317,9 @@ export function ExportunityNeighbourhoodCommerce({
                 <Icon className="h-4 w-4 md:h-7 md:w-7" />
               </span>
               <span className="min-w-0">
-                <span className={cn("hidden text-[10px] font-black uppercase tracking-[0.16em] lg:block", active ? "text-[#07111F]/62" : dark ? "text-white/45" : "text-slate-500")}>{eyebrow}</span>
+                <span className={cn("block text-[10px] font-black uppercase tracking-[0.16em]", active ? "text-[#07111F]/62" : dark ? "text-white/45" : "text-slate-500")}>{eyebrow}</span>
                 <span className="block truncate text-[11px] font-black leading-tight md:mt-0.5 md:text-base">{label}</span>
-                <span className={cn("mt-1 hidden line-clamp-2 text-xs font-semibold leading-snug xl:block", active ? "text-[#07111F]/72" : dark ? "text-white/56" : "text-slate-600")}>{description}</span>
+                <span className={cn("mt-1 hidden line-clamp-2 text-xs font-semibold leading-snug 2xl:block", active ? "text-[#07111F]/72" : dark ? "text-white/56" : "text-slate-600")}>{description}</span>
               </span>
             </button>
           ))}
@@ -2440,7 +2440,7 @@ export function ExportunityNeighbourhoodCommerce({
               <MapIcon className="h-4 w-4" /> <span className="hidden sm:inline">Open map</span><span className="sm:hidden">Map</span>
             </button>
           </div>
-          <div className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-3">
+          <div className="grid gap-3 2xl:grid-cols-2">
             {commerceProducts.map(({ shop, product }) => {
               const visual = visualForCategory(shop.category, wholesale, exchange);
               const Icon = visual.Icon;
@@ -2505,7 +2505,7 @@ export function ExportunityNeighbourhoodCommerce({
 
         <section>
           <h2 className="mb-3 text-xl font-black">{wholesale ? "Supplier map list" : exchange ? "Merchant trust list" : "Nearby shops"}</h2>
-          <div className="grid gap-3 xl:grid-cols-2">
+          <div className="grid gap-3">
             {visiblePlaces.slice(0, 8).map((shop) => {
               const visual = visualForCategory(shop.category, wholesale, exchange);
               const Icon = visual.Icon;

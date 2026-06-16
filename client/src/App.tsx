@@ -507,8 +507,7 @@ function StoreRoute() {
   const shellMode =
     location === "/map" || location === "/marketplace/map" || location.startsWith("/wholesale/map")
       ? "mapFull"
-      : location === "/marketplace" ||
-          location.startsWith("/wholesale") ||
+      : location.startsWith("/wholesale") ||
           location.startsWith("/ready-for-export") ||
           location.startsWith("/pme-exchange")
         ? "mapDominant"

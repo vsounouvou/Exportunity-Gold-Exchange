@@ -715,7 +715,7 @@ export async function createPmeTestCampaign(input: {
       SELECT id, name
       FROM pme_leads
       WHERE tenant_id = ${input.tenantId}
-        AND id::text = ANY(${leadIds}::text[])
+        AND id::text IN (${sql.join(leadIds.map((id) => sql`${id}`), sql`, `)})
       LIMIT 20
     `),
   );

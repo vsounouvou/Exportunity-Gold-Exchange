@@ -619,16 +619,31 @@ function formatMoney(value: number) {
 function makePinIcon(shop: CommerceShop, active: boolean, dark: boolean, wholesale: boolean, exchange: boolean) {
   const tone = toneForCategory(shop.category);
   const visual = visualForCategory(shop.category, wholesale, exchange);
+  const label = `${shop.distance} - ${shop.eta}`;
   return L.divIcon({
     className: "exportunity-neighbourhood-marker",
-    iconSize: active ? [74, 74] : [54, 54],
-    iconAnchor: active ? [37, 62] : [27, 44],
-    popupAnchor: [0, -44],
+    iconSize: active ? [212, 138] : [112, 88],
+    iconAnchor: active ? [106, 126] : [56, 76],
+    popupAnchor: [0, active ? -116 : -72],
     html: `
-      <button type="button" aria-label="${shop.name}" style="position:relative;display:grid;place-items:center;width:${active ? 64 : 48}px;height:${active ? 64 : 48}px;border-radius:22px;border:2px solid ${active ? "#F5A623" : "rgba(255,255,255,.95)"};background:${tone};color:white;box-shadow:0 0 0 ${active ? 10 : 5}px rgba(245,166,35,.16),0 18px 34px rgba(0,0,0,.24);font-family:Inter,system-ui,sans-serif;font-size:${active ? 26 : 21}px;font-weight:950;">
-        ${markerSvgForCategory(visual.kind)}
-        <span style="position:absolute;left:50%;bottom:-10px;transform:translateX(-50%) rotate(45deg);width:18px;height:18px;border-right:2px solid rgba(255,255,255,.95);border-bottom:2px solid rgba(255,255,255,.95);background:${tone};"></span>
-      </button>
+      <div style="display:grid;justify-items:center;gap:6px;font-family:Inter,system-ui,sans-serif;pointer-events:auto;">
+        <button type="button" aria-label="${escapeHtml(shop.name)}" style="position:relative;display:grid;place-items:center;width:${active ? 62 : 48}px;height:${active ? 62 : 48}px;border-radius:22px;border:2px solid ${active ? "#F5A623" : "rgba(255,255,255,.95)"};background:${tone};color:white;box-shadow:0 0 0 ${active ? 10 : 5}px rgba(245,166,35,.16),0 18px 34px rgba(0,0,0,.24);font-size:${active ? 25 : 20}px;font-weight:950;">
+          ${markerSvgForCategory(visual.kind)}
+          <span style="position:absolute;left:50%;bottom:-10px;transform:translateX(-50%) rotate(45deg);width:18px;height:18px;border-right:2px solid rgba(255,255,255,.95);border-bottom:2px solid rgba(255,255,255,.95);background:${tone};"></span>
+        </button>
+        ${
+          active
+            ? `<div style="display:grid;grid-template-columns:42px minmax(0,1fr);gap:8px;align-items:center;width:204px;border:1px solid rgba(255,255,255,.9);border-radius:18px;background:${dark ? "rgba(7,17,31,.92)" : "rgba(255,255,255,.94)"};box-shadow:0 18px 44px rgba(15,23,42,.22);padding:7px;backdrop-filter:blur(14px);">
+                <img src="${escapeHtml(shop.image)}" alt="" style="width:42px;height:42px;border-radius:13px;object-fit:cover;" />
+                <div style="min-width:0;">
+                  <div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;font-weight:950;color:${dark ? "#F8FAFC" : "#0F172A"};">${escapeHtml(shop.name)}</div>
+                  <div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:2px;font-size:10px;font-weight:800;color:${dark ? "rgba(248,250,252,.62)" : "#64748B"};">${escapeHtml(shop.category)}</div>
+                  <div style="margin-top:3px;font-size:11px;font-weight:950;color:#F5A623;">${escapeHtml(label)}</div>
+                </div>
+              </div>`
+            : `<div style="max-width:104px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border:1px solid rgba(255,255,255,.9);border-radius:999px;background:${dark ? "rgba(7,17,31,.86)" : "rgba(255,255,255,.94)"};box-shadow:0 10px 28px rgba(15,23,42,.14);padding:4px 8px;font-size:10px;font-weight:950;color:${dark ? "#F8FAFC" : "#0F172A"};">${escapeHtml(label)}</div>`
+        }
+      </div>
     `,
   });
 }
@@ -690,28 +705,35 @@ function loadGoogleMapsScript(apiKey: string) {
 }
 
 function makeGoogleMarkerElement(shop: CommerceShop, active: boolean, wholesale: boolean, exchange: boolean) {
-  const element = document.createElement("button");
+  const element = document.createElement("div");
   const tone = toneForCategory(shop.category);
   const visual = visualForCategory(shop.category, wholesale, exchange);
-  element.type = "button";
   element.setAttribute("aria-label", shop.name);
   element.style.cssText = [
-    "position:relative",
     "display:grid",
-    "place-items:center",
-    `width:${active ? 62 : 48}px`,
-    `height:${active ? 62 : 48}px`,
-    "border-radius:22px",
-    `border:2px solid ${active ? "#F5A623" : "rgba(255,255,255,.96)"}`,
-    `background:${tone}`,
-    "color:white",
-    `box-shadow:0 0 0 ${active ? 10 : 5}px rgba(245,166,35,.16),0 18px 34px rgba(0,0,0,.24)`,
+    "justify-items:center",
+    "gap:6px",
     "font-family:Inter,system-ui,sans-serif",
-    `font-size:${active ? 25 : 20}px`,
-    "font-weight:950",
     "cursor:pointer",
   ].join(";");
-  element.innerHTML = `${markerSvgForCategory(visual.kind)}<span style="position:absolute;left:50%;bottom:-10px;transform:translateX(-50%) rotate(45deg);width:18px;height:18px;border-right:2px solid rgba(255,255,255,.95);border-bottom:2px solid rgba(255,255,255,.95);background:${tone};"></span>`;
+  element.innerHTML = `
+    <button type="button" style="position:relative;display:grid;place-items:center;width:${active ? 62 : 48}px;height:${active ? 62 : 48}px;border-radius:22px;border:2px solid ${active ? "#F5A623" : "rgba(255,255,255,.96)"};background:${tone};color:white;box-shadow:0 0 0 ${active ? 10 : 5}px rgba(245,166,35,.16),0 18px 34px rgba(0,0,0,.24);font-size:${active ? 25 : 20}px;font-weight:950;cursor:pointer;">
+      ${markerSvgForCategory(visual.kind)}
+      <span style="position:absolute;left:50%;bottom:-10px;transform:translateX(-50%) rotate(45deg);width:18px;height:18px;border-right:2px solid rgba(255,255,255,.95);border-bottom:2px solid rgba(255,255,255,.95);background:${tone};"></span>
+    </button>
+    ${
+      active
+        ? `<div style="display:grid;grid-template-columns:42px minmax(0,1fr);gap:8px;align-items:center;width:204px;border:1px solid rgba(255,255,255,.9);border-radius:18px;background:rgba(255,255,255,.94);box-shadow:0 18px 44px rgba(15,23,42,.22);padding:7px;backdrop-filter:blur(14px);">
+            <img src="${escapeHtml(shop.image)}" alt="" style="width:42px;height:42px;border-radius:13px;object-fit:cover;" />
+            <div style="min-width:0;">
+              <div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;font-weight:950;color:#0F172A;">${escapeHtml(shop.name)}</div>
+              <div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:2px;font-size:10px;font-weight:800;color:#64748B;">${escapeHtml(shop.category)}</div>
+              <div style="margin-top:3px;font-size:11px;font-weight:950;color:#F5A623;">${escapeHtml(`${shop.distance} - ${shop.eta}`)}</div>
+            </div>
+          </div>`
+        : `<div style="max-width:104px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border:1px solid rgba(255,255,255,.9);border-radius:999px;background:rgba(255,255,255,.94);box-shadow:0 10px 28px rgba(15,23,42,.14);padding:4px 8px;font-size:10px;font-weight:950;color:#0F172A;">${escapeHtml(`${shop.distance} - ${shop.eta}`)}</div>`
+    }
+  `;
   return element;
 }
 

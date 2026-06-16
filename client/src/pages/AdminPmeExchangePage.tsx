@@ -386,6 +386,25 @@ export function AdminPmeExchangePage() {
     onError: (err: any) => toast({ title: "Campaign failed", description: err?.message || "Unable to create campaign", variant: "destructive" }),
   });
 
+  const approveSendMutation = useMutation({
+    mutationFn: async (messageId: string) => apiRequest(`/api/admin/pme-exchange/campaigns/messages/${messageId}/approve-send`, "POST", {}),
+    onSuccess: async (data: any) => {
+      toast({
+        title: data?.sent ? "Outreach sent" : "Outreach blocked",
+        description: data?.message || (data?.sent ? "WhatsApp delivery was queued." : "Setup or compliance gate blocked delivery."),
+        variant: data?.sent ? "default" : "destructive",
+      });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["/api/admin/pme-exchange/campaigns"] }),
+        queryClient.invalidateQueries({ queryKey: ["/api/admin/pme-exchange/audit"] }),
+        queryClient.invalidateQueries({ queryKey: ["/api/admin/pme-exchange/conversations"] }),
+        queryClient.invalidateQueries({ queryKey: ["/api/admin/pme-exchange/leads?limit=160"] }),
+        queryClient.invalidateQueries({ queryKey: ["/api/admin/pme-exchange/summary"] }),
+      ]);
+    },
+    onError: (err: any) => toast({ title: "Approval failed", description: err?.message || "Unable to approve outreach", variant: "destructive" }),
+  });
+
   const toggleLead = (id: string) => {
     setSelectedLeadIds((current) => {
       const next = new Set(current);
@@ -524,12 +543,58 @@ export function AdminPmeExchangePage() {
         <div className="grid gap-4">
           {(campaignsQuery.data?.items || []).map((campaign) => (
             <Card key={campaign.id} className="border-slate-200 bg-white shadow-sm">
-              <CardContent className="flex flex-col gap-3 p-4 md:flex-row md:items-center md:justify-between">
-                <div>
-                  <div className="font-black text-slate-950">{campaign.name}</div>
-                  <div className="mt-1 text-sm text-slate-500">{campaign.status} - daily limit {campaign.daily_limit || campaign.dailyLimit} - {campaign.messages_count || 0} drafted messages</div>
+              <CardContent className="space-y-4 p-4">
+                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                  <div>
+                    <div className="font-black text-slate-950">{campaign.name}</div>
+                    <div className="mt-1 text-sm text-slate-500">
+                      {campaign.status} - daily limit {campaign.daily_limit || campaign.dailyLimit} - {campaign.messages_count || 0} drafted messages
+                    </div>
+                  </div>
+                  <Badge className="bg-amber-100 text-amber-900 hover:bg-amber-100">Approval required</Badge>
                 </div>
-                <Badge className="bg-amber-100 text-amber-900 hover:bg-amber-100">Approval required</Badge>
+
+                <div className="grid gap-3">
+                  {(auditQuery.data?.items || [])
+                    .filter((message) => String(message.campaign_id || "") === String(campaign.id))
+                    .slice(0, 8)
+                    .map((message) => {
+                      const canApprove = ["approval_required", "draft", "setup_required", "send_blocked", "send_failed"].includes(String(message.status || ""));
+                      return (
+                        <div key={message.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                            <div className="min-w-0">
+                              <div className="font-bold text-slate-950">{message.lead_name}</div>
+                              <div className="mt-1 text-xs text-slate-500">
+                                {message.channel} - {message.template_name || "pme_intro_fr"} - {message.status}
+                              </div>
+                              <p className="mt-2 max-w-4xl text-sm leading-relaxed text-slate-700">{message.message_body}</p>
+                              {message.error_message ? (
+                                <div className="mt-2 rounded-xl border border-amber-200 bg-amber-50 p-2 text-xs text-amber-950">
+                                  {message.error_code ? `${message.error_code}: ` : ""}
+                                  {message.error_message}
+                                </div>
+                              ) : null}
+                            </div>
+                            <div className="flex shrink-0 flex-wrap gap-2">
+                              <Badge className={cn(message.status === "sent" ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-700", "hover:bg-inherit")}>
+                                {message.status}
+                              </Badge>
+                              {canApprove ? (
+                                <Button
+                                  className="h-9 rounded-full bg-[#F5A623] px-4 font-black text-slate-950 hover:bg-[#F9A800]"
+                                  onClick={() => approveSendMutation.mutate(String(message.id))}
+                                  disabled={approveSendMutation.isPending}
+                                >
+                                  Approve/send
+                                </Button>
+                              ) : null}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
               </CardContent>
             </Card>
           ))}

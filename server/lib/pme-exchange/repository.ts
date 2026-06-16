@@ -1,6 +1,7 @@
 import { db } from "@db";
 import { sql } from "drizzle-orm";
 
+import { normalizeE164, sendTemplateWhatsApp, TenantMessageError } from "../communications/twilio";
 import { filterSeedPmeLeads, getSeedPmeLeads } from "./seed";
 
 export type PmeLeadInput = {
@@ -393,6 +394,290 @@ export function renderPmeIntroMessage(businessName: string) {
   return `Bonjour ${businessName}, je suis l'assistant Exportunity. Nous aidons les PME locales a etre visibles en ligne, recevoir des clients et preparer des opportunites commerciales verifiees. Est-ce que vous etes la bonne personne pour echanger sur votre activite ? Repondez OUI pour continuer ou STOP pour ne plus recevoir de message.`;
 }
 
+function isPmeOutreachEnabled() {
+  return String(process.env.PME_OUTREACH_ENABLED || "false").trim().toLowerCase() === "true";
+}
+
+function resolvePmeWhatsappTemplateContentSid(templateName?: string | null) {
+  const direct = String(templateName || "").trim();
+  if (/^H[XW][a-z0-9]{8,}$/i.test(direct)) return direct;
+  return (
+    String(
+      process.env.PME_WHATSAPP_TEMPLATE_CONTENT_SID ||
+        process.env.TWILIO_PME_INTRO_CONTENT_SID ||
+        process.env.WHATSAPP_PME_INTRO_CONTENT_SID ||
+        "",
+    ).trim() || null
+  );
+}
+
+function localContactHour() {
+  const raw = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Africa/Abidjan",
+    hour: "2-digit",
+    hour12: false,
+  }).format(new Date());
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) ? parsed : new Date().getUTCHours();
+}
+
+async function blockPmeOutreachMessage(input: {
+  messageId: string;
+  status: string;
+  errorCode: string;
+  errorMessage: string;
+  metadata?: Record<string, unknown>;
+}) {
+  const item = rows(
+    await db.execute(sql`
+      UPDATE pme_outreach_messages
+      SET
+        status = ${input.status},
+        error_code = ${input.errorCode},
+        error_message = ${input.errorMessage},
+        metadata = coalesce(metadata, '{}'::jsonb) || ${JSON.stringify({
+          blockedAt: new Date().toISOString(),
+          ...(input.metadata || {}),
+        })}::jsonb
+      WHERE id::text = ${input.messageId}
+      RETURNING *
+    `),
+  )[0];
+  return {
+    ok: false,
+    sent: false,
+    status: input.status,
+    errorCode: input.errorCode,
+    message: input.errorMessage,
+    item,
+  };
+}
+
+export async function approveAndSendPmeOutreachMessage(input: {
+  tenantId: number;
+  messageId: string;
+  approvedBy?: number | null;
+  forceContactWindow?: boolean;
+}) {
+  await ensurePmeExchangeSchema();
+  const messageId = String(input.messageId || "").trim();
+  if (!messageId) throw new Error("messageId is required");
+
+  const record = rows<any>(
+    await db.execute(sql`
+      SELECT
+        m.*,
+        c.tenant_id,
+        c.name AS campaign_name,
+        c.status AS campaign_status,
+        c.requires_approval,
+        c.daily_limit,
+        c.metadata AS campaign_metadata,
+        l.name AS lead_name,
+        l.phone AS lead_phone,
+        l.whatsapp_phone AS lead_whatsapp_phone,
+        l.lead_status,
+        l.contact_status,
+        l.last_contacted_at,
+        l.metadata AS lead_metadata
+      FROM pme_outreach_messages m
+      JOIN pme_outreach_campaigns c ON c.id = m.campaign_id
+      JOIN pme_leads l ON l.id = m.pme_lead_id
+      WHERE c.tenant_id = ${input.tenantId}
+        AND m.id::text = ${messageId}
+      LIMIT 1
+    `),
+  )[0];
+
+  if (!record) {
+    const err: any = new Error("PME outreach message not found");
+    err.status = 404;
+    throw err;
+  }
+
+  const currentStatus = String(record.status || "").trim();
+  const allowedStatuses = new Set(["draft", "approval_required", "setup_required", "send_blocked", "send_failed"]);
+  if (!allowedStatuses.has(currentStatus)) {
+    return blockPmeOutreachMessage({
+      messageId,
+      status: "send_blocked",
+      errorCode: "message_not_pending_approval",
+      errorMessage: `Message is already ${currentStatus || "processed"}.`,
+    });
+  }
+
+  if (String(record.direction || "") !== "out") {
+    return blockPmeOutreachMessage({
+      messageId,
+      status: "send_blocked",
+      errorCode: "inbound_message_not_sendable",
+      errorMessage: "Inbound PME messages cannot be approved for outbound delivery.",
+    });
+  }
+
+  if (String(record.channel || "") !== "whatsapp") {
+    return blockPmeOutreachMessage({
+      messageId,
+      status: "send_blocked",
+      errorCode: "unsupported_pme_outreach_channel",
+      errorMessage: "PME outreach approval currently supports WhatsApp only.",
+    });
+  }
+
+  const suppressedStatuses = new Set(["suppressed", "dnc", "do_not_contact", "opted_out", "not_interested"]);
+  const leadStatus = String(record.lead_status || "").trim().toLowerCase();
+  const contactStatus = String(record.contact_status || "").trim().toLowerCase();
+  if (suppressedStatuses.has(leadStatus) || suppressedStatuses.has(contactStatus)) {
+    return blockPmeOutreachMessage({
+      messageId,
+      status: "suppressed",
+      errorCode: "lead_suppressed",
+      errorMessage: "This PME lead is suppressed or opted out. Future outreach is blocked.",
+    });
+  }
+
+  const recentDuplicate = rows(
+    await db.execute(sql`
+      SELECT id
+      FROM pme_outreach_messages
+      WHERE pme_lead_id = ${record.pme_lead_id}
+        AND id::text <> ${messageId}
+        AND direction = 'out'
+        AND status IN ('sent', 'queued', 'accepted', 'delivered')
+        AND coalesce(sent_at, created_at) > now() - interval '30 days'
+      LIMIT 1
+    `),
+  )[0];
+  if (recentDuplicate) {
+    return blockPmeOutreachMessage({
+      messageId,
+      status: "send_blocked",
+      errorCode: "duplicate_outreach_30_days",
+      errorMessage: "This PME was already contacted in the last 30 days.",
+    });
+  }
+
+  const hour = localContactHour();
+  if (!input.forceContactWindow && (hour < 8 || hour >= 20)) {
+    return blockPmeOutreachMessage({
+      messageId,
+      status: "send_blocked",
+      errorCode: "outside_contact_hours",
+      errorMessage: "Outreach is blocked outside 08:00-20:00 Africa/Abidjan time.",
+      metadata: { localHour: hour },
+    });
+  }
+
+  if (!isPmeOutreachEnabled()) {
+    return blockPmeOutreachMessage({
+      messageId,
+      status: "setup_required",
+      errorCode: "pme_outreach_disabled",
+      errorMessage: "PME_OUTREACH_ENABLED is not true. Enable outreach after Twilio templates and compliance approval are ready.",
+    });
+  }
+
+  const toE164 = normalizeE164(record.lead_whatsapp_phone || record.lead_phone);
+  if (!toE164) {
+    return blockPmeOutreachMessage({
+      messageId,
+      status: "setup_required",
+      errorCode: "missing_whatsapp_phone",
+      errorMessage: "This PME lead has no valid E.164 WhatsApp or phone number.",
+    });
+  }
+
+  const contentSid = resolvePmeWhatsappTemplateContentSid(record.template_name);
+  if (!contentSid) {
+    return blockPmeOutreachMessage({
+      messageId,
+      status: "setup_required",
+      errorCode: "approved_template_required",
+      errorMessage: "Approved WhatsApp template Content SID is required. Set PME_WHATSAPP_TEMPLATE_CONTENT_SID before sending business-initiated outreach.",
+    });
+  }
+
+  try {
+    const sendResult = await sendTemplateWhatsApp({
+      tenantId: input.tenantId,
+      agentKey: "pme-acquisition-agent",
+      to: toE164,
+      body: String(record.message_body || ""),
+      templateName: record.template_name || "pme_intro_fr",
+      templatePayload: {
+        contentSid,
+        contentVariables: {
+          "1": String(record.lead_name || "PME"),
+          business_name: String(record.lead_name || "PME"),
+        },
+        language: "fr",
+      },
+      metadata: {
+        businessInitiated: true,
+        requiresTemplate: true,
+        pmeOutreach: true,
+        campaignId: record.campaign_id,
+        messageId,
+        approvedBy: input.approvedBy || null,
+        optOutKeywords: ["STOP", "NON", "ARRET", "DESINSCRIPTION"],
+      },
+    });
+
+    const item = rows(
+      await db.execute(sql`
+        UPDATE pme_outreach_messages
+        SET
+          status = ${sendResult.status || "sent"},
+          twilio_sid = ${sendResult.providerMessageId},
+          error_code = null,
+          error_message = null,
+          sent_at = now(),
+          metadata = coalesce(metadata, '{}'::jsonb) || ${JSON.stringify({
+            approvedAt: new Date().toISOString(),
+            approvedBy: input.approvedBy || null,
+            outboundLogId: sendResult.outboundLogId,
+            fromAddress: sendResult.fromAddress,
+            templateContentSid: contentSid,
+          })}::jsonb
+        WHERE id::text = ${messageId}
+        RETURNING *
+      `),
+    )[0];
+
+    await db.execute(sql`
+      UPDATE pme_leads
+      SET
+        contact_status = 'contacted',
+        lead_status = CASE
+          WHEN lead_status IN ('interested','onboarded','suppressed','not_interested') THEN lead_status
+          ELSE 'contacted'::pme_lead_status
+        END,
+        last_contacted_at = now(),
+        updated_at = now()
+      WHERE id = ${record.pme_lead_id}
+        AND tenant_id = ${input.tenantId}
+    `);
+
+    return {
+      ok: true,
+      sent: true,
+      status: sendResult.status || "sent",
+      providerMessageId: sendResult.providerMessageId,
+      message: "Approved WhatsApp outreach was sent through Twilio.",
+      item,
+    };
+  } catch (err: any) {
+    const code = err instanceof TenantMessageError ? err.code : String(err?.code || "twilio_send_failed");
+    const message = String(err?.message || "Twilio send failed");
+    return blockPmeOutreachMessage({
+      messageId,
+      status: "send_failed",
+      errorCode: code,
+      errorMessage: message,
+    });
+  }
+}
+
 export async function createPmeTestCampaign(input: {
   tenantId: number;
   createdBy?: number | null;
@@ -451,7 +736,7 @@ export async function createPmeTestCampaign(input: {
           ${messageBody},
           'approval_required',
           ${JSON.stringify({
-            optOutKeywords: ["STOP", "NON", "ARRET", "ARRÊT", "DESINSCRIPTION"],
+            optOutKeywords: ["STOP", "NON", "ARRET", "DESINSCRIPTION"],
             noNightMessages: true,
             sendRequiresAdminApproval: true,
           })}::jsonb,
@@ -524,9 +809,11 @@ export async function getPmeAudit(tenantId: number) {
   const result = await db.execute(sql`
     SELECT
       m.id,
+      m.campaign_id,
       m.channel,
       m.direction,
       m.template_name,
+      m.message_body,
       m.status,
       m.error_code,
       m.error_message,

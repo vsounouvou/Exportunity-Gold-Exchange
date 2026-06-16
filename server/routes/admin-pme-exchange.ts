@@ -5,6 +5,7 @@ import { googlePlaceDetails, googlePlacesRuntimeStatus, googleTextSearch } from 
 import { mapGooglePlacesToPmeLeads, mapGooglePlaceToPmeLead } from "../lib/google/placesMapper";
 import { getSavedGooglePlacesSettings, publicGooglePlacesSettings, resolveGoogleSettingsScope, saveGooglePlacesSettings } from "../lib/google/placesSettings";
 import {
+  approveAndSendPmeOutreachMessage,
   createPmeTestCampaign,
   ensurePmeExchangeSchema,
   ensureSeedPmeLeads,
@@ -86,7 +87,7 @@ router.get("/status", async (req: any, res) => {
       seed,
       compliance: {
         outreachRequiresApproval: true,
-        optOutKeywords: ["STOP", "NON", "ARRET", "ARRÊT", "DESINSCRIPTION"],
+        optOutKeywords: ["STOP", "NON", "ARRET", "DESINSCRIPTION"],
         noDuplicateOutreachDays: 30,
         noNightMessages: true,
         publicInvestmentDisabled: true,
@@ -303,6 +304,23 @@ router.post("/campaigns/test", async (req: any, res) => {
     });
   } catch (err: any) {
     res.status(500).json({ message: err?.message || "Failed to create PME test campaign" });
+  }
+});
+
+router.post("/campaigns/messages/:messageId/approve-send", async (req: any, res) => {
+  try {
+    const tenantId = tenantIdFromReq(req);
+    const messageId = String(req.params.messageId || "").trim();
+    const approvedBy = Number(req?.adminUser?.id || 0) || null;
+    const result = await approveAndSendPmeOutreachMessage({
+      tenantId,
+      messageId,
+      approvedBy,
+      forceContactWindow: Boolean(req.body?.forceContactWindow || req.body?.force_contact_window),
+    });
+    res.json(result);
+  } catch (err: any) {
+    res.status(err?.status || 500).json({ message: err?.message || "Failed to approve PME outreach message" });
   }
 });
 

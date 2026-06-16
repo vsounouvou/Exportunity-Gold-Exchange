@@ -1341,7 +1341,7 @@ export function ExportunityNeighbourhoodCommerce({
     setSpace(initialSpace);
     setActiveShop(null);
     setActiveProductDetail(null);
-    setAssistantCollapsed(false);
+    setAssistantCollapsed(shellMode === "mapFull");
     setMessages(openingMessagesForSpace(initialSpace, exchangeVariant));
   }, [exchangeVariant, initialSpace, shellMode]);
 
@@ -1797,7 +1797,7 @@ export function ExportunityNeighbourhoodCommerce({
           : "Search export products, verified sellers, or seller proof..."
         : business
           ? "Ask your business agents what needs attention..."
-          : "Search products near me...";
+          : "Search products, shops, or delivery nearby...";
 
   const assistantPane = (
     <aside className={cn("hidden min-h-0 flex-col border-l lg:flex", assistantCollapsed && "items-center", dark ? "border-white/10 bg-[#07111F] text-white" : "border-slate-200 bg-white text-slate-950")}>
@@ -2430,8 +2430,8 @@ export function ExportunityNeighbourhoodCommerce({
                   <button type="button" onClick={() => handleAsk(pmeExchange ? "Review this PME lead" : "Review this seller")} className="flex-1 rounded-2xl bg-[#F5A623] px-4 py-3 text-sm font-black text-[#07111F]">{pmeExchange ? "Review PME" : "Review profile"}</button>
                 ) : (
                   <>
-                    <button type="button" onClick={() => enterShop(activeShop)} className="flex-1 rounded-2xl bg-[#F5A623] px-4 py-3 text-sm font-black text-[#07111F]">View products</button>
-                    <button type="button" onClick={() => setAssistantCollapsed(false)} className={cn("flex-1 rounded-2xl border px-4 py-3 text-sm font-black", dark ? "border-white/14 text-white/72" : "border-slate-200 bg-white text-slate-700")}>Message shop</button>
+                    <button type="button" onClick={() => enterShop(activeShop)} className="flex-1 rounded-2xl bg-[#F5A623] px-4 py-3 text-sm font-black text-[#07111F]">Enter shop</button>
+                    <button type="button" onClick={() => setAssistantCollapsed(false)} className={cn("flex-1 rounded-2xl border px-4 py-3 text-sm font-black", dark ? "border-white/14 text-white/72" : "border-slate-200 bg-white text-slate-700")}>Shop help</button>
                   </>
                 )}
                 <button type="button" onClick={() => setActiveShop(null)} className={cn("rounded-2xl border px-4 py-3 text-sm font-black", dark ? "border-white/14 text-white/72" : "border-slate-200 bg-white text-slate-700")}>Close</button>
@@ -2497,7 +2497,7 @@ export function ExportunityNeighbourhoodCommerce({
                             <Plus className="h-4 w-4" /> Add
                           </button>
                           <button type="button" onClick={(event) => { event.stopPropagation(); enterShop(shop); }} className={cn("flex h-9 items-center justify-center rounded-2xl border text-xs font-black md:h-10 md:text-sm", dark ? "border-white/14 text-white/74 hover:bg-white/8" : "border-slate-200 text-slate-700 hover:bg-slate-50")}>
-                            View products
+                            Enter shop
                           </button>
                         </div>
                       ) : null}
@@ -2648,8 +2648,8 @@ export function ExportunityNeighbourhoodCommerce({
                           </>
                         ) : (
                           <>
-                            <button type="button" onClick={() => enterShop(activeShop)} className="h-10 rounded-2xl bg-[#F5A623] text-sm font-black text-[#07111F]">View products</button>
-                            <button type="button" onClick={() => setAssistantCollapsed(false)} className={cn("h-10 rounded-2xl border text-sm font-black", dark ? "border-white/14 text-white/74 hover:bg-white/8" : "border-slate-200 text-slate-700 hover:bg-slate-50")}>Message shop</button>
+                            <button type="button" onClick={() => enterShop(activeShop)} className="h-10 rounded-2xl bg-[#F5A623] text-sm font-black text-[#07111F]">Enter shop</button>
+                            <button type="button" onClick={() => setAssistantCollapsed(false)} className={cn("h-10 rounded-2xl border text-sm font-black", dark ? "border-white/14 text-white/74 hover:bg-white/8" : "border-slate-200 text-slate-700 hover:bg-slate-50")}>Shop help</button>
                           </>
                         )}
                       </div>

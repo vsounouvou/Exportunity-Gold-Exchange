@@ -103,6 +103,7 @@ type ShopOrderLine = {
 };
 
 export type ExportunityShellMode = "commerce" | "mapDominant" | "mapFull";
+export type ExportunityExchangeVariant = "export" | "pme";
 
 type ExportunityConversationalCommerceProps = {
   onNavigate?: (href: string) => void;

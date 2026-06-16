@@ -45,6 +45,7 @@ import type {
   CommerceShop,
   ConversationMessage,
   ConversationSpace,
+  ExportunityExchangeVariant,
   ExportunityShellMode,
   ShopProduct,
   ThemeMode,
@@ -56,6 +57,7 @@ type NeighbourhoodCommerceProps = {
   initialSpace?: ConversationSpace;
   embeddedShell?: boolean;
   shellMode?: ExportunityShellMode;
+  exchangeVariant?: ExportunityExchangeVariant;
 };
 
 type OrderLine = {
@@ -169,10 +171,11 @@ const businessAgents: CommerceAgent[] = [
 const cityQuickReplies = ["Find breakfast near me", "Fresh bread", "Coffee nearby", "Building materials", "Need delivery", "Send to family"];
 const wholesaleQuickReplies = ["Find suppliers near me", "Request a quote", "Building materials wholesale", "Machinery", "Packaging", "Logistics help"];
 const exchangeQuickReplies = ["Ready for export", "Verified sellers", "Food exporters", "Women-led shops", "Seller proof", "Compliance review"];
+const pmeQuickReplies = ["Find PME leads", "Qualified businesses", "Onboarding pipeline", "Revenue signals", "Contact required", "Compliance review"];
 const shopQuickReplies = ["What should I buy first?", "Can you deliver?", "Use my wallet", "Can I see it live?", "Suggest a bundle"];
 const businessQuickReplies = ["What needs attention?", "Low stock", "Today sales", "Assign delivery", "Plan a promo"];
 
-function openingMessagesForSpace(nextSpace: ConversationSpace): ConversationMessage[] {
+function openingMessagesForSpace(nextSpace: ConversationSpace, variant: ExportunityExchangeVariant = "export"): ConversationMessage[] {
   const now = "now";
   if (nextSpace === "wholesale") {
     return [
@@ -181,6 +184,12 @@ function openingMessagesForSpace(nextSpace: ConversationSpace): ConversationMess
     ];
   }
   if (nextSpace === "exchange") {
+    if (variant === "pme") {
+      return [
+        { id: "hello-pme", agentId: exportScoutAgent.id, content: "Hello, I'm Tassi. This is the Bourse PME map: local businesses, verification status, products, services, outreach readiness, and onboarding progress.", createdAt: now, agentSnapshot: exportScoutAgent },
+        { id: "options-pme", agentId: exportScoutAgent.id, content: "Start with PME leads, qualified businesses, contact-required listings, revenue signals, or compliance review. Revenue-share opportunities stay internal and compliance-gated until legal approval.", createdAt: now, agentSnapshot: exportScoutAgent },
+      ];
+    }
     return [
       { id: "hello-export", agentId: exportScoutAgent.id, content: "Hello, I'm Tassi. This is the Ready for export map: verified sellers, product proof, owner stories, and compliance status before any opportunity is promoted.", createdAt: now, agentSnapshot: exportScoutAgent },
       { id: "options-export", agentId: exportScoutAgent.id, content: "Start with export-ready food, verified sellers, women-led businesses, seller proof, or compliance review. Investment-style opportunities stay internal until legal approval.", createdAt: now, agentSnapshot: exportScoutAgent },
@@ -527,6 +536,41 @@ function productsForShop(shop: CommerceShop): ShopProduct[] {
       unit: "unit",
       priceCfa: 3200,
       quantityAvailable: 12,
+      image: shop.image,
+    },
+  ];
+}
+
+function pmeCardsForShop(shop: CommerceShop): ShopProduct[] {
+  return [
+    {
+      id: `${shop.id}-pme-profile`,
+      name: "PME profile review",
+      description: "Business identity, location, products, services, source, and verification status for onboarding.",
+      category: "Bourse PME",
+      unit: "profile",
+      priceCfa: 0,
+      quantityAvailable: 1,
+      image: shop.image,
+    },
+    {
+      id: `${shop.id}-pme-outreach`,
+      name: "Outreach readiness",
+      description: "Contact status, opt-out controls, approved template requirement, and next safe outreach step.",
+      category: "Agent outreach",
+      unit: "task",
+      priceCfa: 0,
+      quantityAvailable: 1,
+      image: shop.image,
+    },
+    {
+      id: `${shop.id}-pme-revenue`,
+      name: "Revenue signal review",
+      description: "Internal review of activity, sales signals, proof, and eligibility before any financing is discussed.",
+      category: "Compliance gated",
+      unit: "review",
+      priceCfa: 0,
+      quantityAvailable: 1,
       image: shop.image,
     },
   ];
@@ -1085,6 +1129,7 @@ function LiveMapPane({
   userLocation,
   wholesale,
   exchange,
+  exchangeVariant,
   onSelect,
   className,
   provider,
@@ -1097,6 +1142,7 @@ function LiveMapPane({
   userLocation: [number, number];
   wholesale: boolean;
   exchange: boolean;
+  exchangeVariant: ExportunityExchangeVariant;
   onSelect: (shop: CommerceShop) => void;
   className?: string;
   provider: PublicPlacesState;
@@ -1116,6 +1162,7 @@ function LiveMapPane({
   const googleReady = isGoogleMapReady(mapsConfig) && !googleRenderFailed;
   const rendererLabel = googleReady ? "Google Maps" : showDiagnostics && googleRenderFailed ? "Google key rejected" : "OpenStreetMap";
   const rendererDetail = googleRenderFailureReason || provider.label;
+  const pmeExchange = exchange && exchangeVariant === "pme";
   const cloudState = safeActiveShop ? "focusingShop" : wholesale ? "wholesaleMode" : exchange ? "exchangeMode" : "idle";
   return (
     <section className={cn("relative overflow-hidden rounded-none border-l", dark ? "border-white/10 bg-[#07111F]" : "border-slate-200 bg-white", className)}>
@@ -1166,7 +1213,7 @@ function LiveMapPane({
       <div className={cn("absolute left-4 top-4 z-[401] max-w-[min(520px,calc(100%-2rem))] rounded-2xl border px-3.5 py-3 backdrop-blur-xl", dark ? "border-white/12 bg-[#07111F]/78 text-white" : "border-white/90 bg-white/88 text-slate-950 shadow-[0_16px_36px_rgba(15,23,42,.12)]")}>
         <div className="flex flex-wrap items-center gap-2">
           <span className="rounded-full bg-[#F5A623] px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-[#07111F]">
-            {exchange ? "Ready for export" : wholesale ? "Wholesale" : "Nearby"}
+            {pmeExchange ? "Bourse PME" : exchange ? "Ready for export" : wholesale ? "Wholesale" : "Nearby"}
           </span>
           <span className="text-sm font-black">{places.length} live locations around Cocody</span>
           <Navigation className="ml-auto h-4 w-4 text-[#F5A623]" />
@@ -1193,6 +1240,7 @@ export function ExportunityNeighbourhoodCommerce({
   initialSpace = "city",
   embeddedShell = false,
   shellMode = "commerce",
+  exchangeVariant = "export",
 }: NeighbourhoodCommerceProps) {
   const [themeMode, setThemeMode] = useState<ThemeMode>(() => {
     if (typeof window === "undefined") return "light";
@@ -1205,7 +1253,7 @@ export function ExportunityNeighbourhoodCommerce({
   const [input, setInput] = useState("");
   const [voiceState, setVoiceState] = useState<"idle" | "listening" | "unavailable">("idle");
   const [assistantCollapsed, setAssistantCollapsed] = useState(false);
-  const [messages, setMessages] = useState<ConversationMessage[]>(() => openingMessagesForSpace(initialSpace));
+  const [messages, setMessages] = useState<ConversationMessage[]>(() => openingMessagesForSpace(initialSpace, exchangeVariant));
   const [orderDrafts, setOrderDrafts] = useState<Record<string, Record<string, OrderLine>>>({});
   const [placesStatus, setPlacesStatus] = useState<PublicPlacesState>({
     provider: "curated",
@@ -1228,6 +1276,7 @@ export function ExportunityNeighbourhoodCommerce({
   const dark = themeMode === "dark";
   const wholesale = space === "wholesale";
   const exchange = space === "exchange";
+  const pmeExchange = exchange && exchangeVariant === "pme";
   const business = space === "business";
   const shopMode = space === "shop" && !!activeShop;
   const mapFull = shellMode === "mapFull";
@@ -1254,14 +1303,23 @@ export function ExportunityNeighbourhoodCommerce({
 
   const placePool = exchange ? exchangeShops : wholesale ? wholesaleShops : retailShops;
   const visiblePlaces = useMemo(() => placePool.slice(0, mapDominant ? 18 : wholesale || exchange ? 12 : 10), [exchange, mapDominant, placePool, wholesale]);
-  const selectedProducts = useMemo(() => (activeShop ? productsForShop(activeShop) : []), [activeShop]);
+  const selectedProducts = useMemo(() => (activeShop ? (pmeExchange ? pmeCardsForShop(activeShop) : productsForShop(activeShop)) : []), [activeShop, pmeExchange]);
   const activeShopImage = activeShop ? selectedProducts[0]?.image || activeShop.image : undefined;
   const orderDraft = activeShop ? orderDrafts[activeShop.id] || {} : {};
   const orderLines = Object.values(orderDraft);
   const subtotal = orderLines.reduce((sum, line) => sum + line.product.priceCfa * line.quantity, 0);
   const retailShopSelected = Boolean(activeShop && !business && !wholesale && !exchange);
   const visibleAgent = retailShopSelected && activeShop ? activeShop.frontDesk : business ? businessAgents[0] : wholesale ? supplierAgent : exchange ? exportScoutAgent : tassi;
-  const quickReplies = retailShopSelected ? shopQuickReplies : business ? businessQuickReplies : exchange ? exchangeQuickReplies : wholesale ? wholesaleQuickReplies : cityQuickReplies;
+  const quickReplies = retailShopSelected ? shopQuickReplies : business ? businessQuickReplies : pmeExchange ? pmeQuickReplies : exchange ? exchangeQuickReplies : wholesale ? wholesaleQuickReplies : cityQuickReplies;
+  const exchangeTitle = pmeExchange ? "Bourse PME" : "Ready for export";
+  const exchangeShelfTitle = pmeExchange ? "PME lead map" : "Export seller map";
+  const exchangeShelfHint = pmeExchange ? "Tap a PME to review business, proof, outreach, and onboarding" : "Tap a seller for products, owner, and proof";
+  const exchangeListTitle = pmeExchange ? "PME lead reviews" : "Export-ready sellers";
+  const exchangeListHint = pmeExchange ? "Businesses, proof, outreach status, and compliance gates." : "People, place, proof, and compliance status before any finance.";
+  const exchangeHeroTitle = pmeExchange ? "Map PME leads, qualification, and onboarding." : "Browse export-ready products and sellers.";
+  const exchangeHeroHint = pmeExchange
+    ? "Review who the business is, what it sells, contact readiness, revenue signals, and compliance status before any revenue-share review."
+    : "Start with products and sellers, then review people, place, proof, and compliance status. Finance remains admin-only until approved.";
   const showRightMap = !shopMode && !business;
   const googleMapReady = isGoogleMapReady(mapsConfig);
 
@@ -1274,8 +1332,8 @@ export function ExportunityNeighbourhoodCommerce({
     setActiveShop(null);
     setActiveProductDetail(null);
     setAssistantCollapsed(false);
-    setMessages(openingMessagesForSpace(initialSpace));
-  }, [initialSpace, shellMode]);
+    setMessages(openingMessagesForSpace(initialSpace, exchangeVariant));
+  }, [exchangeVariant, initialSpace, shellMode]);
 
   useEffect(() => {
     if (!navigator.geolocation) return;
@@ -1369,7 +1427,7 @@ export function ExportunityNeighbourhoodCommerce({
   }, [wholesale]);
 
   useEffect(() => {
-    const pageLabel = retailShopSelected && activeShop ? `${activeShop.name} shop` : business ? "My Business" : exchange ? "Ready for export" : wholesale ? "Wholesale" : "Explore";
+    const pageLabel = retailShopSelected && activeShop ? `${activeShop.name} shop` : business ? "My Business" : pmeExchange ? "Bourse PME" : exchange ? "Ready for export" : wholesale ? "Wholesale" : "Explore";
     window.dispatchEvent(
       new CustomEvent("chairman-dock:context", {
         detail: {
@@ -1380,7 +1438,7 @@ export function ExportunityNeighbourhoodCommerce({
         },
       }),
     );
-  }, [activeShop, business, exchange, retailShopSelected, visibleAgent.name, visibleAgent.role, wholesale]);
+  }, [activeShop, business, exchange, pmeExchange, retailShopSelected, visibleAgent.name, visibleAgent.role, wholesale]);
 
   const pushMessage = (message: Omit<ConversationMessage, "id" | "createdAt">) => {
     setMessages((current) => [...current.slice(-9), { ...message, id: `${Date.now()}-${Math.random()}`, createdAt: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) }]);
@@ -1397,9 +1455,9 @@ export function ExportunityNeighbourhoodCommerce({
     setActiveShop(null);
     setActiveProductDetail(null);
     setAssistantCollapsed(false);
-    setMessages(openingMessagesForSpace(nextSpace));
+    setMessages(openingMessagesForSpace(nextSpace, exchangeVariant));
     if (nextSpace === "wholesale") onNavigate?.("/wholesale");
-    if (nextSpace === "exchange") onNavigate?.("/ready-for-export");
+    if (nextSpace === "exchange") onNavigate?.(exchangeVariant === "pme" ? "/pme-exchange" : "/ready-for-export");
     if (nextSpace === "city") onNavigate?.("/marketplace");
   };
 
@@ -1528,9 +1586,18 @@ export function ExportunityNeighbourhoodCommerce({
       return;
     }
 
-    if (lower.includes("pme") || lower.includes("export") || lower.includes("invest") || lower.includes("verified")) {
+    if (lower.includes("pme") || lower.includes("lead") || lower.includes("onboard")) {
       setSpace("exchange");
       setActiveShop(exchangeShops[0]);
+      onNavigate?.("/pme-exchange");
+      replyFrom(tassi, "I switched to the Bourse PME map. These businesses show activity, contact readiness, verification status, onboarding stage, and compliance gates before any revenue-share review.");
+      return;
+    }
+
+    if (lower.includes("export") || lower.includes("invest") || lower.includes("verified")) {
+      setSpace("exchange");
+      setActiveShop(exchangeShops[0]);
+      onNavigate?.("/ready-for-export");
       replyFrom(tassi, "I switched to Ready for export. These sellers show products, owner proof, trust signals, and compliance status before any finance is reviewed internally.");
       return;
     }
@@ -1606,7 +1673,7 @@ export function ExportunityNeighbourhoodCommerce({
     return businessAgents.find((agent) => agent.id === message.agentId) || visibleAgent;
   };
 
-  const commerceProducts = visiblePlaces.flatMap((shop) => productsForShop(shop).slice(0, 2).map((product) => ({ shop, product }))).slice(0, wholesale ? 8 : 12);
+  const commerceProducts = visiblePlaces.flatMap((shop) => (pmeExchange ? pmeCardsForShop(shop) : productsForShop(shop)).slice(0, 2).map((product) => ({ shop, product }))).slice(0, wholesale ? 8 : 12);
   const mapShelfProducts = mapFull ? [] : commerceProducts.slice(0, 4);
   const modeTabs: Array<{ label: string; eyebrow: string; description: string; Icon: LucideIcon; active: boolean; onClick: () => void }> = [
     {
@@ -1630,11 +1697,41 @@ export function ExportunityNeighbourhoodCommerce({
       eyebrow: "Export sellers",
       description: "Products, owners, proof, and compliance status.",
       Icon: BriefcaseBusiness,
-      active: exchange,
-      onClick: () => openSpace("exchange"),
+      active: exchange && !pmeExchange,
+      onClick: () => {
+        setSpace("exchange");
+        setActiveShop(null);
+        setActiveProductDetail(null);
+        setAssistantCollapsed(false);
+        setMessages(openingMessagesForSpace("exchange", "export"));
+        onNavigate?.("/ready-for-export");
+      },
+    },
+    {
+      label: "Bourse PME",
+      eyebrow: "Lead engine",
+      description: "PME leads, qualification, outreach, and onboarding.",
+      Icon: FileText,
+      active: pmeExchange,
+      onClick: () => {
+        setSpace("exchange");
+        setActiveShop(null);
+        setActiveProductDetail(null);
+        setAssistantCollapsed(false);
+        setMessages(openingMessagesForSpace("exchange", "pme"));
+        onNavigate?.("/pme-exchange");
+      },
     },
   ];
-  const categoryTiles = exchange
+  const categoryTiles = pmeExchange
+    ? [
+        ["PME leads", Store],
+        ["Qualified businesses", CheckCircle2],
+        ["Revenue signals", FileText],
+        ["Contact required", MessageCircle],
+        ["Compliance review", BriefcaseBusiness],
+      ]
+    : exchange
     ? [
         ["Export-ready products", Package],
         ["Food sellers", Utensils],
@@ -1662,7 +1759,7 @@ export function ExportunityNeighbourhoodCommerce({
   const assistantRailActions: Array<{ label: string; Icon: LucideIcon; onClick: () => void }> = [
     { label: "Retail", Icon: Store, onClick: () => openSpace("city") },
     { label: "Wholesale", Icon: Warehouse, onClick: () => openSpace("wholesale") },
-    { label: "Export", Icon: BriefcaseBusiness, onClick: () => openSpace("exchange") },
+    { label: pmeExchange ? "PME" : "Export", Icon: BriefcaseBusiness, onClick: () => openSpace("exchange") },
     { label: "Voice", Icon: Mic, onClick: startVoice },
     { label: "Photo", Icon: Camera, onClick: () => fileInputRef.current?.click() },
   ];
@@ -1683,7 +1780,9 @@ export function ExportunityNeighbourhoodCommerce({
     : wholesale
       ? "Search suppliers, MOQ, lead time, or request a quote..."
       : exchange
-        ? "Search export products, verified sellers, or seller proof..."
+        ? pmeExchange
+          ? "Search PME leads, onboarding status, or revenue signals..."
+          : "Search export products, verified sellers, or seller proof..."
         : business
           ? "Ask your business agents what needs attention..."
           : "Search products near me...";
@@ -1727,7 +1826,7 @@ export function ExportunityNeighbourhoodCommerce({
           <div className="min-w-0">
             <div className="truncate text-lg font-black">{visibleAgent.name}</div>
             <div className={cn("text-xs font-bold", dark ? "text-white/58" : "text-slate-500")}>
-              {retailShopSelected ? `${visibleAgent.role} for ${activeShop?.name}` : business ? "Business operating agent" : wholesale ? "Wholesale sourcing agent" : exchange ? "Export scout" : "Concierge"}
+              {retailShopSelected ? `${visibleAgent.role} for ${activeShop?.name}` : business ? "Business operating agent" : wholesale ? "Wholesale sourcing agent" : pmeExchange ? "PME acquisition agent" : exchange ? "Export scout" : "Concierge"}
             </div>
           </div>
           <span className="ml-auto rounded-full bg-emerald-500/12 px-2 py-1 text-[11px] font-black text-emerald-600">Online</span>
@@ -1811,7 +1910,7 @@ export function ExportunityNeighbourhoodCommerce({
         { label: "Nearby", Icon: MapIcon, active: false, onClick: () => { openSpace("city"); onNavigate?.("/map"); } },
         { label: "Chat", Icon: MessageCircle, active: false, onClick: () => { setAssistantCollapsed(false); window.setTimeout(() => inputRef.current?.focus(), 50); } },
         { label: "Orders", Icon: ShoppingBag, active: false, onClick: () => onNavigate?.("/orders") },
-        { label: "Export", Icon: BriefcaseBusiness, active: exchange, onClick: () => openSpace("exchange") },
+        { label: pmeExchange ? "PME" : "Export", Icon: BriefcaseBusiness, active: exchange, onClick: () => openSpace("exchange") },
       ].map(({ label, Icon, active, onClick }) => (
         <button
           key={label}
@@ -1936,7 +2035,7 @@ export function ExportunityNeighbourhoodCommerce({
                               <h3 className="truncate text-sm font-black md:text-base">{product.name}</h3>
                               <p className={cn("mt-0.5 line-clamp-1 text-[11px] leading-relaxed md:mt-1 md:line-clamp-2 md:text-xs", dark ? "text-white/58" : "text-slate-600")}>{product.description}</p>
                             </div>
-                            <span className="shrink-0 text-xs font-black text-[#F5A623] md:text-sm">{formatMoney(product.priceCfa)}</span>
+                            <span className="shrink-0 text-xs font-black text-[#F5A623] md:text-sm">{pmeExchange ? product.category : formatMoney(product.priceCfa)}</span>
                           </button>
                           <div className={cn("mt-2 flex items-center justify-between text-[11px] md:mt-3 md:text-xs", dark ? "text-white/55" : "text-slate-500")}>
                             <span>{product.unit}</span>
@@ -2167,17 +2266,17 @@ export function ExportunityNeighbourhoodCommerce({
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="rounded-full bg-[#F5A623] px-3 py-1 text-[11px] font-black uppercase tracking-wide text-[#07111F]">
-                  {exchange ? "Ready for export" : wholesale ? "Wholesale" : "Retail marketplace"}
+                  {exchange ? exchangeTitle : wholesale ? "Wholesale" : "Retail marketplace"}
                 </span>
                 <span className={cn("rounded-full border px-3 py-1 text-[11px] font-black", dark ? "border-white/12 text-white/62" : "border-slate-200 text-slate-600")}>Cocody, Abidjan</span>
                 {isAdmin ? <span className="rounded-full bg-emerald-500/12 px-3 py-1 text-[11px] font-black text-emerald-600">Admin view</span> : null}
               </div>
               <h1 className="mt-2 max-w-4xl text-lg font-black leading-tight tracking-tight md:text-2xl">
-                {exchange ? "Browse export-ready products and sellers." : wholesale ? "Source suppliers, quantities, MOQ, and routes." : "Buy nearby products from real local shops."}
+                {exchange ? exchangeHeroTitle : wholesale ? "Source suppliers, quantities, MOQ, and routes." : "Buy nearby products from real local shops."}
               </h1>
               <p className={cn("mt-1 hidden max-w-3xl text-sm leading-relaxed sm:block", dark ? "text-white/64" : "text-slate-600")}>
                 {exchange
-                  ? "Start with products and sellers, then review people, place, proof, and compliance status. Finance remains admin-only until approved."
+                  ? exchangeHeroHint
                   : wholesale
                     ? "Search suppliers, compare lead time and distance, then request a quote through an approval-gated workflow."
                     : "Pick a product, enter the shop, adjust quantities, and let the shop Front Desk help only when useful."}
@@ -2198,7 +2297,7 @@ export function ExportunityNeighbourhoodCommerce({
           </div>
         </section>
 
-        <section className="flex gap-2 overflow-x-auto pb-1 md:grid md:grid-cols-3 md:gap-3 md:overflow-visible md:pb-0">
+        <section className="flex gap-2 overflow-x-auto pb-1 md:grid md:grid-cols-4 md:gap-3 md:overflow-visible md:pb-0">
           {modeTabs.map(({ label, eyebrow, description, Icon, active, onClick }) => (
             <button
               key={label}
@@ -2248,9 +2347,9 @@ export function ExportunityNeighbourhoodCommerce({
           <section className={cn("grid gap-2 rounded-[22px] border p-3 md:grid-cols-4", dark ? "border-white/12 bg-[#07111F] text-white" : "border-slate-200 bg-white text-slate-950 shadow-[0_12px_26px_rgba(15,23,42,.06)]")}>
             {[
               {
-                label: "Seller coverage",
+                label: pmeExchange ? "PME coverage" : "Seller coverage",
                 value: `${visiblePlaces.length} profiles`,
-                detail: "People, place, proof, products",
+                detail: pmeExchange ? "Leads, proof, outreach, onboarding" : "People, place, proof, products",
                 ok: true,
               },
               {
@@ -2289,7 +2388,7 @@ export function ExportunityNeighbourhoodCommerce({
             <div className="grid gap-4 lg:grid-cols-[170px_minmax(0,1fr)_260px] lg:items-center">
               <img src={activeShopImage || activeShop.image} alt="" className="h-32 w-full rounded-2xl object-cover lg:h-28" />
               <div className="min-w-0">
-                      <div className="text-[11px] font-black uppercase tracking-[0.18em] text-[#F5A623]">{wholesale || exchange ? "Quick review" : "Ready to buy"}</div>
+                <div className="text-[11px] font-black uppercase tracking-[0.18em] text-[#F5A623]">{wholesale ? "Quick review" : pmeExchange ? "PME review" : exchange ? "Seller review" : "Ready to buy"}</div>
                 <h2 className="mt-1 truncate text-2xl font-black">{activeShop.name}</h2>
                 <p className={cn("mt-1 text-sm font-semibold", dark ? "text-white/62" : "text-slate-600")}>
                   {activeShop.category} - Rating {activeShop.rating.toFixed(1)} - {activeShop.distance} - {activeShop.eta}
@@ -2307,7 +2406,7 @@ export function ExportunityNeighbourhoodCommerce({
                   );
                 })()}
                 <div className="mt-3 flex flex-wrap gap-2">
-                  {productsForShop(activeShop).slice(0, 3).map((product) => (
+                  {(pmeExchange ? pmeCardsForShop(activeShop) : productsForShop(activeShop)).slice(0, 3).map((product) => (
                     <span key={product.id} className={cn("rounded-full border px-3 py-1 text-xs font-black", dark ? "border-white/14 bg-white/[0.05]" : "border-slate-200 bg-white")}>{product.name}</span>
                   ))}
                 </div>
@@ -2316,7 +2415,7 @@ export function ExportunityNeighbourhoodCommerce({
                 {wholesale ? (
                   <button type="button" onClick={() => handleAsk("Request a quote")} className="flex-1 rounded-2xl bg-[#F5A623] px-4 py-3 text-sm font-black text-[#07111F]">Request quote</button>
                 ) : exchange ? (
-                  <button type="button" onClick={() => handleAsk("Review this seller")} className="flex-1 rounded-2xl bg-[#F5A623] px-4 py-3 text-sm font-black text-[#07111F]">Review profile</button>
+                  <button type="button" onClick={() => handleAsk(pmeExchange ? "Review this PME lead" : "Review this seller")} className="flex-1 rounded-2xl bg-[#F5A623] px-4 py-3 text-sm font-black text-[#07111F]">{pmeExchange ? "Review PME" : "Review profile"}</button>
                 ) : (
                   <>
                     <button type="button" onClick={() => enterShop(activeShop)} className="flex-1 rounded-2xl bg-[#F5A623] px-4 py-3 text-sm font-black text-[#07111F]">Enter shop</button>
@@ -2332,9 +2431,9 @@ export function ExportunityNeighbourhoodCommerce({
         <section>
           <div className="mb-3 flex items-end justify-between gap-4">
             <div>
-              <h2 className="text-xl font-black">{wholesale ? "Supplier offers" : exchange ? "Export-ready sellers" : "Products near you"}</h2>
+              <h2 className="text-xl font-black">{wholesale ? "Supplier offers" : exchange ? exchangeListTitle : "Products near you"}</h2>
               <p className={cn("text-sm", dark ? "text-white/56" : "text-slate-600")}>
-                {wholesale ? "Quote-ready suppliers with MOQ and lead time." : exchange ? "People, place, proof, and compliance status before any finance." : "Start with products, then enter the shop when you are ready."}
+                {wholesale ? "Quote-ready suppliers with MOQ and lead time." : exchange ? exchangeListHint : "Start with products, then enter the shop when you are ready."}
               </p>
             </div>
             <button type="button" onClick={() => onNavigate?.("/map")} className={cn("inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-black", dark ? "border-white/12 text-white/72" : "border-slate-200 bg-white text-slate-700")}>
@@ -2373,12 +2472,12 @@ export function ExportunityNeighbourhoodCommerce({
                           <h3 className="truncate text-sm font-black md:text-base">{product.name}</h3>
                           <p className={cn("mt-0.5 truncate text-xs md:mt-1 md:text-sm", dark ? "text-white/58" : "text-slate-500")}>{shop.name}</p>
                         </div>
-                        <span className="shrink-0 text-xs font-black text-[#F5A623] md:text-sm">{formatMoney(product.priceCfa)}</span>
+                        <span className="shrink-0 text-xs font-black text-[#F5A623] md:text-sm">{pmeExchange ? product.category : formatMoney(product.priceCfa)}</span>
                       </div>
                       <p className={cn("mt-1 line-clamp-1 text-[11px] leading-relaxed md:mt-2 md:text-xs", dark ? "text-white/56" : "text-slate-600")}>{product.description}</p>
                       <div className="mt-2 flex items-center justify-between gap-3 md:mt-4">
                         <span className={cn("text-xs font-bold", dark ? "text-white/52" : "text-slate-500")}>{shop.category} - {shop.openLabel}</span>
-                        <span className="rounded-full bg-[#F5A623]/16 px-2.5 py-1 text-[11px] font-black text-[#F5A623] md:px-3 md:py-1.5 md:text-xs">{wholesale ? "Quote" : exchange ? "Review seller" : "Ready"}</span>
+                        <span className="rounded-full bg-[#F5A623]/16 px-2.5 py-1 text-[11px] font-black text-[#F5A623] md:px-3 md:py-1.5 md:text-xs">{wholesale ? "Quote" : pmeExchange ? "Review PME" : exchange ? "Review seller" : "Ready"}</span>
                       </div>
                       {!wholesale && !exchange ? (
                         <div className="mt-2 grid grid-cols-[44px_minmax(0,1fr)] gap-2 md:mt-3">
@@ -2400,7 +2499,7 @@ export function ExportunityNeighbourhoodCommerce({
 
         {showRightMap ? (
           <div className="h-56 overflow-hidden rounded-[26px] border border-slate-200 shadow-[0_16px_34px_rgba(15,23,42,.08)] lg:hidden">
-            <LiveMapPane dark={dark} places={visiblePlaces} activeShop={activeShop} userLocation={userLocation} wholesale={wholesale} exchange={exchange} onSelect={selectPlaceFromMap} provider={placesStatus} mapsConfig={mapsConfig} className="h-full border-l-0" />
+            <LiveMapPane dark={dark} places={visiblePlaces} activeShop={activeShop} userLocation={userLocation} wholesale={wholesale} exchange={exchange} exchangeVariant={exchangeVariant} onSelect={selectPlaceFromMap} provider={placesStatus} mapsConfig={mapsConfig} className="h-full border-l-0" />
           </div>
         ) : null}
 
@@ -2446,16 +2545,16 @@ export function ExportunityNeighbourhoodCommerce({
         <div className={cn("grid min-h-0 flex-1 grid-cols-1", shellGridClass)}>
           {shopCenter || (
             <div className="relative min-h-0">
-              <LiveMapPane dark={dark} places={visiblePlaces} activeShop={activeShop} userLocation={userLocation} wholesale={wholesale} exchange={exchange} onSelect={selectPlaceFromMap} provider={placesStatus} mapsConfig={mapsConfig} className="h-full" />
+              <LiveMapPane dark={dark} places={visiblePlaces} activeShop={activeShop} userLocation={userLocation} wholesale={wholesale} exchange={exchange} exchangeVariant={exchangeVariant} onSelect={selectPlaceFromMap} provider={placesStatus} mapsConfig={mapsConfig} className="h-full" />
               {mapFull && !activeShop ? (
                 <section className={cn("absolute bottom-5 left-5 z-[401] w-[min(720px,calc(100%-2.5rem))] overflow-hidden rounded-[26px] border p-2.5 backdrop-blur-xl lg:w-[620px]", dark ? "border-white/12 bg-[#07111F]/86 text-white shadow-[0_22px_68px_rgba(0,0,0,.42)]" : "border-white/90 bg-white/92 text-slate-950 shadow-[0_20px_56px_rgba(15,23,42,.16)]")}>
                   <div className="mb-2 flex items-center justify-between gap-3 px-1">
                     <div>
                       <div className="text-[10px] font-black uppercase tracking-[0.18em] text-[#F5A623]">
-                        {wholesale ? "Supplier categories" : exchange ? "Seller categories" : "Shop categories"}
+                        {wholesale ? "Supplier categories" : pmeExchange ? "PME categories" : exchange ? "Seller categories" : "Shop categories"}
                       </div>
                       <div className="text-sm font-black">
-                        {wholesale ? "Start with a supplier type or request a quote" : exchange ? "Find export-ready products and verified seller profiles" : "Pick what you want to buy nearby"}
+                        {wholesale ? "Start with a supplier type or request a quote" : pmeExchange ? "Find PME leads, qualification status, and onboarding work" : exchange ? "Find export-ready products and verified seller profiles" : "Pick what you want to buy nearby"}
                       </div>
                     </div>
                     <MapPin className="h-5 w-5 shrink-0 text-[#F5A623]" />
@@ -2490,7 +2589,7 @@ export function ExportunityNeighbourhoodCommerce({
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
                           <div className="text-[10px] font-black uppercase tracking-[0.18em] text-[#F5A623]">
-                            {wholesale ? "Selected supplier" : exchange ? "Selected seller" : "Selected shop"}
+                            {wholesale ? "Selected supplier" : pmeExchange ? "Selected PME" : exchange ? "Selected seller" : "Selected shop"}
                           </div>
                           <h2 className="mt-1 truncate text-xl font-black">{activeShop.name}</h2>
                           <p className={cn("mt-1 truncate text-sm font-semibold", dark ? "text-white/62" : "text-slate-600")}>{activeShop.category}</p>
@@ -2518,7 +2617,7 @@ export function ExportunityNeighbourhoodCommerce({
                               <img src={product.image} alt="" className="h-12 w-full object-cover" />
                               <div className="min-w-0 px-2 py-1.5">
                                 <div className="truncate text-[11px] font-black">{product.name}</div>
-                                <div className="truncate text-[10px] font-bold text-[#F5A623]">{formatMoney(product.priceCfa)}</div>
+                                <div className="truncate text-[10px] font-bold text-[#F5A623]">{pmeExchange ? product.category : formatMoney(product.priceCfa)}</div>
                               </div>
                             </button>
                           ))}
@@ -2532,8 +2631,8 @@ export function ExportunityNeighbourhoodCommerce({
                           </>
                         ) : exchange ? (
                           <>
-                            <button type="button" onClick={() => handleAsk("Review this seller")} className="h-10 rounded-2xl bg-[#F5A623] text-sm font-black text-[#07111F]">Review profile</button>
-                            <button type="button" onClick={() => setAssistantCollapsed(false)} className={cn("h-10 rounded-2xl border text-sm font-black", dark ? "border-white/14 text-white/74 hover:bg-white/8" : "border-slate-200 text-slate-700 hover:bg-slate-50")}>Seller analyst</button>
+                            <button type="button" onClick={() => handleAsk(pmeExchange ? "Review this PME lead" : "Review this seller")} className="h-10 rounded-2xl bg-[#F5A623] text-sm font-black text-[#07111F]">{pmeExchange ? "Review PME" : "Review profile"}</button>
+                            <button type="button" onClick={() => setAssistantCollapsed(false)} className={cn("h-10 rounded-2xl border text-sm font-black", dark ? "border-white/14 text-white/74 hover:bg-white/8" : "border-slate-200 text-slate-700 hover:bg-slate-50")}>{pmeExchange ? "PME analyst" : "Seller analyst"}</button>
                           </>
                         ) : (
                           <>
@@ -2550,10 +2649,10 @@ export function ExportunityNeighbourhoodCommerce({
                   <div className="flex items-center justify-between gap-3 border-b border-current/10 px-3.5 py-2.5">
                     <div>
                       <div className="text-[10px] font-black uppercase tracking-[0.18em] text-[#F5A623]">
-                        {wholesale ? "Supplier map" : exchange ? "Export seller map" : "Nearby products"}
+                        {wholesale ? "Supplier map" : exchange ? exchangeShelfTitle : "Nearby products"}
                       </div>
                       <div className="mt-0.5 text-sm font-black">
-                        {wholesale ? "Tap a supplier for MOQ and quote flow" : exchange ? "Tap a seller for products, owner, and proof" : "Tap a product or marker to enter the shop"}
+                        {wholesale ? "Tap a supplier for MOQ and quote flow" : exchange ? exchangeShelfHint : "Tap a product or marker to enter the shop"}
                       </div>
                     </div>
                     <MapPin className="h-5 w-5 shrink-0 text-[#F5A623]" />
@@ -2570,7 +2669,7 @@ export function ExportunityNeighbourhoodCommerce({
                         <span className="min-w-0">
                           <span className="block truncate text-xs font-black">{product.name}</span>
                           <span className={cn("mt-0.5 block truncate text-[11px] font-semibold", dark ? "text-white/58" : "text-slate-600")}>{shop.name}</span>
-                          <span className="mt-0.5 block truncate text-[11px] font-black text-[#F5A623]">{formatMoney(product.priceCfa)}</span>
+                          <span className="mt-0.5 block truncate text-[11px] font-black text-[#F5A623]">{pmeExchange ? product.category : formatMoney(product.priceCfa)}</span>
                         </span>
                       </button>
                     ))}
@@ -2601,7 +2700,7 @@ export function ExportunityNeighbourhoodCommerce({
       >
         {shopCenter || businessCenter || discoveryCenter}
         {showRightMap ? (
-          <LiveMapPane dark={dark} places={visiblePlaces} activeShop={activeShop} userLocation={userLocation} wholesale={wholesale} exchange={exchange} onSelect={selectPlaceFromMap} provider={placesStatus} mapsConfig={mapsConfig} className="hidden lg:block" />
+          <LiveMapPane dark={dark} places={visiblePlaces} activeShop={activeShop} userLocation={userLocation} wholesale={wholesale} exchange={exchange} exchangeVariant={exchangeVariant} onSelect={selectPlaceFromMap} provider={placesStatus} mapsConfig={mapsConfig} className="hidden lg:block" />
         ) : null}
         {assistantPane}
       </div>
@@ -2658,12 +2757,13 @@ function Header({
   onNavigate?: (href: string) => void;
   isAdmin: boolean;
 }) {
-  const nav: Array<[string, ConversationSpace, LucideIcon]> = [
-    ["Retail", "city", Store],
-    ["Map", "city", MapIcon],
-    ["Wholesale", "wholesale", Warehouse],
-    ["Ready for export", "exchange", BriefcaseBusiness],
-    ["My Business", "business", BriefcaseBusiness],
+  const nav: Array<{ label: string; space: ConversationSpace; Icon: LucideIcon; href?: string }> = [
+    { label: "Retail", space: "city", Icon: Store },
+    { label: "Map", space: "city", Icon: MapIcon, href: "/map" },
+    { label: "Wholesale", space: "wholesale", Icon: Warehouse },
+    { label: "Ready for export", space: "exchange", Icon: BriefcaseBusiness, href: "/ready-for-export" },
+    { label: "Bourse PME", space: "exchange", Icon: FileText, href: "/pme-exchange" },
+    { label: "My Business", space: "business", Icon: BriefcaseBusiness },
   ];
   return (
     <header className={cn("z-40 flex h-[74px] shrink-0 items-center gap-4 border-b px-4 shadow-[0_18px_50px_rgba(5,7,11,.16)] lg:px-6", dark ? "border-white/10 bg-[#05070B] text-white" : "border-slate-200 bg-[#F7F8FA] text-slate-900")}>
@@ -2671,19 +2771,14 @@ function Header({
         <img src="/tenants/exportunity/logo.svg" alt="Exportunity AI" className="h-11 w-auto max-w-[220px]" />
       </button>
       <nav className="hidden min-w-0 flex-1 items-center justify-center gap-1 lg:flex">
-        {nav.map(([label, space, Icon]) => (
+        {nav.map(({ label, space, Icon, href }) => (
           <button
             key={label}
             type="button"
             onClick={() => {
-              if (label === "Map") {
-                setSpace("city");
-                onNavigate?.("/map");
-                return;
-              }
-              if (label === "Ready for export") {
-                setSpace("exchange");
-                onNavigate?.("/ready-for-export");
+              if (href) {
+                setSpace(space);
+                onNavigate?.(href);
                 return;
               }
               setSpace(space);

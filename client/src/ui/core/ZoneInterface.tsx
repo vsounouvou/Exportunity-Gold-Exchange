@@ -3,14 +3,15 @@ import { BuyerHomePage } from "@/pages/BuyerHomePage";
 import { useTenant } from "@/lib/tenant";
 import { hasTenantModule, getTenantConfigByKey } from "../../../../tenants/index";
 import { getTenantUXConfig } from "@/config/tenantUX";
-import type { ConversationSpace, ExportunityShellMode } from "@/components/exportunity/ExportunityConversationalCommerce";
+import type { ConversationSpace, ExportunityExchangeVariant, ExportunityShellMode } from "@/components/exportunity/ExportunityConversationalCommerce";
 
 type ZoneInterfaceProps = {
   initialSpace?: ConversationSpace;
   shellMode?: ExportunityShellMode;
+  exchangeVariant?: ExportunityExchangeVariant;
 };
 
-export function ZoneInterface({ initialSpace = "city", shellMode = "commerce" }: ZoneInterfaceProps) {
+export function ZoneInterface({ initialSpace = "city", shellMode = "commerce", exchangeVariant = "export" }: ZoneInterfaceProps) {
   const { tenant } = useTenant();
   const config = useMemo(() => getTenantConfigByKey(tenant.key), [tenant.key]);
   const tenantUx = useMemo(() => getTenantUXConfig(tenant.key), [tenant.key]);
@@ -30,6 +31,7 @@ export function ZoneInterface({ initialSpace = "city", shellMode = "commerce" }:
         showNewsBanner={tenantUx.showNewsBanner}
         exportunityInitialSpace={initialSpace}
         exportunityShellMode={shellMode}
+        exportunityExchangeVariant={exchangeVariant}
       />
     </div>
   );

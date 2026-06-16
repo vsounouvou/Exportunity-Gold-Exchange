@@ -503,6 +503,7 @@ function StoreRoute() {
     : location.startsWith("/pme-exchange") || location.startsWith("/ready-for-export")
       ? "exchange"
       : "city";
+  const exchangeVariant = location.startsWith("/pme-exchange") ? "pme" : "export";
   const shellMode =
     location === "/map" || location === "/marketplace/map" || location.startsWith("/wholesale/map")
       ? "mapFull"
@@ -512,7 +513,7 @@ function StoreRoute() {
           location.startsWith("/pme-exchange")
         ? "mapDominant"
         : "commerce";
-  return <StorePage initialSpace={initialSpace} shellMode={shellMode} />;
+  return <StorePage initialSpace={initialSpace} shellMode={shellMode} exchangeVariant={exchangeVariant} />;
 }
 
 function BdoWholesaleRoute() {

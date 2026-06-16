@@ -75,7 +75,7 @@ import {
   isExportunityLocationRelevantCategory,
 } from "@/content/exportunity/marketplaceCatalog";
 import { ExportunityNeighbourhoodCommerce as ExportunityConversationalCommerce } from "@/components/exportunity/ExportunityNeighbourhoodCommerce";
-import type { ConversationSpace, ExportunityShellMode } from "@/components/exportunity/ExportunityConversationalCommerce";
+import type { ConversationSpace, ExportunityExchangeVariant, ExportunityShellMode } from "@/components/exportunity/ExportunityConversationalCommerce";
 import { ExportunityAssistantBar } from "@/components/exportunity/ExportunityAssistantBar";
 import {
   findAssistantQuickFlowByQuery,
@@ -2489,6 +2489,7 @@ type BuyerHomePageProps = {
   uiMarker?: string;
   exportunityInitialSpace?: ConversationSpace;
   exportunityShellMode?: ExportunityShellMode;
+  exportunityExchangeVariant?: ExportunityExchangeVariant;
 };
 
 export function BuyerHomePage({
@@ -2500,6 +2501,7 @@ export function BuyerHomePage({
   uiMarker,
   exportunityInitialSpace = "city",
   exportunityShellMode = "commerce",
+  exportunityExchangeVariant = "export",
 }: BuyerHomePageProps = {}) {
   const [location, navigate] = useLocation();
   const { toast } = useToast();
@@ -18874,6 +18876,7 @@ export function BuyerHomePage({
               isAdmin={session.hasRole("admin")}
               initialSpace={exportunityInitialSpace}
               shellMode={exportunityShellMode}
+              exchangeVariant={exportunityExchangeVariant}
               embeddedShell
             />
           </div>

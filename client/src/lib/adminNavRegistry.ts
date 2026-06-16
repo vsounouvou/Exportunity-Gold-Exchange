@@ -135,6 +135,60 @@ const ACTION_FORGE_NAV_ITEM: AdminNavRegistryItem = {
   visibleInNav: true,
 };
 
+const PME_EXCHANGE_NAV_ITEMS: AdminNavRegistryItem[] = [
+  {
+    route: "/admin/pme-exchange",
+    pageTitle: "PME Exchange",
+    module: "PME Exchange",
+    capabilityTag: "admin_pme_exchange",
+    apiEndpointsCalled: ["/api/admin/pme-exchange/status", "/api/admin/pme-exchange/summary", "/api/admin/pme-exchange/leads"],
+    navEntryName: "PME Exchange",
+    icon: "Store",
+    visibleInNav: true,
+  },
+  {
+    route: "/admin/pme-exchange/map",
+    pageTitle: "PME Map",
+    module: "PME Exchange",
+    capabilityTag: "admin_pme_exchange_map",
+    apiEndpointsCalled: ["/api/admin/pme-exchange/map"],
+    navEntryName: "PME Map",
+    icon: "MapPin",
+    visibleInNav: true,
+  },
+  {
+    route: "/admin/pme-exchange/import",
+    pageTitle: "Google Import",
+    module: "PME Exchange",
+    capabilityTag: "admin_pme_exchange_import",
+    apiEndpointsCalled: ["/api/admin/pme-exchange/import/preview", "/api/admin/pme-exchange/google/test-search"],
+    navEntryName: "Google Import",
+    icon: "Search",
+    visibleInNav: true,
+  },
+  {
+    route: "/admin/pme-exchange/campaigns",
+    pageTitle: "Outreach Campaigns",
+    module: "PME Exchange",
+    capabilityTag: "admin_pme_exchange_campaigns",
+    apiEndpointsCalled: ["/api/admin/pme-exchange/campaigns", "/api/admin/pme-exchange/campaigns/test"],
+    navEntryName: "Outreach Campaigns",
+    icon: "MessageSquare",
+    visibleInNav: true,
+  },
+];
+
+const GOOGLE_MAPS_NAV_ITEM: AdminNavRegistryItem = {
+  route: "/admin/settings/integrations/google-maps",
+  pageTitle: "Google Maps / Places",
+  module: "Settings",
+  capabilityTag: "admin_google_maps_places",
+  apiEndpointsCalled: ["/api/maps/public-config", "/api/admin/pme-exchange/google/settings", "/api/admin/pme-exchange/google/test-search"],
+  navEntryName: "Google Maps / Places",
+  icon: "MapPin",
+  visibleInNav: true,
+};
+
 const ROUTE_CATEGORY_OVERRIDES: Record<string, AdminNavCategory> = {
   // Agents OS is the canonical home for all agent functions.
   "/agents": "Agents OS",
@@ -181,6 +235,10 @@ const ROUTE_CATEGORY_OVERRIDES: Record<string, AdminNavCategory> = {
   "/admin/equipment-ops/fleet-map": "Trade",
   "/admin/equipment-ops/contracts": "Trade",
   "/admin/equipment-ops/maintenance": "Trade",
+  "/admin/pme-exchange": "Trade",
+  "/admin/pme-exchange/map": "Trade",
+  "/admin/pme-exchange/import": "Trade",
+  "/admin/pme-exchange/campaigns": "Trade",
   "/admin/website/visits": "Trade",
   "/admin/website/seo": "Trade",
   "/admin/website/seo-autopilot": "Trade",
@@ -201,6 +259,7 @@ const ROUTE_CATEGORY_OVERRIDES: Record<string, AdminNavCategory> = {
   "/admin/settings/map": "Settings",
   "/admin/map-icons": "Settings",
   "/admin/settings/onboarding": "Settings",
+  "/admin/settings/integrations/google-maps": "Settings",
 };
 
 const MODULE_ORDER: AdminNavCategory[] = ["Agents OS", "Operations", "Trade", "Territories", "Finance", "Settings"];
@@ -247,6 +306,10 @@ const CATEGORY_ITEM_ORDER: Record<AdminNavCategory, Record<string, number>> = {
     "/admin/equipment-ops/fleet-map": 210,
     "/admin/equipment-ops/contracts": 220,
     "/admin/equipment-ops/maintenance": 230,
+    "/admin/pme-exchange": 240,
+    "/admin/pme-exchange/map": 241,
+    "/admin/pme-exchange/import": 242,
+    "/admin/pme-exchange/campaigns": 243,
     "/admin/website/visits": 0,
     "/admin/website/seo": 10,
     "/admin/website/seo-autopilot": 20,
@@ -272,6 +335,7 @@ const CATEGORY_ITEM_ORDER: Record<AdminNavCategory, Record<string, number>> = {
     "/admin/map-icons": 8,
     "/admin/email": 10,
     "/admin/settings/communications/twilio": 20,
+    "/admin/settings/integrations/google-maps": 25,
   },
 };
 
@@ -287,6 +351,10 @@ export function getAdminNavItems() {
   if (!hasInternalAgents) next.push(OPERATIONS_INTERNAL_AGENTS_NAV_ITEM);
   if (!hasMarketplaceAgents) next.push(COMMERCE_MARKETPLACE_AGENTS_NAV_ITEM);
   if (!hasActionForge) next.push(ACTION_FORGE_NAV_ITEM);
+  for (const item of PME_EXCHANGE_NAV_ITEMS) {
+    if (!next.some((entry) => entry.route === item.route)) next.push(item);
+  }
+  if (!next.some((entry) => entry.route === GOOGLE_MAPS_NAV_ITEM.route)) next.push(GOOGLE_MAPS_NAV_ITEM);
   return next;
 }
 

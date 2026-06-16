@@ -2352,8 +2352,8 @@ export function ExportunityNeighbourhoodCommerce({
               },
               {
                 label: "Google Maps",
-                value: googleMapReady ? "Renderer active" : "OSM fallback",
-                detail: googleMapReady ? "Browser map key is verified for the public map" : "Google setup is incomplete; OpenStreetMap is active",
+                value: googleMapReady ? "Configured" : "OSM fallback",
+                detail: googleMapReady ? "Browser map key is present; the live map falls back if Google rejects this domain/API key" : "Google setup is incomplete; OpenStreetMap is active",
                 ok: googleMapReady,
               },
               {
@@ -2497,7 +2497,7 @@ export function ExportunityNeighbourhoodCommerce({
 
         {showRightMap ? (
           <div className="h-56 overflow-hidden rounded-[26px] border border-slate-200 shadow-[0_16px_34px_rgba(15,23,42,.08)] lg:hidden">
-            <LiveMapPane dark={dark} places={visiblePlaces} activeShop={activeShop} userLocation={userLocation} wholesale={wholesale} exchange={exchange} exchangeVariant={exchangeVariant} onSelect={selectPlaceFromMap} provider={placesStatus} mapsConfig={mapsConfig} className="h-full border-l-0" />
+            <LiveMapPane dark={dark} places={visiblePlaces} activeShop={activeShop} userLocation={userLocation} wholesale={wholesale} exchange={exchange} exchangeVariant={exchangeVariant} onSelect={selectPlaceFromMap} provider={placesStatus} mapsConfig={mapsConfig} showDiagnostics={isAdmin} className="h-full border-l-0" />
           </div>
         ) : null}
 
@@ -2543,7 +2543,7 @@ export function ExportunityNeighbourhoodCommerce({
         <div className={cn("grid min-h-0 flex-1 grid-cols-1", shellGridClass)}>
           {shopCenter || (
             <div className="relative min-h-0">
-              <LiveMapPane dark={dark} places={visiblePlaces} activeShop={activeShop} userLocation={userLocation} wholesale={wholesale} exchange={exchange} exchangeVariant={exchangeVariant} onSelect={selectPlaceFromMap} provider={placesStatus} mapsConfig={mapsConfig} className="h-full" />
+              <LiveMapPane dark={dark} places={visiblePlaces} activeShop={activeShop} userLocation={userLocation} wholesale={wholesale} exchange={exchange} exchangeVariant={exchangeVariant} onSelect={selectPlaceFromMap} provider={placesStatus} mapsConfig={mapsConfig} showDiagnostics={isAdmin || mapFull} className="h-full" />
               {mapFull && !activeShop ? (
                 <section className={cn("absolute bottom-5 left-5 z-[401] w-[min(720px,calc(100%-2.5rem))] overflow-hidden rounded-[26px] border p-2.5 backdrop-blur-xl lg:w-[620px]", dark ? "border-white/12 bg-[#07111F]/86 text-white shadow-[0_22px_68px_rgba(0,0,0,.42)]" : "border-white/90 bg-white/92 text-slate-950 shadow-[0_20px_56px_rgba(15,23,42,.16)]")}>
                   <div className="mb-2 flex items-center justify-between gap-3 px-1">
@@ -2698,7 +2698,7 @@ export function ExportunityNeighbourhoodCommerce({
       >
         {shopCenter || businessCenter || discoveryCenter}
         {showRightMap ? (
-          <LiveMapPane dark={dark} places={visiblePlaces} activeShop={activeShop} userLocation={userLocation} wholesale={wholesale} exchange={exchange} exchangeVariant={exchangeVariant} onSelect={selectPlaceFromMap} provider={placesStatus} mapsConfig={mapsConfig} className="hidden lg:block" />
+          <LiveMapPane dark={dark} places={visiblePlaces} activeShop={activeShop} userLocation={userLocation} wholesale={wholesale} exchange={exchange} exchangeVariant={exchangeVariant} onSelect={selectPlaceFromMap} provider={placesStatus} mapsConfig={mapsConfig} showDiagnostics={isAdmin} className="hidden lg:block" />
         ) : null}
         {assistantPane}
       </div>

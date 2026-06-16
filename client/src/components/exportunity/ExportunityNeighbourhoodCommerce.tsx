@@ -152,9 +152,21 @@ const supplierAgent: CommerceAgent = {
 };
 
 const exportScoutAgent: CommerceAgent = {
-  ...tassi,
   id: "export-scout",
+  name: "Ayo",
   role: "Export scout",
+  status: "online",
+  color: "#F5A623",
+  avatarUrl: "https://images.unsplash.com/photo-1531384441138-2736e62e0919?auto=format&fit=crop&w=220&q=85",
+};
+
+const pmeAcquisitionAgent: CommerceAgent = {
+  id: "pme-acquisition",
+  name: "Nadia",
+  role: "PME acquisition",
+  status: "online",
+  color: "#0f766e",
+  avatarUrl: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=220&q=85",
 };
 
 const businessAgents: CommerceAgent[] = [
@@ -184,12 +196,12 @@ function openingMessagesForSpace(nextSpace: ConversationSpace, variant: Exportun
   if (nextSpace === "exchange") {
     if (variant === "pme") {
       return [
-        { id: "hello-pme", agentId: exportScoutAgent.id, content: "Hello, I'm Tassi. This is the Bourse PME map: local businesses, verification status, products, services, outreach readiness, and onboarding progress.", createdAt: now, agentSnapshot: exportScoutAgent },
-        { id: "options-pme", agentId: exportScoutAgent.id, content: "Start with PME leads, qualified businesses, contact-required listings, revenue signals, or compliance review. Revenue-share opportunities stay internal and compliance-gated until legal approval.", createdAt: now, agentSnapshot: exportScoutAgent },
+        { id: "hello-pme", agentId: pmeAcquisitionAgent.id, content: "Hello, I'm Nadia. This is the Bourse PME map: local businesses, verification status, products, services, outreach readiness, and onboarding progress.", createdAt: now, agentSnapshot: pmeAcquisitionAgent },
+        { id: "options-pme", agentId: pmeAcquisitionAgent.id, content: "Start with PME leads, qualified businesses, contact-required listings, revenue signals, or compliance review. Revenue-share opportunities stay internal and compliance-gated until legal approval.", createdAt: now, agentSnapshot: pmeAcquisitionAgent },
       ];
     }
     return [
-      { id: "hello-export", agentId: exportScoutAgent.id, content: "Hello, I'm Tassi. This is the Ready for export map: verified sellers, product proof, owner stories, and compliance status before any opportunity is promoted.", createdAt: now, agentSnapshot: exportScoutAgent },
+      { id: "hello-export", agentId: exportScoutAgent.id, content: "Hello, I'm Ayo. This is the Ready for export map: verified sellers, product proof, owner stories, and compliance status before any opportunity is promoted.", createdAt: now, agentSnapshot: exportScoutAgent },
       { id: "options-export", agentId: exportScoutAgent.id, content: "Start with export-ready food, verified sellers, women-led businesses, seller proof, or compliance review. Investment-style opportunities stay internal until legal approval.", createdAt: now, agentSnapshot: exportScoutAgent },
     ];
   }
@@ -1307,7 +1319,7 @@ export function ExportunityNeighbourhoodCommerce({
   const orderLines = Object.values(orderDraft);
   const subtotal = orderLines.reduce((sum, line) => sum + line.product.priceCfa * line.quantity, 0);
   const retailShopSelected = Boolean(activeShop && !business && !wholesale && !exchange);
-  const visibleAgent = retailShopSelected && activeShop ? activeShop.frontDesk : business ? businessAgents[0] : wholesale ? supplierAgent : exchange ? exportScoutAgent : tassi;
+  const visibleAgent = retailShopSelected && activeShop ? activeShop.frontDesk : business ? businessAgents[0] : wholesale ? supplierAgent : pmeExchange ? pmeAcquisitionAgent : exchange ? exportScoutAgent : tassi;
   const quickReplies = retailShopSelected ? shopQuickReplies : business ? businessQuickReplies : pmeExchange ? pmeQuickReplies : exchange ? exchangeQuickReplies : wholesale ? wholesaleQuickReplies : cityQuickReplies;
   const exchangeTitle = pmeExchange ? "Bourse PME" : "Ready for export";
   const exchangeShelfTitle = pmeExchange ? "PME lead map" : "Export seller map";
@@ -1588,7 +1600,7 @@ export function ExportunityNeighbourhoodCommerce({
       setSpace("exchange");
       setActiveShop(exchangeShops[0]);
       onNavigate?.("/pme-exchange");
-      replyFrom(tassi, "I switched to the Bourse PME map. These businesses show activity, contact readiness, verification status, onboarding stage, and compliance gates before any revenue-share review.");
+      replyFrom(pmeAcquisitionAgent, "I switched to the Bourse PME map. These businesses show activity, contact readiness, verification status, onboarding stage, and compliance gates before any revenue-share review.");
       return;
     }
 
@@ -1596,7 +1608,7 @@ export function ExportunityNeighbourhoodCommerce({
       setSpace("exchange");
       setActiveShop(exchangeShops[0]);
       onNavigate?.("/ready-for-export");
-      replyFrom(tassi, "I switched to Ready for export. These sellers show products, owner proof, trust signals, and compliance status before any finance is reviewed internally.");
+      replyFrom(exportScoutAgent, "I switched to Ready for export. These sellers show products, owner proof, trust signals, and compliance status before any finance is reviewed internally.");
       return;
     }
 

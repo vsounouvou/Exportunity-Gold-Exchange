@@ -17408,21 +17408,38 @@ export function BuyerHomePage({
                     </div>
 
                     {isExportunityCommerceMapExperience ? (
-                      <Button
-                        variant="ghost"
-                        className={`h-9 px-3 text-gray-200 hover:text-white hover:bg-white/10 ${
-                          location === "/ready-for-export" || location.startsWith("/pme-exchange")
-                            ? "bg-[#D4AF37]/18 text-[#E8C873] hover:bg-[#D4AF37]/20"
-                            : ""
-                        }`}
-                        onClick={() => navigate("/ready-for-export")}
-                        aria-label="Ready for export"
-                      >
-                        <BriefcaseBusiness className="h-4 w-4 mr-2" />
-                        <span className="text-[12px] font-semibold">
-                          Ready for export
-                        </span>
-                      </Button>
+                      <>
+                        <Button
+                          variant="ghost"
+                          className={`h-9 px-3 text-gray-200 hover:text-white hover:bg-white/10 ${
+                            location === "/ready-for-export"
+                              ? "bg-[#D4AF37]/18 text-[#E8C873] hover:bg-[#D4AF37]/20"
+                              : ""
+                          }`}
+                          onClick={() => navigate("/ready-for-export")}
+                          aria-label="Ready for export"
+                        >
+                          <BriefcaseBusiness className="h-4 w-4 mr-2" />
+                          <span className="text-[12px] font-semibold">
+                            Ready for export
+                          </span>
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          className={`h-9 px-3 text-gray-200 hover:text-white hover:bg-white/10 ${
+                            location.startsWith("/pme-exchange")
+                              ? "bg-[#D4AF37]/18 text-[#E8C873] hover:bg-[#D4AF37]/20"
+                              : ""
+                          }`}
+                          onClick={() => navigate("/pme-exchange")}
+                          aria-label="Bourse PME"
+                        >
+                          <BriefcaseBusiness className="h-4 w-4 mr-2" />
+                          <span className="text-[12px] font-semibold">
+                            Bourse PME
+                          </span>
+                        </Button>
+                      </>
                     ) : null}
 
                     {buyerMode === "wholesale" &&
@@ -23656,16 +23673,27 @@ export function BuyerHomePage({
               activeClasses:
                 "border-[#D4AF37]/46 bg-[#D4AF37]/18 text-[#E8C873]",
             },
-            ...(isExportunityMarketplaceExperience
+            ...(isExportunityCommerceMapExperience
               ? [
                   {
-                    key: "pme-exchange",
+                    key: "ready-for-export",
                     label: "Ready for export",
                     icon: <BriefcaseBusiness className="h-5 w-5" />,
                     active: location === "/ready-for-export",
                     disabled: false,
                     title: "",
                     onSelect: () => navigate("/ready-for-export"),
+                    activeClasses:
+                      "border-[#D4AF37]/46 bg-[#D4AF37]/18 text-[#E8C873]",
+                  },
+                  {
+                    key: "pme-exchange",
+                    label: "Bourse PME",
+                    icon: <BriefcaseBusiness className="h-5 w-5" />,
+                    active: location.startsWith("/pme-exchange"),
+                    disabled: false,
+                    title: "",
+                    onSelect: () => navigate("/pme-exchange"),
                     activeClasses:
                       "border-[#D4AF37]/46 bg-[#D4AF37]/18 text-[#E8C873]",
                   },

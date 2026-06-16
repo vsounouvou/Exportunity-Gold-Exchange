@@ -170,7 +170,7 @@ const cityQuickReplies = ["Find breakfast near me", "Fresh bread", "Coffee nearb
 const wholesaleQuickReplies = ["Find suppliers near me", "Request a quote", "Building materials wholesale", "Machinery", "Packaging", "Logistics help"];
 const exchangeQuickReplies = ["Ready for export", "Verified sellers", "Food exporters", "Women-led shops", "Seller proof", "Compliance review"];
 const pmeQuickReplies = ["Find PME leads", "Qualified businesses", "Onboarding pipeline", "Revenue signals", "Contact required", "Compliance review"];
-const shopQuickReplies = ["What should I buy first?", "Can you deliver?", "Use my wallet", "Can I see it live?", "Suggest a bundle"];
+const shopQuickReplies = ["What's fresh today?", "Best sellers", "Can you deliver?", "Use my wallet", "Show bundles"];
 const businessQuickReplies = ["What needs attention?", "Low stock", "Today sales", "Assign delivery", "Plan a promo"];
 
 function openingMessagesForSpace(nextSpace: ConversationSpace, variant: ExportunityExchangeVariant = "export"): ConversationMessage[] {
@@ -1477,7 +1477,7 @@ export function ExportunityNeighbourhoodCommerce({
       agentId: shop.frontDesk.id,
       agentSnapshot: shop.frontDesk,
       shopId: shop.id,
-      content: `Welcome to ${shop.name}. I'm ${shop.frontDesk.name}. The products are open in front of you; pick quantities and I will help with freshness, substitutions, payment, and delivery only when needed.`,
+      content: `Welcome to ${shop.name}. I'm ${shop.frontDesk.name}. The shelf is open: choose products, adjust quantities, and I will help with freshness, substitutions, payment, and delivery only when needed.`,
     });
   };
 
@@ -1774,7 +1774,7 @@ export function ExportunityNeighbourhoodCommerce({
         ? "lg:grid-cols-[minmax(0,1fr)_72px] xl:grid-cols-[minmax(0,1fr)_72px]"
         : "lg:grid-cols-[minmax(0,1fr)_292px] xl:grid-cols-[minmax(0,1fr)_304px]";
   const composerPlaceholder = retailShopSelected
-    ? `Search this shelf or ask ${visibleAgent.name}...`
+    ? `Search products in this shop...`
     : wholesale
       ? "Search suppliers, MOQ, lead time, or request a quote..."
       : exchange
@@ -1996,7 +1996,7 @@ export function ExportunityNeighbourhoodCommerce({
                 <img src={activeShopImage || activeShop.image} alt="" className="h-full w-full object-cover" />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
                 <div className="absolute bottom-4 left-4 right-4 text-white md:bottom-5 md:left-5 md:right-5">
-                  <div className="mb-2 inline-flex rounded-full bg-[#F5A623] px-3 py-1 text-[10px] font-black uppercase tracking-wide text-[#07111F] md:mb-3 md:text-[11px]">Products inside shop</div>
+                  <div className="mb-2 inline-flex rounded-full bg-[#F5A623] px-3 py-1 text-[10px] font-black uppercase tracking-wide text-[#07111F] md:mb-3 md:text-[11px]">Now inside shop</div>
                   <h1 className="text-2xl font-black md:text-3xl">{activeShop.name}</h1>
                   <p className="mt-0.5 text-xs font-semibold text-white/78 md:mt-1 md:text-sm">{activeShop.category} - {activeShop.openLabel} - {activeShop.distance} - {activeShop.eta}</p>
                 </div>
@@ -2004,9 +2004,9 @@ export function ExportunityNeighbourhoodCommerce({
               <div className="p-4 md:p-5">
                 <div className="grid gap-3 md:grid-cols-[1fr_220px] md:gap-4">
                   <div>
-                    <h2 className="text-lg font-black md:text-xl">Choose products</h2>
+                    <h2 className="text-lg font-black md:text-xl">Shop shelf</h2>
                     <p className={cn("mt-1 text-xs leading-relaxed md:text-sm", dark ? "text-white/62" : "text-slate-600")}>
-                      Pick quantities, then confirm from the order panel. {activeShop.frontDesk.name} is here for availability, substitutions, payment, and delivery.
+                      Products are first. Pick quantities from the shelf, then confirm from the order panel. {activeShop.frontDesk.name} is available if you need help.
                     </p>
                   </div>
                   <div className={cn("rounded-2xl border p-2.5 md:p-3", dark ? "border-white/10 bg-white/[0.04]" : "border-slate-200 bg-slate-50")}>
@@ -2105,7 +2105,7 @@ export function ExportunityNeighbourhoodCommerce({
                   ))
                 ) : (
                 <div className={cn("rounded-xl border px-3 py-4 text-sm font-semibold", dark ? "border-white/10 bg-white/[0.04] text-white/64" : "border-slate-200 bg-white text-slate-600")}>
-                  Choose products from the shelf. Your order appears here with quantities and subtotal.
+                  Pick products from the shelf. Your order appears here with quantities and subtotal.
                 </div>
                 )}
               </div>
@@ -2129,7 +2129,7 @@ export function ExportunityNeighbourhoodCommerce({
                   <span className="font-black">{formatMoney(subtotal)}</span>
                 </div>
                 <div className={cn("mt-2 rounded-xl border px-3 py-2 text-xs font-bold", dark ? "border-white/10 bg-white/[0.04] text-white/58" : "border-slate-200 bg-white text-slate-600")}>
-                  Delivery estimate: {activeShop.eta}. The shop confirms payment and delivery details after you place the order.
+                  Delivery estimate: {activeShop.eta}. The shop confirms payment and delivery details with you after this order is placed.
                 </div>
                 <button type="button" onClick={placeOrder} disabled={!orderLines.length} className="mt-4 flex h-12 w-full items-center justify-center rounded-2xl bg-[#F5A623] text-sm font-black text-[#07111F] disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-600">
                   Place order
@@ -2416,8 +2416,8 @@ export function ExportunityNeighbourhoodCommerce({
                   <button type="button" onClick={() => handleAsk(pmeExchange ? "Review this PME lead" : "Review this seller")} className="flex-1 rounded-2xl bg-[#F5A623] px-4 py-3 text-sm font-black text-[#07111F]">{pmeExchange ? "Review PME" : "Review profile"}</button>
                 ) : (
                   <>
-                    <button type="button" onClick={() => enterShop(activeShop)} className="flex-1 rounded-2xl bg-[#F5A623] px-4 py-3 text-sm font-black text-[#07111F]">Enter shop</button>
-                    <button type="button" onClick={() => setAssistantCollapsed(false)} className={cn("flex-1 rounded-2xl border px-4 py-3 text-sm font-black", dark ? "border-white/14 text-white/72" : "border-slate-200 bg-white text-slate-700")}>Ask Front Desk</button>
+                    <button type="button" onClick={() => enterShop(activeShop)} className="flex-1 rounded-2xl bg-[#F5A623] px-4 py-3 text-sm font-black text-[#07111F]">View products</button>
+                    <button type="button" onClick={() => setAssistantCollapsed(false)} className={cn("flex-1 rounded-2xl border px-4 py-3 text-sm font-black", dark ? "border-white/14 text-white/72" : "border-slate-200 bg-white text-slate-700")}>Message shop</button>
                   </>
                 )}
                 <button type="button" onClick={() => setActiveShop(null)} className={cn("rounded-2xl border px-4 py-3 text-sm font-black", dark ? "border-white/14 text-white/72" : "border-slate-200 bg-white text-slate-700")}>Close</button>
@@ -2431,7 +2431,7 @@ export function ExportunityNeighbourhoodCommerce({
             <div>
               <h2 className="text-xl font-black">{wholesale ? "Supplier offers" : exchange ? exchangeListTitle : "Products near you"}</h2>
               <p className={cn("text-sm", dark ? "text-white/56" : "text-slate-600")}>
-                {wholesale ? "Quote-ready suppliers with MOQ and lead time." : exchange ? exchangeListHint : "Start with products, then enter the shop when you are ready."}
+                {wholesale ? "Quote-ready suppliers with MOQ and lead time." : exchange ? exchangeListHint : "Start with products. Open a shop when you want the full shelf and order panel."}
               </p>
             </div>
             <button type="button" onClick={() => onNavigate?.("/map")} className={cn("inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-black", dark ? "border-white/12 text-white/72" : "border-slate-200 bg-white text-slate-700")}>
@@ -2478,12 +2478,12 @@ export function ExportunityNeighbourhoodCommerce({
                         <span className="rounded-full bg-[#F5A623]/16 px-2.5 py-1 text-[11px] font-black text-[#F5A623] md:px-3 md:py-1.5 md:text-xs">{wholesale ? "Quote" : pmeExchange ? "Review PME" : exchange ? "Review seller" : "Ready"}</span>
                       </div>
                       {!wholesale && !exchange ? (
-                        <div className="mt-2 grid grid-cols-[44px_minmax(0,1fr)] gap-2 md:mt-3">
-                          <button type="button" onClick={(event) => { event.stopPropagation(); quickAddProduct(shop, product); }} className="grid h-10 place-items-center rounded-2xl border border-[#F5A623]/35 bg-[#F5A623]/14 text-[#F5A623] transition hover:bg-[#F5A623] hover:text-[#07111F]" aria-label={`Add ${product.name} to order`}>
-                            <Plus className="h-4 w-4" />
+                        <div className="mt-2 grid grid-cols-2 gap-2 md:mt-3">
+                          <button type="button" onClick={(event) => { event.stopPropagation(); quickAddProduct(shop, product); }} className="inline-flex h-10 items-center justify-center gap-1.5 rounded-2xl border border-[#F5A623]/35 bg-[#F5A623]/14 text-xs font-black text-[#F5A623] transition hover:bg-[#F5A623] hover:text-[#07111F] md:text-sm" aria-label={`Add ${product.name} to order`}>
+                            <Plus className="h-4 w-4" /> Add
                           </button>
                           <button type="button" onClick={(event) => { event.stopPropagation(); enterShop(shop); }} className={cn("flex h-9 items-center justify-center rounded-2xl border text-xs font-black md:h-10 md:text-sm", dark ? "border-white/14 text-white/74 hover:bg-white/8" : "border-slate-200 text-slate-700 hover:bg-slate-50")}>
-                            Enter shop
+                            View products
                           </button>
                         </div>
                       ) : null}
@@ -2634,8 +2634,8 @@ export function ExportunityNeighbourhoodCommerce({
                           </>
                         ) : (
                           <>
-                            <button type="button" onClick={() => enterShop(activeShop)} className="h-10 rounded-2xl bg-[#F5A623] text-sm font-black text-[#07111F]">Enter shop</button>
-                            <button type="button" onClick={() => setAssistantCollapsed(false)} className={cn("h-10 rounded-2xl border text-sm font-black", dark ? "border-white/14 text-white/74 hover:bg-white/8" : "border-slate-200 text-slate-700 hover:bg-slate-50")}>Ask Front Desk</button>
+                            <button type="button" onClick={() => enterShop(activeShop)} className="h-10 rounded-2xl bg-[#F5A623] text-sm font-black text-[#07111F]">View products</button>
+                            <button type="button" onClick={() => setAssistantCollapsed(false)} className={cn("h-10 rounded-2xl border text-sm font-black", dark ? "border-white/14 text-white/74 hover:bg-white/8" : "border-slate-200 text-slate-700 hover:bg-slate-50")}>Message shop</button>
                           </>
                         )}
                       </div>

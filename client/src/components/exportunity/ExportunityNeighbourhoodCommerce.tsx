@@ -1762,7 +1762,9 @@ export function ExportunityNeighbourhoodCommerce({
     { label: "Photo", Icon: Camera, onClick: () => fileInputRef.current?.click() },
   ];
 
-  const shellGridClass = mapDominant
+  const shellGridClass = shopMode
+    ? "lg:grid-cols-[minmax(0,1fr)]"
+    : mapDominant
     ? assistantCollapsed
       ? "lg:grid-cols-[minmax(0,1fr)_72px]"
       : "lg:grid-cols-[minmax(0,1fr)_340px] xl:grid-cols-[minmax(0,1fr)_360px] 2xl:grid-cols-[minmax(0,1fr)_380px]"
@@ -1990,7 +1992,7 @@ export function ExportunityNeighbourhoodCommerce({
           <ArrowLeft className="h-4 w-4" /> Back to discovery
         </button>
         <section className={cn("overflow-hidden rounded-[24px] border md:rounded-[28px]", dark ? "border-white/12 bg-[#07111F] text-white" : "border-slate-200 bg-white text-slate-950 shadow-[0_18px_46px_rgba(15,23,42,.08)]")}>
-          <div className="grid gap-0 xl:grid-cols-[minmax(0,1fr)_310px]">
+          <div className="grid gap-0 xl:grid-cols-[minmax(0,1fr)_280px] 2xl:grid-cols-[minmax(0,1fr)_300px]">
             <div className="min-w-0">
               <div className="relative h-40 overflow-hidden md:h-56">
                 <img src={activeShopImage || activeShop.image} alt="" className="h-full w-full object-cover" />
@@ -2019,7 +2021,7 @@ export function ExportunityNeighbourhoodCommerce({
                     </div>
                   </div>
                 </div>
-                <div className="mt-4 grid gap-3 sm:grid-cols-2 md:mt-5 md:gap-4 2xl:grid-cols-3">
+                <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 md:mt-5 md:gap-4 2xl:grid-cols-4">
                   {selectedProducts.map((product) => {
                     const quantity = orderDraft[product.id]?.quantity || 0;
                     return (
@@ -2079,7 +2081,7 @@ export function ExportunityNeighbourhoodCommerce({
               </div>
             </div>
             <aside className={cn("border-t p-5 xl:border-l xl:border-t-0", dark ? "border-white/10 bg-[#05070B]/42" : "border-slate-200 bg-slate-50/86")}>
-              <div className="text-[11px] font-black uppercase tracking-[0.18em] text-[#F5A623]">Your order</div>
+              <div className="text-[11px] font-black uppercase tracking-[0.18em] text-[#F5A623]">Order</div>
               <div className={cn("mt-3 rounded-2xl border p-3", dark ? "border-white/10 bg-white/[0.04]" : "border-slate-200 bg-white")}>
                 <div className="flex items-start gap-3">
                   <AgentAvatar agent={activeShop.frontDesk} size="sm" />
@@ -2087,7 +2089,7 @@ export function ExportunityNeighbourhoodCommerce({
                     <div className="text-sm font-black">{activeShop.frontDesk.name}</div>
                     <div className={cn("text-xs font-bold", dark ? "text-white/52" : "text-slate-500")}>Shop Front Desk</div>
                     <p className={cn("mt-2 text-xs leading-relaxed", dark ? "text-white/66" : "text-slate-600")}>
-                      Welcome to {activeShop.name}. Pick products from the shelf; I can confirm freshness, substitutions, wallet payment, and delivery before you place the order.
+                      Pick products first. I can confirm freshness, substitutions, wallet payment, and delivery when needed.
                     </p>
                   </div>
                 </div>
@@ -2129,7 +2131,7 @@ export function ExportunityNeighbourhoodCommerce({
                   <span className="font-black">{formatMoney(subtotal)}</span>
                 </div>
                 <div className={cn("mt-2 rounded-xl border px-3 py-2 text-xs font-bold", dark ? "border-white/10 bg-white/[0.04] text-white/58" : "border-slate-200 bg-white text-slate-600")}>
-                  Delivery estimate: {activeShop.eta}. The shop confirms payment and delivery details with you after this order is placed.
+                  Delivery estimate: {activeShop.eta}. The shop confirms payment and delivery details before dispatch.
                 </div>
                 <button type="button" onClick={placeOrder} disabled={!orderLines.length} className="mt-4 flex h-12 w-full items-center justify-center rounded-2xl bg-[#F5A623] text-sm font-black text-[#07111F] disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-600">
                   Place order
@@ -2700,7 +2702,7 @@ export function ExportunityNeighbourhoodCommerce({
         {showRightMap ? (
           <LiveMapPane dark={dark} places={visiblePlaces} activeShop={activeShop} userLocation={userLocation} wholesale={wholesale} exchange={exchange} exchangeVariant={exchangeVariant} onSelect={selectPlaceFromMap} provider={placesStatus} mapsConfig={mapsConfig} showDiagnostics={isAdmin} className="hidden lg:block" />
         ) : null}
-        {assistantPane}
+        {!shopMode ? assistantPane : null}
       </div>
       {!shopMode ? (
         <>

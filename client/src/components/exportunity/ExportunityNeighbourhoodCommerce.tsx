@@ -101,9 +101,7 @@ function isGoogleMapReady(config: PublicMapsConfig) {
     config.provider === "google" &&
     config.enabled !== false &&
     !config.google?.mapSetupRequired &&
-    !config.google?.advancedMapSetupRequired &&
-    Boolean(config.browserApiKey) &&
-    Boolean(config.mapId || config.mapIdLight || config.mapIdDark)
+    Boolean(config.browserApiKey)
   );
 }
 

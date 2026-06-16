@@ -91,11 +91,12 @@ type DockLayout = {
   collapsed: boolean;
 };
 
-const DOCK_LAYOUT_STORAGE_KEY = "exportunity:chairman-chat-dock-layout:v3";
+const DOCK_LAYOUT_STORAGE_KEY = "exportunity:chairman-chat-dock-layout:v4";
 const MIN_DOCK_WIDTH = 300;
 const MIN_DOCK_HEIGHT = 320;
 const DEFAULT_DOCK_WIDTH = 324;
 const DEFAULT_DOCK_HEIGHT = 392;
+const WORK_SURFACE_PATH_PATTERN = /^\/(admin|dashboard|meetings|m\/|operations|actions|agenda|goals|objectives|decisions|tasks)(\/|$)/i;
 
 function getDefaultDockLayout(): DockLayout {
   if (typeof window === "undefined") {
@@ -108,6 +109,19 @@ function getDefaultDockLayout(): DockLayout {
     height: Math.min(DEFAULT_DOCK_HEIGHT, Math.max(MIN_DOCK_HEIGHT, window.innerHeight - 120)),
     collapsed: false,
   };
+}
+
+function getWorkSurfaceDockLayout(): DockLayout {
+  if (typeof window === "undefined") return getDefaultDockLayout();
+  const width = Math.min(340, Math.max(MIN_DOCK_WIDTH, window.innerWidth - 32));
+  const height = Math.min(420, Math.max(MIN_DOCK_HEIGHT, window.innerHeight - 132));
+  return clampDockLayout({
+    x: window.innerWidth - width - 16,
+    y: Math.max(76, window.innerHeight - height - 24),
+    width,
+    height,
+    collapsed: false,
+  });
 }
 
 function clampDockLayout(next: DockLayout): DockLayout {
@@ -303,7 +317,7 @@ export function ChairmanChatDock() {
   const { tenant } = useTenant();
   const tenantId = Number(tenant?.id || 0);
   const isMobile = useIsMobile();
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { currentCompanyId } = useChairmanContext();
@@ -321,6 +335,7 @@ export function ChairmanChatDock() {
   const attachmentInputRef = useRef<HTMLInputElement | null>(null);
   const dockDragRef = useRef<{ pointerId: number; startX: number; startY: number; originX: number; originY: number } | null>(null);
   const maxAttachmentBytes = 20 * 1024 * 1024;
+  const isWorkSurface = WORK_SURFACE_PATH_PATTERN.test(location || "");
 
   const headers = useMemo(() => ({ "x-chairman-admin-override": "1" }), []);
 
@@ -347,7 +362,9 @@ export function ChairmanChatDock() {
         managerName: typeof detail?.managerName === "string" ? detail.managerName : null,
         managerRole: typeof detail?.managerRole === "string" ? detail.managerRole : null,
       });
-      setDockLayout((current) => ({ ...current, collapsed: false }));
+      setDockLayout((current) =>
+        isWorkSurface && !isMobile ? getWorkSurfaceDockLayout() : { ...current, collapsed: false },
+      );
       setIsOpen(true);
     };
     const handleContext = (event: Event) => {
@@ -366,7 +383,7 @@ export function ChairmanChatDock() {
       window.removeEventListener("chairman-dock:open", handleOpen as EventListener);
       window.removeEventListener("chairman-dock:context", handleContext as EventListener);
     };
-  }, []);
+  }, [isMobile, isWorkSurface]);
 
   const terminalAgentQuery = useQuery<{ agent: TerminalAgent }>({
     queryKey: ["/api/tenants", tenantId, "terminal-agent"],
@@ -597,7 +614,7 @@ export function ChairmanChatDock() {
       setComposerError(error?.message || "Unable to send message.");
       toast({
         title: "Message failed",
-        description: error?.message || "Unable to send message to Tassi Hangbé.",
+        description: error?.message || "Unable to send message to Tassi.",
         variant: "destructive",
       });
     },
@@ -715,7 +732,7 @@ export function ChairmanChatDock() {
   const threads = historyQuery.data?.threads ?? [];
   const runs = actionsQuery.data?.runs ?? [];
   const readyForSend = !sendMutation.isPending && !uploadAttachmentMutation.isPending;
-  const assistantName = agent?.displayName || "Tassi Hangbé";
+  const assistantName = agent?.displayName || "Tassi";
   const threadStatusText = threadQuery.isLoading || isEnsuringThread
     ? "Connecting..."
     : threadQuery.isError
@@ -920,8 +937,11 @@ export function ChairmanChatDock() {
       <button
         type="button"
         className="fixed bottom-5 right-5 z-40 rounded-full border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-950 shadow-lg hover:bg-slate-50"
+        title="Open Tassi. You can drag, resize, snap, minimize, or close the assistant."
         onClick={() => {
-          setDockLayout((current) => ({ ...current, collapsed: false }));
+          setDockLayout((current) =>
+            isWorkSurface && !isMobile ? getWorkSurfaceDockLayout() : { ...current, collapsed: false },
+          );
           setIsOpen(true);
         }}
       >
@@ -974,7 +994,7 @@ export function ChairmanChatDock() {
                 </div>
                 {!dockLayout.collapsed || isMobile ? (
                 <div className="text-xs text-slate-500 flex items-center gap-2">
-                  <span>Chairman Assistant</span>
+                  <span>Workspace assistant</span>
                   <span
                     className={`h-1.5 w-1.5 rounded-full ${
                       threadQuery.isError ? "bg-rose-400" : isThreadReady ? "bg-emerald-400" : "bg-amber-300"
@@ -1312,7 +1332,7 @@ export function ChairmanChatDock() {
                       }}
                     >
                       <div className="text-sm font-semibold">
-                        {thread.assistantDisplayName || agent?.displayName || "Chairman Assistant"}
+                        {thread.assistantDisplayName || agent?.displayName || "Workspace assistant"}
                       </div>
                       <div className="text-xs text-slate-500 line-clamp-2">
                         {thread.lastMessage?.content || "No messages yet"}

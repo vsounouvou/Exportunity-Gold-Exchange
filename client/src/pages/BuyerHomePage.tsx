@@ -25711,21 +25711,25 @@ export function BuyerHomePage({
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <p className="text-[10px] uppercase tracking-[0.22em] text-[#E8C873]/70">
-                          Rayons sourcing
+                          {bdoText("Parcours sourcing", "Sourcing paths", "مسارات التوريد")}
                         </p>
                         <p className="mt-1 text-[13px] font-semibold text-[#F5F3EC]">
-                          Mines, bureaux, equipement, contrats
+                          {bdoText(
+                            "Acheteur, mine, investissement, machines",
+                            "Buyer, mine, investment, equipment",
+                            "المشتري، المنجم، الاستثمار، المعدات",
+                          )}
                         </p>
                       </div>
                       <Badge
                         variant="outline"
                         className={BDO_LUX_MUTED_PILL}
                       >
-                        payant
+                        {bdoText("guidé", "guided", "موجّه")}
                       </Badge>
                     </div>
-                    <div className="mt-2 space-y-2">
-                      {bdoWholesaleShelfSections.slice(0, 1).map((item) => {
+                    <div className="mt-2 grid grid-cols-2 gap-2">
+                      {bdoWholesaleShelfSections.slice(0, showWholesalePreviewShell ? 4 : 3).map((item) => {
                         const toneClasses =
                           item.tone === "sky"
                             ? "border-[#0D1B2A]/80 bg-[#0D1B2A]/58 text-[#F5F3EC]"
@@ -25739,20 +25743,20 @@ export function BuyerHomePage({
                             className={`w-full rounded-xl border p-2 text-left transition-colors hover:border-[#D4AF37]/42 hover:bg-[#0D1B2A]/70 ${toneClasses}`}
                             onClick={item.onClick}
                           >
-                            <div className="flex items-start justify-between gap-3">
+                            <div className="flex min-h-[74px] flex-col justify-between gap-2">
                               <div className="min-w-0">
-                                <p className="text-[13px] font-semibold text-[#F5F3EC]">
+                                <p className="line-clamp-2 text-[12px] font-semibold leading-tight text-[#F5F3EC]">
                                   {item.title}
                                 </p>
-                                <p className="mt-1 line-clamp-1 text-[10px] text-[#F5F3EC]/62">
+                                <p className="mt-1 line-clamp-2 text-[10px] leading-snug text-[#F5F3EC]/62">
                                   {item.subtitle}
                                 </p>
                               </div>
-                              <div className="text-right">
+                              <div className="flex items-center justify-between gap-2">
                                 <p className="text-sm font-semibold text-[#E8C873]">
                                   {item.count}
                                 </p>
-                                <p className="mt-1 text-[10px] uppercase tracking-[0.18em] text-[#E8C873]/60">
+                                <p className="text-[10px] uppercase tracking-[0.18em] text-[#E8C873]/60">
                                   {item.actionLabel}
                                 </p>
                               </div>
@@ -26030,6 +26034,49 @@ export function BuyerHomePage({
                         </div>
                       </div>
                     ))}
+                  </div>
+                  <div className="mt-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-[10px] uppercase tracking-[0.22em] text-[#E8C873]/72">
+                        {bdoText("Parcours", "Paths", "المسارات")}
+                      </p>
+                      <Badge variant="outline" className={BDO_LUX_MUTED_PILL}>
+                        {bdoText("accès contrôlé", "controlled access", "وصول مضبوط")}
+                      </Badge>
+                    </div>
+                    <div className="mt-2 grid grid-cols-2 gap-2">
+                      {bdoWholesaleShelfSections.slice(0, 4).map((item) => {
+                        const toneClasses =
+                          item.tone === "sky"
+                            ? "border-[#0D1B2A]/80 bg-[#0D1B2A]/58 text-[#F5F3EC]"
+                            : item.tone === "emerald"
+                              ? "border-[#E8C873]/24 bg-[#E8C873]/10 text-[#F5F3EC]"
+                              : "border-[#D4AF37]/28 bg-[#D4AF37]/12 text-[#E8C873]";
+                        return (
+                          <button
+                            key={`mobile-path-${item.id}`}
+                            type="button"
+                            className={`min-h-[86px] rounded-xl border p-2 text-left transition-colors hover:border-[#D4AF37]/42 hover:bg-[#0D1B2A]/70 ${toneClasses}`}
+                            onClick={item.onClick}
+                          >
+                            <span className="block line-clamp-2 text-[12px] font-semibold leading-tight text-[#F5F3EC]">
+                              {item.title}
+                            </span>
+                            <span className="mt-1 block line-clamp-2 text-[10px] leading-snug text-[#F5F3EC]/58">
+                              {item.subtitle}
+                            </span>
+                            <span className="mt-2 flex items-center justify-between gap-2">
+                              <span className="text-sm font-semibold text-[#E8C873]">
+                                {item.count}
+                              </span>
+                              <span className="text-[10px] uppercase tracking-[0.18em] text-[#E8C873]/62">
+                                {item.actionLabel}
+                              </span>
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
                   <div className="mt-4 flex flex-wrap gap-2">
                     <Button

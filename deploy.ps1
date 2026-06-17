@@ -115,7 +115,6 @@ try {
     "--exclude=./imports",
     "--exclude=./logs",
     "--exclude=./tmp",
-    "--exclude=./mobile",
     "--exclude=./attached_assets",
     "--exclude=./test-results",
     "--exclude=./reports",

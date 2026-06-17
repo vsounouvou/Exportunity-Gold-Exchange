@@ -2113,7 +2113,7 @@ router.get("/sellers/by-user/:userId", async (req, res) => {
       .select()
       .from(sellers)
       .where(and(eq(sellers.userId, userId), eq(sellers.tenantId, tenantId)));
-    if (!seller) return res.status(404).json({ error: "Seller not found" });
+    if (!seller) return res.json(null);
     res.json(seller);
   } catch (error: any) {
     res.status(500).json({ error: error.message });

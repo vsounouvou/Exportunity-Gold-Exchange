@@ -105,6 +105,7 @@ export function serveStatic(app: Express) {
 
   app.use(
     express.static(distPath, {
+      index: false,
       setHeaders: (res, filePath) => {
         const normalized = filePath.replace(/\\/g, "/");
 

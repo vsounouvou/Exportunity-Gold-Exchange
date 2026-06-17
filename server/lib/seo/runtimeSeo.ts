@@ -69,12 +69,22 @@ function isHozHost(host: unknown) {
   );
 }
 
+function isBdoHost(host: unknown) {
+  const normalized = normalizeHost(host);
+  return (
+    normalized === "boursedelor.com" ||
+    normalized === "www.boursedelor.com" ||
+    normalized.endsWith(".boursedelor.com")
+  );
+}
+
 export function canonicalizePath(pathname: string, ctx?: { host?: string; search?: string }) {
   const nextPath = pathname || "/";
   const marketingHost = isExportunityMarketingHost(ctx?.host, ctx?.search);
   const mindbaseHost = isMindbaseHost(ctx?.host);
   const vsHost = isVsHost(ctx?.host);
   const hozHost = isHozHost(ctx?.host);
+  const bdoHost = isBdoHost(ctx?.host);
 
   if (mindbaseHost) {
     if (nextPath === "/" || nextPath === "/mindbase") return "/";
@@ -119,6 +129,10 @@ export function canonicalizePath(pathname: string, ctx?: { host?: string; search
     ) {
       return nextPath;
     }
+  }
+
+  if (bdoHost) {
+    return nextPath;
   }
 
   if (nextPath === "/") return marketingHost ? "/" : "/zone";
@@ -263,6 +277,7 @@ export async function resolveSeoHead(input: {
   const isMarketing = isExportunityMarketingHost(input.host, input.search);
   const isMindbase = tenantKey === "mindbase" || isMindbaseHost(input.host);
   const isHoz = tenantKey === "hoz" || isHozHost(input.host);
+  const isBdo = tenantKey === "bdo" || isBdoHost(input.host);
 
   const routeTitleMap: Record<string, string> = {
     "/zone": "Zone",
@@ -364,6 +379,36 @@ export async function resolveSeoHead(input: {
     "/pricing": "Plans and membership overview.",
   };
 
+  const bdoTitleMap: Record<string, string> = {
+    "/": "BOURSE DE L'OR - Or physique certifié et bijoux vérifiés",
+    "/store": "Produits en or physique - BOURSE DE L'OR",
+    "/certification": "Certification et traçabilité - BOURSE DE L'OR",
+    "/verifier": "Vérifier une pièce - BOURSE DE L'OR",
+    "/wholesale": "Marché de gros vérifié - BOURSE DE L'OR",
+    "/cadre-conformite": "Cadre de conformité - BOURSE DE L'OR",
+    "/terms": "Conditions - BOURSE DE L'OR",
+    "/privacy": "Confidentialité - BOURSE DE L'OR",
+  };
+
+  const bdoDescriptionMap: Record<string, string> = {
+    "/":
+      "La Bourse de l'Or est une plateforme structurée pour acheter, documenter et vérifier des produits en or physique certifié, bijoux vérifiés, pièces de collection et produits fournis par des partenaires approuvés.",
+    "/store":
+      "Catalogue de produits en or physique, lingots liés à des raffineries, pièces documentées, bijoux vérifiés et créations sur commande, sous réserve de disponibilité, conformité, paiement et confirmation finale.",
+    "/certification":
+      "Processus de certification, documentation, traçabilité, vérification de poids, titre, photos, origine déclarée et contrôle numérique des pièces en or.",
+    "/verifier":
+      "Consultez les informations associées à un certificat ou à une pièce en or lorsque les données de vérification sont disponibles.",
+    "/wholesale":
+      "Espace de gros contrôlé pour demandes professionnelles, sourcing responsable, partenaires approuvés, revue KYC/KYB et confirmation humaine.",
+    "/cadre-conformite":
+      "Cadre de conformité BOURSE DE L'OR pour KYC/KYB, source des fonds, source des biens, traçabilité, paiement, livraison et stockage.",
+    "/terms":
+      "Conditions applicables aux commandes, prix indicatifs, conformité, paiement, propriété, livraison, stockage, annulation et rôle des partenaires approuvés.",
+    "/privacy":
+      "Informations sur l'utilisation confidentielle des données client, documents d'identité, informations de paiement et communications liées aux commandes.",
+  };
+
 const pageLabel =
   (isMarketing ? marketingTitleMap[canonicalPath] : undefined) ??
   (isHoz ? hozTitleMap[canonicalPath] : undefined) ??
@@ -399,6 +444,10 @@ const pageLabel =
   if (tenantKey === "exportunity" && canonicalPath === "/zone") {
     title = "Zone — Exportunity";
     description = "Zone is Exportunity's proximity retail marketplace with fast local delivery and shared wallet checkout.";
+  }
+  if (isBdo) {
+    title = bdoTitleMap[canonicalPath] ?? title;
+    description = bdoDescriptionMap[canonicalPath] ?? description;
   }
   if (tenantKey !== "exportunity") {
     if (canonicalPath === "/zone") {

@@ -253,6 +253,7 @@ function isMindbaseJwtToken(token: string | null) {
 
   const setBuyerType = async (buyerType: BuyerType) => {
     if (!session.user) return;
+    if (session.user.buyerType === buyerType) return;
 
     const updatedUser = { ...session.user, buyerType };
 
@@ -271,7 +272,9 @@ function isMindbaseJwtToken(token: string | null) {
         }
       });
     } catch (error) {
-      console.error("Failed to set buyer type:", error);
+      if (import.meta.env.DEV) {
+        console.warn("Failed to persist buyer type:", error);
+      }
     }
   };
 

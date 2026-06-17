@@ -498,18 +498,23 @@ function RootPublicRoute() {
 
 function StoreRoute() {
   const [location] = useLocation();
-  const initialSpace = location.startsWith("/wholesale")
+  const normalizedLocation = location.replace(/\/+$/, "") || "/";
+  const initialSpace = normalizedLocation.startsWith("/wholesale")
     ? "wholesale"
-    : location.startsWith("/pme-exchange") || location.startsWith("/ready-for-export")
+    : normalizedLocation.startsWith("/pme-exchange") || normalizedLocation.startsWith("/ready-for-export")
       ? "exchange"
       : "city";
-  const exchangeVariant = location.startsWith("/pme-exchange") ? "pme" : "export";
-  const shellMode =
-    location === "/map" || location === "/marketplace/map" || location.startsWith("/wholesale/map")
+  const exchangeVariant = normalizedLocation.startsWith("/pme-exchange") ? "pme" : "export";
+  const isMapRoute = normalizedLocation === "/map" || normalizedLocation === "/marketplace/map" || normalizedLocation.startsWith("/wholesale/map") || normalizedLocation === "/map/";
+  const isMapDominantRoute =
+    normalizedLocation.startsWith("/marketplace") ||
+    normalizedLocation.startsWith("/wholesale") ||
+    normalizedLocation.startsWith("/ready-for-export") ||
+    normalizedLocation.startsWith("/pme-exchange") ||
+    normalizedLocation === "/store";
+  const shellMode = isMapRoute
       ? "mapFull"
-      : location.startsWith("/wholesale") ||
-          location.startsWith("/ready-for-export") ||
-          location.startsWith("/pme-exchange")
+      : isMapDominantRoute
         ? "mapDominant"
         : "commerce";
   return <StorePage initialSpace={initialSpace} shellMode={shellMode} exchangeVariant={exchangeVariant} />;
@@ -721,6 +726,10 @@ function App() {
           {/* Public routes */}
           <Route path="/" component={RootPublicRoute} />
           <Route path="/store" component={StoreRoute} />
+          <Route path="/or" component={StoreRoute} />
+          <Route path="/or/:rest*" component={StoreRoute} />
+          <Route path="/achat-or" component={StoreRoute} />
+          <Route path="/achat-or/:rest*" component={StoreRoute} />
           <Route path="/stamped-gold" component={StoreRoute} />
           <Route path="/pieces" component={StoreRoute} />
           <Route path="/collections" component={CollectionsRoute} />

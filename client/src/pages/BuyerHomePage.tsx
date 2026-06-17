@@ -13161,9 +13161,9 @@ export function BuyerHomePage({
   const isExportunityCommerceMapExperience =
     isExportunityTenant &&
     (isExportunityMarketplaceExperience ||
-      location === "/marketplace" ||
+      location.startsWith("/marketplace") ||
       location === "/store" ||
-      location === "/map" ||
+      location.startsWith("/map") ||
       location === "/marketplace/map" ||
       location.startsWith("/wholesale") ||
       location.startsWith("/pme-exchange") ||
@@ -13781,6 +13781,30 @@ export function BuyerHomePage({
   ]);
   const wholesaleShellMeta = useMemo(() => {
     if (isBdoUnifiedWholesale) {
+      if (wholesaleRouteSection === "investments") {
+        return {
+          eyebrow: "Opportunités de sourcing",
+          title: "Mines, besoins et dossiers à qualifier",
+          summary:
+            "Repérez les sites à financer, les besoins machine et les partenaires de sortie avant d'ouvrir une fiche.",
+        };
+      }
+      if (wholesaleRouteSection === "machinery") {
+        return {
+          eyebrow: "Machines minières",
+          title: "Équipements, financement et déploiement terrain",
+          summary:
+            "Trouvez les machines utiles aux sites visibles, puis ouvrez une fiche ou demandez le montage opérationnel.",
+        };
+      }
+      if (wholesaleRouteSection === "apply") {
+        return {
+          eyebrow: "Accès wholesale",
+          title: "Adhésion, revue et activation",
+          summary:
+            "Téléversez les documents nécessaires pour demander un accès professionnel au marché de gros.",
+        };
+      }
       if (bdoWholesaleView === "buyer") {
         return {
           eyebrow: "Bureau d'achat",
@@ -13848,6 +13872,27 @@ export function BuyerHomePage({
   );
   const wholesaleSummaryStats = useMemo(() => {
     if (isBdoUnifiedWholesale) {
+      if (wholesaleRouteSection === "investments") {
+        return [
+          { label: "Dossiers", value: String(visibleOpportunities.length) },
+          { label: "Mines", value: String(cadastrePermitsForMap.length) },
+          { label: "Bureaux", value: String(shops.length) },
+        ];
+      }
+      if (wholesaleRouteSection === "machinery") {
+        return [
+          { label: "Machines", value: String(visibleMachinery.length) },
+          { label: "Mines", value: String(cadastrePermitsForMap.length) },
+          { label: "Rayon", value: `${radiusKm} km` },
+        ];
+      }
+      if (wholesaleRouteSection === "apply") {
+        return [
+          { label: "Statut", value: wholesaleAccessTone },
+          { label: "Bureaux", value: String(shops.length) },
+          { label: "Dossiers", value: String(visibleOpportunities.length) },
+        ];
+      }
       if (bdoWholesaleView === "buyer") {
         return [
           { label: "Mines", value: String(cadastrePermitsForMap.length) },
@@ -13899,19 +13944,37 @@ export function BuyerHomePage({
     wholesaleRouteSection,
   ]);
   const bdoWholesalePrimaryPrompt =
-    bdoWholesaleView === "buyer"
+    wholesaleRouteSection === "investments"
+      ? "Montre-moi les opportunités de sourcing, les mines à qualifier, le capital requis et le contrat type."
+      : wholesaleRouteSection === "machinery"
+        ? "Montre-moi les machines disponibles, les besoins terrain et les options de financement à étudier."
+        : wholesaleRouteSection === "apply"
+          ? "Explique-moi les étapes d'adhésion wholesale, les documents nécessaires et le délai de revue."
+          : bdoWholesaleView === "buyer"
       ? "Montre-moi les mines actives, la production déclarée et les bureaux d'achat à suivre aujourd'hui."
       : bdoWholesaleView === "mine"
         ? "Montre-moi les acheteurs qualifiés, les machines et les partenaires à activer pour ma mine."
         : "Montre-moi les bureaux d'achat actifs et les mines qui recherchent un partenaire de sourcing.";
   const bdoWholesalePrimaryActionLabel =
-    bdoWholesaleView === "buyer"
+    wholesaleRouteSection === "investments"
+      ? "Voir les dossiers"
+      : wholesaleRouteSection === "machinery"
+        ? "Voir les machines"
+        : wholesaleRouteSection === "apply"
+          ? "Demander l'accès"
+          : bdoWholesaleView === "buyer"
       ? "Voir les mines"
       : bdoWholesaleView === "mine"
         ? "Voir les acheteurs"
-        : "Voir les bureaux";
+        : "Demander cotation";
   const bdoWholesaleViewLabel =
-    bdoWholesaleView === "buyer"
+    wholesaleRouteSection === "investments"
+      ? "Vue investisseur"
+      : wholesaleRouteSection === "machinery"
+        ? "Vue machines"
+        : wholesaleRouteSection === "apply"
+          ? "Vue adhésion"
+          : bdoWholesaleView === "buyer"
       ? "Vue bureau d'achat"
       : bdoWholesaleView === "mine"
         ? "Vue mine"
@@ -14280,6 +14343,15 @@ export function BuyerHomePage({
     if (bdoWholesaleView === "mine") {
       return [shelves[2], shelves[3], shelves[4], shelves[0]].filter(Boolean);
     }
+    if (wholesaleRouteSection === "investments") {
+      return [shelves[3], shelves[1], shelves[2], shelves[0], shelves[4]].filter(Boolean);
+    }
+    if (wholesaleRouteSection === "machinery") {
+      return [shelves[4], shelves[2], shelves[1], shelves[0], shelves[3]].filter(Boolean);
+    }
+    if (wholesaleRouteSection === "apply") {
+      return [shelves[0], shelves[1], shelves[3], shelves[4]].filter(Boolean);
+    }
     if (bdoWholesaleView === "buyer") {
       return [shelves[0], shelves[1], shelves[2], shelves[4]].filter(Boolean);
     }
@@ -14295,6 +14367,7 @@ export function BuyerHomePage({
     shops,
     visibleMachinery,
     visibleOpportunities,
+    wholesaleRouteSection,
   ]);
   const bdoWholesaleDeskPrompts = useMemo<BdoWholesaleDeskPrompt[]>(
     () => [
@@ -17029,8 +17102,8 @@ export function BuyerHomePage({
       )}
 
       <header className="absolute top-0 left-0 right-0 z-50 bg-black/80 backdrop-blur-md border-b border-white/10 safe-area-top">
-        <div className="w-full px-4 md:px-6 lg:px-8 py-2 flex items-center justify-between">
-          <div className="flex items-center gap-2">
+        <div className="w-full min-w-0 px-3 md:px-6 lg:px-8 py-2 flex items-center justify-between gap-2">
+          <div className="flex min-w-0 flex-1 items-center gap-2">
             <BrandLockup
               subtitle={
                 isMobile
@@ -17168,10 +17241,10 @@ export function BuyerHomePage({
                 </DropdownMenu>
               </div>
 
-              <div className="md:hidden flex items-center gap-2">
+              <div className="md:hidden flex shrink-0 items-center gap-1">
                 <Button
                   variant="ghost"
-                  className="relative min-h-[44px] min-w-[44px] text-gray-200 hover:text-white hover:bg-white/10"
+                  className="relative h-11 w-11 shrink-0 p-0 text-gray-200 hover:text-white hover:bg-white/10"
                   onClick={() => setCartOpen(true)}
                   aria-label={t("cart.title")}
                 >
@@ -17186,7 +17259,7 @@ export function BuyerHomePage({
                   <DropdownMenuTrigger asChild>
                     <Button
                       variant="ghost"
-                      className="min-h-[44px] min-w-[44px] text-gray-200 hover:text-white hover:bg-white/10"
+                      className="h-11 w-11 shrink-0 p-0 text-gray-200 hover:text-white hover:bg-white/10"
                       aria-label={t("common.menu")}
                     >
                       <MoreVertical className="h-5 w-5" />
@@ -25578,6 +25651,34 @@ export function BuyerHomePage({
                     ))}
                   </div>
 
+                  <div className="mt-3 grid grid-cols-2 gap-2">
+                    <Button
+                      size="sm"
+                      className={`h-9 rounded-xl text-[11px] ${BDO_LUX_PRIMARY_BUTTON}`}
+                      onClick={openWholesalePrimaryAction}
+                    >
+                      {isBdoUnifiedWholesale
+                        ? bdoWholesalePrimaryActionLabel
+                        : isWholesaleAuthorized
+                          ? "Ouvrir les dossiers"
+                          : "Demander l'accès"}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className={`h-9 rounded-xl text-[11px] ${BDO_LUX_SECONDARY_BUTTON}`}
+                      onClick={() =>
+                        openConcierge({
+                          mode: "wholesale",
+                          focus: true,
+                          seedMessage: bdoWholesalePrimaryPrompt,
+                        })
+                      }
+                    >
+                      {bdoText("Parler au desk", "Talk to desk", "التحدث إلى المكتب")}
+                    </Button>
+                  </div>
+
                   <div className={`mt-4 rounded-[20px] p-3 ${BDO_LUX_CARD}`}>
                     <p className="text-[10px] uppercase tracking-[0.22em] text-[#E8C873]/80">
                       LBMA 24K
@@ -25606,13 +25707,13 @@ export function BuyerHomePage({
                     </div>
                   </div>
 
-                  <div className="mt-4 rounded-[20px] border border-white/10 bg-white/5 p-3">
+                  <div className="mt-3 rounded-[18px] border border-white/10 bg-white/5 p-2.5">
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <p className="text-[10px] uppercase tracking-[0.22em] text-[#E8C873]/70">
                           Rayons sourcing
                         </p>
-                        <p className="mt-1 text-sm font-semibold text-[#F5F3EC]">
+                        <p className="mt-1 text-[13px] font-semibold text-[#F5F3EC]">
                           Mines, bureaux, equipement, contrats
                         </p>
                       </div>
@@ -25623,8 +25724,8 @@ export function BuyerHomePage({
                         payant
                       </Badge>
                     </div>
-                    <div className="mt-3 space-y-2">
-                      {bdoWholesaleShelfSections.map((item) => {
+                    <div className="mt-2 space-y-2">
+                      {bdoWholesaleShelfSections.slice(0, 1).map((item) => {
                         const toneClasses =
                           item.tone === "sky"
                             ? "border-[#0D1B2A]/80 bg-[#0D1B2A]/58 text-[#F5F3EC]"
@@ -25635,15 +25736,15 @@ export function BuyerHomePage({
                           <button
                             key={item.id}
                             type="button"
-                            className={`w-full rounded-xl border p-3 text-left transition-colors hover:border-[#D4AF37]/42 hover:bg-[#0D1B2A]/70 ${toneClasses}`}
+                            className={`w-full rounded-xl border p-2 text-left transition-colors hover:border-[#D4AF37]/42 hover:bg-[#0D1B2A]/70 ${toneClasses}`}
                             onClick={item.onClick}
                           >
                             <div className="flex items-start justify-between gap-3">
                               <div className="min-w-0">
-                                <p className="text-sm font-semibold text-[#F5F3EC]">
+                                <p className="text-[13px] font-semibold text-[#F5F3EC]">
                                   {item.title}
                                 </p>
-                                <p className="mt-1 text-[11px] text-[#F5F3EC]/62">
+                                <p className="mt-1 line-clamp-1 text-[10px] text-[#F5F3EC]/62">
                                   {item.subtitle}
                                 </p>
                               </div>

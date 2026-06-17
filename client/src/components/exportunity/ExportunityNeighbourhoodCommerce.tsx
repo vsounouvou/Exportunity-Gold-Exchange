@@ -1363,7 +1363,7 @@ export function ExportunityNeighbourhoodCommerce({
     setSpace(initialSpace);
     setActiveShop(null);
     setActiveProductDetail(null);
-    setAssistantCollapsed(shellMode === "mapFull");
+    setAssistantCollapsed(typeof window === "undefined" ? false : window.innerWidth < 1024);
     setMessages(openingMessagesForSpace(initialSpace, exchangeVariant));
   }, [exchangeVariant, initialSpace, shellMode]);
 
@@ -1502,11 +1502,9 @@ export function ExportunityNeighbourhoodCommerce({
   const enterShop = (shop: CommerceShop, initialProduct?: ShopProduct) => {
     setActiveShop(shop);
     setSpace("shop");
-    setAssistantCollapsed(true);
+    setAssistantCollapsed(false);
     setActiveProductDetail(initialProduct || null);
-    if (!orderDrafts[shop.id]) {
-      setOrderDrafts((current) => ({ ...current, [shop.id]: current[shop.id] || {} }));
-    }
+    setOrderDrafts((current) => ({ ...current, [shop.id]: current[shop.id] || {} }));
     pushMessage({
       agentId: shop.frontDesk.id,
       agentSnapshot: shop.frontDesk,
@@ -1531,12 +1529,13 @@ export function ExportunityNeighbourhoodCommerce({
   const quickAddProduct = (shop: CommerceShop, product?: ShopProduct) => {
     if (!product) {
       enterShop(shop);
-      replyFrom(shop.frontDesk, "I opened the shop for you. Choose a product and I will help confirm the order.", shop);
+      replyFrom(shop.frontDesk, "I opened the shop for you. Choose a product and I will help confirm your order.", shop);
       return;
     }
     setActiveShop(shop);
     setSpace("shop");
-    setAssistantCollapsed(true);
+    setActiveProductDetail(product);
+    setAssistantCollapsed(false);
     setOrderDrafts((current) => {
       const next = { ...current };
       const shopDraft = { ...(current[shop.id] || {}) };
@@ -1639,7 +1638,9 @@ export function ExportunityNeighbourhoodCommerce({
       : lower.includes("material") || lower.includes("building")
         ? retailShops.find((shop) => /hardware|building/i.test(shop.category))
         : retailShops[0];
-    if (target) setActiveShop(target);
+    if (target) {
+      enterShop(target);
+    }
     replyFrom(tassi, "I found nearby products and shops. Tap a product or shop to enter, choose items, and place an order. The shop agent helps only when you need it.");
   };
 
@@ -1797,11 +1798,13 @@ export function ExportunityNeighbourhoodCommerce({
   ];
 
   const shellGridClass = shopMode
-    ? "lg:grid-cols-[minmax(0,1fr)]"
-    : mapDominant
     ? assistantCollapsed
       ? "lg:grid-cols-[minmax(0,1fr)_72px]"
-      : "lg:grid-cols-[minmax(0,1fr)_340px] xl:grid-cols-[minmax(0,1fr)_360px] 2xl:grid-cols-[minmax(0,1fr)_380px]"
+      : "lg:grid-cols-[minmax(0,1fr)_430px] xl:grid-cols-[minmax(0,1fr)_460px] 2xl:grid-cols-[minmax(0,1fr)_500px]"
+    : mapDominant
+      ? assistantCollapsed
+        ? "lg:grid-cols-[minmax(0,1fr)_72px]"
+        : "lg:grid-cols-[minmax(0,1fr)_430px] xl:grid-cols-[minmax(0,1fr)_460px] 2xl:grid-cols-[minmax(0,1fr)_500px]"
     : showRightMap
       ? assistantCollapsed
         ? "lg:grid-cols-[420px_minmax(0,1fr)_72px] xl:grid-cols-[460px_minmax(0,1fr)_72px] 2xl:grid-cols-[500px_minmax(0,1fr)_72px]"
@@ -1822,7 +1825,13 @@ export function ExportunityNeighbourhoodCommerce({
           : "Search products, shops, or delivery nearby...";
 
   const assistantPane = (
-    <aside className={cn("hidden min-h-0 flex-col border-l lg:flex", assistantCollapsed && "items-center", dark ? "border-white/10 bg-[#07111F] text-white" : "border-slate-200 bg-white text-slate-950")}>
+    <aside
+      className={cn(
+        "hidden min-h-0 w-[360px] flex-col border-l lg:flex lg:sticky lg:top-0 lg:self-start xl:w-[420px]",
+        assistantCollapsed && "w-[72px] items-center",
+        dark ? "border-white/10 bg-[#07111F] text-white" : "border-slate-200 bg-white text-slate-950",
+      )}
+    >
       {assistantCollapsed ? (
         <div className="flex h-full w-full flex-col items-center gap-3 p-3">
           <button
@@ -2453,7 +2462,6 @@ export function ExportunityNeighbourhoodCommerce({
                 ) : (
                   <>
                     <button type="button" onClick={() => enterShop(activeShop)} className="flex-1 rounded-2xl bg-[#F5A623] px-4 py-3 text-sm font-black text-[#07111F]">Enter shop</button>
-                    <button type="button" onClick={() => setAssistantCollapsed(false)} className={cn("flex-1 rounded-2xl border px-4 py-3 text-sm font-black", dark ? "border-white/14 text-white/72" : "border-slate-200 bg-white text-slate-700")}>Shop help</button>
                   </>
                 )}
                 <button type="button" onClick={() => setActiveShop(null)} className={cn("rounded-2xl border px-4 py-3 text-sm font-black", dark ? "border-white/14 text-white/72" : "border-slate-200 bg-white text-slate-700")}>Close</button>
@@ -2661,17 +2669,17 @@ export function ExportunityNeighbourhoodCommerce({
                         {wholesale ? (
                           <>
                             <button type="button" onClick={() => handleAsk("Request a quote")} className="h-10 rounded-2xl bg-[#F5A623] text-sm font-black text-[#07111F]">Request quote</button>
-                            <button type="button" onClick={() => setAssistantCollapsed(false)} className={cn("h-10 rounded-2xl border text-sm font-black", dark ? "border-white/14 text-white/74 hover:bg-white/8" : "border-slate-200 text-slate-700 hover:bg-slate-50")}>Supplier chat</button>
+                            <button type="button" onClick={() => setActiveShop(null)} className={cn("h-10 rounded-2xl border text-sm font-black", dark ? "border-white/14 text-white/74 hover:bg-white/8" : "border-slate-200 text-slate-700 hover:bg-slate-50")}>Close</button>
                           </>
                         ) : exchange ? (
                           <>
                             <button type="button" onClick={() => handleAsk(pmeExchange ? "Review this PME lead" : "Review this seller")} className="h-10 rounded-2xl bg-[#F5A623] text-sm font-black text-[#07111F]">{pmeExchange ? "Review PME" : "Review profile"}</button>
-                            <button type="button" onClick={() => setAssistantCollapsed(false)} className={cn("h-10 rounded-2xl border text-sm font-black", dark ? "border-white/14 text-white/74 hover:bg-white/8" : "border-slate-200 text-slate-700 hover:bg-slate-50")}>{pmeExchange ? "PME analyst" : "Seller analyst"}</button>
+                            <button type="button" onClick={() => setActiveShop(null)} className={cn("h-10 rounded-2xl border text-sm font-black", dark ? "border-white/14 text-white/74 hover:bg-white/8" : "border-slate-200 text-slate-700 hover:bg-slate-50")}>Close</button>
                           </>
                         ) : (
                           <>
                             <button type="button" onClick={() => enterShop(activeShop)} className="h-10 rounded-2xl bg-[#F5A623] text-sm font-black text-[#07111F]">Enter shop</button>
-                            <button type="button" onClick={() => setAssistantCollapsed(false)} className={cn("h-10 rounded-2xl border text-sm font-black", dark ? "border-white/14 text-white/74 hover:bg-white/8" : "border-slate-200 text-slate-700 hover:bg-slate-50")}>Shop help</button>
+                            <button type="button" onClick={() => setActiveShop(null)} className={cn("h-10 rounded-2xl border text-sm font-black", dark ? "border-white/14 text-white/74 hover:bg-white/8" : "border-slate-200 text-slate-700 hover:bg-slate-50")}>Close</button>
                           </>
                         )}
                       </div>
@@ -2736,9 +2744,9 @@ export function ExportunityNeighbourhoodCommerce({
         {showRightMap ? (
           <LiveMapPane dark={dark} places={visiblePlaces} activeShop={activeShop} userLocation={userLocation} wholesale={wholesale} exchange={exchange} exchangeVariant={exchangeVariant} onSelect={selectPlaceFromMap} provider={placesStatus} mapsConfig={mapsConfig} showDiagnostics={isAdmin} className="hidden lg:block" />
         ) : null}
-        {!shopMode ? assistantPane : null}
+        {!business ? assistantPane : null}
       </div>
-      {!shopMode ? (
+      {!business ? (
         <>
           {mobileComposer}
           {mobileBottomNav}

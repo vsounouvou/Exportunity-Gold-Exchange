@@ -25679,34 +25679,6 @@ export function BuyerHomePage({
                     </Button>
                   </div>
 
-                  <div className={`mt-4 rounded-[20px] p-3 ${BDO_LUX_CARD}`}>
-                    <p className="text-[10px] uppercase tracking-[0.22em] text-[#E8C873]/80">
-                      LBMA 24K
-                    </p>
-                    <div className="mt-3 grid gap-2">
-                      {bdoWholesaleMarketSignals.map((signal) => (
-                        <div
-                          key={signal.label}
-                          className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-black/20 px-3 py-2"
-                        >
-                          <div className="min-w-0">
-                            <p className="text-[10px] uppercase tracking-[0.18em] text-white/45">
-                              {signal.label}
-                            </p>
-                            <p className="mt-1 text-[11px] text-white/55 line-clamp-1">
-                              {signal.detail}
-                            </p>
-                          </div>
-                          <p
-                            className={`shrink-0 text-sm font-semibold ${signal.valueClassName}`}
-                          >
-                            {signal.value}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
                   <div className="mt-3 rounded-[18px] border border-white/10 bg-white/5 p-2.5">
                     <div className="flex items-start justify-between gap-3">
                       <div>
@@ -25764,6 +25736,34 @@ export function BuyerHomePage({
                           </button>
                         );
                       })}
+                    </div>
+                  </div>
+
+                  <div className={`mt-3 rounded-[20px] p-3 ${BDO_LUX_CARD}`}>
+                    <p className="text-[10px] uppercase tracking-[0.22em] text-[#E8C873]/80">
+                      LBMA 24K
+                    </p>
+                    <div className="mt-3 grid gap-2">
+                      {bdoWholesaleMarketSignals.map((signal) => (
+                        <div
+                          key={signal.label}
+                          className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-black/20 px-3 py-2"
+                        >
+                          <div className="min-w-0">
+                            <p className="text-[10px] uppercase tracking-[0.18em] text-white/45">
+                              {signal.label}
+                            </p>
+                            <p className="mt-1 text-[11px] text-white/55 line-clamp-1">
+                              {signal.detail}
+                            </p>
+                          </div>
+                          <p
+                            className={`shrink-0 text-sm font-semibold ${signal.valueClassName}`}
+                          >
+                            {signal.value}
+                          </p>
+                        </div>
+                      ))}
                     </div>
                   </div>
 

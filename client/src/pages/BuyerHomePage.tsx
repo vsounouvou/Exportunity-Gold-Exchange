@@ -24725,7 +24725,15 @@ export function BuyerHomePage({
                   </div>
                 </div>
 
-                <div className="mt-3 flex flex-wrap items-center gap-2">
+                <div
+                  className={`mt-3 flex flex-wrap items-center gap-2 ${
+                    isCompactWholesaleViewport
+                      ? "md:pl-[84px]"
+                      : isTightWholesaleViewport
+                        ? "md:pl-[108px]"
+                        : "md:pl-[140px]"
+                  }`}
+                >
                   {[
                     {
                       key: "all" as const,

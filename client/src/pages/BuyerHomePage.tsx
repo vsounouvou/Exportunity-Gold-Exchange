@@ -67,6 +67,7 @@ import {
 } from "@/lib/storefrontIdentity";
 import { getTenantUXConfig } from "@/config/tenantUX";
 import { getSharedMarketplaceCatalogTenants } from "@/lib/tenantPolicy";
+import { isBdoHost } from "@/lib/hostMode";
 import { useSession } from "@/lib/session";
 import { useTenant } from "@/lib/tenant";
 import {
@@ -2531,7 +2532,7 @@ export function BuyerHomePage({
     storefrontHero === undefined
       ? (tenantConfig?.storefrontHero ?? null)
       : storefrontHero;
-  const isGoldTenant = tenant.key === "bdo";
+  const isGoldTenant = tenant.key === "bdo" || isBdoHost();
   const useBdoDirectCheckout = isGoldTenant;
   const isHozTenant = tenant.key === "hoz";
   const isExportunityTenant = tenant.key === "exportunity";

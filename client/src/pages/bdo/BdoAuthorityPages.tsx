@@ -234,7 +234,7 @@ export function BdoVerifierPage() {
               placeholder="BDO-CI-2026-000001"
               className="h-12 w-full rounded-xl border border-[#D4AF37]/25 bg-black/35 px-4 text-sm text-white outline-none placeholder:text-white/35 focus:border-[#D4AF37]"
             />
-            <Button type="submit" aria-disabled={!canVerify} className="w-full bg-[#D4AF37] text-black hover:bg-[#E8C873] aria-disabled:opacity-70">
+            <Button type="submit" className="w-full bg-[#D4AF37] text-black hover:bg-[#E8C873]">
               {copy.verifyNow}
             </Button>
           </form>

@@ -2665,8 +2665,12 @@ export function BuyerHomePage({
   const isVerifiedForSpaces =
     session.user?.verificationLevel === "BASIC_VERIFIED" ||
     session.user?.verificationLevel === "GOLD_VERIFIED";
+  const allowBdoPublicBrowse =
+    isGoldTenant && (isBdoRetailShellRoute || isWholesaleShellRoute);
   const showVerificationGate =
-    requiresVerification && (!session.isAuthenticated || !isVerifiedForSpaces);
+    requiresVerification &&
+    !allowBdoPublicBrowse &&
+    (!session.isAuthenticated || !isVerifiedForSpaces);
   const {
     formatCurrency,
     formatAmount,
@@ -7558,6 +7562,10 @@ export function BuyerHomePage({
   };
   const openWholesalePrimaryAction = () => {
     if (isBdoUnifiedWholesale) {
+      if (wholesaleRouteSection === "apply") {
+        setWholesaleApplyOpen(true);
+        return;
+      }
       openConcierge({
         mode: "wholesale",
         focus: true,
@@ -7678,9 +7686,6 @@ export function BuyerHomePage({
 
     if (isBdoUnifiedWholesale) {
       setMarketMode("dore");
-      if (wholesaleRouteSection === "apply") {
-        setWholesaleApplyOpen(true);
-      }
       return;
     }
 
@@ -7697,9 +7702,6 @@ export function BuyerHomePage({
     }
 
     setMarketMode("dore");
-    if (wholesaleRouteSection === "apply") {
-      setWholesaleApplyOpen(true);
-    }
   }, [
     isGoldTenant,
     isWholesaleShellRoute,

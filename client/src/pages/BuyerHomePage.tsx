@@ -2081,16 +2081,10 @@ function createMachineryIcon(L: any, item: { status: string }) {
           : status === "reserved"
             ? "#E8C873"
             : "#F43F5E";
-  const label =
-    status === "in_stock"
-      ? "IN STOCK"
-      : status === "built_to_order"
-        ? "BUILD"
-        : status === "used"
-          ? "USED"
-          : status === "reserved"
-            ? "HOLD"
-            : "OFF";
+  const equipmentIcon = escapeMarkerHtml(
+    absolutizePublicUrl(BDO_HOME_ASSETS.mapIcons.equipment) ||
+      BDO_HOME_ASSETS.mapIcons.equipment,
+  );
 
   return L.divIcon({
     html: `<div style="
@@ -2104,27 +2098,18 @@ function createMachineryIcon(L: any, item: { status: string }) {
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 22px;
+      overflow: hidden;
     ">
-      ⚙️
-      <div style="
-        position: absolute;
-        bottom: -8px;
-        left: 50%;
-        transform: translateX(-50%);
-        background: ${color};
-        color: #000;
-        font-size: 9px;
-        font-weight: 700;
-        padding: 2px 7px;
-        border-radius: 999px;
-        white-space: nowrap;
-        box-shadow: 0 1px 6px rgba(0,0,0,0.35);
-      ">${label}</div>
+      <img src="${equipmentIcon}" alt="" style="
+        display:block;
+        width:38px;
+        height:38px;
+        object-fit:contain;
+      " />
     </div>`,
     className: "machinery-marker",
-    iconSize: [52, 60],
-    iconAnchor: [26, 30],
+    iconSize: [52, 52],
+    iconAnchor: [26, 26],
   });
 }
 
@@ -2249,7 +2234,7 @@ function createWholesaleNodeIcon(
   L: any,
   options: {
     tone: string;
-    chipLabel: string;
+    chipLabel?: string;
     innerHtml: string;
     selected?: boolean;
     glow?: boolean;
@@ -2272,6 +2257,7 @@ function createWholesaleNodeIcon(
   const innerScale = Math.max(0.62, Math.min(options.innerScale || 0.72, 0.98));
   const chipStyle = options.chipStyle || "default";
   const chipLabel = escapeMarkerHtml(options.chipLabel);
+  const hasChipLabel = chipLabel.length > 0;
   const tone = escapeMarkerHtml(options.tone);
   const shellShadow = selected
     ? "0 0 0 2px rgba(232,200,115,0.54), 0 12px 24px rgba(0,0,0,0.44)"
@@ -2293,7 +2279,7 @@ function createWholesaleNodeIcon(
       : "1px solid rgba(255,255,255,0.1)";
 
   return L.divIcon({
-    html: `<div style="position:relative;width:${size}px;height:${size + 18}px;pointer-events:none;">
+    html: `<div style="position:relative;width:${size}px;height:${hasChipLabel ? size + 18 : size}px;pointer-events:none;">
       <div style="
         position:absolute;
         top:2px;
@@ -2331,7 +2317,7 @@ function createWholesaleNodeIcon(
         pointer-events:none;
       ">${options.innerHtml}</div>
       </div>
-      <div style="
+      ${hasChipLabel ? `<div style="
         position:absolute;
         bottom:0;
         left:50%;
@@ -2352,11 +2338,11 @@ function createWholesaleNodeIcon(
         text-align:center;
         box-shadow:${chipShadow};
         pointer-events:none;
-      ">${chipLabel}</div>
+      ">${chipLabel}</div>` : ""}
     </div>`,
     className: "wholesale-node-marker",
-    iconSize: [size, size + 18],
-    iconAnchor: [Math.round(size / 2), anchorY],
+    iconSize: [size, hasChipLabel ? size + 18 : size],
+    iconAnchor: [Math.round(size / 2), hasChipLabel ? anchorY : Math.round(size / 2)],
   });
 }
 
@@ -2463,18 +2449,10 @@ function createWholesaleMachineryMapIcon(
       : item.financingAvailable
         ? "#E8C873"
         : "#D4AF37";
-  const chipLabel =
-    item.financingAvailable && item.status !== "unavailable"
-      ? "finance"
-      : item.status === "in_stock"
-        ? "stock"
-        : item.status === "built_to_order"
-          ? "build"
-          : "equip";
 
   return createWholesaleNodeIcon(L, {
     tone,
-    chipLabel,
+    chipLabel: "",
     innerHtml: `<span style="display:block;width:34px;height:34px;overflow:hidden;border-radius:999px;"><img src="${BDO_HOME_ASSETS.mapIcons.equipment}" alt="" style="display:block;width:100%;height:100%;object-fit:contain;" /></span>`,
     selected: options?.selected,
     glow: item.financingAvailable,

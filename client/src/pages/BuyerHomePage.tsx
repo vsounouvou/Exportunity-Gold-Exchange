@@ -16129,6 +16129,7 @@ export function BuyerHomePage({
                             <Marker
                               key={`cadastre-${node.permit.permitId}`}
                               position={node.position}
+                              title={`Mine BOURSE DE L'OR: ${String(node.permit.holderName || "mine active")}`}
                               icon={createWholesalePermitMapIcon(L, node.permit, {
                                 selected:
                                   wholesaleSelectedNodeType === "mine" &&
@@ -16332,6 +16333,7 @@ export function BuyerHomePage({
                               <Marker
                                 key={`wholesale-shop-${shop.id}`}
                                 position={node.position}
+                                title={`Offre BOURSE DE L'OR: ${featuredOfferTitle || sourceLabel}`}
                                 icon={createWholesaleShopMapIcon(L, shop, {
                                   selected:
                                     wholesaleSelectedNodeType === "shop" &&
@@ -16716,6 +16718,7 @@ export function BuyerHomePage({
                             <Marker
                               key={`wholesale-machinery-${node.item.id}`}
                               position={node.position}
+                              title={`Equipement BOURSE DE L'OR: ${node.item.name}`}
                               icon={createWholesaleMachineryMapIcon(L, node.item, {
                                 selected:
                                   wholesaleSelectedNodeType === "machinery" &&
@@ -16817,6 +16820,7 @@ export function BuyerHomePage({
                             <Marker
                               key={`wholesale-opportunity-${node.opportunity.id}`}
                               position={node.position}
+                              title={`Opportunite BOURSE DE L'OR: ${node.opportunity.title}`}
                               icon={createWholesaleOpportunityMapIcon(
                                 L,
                                 node.opportunity,

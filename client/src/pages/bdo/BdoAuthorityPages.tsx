@@ -216,17 +216,25 @@ export function BdoVerifierPage() {
             className="mt-6 space-y-3"
             onSubmit={(event) => {
               event.preventDefault();
-              if (canVerify) window.location.href = `/verify/${encodeURIComponent(cleanCode)}`;
+              const formData = new FormData(event.currentTarget);
+              const submittedCode = String(formData.get("certificateCode") || code)
+                .trim()
+                .toUpperCase();
+              if (submittedCode.length >= 4) {
+                window.location.href = `/verify/${encodeURIComponent(submittedCode)}`;
+              }
             }}
           >
             <label className="block text-xs font-semibold uppercase tracking-[0.18em] text-white/55">{copy.certificateCode}</label>
             <input
+              name="certificateCode"
               value={code}
               onChange={(event) => setCode(event.target.value)}
+              onInput={(event) => setCode(event.currentTarget.value)}
               placeholder="BDO-CI-2026-000001"
               className="h-12 w-full rounded-xl border border-[#D4AF37]/25 bg-black/35 px-4 text-sm text-white outline-none placeholder:text-white/35 focus:border-[#D4AF37]"
             />
-            <Button type="submit" disabled={!canVerify} className="w-full bg-[#D4AF37] text-black hover:bg-[#E8C873] disabled:opacity-50">
+            <Button type="submit" aria-disabled={!canVerify} className="w-full bg-[#D4AF37] text-black hover:bg-[#E8C873] aria-disabled:opacity-70">
               {copy.verifyNow}
             </Button>
           </form>

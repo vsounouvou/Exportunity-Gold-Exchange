@@ -1486,6 +1486,18 @@ function getProductPurityLabel(product: any): string {
 }
 
 const BDO_PUBLIC_TERM_REPLACEMENTS_FR: Array<[RegExp, string]> = [
+  [
+    /\bCertified Gold Certified certified certified ingot - Limited Edition\b/g,
+    "Pièce certifiée - Édition limitée",
+  ],
+  [
+    /\bCertified Gold Certified certified certified ingot\b/g,
+    "Pièce certifiée",
+  ],
+  [/\bCertified Gold - Limited Edition\b/g, "Pièce certifiée - Édition limitée"],
+  [/\bCertified Gold\b/g, "Or certifié"],
+  [/\bCertified certified certified ingot\b/g, "lingot certifié"],
+  [/\bCertified ingot\b/g, "lingot certifié"],
   [/\bGold Portrait Bust - Limited Edition\b/g, "Lingot certifié - Édition limitée"],
   [/\bGold Portrait Bust\b/g, "Lingot certifié"],
   [/\bStamped Gold Piece\b/g, "Pièce certifiée"],
@@ -1502,13 +1514,22 @@ const BDO_PUBLIC_TERM_REPLACEMENTS_FR: Array<[RegExp, string]> = [
     /\bLingots d'investissement par poids\b/g,
     "Pièces et lingots certifiés",
   ],
-  [/\bIngots\b/g, "Certified ingots"],
-  [/\bingots\b/g, "certified ingots"],
-  [/\bIngot\b/g, "Certified ingot"],
-  [/\bingot\b/g, "certified ingot"],
+  [/\bIngots\b/g, "Lingots certifiés"],
+  [/\bingots\b/g, "lingots certifiés"],
+  [/\bIngot\b/g, "Lingot certifié"],
+  [/\bingot\b/g, "lingot certifié"],
 ];
 
 const BDO_PUBLIC_TERM_REPLACEMENTS_EN: Array<[RegExp, string]> = [
+  [
+    /\bCertified Gold Certified certified certified ingot - Limited Edition\b/g,
+    "Certified gold piece - Limited edition",
+  ],
+  [
+    /\bCertified Gold Certified certified certified ingot\b/g,
+    "Certified gold piece",
+  ],
+  [/\bCertified certified certified ingot\b/g, "certified gold piece"],
   [/\bGold Portrait Bust - Limited Edition\b/g, "Certified Gold - Limited Edition"],
   [/\bGold Portrait Bust\b/g, "Certified Gold"],
   [/\bStamped Gold Piece\b/g, "Certified Gold Piece"],

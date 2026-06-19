@@ -12053,6 +12053,7 @@ export function BuyerHomePage({
               <span className="rounded-full border border-[#D4AF37]/28 bg-[#0B0B0D]/50 px-2.5 py-1 text-[10px] font-medium text-[#E8C873]">
                 {starterCopy.badge}
               </span>
+              <span className="sr-only"> - </span>
               <span className="rounded-full border border-white/12 bg-black/45 px-2.5 py-1 text-[10px] text-white/78">
                 {spec.weight}g{spec.karat ? ` - ${spec.karat}K` : ""}
               </span>

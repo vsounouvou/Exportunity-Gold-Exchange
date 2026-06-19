@@ -13872,47 +13872,54 @@ export function BuyerHomePage({
       Math.max(0, Array.isArray(shop?.products) ? shop.products.length : 0),
     0,
   );
+  const formatProtectedWholesaleCount = useCallback(
+    (count: number, publicFallback: string) => {
+      if (count > 0) return String(count);
+      return isWholesaleAuthorized ? "0" : publicFallback;
+    },
+    [isWholesaleAuthorized],
+  );
   const wholesaleSummaryStats = useMemo(() => {
     if (isBdoUnifiedWholesale) {
       if (wholesaleRouteSection === "investments") {
         return [
-          { label: "Dossiers", value: String(visibleOpportunities.length) },
-          { label: "Mines", value: String(cadastrePermitsForMap.length) },
-          { label: "Bureaux", value: String(shops.length) },
+          { label: "Dossiers", value: formatProtectedWholesaleCount(visibleOpportunities.length, "Revue") },
+          { label: "Mines", value: formatProtectedWholesaleCount(cadastrePermitsForMap.length, "Carte") },
+          { label: "Machines", value: String(visibleMachinery.length) },
         ];
       }
       if (wholesaleRouteSection === "machinery") {
         return [
           { label: "Machines", value: String(visibleMachinery.length) },
-          { label: "Mines", value: String(cadastrePermitsForMap.length) },
+          { label: "Mines", value: formatProtectedWholesaleCount(cadastrePermitsForMap.length, "Carte") },
           { label: "Rayon", value: `${radiusKm} km` },
         ];
       }
       if (wholesaleRouteSection === "apply") {
         return [
           { label: "Statut", value: wholesaleAccessTone },
-          { label: "Bureaux", value: String(shops.length) },
-          { label: "Dossiers", value: String(visibleOpportunities.length) },
+          { label: "Parcours", value: "4" },
+          { label: "Machines", value: String(visibleMachinery.length) },
         ];
       }
       if (bdoWholesaleView === "buyer") {
         return [
-          { label: "Mines", value: String(cadastrePermitsForMap.length) },
-          { label: "Bureaux", value: String(shops.length) },
+          { label: "Mines", value: formatProtectedWholesaleCount(cadastrePermitsForMap.length, "Carte") },
+          { label: "Bureaux", value: formatProtectedWholesaleCount(shops.length, "Pro") },
           { label: "Lots", value: String(wholesaleVisibleLotCount) },
         ];
       }
       if (bdoWholesaleView === "mine") {
         return [
           { label: "Machines", value: String(visibleMachinery.length) },
-          { label: "Sourcing", value: String(visibleOpportunities.length) },
-          { label: "Bureaux", value: String(shops.length) },
+          { label: "Sourcing", value: formatProtectedWholesaleCount(visibleOpportunities.length, "Dossier") },
+          { label: "Bureaux", value: formatProtectedWholesaleCount(shops.length, "Pro") },
         ];
       }
       return [
-        { label: "Bureaux", value: String(shops.length) },
-        { label: "Mines", value: String(cadastrePermitsForMap.length) },
-        { label: "Sourcing", value: String(visibleOpportunities.length) },
+        { label: "Sources", value: String(wholesaleVisibleNodeCount) },
+        { label: "Vérifiés", value: String(wholesaleVisibleVerifiedCount) },
+        { label: "Finance", value: String(wholesaleVisibleFinanceCount) },
       ];
     }
     return [
@@ -13936,12 +13943,16 @@ export function BuyerHomePage({
   }, [
     bdoWholesaleView,
     cadastrePermitsForMap.length,
+    formatProtectedWholesaleCount,
     isBdoUnifiedWholesale,
     radiusKm,
     shops.length,
     visibleMachinery.length,
     visibleOpportunities.length,
+    wholesaleVisibleFinanceCount,
     wholesaleVisibleLotCount,
+    wholesaleVisibleNodeCount,
+    wholesaleVisibleVerifiedCount,
     wholesaleAccessTone,
     wholesaleRouteSection,
   ]);
@@ -14262,19 +14273,33 @@ export function BuyerHomePage({
         id: "bureaux",
         tone: "amber" as const,
         title: "Bureaux d'achat",
-        count: String(shops.length),
-        subtitle: "Comptoirs autorisés, export et conformité locale.",
+        count: formatProtectedWholesaleCount(shops.length, "Pro"),
+        subtitle:
+          shops.length > 0
+            ? "Comptoirs autorisés, export et conformité locale."
+            : "Accès aux comptoirs après revue Pro.",
         actionLabel: "Ouvrir",
         onClick: () => {
           if (firstShop) selectWholesaleShop(firstShop);
+          if (!firstShop) {
+            openConcierge({
+              mode: "wholesale",
+              focus: true,
+              seedMessage:
+                "Explique-moi comment accéder aux bureaux d'achat vérifiés et quelles informations deviennent visibles après revue Pro.",
+            });
+          }
         },
       },
       {
         id: "mines",
         tone: "emerald" as const,
         title: "Mines visibles",
-        count: String(cadastrePermitsForMap.length),
-        subtitle: "Production, besoins terrain et suivi des sites.",
+        count: formatProtectedWholesaleCount(cadastrePermitsForMap.length, "Carte"),
+        subtitle:
+          cadastrePermitsForMap.length > 0
+            ? "Production, besoins terrain et suivi des sites."
+            : "Zones minières et détails sensibles sur accès contrôlé.",
         actionLabel: "Desk",
         onClick: () =>
           openConcierge({
@@ -14288,7 +14313,7 @@ export function BuyerHomePage({
         id: "semi-industrial",
         tone: "emerald" as const,
         title: "Sites semi-industriels",
-        count: String(semiIndustrialSites),
+        count: formatProtectedWholesaleCount(semiIndustrialSites, "Revue"),
         subtitle:
           "Rayon prioritaire pour les besoins en financement et équipement.",
         actionLabel: "Analyser",
@@ -14304,9 +14329,11 @@ export function BuyerHomePage({
         id: "opportunities",
         tone: "sky" as const,
         title: "Opportunités d'investissement",
-        count: String(visibleOpportunities.length),
+        count: formatProtectedWholesaleCount(visibleOpportunities.length, "Dossier"),
         subtitle:
-          "Sites à financer avec durée, capital et rendement indicatif.",
+          visibleOpportunities.length > 0
+            ? "Sites à financer avec durée, capital et rendement indicatif."
+            : "Dossiers accessibles après qualification et conformité.",
         actionLabel: "Contrat",
         onClick: () => {
           if (firstOpportunity) {
@@ -14346,22 +14373,23 @@ export function BuyerHomePage({
       return [shelves[2], shelves[3], shelves[4], shelves[0]].filter(Boolean);
     }
     if (wholesaleRouteSection === "investments") {
-      return [shelves[3], shelves[1], shelves[2], shelves[0], shelves[4]].filter(Boolean);
+      return [shelves[3], shelves[1], shelves[4], shelves[0], shelves[2]].filter(Boolean);
     }
     if (wholesaleRouteSection === "machinery") {
       return [shelves[4], shelves[2], shelves[1], shelves[0], shelves[3]].filter(Boolean);
     }
     if (wholesaleRouteSection === "apply") {
-      return [shelves[0], shelves[1], shelves[3], shelves[4]].filter(Boolean);
+      return [shelves[0], shelves[1], shelves[4], shelves[3]].filter(Boolean);
     }
     if (bdoWholesaleView === "buyer") {
-      return [shelves[0], shelves[1], shelves[2], shelves[4]].filter(Boolean);
+      return [shelves[0], shelves[1], shelves[4], shelves[2]].filter(Boolean);
     }
-    return shelves;
+    return [shelves[0], shelves[1], shelves[4], shelves[3], shelves[2]].filter(Boolean);
   }, [
     bdoWholesaleView,
     cadastreMapItems,
     cadastrePermitsForMap.length,
+    formatProtectedWholesaleCount,
     openConcierge,
     setSelectedMachinery,
     setSelectedOpportunity,

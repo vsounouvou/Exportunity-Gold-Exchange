@@ -13788,7 +13788,7 @@ export function BuyerHomePage({
           eyebrow: "Opportunités de sourcing",
           title: "Mines, besoins et dossiers à qualifier",
           summary:
-            "Repérez les sites à financer, les besoins machine et les partenaires de sortie avant d'ouvrir une fiche.",
+            "Repérez les sites à financer, le capital à qualifier, les besoins machine et les partenaires de sortie avant d'ouvrir une fiche.",
         };
       }
       if (wholesaleRouteSection === "machinery") {
@@ -14333,7 +14333,7 @@ export function BuyerHomePage({
         subtitle:
           visibleOpportunities.length > 0
             ? "Sites à financer avec durée, capital et rendement indicatif."
-            : "Dossiers accessibles après qualification et conformité.",
+            : "Dossiers capital accessibles après qualification et conformité.",
         actionLabel: "Contrat",
         onClick: () => {
           if (firstOpportunity) {

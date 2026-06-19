@@ -137,7 +137,7 @@ function orderCopyStable(language: string) {
       goToMarketplace: "\u0627\u0644\u0639\u0648\u062f\u0629 \u0625\u0644\u0649 \u0627\u0644\u0645\u0646\u062a\u062c\u0627\u062a",
       browse: "\u0627\u0644\u0645\u0646\u062a\u062c\u0627\u062a",
       map: "\u0627\u0644\u062e\u0631\u064a\u0637\u0629",
-      credits: "\u0627\u0644\u0627\u0639\u062a\u0645\u0627\u062f\u0627\u062a",
+      credits: "\u0627\u0639\u062a\u0645\u0627\u062f\u0627\u062a \u0627\u0644\u0634\u0631\u0627\u0621",
       vault: "\u0627\u0644\u062e\u0632\u0646\u0629",
       refresh: "\u062a\u062d\u062f\u064a\u062b",
     };
@@ -176,7 +176,7 @@ function orderCopyStable(language: string) {
       goToMarketplace: "Go to products",
       browse: "Browse",
       map: "Map",
-      credits: "Credits",
+      credits: "Purchase Credits",
       vault: "Vault",
       refresh: "Refresh",
     };
@@ -214,7 +214,7 @@ function orderCopyStable(language: string) {
     goToMarketplace: "Voir les produits",
     browse: "Produits",
     map: "Carte",
-    credits: "Cr\u00e9dits",
+    credits: "Cr\u00e9dits d'achat",
     vault: "Coffre",
     refresh: "Actualiser",
   };

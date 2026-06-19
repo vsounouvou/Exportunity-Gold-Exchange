@@ -891,7 +891,7 @@ function wholesaleAgentReply(input: string) {
     return "Je peux filtrer les zones minieres et signaux de sourcing. Les details sensibles restent soumis a verification Pro, KYC/KYB et revue de conformite.";
   }
   if (lower.includes("cotation") || lower.includes("prix") || lower.includes("offre")) {
-    return "Pour une cotation wholesale, il faut preciser le poids vise, le titre, le pays de livraison ou stockage, puis confirmer disponibilite, paiement et conformite.";
+    return "Pour une cotation wholesale, il faut préciser le poids visé, le titre, le pays de livraison ou stockage, puis confirmer disponibilité, paiement et conformité.";
   }
   if (lower.includes("equip") || lower.includes("machine")) {
     return "Je peux aussi orienter les demandes d'equipement aurifere vers les noeuds de support et partenaires qualifies lorsque le module est actif.";
@@ -1044,7 +1044,7 @@ export function BdoWholesaleMarketPage() {
                 className={verifiedOnly ? "bg-[#D4AF37] text-[#0B0B0D] hover:bg-[#E8C873]" : "border-[#D4AF37]/25 text-[#F5F3EC] hover:bg-[#D4AF37]/10"}
                 onClick={() => setVerifiedOnly((value) => !value)}
               >
-                Verifies seulement
+                Vérifiés seulement
               </Button>
               <Button
                 type="button"
@@ -1053,7 +1053,7 @@ export function BdoWholesaleMarketPage() {
                 className={wholesaleReady ? "bg-[#D4AF37] text-[#0B0B0D] hover:bg-[#E8C873]" : "border-[#D4AF37]/25 text-[#F5F3EC] hover:bg-[#D4AF37]/10"}
                 onClick={() => setWholesaleReady((value) => !value)}
               >
-                Pret pour le gros
+                Prêt pour le gros
               </Button>
             </CardContent>
           </Card>
@@ -1067,8 +1067,8 @@ export function BdoWholesaleMarketPage() {
               <h2 className="mt-2 text-lg font-semibold text-white">Carte publique, details verifies</h2>
               <p className="mt-2">La carte affiche une vue de travail. Les contacts, volumes disponibles, offres et documents ne sont visibles qu'apres connexion Pro, verification et validation de conformite.</p>
               <div className="mt-4 flex flex-col gap-2">
-                <Link href="/pro/login"><Button className="w-full bg-[#D4AF37] text-[#0B0B0D] hover:bg-[#E8C873]">Acceder a l'espace Pro</Button></Link>
-                <Link href="/wholesale/apply"><Button variant="outline" className="w-full border-[#D4AF37]/25 text-[#F5F3EC] hover:bg-[#D4AF37]/10">Demander un acces wholesale</Button></Link>
+                <Link href="/pro/login"><Button className="w-full bg-[#D4AF37] text-[#0B0B0D] hover:bg-[#E8C873]">Accéder à l'espace Pro</Button></Link>
+                <Link href="/wholesale/apply"><Button variant="outline" className="w-full border-[#D4AF37]/25 text-[#F5F3EC] hover:bg-[#D4AF37]/10">Demander un accès wholesale</Button></Link>
               </div>
             </CardContent>
           </Card>
@@ -1167,7 +1167,7 @@ export function BdoProMapPage() {
                 className={verifiedOnly ? "bg-[#D4AF37] text-[#0B0B0D] hover:bg-[#E8C873]" : "border-[#D4AF37]/25 text-[#F5F3EC] hover:bg-[#D4AF37]/10"}
                 onClick={() => setVerifiedOnly((value) => !value)}
               >
-                Verifies seulement
+                Vérifiés seulement
               </Button>
               <Button
                 type="button"
@@ -1185,7 +1185,7 @@ export function BdoProMapPage() {
                 className={wholesaleReady ? "bg-[#D4AF37] text-[#0B0B0D] hover:bg-[#E8C873]" : "border-[#D4AF37]/25 text-[#F5F3EC] hover:bg-[#D4AF37]/10"}
                 onClick={() => setWholesaleReady((value) => !value)}
               >
-                Pret pour le gros
+                Prêt pour le gros
               </Button>
             </CardContent>
           </Card>
@@ -1232,7 +1232,7 @@ export function BdoProIntelligencePage() {
             </Card>
             <Card className="border-[#D4AF37]/15 bg-[#0D1B2A]/82">
               <CardContent className="p-4">
-                <p className="text-[11px] uppercase tracking-[0.24em] text-[#E8C873]/85">Conformite & sourcing</p>
+                <p className="text-[11px] uppercase tracking-[0.24em] text-[#E8C873]/85">Conformité & sourcing</p>
                 <div className="mt-4 space-y-3">
                   {[
                     "Regles de tracabilite pour les lots professionnels.",

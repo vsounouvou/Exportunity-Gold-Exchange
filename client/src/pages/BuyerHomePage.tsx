@@ -2903,7 +2903,7 @@ export function BuyerHomePage({
         headerSubtitle: "Certified pieces, clear traceability",
         wholesaleSubtitle: "Wholesale market, map and verified sourcing",
         cart: "Cart",
-        credits: "Credits",
+        credits: "Purchase Credits",
         wholesale: "Wholesale market",
         vault: "Vault",
         settings: "Settings",
@@ -2940,11 +2940,11 @@ export function BuyerHomePage({
         legalNotice: "All gold products are subject to availability, verification, compliance review and payment confirmation. LA BOURSE DE L'OR may request KYC/KYB documents before confirming certain transactions, and transactions may be refused, delayed or cancelled if compliance requirements are not met. Prices may fluctuate according to international gold prices, refining costs, premiums, logistics, taxes, duties and local market conditions. Displayed prices may remain indicative until final confirmation.",
         sourcingNotice: "LA BOURSE DE L'OR does not support illegal, undocumented, conflict-related or non-compliant gold trade. All sourcing must follow responsible sourcing, AML, sanctions and traceability principles.",
         refineryNotice: "Certain bullion products may be supplied directly from approved refineries or refinery-linked partners. In such cases, LA BOURSE DE L'OR facilitates the digital order process, customer communication, payment coordination, documentation, and delivery or storage options.",
-        custodyNotice: "Customers may choose, where available, delivery, collection, or secure storage. Delivery times depend on product availability, production time, compliance checks, payment confirmation, logistics, customs, and local regulations. Storage terms, custody provider, insurance coverage, fees, withdrawal conditions, and transfer procedures must be confirmed separately before the service becomes active.",
+        custodyNotice: "Customers may choose, where available, delivery, collection, or secure storage through an approved logistics partner or client-selected custodian. Delivery times depend on product availability, production time, compliance checks, payment confirmation, logistics, customs, and local regulations. Storage terms, custody provider, insurance coverage, fees, withdrawal conditions, and transfer procedures must be confirmed separately before the service becomes active.",
         madeToOrderNotice: "For made-to-order jewelry and collectible pieces, the platform transmits order details to the approved production partner. Once production is completed, the partner confirms readiness through internal validation, after which the customer is informed.",
         ownershipNotice: "Ownership transfer occurs only after full payment, compliance validation, and final confirmation by LA BOURSE DE L'OR or the relevant approved supplier/refinery partner.",
         disclosureNotice: "LA BOURSE DE L'OR does not provide financial, investment, tax or legal advice. Gold purchases involve price fluctuation risk. The platform is not a bank, investment fund, securities exchange, money-transfer service, crypto platform, or regulated financial adviser. Orders involving gold price locking, custom production, refinery allocation or special procurement may not be cancellable once confirmed, and refund or cancellation terms must be confirmed before checkout. Customer order details, identity documents, payment information and supplier communications are treated as confidential and used only for order processing, compliance, logistics and support. Approved refineries, suppliers, artisans, logistics providers and vaulting partners remain independent operators.",
-        footerLegalNotice: "Products and services displayed on this platform are subject to jurisdictional restrictions, compliance checks, availability, and final confirmation. LA BOURSE DE L'OR reserves the right to refuse or cancel any transaction that does not meet legal, regulatory, compliance, payment, or sourcing standards.",
+        footerLegalNotice: "Products and services displayed on this platform are subject to jurisdictional restrictions, compliance checks, availability, and final confirmation. LA BOURSE DE L'OR reserves the right to refuse, delay, or cancel any transaction that does not meet legal, regulatory, compliance, payment, or responsible sourcing standards.",
         certificateExample: "View a certificate example",
         proSpace: "Enter the Pro space",
         catalogEyebrow: "Catalog preview",
@@ -3042,7 +3042,7 @@ export function BuyerHomePage({
       headerSubtitle: "Pièces certifiées, traçabilité claire",
       wholesaleSubtitle: "Marché de gros, cartographie et sourcing vérifiés",
       cart: "Panier",
-      credits: "Crédits",
+      credits: "Crédits d'achat",
       wholesale: "Marché de gros",
       vault: "Coffre",
       settings: "Paramètres",
@@ -3079,11 +3079,11 @@ export function BuyerHomePage({
       legalNotice: "Tous les produits en or sont soumis à disponibilité, vérification, revue de conformité et confirmation du paiement. LA BOURSE DE L'OR peut demander des documents KYC/KYB avant de confirmer certaines transactions, et une transaction peut être refusée, retardée ou annulée si les exigences de conformité ne sont pas remplies. Les prix peuvent varier selon le cours international de l'or, les coûts de raffinage, les primes, la logistique, les taxes, les droits et les conditions locales du marché. Le prix affiché peut rester indicatif jusqu'à confirmation finale.",
       sourcingNotice: "LA BOURSE DE L'OR ne soutient pas le commerce d'or illégal, non documenté, lié à un conflit ou non conforme. Tout sourcing doit respecter les principes de sourcing responsable, AML, sanctions et traçabilité.",
       refineryNotice: "Certains lingots peuvent être fournis directement par des raffineries approuvées ou des partenaires liés à une raffinerie. Dans ce cas, LA BOURSE DE L'OR facilite la commande digitale, la communication client, la coordination du paiement, la documentation et les options de livraison ou de stockage.",
-      custodyNotice: "Les clients peuvent choisir, lorsque disponible, la livraison, le retrait ou le stockage sécurisé. Les délais de livraison dépendent de la disponibilité, du temps de production, des contrôles de conformité, de la confirmation du paiement, de la logistique, des douanes et des règles locales. Les conditions de stockage, le dépositaire, l'assurance, les frais, les conditions de retrait et les procédures de transfert doivent être confirmés séparément avant activation du service.",
+      custodyNotice: "Les clients peuvent choisir, lorsque disponible, la livraison, le retrait ou le stockage sécurisé via un partenaire logistique approuvé ou un dépositaire sélectionné par le client. Les délais de livraison dépendent de la disponibilité, du temps de production, des contrôles de conformité, de la confirmation du paiement, de la logistique, des douanes et des règles locales. Les conditions de stockage, le dépositaire, l'assurance, les frais, les conditions de retrait et les procédures de transfert doivent être confirmés séparément avant activation du service.",
       madeToOrderNotice: "Pour les bijoux et pièces de collection sur commande, la plateforme transmet les détails au partenaire de production approuvé. Une fois la production terminée, le partenaire confirme la disponibilité par validation interne, puis le client est informé.",
       ownershipNotice: "Le transfert de propriété intervient uniquement après paiement complet, validation de conformité et confirmation finale par LA BOURSE DE L'OR ou le fournisseur/partenaire raffinerie approuvé concerné.",
       disclosureNotice: "LA BOURSE DE L'OR ne fournit pas de conseil financier, d'investissement, fiscal ou juridique. L'achat d'or comporte un risque de fluctuation du prix. La plateforme n'est pas une banque, un fonds d'investissement, une bourse de valeurs, un service de transfert d'argent, une plateforme crypto ou un conseiller financier réglementé. Les commandes impliquant verrouillage du prix, production sur mesure, allocation raffinerie ou approvisionnement spécial peuvent ne plus être annulables après confirmation, et les conditions de remboursement ou d'annulation doivent être confirmées avant le paiement. Les détails de commande, documents d'identité, informations de paiement et communications fournisseurs sont traités comme confidentiels et utilisés uniquement pour la commande, la conformité, la logistique et le support. Les raffineries, fournisseurs, artisans, logisticiens et partenaires de stockage approuvés restent des opérateurs indépendants.",
-      footerLegalNotice: "Les produits et services affichés sur cette plateforme sont soumis aux restrictions juridictionnelles, contrôles de conformité, disponibilité et confirmation finale. LA BOURSE DE L'OR se réserve le droit de refuser ou d'annuler toute transaction ne respectant pas les standards légaux, réglementaires, de conformité, de paiement ou de sourcing.",
+      footerLegalNotice: "Les produits et services affichés sur cette plateforme sont soumis aux restrictions juridictionnelles, contrôles de conformité, disponibilité et confirmation finale. LA BOURSE DE L'OR se réserve le droit de refuser, retarder ou annuler toute transaction ne respectant pas les standards légaux, réglementaires, de conformité, de paiement ou de sourcing responsable.",
       certificateExample: "Voir un exemple de certificat",
       proSpace: "Entrer dans l'espace Pro",
       catalogEyebrow: "Aperçu catalogue",
@@ -13968,7 +13968,7 @@ export function BuyerHomePage({
       ? "Voir les mines"
       : bdoWholesaleView === "mine"
         ? "Voir les acheteurs"
-        : "Demander cotation";
+        : "Demander une cotation";
   const bdoWholesaleViewLabel =
     wholesaleRouteSection === "investments"
       ? "Vue investisseur"
@@ -14233,7 +14233,7 @@ export function BuyerHomePage({
       {
         label: "24h",
         value: `${bdoMobilePriceStrip.isUp ? "+" : ""}${bdoMobilePriceStrip.variation.toFixed(2)}%`,
-        detail: "marche de gros",
+        detail: "marché de gros",
         valueClassName: dailyTone,
       },
       {
@@ -14263,7 +14263,7 @@ export function BuyerHomePage({
         tone: "amber" as const,
         title: "Bureaux d'achat",
         count: String(shops.length),
-        subtitle: "Comptoirs autorises, export et conformite locale.",
+        subtitle: "Comptoirs autorisés, export et conformité locale.",
         actionLabel: "Ouvrir",
         onClick: () => {
           if (firstShop) selectWholesaleShop(firstShop);
@@ -14281,7 +14281,7 @@ export function BuyerHomePage({
             mode: "wholesale",
             focus: true,
             seedMessage:
-              "Montre-moi les mines actives, leur production declaree et les besoins prioritaires aujourd'hui.",
+              "Montre-moi les mines actives, leur production déclarée et les besoins prioritaires aujourd'hui.",
           }),
       },
       {
@@ -14290,7 +14290,7 @@ export function BuyerHomePage({
         title: "Sites semi-industriels",
         count: String(semiIndustrialSites),
         subtitle:
-          "Rayon prioritaire pour les besoins en financement et equipement.",
+          "Rayon prioritaire pour les besoins en financement et équipement.",
         actionLabel: "Analyser",
         onClick: () =>
           openConcierge({
@@ -14303,10 +14303,10 @@ export function BuyerHomePage({
       {
         id: "opportunities",
         tone: "sky" as const,
-        title: "Opportunites d'investissement",
+        title: "Opportunités d'investissement",
         count: String(visibleOpportunities.length),
         subtitle:
-          "Sites a financer avec duree, capital et rendement indicatif.",
+          "Sites à financer avec durée, capital et rendement indicatif.",
         actionLabel: "Contrat",
         onClick: () => {
           if (firstOpportunity) {
@@ -14317,16 +14317,16 @@ export function BuyerHomePage({
             mode: "wholesale",
             focus: true,
             seedMessage:
-              "Montre-moi les opportunites d'investissement avec contrat type, duree et capital requis.",
+              "Montre-moi les opportunités d'investissement avec contrat type, durée et capital requis.",
           });
         },
       },
       {
         id: "machinery",
         tone: "sky" as const,
-        title: "Machineries & equipementiers",
+        title: "Machines & équipementiers",
         count: String(visibleMachinery.length),
-        subtitle: "Wash plants, machines et capacites a deployer sur site.",
+        subtitle: "Wash plants, machines et capacités à déployer sur site.",
         actionLabel: "Ouvrir",
         onClick: () => {
           if (firstMachine) {
@@ -14337,7 +14337,7 @@ export function BuyerHomePage({
             mode: "wholesale",
             focus: true,
             seedMessage:
-              "Montre-moi les machines disponibles et les besoins d'equipement lies aux mines visibles.",
+              "Montre-moi les machines disponibles et les besoins d'équipement liés aux mines visibles.",
           });
         },
       },

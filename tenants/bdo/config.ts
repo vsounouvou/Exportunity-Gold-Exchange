@@ -5,7 +5,7 @@ import { bdoThemeTokens } from "./theme";
 export const bdoTenantConfig: TenantConfig = {
   slug: "bdo",
   brandName: "Bourse de l'Or",
-  tagline: "Valeur - Confiance - Perennite",
+  tagline: "Valeur - Confiance - Pérennité",
   primaryDomain: "boursedelor.com",
   domains: ["boursedelor.com", "www.boursedelor.com"],
   defaultLocale: "fr",
@@ -19,9 +19,9 @@ export const bdoTenantConfig: TenantConfig = {
   themeTokens: bdoThemeTokens,
   storefrontHero: {
     eyebrow: "Bourse de l'Or",
-    title: "Acheter de l'or physique certifie.",
+    title: "Acheter de l'or physique certifié.",
     subtitle:
-      "BOURSE DE L'OR est une plateforme digitale structuree pour acheter, documenter et verifier l'or physique, les lingots issus de partenaires raffinerie, les bijoux verifies et les pieces de collection.",
+      "BOURSE DE L'OR est une plateforme digitale structurée pour acheter, documenter et vérifier l'or physique, les lingots issus de partenaires raffinerie, les bijoux vérifiés et les pièces de collection.",
     ctaPrimary: { label: "Produits en or", href: "/store" },
     ctaSecondary: { label: "Espace Pro", href: "/espace-pro" },
     backgroundStyle: "from-[#0B0B0D] via-[#0D1B2A] to-[#0B0B0D]",
@@ -48,16 +48,16 @@ export const bdoTenantConfig: TenantConfig = {
     deliveryRadiusKm: 150,
   },
   storefrontIdentity: {
-    platformLabel: "Bourse de l'Or - Or physique documente",
-    retailModeLabel: "Or physique documente",
+    platformLabel: "Bourse de l'Or - Or physique documenté",
+    retailModeLabel: "Or physique documenté",
     sections: [
-      { slug: "stamped", title: "Or physique documente", subtitle: "Lingots et pieces soumis a disponibilite, verification et confirmation finale", limit: 40 },
-      { slug: "jewelry", title: "Bijoux en or", subtitle: "Bijoux verifies ou realises sur commande par des partenaires approuves", limit: 40 },
-      { slug: "gold-art", title: "Pieces de collection", subtitle: "Creations patrimoniales et collections documentees selon les informations disponibles", limit: 24 },
+      { slug: "stamped", title: "Or physique documenté", subtitle: "Lingots et pièces soumis à disponibilité, vérification et confirmation finale", limit: 40 },
+      { slug: "jewelry", title: "Bijoux en or", subtitle: "Bijoux vérifiés ou réalisés sur commande par des partenaires approuvés", limit: 40 },
+      { slug: "gold-art", title: "Pièces de collection", subtitle: "Créations patrimoniales et collections documentées selon les informations disponibles", limit: 24 },
     ],
     categoryVisuals: [
-      { slug: "dore", label: "Dore", icon: "gem", accent: "#D4AF37", image: "/product-images/dore-nuggets-01.png" },
-      { slug: "stamped", label: "Or documente", icon: "shield", accent: "#E8C873", image: "/product-images/stamped-bar-01.png" },
+      { slug: "dore", label: "Doré", icon: "gem", accent: "#D4AF37", image: "/product-images/dore-nuggets-01.png" },
+      { slug: "stamped", label: "Or documenté", icon: "shield", accent: "#E8C873", image: "/product-images/stamped-bar-01.png" },
       { slug: "jewelry", label: "Bijoux en or", icon: "sparkles", accent: "#D4AF37", image: "/product-images/jewelry-chain.png" },
       { slug: "gold-art", label: "Or d'art", icon: "palette", accent: "#E8C873", image: "/product-images/art-medallion.png" },
     ],

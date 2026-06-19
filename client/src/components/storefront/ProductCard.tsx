@@ -8,7 +8,7 @@ import { getBdoProductFallbackImage } from "@/lib/bdoProductVisuals";
 
 const copy = {
   fr: {
-    verifiedSeller: "Vendeur verifie",
+    verifiedSeller: "Vendeur vérifié",
     sellerPrefix: "Vendeur",
     quickAdd: "Ajouter",
     view: "Voir",

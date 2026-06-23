@@ -11,7 +11,6 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useSession } from "@/lib/session";
-import { getTenantDefaultRoute } from "@/lib/tenantPolicy";
 import { Loader2, Bot, Users, BarChart3, Zap, ArrowLeft } from "lucide-react";
 import { BrandLockup } from "@pkg/branding";
 import { useTenant } from "@/lib/tenant";
@@ -30,7 +29,16 @@ export function AdminLoginPage() {
   const { toast } = useToast();
   const { login, isAuthenticated, isGuest, user } = useSession();
   const [, setLocation] = useLocation();
-  const defaultRoute = tenant.key === "mindbase" ? "/admin/mindbase" : getTenantDefaultRoute(tenant.key);
+  const defaultRoute =
+    tenant.key === "mindbase"
+      ? "/admin/mindbase"
+      : tenant.key === "maisonenterre"
+        ? "/admin/met"
+        : tenant.key === "houseofzogue"
+          ? "/admin/hoz"
+          : tenant.key === "vitalsounouvou"
+            ? "/admin/vs"
+            : "/admin/dashboard";
   const isBdoTenant = tenant.key === "bdo";
   const bdoCopy = {
     fr: {

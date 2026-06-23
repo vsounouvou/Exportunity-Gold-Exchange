@@ -270,7 +270,7 @@ export function getAllowedTenantsForPath(path: string): TenantKey[] {
     return applyHostIsolation(ALL_TENANTS);
   }
 
-  if (normalized === "/admin" || matchesPrefix(normalized, "/admin/password")) {
+  if (normalized === "/admin" || normalized === "/admin/login" || matchesPrefix(normalized, "/admin/password")) {
     return applyHostIsolation(ALL_TENANTS);
   }
 

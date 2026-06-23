@@ -936,7 +936,7 @@ export function ChairmanChatDock() {
     <>
       <button
         type="button"
-        className="fixed bottom-5 right-5 z-40 rounded-full border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-950 shadow-lg hover:bg-slate-50"
+        className="fixed right-5 top-20 z-40 flex h-11 w-11 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-950 shadow-lg hover:bg-slate-50"
         title="Open Tassi. You can drag, resize, snap, minimize, or close the assistant."
         onClick={() => {
           setDockLayout((current) =>
@@ -945,7 +945,8 @@ export function ChairmanChatDock() {
           setIsOpen(true);
         }}
       >
-        Tassi assistant
+        <Sparkles className="h-5 w-5 text-[#F5A623]" />
+        <span className="sr-only">Tassi assistant</span>
       </button>
 
       {isOpen && (

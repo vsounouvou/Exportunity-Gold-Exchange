@@ -23992,7 +23992,7 @@ export function BuyerHomePage({
       !isExportunityMarketplaceExperience ? (
         <button
           type="button"
-          className={`fixed right-4 max-w-[calc(100vw-2rem)] rounded-[22px] border border-[#E8C873]/30 bg-[#0B0B0D]/96 px-3 py-3 text-left text-white shadow-2xl shadow-black/40 backdrop-blur-xl transition-all duration-200 hover:border-[#E8C873]/40 hover:bg-[#0D1B2A] focus:outline-none focus:ring-2 focus:ring-[#E8C873] ${
+          className={`fixed right-4 flex h-14 w-14 items-center justify-center rounded-full border border-[#E8C873]/35 bg-[#0B0B0D]/96 text-white shadow-2xl shadow-black/40 backdrop-blur-xl transition-all duration-200 hover:border-[#E8C873]/50 hover:bg-[#0D1B2A] focus:outline-none focus:ring-2 focus:ring-[#E8C873] md:right-5 md:h-12 md:w-12 ${
             conciergeIsHidden
               ? "opacity-0 pointer-events-none translate-y-2"
               : "opacity-100"
@@ -24002,7 +24002,7 @@ export function BuyerHomePage({
               : ""
           }`}
           style={{
-            bottom: conciergeBottomOffset,
+            top: "calc(env(safe-area-inset-top,0px) + 74px)",
             zIndex: "var(--layer-concierge)",
           }}
           onClick={() => openConcierge({ focus: true })}
@@ -24010,8 +24010,8 @@ export function BuyerHomePage({
           aria-hidden={conciergeIsHidden}
           tabIndex={conciergeIsHidden ? -1 : 0}
         >
-          <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-[#E8C873]/35 bg-[#0B0B0D] shadow-lg shadow-[#D4AF37]/20">
+          <div className="relative flex items-center justify-center">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full border border-[#E8C873]/35 bg-[#0B0B0D] shadow-lg shadow-[#D4AF37]/20 md:h-9 md:w-9">
               {isGoldTenant ? (
                 <img
                   src={BDO_HOME_ASSETS.favicon}
@@ -24023,16 +24023,12 @@ export function BuyerHomePage({
                 <Bot className="h-5 w-5 text-[#0B0B0D]" />
               )}
             </div>
-            <div className="min-w-0">
+            <div className="sr-only">
               <div className="flex items-center gap-2">
                 <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[#E8C873]/80">
                   {conciergeProfile.roleLabel}
                 </p>
-                {cart.length > 0 ? (
-                  <Badge className="border-[#D4AF37]/30 bg-[#D4AF37]/15 text-[9px] text-[#E8C873]">
-                    {cart.length} article{cart.length > 1 ? "s" : ""}
-                  </Badge>
-                ) : null}
+                {cart.length > 0 ? `${cart.length} article${cart.length > 1 ? "s" : ""}` : null}
               </div>
               <p className="mt-1 text-sm font-semibold text-white">
                 Bonjour, je suis {conciergeProfile.shortName}.
@@ -24043,6 +24039,11 @@ export function BuyerHomePage({
                   : conciergeProfile.retailSummary}
               </p>
             </div>
+            {cart.length > 0 ? (
+              <Badge className="absolute -right-2 -top-2 border-[#D4AF37]/30 bg-[#D4AF37] px-1.5 text-[9px] text-[#0B0B0D]">
+                {cart.length}
+              </Badge>
+            ) : null}
           </div>
         </button>
       ) : null}

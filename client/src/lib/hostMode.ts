@@ -43,6 +43,10 @@ export function isZoguelandHost() {
   return isHostForTenant("zogueland");
 }
 
+export function isAgoojyeHost() {
+  return isHostForTenant("agoojye");
+}
+
 export function isExportunityMarketingHost() {
   const host = currentHost();
   const marketingHosts = new Set([

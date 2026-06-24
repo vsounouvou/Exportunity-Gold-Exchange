@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 900" role="img" aria-labelledby="title desc">
+  <title id="title">AGOOJYÉ hero visual placeholder</title>
+  <desc id="desc">Cinematic industrial electric bus placeholder in the AGOOJYÉ palette.</desc>
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#080808"/>
+      <stop offset=".52" stop-color="#123C2F"/>
+      <stop offset="1" stop-color="#171717"/>
+    </linearGradient>
+    <radialGradient id="glow" cx=".65" cy=".28" r=".55">
+      <stop offset="0" stop-color="#E4C46A" stop-opacity=".45"/>
+      <stop offset=".42" stop-color="#C99A36" stop-opacity=".18"/>
+      <stop offset="1" stop-color="#080808" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="1440" height="900" fill="url(#sky)"/>
+  <rect width="1440" height="900" fill="url(#glow)"/>
+  <path d="M0 670c172-35 322-52 451-52 133 0 252 23 384 25 182 3 340-39 605-62v319H0V670Z" fill="#050505"/>
+  <path d="M166 645h1108" stroke="#8A5A2B" stroke-width="2" opacity=".75"/>
+  <path d="M211 579c18-110 91-181 222-214 125-31 399-24 573 20 102 25 168 86 199 169l26 71c9 25-8 53-35 53H218c-29 0-44-32-27-55l20-44Z" fill="#0B0B0B"/>
+  <path d="M302 475c52-63 128-94 230-94h311c110 0 190 38 242 112l25 36H273l29-54Z" fill="#123C2F"/>
+  <path d="M352 424h158v105H289c15-48 36-83 63-105Zm198 0h166v105H550V424Zm205 0h121c79 0 137 35 176 105H755V424Z" fill="#F7F2E8" opacity=".9"/>
+  <path d="M254 617h918" stroke="#C99A36" stroke-width="16" stroke-linecap="round"/>
+  <path d="M333 680h778" stroke="#E4C46A" stroke-width="3" stroke-linecap="round" opacity=".55"/>
+  <circle cx="405" cy="693" r="72" fill="#050505" stroke="#C99A36" stroke-width="9"/>
+  <circle cx="405" cy="693" r="25" fill="#E4C46A"/>
+  <circle cx="1032" cy="693" r="72" fill="#050505" stroke="#C99A36" stroke-width="9"/>
+  <circle cx="1032" cy="693" r="25" fill="#E4C46A"/>
+  <path d="M1128 465h60l36 79h-77l-19-79Z" fill="#E4C46A"/>
+  <path d="M480 330h392" stroke="#C99A36" stroke-width="8" stroke-linecap="round" opacity=".62"/>
+  <path d="M170 294h120M193 329h84M1166 294h108M1141 332h150" stroke="#C99A36" stroke-width="3" opacity=".35"/>
+  <path d="M160 748h1090" stroke="#F7F2E8" stroke-width="2" opacity=".18"/>
+</svg>

@@ -1,4 +1,5 @@
 export type TenantKey =
+  | "agoojye"
   | "bdo"
   | "exportunity"
   | "zone"

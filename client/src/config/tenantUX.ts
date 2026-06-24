@@ -67,6 +67,16 @@ const TENANT_UX: Record<TenantKey, TenantUXConfig> = {
     adaptiveRailThreshold: 4,
     nonMapFlowLayout: true,
   },
+  agoojye: {
+    showMap: false,
+    showGoldChart: false,
+    showNewsBanner: false,
+    storeMode: "GENERAL",
+    categoryMode: "NORMAL",
+    heroMode: "NONE",
+    adaptiveRailThreshold: 4,
+    nonMapFlowLayout: true,
+  },
   zone: {
     showMap: false,
     showGoldChart: false,

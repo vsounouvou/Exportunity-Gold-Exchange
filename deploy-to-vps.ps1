@@ -109,6 +109,7 @@ Write-Host ""
 Write-Host "Server URLs:"
 Write-Host "  - https://boursedelor.com" -ForegroundColor Cyan
 Write-Host "  - https://exportunity.net" -ForegroundColor Cyan
+Write-Host "  - https://agoojye.com" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "Verify deployment:"
 Write-Host "  curl https://boursedelor.com/api/health/build" -ForegroundColor Yellow

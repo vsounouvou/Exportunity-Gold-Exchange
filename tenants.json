@@ -1,5 +1,18 @@
 [
   {
+    "id": 24,
+    "slug": "agoojye",
+    "name": "AGOOJYE Electric Mobility",
+    "baseUrl": "https://agoojye.com",
+    "envNamespace": "global",
+    "messagingProviderMode": "twilio",
+    "providerFlags": {
+      "sms": true,
+      "whatsappOtp": true,
+      "smsVia": "from_number"
+    }
+  },
+  {
     "id": 1,
     "slug": "bdo",
     "name": "Bourse de l'Or",

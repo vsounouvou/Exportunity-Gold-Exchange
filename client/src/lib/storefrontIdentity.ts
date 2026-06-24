@@ -5,6 +5,7 @@ import { getTenantConfigByKey } from "../../../tenants/index";
 const RETAIL_LABEL_BY_TENANT: Record<TenantKey, string> = {
   bdo: "Or Estampillé",
   exportunity: "Marketplace",
+  agoojye: "Mobilité électrique",
   zone: "Marketplace",
   mindbase: "Marketplace",
   met: "Materiaux",
@@ -19,6 +20,7 @@ const RETAIL_LABEL_BY_TENANT: Record<TenantKey, string> = {
 const PLATFORM_LABEL_BY_TENANT: Record<TenantKey, string> = {
   bdo: "Bourse de l'Or - Or Estampillé",
   exportunity: "Global Export Marketplace",
+  agoojye: "AGOOJYÉ Electric Mobility",
   zone: "Global Export Marketplace",
   mindbase: "MindBase Intelligence Marketplace",
   met: "Materiaux de construction",
@@ -36,6 +38,7 @@ const FALLBACK_CATEGORY_VISUALS: Record<TenantKey, TenantCategoryVisual[]> = {
     { slug: "stamped", label: "Or Estampille", icon: "shield", image: "/tenants/bdo/official/products/ingot-50g-22k-box.jpg", accent: "#E8C873" },
   ],
   exportunity: [{ slug: "default", label: "Marketplace", icon: "package", image: "/tenants/exportunity/placeholder-product.svg", accent: "#0EA5E9" }],
+  agoojye: [{ slug: "default", label: "Bus électriques", icon: "zap", image: "/tenants/agoojye/bus-placeholder.svg", accent: "#C99A36" }],
   zone: [{ slug: "default", label: "Marketplace", icon: "package", image: "/tenants/zone/placeholder-product.svg", accent: "#0EA5E9" }],
   mindbase: [{ slug: "default", label: "MindBase", icon: "brain", image: "/tenants/mindbase/placeholder-product.svg", accent: "#6B4EFF" }],
   met: [{ slug: "default", label: "Materials", icon: "bricks", image: "/tenants/met/placeholder-product.svg", accent: "#C19A6B" }],

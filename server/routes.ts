@@ -118,6 +118,7 @@ import mindbaseRouter from "./routes/mindbase";
 import metRouter from "./routes/met";
 import vsRouter from "./routes/vs";
 import hozRouter from "./routes/hoz";
+import agoojyeRouter from "./routes/agoojye";
 import meetRouter from "./routes/meet";
 import sellerRouter from "./routes/seller";
 import emailRouter from "./routes/email";
@@ -414,7 +415,7 @@ const TENANT_MANIFEST_OVERRIDES: Record<string, TenantManifestOverride> = {
   zogueland: {
     name: "Zogueland",
     short_name: "Zogueland",
-    description: "Stories, learning, and safe AI for children.",
+    description: "Stories, audiobooks, printables, and safe learning tools for children.",
     start_url: "/store",
     background_color: "#F8FAFC",
     theme_color: "#14B8A6",
@@ -432,6 +433,31 @@ const TENANT_MANIFEST_OVERRIDES: Record<string, TenantManifestOverride> = {
 function buildManifestIcons(tenantKey: string) {
   const tenantConfig = getTenantConfigByKey(tenantKey);
   const faviconPath = tenantConfig?.assets?.faviconPath || `/tenants/${tenantKey}/favicon.svg`;
+  if (tenantKey === "zogueland") {
+    return [
+      {
+        src: faviconPath,
+        sizes: "any",
+        type: "image/svg+xml",
+      },
+      {
+        src: "/tenants/zogueland/pwa/icon-192.png",
+        sizes: "192x192",
+        type: "image/png",
+      },
+      {
+        src: "/tenants/zogueland/pwa/icon-512.png",
+        sizes: "512x512",
+        type: "image/png",
+      },
+      {
+        src: "/tenants/zogueland/pwa/icon-512-maskable.png",
+        sizes: "512x512",
+        type: "image/png",
+        purpose: "maskable",
+      },
+    ];
+  }
   return [
     {
       src: faviconPath,
@@ -1067,6 +1093,8 @@ export function registerRoutes(app: Express): Server {
   app.use("/", vsRouter);
   // House of Zogue tenant module (public + admin APIs)
   app.use("/", hozRouter);
+  // AGOOJYE electric mobility tenant module (public + admin APIs)
+  app.use("/", agoojyeRouter);
   // Zogueland tenant module (public story generator API)
   app.use("/", zoguelandRouter);
   // Mindbase marketplace + studio + internal invoke APIs
@@ -1173,6 +1201,12 @@ export function registerRoutes(app: Express): Server {
     res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
     res.setHeader("Content-Type", "application/manifest+json; charset=utf-8");
     res.json(buildTenantManifest("bdo"));
+  });
+
+  app.get("/manifest-zogueland.webmanifest", (req, res) => {
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
+    res.setHeader("Content-Type", "application/manifest+json; charset=utf-8");
+    res.json(buildTenantManifest("zogueland"));
   });
   
   // Register Goals management routes

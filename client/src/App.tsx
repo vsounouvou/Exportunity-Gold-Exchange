@@ -9,6 +9,7 @@ import { telemetry } from "@platform/telemetry";
 import { getTenantConfigByKey, getTenantHomeRoute } from "../../tenants/index";
 import {
   isBdoHost,
+  isAgoojyeHost,
   isExportunityMarketingHost,
   isHozHost,
   isMetHost,
@@ -313,6 +314,30 @@ const HozAdminMediaPage = lazyPage(() => import("@/pages/hoz/HozAdminPages"), "H
 const HozAdminInboxPage = lazyPage(() => import("@/pages/hoz/HozAdminPages"), "HozAdminInboxPage");
 const HozAdminWebsitePage = lazyPage(() => import("@/pages/hoz/HozAdminPages"), "HozAdminWebsitePage");
 const HozAdminSettingsPage = lazyPage(() => import("@/pages/hoz/HozAdminPages"), "HozAdminSettingsPage");
+const AgoojyeHomePage = lazyPage(() => import("@/pages/agoojye/AgoojyePublicPages"), "AgoojyeHomePage");
+const AgoojyeVisionPage = lazyPage(() => import("@/pages/agoojye/AgoojyePublicPages"), "AgoojyeVisionPage");
+const AgoojyeHistoryPage = lazyPage(() => import("@/pages/agoojye/AgoojyePublicPages"), "AgoojyeHistoryPage");
+const AgoojyeChallengePage = lazyPage(() => import("@/pages/agoojye/AgoojyePublicPages"), "AgoojyeChallengePage");
+const AgoojyeTeamsPage = lazyPage(() => import("@/pages/agoojye/AgoojyePublicPages"), "AgoojyeTeamsPage");
+const AgoojyePartnersPage = lazyPage(() => import("@/pages/agoojye/AgoojyePublicPages"), "AgoojyePartnersPage");
+const AgoojyeSponsorsPage = lazyPage(() => import("@/pages/agoojye/AgoojyePublicPages"), "AgoojyeSponsorsPage");
+const AgoojyeMediaPage = lazyPage(() => import("@/pages/agoojye/AgoojyePublicPages"), "AgoojyeMediaPage");
+const AgoojyeContactPage = lazyPage(() => import("@/pages/agoojye/AgoojyePublicPages"), "AgoojyeContactPage");
+const AgoojyeAdminDashboardPage = lazyPage(() => import("@/pages/agoojye/AgoojyeAdminPages"), "AgoojyeAdminDashboardPage");
+const AgoojyeAdminUsersPage = lazyPage(() => import("@/pages/agoojye/AgoojyeAdminPages"), "AgoojyeAdminUsersPage");
+const AgoojyeAdminTeamsPage = lazyPage(() => import("@/pages/agoojye/AgoojyeAdminPages"), "AgoojyeAdminTeamsPage");
+const AgoojyeAdminParticipantsPage = lazyPage(() => import("@/pages/agoojye/AgoojyeAdminPages"), "AgoojyeAdminParticipantsPage");
+const AgoojyeAdminEmailsPage = lazyPage(() => import("@/pages/agoojye/AgoojyeAdminPages"), "AgoojyeAdminEmailsPage");
+const AgoojyeAdminMessagesPage = lazyPage(() => import("@/pages/agoojye/AgoojyeAdminPages"), "AgoojyeAdminMessagesPage");
+const AgoojyeAdminTasksPage = lazyPage(() => import("@/pages/agoojye/AgoojyeAdminPages"), "AgoojyeAdminTasksPage");
+const AgoojyeAdminMilestonesPage = lazyPage(() => import("@/pages/agoojye/AgoojyeAdminPages"), "AgoojyeAdminMilestonesPage");
+const AgoojyeAdminDocumentsPage = lazyPage(() => import("@/pages/agoojye/AgoojyeAdminPages"), "AgoojyeAdminDocumentsPage");
+const AgoojyeAdminPartnersPage = lazyPage(() => import("@/pages/agoojye/AgoojyeAdminPages"), "AgoojyeAdminPartnersPage");
+const AgoojyeAdminSponsorsPage = lazyPage(() => import("@/pages/agoojye/AgoojyeAdminPages"), "AgoojyeAdminSponsorsPage");
+const AgoojyeAdminMediaPage = lazyPage(() => import("@/pages/agoojye/AgoojyeAdminPages"), "AgoojyeAdminMediaPage");
+const AgoojyeAdminContentPage = lazyPage(() => import("@/pages/agoojye/AgoojyeAdminPages"), "AgoojyeAdminContentPage");
+const AgoojyeAdminSettingsPage = lazyPage(() => import("@/pages/agoojye/AgoojyeAdminPages"), "AgoojyeAdminSettingsPage");
+const AgoojyeAdminAuditPage = lazyPage(() => import("@/pages/agoojye/AgoojyeAdminPages"), "AgoojyeAdminAuditPage");
 const BdoActualitesPage = lazyPage(() => import("@/pages/bdo/BdoAuthorityPages"), "BdoActualitesPage");
 const BdoReglementationPage = lazyPage(() => import("@/pages/bdo/BdoAuthorityPages"), "BdoReglementationPage");
 const BdoIndustrieMinierePage = lazyPage(() => import("@/pages/bdo/BdoAuthorityPages"), "BdoIndustrieMinierePage");
@@ -488,6 +513,7 @@ function RootPublicRoute() {
   }
 
   if (tenant.key === "vs") return <VsHomePage />;
+  if (tenant.key === "agoojye") return <AgoojyeHomePage />;
   if (tenant.key === "met") return <MetHomePage />;
   if (tenant.key === "hoz") return <HozHomePage />;
   if (tenant.key === "mindbase") return <MindbaseLandingPage />;
@@ -505,13 +531,19 @@ function StoreRoute() {
       ? "exchange"
       : "city";
   const exchangeVariant = normalizedLocation.startsWith("/pme-exchange") ? "pme" : "export";
-  const isMapRoute = normalizedLocation === "/map" || normalizedLocation === "/marketplace/map" || normalizedLocation.startsWith("/wholesale/map") || normalizedLocation === "/map/";
+  const isMapRoute =
+    normalizedLocation === "/map" ||
+    normalizedLocation === "/map/" ||
+    normalizedLocation === "/marketplace/map" ||
+    normalizedLocation.startsWith("/marketplace/map/") ||
+    normalizedLocation === "/wholesale/map" ||
+    normalizedLocation.startsWith("/wholesale/map/");
   const isMapDominantRoute =
     normalizedLocation.startsWith("/marketplace") ||
     normalizedLocation.startsWith("/wholesale") ||
+    normalizedLocation.startsWith("/zone") ||
     normalizedLocation.startsWith("/ready-for-export") ||
-    normalizedLocation.startsWith("/pme-exchange") ||
-    normalizedLocation === "/store";
+    normalizedLocation.startsWith("/pme-exchange");
   const shellMode = isMapRoute
       ? "mapFull"
       : isMapDominantRoute
@@ -567,10 +599,24 @@ function MarketingAwareAboutRoute() {
 }
 
 function UnifiedContactRoute() {
+  const { tenant } = useTenant();
+  if (tenant.key === "agoojye" || isAgoojyeHost()) return <AgoojyeContactPage />;
   if (isVsHost()) return <VsContactPage />;
   if (isMetHost()) return <MetContactPage />;
   if (isHozHost()) return <HozContactPage />;
   return <MarketingRedirect to="/talk" />;
+}
+
+function UnifiedMediaRoute() {
+  const { tenant } = useTenant();
+  if (tenant.key === "agoojye" || isAgoojyeHost()) return <AgoojyeMediaPage />;
+  if (isHozHost()) return <HozMediaPage />;
+  return <ExportunityMarketingMediaPage />;
+}
+
+function AgoojyeOnlyRoute({ children }: { children: React.ReactNode }) {
+  const { tenant } = useTenant();
+  return tenant.key === "agoojye" || isAgoojyeHost() ? <>{children}</> : <Redirect to="/zone" />;
 }
 
 function MarketingAwarePrivacyRoute() {
@@ -754,6 +800,12 @@ function App() {
           </Route>
           <Route path="/blog" component={() => (isMetHost() ? <MetBlogPage /> : <MarketingRedirect to="/media" />)} />
           <Route path="/contact" component={UnifiedContactRoute} />
+          <Route path="/vision" component={() => <AgoojyeOnlyRoute><AgoojyeVisionPage /></AgoojyeOnlyRoute>} />
+          <Route path="/history" component={() => <AgoojyeOnlyRoute><AgoojyeHistoryPage /></AgoojyeOnlyRoute>} />
+          <Route path="/challenge" component={() => <AgoojyeOnlyRoute><AgoojyeChallengePage /></AgoojyeOnlyRoute>} />
+          <Route path="/teams" component={() => <AgoojyeOnlyRoute><AgoojyeTeamsPage /></AgoojyeOnlyRoute>} />
+          <Route path="/partners" component={() => <AgoojyeOnlyRoute><AgoojyePartnersPage /></AgoojyeOnlyRoute>} />
+          <Route path="/sponsors" component={() => <AgoojyeOnlyRoute><AgoojyeSponsorsPage /></AgoojyeOnlyRoute>} />
           <Route path="/mentions-legales" component={() => (isMetHost() ? <MetLegalMentionsPage /> : <Redirect to="/terms" />)} />
           <Route path="/politique-confidentialite" component={() => (isMetHost() ? <MetPrivacyPolicyPage /> : <Redirect to="/privacy" />)} />
           <Route path="/a/quick" component={ChairmanQuickPage} />
@@ -889,7 +941,7 @@ function App() {
           <Route path="/platform/screenshots" component={ExportunityMarketingPlatformScreenshotsPage} />
           <Route path="/platform/modules" component={ExportunityMarketingPlatformModulesPage} />
           <Route path="/platform/modules/:slug" component={ExportunityMarketingPlatformModuleDetailPage} />
-          <Route path="/media" component={() => (isHozHost() ? <HozMediaPage /> : <ExportunityMarketingMediaPage />)} />
+          <Route path="/media" component={UnifiedMediaRoute} />
           <Route path="/media/press" component={() => (isHozHost() ? <Redirect to="/media" /> : <MarketingRedirect to="/media" />)} />
           <Route path="/media/videos" component={() => (isHozHost() ? <Redirect to="/media" /> : <MarketingRedirect to="/media" />)} />
           <Route path="/media/profiles" component={() => (isHozHost() ? <Redirect to="/media" /> : <MarketingRedirect to="/media" />)} />
@@ -1223,6 +1275,86 @@ function App() {
           <Route path="/admin/vs/website">
             <ProtectedRoute>
               <VsAdminWebsitePage />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/admin/agoojye">
+            <ProtectedRoute>
+              <AgoojyeAdminDashboardPage />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/admin/agoojye/dashboard">
+            <ProtectedRoute>
+              <Redirect to="/admin/agoojye" />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/admin/agoojye/users">
+            <ProtectedRoute>
+              <AgoojyeAdminUsersPage />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/admin/agoojye/teams">
+            <ProtectedRoute>
+              <AgoojyeAdminTeamsPage />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/admin/agoojye/participants">
+            <ProtectedRoute>
+              <AgoojyeAdminParticipantsPage />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/admin/agoojye/emails">
+            <ProtectedRoute>
+              <AgoojyeAdminEmailsPage />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/admin/agoojye/messages">
+            <ProtectedRoute>
+              <AgoojyeAdminMessagesPage />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/admin/agoojye/tasks">
+            <ProtectedRoute>
+              <AgoojyeAdminTasksPage />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/admin/agoojye/milestones">
+            <ProtectedRoute>
+              <AgoojyeAdminMilestonesPage />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/admin/agoojye/documents">
+            <ProtectedRoute>
+              <AgoojyeAdminDocumentsPage />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/admin/agoojye/partners">
+            <ProtectedRoute>
+              <AgoojyeAdminPartnersPage />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/admin/agoojye/sponsors">
+            <ProtectedRoute>
+              <AgoojyeAdminSponsorsPage />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/admin/agoojye/media">
+            <ProtectedRoute>
+              <AgoojyeAdminMediaPage />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/admin/agoojye/content">
+            <ProtectedRoute>
+              <AgoojyeAdminContentPage />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/admin/agoojye/settings">
+            <ProtectedRoute>
+              <AgoojyeAdminSettingsPage />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/admin/agoojye/audit">
+            <ProtectedRoute>
+              <AgoojyeAdminAuditPage />
             </ProtectedRoute>
           </Route>
           <Route path="/admin/hoz">

@@ -31,6 +31,29 @@ export type BrandInfo = {
 };
 
 export const BRAND_MAP: Record<TenantKey, BrandInfo> = {
+  agoojye: {
+    name: "AGOOJYÉ",
+    shortName: "AGOOJYÉ",
+    nameAscii: "AGOOJYE",
+    domain: "agoojye.com",
+    canonicalUrl: "https://agoojye.com",
+    metaTitle: "AGOOJYÉ - Mobilité électrique née au Bénin",
+    metaDescription:
+      "AGOOJYÉ est une plateforme industrielle de mobilité électrique née au Bénin, inspirée par l'héritage des Amazones du Dahomey et conçue pour l'Afrique.",
+    complianceNotice: "Les partenaires, sponsors et participants sont validés par l'équipe AGOOJYÉ avant toute annonce officielle.",
+    tagline: "Fait au Bénin. Conçu pour l'Afrique. Regardé par le monde.",
+    subtitle: "Mobilité électrique, héritage et souveraineté industrielle africaine",
+    faviconPath: "/tenants/agoojye/favicon.svg",
+    productScope: "MULTI_CATEGORY",
+    conciergeScope: "MULTI_CATEGORY",
+    landing: "browse-first",
+    theme: {
+      primary: "#C99A36",
+      secondary: "#123C2F",
+      accent: "#E4C46A",
+      background: "#080808",
+    },
+  },
   bdo: {
     name: "Bourse de l'Or",
     shortName: "BDO",

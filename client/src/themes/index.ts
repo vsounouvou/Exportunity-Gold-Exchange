@@ -1,4 +1,5 @@
 import { bdoTenantConfig } from "../../../tenants/bdo/config";
+import { agoojyeTenantConfig } from "../../../tenants/agoojye/config";
 import { exportunityTenantConfig } from "../../../tenants/exportunity/config";
 import { hozTenantConfig } from "../../../tenants/hoz/config";
 import { maddTenantConfig } from "../../../tenants/madd/config";
@@ -13,6 +14,7 @@ import type { TenantTheme } from "./types";
 import type { TenantKey } from "@/types/tenant";
 
 export const bdoTheme = bdoTenantConfig.storefrontTheme as TenantTheme;
+export const agoojyeTheme = agoojyeTenantConfig.storefrontTheme as TenantTheme;
 export const exportunityTheme = exportunityTenantConfig.storefrontTheme as TenantTheme;
 export const hozTheme = hozTenantConfig.storefrontTheme as TenantTheme;
 export const maddTheme = maddTenantConfig.storefrontTheme as TenantTheme;
@@ -26,6 +28,7 @@ export const zoguelandTheme = zoguelandTenantConfig.storefrontTheme as TenantThe
 
 const THEME_BY_TENANT: Record<TenantKey, TenantTheme> = {
   bdo: bdoTheme,
+  agoojye: agoojyeTheme,
   exportunity: exportunityTheme,
   zone: zoneTheme,
   mindbase: mindbaseTheme,

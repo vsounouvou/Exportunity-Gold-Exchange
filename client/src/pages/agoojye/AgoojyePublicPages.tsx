@@ -50,16 +50,50 @@ const phases = [
 ];
 
 const defaultTeams = [
-  "Leadership & Coordination",
-  "Engineering",
+  "Direction & coordination",
+  "Ingénierie",
   "Design",
-  "Software & AI",
-  "Communication & Media",
-  "Legal & Governance",
-  "Sponsorship & Partnerships",
-  "Industrial & Supply Chain",
-  "Schools & Talent",
+  "Logiciel & IA",
+  "Communication & médias",
+  "Juridique & gouvernance",
+  "Sponsoring & partenariats",
+  "Industrie & chaîne d'approvisionnement",
+  "Écoles & talents",
 ];
+
+const publicLabelMap: Record<string, string> = {
+  active: "actif",
+  planned: "planifié",
+  in_progress: "en cours",
+  done: "terminé",
+  delayed: "retardé",
+  Confirmed: "Confirmé",
+  "In discussion": "En discussion",
+  Prospect: "Prospect",
+  "Sponsor prospect": "Sponsor prospect",
+  "Technical contributor": "Contributeur technique",
+  "Institutional stakeholder": "Partie prenante institutionnelle",
+  "Media partner": "Partenaire média",
+  Supplier: "Fournisseur",
+  Initiator: "Initiateur",
+  "Co-lead / Accelerator Partner": "Co-lead / partenaire accélérateur",
+  "Industrial Partners": "Partenaires industriels",
+  "Technical Partners": "Partenaires techniques",
+  "Schools & Universities": "Écoles & universités",
+  Sponsors: "Sponsors",
+  "Media Partners": "Partenaires médias",
+  "Institutional Partners": "Partenaires institutionnels",
+  "Supplier Partners": "Fournisseurs partenaires",
+  Investor: "Investisseur",
+  press: "presse",
+  image: "image",
+  video: "vidéo",
+};
+
+function publicLabel(value?: string | null) {
+  const raw = String(value || "").trim();
+  return publicLabelMap[raw] || raw;
+}
 
 const sponsorPackages = [
   ["Partenaire fondateur", "Visibilité principale sur le challenge, le reveal gala, le documentaire et les supports institutionnels."],
@@ -154,7 +188,7 @@ function Stat({ value, label }: { value: string; label: string }) {
 }
 
 function StatusBadge({ label }: { label: string }) {
-  return <span className="rounded-sm border border-[#C99A36]/40 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-[#C99A36]">{label}</span>;
+  return <span className="rounded-sm border border-[#C99A36]/40 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-[#C99A36]">{publicLabel(label)}</span>;
 }
 
 function HomeHero() {
@@ -341,7 +375,7 @@ function PartnerGrid({ partners, dark = false }: { partners: BootstrapPayload["p
             <StatusBadge label={partner.status} />
           </div>
           <h3 className="mt-4 text-lg font-semibold">{partner.name}</h3>
-          <p className="mt-1 text-xs uppercase tracking-wide text-[#C99A36]">{partner.category}</p>
+          <p className="mt-1 text-xs uppercase tracking-wide text-[#C99A36]">{publicLabel(partner.category)}</p>
           <p className={`mt-3 text-sm leading-6 ${dark ? "text-[#D8CFBF]" : "text-[#5B5347]"}`}>{partner.description || "Description à compléter."}</p>
         </article>
       ))}
@@ -505,7 +539,7 @@ export function AgoojyeMediaPage() {
               <Video className="h-5 w-5 text-[#C99A36]" />
               <h3 className="mt-3 font-semibold">{item.title}</h3>
               <p className="mt-2 text-sm leading-6 text-[#5B5347]">{item.description}</p>
-              <p className="mt-4 text-xs uppercase tracking-wide text-[#8A5A2B]">{item.mediaType}</p>
+              <p className="mt-4 text-xs uppercase tracking-wide text-[#8A5A2B]">{publicLabel(item.mediaType)}</p>
             </article>
           ))}
         </div>

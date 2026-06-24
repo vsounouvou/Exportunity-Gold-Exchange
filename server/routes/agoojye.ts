@@ -66,15 +66,15 @@ const ROLES = [
 ] as const;
 
 const TEAMS = [
-  ["leadership-coordination", "Leadership & Coordination", "Coordonner les decisions, la cadence, les arbitrages et les relations institutionnelles."],
-  ["engineering", "Engineering", "Concevoir, valider et assembler les systemes mecaniques, electriques et de securite du prototype."],
-  ["design", "Design", "Definir l'identite produit, les interfaces, l'experience passager et les supports visuels."],
-  ["software-ai", "Software & AI", "Construire les outils numeriques, la documentation technique et les workflows d'intelligence operationnelle."],
-  ["communication-media", "Communication & Media", "Produire la narration, la presse, le documentaire et la visibilite publique du mouvement."],
-  ["legal-governance", "Legal & Governance", "Structurer les accords, la gouvernance, les risques, les NDA et la conformite."],
-  ["sponsorship-partnerships", "Sponsorship & Partnerships", "Organiser les sponsors, partenaires, prospects, packages et suivis commerciaux."],
-  ["industrial-supply-chain", "Industrial & Supply Chain", "Piloter les fournisseurs, pieces, BOM, logistique, atelier et trajectoire d'industrialisation."],
-  ["schools-talent", "Schools & Talent", "Mobiliser les ecoles, les profils techniques et le pipeline de talents."],
+  ["leadership-coordination", "Direction & coordination", "Coordonner les décisions, la cadence, les arbitrages et les relations institutionnelles."],
+  ["engineering", "Ingénierie", "Concevoir, valider et assembler les systèmes mécaniques, électriques et de sécurité du prototype."],
+  ["design", "Design", "Définir l'identité produit, les interfaces, l'expérience passager et les supports visuels."],
+  ["software-ai", "Logiciel & IA", "Construire les outils numériques, la documentation technique et les workflows d'intelligence opérationnelle."],
+  ["communication-media", "Communication & médias", "Produire la narration, la presse, le documentaire et la visibilité publique du mouvement."],
+  ["legal-governance", "Juridique & gouvernance", "Structurer les accords, la gouvernance, les risques, les NDA et la conformité."],
+  ["sponsorship-partnerships", "Sponsoring & partenariats", "Organiser les sponsors, partenaires, prospects, packages et suivis commerciaux."],
+  ["industrial-supply-chain", "Industrie & chaîne d'approvisionnement", "Piloter les fournisseurs, pièces, BOM, logistique, atelier et trajectoire d'industrialisation."],
+  ["schools-talent", "Écoles & talents", "Mobiliser les écoles, les profils techniques et le pipeline de talents."],
 ] as const;
 
 const EMAIL_ALIASES = [
@@ -98,65 +98,65 @@ const PARTNERS = [
     name: "Exportunity Machinery",
     category: "Initiator",
     status: "Confirmed",
-    description: "Initiateur et porteur de la vision industrielle de mobilite electrique.",
+    description: "Initiateur et porteur de la vision industrielle de mobilité électrique.",
   },
   {
     name: "Future Studio",
     category: "Co-lead / Accelerator Partner",
     status: "Confirmed",
-    description: "Partenaire co-lead pour l'acceleration, le digital, le design et la coordination innovation.",
+    description: "Partenaire co-lead pour l'accélération, le digital, le design et la coordination innovation.",
   },
   {
     name: "GDIZ",
     category: "Industrial Partners",
     status: "Institutional stakeholder",
-    description: "Ecosysteme industriel et ambition de production locale a structurer.",
+    description: "Écosystème industriel et ambition de production locale à structurer.",
   },
   {
-    name: "Technical schools",
+    name: "Écoles techniques",
     category: "Schools & Universities",
     status: "Technical contributor",
-    description: "Viviers de talents techniques, etudiants, encadreurs et contributeurs.",
+    description: "Viviers de talents techniques, étudiants, encadreurs et contributeurs.",
   },
   {
     name: "Sponsors",
     category: "Sponsors",
     status: "Sponsor prospect",
-    description: "Entreprises et institutions appelees a soutenir le Challenge Vehicule Electrique.",
+    description: "Entreprises et institutions appelées à soutenir le Challenge Véhicule Électrique.",
   },
   {
-    name: "Institutional partners",
+    name: "Partenaires institutionnels",
     category: "Institutional Partners",
     status: "Institutional stakeholder",
-    description: "Acteurs publics et institutionnels a mobiliser autour du mouvement industriel.",
+    description: "Acteurs publics et institutionnels à mobiliser autour du mouvement industriel.",
   },
 ] as const;
 
 const MILESTONES = [
-  ["Project preparation", "Preparation du projet, cadrage et mobilisation initiale.", "2026-06-01T00:00:00.000Z", "in_progress", "Exportunity Machinery", "public"],
-  ["Team formation", "Formation des equipes techniques et operationnelles.", "2026-06-15T00:00:00.000Z", "planned", "Coordination", "public"],
-  ["Technical validation", "Validation technique, fournisseurs, BOM et faisabilite.", "2026-07-01T00:00:00.000Z", "planned", "Engineering", "public"],
-  ["Prototype assembly", "Assemblage du prototype avant la phase publique.", "2026-07-08T00:00:00.000Z", "planned", "Engineering", "private"],
-  ["Live assembly", "Assemblage public cible du bus electrique.", "2026-07-15T00:00:00.000Z", "planned", "AGOOJYE Team", "public"],
-  ["Reveal gala", "Gala de revelation cible et presentation institutionnelle.", "2026-07-25T00:00:00.000Z", "planned", "Communication & Media", "public"],
-  ["Documentary production", "Production documentaire fin juillet.", "2026-07-28T00:00:00.000Z", "planned", "Media", "public"],
-  ["Public video release", "Publication publique cible de la video documentaire.", "2026-08-01T00:00:00.000Z", "planned", "Media", "public"],
-  ["Bus exhibition and order collection", "Exposition du bus et collecte d'interets commerciaux apres revelation.", "2026-08-05T00:00:00.000Z", "planned", "Partnerships", "public"],
-  ["Capital mobilization", "Mobilisation de capital pour la societe de vehicules electriques.", "2026-08-15T00:00:00.000Z", "planned", "Leadership", "private"],
+  ["Préparation du projet", "Préparation du projet, cadrage et mobilisation initiale.", "2026-06-01T00:00:00.000Z", "in_progress", "Exportunity Machinery", "public"],
+  ["Formation des équipes", "Formation des équipes techniques et opérationnelles.", "2026-06-15T00:00:00.000Z", "planned", "Coordination", "public"],
+  ["Validation technique", "Validation technique, fournisseurs, BOM et faisabilité.", "2026-07-01T00:00:00.000Z", "planned", "Ingénierie", "public"],
+  ["Assemblage du prototype", "Assemblage du prototype avant la phase publique.", "2026-07-08T00:00:00.000Z", "planned", "Ingénierie", "private"],
+  ["Assemblage public", "Assemblage public cible du bus électrique.", "2026-07-15T00:00:00.000Z", "planned", "AGOOJYÉ Team", "public"],
+  ["Reveal gala", "Gala de révélation cible et présentation institutionnelle.", "2026-07-25T00:00:00.000Z", "planned", "Communication & médias", "public"],
+  ["Production documentaire", "Production documentaire fin juillet.", "2026-07-28T00:00:00.000Z", "planned", "Média", "public"],
+  ["Sortie publique de la vidéo", "Publication publique cible de la vidéo documentaire.", "2026-08-01T00:00:00.000Z", "planned", "Média", "public"],
+  ["Exposition du bus et collecte d'intérêts", "Exposition du bus et collecte d'intérêts commerciaux après révélation.", "2026-08-05T00:00:00.000Z", "planned", "Partenariats", "public"],
+  ["Mobilisation de capital", "Mobilisation de capital pour la société de véhicules électriques.", "2026-08-15T00:00:00.000Z", "planned", "Leadership", "private"],
 ] as const;
 
 const DOCUMENTS = [
-  ["Strategic plan", "Strategy", "Plan directeur industriel et narratif."],
-  ["Sponsorship package", "Sponsorship", "Offres de visibilite sponsors."],
-  ["NDA", "NDA", "Accord de confidentialite participants et partenaires."],
-  ["Participant agreement", "Legal", "Engagement des contributeurs du challenge."],
-  ["Team organigram", "Strategy", "Structure des equipes et roles confirmes."],
-  ["Technical bill of materials", "Technical", "BOM et liste technique du prototype."],
-  ["Supplier list", "Partner documents", "Fournisseurs et statuts de discussion."],
-  ["Gala concept note", "Communication", "Concept note du reveal gala."],
-  ["Documentary concept", "Media", "Note de production documentaire."],
-  ["Legal structuring note", "Legal", "Structuration juridique de la future societe."],
-  ["Homologation plan", "Technical", "Plan d'homologation et securite."],
+  ["Plan stratégique", "Strategy", "Plan directeur industriel et narratif."],
+  ["Dossier sponsor", "Sponsorship", "Offres de visibilité sponsors."],
+  ["NDA", "NDA", "Accord de confidentialité participants et partenaires."],
+  ["Accord participant", "Legal", "Engagement des contributeurs du challenge."],
+  ["Organigramme des équipes", "Strategy", "Structure des équipes et rôles confirmés."],
+  ["Nomenclature technique", "Technical", "BOM et liste technique du prototype."],
+  ["Liste fournisseurs", "Partner documents", "Fournisseurs et statuts de discussion."],
+  ["Note conceptuelle du gala", "Communication", "Concept note du reveal gala."],
+  ["Concept documentaire", "Media", "Note de production documentaire."],
+  ["Note de structuration juridique", "Legal", "Structuration juridique de la future société."],
+  ["Plan d'homologation", "Technical", "Plan d'homologation et sécurité."],
 ] as const;
 
 const CONTENT_BLOCKS = [
@@ -235,7 +235,7 @@ function actor(req: any) {
 function ensureAgoojyeTenant(req: any, res: any) {
   const tenant = req.tenant;
   if (!tenant || String(tenant.key || "").trim().toLowerCase() !== "agoojye") {
-    res.status(404).json({ message: "AGOOJYE routes are unavailable on this tenant host" });
+    res.status(404).json({ message: "Les routes AGOOJYÉ ne sont pas disponibles sur ce tenant." });
     return null;
   }
   return tenant;
@@ -310,7 +310,17 @@ async function ensureAgoojyeSeed(tenantId: number) {
         updatedAt: now,
       })),
     )
-    .onConflictDoNothing();
+    .onConflictDoUpdate({
+      target: [agoojyeTeams.tenantId, agoojyeTeams.slug],
+      set: {
+        name: sql`excluded.name`,
+        mission: sql`excluded.mission`,
+        description: sql`excluded.description`,
+        status: sql`excluded.status`,
+        visibility: sql`excluded.visibility`,
+        updatedAt: now,
+      },
+    });
 
   await db
     .insert(agoojyeEmailIdentities)
@@ -335,7 +345,16 @@ async function ensureAgoojyeSeed(tenantId: number) {
   await db
     .insert(agoojyePartners)
     .values(PARTNERS.map((partner) => ({ tenantId, ...partner, visibility: "public", createdAt: now, updatedAt: now })))
-    .onConflictDoNothing();
+    .onConflictDoUpdate({
+      target: [agoojyePartners.tenantId, agoojyePartners.name],
+      set: {
+        category: sql`excluded.category`,
+        status: sql`excluded.status`,
+        description: sql`excluded.description`,
+        visibility: sql`excluded.visibility`,
+        updatedAt: now,
+      },
+    });
 
   await db
     .insert(agoojyeMilestones)
@@ -353,7 +372,18 @@ async function ensureAgoojyeSeed(tenantId: number) {
         updatedAt: now,
       })),
     )
-    .onConflictDoNothing();
+    .onConflictDoUpdate({
+      target: [agoojyeMilestones.tenantId, agoojyeMilestones.title],
+      set: {
+        description: sql`excluded.description`,
+        date: sql`excluded.date`,
+        status: sql`excluded.status`,
+        owner: sql`excluded.owner`,
+        visibility: sql`excluded.visibility`,
+        sortOrder: sql`excluded.sort_order`,
+        updatedAt: now,
+      },
+    });
 
   await db
     .insert(agoojyeDocuments)
@@ -369,7 +399,16 @@ async function ensureAgoojyeSeed(tenantId: number) {
         updatedAt: now,
       })),
     )
-    .onConflictDoNothing();
+    .onConflictDoUpdate({
+      target: [agoojyeDocuments.tenantId, agoojyeDocuments.title],
+      set: {
+        category: sql`excluded.category`,
+        description: sql`excluded.description`,
+        status: sql`excluded.status`,
+        visibility: sql`excluded.visibility`,
+        updatedAt: now,
+      },
+    });
 
   for (const block of CONTENT_BLOCKS) {
     await db
@@ -475,7 +514,7 @@ publicApi.post("/public/sponsors", async (req: any, res) => {
         contactPerson,
         email,
         phone: normalizeText(req.body?.phone) || null,
-        interest: normalizeText(req.body?.interest || req.body?.sponsorshipInterest) || "Sponsorship inquiry",
+        interest: normalizeText(req.body?.interest || req.body?.sponsorshipInterest) || "Demande sponsoring",
         budgetRange: normalizeText(req.body?.budgetRange) || null,
         message: normalizeText(req.body?.message) || null,
         source: "public.sponsors",
@@ -498,7 +537,7 @@ publicApi.post("/public/contact", async (req: any, res) => {
     const tenantId = Number(req.tenant.id);
     const fullName = normalizeText(req.body?.fullName || req.body?.contactPerson);
     const email = normalizeText(req.body?.email).toLowerCase();
-    const inquiryType = normalizeText(req.body?.inquiryType) || "General inquiry";
+    const inquiryType = normalizeText(req.body?.inquiryType) || "Demande générale";
     if (!fullName || !email) return res.status(400).json({ message: "Nom et email sont requis." });
     const [item] = await db
       .insert(agoojyeSponsorLeads)
@@ -858,7 +897,7 @@ adminApi.get("/dashboard", async (req: any, res) => {
       bootstrap: await bootstrapPayload(tenantId, false),
     });
   } catch (error: any) {
-    return res.status(500).json({ message: error?.message || "Failed to load AGOOJYE dashboard" });
+    return res.status(500).json({ message: error?.message || "Impossible de charger le tableau de bord AGOOJYÉ." });
   }
 });
 
@@ -866,7 +905,7 @@ adminApi.get("/:resource", async (req: any, res) => {
   try {
     const tenantId = Number(req.tenant.id);
     const resource = getResource(req.params.resource);
-    if (!resource) return res.status(404).json({ message: "Unknown AGOOJYE resource" });
+    if (!resource) return res.status(404).json({ message: "Ressource AGOOJYÉ inconnue." });
     const table: any = resource.table;
     const limit = Math.min(Math.max(Number(req.query.limit) || 250, 1), 500);
     const rows = await db.select().from(table).where(eq(table.tenantId, tenantId)).orderBy(desc(table.updatedAt), desc(table.createdAt)).limit(limit);
@@ -879,7 +918,7 @@ adminApi.get("/:resource", async (req: any, res) => {
         : rows;
     return res.json({ ok: true, items });
   } catch (error: any) {
-    return res.status(500).json({ message: error?.message || "Failed to list AGOOJYE resource" });
+    return res.status(500).json({ message: error?.message || "Impossible de lister la ressource AGOOJYÉ." });
   }
 });
 
@@ -887,7 +926,7 @@ adminApi.post("/:resource", async (req: any, res) => {
   try {
     const tenantId = Number(req.tenant.id);
     const resource = getResource(req.params.resource);
-    if (!resource) return res.status(404).json({ message: "Unknown AGOOJYE resource" });
+    if (!resource) return res.status(404).json({ message: "Ressource AGOOJYÉ inconnue." });
     const table: any = resource.table;
     const values = resource.create(tenantId, req.body || {}, req);
     if ("email" in values && !normalizeText((values as any).email)) return res.status(400).json({ message: "email is required" });
@@ -900,7 +939,7 @@ adminApi.post("/:resource", async (req: any, res) => {
         where: and(eq(agoojyeProjectUsers.tenantId, tenantId), eq(agoojyeProjectUsers.id, Number((values as any).userId))),
       });
       if (!user?.confirmedRole) {
-        return res.status(400).json({ message: "Only confirmed participants can receive individual AGOOJYE email identities." });
+        return res.status(400).json({ message: "Seuls les participants confirmés peuvent recevoir une identité email individuelle AGOOJYÉ." });
       }
     }
 
@@ -936,7 +975,7 @@ adminApi.post("/:resource", async (req: any, res) => {
     await audit(tenantId, { actor: actor(req), action: "create", entityType: resource.entity, entityId: Number((item as any).id) || null });
     return res.status(201).json({ ok: true, item });
   } catch (error: any) {
-    return res.status(500).json({ message: error?.message || "Failed to create AGOOJYE resource" });
+    return res.status(500).json({ message: error?.message || "Impossible de créer la ressource AGOOJYÉ." });
   }
 });
 
@@ -946,7 +985,7 @@ adminApi.patch("/:resource/:id", async (req: any, res) => {
     const id = Number(req.params.id);
     if (!Number.isFinite(id) || id <= 0) return res.status(400).json({ message: "Invalid id" });
     const resource = getResource(req.params.resource);
-    if (!resource) return res.status(404).json({ message: "Unknown AGOOJYE resource" });
+    if (!resource) return res.status(404).json({ message: "Ressource AGOOJYÉ inconnue." });
     const table: any = resource.table;
     const patch = sanitizePatch(resource, req.body || {});
     if (Object.keys(patch).length <= 1) return res.status(400).json({ message: "No supported fields to update" });
@@ -961,7 +1000,7 @@ adminApi.patch("/:resource/:id", async (req: any, res) => {
     await audit(tenantId, { actor: actor(req), action: "update", entityType: resource.entity, entityId: id, metadata: { fields: Object.keys(patch) } });
     return res.json({ ok: true, item });
   } catch (error: any) {
-    return res.status(500).json({ message: error?.message || "Failed to update AGOOJYE resource" });
+    return res.status(500).json({ message: error?.message || "Impossible de mettre à jour la ressource AGOOJYÉ." });
   }
 });
 

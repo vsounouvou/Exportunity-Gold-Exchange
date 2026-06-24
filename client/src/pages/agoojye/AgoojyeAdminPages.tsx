@@ -290,6 +290,180 @@ const resourceConfig: Record<Exclude<SectionKey, "overview">, { endpoint: string
   },
 };
 
+const adminLabelMap: Record<string, string> = {
+  displayName: "Nom affiché",
+  email: "Email",
+  role: "Rôle",
+  status: "Statut",
+  confirmedRole: "Rôle confirmé",
+  emailAccountCreated: "Email créé",
+  name: "Nom",
+  mission: "Mission",
+  visibility: "Visibilité",
+  leadUserId: "ID lead",
+  userId: "ID utilisateur",
+  teamId: "ID équipe",
+  roleTitle: "Rôle projet",
+  participantType: "Type participant",
+  certificateEligible: "Certificat éligible",
+  emailAddress: "Adresse email",
+  emailType: "Type email",
+  provider: "Provider",
+  canSend: "Envoi",
+  canReceive: "Réception",
+  subject: "Sujet",
+  messageType: "Type message",
+  senderUserId: "ID expéditeur",
+  createdAt: "Créé le",
+  title: "Titre",
+  priority: "Priorité",
+  assignedTo: "ID assigné",
+  dueDate: "Date limite",
+  date: "Date",
+  owner: "Responsable",
+  sortOrder: "Ordre",
+  category: "Catégorie",
+  version: "Version",
+  fileUrl: "URL fichier",
+  contactPerson: "Contact",
+  website: "Site web",
+  companyName: "Entreprise",
+  interest: "Intérêt",
+  budgetRange: "Budget",
+  source: "Source",
+  mediaType: "Type média",
+  page: "Page",
+  section: "Section",
+  key: "Clé",
+  titleFr: "Titre FR",
+  updatedBy: "Mis à jour par",
+  updatedAt: "Mis à jour le",
+  providerName: "Provider",
+  smtpHost: "SMTP host",
+  smtpPort: "SMTP port",
+  smtpUsername: "SMTP username",
+  fromEmail: "From email",
+  replyToEmail: "Reply-to email",
+  smtpPasswordEncrypted: "Secret SMTP",
+  actor: "Acteur",
+  action: "Action",
+  entityType: "Entité",
+  entityId: "ID entité",
+  "Project Director": "Directeur de projet",
+  "Project Coordinator": "Coordinateur projet",
+  "Team Lead": "Lead équipe",
+  Contributor: "Contributeur",
+  Participant: "Participant",
+  Sponsor: "Sponsor",
+  Partner: "Partenaire",
+  Media: "Média",
+  Viewer: "Lecteur",
+  Invited: "Invité",
+  Pending: "En attente",
+  Active: "Actif",
+  Suspended: "Suspendu",
+  Archived: "Archivé",
+  active: "actif",
+  forming: "en formation",
+  paused: "en pause",
+  archived: "archivé",
+  public: "public",
+  private: "privé",
+  student: "étudiant",
+  engineer: "ingénieur",
+  developer: "développeur",
+  designer: "designer",
+  architect: "architecte",
+  lawyer: "juriste",
+  communicator: "communicant",
+  sponsor: "sponsor",
+  partner: "partenaire",
+  investor: "investisseur",
+  admin: "admin",
+  individual: "individuel",
+  team: "équipe",
+  alias: "alias",
+  group: "groupe",
+  system: "système",
+  manual: "manuel",
+  google_workspace: "Google Workspace",
+  zoho: "Zoho",
+  proton: "Proton",
+  smtp: "SMTP",
+  requested: "demandé",
+  provisioned: "provisionné",
+  suspended: "suspendu",
+  direct: "direct",
+  announcement: "annonce",
+  low: "faible",
+  medium: "moyenne",
+  high: "haute",
+  critical: "critique",
+  todo: "à faire",
+  in_progress: "en cours",
+  blocked: "bloqué",
+  review: "revue",
+  done: "terminé",
+  planned: "planifié",
+  delayed: "retardé",
+  Strategy: "Stratégie",
+  Legal: "Juridique",
+  Sponsorship: "Sponsoring",
+  Technical: "Technique",
+  Design: "Design",
+  Software: "Logiciel",
+  Communication: "Communication",
+  "Partner documents": "Documents partenaires",
+  "Participant documents": "Documents participants",
+  NDA: "NDA",
+  Contracts: "Contrats",
+  "Meeting notes": "Comptes rendus",
+  draft: "brouillon",
+  under_review: "en revue",
+  approved: "approuvé",
+  team_only: "équipe seulement",
+  admin_only: "admin seulement",
+  Initiator: "Initiateur",
+  "Co-lead / Accelerator Partner": "Co-lead / partenaire accélérateur",
+  "Industrial Partners": "Partenaires industriels",
+  "Technical Partners": "Partenaires techniques",
+  "Schools & Universities": "Écoles & universités",
+  Sponsors: "Sponsors",
+  "Media Partners": "Partenaires médias",
+  "Institutional Partners": "Partenaires institutionnels",
+  "Supplier Partners": "Fournisseurs partenaires",
+  Investor: "Investisseur",
+  Confirmed: "Confirmé",
+  "In discussion": "En discussion",
+  Prospect: "Prospect",
+  "Sponsor prospect": "Sponsor prospect",
+  "Technical contributor": "Contributeur technique",
+  "Institutional stakeholder": "Partie prenante institutionnelle",
+  "Media partner": "Partenaire média",
+  Supplier: "Fournisseur",
+  Rejected: "Rejeté",
+  New: "Nouveau",
+  Contacted: "Contacté",
+  "Package sent": "Dossier envoyé",
+  Committed: "Engagé",
+  Paid: "Payé",
+  image: "image",
+  video: "vidéo",
+  press_release: "communiqué",
+  brand_asset: "asset marque",
+  documentary: "documentaire",
+  gallery: "galerie",
+  published: "publié",
+  not_configured: "non configuré",
+  configured: "configuré",
+  testing: "test",
+  disabled: "désactivé",
+};
+
+function adminLabel(value: string) {
+  return adminLabelMap[value] || value;
+}
+
 function AdminShell({ section, children }: { section: SectionKey; children: ReactNode }) {
   return (
     <div className="min-h-full bg-[#080808] p-4 text-[#F7F2E8]">
@@ -467,7 +641,7 @@ function ResourcePage({ section }: { section: Exclude<SectionKey, "overview"> })
               <tr>
                 <th className="px-3 py-3">ID</th>
                 {config.columns.map((column) => (
-                  <th key={column} className="px-3 py-3">{column}</th>
+                  <th key={column} className="px-3 py-3">{adminLabel(column)}</th>
                 ))}
                 <th className="px-3 py-3">Actions</th>
               </tr>
@@ -528,7 +702,7 @@ function EditorField({ field, value, onChange }: { field: FieldDef; value: any; 
         {field.label}
         <select value={value || ""} onChange={(event) => onChange(event.target.value)} className={base}>
           {(field.options || []).map((option) => (
-            <option key={option} value={option}>{option}</option>
+            <option key={option} value={option}>{adminLabel(option)}</option>
           ))}
         </select>
       </label>
@@ -549,7 +723,7 @@ function CellValue({ value }: { value: unknown }) {
   if (typeof value === "object") return <code className="text-xs">{JSON.stringify(value)}</code>;
   const raw = String(value);
   if (/^\d{4}-\d{2}-\d{2}T/.test(raw)) return <span>{new Date(raw).toLocaleString("fr-FR")}</span>;
-  return <span className="break-words">{raw}</span>;
+  return <span className="break-words">{adminLabel(raw)}</span>;
 }
 
 function QuickActions({ section, item, onPatch, pending }: { section: SectionKey; item: any; onPatch: (patch: Record<string, unknown>) => void; pending?: boolean }) {
@@ -568,8 +742,8 @@ function QuickActions({ section, item, onPatch, pending }: { section: SectionKey
     }
     if (section === "emails") {
       return [
-        { label: "Provisioned", patch: { status: "provisioned" } },
-        { label: "Active", patch: { status: "active" } },
+        { label: "Provisionné", patch: { status: "provisioned" } },
+        { label: "Actif", patch: { status: "active" } },
       ];
     }
     if (section === "tasks") {
@@ -592,7 +766,7 @@ function QuickActions({ section, item, onPatch, pending }: { section: SectionKey
     }
     if (section === "documents") {
       return [
-        { label: "Review", patch: { status: "under_review" } },
+        { label: "Revue", patch: { status: "under_review" } },
         { label: "Approuver", patch: { status: "approved" } },
       ];
     }

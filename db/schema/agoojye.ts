@@ -225,6 +225,7 @@ export const agoojyeMilestones = pgTable(
     updatedAt: updated(),
   },
   (t) => ({
+    tenantTitleUnique: uniqueIndex("agoojye_milestones_tenant_title_uidx").on(t.tenantId, t.title),
     byTenantVisibility: index("agoojye_milestones_tenant_visibility_idx").on(t.tenantId, t.visibility, t.sortOrder),
   }),
 );
@@ -247,6 +248,7 @@ export const agoojyeDocuments = pgTable(
     updatedAt: updated(),
   },
   (t) => ({
+    tenantTitleUnique: uniqueIndex("agoojye_documents_tenant_title_uidx").on(t.tenantId, t.title),
     byTenantCategory: index("agoojye_documents_tenant_category_idx").on(t.tenantId, t.category),
     byTenantVisibility: index("agoojye_documents_tenant_visibility_idx").on(t.tenantId, t.visibility),
   }),
@@ -272,6 +274,7 @@ export const agoojyePartners = pgTable(
     updatedAt: updated(),
   },
   (t) => ({
+    tenantNameUnique: uniqueIndex("agoojye_partners_tenant_name_uidx").on(t.tenantId, t.name),
     byTenantCategory: index("agoojye_partners_tenant_category_idx").on(t.tenantId, t.category),
     byTenantStatus: index("agoojye_partners_tenant_status_idx").on(t.tenantId, t.status),
   }),

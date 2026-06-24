@@ -24,7 +24,7 @@ export const agoojyeTenantConfig: TenantConfig = {
   modulesDisabled: agoojyeModulesDisabled,
   themeTokens: agoojyeThemeTokens,
   storefrontHero: {
-    eyebrow: "Mobilite electrique nee au Benin",
+    eyebrow: "Mobilité électrique née au Bénin",
     title: "AGOOJYÉ",
     subtitle: "Un mouvement industriel béninois pour construire la mobilité électrique africaine.",
     ctaPrimary: { label: "Rejoindre le mouvement", href: "/contact" },

@@ -582,13 +582,13 @@ function ContactForm() {
     companyName: "",
     email: "",
     phone: "",
-    inquiryType: "General inquiry",
+    inquiryType: "Demande générale",
     message: "",
     website: "",
   });
   const mutation = useMutation({
     mutationFn: () => apiRequest("/api/agoojye/public/contact", "POST", form),
-    onSuccess: () => setForm({ fullName: "", companyName: "", email: "", phone: "", inquiryType: "General inquiry", message: "", website: "" }),
+    onSuccess: () => setForm({ fullName: "", companyName: "", email: "", phone: "", inquiryType: "Demande générale", message: "", website: "" }),
   });
 
   function submit(event: FormEvent) {
@@ -608,11 +608,11 @@ function ContactForm() {
       <label className="text-sm font-medium text-[#F7F2E8]">
         Type de demande
         <select value={form.inquiryType} onChange={(event) => setForm((prev) => ({ ...prev, inquiryType: event.target.value }))} className="mt-2 w-full rounded-md border border-[#C99A36]/35 bg-[#080808] px-3 py-2 text-sm outline-none focus:border-[#E4C46A]">
-          <option>General inquiry</option>
-          <option>Sponsorship inquiry</option>
-          <option>Talent/participant inquiry</option>
-          <option>Media inquiry</option>
-          <option>Institutional inquiry</option>
+          <option>Demande générale</option>
+          <option>Demande sponsoring</option>
+          <option>Candidature talent / participant</option>
+          <option>Demande média</option>
+          <option>Demande institutionnelle</option>
         </select>
       </label>
       <label className="text-sm font-medium text-[#F7F2E8]">

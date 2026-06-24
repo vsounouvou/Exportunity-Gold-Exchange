@@ -18,8 +18,8 @@ App host binding: 127.0.0.1:5002 -> 5000/tcp
 Nginx Proxy Manager container: npm-npm-1
 NPM upstream host: exportunity-app
 NPM upstream port: 5000
-Latest deployed release: 20260624-100126-416760517eda
-Latest deployed commit: 416760517eda
+Current verified runtime release: 20260624-100126-416760517eda
+Current verified runtime commit: 416760517eda
 ```
 
 Nginx Proxy Manager already has an enabled HTTP proxy host for:

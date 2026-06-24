@@ -40,7 +40,7 @@
     "forwardHost": "exportunity-app",
     "forwardPort": 5000,
     "ssl": {
-      "status": "pending_dns",
+      "status": "pending_app_admin_dns",
       "certificateProvider": "lets_encrypt",
       "forceSslAfterCertificate": true
     }

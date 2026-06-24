@@ -18,8 +18,8 @@ App host binding: 127.0.0.1:5002 -> 5000/tcp
 Nginx Proxy Manager container: npm-npm-1
 NPM upstream host: exportunity-app
 NPM upstream port: 5000
-Current verified runtime release: 20260624-102947-0f3fb22f8150
-Current verified runtime commit: 0f3fb22f8150
+Current verified runtime release: 20260624-230849-aba8af87f405
+Current verified runtime commit: aba8af87f405
 ```
 
 Nginx Proxy Manager already has an enabled HTTP proxy host for:
@@ -31,7 +31,7 @@ app.agoojiye.com
 admin.agoojiye.com
 ```
 
-It currently has no SSL certificate attached because the public DNS records do not resolve yet. After DNS is created, attach a Let's Encrypt certificate and force SSL.
+It currently has no SSL certificate attached because `app.agoojiye.com` and `admin.agoojiye.com` do not resolve yet. After those two DNS records are created, attach a Let's Encrypt certificate and force SSL.
 
 ## Required OVH DNS Records
 
@@ -41,7 +41,7 @@ In OVH Manager, open:
 Web Cloud -> Domain names -> agoojiye.com -> DNS zone
 ```
 
-Create these A records:
+Create these A records. `@` and `www` are already live in OVH as of 24 June 2026; `app` and `admin` still need to be added.
 
 | Type | Subdomain | Target | TTL |
 | --- | --- | --- | --- |

@@ -20,6 +20,8 @@ NPM upstream host: exportunity-app
 NPM upstream port: 5000
 Current verified runtime release: 20260624-230849-aba8af87f405
 Current verified runtime commit: aba8af87f405
+NPM certificate ID: 9
+NPM certificate expires: 2026-09-22
 ```
 
 Nginx Proxy Manager already has an enabled HTTP proxy host for:
@@ -31,7 +33,7 @@ app.agoojiye.com
 admin.agoojiye.com
 ```
 
-It currently has no SSL certificate attached because `app.agoojiye.com` and `admin.agoojiye.com` do not resolve yet. After those two DNS records are created, attach a Let's Encrypt certificate and force SSL.
+It has a Let's Encrypt certificate attached, Force SSL enabled, and HTTP/2 enabled.
 
 ## Required OVH DNS Records
 
@@ -41,7 +43,7 @@ In OVH Manager, open:
 Web Cloud -> Domain names -> agoojiye.com -> DNS zone
 ```
 
-Create these A records. `@` and `www` are already live in OVH as of 24 June 2026; `app` and `admin` still need to be added.
+These OVH A records are live as of 24 June 2026:
 
 | Type | Subdomain | Target | TTL |
 | --- | --- | --- | --- |
@@ -97,27 +99,24 @@ Expected tenant response includes:
 
 ## Nginx Proxy Manager SSL
 
-After all four A records resolve to `51.254.143.30`:
+SSL was attached in Nginx Proxy Manager after all four A records resolved to `51.254.143.30`:
 
-1. Open Nginx Proxy Manager at the existing admin endpoint.
-2. Open the proxy host for `agoojiye.com`, `www.agoojiye.com`, `app.agoojiye.com`, `admin.agoojiye.com`.
-3. Confirm these fields:
+1. Proxy host domains:
+   - `agoojiye.com`
+   - `www.agoojiye.com`
+   - `app.agoojiye.com`
+   - `admin.agoojiye.com`
+2. Proxy fields:
    - Scheme: `http`
    - Forward hostname / IP: `exportunity-app`
    - Forward port: `5000`
    - Websockets support: enabled
    - Block common exploits: enabled
-4. In the SSL tab, choose "Request a new SSL Certificate".
-5. Include all four domains:
-   - `agoojiye.com`
-   - `www.agoojiye.com`
-   - `app.agoojiye.com`
-   - `admin.agoojiye.com`
-6. Enable:
+3. SSL:
+   - Certificate: Let's Encrypt / NPM cert ID `9`
    - Force SSL
    - HTTP/2 support
-   - HSTS only after confirming HTTPS works
-7. Save.
+   - HSTS disabled for initial launch
 
 HTTPS checks:
 

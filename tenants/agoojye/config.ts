@@ -6,8 +6,12 @@ export const agoojyeTenantConfig: TenantConfig = {
   slug: "agoojye",
   brandName: "AGOOJYÉ Electric Mobility",
   tagline: "Fait au Bénin. Conçu pour l'Afrique. Regardé par le monde.",
-  primaryDomain: "agoojye.com",
+  primaryDomain: "agoojiye.com",
   domains: [
+    "agoojiye.com",
+    "www.agoojiye.com",
+    "app.agoojiye.com",
+    "admin.agoojiye.com",
     "agoojye.com",
     "www.agoojye.com",
     "app.agoojye.com",

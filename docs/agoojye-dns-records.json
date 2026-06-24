@@ -1,5 +1,5 @@
 {
-  "domain": "agoojye.com",
+  "domain": "agoojiye.com",
   "provider": "OVH",
   "serverIpv4": "51.254.143.30",
   "records": [
@@ -31,10 +31,10 @@
   "reverseProxy": {
     "provider": "Nginx Proxy Manager",
     "domains": [
-      "agoojye.com",
-      "www.agoojye.com",
-      "app.agoojye.com",
-      "admin.agoojye.com"
+      "agoojiye.com",
+      "www.agoojiye.com",
+      "app.agoojiye.com",
+      "admin.agoojiye.com"
     ],
     "scheme": "http",
     "forwardHost": "exportunity-app",

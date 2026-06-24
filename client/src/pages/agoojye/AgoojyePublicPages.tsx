@@ -157,7 +157,7 @@ function AgoojyeLayout({ active, children }: { active: string; children: ReactNo
             </p>
           </div>
           <div className="text-sm text-[#B8AE9D]">
-            <p>contact@agoojye.com</p>
+            <p>contact@agoojiye.com</p>
             <p>Fait au Bénin. Conçu pour l'Afrique.</p>
           </div>
         </div>
@@ -555,7 +555,7 @@ export function AgoojyeContactPage() {
         <div className="grid gap-8 lg:grid-cols-[0.8fr_1.2fr]">
           <div className="space-y-4 text-[#D8CFBF]">
             <p>Choisissez le bon type de demande : générale, sponsor, talent, média ou institutionnelle.</p>
-            <p className="flex items-center gap-2"><Mail className="h-4 w-4 text-[#C99A36]" /> contact@agoojye.com</p>
+            <p className="flex items-center gap-2"><Mail className="h-4 w-4 text-[#C99A36]" /> contact@agoojiye.com</p>
             <p className="flex items-center gap-2"><MessageSquare className="h-4 w-4 text-[#C99A36]" /> Les demandes sont enregistrées dans le CRM interne.</p>
           </div>
           <ContactForm />

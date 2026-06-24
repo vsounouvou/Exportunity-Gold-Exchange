@@ -35,8 +35,8 @@ export const BRAND_MAP: Record<TenantKey, BrandInfo> = {
     name: "AGOOJYÉ",
     shortName: "AGOOJYÉ",
     nameAscii: "AGOOJYE",
-    domain: "agoojye.com",
-    canonicalUrl: "https://agoojye.com",
+    domain: "agoojiye.com",
+    canonicalUrl: "https://agoojiye.com",
     metaTitle: "AGOOJYÉ - Mobilité électrique née au Bénin",
     metaDescription:
       "AGOOJYÉ est une plateforme industrielle de mobilité électrique née au Bénin, inspirée par l'héritage des Amazones du Dahomey et conçue pour l'Afrique.",

@@ -117,11 +117,11 @@ const resourceConfig: Record<Exclude<SectionKey, "overview">, { endpoint: string
   emails: {
     endpoint: "email-identities",
     title: "Identités email officielles",
-    description: "Créer ou demander les emails agoojye.com. Les emails individuels exigent un rôle confirmé.",
+    description: "Créer ou demander les emails agoojiye.com. Les emails individuels exigent un rôle confirmé.",
     columns: ["emailAddress", "displayName", "emailType", "provider", "status", "canSend", "canReceive"],
     fields: [
       { key: "userId", label: "ID utilisateur confirmé" },
-      { key: "emailAddress", label: "Adresse email", required: true, placeholder: "prenom.nom@agoojye.com" },
+      { key: "emailAddress", label: "Adresse email", required: true, placeholder: "prenom.nom@agoojiye.com" },
       { key: "displayName", label: "Nom affiché" },
       { key: "emailType", label: "Type", kind: "select", options: ["individual", "team", "alias", "group", "system"] },
       { key: "provider", label: "Provider", kind: "select", options: ["manual", "google_workspace", "zoho", "proton", "smtp"] },

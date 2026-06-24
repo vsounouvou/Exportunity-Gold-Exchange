@@ -1,0 +1,48 @@
+{
+  "domain": "agoojye.com",
+  "provider": "OVH",
+  "serverIpv4": "51.254.143.30",
+  "records": [
+    {
+      "type": "A",
+      "subdomain": "@",
+      "target": "51.254.143.30",
+      "ttl": 300
+    },
+    {
+      "type": "A",
+      "subdomain": "www",
+      "target": "51.254.143.30",
+      "ttl": 300
+    },
+    {
+      "type": "A",
+      "subdomain": "app",
+      "target": "51.254.143.30",
+      "ttl": 300
+    },
+    {
+      "type": "A",
+      "subdomain": "admin",
+      "target": "51.254.143.30",
+      "ttl": 300
+    }
+  ],
+  "reverseProxy": {
+    "provider": "Nginx Proxy Manager",
+    "domains": [
+      "agoojye.com",
+      "www.agoojye.com",
+      "app.agoojye.com",
+      "admin.agoojye.com"
+    ],
+    "scheme": "http",
+    "forwardHost": "exportunity-app",
+    "forwardPort": 5000,
+    "ssl": {
+      "status": "pending_dns",
+      "certificateProvider": "lets_encrypt",
+      "forceSslAfterCertificate": true
+    }
+  }
+}

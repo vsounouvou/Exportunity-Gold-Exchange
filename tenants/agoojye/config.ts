@@ -4,7 +4,7 @@ import { agoojyeThemeTokens } from "./theme";
 
 export const agoojyeTenantConfig: TenantConfig = {
   slug: "agoojye",
-  brandName: "AGOOJYE Electric Mobility",
+  brandName: "AGOOJIYE Electric Mobility",
   tagline: "Fait au Bénin. Conçu pour l'Afrique. Regardé par le monde.",
   primaryDomain: "agoojiye.com",
   domains: [
@@ -29,7 +29,7 @@ export const agoojyeTenantConfig: TenantConfig = {
   themeTokens: agoojyeThemeTokens,
   storefrontHero: {
     eyebrow: "Mobilité électrique née au Bénin",
-    title: "AGOOJYE",
+    title: "AGOOJIYE",
     subtitle: "Un mouvement industriel béninois pour construire la mobilité électrique africaine.",
     ctaPrimary: { label: "Rejoindre le mouvement", href: "/contact" },
     ctaSecondary: { label: "Devenir partenaire", href: "/partners" },
@@ -52,9 +52,9 @@ export const agoojyeTenantConfig: TenantConfig = {
     },
   },
   assets: {
-    logoPath: "/tenants/agoojye/logo-full.svg",
-    faviconPath: "/tenants/agoojye/favicon.svg",
-    placeholderProduct: "/tenants/agoojye/bus-placeholder.svg",
-    heroImages: ["/tenants/agoojye/hero-bus.svg"],
+    logoPath: "/tenants/agoojye/logo-primary.png",
+    faviconPath: "/tenants/agoojye/favicon.png",
+    placeholderProduct: "/brand/agoojiye/vehicle/sections/agoojiye-shuttle-side-profile-1280.webp",
+    heroImages: ["/brand/agoojiye/vehicle/hero/agoojiye-shuttle-hero-1280.webp"],
   },
 };

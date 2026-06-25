@@ -1,4 +1,4 @@
-# AGOOJYE Image Prompts
+# AGOOJIYE Image Prompts
 
 All generated images must follow this visual identity:
 
@@ -6,7 +6,7 @@ Premium Afrofuturistic Beninese electric mobility brand. Dark graphite and metal
 
 ## Hero Image
 
-Create a cinematic hero image for AGOOJYE, a premium Beninese electric mobility brand inspired by the Agojie, the legendary Amazons of Dahomey. Show a futuristic electric bus prototype in a modern African industrial environment, with subtle Benin-inspired design cues, black and metallic gold accents, warm evening light, disciplined engineering team silhouettes in the background, no text, no logos, no weapons, premium automotive photography style, Afrofuturistic but realistic.
+Create a cinematic hero image for AGOOJIYE, a premium Beninese electric mobility brand inspired by the Agojie, the legendary Amazons of Dahomey. Show a futuristic electric bus prototype in a modern African industrial environment, with subtle Benin-inspired design cues, black and metallic gold accents, warm evening light, disciplined engineering team silhouettes in the background, no text, no logos, no weapons, premium automotive photography style, Afrofuturistic but realistic.
 
 ## Electric Bus
 
@@ -26,7 +26,7 @@ Create a premium corporate sponsorship image for an African electric mobility pr
 
 ## Documentary Image
 
-Create a cinematic documentary still for a project called AGOOJYE, showing the making of Benin's first electric bus prototype. Young African builders, workshop lights, close-up of hands assembling components, sketches, battery modules, wires, and determined faces. Premium film look, warm contrast, no text, no logos.
+Create a cinematic documentary still for a project called AGOOJIYE, showing the making of Benin's first electric bus prototype. Young African builders, workshop lights, close-up of hands assembling components, sketches, battery modules, wires, and determined faces. Premium film look, warm contrast, no text, no logos.
 
 ## Website Background Pattern
 

@@ -1093,7 +1093,7 @@ export function registerRoutes(app: Express): Server {
   app.use("/", vsRouter);
   // House of Zogue tenant module (public + admin APIs)
   app.use("/", hozRouter);
-  // AGOOJYE electric mobility tenant module (public + admin APIs)
+  // AGOOJIYE electric mobility tenant module (public + admin APIs)
   app.use("/", agoojyeRouter);
   // Zogueland tenant module (public story generator API)
   app.use("/", zoguelandRouter);

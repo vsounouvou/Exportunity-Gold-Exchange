@@ -1,4 +1,4 @@
-# AGOOJYE email DNS and mailbox handoff
+# AGOOJIYE email DNS and mailbox handoff
 
 Date: 2026-06-25
 
@@ -26,7 +26,7 @@ Roundcube currently has the password plugin installed but not enabled. Until tha
 
 ## Shared aliases
 
-The following aliases are active and currently fan out to all five initial AGOOJYE mailboxes:
+The following aliases are active and currently fan out to all five initial AGOOJIYE mailboxes:
 
 ```text
 hello@agoojiye.com
@@ -44,7 +44,7 @@ legal@agoojiye.com
 privacy@agoojiye.com
 ```
 
-The app database has matching AGOOJYE tenant records:
+The app database has matching AGOOJIYE tenant records:
 
 - `email_accounts`: 5 active accounts for tenant `3162`
 - `email_aliases`: 65 alias routes for tenant `3162`
@@ -128,4 +128,4 @@ DMARC starts in monitoring mode. Move from `p=none` to `p=quarantine` and then `
 
 ## Optional branded mail access
 
-The verified login endpoint today is `mail.exportunity.net`. If AGOOJYE needs branded webmail at `mail.agoojiye.com` or `webmail.agoojiye.com`, add the DNS record and an Nginx Proxy Manager host with a Let's Encrypt certificate before telling users to use that branded URL.
+The verified login endpoint today is `mail.exportunity.net`. If AGOOJIYE needs branded webmail at `mail.agoojiye.com` or `webmail.agoojiye.com`, add the DNS record and an Nginx Proxy Manager host with a Let's Encrypt certificate before telling users to use that branded URL.

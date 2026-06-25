@@ -7,7 +7,7 @@ export type FlutterwaveApiVersion = "v3" | "v4";
 
 const TENANT_SUFFIX_ALIASES: Record<TenantKey, string[]> = {
   bdo: ["BDO", "BOURSE"],
-  agoojye: ["AGOOJYE", "AGOOJYE_MOBILITY"],
+  agoojye: ["AGOOJIYE", "AGOOJIYE_MOBILITY", "AGOOJYE", "AGOOJYE_MOBILITY"],
   exportunity: ["EXPO", "EXPORTUNITY"],
   zone: ["ZONE"],
   mindbase: ["MINDBASE"],

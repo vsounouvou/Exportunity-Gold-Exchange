@@ -128,9 +128,14 @@ function AgoojyeLayout({ active, children }: { active: string; children: ReactNo
     <div className="min-h-screen bg-[#080808] text-[#F7F2E8]">
       <header className="sticky top-0 z-30 border-b border-[#C99A36]/20 bg-[#080808]/92 backdrop-blur">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4">
-          <a href="/" className="flex items-center gap-3" aria-label="AGOOJYE accueil">
-            <img src="/tenants/agoojye/logo-icon.svg" alt="" className="h-9 w-9" />
-            <span className="font-semibold tracking-[0.22em] text-[#F7F2E8]">AGOOJYE</span>
+          <a href="/" className="flex items-center gap-3" aria-label="AGOOJIYE accueil">
+            <img
+              src="/tenants/agoojye/logo-wordmark.png"
+              alt="AGOOJIYE"
+              width={930}
+              height={200}
+              className="h-10 w-auto max-w-[180px] object-contain md:max-w-[220px]"
+            />
           </a>
           <nav className="hidden items-center gap-5 text-sm text-[#D8CFBF] lg:flex">
             {nav.map(([href, label]) => (
@@ -151,7 +156,14 @@ function AgoojyeLayout({ active, children }: { active: string; children: ReactNo
       <footer className="border-t border-[#C99A36]/20 bg-[#050505]">
         <div className="mx-auto grid max-w-7xl gap-6 px-4 py-8 md:grid-cols-[1fr_auto]">
           <div>
-            <p className="text-sm font-semibold tracking-[0.2em] text-[#E4C46A]">AGOOJYE</p>
+            <img
+              src="/tenants/agoojye/logo-wordmark.png"
+              alt="AGOOJIYE"
+              width={930}
+              height={200}
+              loading="lazy"
+              className="h-10 w-auto max-w-[220px] object-contain"
+            />
             <p className="mt-2 max-w-2xl text-sm text-[#B8AE9D]">
               Mobilité électrique née au Bénin, inspirée par l'héritage des Amazones du Dahomey et tournée vers la souveraineté industrielle africaine.
             </p>
@@ -195,13 +207,42 @@ function HomeHero() {
   return (
     <section className="relative overflow-hidden bg-[#080808]">
       <div className="absolute inset-0 opacity-70">
-        <img src="/tenants/agoojye/hero-bus.svg" alt="" className="h-full w-full object-cover" />
+        <picture className="block h-full w-full">
+          <source
+            media="(max-width: 767px)"
+            srcSet="/brand/agoojiye/vehicle/mobile/agoojiye-shuttle-hero-mobile-768.avif"
+            type="image/avif"
+          />
+          <source
+            media="(max-width: 767px)"
+            srcSet="/brand/agoojiye/vehicle/mobile/agoojiye-shuttle-hero-mobile-768.webp"
+            type="image/webp"
+          />
+          <source
+            srcSet="/brand/agoojiye/vehicle/hero/agoojiye-shuttle-hero-1916.avif 1916w, /brand/agoojiye/vehicle/hero/agoojiye-shuttle-hero-1600.avif 1600w, /brand/agoojiye/vehicle/hero/agoojiye-shuttle-hero-1280.avif 1280w, /brand/agoojiye/vehicle/hero/agoojiye-shuttle-hero-960.avif 960w, /brand/agoojiye/vehicle/hero/agoojiye-shuttle-hero-640.avif 640w"
+            sizes="100vw"
+            type="image/avif"
+          />
+          <source
+            srcSet="/brand/agoojiye/vehicle/hero/agoojiye-shuttle-hero-1916.webp 1916w, /brand/agoojiye/vehicle/hero/agoojiye-shuttle-hero-1600.webp 1600w, /brand/agoojiye/vehicle/hero/agoojiye-shuttle-hero-1280.webp 1280w, /brand/agoojiye/vehicle/hero/agoojiye-shuttle-hero-960.webp 960w, /brand/agoojiye/vehicle/hero/agoojiye-shuttle-hero-640.webp 640w"
+            sizes="100vw"
+            type="image/webp"
+          />
+          <img
+            src="/brand/agoojiye/vehicle/hero/agoojiye-shuttle-hero-1280.jpg"
+            alt=""
+            width={1280}
+            height={526}
+            className="h-full w-full object-cover object-[60%_center]"
+            fetchPriority="high"
+          />
+        </picture>
       </div>
       <div className="absolute inset-0 bg-gradient-to-r from-[#080808] via-[#080808]/82 to-[#080808]/20" />
       <div className="relative mx-auto grid min-h-[calc(100vh-74px)] max-w-7xl items-center gap-10 px-4 py-20 lg:grid-cols-[1.05fr_0.95fr]">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[#E4C46A]">Mobilité électrique née au Bénin</p>
-          <h1 className="mt-5 text-6xl font-black leading-none tracking-normal text-[#F7F2E8] md:text-8xl">AGOOJYE</h1>
+          <h1 className="mt-5 text-6xl font-black leading-none tracking-normal text-[#F7F2E8] md:text-8xl">AGOOJIYE</h1>
           <p className="mt-5 max-w-2xl text-2xl font-semibold text-[#F7F2E8]">
             Fait au Bénin. Conçu pour l'Afrique. Regardé par le monde.
           </p>
@@ -244,7 +285,7 @@ export function AgoojyeHomePage() {
       <Band eyebrow="Vision" title="Un projet industriel, pas seulement un prototype.">
         <div className="grid gap-8 lg:grid-cols-[1fr_1fr]">
           <p className="text-lg leading-8 text-[#3D372D]">
-            AGOOJYE est né de l'ambition de prouver que le Bénin peut concevoir, assembler et industrialiser des solutions de mobilité électrique adaptées aux réalités africaines. Le Challenge Véhicule Électrique est la première étape visible d'une trajectoire plus large : créer une vraie société de véhicules électriques.
+            AGOOJIYE est né de l'ambition de prouver que le Bénin peut concevoir, assembler et industrialiser des solutions de mobilité électrique adaptées aux réalités africaines. Le Challenge Véhicule Électrique est la première étape visible d'une trajectoire plus large : créer une vraie société de véhicules électriques.
           </p>
           <div className="grid gap-3 sm:grid-cols-2">
             {visionCards.map(({ Icon, label }) => (
@@ -395,7 +436,7 @@ export function AgoojyeVisionPage() {
       <Band dark eyebrow="Vision" title="L'Afrique ne fera pas que consommer le futur. Elle le construira.">
         <div className="grid gap-8 lg:grid-cols-[1fr_1fr]">
           <p className="text-lg leading-8 text-[#D8CFBF]">
-            AGOOJYE défend une mobilité électrique construite localement : assemblage, compétences industrielles, formation des jeunes, fabrication de pièces, logiciels embarqués, systèmes de transport propres et ambition de production depuis le Bénin.
+            AGOOJIYE défend une mobilité électrique construite localement : assemblage, compétences industrielles, formation des jeunes, fabrication de pièces, logiciels embarqués, systèmes de transport propres et ambition de production depuis le Bénin.
           </p>
           <div className="grid gap-3">
             {["Assemblage local", "Compétences industrielles", "Jeunesse formée sous pression réelle", "GDIZ et ambition d'industrialisation", "Transport africain propre et crédible"].map((item) => (
@@ -417,7 +458,7 @@ export function AgoojyeVisionPage() {
 export function AgoojyeHistoryPage() {
   return (
     <AgoojyeLayout active="/history">
-      <Band dark eyebrow="Origine" title="AGOOJYE naît d'une ambition industrielle portée par Exportunity Machinery.">
+      <Band dark eyebrow="Origine" title="AGOOJIYE naît d'une ambition industrielle portée par Exportunity Machinery.">
         <div className="max-w-4xl space-y-5 text-lg leading-8 text-[#D8CFBF]">
           <p>
             La vision du véhicule électrique a été initiée par Exportunity / Exportunity Machinery, qui porte le projet de bus électrique dans un cadre d'accélération deep-tech co-dirigé avec Future Studio.
@@ -485,7 +526,7 @@ export function AgoojyeTeamsPage() {
   const teams = query.data?.teams?.length ? query.data.teams : defaultTeams.map((name, index) => ({ id: index, name, mission: "Mission en cours de structuration." }));
   return (
     <AgoojyeLayout active="/teams">
-      <Band title="Équipes du projet AGOOJYE.">
+      <Band title="Équipes du projet AGOOJIYE.">
         <TeamGrid teams={teams} />
       </Band>
     </AgoojyeLayout>
@@ -551,7 +592,7 @@ export function AgoojyeMediaPage() {
 export function AgoojyeContactPage() {
   return (
     <AgoojyeLayout active="/contact">
-      <Band dark title="Entrer en contact avec AGOOJYE.">
+      <Band dark title="Entrer en contact avec AGOOJIYE.">
         <div className="grid gap-8 lg:grid-cols-[0.8fr_1.2fr]">
           <div className="space-y-4 text-[#D8CFBF]">
             <p>Choisissez le bon type de demande : générale, sponsor, talent, média ou institutionnelle.</p>
@@ -601,7 +642,7 @@ function SponsorForm() {
         Message
         <textarea value={form.message} onChange={(event) => setForm((prev) => ({ ...prev, message: event.target.value }))} rows={4} className="mt-2 w-full rounded-md border border-[#D9C79B] px-3 py-2 text-sm outline-none focus:border-[#C99A36]" />
       </label>
-      {mutation.isSuccess ? <p className="text-sm font-medium text-[#123C2F]">Demande enregistrée. L'équipe AGOOJYE pourra la suivre dans le CRM.</p> : null}
+      {mutation.isSuccess ? <p className="text-sm font-medium text-[#123C2F]">Demande enregistrée. L'équipe AGOOJIYE pourra la suivre dans le CRM.</p> : null}
       {mutation.isError ? <p className="text-sm font-medium text-red-700">{String((mutation.error as Error)?.message || "Erreur")}</p> : null}
       <button disabled={mutation.isPending} className="inline-flex w-fit items-center gap-2 rounded-md bg-[#080808] px-5 py-3 text-sm font-semibold text-[#F7F2E8]">
         {mutation.isPending ? "Envoi..." : "Devenir sponsor"} <ArrowRight className="h-4 w-4" />
@@ -653,7 +694,7 @@ function ContactForm() {
         Message
         <textarea value={form.message} onChange={(event) => setForm((prev) => ({ ...prev, message: event.target.value }))} rows={4} className="mt-2 w-full rounded-md border border-[#C99A36]/35 bg-[#080808] px-3 py-2 text-sm outline-none focus:border-[#E4C46A]" />
       </label>
-      {mutation.isSuccess ? <p className="text-sm font-medium text-[#E4C46A]">Message enregistré dans le CRM AGOOJYE.</p> : null}
+      {mutation.isSuccess ? <p className="text-sm font-medium text-[#E4C46A]">Message enregistré dans le CRM AGOOJIYE.</p> : null}
       {mutation.isError ? <p className="text-sm font-medium text-red-300">{String((mutation.error as Error)?.message || "Erreur")}</p> : null}
       <button disabled={mutation.isPending} className="inline-flex w-fit items-center gap-2 rounded-md bg-[#C99A36] px-5 py-3 text-sm font-semibold text-[#080808]">
         {mutation.isPending ? "Envoi..." : "Envoyer"} <ArrowRight className="h-4 w-4" />
@@ -685,7 +726,7 @@ function CtaBand() {
     <section className="bg-[#123C2F]">
       <div className="mx-auto flex max-w-7xl flex-col gap-5 px-4 py-12 md:flex-row md:items-center md:justify-between">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#E4C46A]">AGOOJYE</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#E4C46A]">AGOOJIYE</p>
           <h2 className="mt-2 max-w-3xl text-2xl font-semibold text-[#F7F2E8]">
             Construire la première fondation visible d'une entreprise béninoise de véhicules électriques.
           </h2>

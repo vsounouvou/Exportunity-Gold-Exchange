@@ -280,7 +280,7 @@ const resourceConfig: Record<Exclude<SectionKey, "overview">, { endpoint: string
   audit: {
     endpoint: "audit",
     title: "Audit logs",
-    description: "Journal des actions admin AGOOJYE.",
+    description: "Journal des actions admin AGOOJIYE.",
     columns: ["actor", "action", "entityType", "entityId", "createdAt"],
     fields: [
       { key: "action", label: "Action" },
@@ -469,9 +469,9 @@ function AdminShell({ section, children }: { section: SectionKey; children: Reac
     <div className="min-h-full bg-[#080808] p-4 text-[#F7F2E8]">
       <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#C99A36]">AGOOJYE Operating Platform</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#C99A36]">AGOOJIYE Operating Platform</p>
           <h1 className="mt-2 text-2xl font-semibold">Siège numérique du projet</h1>
-          <p className="mt-1 text-sm text-[#B8AE9D]">Tenant distinct: AGOOJYE Electric Mobility / agoojye / langue par défaut: français.</p>
+          <p className="mt-1 text-sm text-[#B8AE9D]">Tenant distinct: AGOOJIYE Electric Mobility / agoojye / langue par défaut: français.</p>
         </div>
         <a href="/" className="w-fit rounded-md border border-[#C99A36]/40 px-3 py-2 text-xs font-semibold text-[#E4C46A] hover:bg-[#C99A36]/10">
           Site public
@@ -545,7 +545,7 @@ export function AgoojyeAdminDashboardPage() {
           <h2 className="font-semibold">Provisioning email manuel</h2>
           <ol className="mt-3 space-y-2 text-sm text-[#D8CFBF]">
             <li>1. Vérifier que le participant a un rôle confirmé.</li>
-            <li>2. Créer l'identité dans AGOOJYE.</li>
+            <li>2. Créer l'identité dans AGOOJIYE.</li>
             <li>3. Provisionner dans Google Workspace, Zoho, Proton ou SMTP.</li>
             <li>4. Marquer le statut comme provisioned puis active.</li>
             <li>5. Envoyer l'invitation au participant.</li>

@@ -1,27 +1,26 @@
-# AGOOJYE DNS and Live Deployment Configuration
+# AGOOJIYE DNS and Live Deployment Configuration
 
-This document is the live handoff for the distinct AGOOJYE tenant on the existing Exportunity platform VPS.
+This document is the live handoff for the distinct AGOOJIYE tenant on the existing Exportunity platform VPS.
 
 ## Current Deployment
 
 ```txt
 Tenant key: agoojye
-Tenant display name: AGOOJYE Electric Mobility
+Tenant display name: AGOOJIYE Electric Mobility
 Primary public domain: agoojiye.com
 Default language: French
 Secondary language: English
 Country: Benin
 VPS IPv4: 51.254.143.30
-Docker Compose project: exportunity
-App container: exportunity-bdo-app-1
-App host binding: 127.0.0.1:5002 -> 5000/tcp
+Docker Compose project: agoojye-bdo
+App container: agoojye-bdo-app-1
+App host binding: 127.0.0.1:5005 -> 5000/tcp
 Nginx Proxy Manager container: npm-npm-1
-NPM upstream host: exportunity-app
+NPM proxy host ID: 23
+NPM upstream host: agoojye-app
 NPM upstream port: 5000
-Current verified runtime release: 20260624-230849-aba8af87f405
-Current verified runtime commit: aba8af87f405
-NPM certificate ID: 9
-NPM certificate expires: 2026-09-22
+Current verified runtime commit: see `/api/system/version` after each deploy
+NPM certificate: Let's Encrypt attached in Nginx Proxy Manager
 ```
 
 Nginx Proxy Manager already has an enabled HTTP proxy host for:
@@ -43,7 +42,7 @@ In OVH Manager, open:
 Web Cloud -> Domain names -> agoojiye.com -> DNS zone
 ```
 
-These OVH A records are live as of 24 June 2026:
+These OVH A records are live as of 25 June 2026:
 
 | Type | Subdomain | Target | TTL |
 | --- | --- | --- | --- |
@@ -93,7 +92,7 @@ Expected tenant response includes:
 ```json
 {
   "key": "agoojye",
-  "brandName": "AGOOJYE Electric Mobility"
+  "brandName": "AGOOJIYE Electric Mobility"
 }
 ```
 
@@ -108,12 +107,12 @@ SSL was attached in Nginx Proxy Manager after all four A records resolved to `51
    - `admin.agoojiye.com`
 2. Proxy fields:
    - Scheme: `http`
-   - Forward hostname / IP: `exportunity-app`
+   - Forward hostname / IP: `agoojye-app`
    - Forward port: `5000`
    - Websockets support: enabled
    - Block common exploits: enabled
 3. SSL:
-   - Certificate: Let's Encrypt / NPM cert ID `9`
+   - Certificate: Let's Encrypt attached in NPM
    - Force SSL
    - HTTP/2 support
    - HSTS disabled for initial launch
@@ -145,31 +144,29 @@ curl.exe -H "Host: agoojiye.com" http://51.254.143.30/api/tenant
 
 ## Production Environment Notes
 
-The shared production `.env` should keep the multi-tenant deployment defaults:
+The AGOOJIYE deployment is a distinct app container behind the existing Nginx Proxy Manager. The shared platform defaults should not be changed for other tenants:
 
 ```bash
 TENANT_DEFAULT=exportunity
 DEPLOY_TENANT=exportunity
-MAIL_DOMAIN_AGOOJYE=agoojiye.com
+MAIL_DOMAIN_AGOOJIYE=agoojiye.com
 ```
 
-Do not switch `TENANT_DEFAULT` to `agoojye` on the shared VPS, because the same stack serves other tenants. Host-based tenant resolution maps the AGOOJYE domains to the `agoojye` tenant.
+Do not switch `TENANT_DEFAULT` on the shared stack to `agoojye`, because the same VPS serves other tenants. Host-based tenant resolution maps the AGOOJIYE domains to the `agoojye` tenant, and NPM routes those domains to the distinct `agoojye-app` upstream.
 
-## Optional Mail DNS
+## Required Mail DNS For Provisioned Mailboxes
 
-If AGOOJYE email is provisioned with Google Workspace, Zoho, Proton, or another provider, use that provider's exact MX, SPF, DKIM, DMARC, and ownership-verification records.
-
-If self-hosting mail on the same VPS later:
+AGOOJIYE docker-mailserver mailboxes already exist. To cut public mail over from OVH mail to the self-hosted stack, remove the existing OVH MX/SPF records and add:
 
 | Type | Name | Target / Value |
 | --- | --- | --- |
 | A | mail | 51.254.143.30 |
 | MX | @ | 10 mail.agoojiye.com. |
-| TXT | @ | v=spf1 mx a ip4:51.254.143.30 ~all |
-| TXT | _dmarc | v=DMARC1; p=quarantine; rua=mailto:admin@agoojiye.com; adkim=s; aspf=s |
-| TXT | mail._domainkey | v=DKIM1; k=rsa; p=<PUBLIC_KEY_FROM_MAIL_SERVER> |
+| TXT | @ | v=spf1 mx ip4:51.254.143.30 -all |
+| TXT | _dmarc | v=DMARC1; p=none; rua=mailto:dmarc@agoojiye.com; adkim=s; aspf=s |
+| TXT | mail._domainkey | Use the DKIM value in `docs/AGOOJIYE_EMAIL_DNS_AND_MAILBOXES.md` |
 
-Request OVH reverse DNS/PTR only if mail is self-hosted:
+Request OVH reverse DNS/PTR for the VPS:
 
 ```txt
 IP: 51.254.143.30

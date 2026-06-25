@@ -33,9 +33,11 @@
     <meta property="og:type" content="website" />
     <meta property="og:title" content="Platform" />
     <meta property="og:description" content="Tenant platform." />
+    <meta property="og:image" content="/favicon.svg" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="Platform" />
     <meta name="twitter:description" content="Tenant platform." />
+    <meta name="twitter:image" content="/favicon.svg" />
     <script>
       (function () {
         var host = (location.hostname || "").toLowerCase();
@@ -44,6 +46,7 @@
         function resolveTenant(hostname) {
           if (!hostname) return "neutral";
           if (hostname.indexOf("boursedelor") !== -1) return "bdo";
+          if (hostname.indexOf("agoojiye") !== -1 || hostname.indexOf("agoojye") !== -1 || hostname.indexOf("agojye") !== -1) return "agoojye";
           return "neutral";
         }
 
@@ -58,6 +61,17 @@
           manifest: "/manifest-bdo.webmanifest"
         };
 
+        var agoojiyeMeta = {
+          title: "AGOOJIYE - Mobilité électrique née au Bénin",
+          app: "AGOOJIYE",
+          color: "#080808",
+          description: "AGOOJIYE est une plateforme industrielle de mobilité électrique née au Bénin, inspirée par l'héritage des Amazones du Dahomey et conçue pour l'Afrique.",
+          image: "/brand/agoojiye/og/agoojiye-og-image.webp",
+          icon: "/tenants/agoojye/favicon.png",
+          appleIcon: "/tenants/agoojye/apple-touch-icon.png",
+          manifest: "/manifest-agoojiye.webmanifest"
+        };
+
         var neutralMeta = {
           title: "Platform",
           app: "Platform",
@@ -68,7 +82,7 @@
           manifest: "/manifest.webmanifest"
         };
 
-        var tenantMeta = tenant === "bdo" ? bdoMeta : neutralMeta;
+        var tenantMeta = tenant === "bdo" ? bdoMeta : tenant === "agoojye" ? agoojiyeMeta : neutralMeta;
 
         function withBuster(path) {
           if (!path) return path;
@@ -78,6 +92,7 @@
         var themeMeta = document.getElementById("theme-color");
         if (themeMeta) themeMeta.setAttribute("content", tenantMeta.color);
         document.title = tenantMeta.title;
+        if (tenant === "agoojye") document.documentElement.setAttribute("lang", "fr");
 
         var appTitle = document.querySelector('meta[name="apple-mobile-web-app-title"]');
         if (appTitle) appTitle.setAttribute("content", tenantMeta.app);

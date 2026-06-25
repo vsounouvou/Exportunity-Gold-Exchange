@@ -318,6 +318,9 @@ const BdoReglementationPage = lazyPage(() => import("@/pages/bdo/BdoAuthorityPag
 const BdoIndustrieMinierePage = lazyPage(() => import("@/pages/bdo/BdoAuthorityPages"), "BdoIndustrieMinierePage");
 const BdoCertificationPage = lazyPage(() => import("@/pages/bdo/BdoAuthorityPages"), "BdoCertificationPage");
 const BdoVerifierPage = lazyPage(() => import("@/pages/bdo/BdoAuthorityPages"), "BdoVerifierPage");
+const BdoConformitePage = lazyPage(() => import("@/pages/bdo/BdoAuthorityPages"), "BdoConformitePage");
+const BdoProcessusPage = lazyPage(() => import("@/pages/bdo/BdoAuthorityPages"), "BdoProcessusPage");
+const BdoPrixIndicatifPage = lazyPage(() => import("@/pages/bdo/BdoAuthorityPages"), "BdoPrixIndicatifPage");
 const BdoEspaceProDashboardPage = lazyPage(() => import("@/pages/bdo/BdoProPages"), "BdoEspaceProDashboardPage");
 const BdoWholesaleMarketPage = lazyPage(() => import("@/pages/bdo/BdoProPages"), "BdoWholesaleMarketPage");
 const BdoProMapPage = lazyPage(() => import("@/pages/bdo/BdoProPages"), "BdoProMapPage");
@@ -829,6 +832,9 @@ function App() {
           <Route path="/reglementation" component={() => (isBdoHost() ? <BdoReglementationPage /> : <Redirect to="/store" />)} />
           <Route path="/industrie-miniere" component={() => (isBdoHost() ? <BdoIndustrieMinierePage /> : <Redirect to="/store" />)} />
           <Route path="/certification" component={() => (isBdoHost() ? <BdoCertificationPage /> : <Redirect to="/store" />)} />
+          <Route path="/conformite" component={() => (isBdoHost() ? <BdoConformitePage /> : <Redirect to="/store" />)} />
+          <Route path="/processus" component={() => (isBdoHost() ? <BdoProcessusPage /> : <Redirect to="/store" />)} />
+          <Route path="/prix-indicatif" component={() => (isBdoHost() ? <BdoPrixIndicatifPage /> : <Redirect to="/store" />)} />
           <Route path="/verifier" component={() => (isBdoHost() ? <BdoVerifierPage /> : <Redirect to="/store" />)} />
           <Route path="/coffre" component={() => (isBdoHost() ? <BdoCoffrePage /> : <Redirect to="/store" />)} />
           <Route path="/mes-objectifs" component={() => (isBdoHost() ? <BdoGoalsPage /> : <Redirect to="/store" />)} />

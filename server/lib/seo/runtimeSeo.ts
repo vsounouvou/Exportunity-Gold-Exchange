@@ -409,6 +409,19 @@ export async function resolveSeoHead(input: {
       "Informations sur l'utilisation confidentielle des données client, documents d'identité, informations de paiement et communications liées aux commandes.",
   };
 
+  bdoTitleMap["/"] = "La Bourse de l'Or — Achat d'or physique certifié";
+  bdoTitleMap["/conformite"] = "Conformité - BOURSE DE L'OR";
+  bdoTitleMap["/processus"] = "Processus d'achat - BOURSE DE L'OR";
+  bdoTitleMap["/prix-indicatif"] = "Prix indicatifs - BOURSE DE L'OR";
+  bdoDescriptionMap["/"] =
+    "Achetez de l'or physique certifié : lingots, pièces et bijoux en or disponibles sur commande après confirmation.";
+  bdoDescriptionMap["/conformite"] =
+    "KYC, KYB, source des fonds, source des biens, conformité, paiement et validation finale des transactions BOURSE DE L'OR.";
+  bdoDescriptionMap["/processus"] =
+    "Comprendre le parcours d'achat : sélection, confirmation du prix, vérification, préparation, livraison, retrait ou stockage.";
+  bdoDescriptionMap["/prix-indicatif"] =
+    "Comprendre les prix indicatifs liés au cours de l'or, aux primes, à la fabrication, à la logistique, aux taxes et à la disponibilité.";
+
 const pageLabel =
   (isMarketing ? marketingTitleMap[canonicalPath] : undefined) ??
   (isHoz ? hozTitleMap[canonicalPath] : undefined) ??

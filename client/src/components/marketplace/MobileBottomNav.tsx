@@ -63,7 +63,7 @@ export function MobileBottomNav({ items, activeKey, topSlot }: MobileBottomNavPr
           {topSlot}
         </div>
       ) : null}
-      <nav className="bg-black/90 border-t border-white/10 px-4 pt-2 pb-[calc(env(safe-area-inset-bottom,0px)+8px)] shadow-2xl">
+      <nav className="min-h-[72px] border-t border-white/10 bg-[#03060A]/92 px-4 pt-2 pb-[calc(env(safe-area-inset-bottom,0px)+8px)] shadow-2xl backdrop-blur-[18px]">
         <div className={`grid ${gridCols} gap-1`}>
           {items.map((item) => {
             const isActive = item.key === activeKey;
@@ -77,7 +77,7 @@ export function MobileBottomNav({ items, activeKey, topSlot }: MobileBottomNavPr
                 aria-current={isActive ? "page" : undefined}
                 aria-label={item.label}
                 data-testid={`mobile-nav-${item.key}`}
-                className={`relative flex min-h-[44px] flex-col items-center justify-center gap-1 rounded-xl px-2 py-1 text-[10px] font-medium transition-colors ${
+                className={`relative flex min-h-[44px] flex-col items-center justify-center gap-1 rounded-xl px-2 py-1 text-[10px] font-semibold transition-colors ${
                   isPrimary
                     ? "bg-amber-500/15 text-amber-100 hover:bg-amber-500/25"
                     : isActive

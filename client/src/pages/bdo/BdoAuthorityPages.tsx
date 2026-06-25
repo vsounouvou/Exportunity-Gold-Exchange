@@ -262,6 +262,75 @@ export function BdoVerifierPage() {
   );
 }
 
+const bdoInfoPages: Record<string, { title: string; subtitle: string; cards: InsightCard[] }> = {
+  conformite: {
+    title: "Conformité des transactions",
+    subtitle:
+      "Certaines transactions peuvent nécessiter une vérification KYC/KYB, une revue de conformité, une confirmation du paiement et une validation finale.",
+    cards: [
+      {
+        title: "Revue KYC / KYB",
+        summary:
+          "La Bourse de l'Or peut demander des documents d'identité, d'entreprise, de source de fonds ou de source de biens avant de confirmer une transaction.",
+      },
+      {
+        title: "Disponibilité et refus",
+        summary:
+          "Une commande peut être refusée, retardée ou annulée si les conditions légales, de conformité, de paiement ou de sourcing responsable ne sont pas remplies.",
+      },
+      {
+        title: "Sourcing responsable",
+        summary:
+          "La plateforme ne soutient pas le commerce d'or illégal, non documenté, lié à un conflit ou non conforme aux principes AML, sanctions et traçabilité.",
+      },
+      {
+        title: "Pas de conseil financier",
+        summary:
+          "La Bourse de l'Or ne fournit pas de conseil financier, fiscal, juridique ou d'investissement. Les achats d'or comportent un risque de fluctuation du prix.",
+      },
+    ],
+  },
+  processus: {
+    title: "Processus d'achat",
+    subtitle:
+      "Le parcours client reste simple : choisir un produit, confirmer le prix, valider la commande puis organiser la livraison, le retrait ou le stockage lorsque disponible.",
+    cards: [
+      { title: "1. Sélection", summary: "Le client sélectionne un produit en or physique, une pièce, un lingot, un bijou vérifié ou une création sur commande." },
+      { title: "2. Confirmation", summary: "La plateforme confirme disponibilité, prix indicatif ou final, conditions de paiement et éventuelles vérifications nécessaires." },
+      { title: "3. Préparation", summary: "Le produit est sourcé auprès d'un partenaire approuvé, vérifié, documenté puis préparé selon le parcours validé." },
+      { title: "4. Remise", summary: "Le client reçoit une confirmation avant livraison, retrait ou stockage sécurisé, selon disponibilité et conditions applicables." },
+    ],
+  },
+  prix: {
+    title: "Prix indicatifs",
+    subtitle:
+      "Les prix affichés peuvent rester indicatifs jusqu'à confirmation finale, car ils dépendent du marché de l'or et des conditions opérationnelles.",
+    cards: [
+      { title: "Cours international", summary: "Le prix peut varier selon le cours international de l'or, le titre, le poids et les primes applicables." },
+      { title: "Coûts de production", summary: "Raffinage, fabrication, gravure, certification, marge plateforme et conditions partenaire peuvent modifier le total payable." },
+      { title: "Logistique et taxes", summary: "Livraison, assurance, douanes, droits, taxes et stockage sont confirmés séparément lorsqu'ils s'appliquent." },
+      { title: "Confirmation finale", summary: "Le transfert de propriété intervient uniquement après paiement complet, conformité validée et confirmation finale." },
+    ],
+  },
+};
+
+function BdoInfoPage({ pageKey }: { pageKey: keyof typeof bdoInfoPages }) {
+  const page = bdoInfoPages[pageKey];
+  return <BdoAuthorityLayout title={page.title} subtitle={page.subtitle} cards={page.cards} />;
+}
+
+export function BdoConformitePage() {
+  return <BdoInfoPage pageKey="conformite" />;
+}
+
+export function BdoProcessusPage() {
+  return <BdoInfoPage pageKey="processus" />;
+}
+
+export function BdoPrixIndicatifPage() {
+  return <BdoInfoPage pageKey="prix" />;
+}
+
 type AuthorityTopicKey = "actualites" | "reglementation" | "industrie" | "pro";
 
 const authorityTopicCopy: Record<string, Record<AuthorityTopicKey, { title: string; subtitle: string; cards: InsightCard[] }>> = {

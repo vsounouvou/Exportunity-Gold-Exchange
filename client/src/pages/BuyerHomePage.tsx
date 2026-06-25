@@ -3056,26 +3056,24 @@ export function BuyerHomePage({
       homepageTrustBadges: ["Origine certifiée", "Traçable", "Paiement flexible", "Livraison sécurisée"],
       sectionEyebrow: "Sélection publique",
       starterTitle: "Nos premières pièces certifiées",
-      starterIntro: "Une sélection courte pour commencer simplement : pièces, lingots et objectifs d'achat.",
+      starterIntro: "Une pièce mise en avant pour acheter ou préparer un objectif d'achat.",
       vaultButton: "Mon coffre",
       fullCatalog: "Catalogue complet",
       viewAll: "Voir tout",
       howItWorks: "Comment ça marche",
       steps: [
-        "Le client sélectionne un produit en or.",
-        "La plateforme confirme la disponibilité, le prix et les conditions de paiement.",
-        "L'or est sourcé auprès d'une raffinerie, d'un producteur, d'un fournisseur ou d'un artisan partenaire approuvé.",
-        "Le produit est vérifié, documenté et préparé.",
-        "Le client reçoit une confirmation avant livraison, retrait ou stockage.",
-        "Pour les pièces sur commande, la production est confirmée par le partenaire approuvé.",
+        "Choisissez un produit.",
+        "Confirmez le prix et la disponibilité.",
+        "Recevez ou stockez votre or après validation.",
       ],
       objective: "Objectif d'achat",
       objectiveTitle: "Commencez avec le montant disponible.",
-      objectiveBody: "Constituez votre budget. L'or physique n'est commandé qu'après votre confirmation finale.",
-      objectiveCta: "Créer mon objectif d'achat",
+      objectiveBody: "Fixez votre budget. Nous vous accompagnons jusqu'à l'achat final.",
+      objectiveCta: "Créer mon objectif",
       certification: "Certification",
       certificationTitle: "Chaque produit porte une preuve.",
-      certificationBody: "Les produits peuvent être des lingots issus de raffineries, des lingots ou pièces d'or certifiés, des bijoux ou pièces de collection sur commande, ou des produits fournis par des partenaires approuvés. Chaque produit peut être associé à une référence, une photo, un poids, un titre et une preuve digitale vérifiable.",
+      certificationBody: "Chaque produit peut être associé à une preuve vérifiable : référence, photo, poids, titre et document de validation.",
+      compliancePreview: "Les transactions peuvent être soumises à disponibilité, vérification, conformité et confirmation du paiement.",
       legalNotice: "Tous les produits en or sont soumis à disponibilité, vérification, revue de conformité et confirmation du paiement. LA BOURSE DE L'OR peut demander des documents KYC/KYB avant de confirmer certaines transactions, et une transaction peut être refusée, retardée ou annulée si les exigences de conformité ne sont pas remplies. Les prix peuvent varier selon le cours international de l'or, les coûts de raffinage, les primes, la logistique, les taxes, les droits et les conditions locales du marché. Le prix affiché peut rester indicatif jusqu'à confirmation finale.",
       sourcingNotice: "LA BOURSE DE L'OR ne soutient pas le commerce d'or illégal, non documenté, lié à un conflit ou non conforme. Tout sourcing doit respecter les principes de sourcing responsable, AML, sanctions et traçabilité.",
       refineryNotice: "Certains lingots peuvent être fournis directement par des raffineries approuvées ou des partenaires liés à une raffinerie. Dans ce cas, LA BOURSE DE L'OR facilite la commande digitale, la communication client, la coordination du paiement, la documentation et les options de livraison ou de stockage.",
@@ -3170,8 +3168,10 @@ export function BuyerHomePage({
       },
       footerLinks: [
         { label: "Conditions", href: "/terms" },
-        { label: "Confidentialité", href: "/privacy" },
-        { label: "Conformité", href: "/cadre-conformite" },
+        { label: "Conformité", href: "/conformite" },
+        { label: "KYC / KYB", href: "/conformite" },
+        { label: "Prix indicatifs", href: "/prix-indicatif" },
+        { label: "Livraison", href: "/processus" },
         { label: "Contact", href: "/contact" },
       ],
     };
@@ -3188,8 +3188,8 @@ export function BuyerHomePage({
             "Certified physical gold and verified jewelry ready to purchase.",
         ]
       : [
-          "Achetez de l'or africain certifié.",
-          "Or physique certifié et bijoux vérifiés prêts à l'achat.",
+          "Achetez de l'or physique certifié.",
+          "Lingots, pièces et bijoux en or, disponibles sur commande après confirmation.",
         ];
   const bdoHomepageHeroSubtitle =
     language === "ar"
@@ -3202,7 +3202,7 @@ export function BuyerHomePage({
       ? "تجمع Bourse de l'Or بين قطع ذهبية معتمدة، أسعار واضحة، تتبع مرئي، ومسار شراء منظم من الاكتشاف حتى التأكيد."
       : language === "en"
         ? "BOURSE DE L'OR brings together certified African gold pieces and bullion, with visible pricing, traceability, and a clear confirmation path."
-      : "Bourse de l'Or réunit des pièces et lingots en or africain certifié, avec prix visible, traçabilité et parcours de confirmation clair.";
+      : "Lingots, pièces et bijoux en or, disponibles sur commande après confirmation.";
   const bdoHomepageTrustBadges = bdoPublicCopy.homepageTrustBadges;
   const wholesaleDeskLocale = useMemo(() => {
     if (language === "ar") {
@@ -12198,6 +12198,14 @@ export function BuyerHomePage({
             </div>
           ))}
         </div>
+        <Button
+          type="button"
+          variant="outline"
+          className={`mt-3 h-10 w-full ${BDO_LUX_SECONDARY_BUTTON}`}
+          onClick={() => navigate("/processus")}
+        >
+          {language === "en" ? "See full process" : language === "ar" ? "عرض المسار الكامل" : "Voir le processus complet"}
+        </Button>
       </section>
 
       <section
@@ -12243,6 +12251,63 @@ export function BuyerHomePage({
         </Button>
       </section>
 
+      {compact ? (
+        <section
+          data-bdo-home="trust-links"
+          className={`rounded-[24px] p-4 ${BDO_LUX_PANEL}`}
+        >
+          <p className="text-[11px] uppercase tracking-[0.22em] text-[#E8C873]/80">
+            {language === "en" ? "Trust" : language === "ar" ? "الثقة" : "Confiance"}
+          </p>
+          <div className="mt-3 grid gap-2">
+            {[
+              {
+                title: bdoPublicCopy.certification,
+                body: bdoPublicCopy.certificationBody,
+                href: "/certification",
+              },
+              {
+                title: language === "en" ? "Compliance" : language === "ar" ? "الامتثال" : "Conformité",
+                body:
+                  (bdoPublicCopy as any).compliancePreview ||
+                  "Certaines transactions peuvent nécessiter une vérification KYC/KYB.",
+                href: "/conformite",
+              },
+              {
+                title: language === "en" ? "Delivery & storage" : language === "ar" ? "التسليم والتخزين" : "Livraison & stockage",
+                body: language === "en"
+                  ? "Options depend on availability and final confirmation."
+                  : language === "ar"
+                    ? "الخيارات حسب التوفر والتأكيد النهائي."
+                    : "Options selon disponibilité et confirmation finale.",
+                href: "/processus",
+              },
+              {
+                title: bdoPublicCopy.indicativePrice,
+                body: language === "en"
+                  ? "See how market-linked prices are calculated."
+                  : language === "ar"
+                    ? "تعرف على طريقة حساب الأسعار الإرشادية."
+                    : "Comprendre comment les prix sont calculés.",
+                href: "/prix-indicatif",
+              },
+            ].map((item) => (
+              <button
+                key={item.title}
+                type="button"
+                className="flex min-h-[74px] items-center justify-between gap-3 rounded-[18px] border border-white/10 bg-black/25 px-3 py-3 text-left"
+                onClick={() => navigate(item.href)}
+              >
+                <span className="min-w-0">
+                  <span className="block text-sm font-semibold text-white">{item.title}</span>
+                  <span className="mt-1 line-clamp-2 block text-[12px] leading-snug text-white/58">{item.body}</span>
+                </span>
+                <ChevronRight className="h-4 w-4 shrink-0 text-[#E8C873]" />
+              </button>
+            ))}
+          </div>
+        </section>
+      ) : (
       <section
         data-bdo-home="pro-teaser"
         className={`rounded-[24px] p-4 lg:col-span-2 ${BDO_LUX_PANEL}`}
@@ -12308,6 +12373,7 @@ export function BuyerHomePage({
           </div>
         </div>
       </section>
+      )}
     </div>
   );
 
@@ -17979,7 +18045,7 @@ export function BuyerHomePage({
                   ? "Order a piece or bullion product, or build your budget before confirmation."
                   : language === "ar"
                     ? "اطلب قطعة أو سبيكة، أو كوّن ميزانيتك قبل التأكيد."
-                    : "Commandez une pièce ou un lingot, ou constituez votre budget avant confirmation."}
+                    : "Lingots, pièces et bijoux en or, disponibles sur commande après confirmation."}
               </p>
               <div className="mt-5 grid gap-2">
                 <Button
@@ -17991,7 +18057,7 @@ export function BuyerHomePage({
                     ? "Buy now"
                     : language === "ar"
                       ? "اشترِ الآن"
-                      : bdoPublicCopy.buyNow}
+                      : "Acheter de l'or"}
                 </Button>
                 <Button
                   type="button"
@@ -18157,6 +18223,8 @@ export function BuyerHomePage({
             ) : null}
           </section>
 
+          <div className="h-72" aria-hidden="true" />
+
           <section
             id="bdo-mobile-buy"
             className={`overflow-hidden rounded-[26px] p-4 ${BDO_LUX_PANEL}`}
@@ -18167,7 +18235,7 @@ export function BuyerHomePage({
                   {bdoPublicCopy.sectionEyebrow}
                 </p>
                 <h2 className={`mt-1 text-[22px] font-semibold leading-tight text-white ${BDO_LUX_TITLE_FONT}`}>
-                  {bdoPublicCopy.starterTitle}
+                  {language === "en" ? "Featured product" : language === "ar" ? "منتج مميز" : "Produit du moment"}
                 </h2>
                 <p className="mt-2 max-w-[34ch] text-[13px] leading-relaxed text-white/58">
                   {bdoPublicCopy.starterIntro}
@@ -18184,7 +18252,7 @@ export function BuyerHomePage({
               </Button>
             </div>
             <div className="mt-4 flex snap-x gap-3 overflow-x-auto pb-2 scrollbar-hide">
-              {bdoStarterProducts.map((item, idx) =>
+              {bdoStarterProducts.slice(0, 1).map((item, idx) =>
                 renderBdoStarterProductCard(item, idx, true),
               )}
             </div>
@@ -18192,7 +18260,7 @@ export function BuyerHomePage({
 
           {renderBdoRetailSupportSections(true)}
 
-          <section
+          {false ? <section
             id="bdo-mobile-catalogue-complet"
             className={`rounded-[24px] p-4 ${BDO_LUX_PANEL}`}
           >
@@ -18254,7 +18322,7 @@ export function BuyerHomePage({
                     renderBdoInstitutionalCard(product, idx),
                   )}
             </div>
-          </section>
+          </section> : null}
 
           <section className={`rounded-[22px] px-4 py-3 ${BDO_LUX_CARD}`}>
             <div className="flex flex-wrap items-center justify-between gap-3">
@@ -18274,11 +18342,12 @@ export function BuyerHomePage({
               </div>
               <p className="text-[11px] text-white/50">{language.toUpperCase()} • {currency}</p>
             </div>
-            <p className="mt-3 text-[11px] leading-relaxed text-white/45">
-              {bdoPublicCopy.footerLegalNotice}
-            </p>
-            <p className="mt-2 text-[11px] leading-relaxed text-white/40">
-              {bdoPublicCopy.disclosureNotice}
+            <p className="mt-3 line-clamp-3 text-[11px] leading-relaxed text-white/45">
+              {language === "en"
+                ? "Products and services are subject to availability, compliance checks, payment confirmation and final validation."
+                : language === "ar"
+                  ? "تخضع المنتجات والخدمات للتوفر وفحوص الامتثال وتأكيد الدفع والموافقة النهائية."
+                  : "Produits et services soumis à disponibilité, conformité, confirmation du paiement et validation finale."}
             </p>
           </section>
         </div>

@@ -351,6 +351,14 @@ async function ensureAgoojyeSeed(tenantId: number) {
     .onConflictDoNothing();
 
   await db
+    .update(agoojyeEmailIdentities)
+    .set({
+      notes: sql`replace(${agoojyeEmailIdentities.notes}, 'AGOOJYE', 'AGOOJIYE')`,
+      updatedAt: now,
+    })
+    .where(and(eq(agoojyeEmailIdentities.tenantId, tenantId), sql`${agoojyeEmailIdentities.notes} like '%AGOOJYE%'`));
+
+  await db
     .insert(agoojyePartners)
     .values(PARTNERS.map((partner) => ({ tenantId, ...partner, visibility: "public", createdAt: now, updatedAt: now })))
     .onConflictDoUpdate({

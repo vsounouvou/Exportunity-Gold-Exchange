@@ -46,6 +46,16 @@
       "proxyAlias": "exportunity-app",
       "remoteDeployRoot": "/var/www/exportunity"
     },
+    "agoojye": {
+      "aliases": [
+        "agoojiye"
+      ],
+      "domain": "https://agoojiye.com",
+      "composeProject": "agoojye",
+      "hostPort": "5005",
+      "proxyAlias": "agoojye-app",
+      "remoteDeployRoot": "/var/www/agoojye"
+    },
     "mindbase": {
       "deployUser": "root",
       "domain": "https://mindbase.cloud",

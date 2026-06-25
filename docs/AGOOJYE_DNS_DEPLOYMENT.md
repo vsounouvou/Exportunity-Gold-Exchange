@@ -1,12 +1,12 @@
-# AGOOJYÉ DNS and Live Deployment Configuration
+# AGOOJYE DNS and Live Deployment Configuration
 
-This document is the live handoff for the distinct AGOOJYÉ tenant on the existing Exportunity platform VPS.
+This document is the live handoff for the distinct AGOOJYE tenant on the existing Exportunity platform VPS.
 
 ## Current Deployment
 
 ```txt
 Tenant key: agoojye
-Tenant display name: AGOOJYÉ Electric Mobility
+Tenant display name: AGOOJYE Electric Mobility
 Primary public domain: agoojiye.com
 Default language: French
 Secondary language: English
@@ -93,7 +93,7 @@ Expected tenant response includes:
 ```json
 {
   "key": "agoojye",
-  "brandName": "AGOOJYÉ Electric Mobility"
+  "brandName": "AGOOJYE Electric Mobility"
 }
 ```
 
@@ -153,11 +153,11 @@ DEPLOY_TENANT=exportunity
 MAIL_DOMAIN_AGOOJYE=agoojiye.com
 ```
 
-Do not switch `TENANT_DEFAULT` to `agoojye` on the shared VPS, because the same stack serves other tenants. Host-based tenant resolution maps the AGOOJYÉ domains to the `agoojye` tenant.
+Do not switch `TENANT_DEFAULT` to `agoojye` on the shared VPS, because the same stack serves other tenants. Host-based tenant resolution maps the AGOOJYE domains to the `agoojye` tenant.
 
 ## Optional Mail DNS
 
-If AGOOJYÉ email is provisioned with Google Workspace, Zoho, Proton, or another provider, use that provider's exact MX, SPF, DKIM, DMARC, and ownership-verification records.
+If AGOOJYE email is provisioned with Google Workspace, Zoho, Proton, or another provider, use that provider's exact MX, SPF, DKIM, DMARC, and ownership-verification records.
 
 If self-hosting mail on the same VPS later:
 

@@ -1,4 +1,4 @@
-﻿import type { TenantKey } from "@/types/tenant";
+import type { TenantKey } from "@/types/tenant";
 
 export type ProductScope = "GOLD_ONLY" | "MULTI_CATEGORY";
 export type ConciergeScope = "GOLD_ONLY" | "MULTI_CATEGORY";
@@ -32,15 +32,15 @@ export type BrandInfo = {
 
 export const BRAND_MAP: Record<TenantKey, BrandInfo> = {
   agoojye: {
-    name: "AGOOJYÉ",
-    shortName: "AGOOJYÉ",
+    name: "AGOOJYE",
+    shortName: "AGOOJYE",
     nameAscii: "AGOOJYE",
     domain: "agoojiye.com",
     canonicalUrl: "https://agoojiye.com",
-    metaTitle: "AGOOJYÉ - Mobilité électrique née au Bénin",
+    metaTitle: "AGOOJYE - Mobilité électrique née au Bénin",
     metaDescription:
-      "AGOOJYÉ est une plateforme industrielle de mobilité électrique née au Bénin, inspirée par l'héritage des Amazones du Dahomey et conçue pour l'Afrique.",
-    complianceNotice: "Les partenaires, sponsors et participants sont validés par l'équipe AGOOJYÉ avant toute annonce officielle.",
+      "AGOOJYE est une plateforme industrielle de mobilité électrique née au Bénin, inspirée par l'héritage des Amazones du Dahomey et conçue pour l'Afrique.",
+    complianceNotice: "Les partenaires, sponsors et participants sont validés par l'équipe AGOOJYE avant toute annonce officielle.",
     tagline: "Fait au Bénin. Conçu pour l'Afrique. Regardé par le monde.",
     subtitle: "Mobilité électrique, héritage et souveraineté industrielle africaine",
     faviconPath: "/tenants/agoojye/favicon.svg",

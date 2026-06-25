@@ -1,4 +1,4 @@
-﻿import type { TenantKey } from "@/types/tenant";
+import type { TenantKey } from "@/types/tenant";
 import type { TenantCategoryVisual, TenantStorefrontIdentity } from "../../../tenants/types";
 import { getTenantConfigByKey } from "../../../tenants/index";
 
@@ -20,7 +20,7 @@ const RETAIL_LABEL_BY_TENANT: Record<TenantKey, string> = {
 const PLATFORM_LABEL_BY_TENANT: Record<TenantKey, string> = {
   bdo: "Bourse de l'Or - Or Estampillé",
   exportunity: "Global Export Marketplace",
-  agoojye: "AGOOJYÉ Electric Mobility",
+  agoojye: "AGOOJYE Electric Mobility",
   zone: "Global Export Marketplace",
   mindbase: "MindBase Intelligence Marketplace",
   met: "Materiaux de construction",

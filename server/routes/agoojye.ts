@@ -137,7 +137,7 @@ const MILESTONES = [
   ["Formation des équipes", "Formation des équipes techniques et opérationnelles.", "2026-06-15T00:00:00.000Z", "planned", "Coordination", "public"],
   ["Validation technique", "Validation technique, fournisseurs, BOM et faisabilité.", "2026-07-01T00:00:00.000Z", "planned", "Ingénierie", "public"],
   ["Assemblage du prototype", "Assemblage du prototype avant la phase publique.", "2026-07-08T00:00:00.000Z", "planned", "Ingénierie", "private"],
-  ["Assemblage public", "Assemblage public cible du bus électrique.", "2026-07-15T00:00:00.000Z", "planned", "AGOOJYÉ Team", "public"],
+  ["Assemblage public", "Assemblage public cible du bus électrique.", "2026-07-15T00:00:00.000Z", "planned", "AGOOJYE Team", "public"],
   ["Reveal gala", "Gala de révélation cible et présentation institutionnelle.", "2026-07-25T00:00:00.000Z", "planned", "Communication & médias", "public"],
   ["Production documentaire", "Production documentaire fin juillet.", "2026-07-28T00:00:00.000Z", "planned", "Média", "public"],
   ["Sortie publique de la vidéo", "Publication publique cible de la vidéo documentaire.", "2026-08-01T00:00:00.000Z", "planned", "Média", "public"],
@@ -164,8 +164,8 @@ const CONTENT_BLOCKS = [
     page: "home",
     section: "hero",
     key: "main",
-    titleFr: "AGOOJYÉ",
-    titleEn: "AGOOJYÉ",
+    titleFr: "AGOOJYE",
+    titleEn: "AGOOJYE",
     contentFr:
       "Fait au Bénin. Conçu pour l'Afrique. Regardé par le monde. Un mouvement industriel de mobilité électrique inspiré par l'héritage des Amazones du Dahomey.",
     contentEn: "Made in Benin. Built for Africa. Watched by the World.",
@@ -178,7 +178,7 @@ const CONTENT_BLOCKS = [
     titleFr: "L'Afrique ne fera pas que consommer le futur. Elle le construira.",
     titleEn: "Africa will not only consume the future. Africa will build it.",
     contentFr:
-      "AGOOJYÉ pose les bases d'une capacite industrielle beninoise pour concevoir, assembler et industrialiser des solutions de transport propres adaptees au continent.",
+      "AGOOJYE pose les bases d'une capacite industrielle beninoise pour concevoir, assembler et industrialiser des solutions de transport propres adaptees au continent.",
     contentEn:
       "AGOOJYE lays the foundation for Beninese industrial capacity in clean transport solutions adapted to Africa.",
   },
@@ -235,7 +235,7 @@ function actor(req: any) {
 function ensureAgoojyeTenant(req: any, res: any) {
   const tenant = req.tenant;
   if (!tenant || String(tenant.key || "").trim().toLowerCase() !== "agoojye") {
-    res.status(404).json({ message: "Les routes AGOOJYÉ ne sont pas disponibles sur ce tenant." });
+    res.status(404).json({ message: "Les routes AGOOJYE ne sont pas disponibles sur ce tenant." });
     return null;
   }
   return tenant;
@@ -437,7 +437,7 @@ async function ensureAgoojyeSeed(tenantId: number) {
       tenantId,
       providerName: "manual",
       status: "not_configured",
-      fromName: "AGOOJYÉ",
+      fromName: "AGOOJYE",
       fromEmail: "contact@agoojiye.com",
       replyToEmail: "contact@agoojiye.com",
       createdAt: now,
@@ -797,7 +797,7 @@ const resources = {
       smtpPort: Number(body.smtpPort) || null,
       smtpUsername: normalizeText(body.smtpUsername) || null,
       smtpPasswordEncrypted: normalizeText(body.smtpPasswordEncrypted || body.smtpPassword) || null,
-      fromName: normalizeText(body.fromName) || "AGOOJYÉ",
+      fromName: normalizeText(body.fromName) || "AGOOJYE",
       fromEmail: normalizeText(body.fromEmail) || "contact@agoojiye.com",
       replyToEmail: normalizeText(body.replyToEmail) || "contact@agoojiye.com",
       providerName: normalizeText(body.providerName) || "manual",
@@ -897,7 +897,7 @@ adminApi.get("/dashboard", async (req: any, res) => {
       bootstrap: await bootstrapPayload(tenantId, false),
     });
   } catch (error: any) {
-    return res.status(500).json({ message: error?.message || "Impossible de charger le tableau de bord AGOOJYÉ." });
+    return res.status(500).json({ message: error?.message || "Impossible de charger le tableau de bord AGOOJYE." });
   }
 });
 
@@ -905,7 +905,7 @@ adminApi.get("/:resource", async (req: any, res) => {
   try {
     const tenantId = Number(req.tenant.id);
     const resource = getResource(req.params.resource);
-    if (!resource) return res.status(404).json({ message: "Ressource AGOOJYÉ inconnue." });
+    if (!resource) return res.status(404).json({ message: "Ressource AGOOJYE inconnue." });
     const table: any = resource.table;
     const limit = Math.min(Math.max(Number(req.query.limit) || 250, 1), 500);
     const rows = await db.select().from(table).where(eq(table.tenantId, tenantId)).orderBy(desc(table.updatedAt), desc(table.createdAt)).limit(limit);
@@ -918,7 +918,7 @@ adminApi.get("/:resource", async (req: any, res) => {
         : rows;
     return res.json({ ok: true, items });
   } catch (error: any) {
-    return res.status(500).json({ message: error?.message || "Impossible de lister la ressource AGOOJYÉ." });
+    return res.status(500).json({ message: error?.message || "Impossible de lister la ressource AGOOJYE." });
   }
 });
 
@@ -926,7 +926,7 @@ adminApi.post("/:resource", async (req: any, res) => {
   try {
     const tenantId = Number(req.tenant.id);
     const resource = getResource(req.params.resource);
-    if (!resource) return res.status(404).json({ message: "Ressource AGOOJYÉ inconnue." });
+    if (!resource) return res.status(404).json({ message: "Ressource AGOOJYE inconnue." });
     const table: any = resource.table;
     const values = resource.create(tenantId, req.body || {}, req);
     if ("email" in values && !normalizeText((values as any).email)) return res.status(400).json({ message: "email is required" });
@@ -939,7 +939,7 @@ adminApi.post("/:resource", async (req: any, res) => {
         where: and(eq(agoojyeProjectUsers.tenantId, tenantId), eq(agoojyeProjectUsers.id, Number((values as any).userId))),
       });
       if (!user?.confirmedRole) {
-        return res.status(400).json({ message: "Seuls les participants confirmés peuvent recevoir une identité email individuelle AGOOJYÉ." });
+        return res.status(400).json({ message: "Seuls les participants confirmés peuvent recevoir une identité email individuelle AGOOJYE." });
       }
     }
 
@@ -975,7 +975,7 @@ adminApi.post("/:resource", async (req: any, res) => {
     await audit(tenantId, { actor: actor(req), action: "create", entityType: resource.entity, entityId: Number((item as any).id) || null });
     return res.status(201).json({ ok: true, item });
   } catch (error: any) {
-    return res.status(500).json({ message: error?.message || "Impossible de créer la ressource AGOOJYÉ." });
+    return res.status(500).json({ message: error?.message || "Impossible de créer la ressource AGOOJYE." });
   }
 });
 
@@ -985,7 +985,7 @@ adminApi.patch("/:resource/:id", async (req: any, res) => {
     const id = Number(req.params.id);
     if (!Number.isFinite(id) || id <= 0) return res.status(400).json({ message: "Invalid id" });
     const resource = getResource(req.params.resource);
-    if (!resource) return res.status(404).json({ message: "Ressource AGOOJYÉ inconnue." });
+    if (!resource) return res.status(404).json({ message: "Ressource AGOOJYE inconnue." });
     const table: any = resource.table;
     const patch = sanitizePatch(resource, req.body || {});
     if (Object.keys(patch).length <= 1) return res.status(400).json({ message: "No supported fields to update" });
@@ -1000,7 +1000,7 @@ adminApi.patch("/:resource/:id", async (req: any, res) => {
     await audit(tenantId, { actor: actor(req), action: "update", entityType: resource.entity, entityId: id, metadata: { fields: Object.keys(patch) } });
     return res.json({ ok: true, item });
   } catch (error: any) {
-    return res.status(500).json({ message: error?.message || "Impossible de mettre à jour la ressource AGOOJYÉ." });
+    return res.status(500).json({ message: error?.message || "Impossible de mettre à jour la ressource AGOOJYE." });
   }
 });
 

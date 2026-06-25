@@ -9,7 +9,7 @@ export const agoojyeSeedPlan: TenantSeedPlan = {
     "Documents",
   ],
   demoContent: [
-    { key: "teams", title: "Équipes AGOOJYÉ", count: 9 },
+    { key: "teams", title: "Équipes AGOOJYE", count: 9 },
     { key: "email_aliases", title: "Alias email officiels", count: 13 },
     { key: "milestones", title: "Jalons publics et internes", count: 10 },
   ],

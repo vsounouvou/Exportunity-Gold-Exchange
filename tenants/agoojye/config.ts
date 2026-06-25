@@ -4,7 +4,7 @@ import { agoojyeThemeTokens } from "./theme";
 
 export const agoojyeTenantConfig: TenantConfig = {
   slug: "agoojye",
-  brandName: "AGOOJYÉ Electric Mobility",
+  brandName: "AGOOJYE Electric Mobility",
   tagline: "Fait au Bénin. Conçu pour l'Afrique. Regardé par le monde.",
   primaryDomain: "agoojiye.com",
   domains: [
@@ -29,7 +29,7 @@ export const agoojyeTenantConfig: TenantConfig = {
   themeTokens: agoojyeThemeTokens,
   storefrontHero: {
     eyebrow: "Mobilité électrique née au Bénin",
-    title: "AGOOJYÉ",
+    title: "AGOOJYE",
     subtitle: "Un mouvement industriel béninois pour construire la mobilité électrique africaine.",
     ctaPrimary: { label: "Rejoindre le mouvement", href: "/contact" },
     ctaSecondary: { label: "Devenir partenaire", href: "/partners" },

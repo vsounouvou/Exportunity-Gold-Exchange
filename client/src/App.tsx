@@ -323,6 +323,7 @@ const AgoojyePartnersPage = lazyPage(() => import("@/pages/agoojye/AgoojyePublic
 const AgoojyeSponsorsPage = lazyPage(() => import("@/pages/agoojye/AgoojyePublicPages"), "AgoojyeSponsorsPage");
 const AgoojyeMediaPage = lazyPage(() => import("@/pages/agoojye/AgoojyePublicPages"), "AgoojyeMediaPage");
 const AgoojyeContactPage = lazyPage(() => import("@/pages/agoojye/AgoojyePublicPages"), "AgoojyeContactPage");
+const AgoojyeMailPasswordPage = lazyPage(() => import("@/pages/agoojye/AgoojyeMailPasswordPage"));
 const AgoojyeAdminDashboardPage = lazyPage(() => import("@/pages/agoojye/AgoojyeAdminPages"), "AgoojyeAdminDashboardPage");
 const AgoojyeAdminUsersPage = lazyPage(() => import("@/pages/agoojye/AgoojyeAdminPages"), "AgoojyeAdminUsersPage");
 const AgoojyeAdminTeamsPage = lazyPage(() => import("@/pages/agoojye/AgoojyeAdminPages"), "AgoojyeAdminTeamsPage");
@@ -806,6 +807,8 @@ function App() {
           <Route path="/teams" component={() => <AgoojyeOnlyRoute><AgoojyeTeamsPage /></AgoojyeOnlyRoute>} />
           <Route path="/partners" component={() => <AgoojyeOnlyRoute><AgoojyePartnersPage /></AgoojyeOnlyRoute>} />
           <Route path="/sponsors" component={() => <AgoojyeOnlyRoute><AgoojyeSponsorsPage /></AgoojyeOnlyRoute>} />
+          <Route path="/mail/password" component={() => <AgoojyeOnlyRoute><AgoojyeMailPasswordPage /></AgoojyeOnlyRoute>} />
+          <Route path="/email/password" component={() => <AgoojyeOnlyRoute><AgoojyeMailPasswordPage /></AgoojyeOnlyRoute>} />
           <Route path="/mentions-legales" component={() => (isMetHost() ? <MetLegalMentionsPage /> : <Redirect to="/terms" />)} />
           <Route path="/politique-confidentialite" component={() => (isMetHost() ? <MetPrivacyPolicyPage /> : <Redirect to="/privacy" />)} />
           <Route path="/a/quick" component={ChairmanQuickPage} />

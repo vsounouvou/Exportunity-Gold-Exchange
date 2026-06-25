@@ -19,10 +19,11 @@ Private initial passwords are not committed and are not printed in chat.
 - VPS credential file: `/home/vital/secure/agoojye/agoojye-mailbox-initial-credentials-20260625T012859Z.txt`
 - Local handoff copy: `C:\tmp\agoojye-mailbox-initial-credentials-20260625T012859Z.txt`
 - Webmail login: `https://mail.exportunity.net/`
+- First-login password change page: `https://agoojiye.com/mail/password`
 - IMAP host: `mail.exportunity.net`, port `993`, TLS on
 - SMTP submission host: `mail.exportunity.net`, port `587`, STARTTLS
 
-Roundcube is available for mailbox login. Password self-service is not enabled yet; a docker-mailserver-compatible Roundcube driver was tested and rolled back because it did not produce a verified Dovecot-authenticating password update. Until that backend is proven, password rotation should be done through the platform email admin reset flow or `docker exec mailserver setup email update <address> <password>`.
+Roundcube is available for mailbox login. Password self-service is handled by the AGOOJIYE platform at `/mail/password`: the route verifies the current IMAP password, updates docker-mailserver, verifies the new IMAP password, and writes only audit metadata. Raw mailbox passwords are not stored in the app database.
 
 ## Shared aliases
 

@@ -123,6 +123,7 @@ import meetRouter from "./routes/meet";
 import sellerRouter from "./routes/seller";
 import emailRouter from "./routes/email";
 import mailRouter from "./routes/mail";
+import publicMailPasswordRouter from "./routes/public-mail-password";
 import zoguelandRouter from "./routes/zogueland";
 import assistantRouter from "./routes/assistant";
 import chairmanConsoleRouter from "./routes/chairman-console";
@@ -1249,6 +1250,8 @@ export function registerRoutes(app: Express): Server {
 
   // Internal email engine (agent mailboxes)
   app.use("/api/email", emailRouter);
+  // Public mailbox password self-service; authenticated mailbox password is verified server-side.
+  app.use("/api/mail", publicMailPasswordRouter);
   // Platform-native mailbox UI (SSO; no IMAP from client)
   app.use("/api/mail", mailRouter);
 

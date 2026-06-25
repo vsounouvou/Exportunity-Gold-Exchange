@@ -22,7 +22,7 @@ Private initial passwords are not committed and are not printed in chat.
 - IMAP host: `mail.exportunity.net`, port `993`, TLS on
 - SMTP submission host: `mail.exportunity.net`, port `587`, STARTTLS
 
-Roundcube currently has the password plugin installed but not enabled. Until that backend is configured, password rotation should be done through the platform email admin reset flow or `docker exec mailserver setup email update <address> <password>`.
+Roundcube is available for mailbox login. Password self-service is not enabled yet; a docker-mailserver-compatible Roundcube driver was tested and rolled back because it did not produce a verified Dovecot-authenticating password update. Until that backend is proven, password rotation should be done through the platform email admin reset flow or `docker exec mailserver setup email update <address> <password>`.
 
 ## Shared aliases
 

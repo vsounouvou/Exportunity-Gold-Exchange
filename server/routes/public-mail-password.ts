@@ -87,6 +87,25 @@ function validateNewPassword(input: { email: string; currentPassword: string; ne
   return "";
 }
 
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function verifyImapLoginWithRetry(input: { user: string; password: string; attempts?: number; delayMs?: number }) {
+  const attempts = Math.max(1, Math.min(input.attempts ?? 8, 12));
+  const delayMs = Math.max(250, Math.min(input.delayMs ?? 1_500, 5_000));
+  let last = await verifyImapLogin({ user: input.user, password: input.password });
+  if (last.ok) return last;
+
+  for (let attempt = 2; attempt <= attempts; attempt += 1) {
+    await sleep(delayMs);
+    last = await verifyImapLogin({ user: input.user, password: input.password });
+    if (last.ok) return last;
+  }
+
+  return last;
+}
+
 async function resolveAllowedDomains(tenant: any) {
   const domains = new Set<string>();
   for (const candidate of Array.isArray(tenant?.domains) ? tenant.domains : []) {
@@ -208,7 +227,7 @@ router.post("/password/change", async (req: any, res) => {
       return res.status(500).json({ message: "Le mot de passe n'a pas pu être mis à jour." });
     }
 
-    const newAuth = await verifyImapLogin({ user: email, password: newPassword });
+    const newAuth = await verifyImapLoginWithRetry({ user: email, password: newPassword, attempts: 10, delayMs: 2_000 });
     if (!newAuth.ok) {
       await mailserverEmailUpdate(email, currentPassword).catch(() => null);
       await writePasswordChangeAudit({

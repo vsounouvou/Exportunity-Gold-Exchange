@@ -21,6 +21,30 @@ type DomainRow = {
 
 type DomainsResponse = { ok: boolean; items: DomainRow[] };
 
+type EmailStatusResponse = {
+  ok: boolean;
+  mail: {
+    domain: string;
+    authDiagnostics?: {
+      checkedAtIso?: string;
+      trustedForOutbound: boolean;
+      warnings: string[];
+      spf: { ok: boolean; records: string[] };
+      dkim: { ok: boolean; selector: string | null; records: string[] };
+      dmarc: { ok: boolean; policy: string | null; records: string[] };
+    };
+    inboundDns?: {
+      expectedMxHost: string;
+      expectedMailHost: string;
+      expectedIpv4: string | null;
+      readyForInbound: boolean;
+      warnings: string[];
+      mx: { ok: boolean; records: Array<{ exchange: string; priority: number }> };
+      mailHostA: { ok: boolean; records: string[] };
+    };
+  };
+};
+
 type AccountRow = {
   id: number;
   tenantId: number;
@@ -67,6 +91,12 @@ async function copyToClipboard(text: string) {
   }
 }
 
+function dnsBadgeClass(ok: boolean | null | undefined, warnWhenMissing = false) {
+  if (ok) return "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30";
+  if (warnWhenMissing) return "bg-amber-500/15 text-amber-300 border border-amber-500/30";
+  return "bg-red-500/15 text-red-300 border border-red-500/30";
+}
+
 export function AdminHumanEmailAccountsPanel() {
   const { tenant } = useTenant();
   const { toast } = useToast();
@@ -84,6 +114,12 @@ export function AdminHumanEmailAccountsPanel() {
   const [ownerUser, setOwnerUser] = useState<TenantUser | null>(null);
 
   const [lastTempPassword, setLastTempPassword] = useState<{ address: string; password: string } | null>(null);
+
+  const statusQuery = useQuery<EmailStatusResponse>({
+    queryKey: ["/api/admin/email/status"],
+    retry: false,
+    staleTime: 30_000,
+  });
 
   const domainsQuery = useQuery<DomainsResponse>({
     queryKey: ["/api/admin/email/domains"],
@@ -210,6 +246,91 @@ export function AdminHumanEmailAccountsPanel() {
 
   return (
     <div className="space-y-6">
+      <Card className="bg-slate-900/60 border-slate-800">
+        <CardHeader>
+          <CardTitle className="text-white">Domain authentication</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {statusQuery.isError ? (
+            <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-2 text-sm text-red-200">
+              Unable to read mail status.
+            </div>
+          ) : null}
+
+          <div className="text-xs text-slate-400">
+            Domain: <span className="text-slate-200">{statusQuery.data?.mail?.domain || "loading..."}</span>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            <Badge className={dnsBadgeClass(statusQuery.data?.mail?.inboundDns?.mx?.ok)}>
+              MX: {statusQuery.data?.mail?.inboundDns?.mx?.ok ? "cut over" : "not cut over"}
+            </Badge>
+            <Badge className={dnsBadgeClass(statusQuery.data?.mail?.inboundDns?.mailHostA?.ok)}>
+              Mail A: {statusQuery.data?.mail?.inboundDns?.mailHostA?.ok ? "ready" : "missing"}
+            </Badge>
+            <Badge className={dnsBadgeClass(statusQuery.data?.mail?.authDiagnostics?.spf?.ok)}>
+              SPF: {statusQuery.data?.mail?.authDiagnostics?.spf?.ok ? "pass" : "fail"}
+            </Badge>
+            <Badge className={dnsBadgeClass(statusQuery.data?.mail?.authDiagnostics?.dkim?.ok)}>
+              DKIM: {statusQuery.data?.mail?.authDiagnostics?.dkim?.ok ? "pass" : "fail"}
+            </Badge>
+            <Badge className={dnsBadgeClass(statusQuery.data?.mail?.authDiagnostics?.dmarc?.ok, true)}>
+              DMARC: {statusQuery.data?.mail?.authDiagnostics?.dmarc?.ok ? "present" : "missing"}
+            </Badge>
+            <Badge className={dnsBadgeClass(statusQuery.data?.mail?.inboundDns?.readyForInbound)}>
+              Inbound mail: {statusQuery.data?.mail?.inboundDns?.readyForInbound ? "ready" : "DNS pending"}
+            </Badge>
+          </div>
+
+          {statusQuery.data?.mail?.inboundDns ? (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 text-xs">
+              <div className="rounded-lg border border-slate-800 bg-slate-950/30 p-3">
+                <div className="font-medium text-slate-200">Expected DNS</div>
+                <div className="mt-2 space-y-1 text-slate-400">
+                  <div>
+                    MX: <span className="font-mono text-slate-200">10 {statusQuery.data.mail.inboundDns.expectedMxHost}.</span>
+                  </div>
+                  <div>
+                    A:{" "}
+                    <span className="font-mono text-slate-200">
+                      {statusQuery.data.mail.inboundDns.expectedMailHost} {statusQuery.data.mail.inboundDns.expectedIpv4 || "configured IP"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <div className="rounded-lg border border-slate-800 bg-slate-950/30 p-3">
+                <div className="font-medium text-slate-200">Observed DNS</div>
+                <div className="mt-2 space-y-1 text-slate-400">
+                  <div>
+                    MX:{" "}
+                    <span className="font-mono text-slate-200">
+                      {statusQuery.data.mail.inboundDns.mx.records.length
+                        ? statusQuery.data.mail.inboundDns.mx.records.map((record) => `${record.priority} ${record.exchange}`).join(", ")
+                        : "none"}
+                    </span>
+                  </div>
+                  <div>
+                    A:{" "}
+                    <span className="font-mono text-slate-200">
+                      {statusQuery.data.mail.inboundDns.mailHostA.records.length
+                        ? statusQuery.data.mail.inboundDns.mailHostA.records.join(", ")
+                        : "none"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : null}
+
+          {((statusQuery.data?.mail?.inboundDns?.warnings?.length ?? 0) > 0 ||
+            (statusQuery.data?.mail?.authDiagnostics?.warnings?.length ?? 0) > 0) ? (
+            <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-2 text-xs text-amber-100">
+              {[...(statusQuery.data?.mail?.inboundDns?.warnings ?? []), ...(statusQuery.data?.mail?.authDiagnostics?.warnings ?? [])].join(", ")}
+            </div>
+          ) : null}
+        </CardContent>
+      </Card>
+
       <Card className="bg-slate-900/60 border-slate-800">
         <CardHeader>
           <CardTitle className="text-white">Human mailboxes</CardTitle>

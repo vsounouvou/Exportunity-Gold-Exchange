@@ -1,5 +1,6 @@
 import { Router } from "express";
 import crypto from "crypto";
+import dns from "node:dns/promises";
 import { and, asc, desc, eq, sql } from "drizzle-orm";
 import { db } from "@db";
 import {
@@ -79,6 +80,79 @@ function normalizeDomain(value: string) {
   if (!domain) return "";
   if (!/^[a-z0-9.-]+\\.[a-z]{2,}$/.test(domain)) return "";
   return domain;
+}
+
+function normalizeDnsName(value: string) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/^www[.]/, "")
+    .replace(/[.]$/g, "");
+}
+
+function getExpectedMailHost(domain: string) {
+  const configured = normalizeDnsName(String(process.env.MAIL_EXPECTED_MX_HOST || process.env.MAIL_EXPECTED_MAIL_HOST || ""));
+  return configured || `mail.${normalizeDnsName(domain)}`;
+}
+
+function getExpectedMailIpv4(domain: string) {
+  const configured = String(
+    process.env.MAIL_SMTP_PUBLIC_IP ||
+      process.env.MAIL_SMTP_SOURCE_IP ||
+      process.env.APP_PUBLIC_IP ||
+      process.env.PUBLIC_IP ||
+      "",
+  ).trim();
+  if (configured) return configured;
+  if (domain === "agoojiye.com") return "51.254.143.30";
+  return "";
+}
+
+async function getInboundDnsDiagnostics(domain: string) {
+  const expectedHost = getExpectedMailHost(domain);
+  const expectedIpv4 = getExpectedMailIpv4(domain);
+  const warnings: string[] = [];
+  let mxRecords: Array<{ exchange: string; priority: number }> = [];
+  let mailHostARecords: string[] = [];
+
+  try {
+    mxRecords = (await dns.resolveMx(domain))
+      .map((record) => ({
+        exchange: normalizeDnsName(record.exchange),
+        priority: Number(record.priority),
+      }))
+      .filter((record) => record.exchange)
+      .sort((a, b) => a.priority - b.priority || a.exchange.localeCompare(b.exchange));
+  } catch (error: any) {
+    warnings.push(`mx_lookup_failed:${String(error?.code || error?.message || "unknown")}`);
+  }
+
+  try {
+    mailHostARecords = await dns.resolve4(expectedHost);
+  } catch (error: any) {
+    warnings.push(`mail_host_a_lookup_failed:${String(error?.code || error?.message || "unknown")}`);
+  }
+
+  const mxOk = mxRecords.some((record) => normalizeDnsName(record.exchange) === expectedHost);
+  const mailHostAOk = expectedIpv4 ? mailHostARecords.includes(expectedIpv4) : mailHostARecords.length > 0;
+  if (!mxOk) warnings.push("mx_not_cut_over");
+  if (!mailHostAOk) warnings.push(expectedIpv4 ? "mail_host_a_mismatch" : "mail_host_a_missing");
+
+  return {
+    expectedMxHost: expectedHost,
+    expectedMailHost: expectedHost,
+    expectedIpv4: expectedIpv4 || null,
+    readyForInbound: mxOk && mailHostAOk,
+    mx: {
+      ok: mxOk,
+      records: mxRecords,
+    },
+    mailHostA: {
+      ok: mailHostAOk,
+      records: mailHostARecords,
+    },
+    warnings,
+  };
 }
 
 const RESERVED_LOCAL_PARTS = new Set(
@@ -225,6 +299,7 @@ router.get("/email/status", async (req: any, res) => {
     smtpHost: String(process.env.MAIL_SMTP_HOST || "mail.boursedelor.com").trim(),
     smtpHeloName: String(process.env.MAIL_SMTP_HELO_NAME || process.env.MAIL_HELO_NAME || "").trim(),
   });
+  const inboundDns = await getInboundDnsDiagnostics(effectiveDomain);
 
   res.json({
     ok: true,
@@ -242,6 +317,7 @@ router.get("/email/status", async (req: any, res) => {
         usingSendmail: useSendmail,
       },
       authDiagnostics,
+      inboundDns,
     },
   });
 });

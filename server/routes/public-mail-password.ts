@@ -3,7 +3,6 @@ import { and, eq } from "drizzle-orm";
 import { db } from "@db";
 import { auditLogs, emailAccounts } from "@db/schema";
 import { resolveTenantMailDomain } from "../lib/mail/domainResolver";
-import { verifyImapLogin } from "../lib/mail/imapAuthCheck";
 import { isMailserverSetupAvailable, mailserverDoveadmAuthTest, mailserverEmailUpdate } from "../lib/mail/mailserverSetup";
 
 const router = Router();
@@ -199,7 +198,7 @@ router.post("/password/change", async (req: any, res) => {
       return res.status(503).json({ message: "Le service de changement de mot de passe n'est pas disponible." });
     }
 
-    const currentAuth = await verifyImapLogin({ user: email, password: currentPassword });
+    const currentAuth = await mailserverDoveadmAuthTest(email, currentPassword);
     if (!currentAuth.ok) {
       await writePasswordChangeAudit({
         tenantId: Number(tenant.id),

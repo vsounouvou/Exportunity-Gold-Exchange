@@ -4,7 +4,7 @@ import { db } from "@db";
 import { auditLogs, emailAccounts } from "@db/schema";
 import { resolveTenantMailDomain } from "../lib/mail/domainResolver";
 import { verifyImapLogin } from "../lib/mail/imapAuthCheck";
-import { isMailserverSetupAvailable, mailserverEmailUpdate } from "../lib/mail/mailserverSetup";
+import { isMailserverSetupAvailable, mailserverDoveadmAuthTest, mailserverEmailUpdate } from "../lib/mail/mailserverSetup";
 
 const router = Router();
 
@@ -91,15 +91,15 @@ function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function verifyImapLoginWithRetry(input: { user: string; password: string; attempts?: number; delayMs?: number }) {
-  const attempts = Math.max(1, Math.min(input.attempts ?? 8, 12));
-  const delayMs = Math.max(250, Math.min(input.delayMs ?? 1_500, 5_000));
-  let last = await verifyImapLogin({ user: input.user, password: input.password });
+async function verifyMailserverLoginWithRetry(input: { user: string; password: string; attempts?: number; delayMs?: number }) {
+  const attempts = Math.max(1, Math.min(input.attempts ?? 6, 10));
+  const delayMs = Math.max(250, Math.min(input.delayMs ?? 1_000, 3_000));
+  let last = await mailserverDoveadmAuthTest(input.user, input.password);
   if (last.ok) return last;
 
   for (let attempt = 2; attempt <= attempts; attempt += 1) {
     await sleep(delayMs);
-    last = await verifyImapLogin({ user: input.user, password: input.password });
+    last = await mailserverDoveadmAuthTest(input.user, input.password);
     if (last.ok) return last;
   }
 
@@ -227,7 +227,7 @@ router.post("/password/change", async (req: any, res) => {
       return res.status(500).json({ message: "Le mot de passe n'a pas pu être mis à jour." });
     }
 
-    const newAuth = await verifyImapLoginWithRetry({ user: email, password: newPassword, attempts: 10, delayMs: 2_000 });
+    const newAuth = await verifyMailserverLoginWithRetry({ user: email, password: newPassword });
     if (!newAuth.ok) {
       await mailserverEmailUpdate(email, currentPassword).catch(() => null);
       await writePasswordChangeAudit({

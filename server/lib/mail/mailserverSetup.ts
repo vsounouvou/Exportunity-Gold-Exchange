@@ -95,6 +95,16 @@ export async function mailserverEmailUpdate(address: string, password: string) {
   return execInMailserver(["setup", "email", "update", address, password]);
 }
 
+export async function mailserverDoveadmAuthTest(address: string, password: string) {
+  const result = await execInMailserver(["doveadm", "auth", "test", address, password], { timeoutMs: 10_000 });
+  const combinedOutput = `${result.stdout}\n${result.stderr}`;
+
+  return {
+    ...result,
+    ok: result.ok && /auth succeeded/i.test(combinedOutput),
+  };
+}
+
 export async function mailserverEmailDelete(address: string) {
   return execInMailserver(["setup", "email", "del", address]);
 }

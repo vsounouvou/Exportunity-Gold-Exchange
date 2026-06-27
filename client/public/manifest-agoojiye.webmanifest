@@ -9,13 +9,25 @@
   "theme_color": "#080808",
   "icons": [
     {
-      "src": "/tenants/agoojye/icon-192.png",
-      "sizes": "192x192",
+      "src": "/tenants/agoojye/app-icon-64.png",
+      "sizes": "64x64",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/tenants/agoojye/icon-512.png",
+      "src": "/tenants/agoojye/app-icon-128.png",
+      "sizes": "128x128",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/tenants/agoojye/app-icon-256.png",
+      "sizes": "256x256",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/tenants/agoojye/app-icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"

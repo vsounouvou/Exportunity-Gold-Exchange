@@ -381,6 +381,14 @@ const TENANT_MANIFEST_OVERRIDES: Record<string, TenantManifestOverride> = {
     background_color: "#0B0F19",
     theme_color: "#0B0F19",
   },
+  agoojye: {
+    name: "AGOOJIYE",
+    short_name: "AGOOJIYE",
+    description: "Mobilite electrique nee au Benin, concue pour l'Afrique.",
+    start_url: "/",
+    background_color: "#080808",
+    theme_color: "#080808",
+  },
   met: {
     name: "Maison en Terre",
     short_name: "MET",
@@ -434,6 +442,31 @@ const TENANT_MANIFEST_OVERRIDES: Record<string, TenantManifestOverride> = {
 function buildManifestIcons(tenantKey: string) {
   const tenantConfig = getTenantConfigByKey(tenantKey);
   const faviconPath = tenantConfig?.assets?.faviconPath || `/tenants/${tenantKey}/favicon.svg`;
+  if (tenantKey === "agoojye") {
+    return [
+      {
+        src: "/tenants/agoojye/app-icon-64.png",
+        sizes: "64x64",
+        type: "image/png",
+      },
+      {
+        src: "/tenants/agoojye/app-icon-128.png",
+        sizes: "128x128",
+        type: "image/png",
+      },
+      {
+        src: "/tenants/agoojye/app-icon-256.png",
+        sizes: "256x256",
+        type: "image/png",
+      },
+      {
+        src: "/tenants/agoojye/app-icon-512.png",
+        sizes: "512x512",
+        type: "image/png",
+        purpose: "any maskable",
+      },
+    ];
+  }
   if (tenantKey === "zogueland") {
     return [
       {
@@ -1202,6 +1235,12 @@ export function registerRoutes(app: Express): Server {
     res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
     res.setHeader("Content-Type", "application/manifest+json; charset=utf-8");
     res.json(buildTenantManifest("bdo"));
+  });
+
+  app.get("/manifest-agoojiye.webmanifest", (req, res) => {
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
+    res.setHeader("Content-Type", "application/manifest+json; charset=utf-8");
+    res.json(buildTenantManifest("agoojye"));
   });
 
   app.get("/manifest-zogueland.webmanifest", (req, res) => {

@@ -1,6 +1,6 @@
 # AGOOJIYE email DNS and mailbox handoff
 
-Date: 2026-06-25
+Date: 2026-06-27
 
 ## Provisioned mailboxes
 
@@ -23,7 +23,7 @@ Private initial passwords are not committed and are not printed in chat.
 - IMAP host: `mail.exportunity.net`, port `993`, TLS on
 - SMTP submission host: `mail.exportunity.net`, port `587`, STARTTLS
 
-Roundcube is available for mailbox login. Password self-service is handled by the AGOOJIYE platform at `/mail/password`: the route verifies the current IMAP password, updates docker-mailserver, verifies the new IMAP password, and writes only audit metadata. Raw mailbox passwords are not stored in the app database.
+Roundcube is available for mailbox login. Password self-service is handled by the AGOOJIYE platform at `/mail/password`: the route verifies the current mailbox password against Dovecot in docker-mailserver, updates docker-mailserver, verifies the new password against Dovecot, and writes only audit metadata. Raw mailbox passwords are not stored in the app database.
 
 ## Shared aliases
 
@@ -49,11 +49,11 @@ The app database has matching AGOOJIYE tenant records:
 
 - `email_accounts`: 5 active accounts for tenant `3162`
 - `email_aliases`: 65 alias routes for tenant `3162`
-- `agoojye_email_identities`: 18 active identities for tenant `3162`
+- `agoojye_email_identities`: 20 active identities for tenant `3162`
 
 ## Current public DNS state
 
-As of 2026-06-25, public DNS is not yet cut over for this self-hosted mail stack:
+As of 2026-06-27, public DNS is not yet cut over for this self-hosted mail stack:
 
 - `agoojiye.com` MX still points to OVH: `mx1.mail.ovh.net`, `mx2.mail.ovh.net`, `mx3.mail.ovh.net`
 - `mail.agoojiye.com` has no public `A` record

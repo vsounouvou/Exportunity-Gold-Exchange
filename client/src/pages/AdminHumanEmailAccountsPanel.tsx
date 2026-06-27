@@ -69,6 +69,29 @@ type AccountsResponse = {
   pagination?: { total: number; limit: number; offset: number };
 };
 
+type AliasRow = {
+  id: number;
+  tenantId: number;
+  sourceAccountId: number | null;
+  sourceAddress: string;
+  destination: string;
+  createdAt: string;
+};
+
+type AliasGroup = {
+  sourceAddress: string;
+  destinations: string[];
+  count: number;
+  latestCreatedAt: string | null;
+};
+
+type AliasesResponse = {
+  ok: boolean;
+  items: AliasRow[];
+  groups: AliasGroup[];
+  pagination?: { total: number; limit: number };
+};
+
 type TenantUser = { id: number; displayName: string; email: string };
 type TenantUsersResponse = { ok: boolean; items: TenantUser[] };
 
@@ -147,6 +170,13 @@ export function AdminHumanEmailAccountsPanel() {
     queryKey: [accountsQueryKey],
     retry: false,
     staleTime: 5_000,
+  });
+
+  const aliasesQueryKey = "/api/admin/email/aliases?limit=500";
+  const aliasesQuery = useQuery<AliasesResponse>({
+    queryKey: [aliasesQueryKey],
+    retry: false,
+    staleTime: 10_000,
   });
 
   // Debounced tenant user search.
@@ -233,6 +263,7 @@ export function AdminHumanEmailAccountsPanel() {
       toast({ title: "Alias created", description: `${aliasSource.trim()} → ${aliasDestination.trim()}` });
       setAliasSource("");
       setAliasDestination("");
+      await queryClient.invalidateQueries({ queryKey: [aliasesQueryKey] });
     },
     onError: (err: any) => {
       toast({ title: "Alias failed", description: String(err?.message || err), variant: "destructive" });
@@ -240,6 +271,7 @@ export function AdminHumanEmailAccountsPanel() {
   });
 
   const accounts = accountsQuery.data?.items ?? [];
+  const aliasGroups = aliasesQuery.data?.groups ?? [];
   const total = accountsQuery.data?.pagination?.total ?? accounts.length;
   const canPrev = offset > 0;
   const canNext = offset + 50 < total;
@@ -676,6 +708,66 @@ export function AdminHumanEmailAccountsPanel() {
           </div>
           <div className="text-xs text-slate-400">
             Note: alias provisioning calls docker-mailserver `setup alias add`.
+          </div>
+
+          <div className="space-y-3">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <div className="text-sm font-medium text-slate-100">Current alias routes</div>
+                <div className="text-xs text-slate-500">
+                  Grouped by source address. Shared AGOOJIYE identities should route to approved team mailboxes.
+                </div>
+              </div>
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => void aliasesQuery.refetch()}
+                disabled={aliasesQuery.isFetching}
+              >
+                {aliasesQuery.isFetching ? "Refreshing..." : "Refresh"}
+              </Button>
+            </div>
+
+            <ScrollArea className="h-[260px] pr-4">
+              <div className="space-y-2">
+                {aliasesQuery.isLoading ? (
+                  <div className="text-sm text-slate-400">Loading aliases...</div>
+                ) : aliasesQuery.isError ? (
+                  <div className="text-sm text-red-300 bg-red-500/10 border border-red-500/30 rounded-lg p-2">
+                    Failed to load aliases.
+                  </div>
+                ) : aliasGroups.length === 0 ? (
+                  <div className="text-sm text-slate-400">No aliases.</div>
+                ) : (
+                  aliasGroups.map((group) => (
+                    <div key={group.sourceAddress} className="rounded-lg border border-slate-800 bg-slate-950/30 p-3">
+                      <div className="flex flex-wrap items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <div className="text-sm font-mono text-slate-100 break-all">{group.sourceAddress}</div>
+                          <div className="mt-1 text-xs text-slate-500">
+                            {group.count} route{group.count === 1 ? "" : "s"}
+                            {group.latestCreatedAt ? ` - updated ${new Date(group.latestCreatedAt).toLocaleString()}` : ""}
+                          </div>
+                        </div>
+                        <Badge className="bg-slate-500/15 text-slate-200 border border-slate-500/30">
+                          {group.destinations.length} destination{group.destinations.length === 1 ? "" : "s"}
+                        </Badge>
+                      </div>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {group.destinations.map((destination) => (
+                          <span
+                            key={destination}
+                            className="rounded-md border border-slate-800 bg-slate-900/60 px-2 py-1 text-xs font-mono text-slate-300"
+                          >
+                            {destination}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </ScrollArea>
           </div>
         </CardContent>
       </Card>

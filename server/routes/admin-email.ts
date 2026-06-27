@@ -1008,6 +1008,68 @@ router.patch("/email/accounts/:id", async (req: any, res) => {
   }
 });
 
+router.get("/email/aliases", async (req: any, res) => {
+  try {
+    const tenant = req.tenant;
+    if (!tenant) return res.status(400).json({ message: "tenant required" });
+
+    const limit = parseLimit(req.query?.limit, 500, 2000);
+    const q = String(req.query?.q || "").trim();
+    const whereParts: any[] = [eq(emailAliases.tenantId, tenant.id)];
+    if (q) {
+      whereParts.push(
+        sql`(${emailAliases.sourceAddress} ILIKE ${"%" + q + "%"} OR ${emailAliases.destination} ILIKE ${"%" + q + "%"})`,
+      );
+    }
+
+    const rows = await db
+      .select()
+      .from(emailAliases)
+      .where(and(...whereParts))
+      .orderBy(asc(emailAliases.sourceAddress), asc(emailAliases.destination), desc(emailAliases.createdAt))
+      .limit(limit);
+
+    const grouped = new Map<
+      string,
+      { sourceAddress: string; destinations: string[]; count: number; latestCreatedAt: string | null }
+    >();
+    for (const row of rows) {
+      const sourceAddress = String(row.sourceAddress || "").toLowerCase();
+      if (!sourceAddress) continue;
+      const destination = String(row.destination || "").toLowerCase();
+      const createdAt =
+        row.createdAt instanceof Date
+          ? row.createdAt.toISOString()
+          : row.createdAt
+            ? new Date(row.createdAt as any).toISOString()
+            : null;
+      const existing =
+        grouped.get(sourceAddress) ||
+        ({ sourceAddress, destinations: [], count: 0, latestCreatedAt: null } satisfies {
+          sourceAddress: string;
+          destinations: string[];
+          count: number;
+          latestCreatedAt: string | null;
+        });
+      if (destination && !existing.destinations.includes(destination)) existing.destinations.push(destination);
+      existing.count += 1;
+      if (createdAt && (!existing.latestCreatedAt || createdAt > existing.latestCreatedAt)) {
+        existing.latestCreatedAt = createdAt;
+      }
+      grouped.set(sourceAddress, existing);
+    }
+
+    res.json({
+      ok: true,
+      items: rows,
+      groups: Array.from(grouped.values()).sort((a, b) => a.sourceAddress.localeCompare(b.sourceAddress)),
+      pagination: { limit, total: rows.length },
+    });
+  } catch (err: any) {
+    res.status(err?.status || 500).json({ message: err?.message || "Failed to load aliases" });
+  }
+});
+
 router.post("/email/aliases", async (req: any, res) => {
   try {
     const tenant = req.tenant;

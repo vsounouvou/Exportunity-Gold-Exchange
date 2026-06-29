@@ -335,6 +335,16 @@ const AgoojyeAdminMilestonesPage = lazyPage(() => import("@/pages/agoojye/Agoojy
 const AgoojyeAdminDocumentsPage = lazyPage(() => import("@/pages/agoojye/AgoojyeAdminPages"), "AgoojyeAdminDocumentsPage");
 const AgoojyeAdminPartnersPage = lazyPage(() => import("@/pages/agoojye/AgoojyeAdminPages"), "AgoojyeAdminPartnersPage");
 const AgoojyeAdminSponsorsPage = lazyPage(() => import("@/pages/agoojye/AgoojyeAdminPages"), "AgoojyeAdminSponsorsPage");
+const AgoojyeAdminSponsorCategoriesPage = lazyPage(() => import("@/pages/agoojye/AgoojyeAdminPages"), "AgoojyeAdminSponsorCategoriesPage");
+const AgoojyeAdminPipelineStagesPage = lazyPage(() => import("@/pages/agoojye/AgoojyeAdminPages"), "AgoojyeAdminPipelineStagesPage");
+const AgoojyeAdminOrganizationsPage = lazyPage(() => import("@/pages/agoojye/AgoojyeAdminPages"), "AgoojyeAdminOrganizationsPage");
+const AgoojyeAdminContactsPage = lazyPage(() => import("@/pages/agoojye/AgoojyeAdminPages"), "AgoojyeAdminContactsPage");
+const AgoojyeAdminOpportunitiesPage = lazyPage(() => import("@/pages/agoojye/AgoojyeAdminPages"), "AgoojyeAdminOpportunitiesPage");
+const AgoojyeAdminActivitiesPage = lazyPage(() => import("@/pages/agoojye/AgoojyeAdminPages"), "AgoojyeAdminActivitiesPage");
+const AgoojyeAdminEmailTemplatesPage = lazyPage(() => import("@/pages/agoojye/AgoojyeAdminPages"), "AgoojyeAdminEmailTemplatesPage");
+const AgoojyeAdminToolboxPage = lazyPage(() => import("@/pages/agoojye/AgoojyeAdminPages"), "AgoojyeAdminToolboxPage");
+const AgoojyeAdminSuppressionPage = lazyPage(() => import("@/pages/agoojye/AgoojyeAdminPages"), "AgoojyeAdminSuppressionPage");
+const AgoojyeAdminApprovalsPage = lazyPage(() => import("@/pages/agoojye/AgoojyeAdminPages"), "AgoojyeAdminApprovalsPage");
 const AgoojyeAdminMediaPage = lazyPage(() => import("@/pages/agoojye/AgoojyeAdminPages"), "AgoojyeAdminMediaPage");
 const AgoojyeAdminContentPage = lazyPage(() => import("@/pages/agoojye/AgoojyeAdminPages"), "AgoojyeAdminContentPage");
 const AgoojyeAdminSettingsPage = lazyPage(() => import("@/pages/agoojye/AgoojyeAdminPages"), "AgoojyeAdminSettingsPage");
@@ -1338,6 +1348,56 @@ function App() {
           <Route path="/admin/agoojye/sponsors">
             <ProtectedRoute>
               <AgoojyeAdminSponsorsPage />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/admin/agoojye/sponsor-categories">
+            <ProtectedRoute>
+              <AgoojyeAdminSponsorCategoriesPage />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/admin/agoojye/pipeline-stages">
+            <ProtectedRoute>
+              <AgoojyeAdminPipelineStagesPage />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/admin/agoojye/organizations">
+            <ProtectedRoute>
+              <AgoojyeAdminOrganizationsPage />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/admin/agoojye/contacts">
+            <ProtectedRoute>
+              <AgoojyeAdminContactsPage />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/admin/agoojye/opportunities">
+            <ProtectedRoute>
+              <AgoojyeAdminOpportunitiesPage />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/admin/agoojye/activities">
+            <ProtectedRoute>
+              <AgoojyeAdminActivitiesPage />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/admin/agoojye/email-templates">
+            <ProtectedRoute>
+              <AgoojyeAdminEmailTemplatesPage />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/admin/agoojye/toolbox">
+            <ProtectedRoute>
+              <AgoojyeAdminToolboxPage />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/admin/agoojye/suppression">
+            <ProtectedRoute>
+              <AgoojyeAdminSuppressionPage />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/admin/agoojye/approvals">
+            <ProtectedRoute>
+              <AgoojyeAdminApprovalsPage />
             </ProtectedRoute>
           </Route>
           <Route path="/admin/agoojye/media">

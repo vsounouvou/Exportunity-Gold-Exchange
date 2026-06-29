@@ -28,6 +28,16 @@ type SectionKey =
   | "documents"
   | "partners"
   | "sponsors"
+  | "sponsorCategories"
+  | "pipelineStages"
+  | "organizations"
+  | "contacts"
+  | "opportunities"
+  | "activities"
+  | "emailTemplates"
+  | "toolbox"
+  | "suppression"
+  | "approvals"
   | "media"
   | "content"
   | "settings"
@@ -56,6 +66,16 @@ const sectionLinks: Array<{ key: SectionKey; href: string; label: string; icon: 
   { key: "documents", href: "/admin/agoojye/documents", label: "Documents", icon: FileText },
   { key: "partners", href: "/admin/agoojye/partners", label: "Partenaires", icon: ShieldCheck },
   { key: "sponsors", href: "/admin/agoojye/sponsors", label: "Sponsors", icon: Users },
+  { key: "sponsorCategories", href: "/admin/agoojye/sponsor-categories", label: "Categories sponsors", icon: ShieldCheck },
+  { key: "pipelineStages", href: "/admin/agoojye/pipeline-stages", label: "Etapes pipeline", icon: ClipboardList },
+  { key: "organizations", href: "/admin/agoojye/organizations", label: "Organisations", icon: Users },
+  { key: "contacts", href: "/admin/agoojye/contacts", label: "Contacts CRM", icon: Users },
+  { key: "opportunities", href: "/admin/agoojye/opportunities", label: "Pipeline sponsors", icon: ClipboardList },
+  { key: "activities", href: "/admin/agoojye/activities", label: "Activites CRM", icon: MessageSquare },
+  { key: "emailTemplates", href: "/admin/agoojye/email-templates", label: "Modeles email", icon: Mail },
+  { key: "toolbox", href: "/admin/agoojye/toolbox", label: "Sponsor Toolbox", icon: FileText },
+  { key: "suppression", href: "/admin/agoojye/suppression", label: "Suppressions", icon: LockKeyhole },
+  { key: "approvals", href: "/admin/agoojye/approvals", label: "Approbations", icon: CheckCircle2 },
   { key: "media", href: "/admin/agoojye/media", label: "Médias", icon: Image },
   { key: "content", href: "/admin/agoojye/content", label: "Contenu", icon: FileText },
   { key: "settings", href: "/admin/agoojye/settings", label: "Réglages", icon: Settings },
@@ -228,6 +248,206 @@ const resourceConfig: Record<Exclude<SectionKey, "overview">, { endpoint: string
       { key: "notes", label: "Notes", kind: "textarea" },
     ],
   },
+  sponsorCategories: {
+    endpoint: "sponsor-categories",
+    title: "Categories sponsors",
+    description: "Classer les cibles par valeur concrete: fondateur, talents, industriel, energie, media ou institutionnel.",
+    columns: ["name", "slug", "status", "sortOrder"],
+    fields: [
+      { key: "name", label: "Nom", required: true },
+      { key: "slug", label: "Slug" },
+      { key: "description", label: "Description", kind: "textarea" },
+      { key: "status", label: "Statut", kind: "select", options: ["active", "paused", "archived"] },
+      { key: "sortOrder", label: "Ordre" },
+    ],
+  },
+  pipelineStages: {
+    endpoint: "pipeline-stages",
+    title: "Etapes du pipeline sponsors",
+    description: "Configurer les etapes de qualification, validation, approbation et cloture du sponsoring.",
+    columns: ["name", "slug", "stageGroup", "status", "isTerminal", "sortOrder"],
+    fields: [
+      { key: "name", label: "Nom", required: true },
+      { key: "slug", label: "Slug" },
+      { key: "description", label: "Description", kind: "textarea" },
+      { key: "stageGroup", label: "Groupe", kind: "select", options: ["active", "won", "lost", "no_contact"] },
+      { key: "status", label: "Statut", kind: "select", options: ["active", "paused", "archived"] },
+      { key: "isTerminal", label: "Etape terminale", kind: "checkbox" },
+      { key: "sortOrder", label: "Ordre" },
+    ],
+  },
+  organizations: {
+    endpoint: "organizations",
+    title: "Organisations cibles",
+    description: "Centraliser les entreprises et institutions a approcher, avec priorite, categorie, prochaine action et note de conformite.",
+    columns: ["name", "sponsorCategory", "priority", "pipelineStageId", "nextAction", "doNotContact"],
+    fields: [
+      { key: "name", label: "Organisation", required: true },
+      { key: "website", label: "Site web" },
+      { key: "country", label: "Pays" },
+      { key: "industry", label: "Secteur" },
+      { key: "sponsorCategoryId", label: "ID categorie sponsor" },
+      { key: "sponsorCategory", label: "Categorie libre" },
+      { key: "companySize", label: "Taille" },
+      { key: "priority", label: "Priorite", kind: "select", options: ["low", "medium", "high", "critical"] },
+      { key: "pipelineStageId", label: "ID etape pipeline" },
+      { key: "opportunityOwner", label: "ID responsable" },
+      { key: "estimatedValue", label: "Valeur estimee" },
+      { key: "currency", label: "Devise", kind: "select", options: ["XOF", "EUR", "USD"] },
+      { key: "source", label: "Source" },
+      { key: "nextAction", label: "Prochaine action" },
+      { key: "nextActionDate", label: "Date prochaine action", kind: "date" },
+      { key: "publicDescription", label: "Description publique", kind: "textarea" },
+      { key: "strategicRelevance", label: "Pertinence strategique", kind: "textarea" },
+      { key: "internalNotes", label: "Notes internes", kind: "textarea" },
+      { key: "publicNotes", label: "Notes publiques", kind: "textarea" },
+      { key: "doNotContact", label: "Ne pas contacter", kind: "checkbox" },
+    ],
+  },
+  contacts: {
+    endpoint: "contacts",
+    title: "Contacts CRM",
+    description: "Gerer les contacts sponsors avec langue, source publique, score de confiance et option de suppression.",
+    columns: ["email", "firstName", "lastName", "organizationId", "verificationStatus", "doNotContact"],
+    fields: [
+      { key: "organizationId", label: "ID organisation" },
+      { key: "firstName", label: "Prenom" },
+      { key: "lastName", label: "Nom" },
+      { key: "jobTitle", label: "Fonction" },
+      { key: "email", label: "Email", required: true },
+      { key: "phone", label: "Telephone" },
+      { key: "country", label: "Pays" },
+      { key: "preferredLanguage", label: "Langue", kind: "select", options: ["fr", "en"] },
+      { key: "publicSourceUrl", label: "URL source publique" },
+      { key: "verificationStatus", label: "Verification", kind: "select", options: ["unverified", "verified", "bounced", "invalid"] },
+      { key: "confidenceScore", label: "Score confiance" },
+      { key: "relationshipOwner", label: "ID responsable relation" },
+      { key: "lawfulContactNote", label: "Base de contact", kind: "textarea" },
+      { key: "lastContactedAt", label: "Dernier contact", kind: "date" },
+      { key: "lastRepliedAt", label: "Derniere reponse", kind: "date" },
+      { key: "doNotContact", label: "Ne pas contacter", kind: "checkbox" },
+      { key: "notes", label: "Notes", kind: "textarea" },
+    ],
+  },
+  opportunities: {
+    endpoint: "opportunities",
+    title: "Pipeline sponsors",
+    description: "Suivre chaque opportunite par organisation, contact, categorie, etape, prochaine action et statut.",
+    columns: ["title", "organizationId", "contactId", "stageId", "priority", "status", "nextAction"],
+    fields: [
+      { key: "organizationId", label: "ID organisation", required: true },
+      { key: "contactId", label: "ID contact" },
+      { key: "sponsorCategoryId", label: "ID categorie sponsor" },
+      { key: "stageId", label: "ID etape" },
+      { key: "title", label: "Titre opportunite", required: true },
+      { key: "priority", label: "Priorite", kind: "select", options: ["low", "medium", "high", "critical"] },
+      { key: "ownerUserId", label: "ID responsable" },
+      { key: "estimatedValue", label: "Valeur estimee" },
+      { key: "currency", label: "Devise", kind: "select", options: ["XOF", "EUR", "USD"] },
+      { key: "source", label: "Source" },
+      { key: "status", label: "Statut", kind: "select", options: ["active", "awaiting_approval", "approved", "won", "lost", "paused", "archived"] },
+      { key: "nextAction", label: "Prochaine action" },
+      { key: "nextActionDate", label: "Date prochaine action", kind: "date" },
+      { key: "internalNotes", label: "Notes internes", kind: "textarea" },
+      { key: "publicNotes", label: "Notes publiques", kind: "textarea" },
+      { key: "doNotContact", label: "Ne pas contacter", kind: "checkbox" },
+    ],
+  },
+  activities: {
+    endpoint: "activities",
+    title: "Activites CRM",
+    description: "Journaliser les notes, appels, emails, suivis, reunions et resultats lies au pipeline sponsors.",
+    columns: ["activityType", "channel", "subject", "organizationId", "opportunityId", "dueDate", "completedAt"],
+    fields: [
+      { key: "organizationId", label: "ID organisation" },
+      { key: "contactId", label: "ID contact" },
+      { key: "opportunityId", label: "ID opportunite" },
+      { key: "actorUserId", label: "ID acteur" },
+      { key: "activityType", label: "Type", kind: "select", options: ["note", "call", "email", "meeting", "follow_up", "approval", "system"] },
+      { key: "channel", label: "Canal", kind: "select", options: ["admin", "email", "phone", "meeting", "public_form", "system"] },
+      { key: "subject", label: "Sujet" },
+      { key: "body", label: "Detail", kind: "textarea" },
+      { key: "outcome", label: "Resultat" },
+      { key: "dueDate", label: "Date limite", kind: "date" },
+      { key: "completedAt", label: "Termine le", kind: "date" },
+    ],
+  },
+  emailTemplates: {
+    endpoint: "email-templates",
+    title: "Modeles email sponsors",
+    description: "Rediger les sequences sponsor en francais, avec variables, version, signature et statut d'approbation.",
+    columns: ["name", "templateGroup", "language", "status", "version", "approvedBy"],
+    fields: [
+      { key: "name", label: "Nom", required: true },
+      { key: "templateGroup", label: "Groupe", kind: "select", options: ["Initial introduction", "Warm introduction", "Follow-up 1", "Follow-up 2", "Sponsor package", "Thank you", "Rejection / not a fit", "Meeting request"] },
+      { key: "sponsorCategoryId", label: "ID categorie sponsor" },
+      { key: "language", label: "Langue", kind: "select", options: ["fr", "en"] },
+      { key: "subject", label: "Sujet", required: true },
+      { key: "body", label: "Corps", kind: "textarea", required: true },
+      { key: "senderIdentityId", label: "ID expediteur" },
+      { key: "signature", label: "Signature", kind: "textarea" },
+      { key: "status", label: "Statut", kind: "select", options: ["draft", "under_review", "approved", "archived"] },
+      { key: "version", label: "Version" },
+      { key: "approvedBy", label: "Approuve par" },
+      { key: "approvedAt", label: "Approuve le", kind: "date" },
+      { key: "variables", label: "Variables" },
+      { key: "attachmentIds", label: "IDs pieces jointes" },
+    ],
+  },
+  toolbox: {
+    endpoint: "toolbox",
+    title: "Sponsor Toolbox",
+    description: "Inventorier les dossiers, decks, factsheets, communiques et preuves utiles avant toute campagne.",
+    columns: ["title", "category", "assetType", "status", "visibility", "version"],
+    fields: [
+      { key: "title", label: "Titre", required: true },
+      { key: "category", label: "Categorie", kind: "select", options: ["Core", "Corporate", "Mobility", "Technical", "Legal", "Media", "Follow-up"] },
+      { key: "sponsorCategoryId", label: "ID categorie sponsor" },
+      { key: "description", label: "Description", kind: "textarea" },
+      { key: "fileUrl", label: "URL fichier" },
+      { key: "assetType", label: "Type", kind: "select", options: ["document", "deck", "image", "video", "link", "checklist"] },
+      { key: "status", label: "Statut", kind: "select", options: ["needed", "draft", "under_review", "approved", "archived"] },
+      { key: "version", label: "Version" },
+      { key: "tags", label: "Tags" },
+      { key: "approvedClaims", label: "Promesses autorisees" },
+      { key: "prohibitedClaims", label: "Promesses interdites" },
+      { key: "visibility", label: "Visibilite", kind: "select", options: ["admin_only", "team_only", "public"] },
+    ],
+  },
+  suppression: {
+    endpoint: "suppression",
+    title: "Liste de suppression",
+    description: "Bloquer les emails a ne jamais relancer et documenter la raison de retrait.",
+    columns: ["email", "organizationId", "contactId", "reason", "status", "source"],
+    fields: [
+      { key: "email", label: "Email", required: true },
+      { key: "organizationId", label: "ID organisation" },
+      { key: "contactId", label: "ID contact" },
+      { key: "reason", label: "Raison", kind: "select", options: ["manual", "unsubscribed", "bounced", "complaint", "not_relevant", "legal"] },
+      { key: "source", label: "Source" },
+      { key: "status", label: "Statut", kind: "select", options: ["active", "inactive", "archived"] },
+      { key: "notes", label: "Notes", kind: "textarea" },
+    ],
+  },
+  approvals: {
+    endpoint: "approvals",
+    title: "File d'approbation outreach",
+    description: "Aucun email sponsor assiste ne doit partir sans revue humaine, statut explicite et journal d'audit.",
+    columns: ["subject", "status", "opportunityId", "contactId", "templateId", "scheduledAt", "sentAt"],
+    fields: [
+      { key: "opportunityId", label: "ID opportunite" },
+      { key: "contactId", label: "ID contact" },
+      { key: "templateId", label: "ID modele" },
+      { key: "requesterUserId", label: "ID demandeur" },
+      { key: "reviewerUserId", label: "ID validateur" },
+      { key: "senderIdentityId", label: "ID expediteur" },
+      { key: "subject", label: "Sujet", required: true },
+      { key: "body", label: "Corps", kind: "textarea", required: true },
+      { key: "status", label: "Statut", kind: "select", options: ["awaiting_approval", "approved", "rejected", "scheduled", "sent", "cancelled"] },
+      { key: "scheduledAt", label: "Programme le", kind: "date" },
+      { key: "decisionNotes", label: "Notes decision", kind: "textarea" },
+    ],
+  },
   media: {
     endpoint: "media",
     title: "Médias",
@@ -331,6 +551,65 @@ const adminLabelMap: Record<string, string> = {
   interest: "Intérêt",
   budgetRange: "Budget",
   source: "Source",
+  slug: "Slug",
+  stageGroup: "Groupe",
+  isTerminal: "Terminal",
+  sponsorCategoryId: "ID categorie sponsor",
+  sponsorCategory: "Categorie sponsor",
+  country: "Pays",
+  industry: "Secteur",
+  companySize: "Taille",
+  publicDescription: "Description publique",
+  strategicRelevance: "Pertinence strategique",
+  pipelineStageId: "ID etape pipeline",
+  opportunityOwner: "ID responsable",
+  estimatedValue: "Valeur estimee",
+  currency: "Devise",
+  nextAction: "Prochaine action",
+  nextActionDate: "Date prochaine action",
+  internalNotes: "Notes internes",
+  publicNotes: "Notes publiques",
+  doNotContact: "Ne pas contacter",
+  organizationId: "ID organisation",
+  firstName: "Prenom",
+  lastName: "Nom",
+  jobTitle: "Fonction",
+  preferredLanguage: "Langue",
+  publicSourceUrl: "Source publique",
+  verificationStatus: "Verification",
+  confidenceScore: "Score confiance",
+  relationshipOwner: "ID relation",
+  lawfulContactNote: "Base de contact",
+  lastContactedAt: "Dernier contact",
+  lastRepliedAt: "Derniere reponse",
+  contactId: "ID contact",
+  stageId: "ID etape",
+  ownerUserId: "ID responsable",
+  opportunityId: "ID opportunite",
+  actorUserId: "ID acteur",
+  activityType: "Type activite",
+  channel: "Canal",
+  outcome: "Resultat",
+  completedAt: "Termine le",
+  templateGroup: "Groupe modele",
+  language: "Langue",
+  senderIdentityId: "ID expediteur",
+  signature: "Signature",
+  approvedBy: "Approuve par",
+  approvedAt: "Approuve le",
+  variables: "Variables",
+  attachmentIds: "IDs pieces jointes",
+  assetType: "Type asset",
+  approvedClaims: "Promesses autorisees",
+  prohibitedClaims: "Promesses interdites",
+  reason: "Raison",
+  templateId: "ID modele",
+  requesterUserId: "ID demandeur",
+  reviewerUserId: "ID validateur",
+  scheduledAt: "Programme le",
+  rejectedAt: "Rejete le",
+  sentAt: "Envoye le",
+  decisionNotes: "Notes decision",
   mediaType: "Type média",
   page: "Page",
   section: "Section",
@@ -457,6 +736,30 @@ const adminLabelMap: Record<string, string> = {
   not_configured: "non configuré",
   configured: "configuré",
   testing: "test",
+  won: "gagne",
+  lost: "perdu",
+  no_contact: "sans contact",
+  verified: "verifie",
+  unverified: "non verifie",
+  bounced: "rebond",
+  invalid: "invalide",
+  follow_up: "relance",
+  call: "appel",
+  meeting: "reunion",
+  public_form: "formulaire public",
+  awaiting_approval: "en validation",
+  scheduled: "programme",
+  sent: "envoye",
+  cancelled: "annule",
+  inactive: "inactif",
+  unsubscribed: "desinscrit",
+  complaint: "plainte",
+  not_relevant: "non pertinent",
+  legal: "legal",
+  needed: "a produire",
+  deck: "deck",
+  link: "lien",
+  checklist: "checklist",
   disabled: "désactivé",
 };
 
@@ -556,6 +859,19 @@ export function AgoojyeAdminDashboardPage() {
   );
 }
 
+const sponsorCrmMetricLabels: Record<string, string> = {
+  sponsorCategories: "Categories sponsors",
+  pipelineStages: "Etapes pipeline",
+  crmOrganizations: "Organisations CRM",
+  crmContacts: "Contacts CRM",
+  sponsorOpportunities: "Opportunites sponsors",
+  crmActivities: "Activites CRM",
+  emailTemplates: "Modeles email",
+  toolboxAssets: "Sponsor toolbox",
+  suppressionEntries: "Suppressions",
+  outreachApprovals: "Approbations",
+};
+
 function metricLabel(key: string) {
   const labels: Record<string, string> = {
     totalParticipants: "Participants",
@@ -569,7 +885,7 @@ function metricLabel(key: string) {
     documentsPendingReview: "Docs à revoir",
     mediaAssets: "Médias",
   };
-  return labels[key] || key;
+  return labels[key] || sponsorCrmMetricLabels[key] || key;
 }
 
 function ResourcePage({ section }: { section: Exclude<SectionKey, "overview"> }) {
@@ -758,6 +1074,44 @@ function QuickActions({ section, item, onPatch, pending }: { section: SectionKey
         { label: "Package envoyé", patch: { status: "Package sent" } },
       ];
     }
+    if (section === "organizations") {
+      return [
+        { label: item.doNotContact ? "Contact OK" : "Ne pas contacter", patch: { doNotContact: !item.doNotContact } },
+        { label: "Haute priorite", patch: { priority: "high" } },
+      ];
+    }
+    if (section === "contacts") {
+      return [
+        { label: item.doNotContact ? "Contact OK" : "Ne pas contacter", patch: { doNotContact: !item.doNotContact } },
+        { label: "Verifier", patch: { verificationStatus: "verified" } },
+      ];
+    }
+    if (section === "opportunities") {
+      return [
+        { label: "En validation", patch: { status: "awaiting_approval" } },
+        { label: "Gagne", patch: { status: "won" } },
+        { label: "Perdu", patch: { status: "lost" } },
+      ];
+    }
+    if (section === "emailTemplates" || section === "toolbox") {
+      return [
+        { label: "Revue", patch: { status: "under_review" } },
+        { label: "Approuver", patch: { status: "approved" } },
+      ];
+    }
+    if (section === "approvals") {
+      return [
+        { label: "Approuver", patch: { status: "approved", approvedAt: new Date().toISOString() } },
+        { label: "Rejeter", patch: { status: "rejected", rejectedAt: new Date().toISOString() } },
+        { label: "Envoye", patch: { status: "sent", sentAt: new Date().toISOString() } },
+      ];
+    }
+    if (section === "suppression") {
+      return [
+        { label: "Actif", patch: { status: "active" } },
+        { label: "Inactif", patch: { status: "inactive" } },
+      ];
+    }
     if (section === "partners") {
       return [
         { label: "Confirmer", patch: { status: "Confirmed" } },
@@ -847,6 +1201,46 @@ export function AgoojyeAdminPartnersPage() {
 
 export function AgoojyeAdminSponsorsPage() {
   return <ResourcePage section="sponsors" />;
+}
+
+export function AgoojyeAdminSponsorCategoriesPage() {
+  return <ResourcePage section="sponsorCategories" />;
+}
+
+export function AgoojyeAdminPipelineStagesPage() {
+  return <ResourcePage section="pipelineStages" />;
+}
+
+export function AgoojyeAdminOrganizationsPage() {
+  return <ResourcePage section="organizations" />;
+}
+
+export function AgoojyeAdminContactsPage() {
+  return <ResourcePage section="contacts" />;
+}
+
+export function AgoojyeAdminOpportunitiesPage() {
+  return <ResourcePage section="opportunities" />;
+}
+
+export function AgoojyeAdminActivitiesPage() {
+  return <ResourcePage section="activities" />;
+}
+
+export function AgoojyeAdminEmailTemplatesPage() {
+  return <ResourcePage section="emailTemplates" />;
+}
+
+export function AgoojyeAdminToolboxPage() {
+  return <ResourcePage section="toolbox" />;
+}
+
+export function AgoojyeAdminSuppressionPage() {
+  return <ResourcePage section="suppression" />;
+}
+
+export function AgoojyeAdminApprovalsPage() {
+  return <ResourcePage section="approvals" />;
 }
 
 export function AgoojyeAdminMediaPage() {

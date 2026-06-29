@@ -122,6 +122,44 @@ function dnsBadgeClass(ok: boolean | null | undefined, warnWhenMissing = false) 
 
 const AGOOJIYE_DKIM_VALUE =
   "v=DKIM1; h=sha256; k=rsa; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA2sc5bNVbO7Z6xXGrtXXA2FP65BU7GgVc7oliHOI5N/HTP1RE2HOSCS71FRVB6ceTRMD/KnbPP4Y0pSdR9GUCMkCPH0COJf6HegEj9QAny+kczV/Xgy1XYi2AZiVZ6R7qZflKTIHvPwL1/KeQ8FoZp3ykfXkGkav0kyx4zovc5mau5NjLKG9RpsFzVa9FTKrXbb1uBEQwHFKv4HMVwaWjCn+GJrxuIL1O4UfqaMkcHdso1lLPjy/i8Rg6mN4D1dmRT3p1UB3GUTiFuZGJVMz7CN1GXymDRbd4hqcoIjzqAbx5/rMZU7nO3U1Ev2rR8C68V1OmpIs3LtYlBXUTJohfgwIDAQAB";
+const AGOOJIYE_WEBMAIL_URL = "https://mail.exportunity.net/";
+const AGOOJIYE_PASSWORD_CHANGE_URL = "https://agoojiye.com/mail/password";
+const AGOOJIYE_IMAP_HOST = "mail.exportunity.net";
+const AGOOJIYE_SMTP_HOST = "mail.exportunity.net";
+
+function buildMailboxAccessInstructions() {
+  return [
+    "Accès email AGOOJIYE",
+    "",
+    `Webmail Roundcube : ${AGOOJIYE_WEBMAIL_URL}`,
+    `Changement de mot de passe : ${AGOOJIYE_PASSWORD_CHANGE_URL}`,
+    "",
+    "Paramètres client mail :",
+    `IMAP : ${AGOOJIYE_IMAP_HOST}, port 993, TLS`,
+    `SMTP : ${AGOOJIYE_SMTP_HOST}, port 587, STARTTLS`,
+  ].join("\n");
+}
+
+function buildMailboxHandoffNote(input: { address: string; password: string }) {
+  return [
+    "Bonjour,",
+    "",
+    "Votre boîte email AGOOJIYE est prête.",
+    "",
+    `Adresse : ${input.address}`,
+    `Mot de passe initial : ${input.password}`,
+    "",
+    `1. Connectez-vous au webmail Roundcube : ${AGOOJIYE_WEBMAIL_URL}`,
+    `2. Changez ce mot de passe ici : ${AGOOJIYE_PASSWORD_CHANGE_URL}`,
+    "3. Utilisez ensuite votre nouveau mot de passe pour le webmail et vos applications mail.",
+    "",
+    "Paramètres client mail :",
+    `IMAP : ${AGOOJIYE_IMAP_HOST}, port 993, TLS`,
+    `SMTP : ${AGOOJIYE_SMTP_HOST}, port 587, STARTTLS`,
+    "",
+    "Ne partagez pas ce mot de passe en dehors de la remise initiale.",
+  ].join("\n");
+}
 
 export function AdminHumanEmailAccountsPanel() {
   const { tenant } = useTenant();
@@ -304,6 +342,7 @@ export function AdminHumanEmailAccountsPanel() {
     "Ajouter / remplacer :",
     ...dnsAddRecords,
   ].join("\n");
+  const mailboxAccessInstructions = buildMailboxAccessInstructions();
 
   return (
     <div className="space-y-6">
@@ -440,6 +479,37 @@ export function AdminHumanEmailAccountsPanel() {
             Tenant : <span className="text-slate-200">{tenant.name}</span> - provisioning sur docker-mailserver (Roundcube).
           </div>
 
+          <div className="rounded-lg border border-slate-800 bg-slate-950/30 p-3 text-xs">
+            <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+              <div className="space-y-1 text-slate-400">
+                <div className="font-medium text-slate-200">Accès à remettre aux membres</div>
+                <div>
+                  Webmail : <span className="font-mono text-slate-100">{AGOOJIYE_WEBMAIL_URL}</span>
+                </div>
+                <div>
+                  Changement de mot de passe : <span className="font-mono text-slate-100">{AGOOJIYE_PASSWORD_CHANGE_URL}</span>
+                </div>
+                <div>
+                  IMAP : <span className="font-mono text-slate-100">{AGOOJIYE_IMAP_HOST}:993 TLS</span> - SMTP :{" "}
+                  <span className="font-mono text-slate-100">{AGOOJIYE_SMTP_HOST}:587 STARTTLS</span>
+                </div>
+              </div>
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={async () => {
+                  const ok = await copyToClipboard(mailboxAccessInstructions);
+                  toast({
+                    title: ok ? "Accès email copiés" : "Copie impossible",
+                    description: ok ? "Les informations Roundcube et client mail sont dans le presse-papiers." : "Presse-papiers indisponible.",
+                  });
+                }}
+              >
+                Copier les accès
+              </Button>
+            </div>
+          </div>
+
           {lastTempPassword ? (
             <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3">
               <div className="flex items-start justify-between gap-2">
@@ -458,6 +528,19 @@ export function AdminHumanEmailAccountsPanel() {
                     }}
                   >
                     Copier
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={async () => {
+                      const ok = await copyToClipboard(buildMailboxHandoffNote(lastTempPassword));
+                      toast({
+                        title: ok ? "Fiche de remise copiée" : "Copie impossible",
+                        description: ok ? "Adresse, mot de passe initial et liens sont dans le presse-papiers." : "Presse-papiers indisponible.",
+                      });
+                    }}
+                  >
+                    Copier la fiche
                   </Button>
                   <Button size="sm" variant="ghost" onClick={() => setLastTempPassword(null)}>
                     Masquer

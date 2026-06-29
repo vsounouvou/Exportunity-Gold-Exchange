@@ -25,6 +25,8 @@ Private initial passwords are not committed and are not printed in chat.
 
 Roundcube is available for mailbox login. Password self-service is handled by the AGOOJIYE platform at `/mail/password`: the route verifies the current mailbox password against Dovecot in docker-mailserver, updates docker-mailserver, verifies the new password against Dovecot, and writes only audit metadata. Raw mailbox passwords are not stored in the app database.
 
+Private credential-file format: account lines are whitespace-separated as `<email> <initial-password> <created-marker> <verification-marker>`. The initial password is the second field. Treat the entire file as secret material and do not paste it into chat, logs or commits.
+
 ## Shared aliases
 
 The following aliases are active and currently fan out to all five initial AGOOJIYE mailboxes:

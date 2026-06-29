@@ -120,6 +120,9 @@ function dnsBadgeClass(ok: boolean | null | undefined, warnWhenMissing = false) 
   return "bg-red-500/15 text-red-300 border border-red-500/30";
 }
 
+const AGOOJIYE_DKIM_VALUE =
+  "v=DKIM1; h=sha256; k=rsa; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA2sc5bNVbO7Z6xXGrtXXA2FP65BU7GgVc7oliHOI5N/HTP1RE2HOSCS71FRVB6ceTRMD/KnbPP4Y0pSdR9GUCMkCPH0COJf6HegEj9QAny+kczV/Xgy1XYi2AZiVZ6R7qZflKTIHvPwL1/KeQ8FoZp3ykfXkGkav0kyx4zovc5mau5NjLKG9RpsFzVa9FTKrXbb1uBEQwHFKv4HMVwaWjCn+GJrxuIL1O4UfqaMkcHdso1lLPjy/i8Rg6mN4D1dmRT3p1UB3GUTiFuZGJVMz7CN1GXymDRbd4hqcoIjzqAbx5/rMZU7nO3U1Ev2rR8C68V1OmpIs3LtYlBXUTJohfgwIDAQAB";
+
 export function AdminHumanEmailAccountsPanel() {
   const { tenant } = useTenant();
   const { toast } = useToast();
@@ -275,6 +278,32 @@ export function AdminHumanEmailAccountsPanel() {
   const total = accountsQuery.data?.pagination?.total ?? accounts.length;
   const canPrev = offset > 0;
   const canNext = offset + 50 < total;
+  const mailDomain = statusQuery.data?.mail?.domain || "agoojiye.com";
+  const inboundDns = statusQuery.data?.mail?.inboundDns;
+  const expectedMailHost = inboundDns?.expectedMailHost || `mail.${mailDomain}`;
+  const expectedIpv4 = inboundDns?.expectedIpv4 || "51.254.143.30";
+  const dnsRemoveRecords = [
+    "@  MX   1    mx1.mail.ovh.net.",
+    "@  MX   5    mx2.mail.ovh.net.",
+    "@  MX   100  mx3.mail.ovh.net.",
+    "@  TXT       v=spf1 include:mx.ovh.com -all",
+  ];
+  const dnsAddRecords = [
+    `mail  A    ${expectedIpv4}`,
+    `@     MX   10 ${expectedMailHost}.`,
+    `@     TXT  v=spf1 mx ip4:${expectedIpv4} -all`,
+    "_dmarc TXT  v=DMARC1; p=none; rua=mailto:dmarc@agoojiye.com; adkim=s; aspf=s",
+    `mail._domainkey TXT  ${AGOOJIYE_DKIM_VALUE}`,
+  ];
+  const dnsCutoverPlan = [
+    "AGOOJIYE - DNS OVH pour activer la reception email",
+    "",
+    "Supprimer :",
+    ...dnsRemoveRecords,
+    "",
+    "Ajouter / remplacer :",
+    ...dnsAddRecords,
+  ].join("\n");
 
   return (
     <div className="space-y-6">
@@ -353,6 +382,45 @@ export function AdminHumanEmailAccountsPanel() {
               </div>
             </div>
           ) : null}
+
+          <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs">
+            <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+              <div>
+                <div className="font-medium text-amber-100">Plan OVH pour activer la réception email</div>
+                <div className="mt-1 text-amber-100/80">
+                  Les boîtes AGOOJIYE peuvent se connecter, mais les messages externes arrivent encore chez OVH tant que
+                  ces enregistrements ne sont pas publiés.
+                </div>
+              </div>
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={async () => {
+                  const ok = await copyToClipboard(dnsCutoverPlan);
+                  toast({
+                    title: ok ? "Plan DNS copié" : "Copie impossible",
+                    description: ok ? "Les enregistrements OVH sont dans le presse-papiers." : "Presse-papiers indisponible.",
+                  });
+                }}
+              >
+                Copier le plan DNS
+              </Button>
+            </div>
+            <div className="mt-3 grid gap-3 lg:grid-cols-2">
+              <div>
+                <div className="font-medium text-amber-100">Supprimer</div>
+                <pre className="mt-2 overflow-x-auto rounded border border-amber-500/20 bg-slate-950/60 p-2 font-mono text-[11px] leading-relaxed text-amber-50">
+                  {dnsRemoveRecords.join("\n")}
+                </pre>
+              </div>
+              <div>
+                <div className="font-medium text-amber-100">Ajouter / remplacer</div>
+                <pre className="mt-2 max-h-40 overflow-auto rounded border border-amber-500/20 bg-slate-950/60 p-2 font-mono text-[11px] leading-relaxed text-amber-50">
+                  {dnsAddRecords.join("\n")}
+                </pre>
+              </div>
+            </div>
+          </div>
 
           {((statusQuery.data?.mail?.inboundDns?.warnings?.length ?? 0) > 0 ||
             (statusQuery.data?.mail?.authDiagnostics?.warnings?.length ?? 0) > 0) ? (

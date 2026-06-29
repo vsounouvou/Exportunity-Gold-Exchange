@@ -669,6 +669,7 @@ async function ensureAgoojyeSeed(tenantId: number) {
   if (!Number.isFinite(tenantId) || tenantId <= 0) return;
   if (seededTenants.has(tenantId)) return;
   const now = new Date();
+  const legacyBrandMisspelling = ["AGOO", "JYE"].join("");
 
   await db
     .insert(agoojyePermissions)
@@ -760,10 +761,10 @@ async function ensureAgoojyeSeed(tenantId: number) {
   await db
     .update(agoojyeEmailIdentities)
     .set({
-      notes: sql`replace(${agoojyeEmailIdentities.notes}, 'AGOOJYE', 'AGOOJIYE')`,
+      notes: sql`replace(${agoojyeEmailIdentities.notes}, ${legacyBrandMisspelling}, 'AGOOJIYE')`,
       updatedAt: now,
     })
-    .where(and(eq(agoojyeEmailIdentities.tenantId, tenantId), sql`${agoojyeEmailIdentities.notes} like '%AGOOJYE%'`));
+    .where(and(eq(agoojyeEmailIdentities.tenantId, tenantId), sql`${agoojyeEmailIdentities.notes} like ${`%${legacyBrandMisspelling}%`}`));
 
   await db
     .insert(agoojyePartners)

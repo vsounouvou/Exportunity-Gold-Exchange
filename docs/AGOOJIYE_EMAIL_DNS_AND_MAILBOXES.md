@@ -13,19 +13,20 @@ Verified on 2026-06-29 after AGOOJIYE production deployment:
 - `https://agoojiye.com/admin/agoojye/email` returns HTTP 200 for the protected app shell.
 - `https://agoojiye.com/api/agoojye/public/bootstrap` returns HTTP 200.
 - All five initial human mailboxes authenticate successfully over IMAPS and SMTP submission using the private credential file.
+- The first-login password-change route was verified end-to-end on 2026-06-29: one mailbox was changed to a temporary password through `https://agoojiye.com/mail/password`, authenticated with the temporary password, then reverted to the original initial password and re-verified.
 - Public DNS is still not cut over for mail; the OVH DNS edits below remain required before external inbound mail will arrive at this self-hosted stack.
 
 ## Provisioned mailboxes
 
-These real docker-mailserver mailboxes now exist on the production mail stack and authenticate over IMAPS through `mail.exportunity.net`.
+These real docker-mailserver mailboxes now exist on the production mail stack and authenticate over IMAPS and SMTP submission through `mail.exportunity.net`.
 
 | Person | Email | Quota | Status |
 | --- | --- | ---: | --- |
-| Regis | `regis@agoojiye.com` | 2 GB | active, IMAPS verified |
-| Marise | `marise@agoojiye.com` | 2 GB | active, IMAPS verified |
-| Vital | `vital@agoojiye.com` | 2 GB | active, IMAPS verified |
-| Surian | `surian@agoojiye.com` | 2 GB | active, IMAPS verified |
-| Binta | `binta@agoojiye.com` | 2 GB | active, IMAPS verified |
+| Regis | `regis@agoojiye.com` | 2 GB | active, IMAPS + SMTP submission verified |
+| Marise | `marise@agoojiye.com` | 2 GB | active, IMAPS + SMTP submission verified |
+| Vital | `vital@agoojiye.com` | 2 GB | active, IMAPS + SMTP submission verified |
+| Surian | `surian@agoojiye.com` | 2 GB | active, IMAPS + SMTP submission verified |
+| Binta | `binta@agoojiye.com` | 2 GB | active, IMAPS + SMTP submission verified; password-change flow verified and reverted |
 
 Private initial passwords are not committed and are not printed in chat.
 

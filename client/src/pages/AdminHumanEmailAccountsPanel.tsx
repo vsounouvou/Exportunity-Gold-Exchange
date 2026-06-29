@@ -394,7 +394,7 @@ export function AdminHumanEmailAccountsPanel() {
     `${expectedDkimHost.replace(`.${mailDomain}`, "")} TXT  ${AGOOJIYE_DKIM_VALUE}`,
   ];
   const dnsCutoverPlan = [
-    "AGOOJIYE - DNS OVH pour activer la reception email",
+    "AGOOJIYE - DNS OVH pour activer la réception email",
     "",
     "Supprimer :",
     ...dnsRemoveRecords,

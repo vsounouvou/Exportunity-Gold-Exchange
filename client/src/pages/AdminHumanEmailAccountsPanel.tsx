@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { RefreshCw } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useTenant } from "@/lib/tenant";
 import { useToast } from "@/hooks/use-toast";
@@ -43,6 +44,40 @@ type EmailStatusResponse = {
       mailHostA: { ok: boolean; records: string[] };
     };
   };
+};
+
+type AgoojiyeMailDnsStatusResponse = {
+  ok: boolean;
+  checkedAt: string;
+  expected: {
+    domain: string;
+    mailHost: string;
+    ipv4: string;
+    mxHost: string;
+    mxPriority: number;
+    spf: string;
+    dmarc: string;
+    dkimHost: string;
+    dkimSelector: string;
+  };
+  records: {
+    mx: Array<{ exchange: string; priority: number }>;
+    mailA: string[];
+    spf: string[];
+    dmarc: string[];
+    dkim: { host: string; selector: string; present: boolean; recordCount: number };
+  };
+  checks: {
+    mailAOk: boolean;
+    mxOk: boolean;
+    legacyOvhMxPresent: boolean;
+    spfOk: boolean;
+    legacyOvhSpfPresent: boolean;
+    dmarcOk: boolean;
+    dkimOk: boolean;
+    cutoverReady: boolean;
+  };
+  warnings: string[];
 };
 
 type AccountRow = {
@@ -120,6 +155,20 @@ function dnsBadgeClass(ok: boolean | null | undefined, warnWhenMissing = false) 
   return "bg-red-500/15 text-red-300 border border-red-500/30";
 }
 
+const AGOOJIYE_DNS_WARNING_LABELS: Record<string, string> = {
+  mail_a_missing_or_mismatch: "Créer ou corriger mail A vers 51.254.143.30.",
+  mx_not_cut_over: "Remplacer les MX racine par mail.agoojiye.com priorité 10.",
+  legacy_ovh_mx_present: "Supprimer les MX OVH encore présents.",
+  spf_missing_or_mismatch: "Remplacer le SPF par la valeur AGOOJIYE attendue.",
+  legacy_ovh_spf_present: "Supprimer le SPF OVH include:mx.ovh.com.",
+  dmarc_missing_or_mismatch: "Publier le DMARC AGOOJIYE.",
+  dkim_missing: "Publier la clé DKIM mail._domainkey.",
+};
+
+function formatDnsWarning(code: string) {
+  return AGOOJIYE_DNS_WARNING_LABELS[code] || code;
+}
+
 const AGOOJIYE_DKIM_VALUE =
   "v=DKIM1; h=sha256; k=rsa; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA2sc5bNVbO7Z6xXGrtXXA2FP65BU7GgVc7oliHOI5N/HTP1RE2HOSCS71FRVB6ceTRMD/KnbPP4Y0pSdR9GUCMkCPH0COJf6HegEj9QAny+kczV/Xgy1XYi2AZiVZ6R7qZflKTIHvPwL1/KeQ8FoZp3ykfXkGkav0kyx4zovc5mau5NjLKG9RpsFzVa9FTKrXbb1uBEQwHFKv4HMVwaWjCn+GJrxuIL1O4UfqaMkcHdso1lLPjy/i8Rg6mN4D1dmRT3p1UB3GUTiFuZGJVMz7CN1GXymDRbd4hqcoIjzqAbx5/rMZU7nO3U1Ev2rR8C68V1OmpIs3LtYlBXUTJohfgwIDAQAB";
 const AGOOJIYE_WEBMAIL_URL = "https://mail.exportunity.net/";
@@ -183,6 +232,12 @@ export function AdminHumanEmailAccountsPanel() {
     queryKey: ["/api/admin/email/status"],
     retry: false,
     staleTime: 30_000,
+  });
+
+  const agoojyeDnsQuery = useQuery<AgoojiyeMailDnsStatusResponse>({
+    queryKey: ["/api/admin/agoojye/email-dns-status"],
+    retry: false,
+    staleTime: 15_000,
   });
 
   const domainsQuery = useQuery<DomainsResponse>({
@@ -316,10 +371,15 @@ export function AdminHumanEmailAccountsPanel() {
   const total = accountsQuery.data?.pagination?.total ?? accounts.length;
   const canPrev = offset > 0;
   const canNext = offset + 50 < total;
-  const mailDomain = statusQuery.data?.mail?.domain || "agoojiye.com";
+  const liveDns = agoojyeDnsQuery.data;
+  const mailDomain = liveDns?.expected.domain || statusQuery.data?.mail?.domain || "agoojiye.com";
   const inboundDns = statusQuery.data?.mail?.inboundDns;
-  const expectedMailHost = inboundDns?.expectedMailHost || `mail.${mailDomain}`;
-  const expectedIpv4 = inboundDns?.expectedIpv4 || "51.254.143.30";
+  const expectedMailHost = liveDns?.expected.mailHost || inboundDns?.expectedMailHost || `mail.${mailDomain}`;
+  const expectedIpv4 = liveDns?.expected.ipv4 || inboundDns?.expectedIpv4 || "51.254.143.30";
+  const expectedSpf = liveDns?.expected.spf || `v=spf1 mx ip4:${expectedIpv4} -all`;
+  const expectedDmarc =
+    liveDns?.expected.dmarc || "v=DMARC1; p=none; rua=mailto:dmarc@agoojiye.com; adkim=s; aspf=s";
+  const expectedDkimHost = liveDns?.expected.dkimHost || "mail._domainkey.agoojiye.com";
   const dnsRemoveRecords = [
     "@  MX   1    mx1.mail.ovh.net.",
     "@  MX   5    mx2.mail.ovh.net.",
@@ -329,9 +389,9 @@ export function AdminHumanEmailAccountsPanel() {
   const dnsAddRecords = [
     `mail  A    ${expectedIpv4}`,
     `@     MX   10 ${expectedMailHost}.`,
-    `@     TXT  v=spf1 mx ip4:${expectedIpv4} -all`,
-    "_dmarc TXT  v=DMARC1; p=none; rua=mailto:dmarc@agoojiye.com; adkim=s; aspf=s",
-    `mail._domainkey TXT  ${AGOOJIYE_DKIM_VALUE}`,
+    `@     TXT  ${expectedSpf}`,
+    `_dmarc TXT  ${expectedDmarc}`,
+    `${expectedDkimHost.replace(`.${mailDomain}`, "")} TXT  ${AGOOJIYE_DKIM_VALUE}`,
   ];
   const dnsCutoverPlan = [
     "AGOOJIYE - DNS OVH pour activer la reception email",
@@ -347,13 +407,29 @@ export function AdminHumanEmailAccountsPanel() {
   return (
     <div className="space-y-6">
       <Card className="bg-slate-900/60 border-slate-800">
-        <CardHeader>
+        <CardHeader className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <CardTitle className="text-white">Authentification du domaine</CardTitle>
+          <Button
+            size="sm"
+            variant="secondary"
+            className="gap-2"
+            onClick={() => void agoojyeDnsQuery.refetch()}
+            disabled={agoojyeDnsQuery.isFetching}
+          >
+            <RefreshCw className={`h-4 w-4 ${agoojyeDnsQuery.isFetching ? "animate-spin" : ""}`} />
+            Actualiser DNS
+          </Button>
         </CardHeader>
         <CardContent className="space-y-3">
           {statusQuery.isError ? (
             <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-2 text-sm text-red-200">
               Impossible de lire le statut email.
+            </div>
+          ) : null}
+
+          {agoojyeDnsQuery.isError ? (
+            <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-2 text-sm text-red-200">
+              Impossible de lire le statut DNS AGOOJIYE.
             </div>
           ) : null}
 
@@ -381,6 +457,87 @@ export function AdminHumanEmailAccountsPanel() {
               Réception : {statusQuery.data?.mail?.inboundDns?.readyForInbound ? "prête" : "DNS en attente"}
             </Badge>
           </div>
+
+          {liveDns ? (
+            <div className="rounded-lg border border-slate-800 bg-slate-950/30 p-3 text-xs">
+              <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                <div>
+                  <div className="font-medium text-slate-200">Statut DNS mail AGOOJIYE en direct</div>
+                  <div className="mt-1 text-slate-400">
+                    Dernier contrôle : <span className="text-slate-200">{new Date(liveDns.checkedAt).toLocaleString()}</span>
+                  </div>
+                </div>
+                <Badge className={dnsBadgeClass(liveDns.checks.cutoverReady)}>
+                  Bascule mail : {liveDns.checks.cutoverReady ? "prête" : "en attente"}
+                </Badge>
+              </div>
+
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <Badge className={dnsBadgeClass(liveDns.checks.mailAOk)}>A mail : {liveDns.checks.mailAOk ? "ok" : "manquant"}</Badge>
+                <Badge className={dnsBadgeClass(liveDns.checks.mxOk)}>MX : {liveDns.checks.mxOk ? "ok" : "à basculer"}</Badge>
+                <Badge className={dnsBadgeClass(!liveDns.checks.legacyOvhMxPresent)}>
+                  MX OVH : {liveDns.checks.legacyOvhMxPresent ? "encore présents" : "retirés"}
+                </Badge>
+                <Badge className={dnsBadgeClass(liveDns.checks.spfOk)}>SPF : {liveDns.checks.spfOk ? "ok" : "à corriger"}</Badge>
+                <Badge className={dnsBadgeClass(!liveDns.checks.legacyOvhSpfPresent)}>
+                  SPF OVH : {liveDns.checks.legacyOvhSpfPresent ? "encore présent" : "retiré"}
+                </Badge>
+                <Badge className={dnsBadgeClass(liveDns.checks.dkimOk)}>DKIM : {liveDns.checks.dkimOk ? "ok" : "manquant"}</Badge>
+                <Badge className={dnsBadgeClass(liveDns.checks.dmarcOk)}>DMARC : {liveDns.checks.dmarcOk ? "ok" : "manquant"}</Badge>
+              </div>
+
+              <div className="mt-3 grid gap-3 lg:grid-cols-2">
+                <div className="rounded border border-slate-800 bg-slate-950/40 p-3">
+                  <div className="font-medium text-slate-200">Observé maintenant</div>
+                  <div className="mt-2 space-y-1 text-slate-400">
+                    <div>
+                      MX :{" "}
+                      <span className="font-mono text-slate-200">
+                        {liveDns.records.mx.length
+                          ? liveDns.records.mx.map((record) => `${record.priority} ${record.exchange}`).join(", ")
+                          : "aucun"}
+                      </span>
+                    </div>
+                    <div>
+                      A mail :{" "}
+                      <span className="font-mono text-slate-200">
+                        {liveDns.records.mailA.length ? liveDns.records.mailA.join(", ") : "aucun"}
+                      </span>
+                    </div>
+                    <div>
+                      SPF : <span className="font-mono text-slate-200">{liveDns.records.spf.length ? liveDns.records.spf.join(", ") : "aucun"}</span>
+                    </div>
+                    <div>
+                      DKIM :{" "}
+                      <span className="font-mono text-slate-200">
+                        {liveDns.records.dkim.present ? `${liveDns.records.dkim.recordCount} enregistrement publié` : "aucun"}
+                      </span>
+                    </div>
+                    <div>
+                      DMARC :{" "}
+                      <span className="font-mono text-slate-200">
+                        {liveDns.records.dmarc.length ? liveDns.records.dmarc.join(", ") : "aucun"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <div className="rounded border border-slate-800 bg-slate-950/40 p-3">
+                  <div className="font-medium text-slate-200">Corrections restantes</div>
+                  <div className="mt-2 space-y-1 text-slate-400">
+                    {liveDns.warnings.length ? (
+                      liveDns.warnings.map((warning) => (
+                        <div key={warning} className="text-amber-100">
+                          {formatDnsWarning(warning)}
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-emerald-300">Aucune correction restante.</div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : null}
 
           {statusQuery.data?.mail?.inboundDns ? (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 text-xs">

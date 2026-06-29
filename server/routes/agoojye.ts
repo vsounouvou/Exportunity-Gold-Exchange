@@ -1,4 +1,5 @@
 import { Router } from "express";
+import dns from "node:dns/promises";
 import { and, asc, desc, eq, sql } from "drizzle-orm";
 
 import { db } from "@db";
@@ -108,6 +109,18 @@ const EMAIL_ALIASES = [
   "legal@agoojiye.com",
   "press@agoojiye.com",
 ] as const;
+
+const AGOOJIYE_MAIL_DNS_EXPECTED = {
+  domain: "agoojiye.com",
+  mailHost: "mail.agoojiye.com",
+  ipv4: "51.254.143.30",
+  mxHost: "mail.agoojiye.com",
+  mxPriority: 10,
+  spf: "v=spf1 mx ip4:51.254.143.30 -all",
+  dmarc: "v=DMARC1; p=none; rua=mailto:dmarc@agoojiye.com; adkim=s; aspf=s",
+  dkimHost: "mail._domainkey.agoojiye.com",
+  dkimSelector: "mail",
+} as const;
 
 const PARTNERS = [
   {
@@ -352,6 +365,29 @@ const CONTENT_BLOCKS = [
 
 function normalizeText(value: unknown) {
   return String(value ?? "").trim();
+}
+
+function normalizeDnsName(value: unknown) {
+  return String(value ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/[.]$/g, "");
+}
+
+function normalizeTxtValue(value: unknown) {
+  return normalizeText(value).replace(/\s+/g, " ").toLowerCase();
+}
+
+function flattenTxtRecords(records: string[][]) {
+  return records.map((parts) => parts.join("").trim()).filter(Boolean);
+}
+
+async function resolveDnsSafe<T>(lookup: () => Promise<T>, fallback: T) {
+  try {
+    return await lookup();
+  } catch {
+    return fallback;
+  }
 }
 
 function slugify(value: unknown, fallback = "item") {
@@ -1163,6 +1199,77 @@ adminApi.use(async (req: any, res, next) => {
   } catch (error) {
     next(error);
   }
+});
+
+adminApi.get("/email-dns-status", async (_req: any, res) => {
+  const expected = AGOOJIYE_MAIL_DNS_EXPECTED;
+  const mxRecords = (
+    await resolveDnsSafe(() => dns.resolveMx(expected.domain), [] as Array<{ exchange: string; priority: number }>)
+  )
+    .map((record) => ({
+      exchange: normalizeDnsName(record.exchange),
+      priority: Number(record.priority),
+    }))
+    .filter((record) => record.exchange)
+    .sort((a, b) => a.priority - b.priority || a.exchange.localeCompare(b.exchange));
+  const mailARecords = await resolveDnsSafe(() => dns.resolve4(expected.mailHost), [] as string[]);
+  const rootTxtRecords = flattenTxtRecords(await resolveDnsSafe(() => dns.resolveTxt(expected.domain), [] as string[][]));
+  const dmarcRecords = flattenTxtRecords(await resolveDnsSafe(() => dns.resolveTxt(`_dmarc.${expected.domain}`), [] as string[][]));
+  const dkimRecords = flattenTxtRecords(await resolveDnsSafe(() => dns.resolveTxt(expected.dkimHost), [] as string[][]));
+  const spfRecords = rootTxtRecords.filter((record) => normalizeTxtValue(record).startsWith("v=spf1"));
+
+  const mailAOk = mailARecords.includes(expected.ipv4);
+  const mxOk = mxRecords.some(
+    (record) => record.priority === expected.mxPriority && normalizeDnsName(record.exchange) === expected.mxHost,
+  );
+  const legacyOvhMxPresent = mxRecords.some((record) => /(^|\.)mail\.ovh\.net$/i.test(record.exchange));
+  const spfOk = spfRecords.some((record) => normalizeTxtValue(record) === normalizeTxtValue(expected.spf));
+  const legacyOvhSpfPresent = spfRecords.some((record) => normalizeTxtValue(record).includes("include:mx.ovh.com"));
+  const dmarcOk = dmarcRecords.some((record) => normalizeTxtValue(record) === normalizeTxtValue(expected.dmarc));
+  const dkimOk = dkimRecords.some((record) => {
+    const normalized = normalizeTxtValue(record);
+    return normalized.startsWith("v=dkim1;") && /\bp=/.test(normalized);
+  });
+
+  const checks = {
+    mailAOk,
+    mxOk,
+    legacyOvhMxPresent,
+    spfOk,
+    legacyOvhSpfPresent,
+    dmarcOk,
+    dkimOk,
+    cutoverReady: mailAOk && mxOk && spfOk && dmarcOk && dkimOk && !legacyOvhMxPresent && !legacyOvhSpfPresent,
+  };
+  const warnings = [
+    !checks.mailAOk ? "mail_a_missing_or_mismatch" : null,
+    !checks.mxOk ? "mx_not_cut_over" : null,
+    checks.legacyOvhMxPresent ? "legacy_ovh_mx_present" : null,
+    !checks.spfOk ? "spf_missing_or_mismatch" : null,
+    checks.legacyOvhSpfPresent ? "legacy_ovh_spf_present" : null,
+    !checks.dmarcOk ? "dmarc_missing_or_mismatch" : null,
+    !checks.dkimOk ? "dkim_missing" : null,
+  ].filter(Boolean);
+
+  return res.json({
+    ok: true,
+    checkedAt: new Date().toISOString(),
+    expected,
+    records: {
+      mx: mxRecords,
+      mailA: mailARecords,
+      spf: spfRecords,
+      dmarc: dmarcRecords,
+      dkim: {
+        host: expected.dkimHost,
+        selector: expected.dkimSelector,
+        present: dkimOk,
+        recordCount: dkimRecords.length,
+      },
+    },
+    checks,
+    warnings,
+  });
 });
 
 const resources = {

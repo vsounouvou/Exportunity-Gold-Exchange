@@ -44,6 +44,8 @@ investors@agoojiye.com
 press@agoojiye.com
 media@agoojiye.com
 engineering@agoojiye.com
+software@agoojiye.com
+design@agoojiye.com
 careers@agoojiye.com
 legal@agoojiye.com
 privacy@agoojiye.com
@@ -52,7 +54,7 @@ privacy@agoojiye.com
 The app database has matching AGOOJIYE tenant records:
 
 - `email_accounts`: 5 active accounts for tenant `3162`
-- `email_aliases`: 65 alias routes for tenant `3162`
+- `email_aliases`: 75 alias routes for tenant `3162`
 - `agoojye_email_identities`: 20 active identities for tenant `3162`
 
 ## Current public DNS state

@@ -102,11 +102,13 @@ const EMAIL_ALIASES = [
   "engineering@agoojiye.com",
   "software@agoojiye.com",
   "design@agoojiye.com",
+  "careers@agoojiye.com",
   "media@agoojiye.com",
   "sponsors@agoojiye.com",
   "partners@agoojiye.com",
   "investors@agoojiye.com",
   "legal@agoojiye.com",
+  "privacy@agoojiye.com",
   "press@agoojiye.com",
 ] as const;
 
@@ -732,16 +734,28 @@ async function ensureAgoojyeSeed(tenantId: number) {
         displayName: emailAddress.split("@")[0],
         emailType: emailAddress.includes("team@") || emailAddress.includes("admin@") ? "system" : "alias",
         provider: "manual",
-        status: "requested",
+        status: "active",
         canSend: true,
         canReceive: true,
         createdBy: "seed",
-        notes: "Alias officiel seed. Provisionner manuellement via Google Workspace, Zoho, Proton ou SMTP.",
+        notes: "Alias officiel AGOOJIYE. Provisionne sur docker-mailserver ou le fournisseur mail actif.",
         createdAt: now,
         updatedAt: now,
       })),
     )
-    .onConflictDoNothing();
+    .onConflictDoUpdate({
+      target: [agoojyeEmailIdentities.tenantId, agoojyeEmailIdentities.emailAddress],
+      set: {
+        displayName: sql`excluded.display_name`,
+        emailType: sql`excluded.email_type`,
+        provider: sql`excluded.provider`,
+        status: sql`excluded.status`,
+        canSend: sql`excluded.can_send`,
+        canReceive: sql`excluded.can_receive`,
+        notes: sql`excluded.notes`,
+        updatedAt: now,
+      },
+    });
 
   await db
     .update(agoojyeEmailIdentities)

@@ -10,6 +10,8 @@ import {
   LockKeyhole,
   Mail,
   MessageSquare,
+  RefreshCw,
+  Search,
   Settings,
   ShieldCheck,
   Users,
@@ -38,6 +40,12 @@ type SectionKey =
   | "toolbox"
   | "suppression"
   | "approvals"
+  | "inboxThreads"
+  | "mailMessages"
+  | "sequences"
+  | "imports"
+  | "agentResearch"
+  | "jobs"
   | "media"
   | "content"
   | "settings"
@@ -76,6 +84,12 @@ const sectionLinks: Array<{ key: SectionKey; href: string; label: string; icon: 
   { key: "toolbox", href: "/admin/agoojye/toolbox", label: "Sponsor Toolbox", icon: FileText },
   { key: "suppression", href: "/admin/agoojye/suppression", label: "Suppressions", icon: LockKeyhole },
   { key: "approvals", href: "/admin/agoojye/approvals", label: "Approbations", icon: CheckCircle2 },
+  { key: "inboxThreads", href: "/admin/agoojye/inbox", label: "Boite de reception", icon: MessageSquare },
+  { key: "mailMessages", href: "/admin/agoojye/mail-messages", label: "Messages email", icon: Mail },
+  { key: "sequences", href: "/admin/agoojye/sequences", label: "Sequences", icon: RefreshCw },
+  { key: "imports", href: "/admin/agoojye/imports", label: "Imports", icon: FileText },
+  { key: "agentResearch", href: "/admin/agoojye/agent-research", label: "Agent recherche", icon: Search },
+  { key: "jobs", href: "/admin/agoojye/jobs", label: "Jobs systeme", icon: RefreshCw },
   { key: "media", href: "/admin/agoojye/media", label: "Médias", icon: Image },
   { key: "content", href: "/admin/agoojye/content", label: "Contenu", icon: FileText },
   { key: "settings", href: "/admin/agoojye/settings", label: "Réglages", icon: Settings },
@@ -448,6 +462,129 @@ const resourceConfig: Record<Exclude<SectionKey, "overview">, { endpoint: string
       { key: "decisionNotes", label: "Notes decision", kind: "textarea" },
     ],
   },
+  inboxThreads: {
+    endpoint: "inbox-threads",
+    title: "Boite de reception unifiee",
+    description: "Regrouper les messages recus via le site, les reponses email et les conversations sponsors sans exposer le contenu publiquement.",
+    columns: ["subject", "status", "direction", "source", "organizationId", "opportunityId", "lastMessageAt"],
+    fields: [
+      { key: "providerThreadId", label: "Thread provider" },
+      { key: "mailboxIdentityId", label: "ID boite" },
+      { key: "organizationId", label: "ID organisation" },
+      { key: "contactId", label: "ID contact" },
+      { key: "opportunityId", label: "ID opportunite" },
+      { key: "assignedTo", label: "ID assigne" },
+      { key: "direction", label: "Direction", kind: "select", options: ["inbound", "outbound", "mixed"] },
+      { key: "subject", label: "Sujet", required: true },
+      { key: "status", label: "Statut", kind: "select", options: ["open", "assigned", "waiting", "archived", "spam", "do_not_contact"] },
+      { key: "source", label: "Source", kind: "select", options: ["manual", "public.contact", "public.sponsors", "imap", "smtp", "provider_webhook"] },
+      { key: "lastMessageAt", label: "Dernier message", kind: "date" },
+      { key: "tags", label: "Tags" },
+      { key: "internalNotes", label: "Notes internes", kind: "textarea" },
+    ],
+  },
+  mailMessages: {
+    endpoint: "mail-messages",
+    title: "Messages email",
+    description: "Conserver les messages lies aux threads, avec entetes de threading et statut de livraison.",
+    columns: ["threadId", "fromEmail", "toEmails", "subject", "direction", "deliveryStatus", "receivedAt"],
+    fields: [
+      { key: "threadId", label: "ID thread", required: true },
+      { key: "providerMessageId", label: "ID provider" },
+      { key: "messageIdHeader", label: "Message-ID" },
+      { key: "inReplyTo", label: "In-Reply-To" },
+      { key: "referencesHeader", label: "References" },
+      { key: "fromEmail", label: "De" },
+      { key: "toEmails", label: "A" },
+      { key: "ccEmails", label: "Cc" },
+      { key: "subject", label: "Sujet", required: true },
+      { key: "bodyText", label: "Corps", kind: "textarea" },
+      { key: "direction", label: "Direction", kind: "select", options: ["inbound", "outbound"] },
+      { key: "deliveryStatus", label: "Livraison", kind: "select", options: ["received", "draft", "queued", "sent", "bounced", "complaint", "failed"] },
+      { key: "receivedAt", label: "Recu le", kind: "date" },
+      { key: "sentAt", label: "Envoye le", kind: "date" },
+    ],
+  },
+  sequences: {
+    endpoint: "sequences",
+    title: "Sequences outreach",
+    description: "Configurer les suivis autorises apres approbation humaine, avec limites conservatrices et arret automatique sur reponse ou rebond.",
+    columns: ["name", "status", "sponsorCategoryId", "maxSteps", "dailyLimit", "stopOnReply", "stopOnBounce"],
+    fields: [
+      { key: "name", label: "Nom", required: true },
+      { key: "sponsorCategoryId", label: "ID categorie sponsor" },
+      { key: "ownerUserId", label: "ID responsable" },
+      { key: "status", label: "Statut", kind: "select", options: ["draft", "under_review", "approved", "active", "paused", "archived"] },
+      { key: "templateIds", label: "IDs modeles" },
+      { key: "maxSteps", label: "Etapes max" },
+      { key: "minDelayHours", label: "Delai min heures" },
+      { key: "dailyLimit", label: "Limite/jour" },
+      { key: "businessHours", label: "Heures ouvrables" },
+      { key: "stopOnReply", label: "Stop sur reponse", kind: "checkbox" },
+      { key: "stopOnBounce", label: "Stop sur rebond", kind: "checkbox" },
+      { key: "notes", label: "Notes", kind: "textarea" },
+    ],
+  },
+  imports: {
+    endpoint: "imports",
+    title: "Imports pipeline",
+    description: "Tracer les imports CSV/XLSX avec mapping, doublons, avertissements et notes de rollback avant toute confirmation.",
+    columns: ["fileName", "sourceType", "targetResource", "status", "rowCount", "importedCount", "duplicateCount"],
+    fields: [
+      { key: "fileName", label: "Nom fichier", required: true },
+      { key: "sourceType", label: "Source", kind: "select", options: ["csv", "xlsx", "manual", "api"] },
+      { key: "targetResource", label: "Cible", kind: "select", options: ["organizations", "contacts", "opportunities", "toolbox"] },
+      { key: "status", label: "Statut", kind: "select", options: ["draft", "previewed", "validated", "confirmed", "importing", "completed", "failed", "rolled_back"] },
+      { key: "rowCount", label: "Lignes" },
+      { key: "importedCount", label: "Importees" },
+      { key: "skippedCount", label: "Ignorees" },
+      { key: "duplicateCount", label: "Doublons" },
+      { key: "rollbackNotes", label: "Notes rollback", kind: "textarea" },
+      { key: "confirmedAt", label: "Confirme le", kind: "date" },
+      { key: "completedAt", label: "Termine le", kind: "date" },
+    ],
+  },
+  agentResearch: {
+    endpoint: "agent-research",
+    title: "Agent de recherche sponsors",
+    description: "Enregistrer les recherches publiques, scores, sources et brouillons proposes sans autoriser l'envoi automatique non approuve.",
+    columns: ["researchStatus", "organizationId", "opportunityId", "sponsorCategoryGuess", "relevanceScore", "confidenceScore", "approvalId"],
+    fields: [
+      { key: "organizationId", label: "ID organisation" },
+      { key: "contactId", label: "ID contact" },
+      { key: "opportunityId", label: "ID opportunite" },
+      { key: "requestedByUserId", label: "ID demandeur" },
+      { key: "approvalId", label: "ID approbation" },
+      { key: "researchStatus", label: "Statut", kind: "select", options: ["draft", "researching", "needs_verification", "ready_for_review", "approved", "rejected", "archived"] },
+      { key: "sourceUrls", label: "URLs sources" },
+      { key: "summary", label: "Synthese", kind: "textarea" },
+      { key: "sponsorCategoryGuess", label: "Categorie proposee" },
+      { key: "relevanceScore", label: "Score pertinence" },
+      { key: "confidenceScore", label: "Score confiance" },
+      { key: "recommendedTemplateId", label: "ID modele recommande" },
+      { key: "recommendedToolboxAssetIds", label: "IDs assets recommandes" },
+      { key: "draftSubject", label: "Sujet brouillon" },
+      { key: "draftBody", label: "Brouillon", kind: "textarea" },
+      { key: "guardrailNotes", label: "Notes garde-fous", kind: "textarea" },
+    ],
+  },
+  jobs: {
+    endpoint: "jobs",
+    title: "Jobs systeme",
+    description: "Rendre visibles les travaux de synchronisation, suivi, planification et classification sans lancer de processus cache.",
+    columns: ["jobType", "status", "attemptCount", "scheduledAt", "startedAt", "completedAt", "relatedEntityType"],
+    fields: [
+      { key: "jobType", label: "Type job", kind: "select", options: ["mail_sync", "webhook_processing", "attachment_processing", "scheduled_send", "follow_up", "bounce_processing", "reply_classification", "pipeline_summary", "mailbox_health"] },
+      { key: "status", label: "Statut", kind: "select", options: ["queued", "running", "completed", "failed", "dead_letter", "cancelled"] },
+      { key: "attemptCount", label: "Tentatives" },
+      { key: "scheduledAt", label: "Programme le", kind: "date" },
+      { key: "startedAt", label: "Demarre le", kind: "date" },
+      { key: "completedAt", label: "Termine le", kind: "date" },
+      { key: "error", label: "Erreur", kind: "textarea" },
+      { key: "relatedEntityType", label: "Entite liee" },
+      { key: "relatedEntityId", label: "ID entite liee" },
+    ],
+  },
   media: {
     endpoint: "media",
     title: "Médias",
@@ -610,6 +747,56 @@ const adminLabelMap: Record<string, string> = {
   rejectedAt: "Rejete le",
   sentAt: "Envoye le",
   decisionNotes: "Notes decision",
+  providerThreadId: "Thread provider",
+  mailboxIdentityId: "ID boite",
+  direction: "Direction",
+  lastMessageAt: "Dernier message",
+  tags: "Tags",
+  threadId: "ID thread",
+  providerMessageId: "ID provider",
+  messageIdHeader: "Message-ID",
+  inReplyTo: "In-Reply-To",
+  referencesHeader: "References",
+  toEmails: "A",
+  ccEmails: "Cc",
+  bodyText: "Corps",
+  bodyPreview: "Apercu",
+  deliveryStatus: "Livraison",
+  receivedAt: "Recu le",
+  templateIds: "IDs modeles",
+  maxSteps: "Etapes max",
+  minDelayHours: "Delai min heures",
+  dailyLimit: "Limite/jour",
+  businessHours: "Heures ouvrables",
+  stopOnReply: "Stop reponse",
+  stopOnBounce: "Stop rebond",
+  fileName: "Nom fichier",
+  sourceType: "Source import",
+  targetResource: "Cible",
+  rowCount: "Lignes",
+  importedCount: "Importees",
+  skippedCount: "Ignorees",
+  duplicateCount: "Doublons",
+  rollbackNotes: "Notes rollback",
+  confirmedAt: "Confirme le",
+  requestedByUserId: "ID demandeur",
+  approvalId: "ID approbation",
+  researchStatus: "Statut recherche",
+  sourceUrls: "URLs sources",
+  summary: "Synthese",
+  sponsorCategoryGuess: "Categorie proposee",
+  relevanceScore: "Score pertinence",
+  recommendedTemplateId: "ID modele recommande",
+  recommendedToolboxAssetIds: "IDs assets recommandes",
+  draftSubject: "Sujet brouillon",
+  draftBody: "Brouillon",
+  guardrailNotes: "Notes garde-fous",
+  jobType: "Type job",
+  attemptCount: "Tentatives",
+  startedAt: "Demarre le",
+  error: "Erreur",
+  relatedEntityType: "Entite liee",
+  relatedEntityId: "ID entite liee",
   mediaType: "Type média",
   page: "Page",
   section: "Section",
@@ -870,6 +1057,12 @@ const sponsorCrmMetricLabels: Record<string, string> = {
   toolboxAssets: "Sponsor toolbox",
   suppressionEntries: "Suppressions",
   outreachApprovals: "Approbations",
+  mailThreads: "Threads inbox",
+  mailMessages: "Messages email",
+  outreachSequences: "Sequences",
+  importBatches: "Imports",
+  agentResearchRecords: "Recherches agent",
+  backgroundJobs: "Jobs systeme",
 };
 
 function metricLabel(key: string) {
@@ -1112,6 +1305,48 @@ function QuickActions({ section, item, onPatch, pending }: { section: SectionKey
         { label: "Inactif", patch: { status: "inactive" } },
       ];
     }
+    if (section === "inboxThreads") {
+      return [
+        { label: "Assigner", patch: { status: "assigned" } },
+        { label: "Archiver", patch: { status: "archived" } },
+        { label: "DNC", patch: { status: "do_not_contact" } },
+      ];
+    }
+    if (section === "mailMessages") {
+      return [
+        { label: "Recu", patch: { deliveryStatus: "received" } },
+        { label: "Envoye", patch: { deliveryStatus: "sent", sentAt: new Date().toISOString() } },
+        { label: "Rebond", patch: { deliveryStatus: "bounced" } },
+      ];
+    }
+    if (section === "sequences") {
+      return [
+        { label: "Revue", patch: { status: "under_review" } },
+        { label: "Activer", patch: { status: "active" } },
+        { label: "Pause", patch: { status: "paused" } },
+      ];
+    }
+    if (section === "imports") {
+      return [
+        { label: "Valider", patch: { status: "validated" } },
+        { label: "Confirmer", patch: { status: "confirmed", confirmedAt: new Date().toISOString() } },
+        { label: "Terminer", patch: { status: "completed", completedAt: new Date().toISOString() } },
+      ];
+    }
+    if (section === "agentResearch") {
+      return [
+        { label: "Verifier", patch: { researchStatus: "needs_verification" } },
+        { label: "Revue", patch: { researchStatus: "ready_for_review" } },
+        { label: "Approuver", patch: { researchStatus: "approved" } },
+      ];
+    }
+    if (section === "jobs") {
+      return [
+        { label: "Demarrer", patch: { status: "running", startedAt: new Date().toISOString() } },
+        { label: "Terminer", patch: { status: "completed", completedAt: new Date().toISOString() } },
+        { label: "Echec", patch: { status: "failed" } },
+      ];
+    }
     if (section === "partners") {
       return [
         { label: "Confirmer", patch: { status: "Confirmed" } },
@@ -1241,6 +1476,30 @@ export function AgoojyeAdminSuppressionPage() {
 
 export function AgoojyeAdminApprovalsPage() {
   return <ResourcePage section="approvals" />;
+}
+
+export function AgoojyeAdminInboxThreadsPage() {
+  return <ResourcePage section="inboxThreads" />;
+}
+
+export function AgoojyeAdminMailMessagesPage() {
+  return <ResourcePage section="mailMessages" />;
+}
+
+export function AgoojyeAdminSequencesPage() {
+  return <ResourcePage section="sequences" />;
+}
+
+export function AgoojyeAdminImportsPage() {
+  return <ResourcePage section="imports" />;
+}
+
+export function AgoojyeAdminAgentResearchPage() {
+  return <ResourcePage section="agentResearch" />;
+}
+
+export function AgoojyeAdminJobsPage() {
+  return <ResourcePage section="jobs" />;
 }
 
 export function AgoojyeAdminMediaPage() {

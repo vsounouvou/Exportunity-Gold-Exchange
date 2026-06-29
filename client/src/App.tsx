@@ -345,6 +345,12 @@ const AgoojyeAdminEmailTemplatesPage = lazyPage(() => import("@/pages/agoojye/Ag
 const AgoojyeAdminToolboxPage = lazyPage(() => import("@/pages/agoojye/AgoojyeAdminPages"), "AgoojyeAdminToolboxPage");
 const AgoojyeAdminSuppressionPage = lazyPage(() => import("@/pages/agoojye/AgoojyeAdminPages"), "AgoojyeAdminSuppressionPage");
 const AgoojyeAdminApprovalsPage = lazyPage(() => import("@/pages/agoojye/AgoojyeAdminPages"), "AgoojyeAdminApprovalsPage");
+const AgoojyeAdminInboxThreadsPage = lazyPage(() => import("@/pages/agoojye/AgoojyeAdminPages"), "AgoojyeAdminInboxThreadsPage");
+const AgoojyeAdminMailMessagesPage = lazyPage(() => import("@/pages/agoojye/AgoojyeAdminPages"), "AgoojyeAdminMailMessagesPage");
+const AgoojyeAdminSequencesPage = lazyPage(() => import("@/pages/agoojye/AgoojyeAdminPages"), "AgoojyeAdminSequencesPage");
+const AgoojyeAdminImportsPage = lazyPage(() => import("@/pages/agoojye/AgoojyeAdminPages"), "AgoojyeAdminImportsPage");
+const AgoojyeAdminAgentResearchPage = lazyPage(() => import("@/pages/agoojye/AgoojyeAdminPages"), "AgoojyeAdminAgentResearchPage");
+const AgoojyeAdminJobsPage = lazyPage(() => import("@/pages/agoojye/AgoojyeAdminPages"), "AgoojyeAdminJobsPage");
 const AgoojyeAdminMediaPage = lazyPage(() => import("@/pages/agoojye/AgoojyeAdminPages"), "AgoojyeAdminMediaPage");
 const AgoojyeAdminContentPage = lazyPage(() => import("@/pages/agoojye/AgoojyeAdminPages"), "AgoojyeAdminContentPage");
 const AgoojyeAdminSettingsPage = lazyPage(() => import("@/pages/agoojye/AgoojyeAdminPages"), "AgoojyeAdminSettingsPage");
@@ -1398,6 +1404,36 @@ function App() {
           <Route path="/admin/agoojye/approvals">
             <ProtectedRoute>
               <AgoojyeAdminApprovalsPage />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/admin/agoojye/inbox">
+            <ProtectedRoute>
+              <AgoojyeAdminInboxThreadsPage />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/admin/agoojye/mail-messages">
+            <ProtectedRoute>
+              <AgoojyeAdminMailMessagesPage />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/admin/agoojye/sequences">
+            <ProtectedRoute>
+              <AgoojyeAdminSequencesPage />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/admin/agoojye/imports">
+            <ProtectedRoute>
+              <AgoojyeAdminImportsPage />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/admin/agoojye/agent-research">
+            <ProtectedRoute>
+              <AgoojyeAdminAgentResearchPage />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/admin/agoojye/jobs">
+            <ProtectedRoute>
+              <AgoojyeAdminJobsPage />
             </ProtectedRoute>
           </Route>
           <Route path="/admin/agoojye/media">

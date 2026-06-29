@@ -8,14 +8,20 @@ import {
   agoojyeCrmActivities,
   agoojyeCrmContacts,
   agoojyeCrmOrganizations,
+  agoojyeAgentResearchRecords,
+  agoojyeBackgroundJobs,
   agoojyeDocuments,
   agoojyeEmailTemplates,
   agoojyeEmailIdentities,
+  agoojyeImportBatches,
   agoojyeInternalMessageRecipients,
   agoojyeInternalMessages,
+  agoojyeMailMessages,
+  agoojyeMailThreads,
   agoojyeMediaAssets,
   agoojyeMilestones,
   agoojyeOutreachApprovals,
+  agoojyeOutreachSequences,
   agoojyeParticipants,
   agoojyePartners,
   agoojyePermissions,
@@ -452,6 +458,65 @@ async function upsertSponsorCrmFromLead(
   });
 
   return { organizationId: organization?.id || null, contactId: contact?.id || null, opportunityId: opportunity?.id || null };
+}
+
+async function createInboxRecordFromPublicLead(
+  tenantId: number,
+  input: {
+    source: string;
+    subject: string;
+    senderName: string;
+    senderEmail: string;
+    targetEmail: string;
+    body?: string | null;
+    tags?: string[];
+    organizationId?: number | null;
+    contactId?: number | null;
+    opportunityId?: number | null;
+    leadId?: number | null;
+  },
+) {
+  const now = new Date();
+  const preview = normalizeText(input.body).slice(0, 220);
+  const [thread] = await db
+    .insert(agoojyeMailThreads)
+    .values({
+      tenantId,
+      organizationId: input.organizationId || null,
+      contactId: input.contactId || null,
+      opportunityId: input.opportunityId || null,
+      direction: "inbound",
+      subject: normalizeText(input.subject) || "Message public AGOOJIYE",
+      status: "open",
+      source: input.source,
+      lastMessageAt: now,
+      tags: input.tags || [],
+      internalNotes: input.leadId ? `Lead public #${input.leadId}` : null,
+      createdAt: now,
+      updatedAt: now,
+    })
+    .returning();
+
+  const [message] = await db
+    .insert(agoojyeMailMessages)
+    .values({
+      tenantId,
+      threadId: Number(thread.id),
+      fromEmail: normalizeText(input.senderEmail).toLowerCase(),
+      toEmails: [normalizeText(input.targetEmail).toLowerCase()].filter(Boolean),
+      subject: normalizeText(input.subject) || "Message public AGOOJIYE",
+      bodyText: normalizeText(input.body) || null,
+      bodyPreview: preview || null,
+      direction: "inbound",
+      deliveryStatus: "received",
+      receivedAt: now,
+      attachmentMetadata: {},
+      createdAt: now,
+      updatedAt: now,
+    })
+    .returning();
+
+  return { threadId: Number(thread.id), messageId: Number(message.id) };
 }
 
 function actor(req: any) {
@@ -904,7 +969,20 @@ publicApi.post("/public/sponsors", async (req: any, res) => {
       source: "public.sponsors",
       leadId: item.id,
     });
-    await audit(tenantId, { action: "create", entityType: "sponsor_lead", entityId: item.id, metadata: { source: "public.sponsors", crm } });
+    const inbox = await createInboxRecordFromPublicLead(tenantId, {
+      source: "public.sponsors",
+      subject: `Demande sponsor - ${companyName}`,
+      senderName: contactPerson,
+      senderEmail: email,
+      targetEmail: "sponsors@agoojiye.com",
+      body: normalizeText(req.body?.message) || null,
+      tags: ["website", "sponsor"],
+      organizationId: crm.organizationId,
+      contactId: crm.contactId,
+      opportunityId: crm.opportunityId,
+      leadId: item.id,
+    });
+    await audit(tenantId, { action: "create", entityType: "sponsor_lead", entityId: item.id, metadata: { source: "public.sponsors", crm, inbox } });
     return res.status(201).json({ ok: true, item });
   } catch (error: any) {
     return res.status(500).json({ message: error?.message || "Impossible d'enregistrer la demande sponsor." });
@@ -948,7 +1026,29 @@ publicApi.post("/public/contact", async (req: any, res) => {
       source: `public.contact.${slugify(inquiryType)}`,
       leadId: item.id,
     });
-    await audit(tenantId, { action: "create", entityType: "contact_lead", entityId: item.id, metadata: { inquiryType, crm } });
+    const route = inferSponsorCategorySlug(inquiryType);
+    const targetEmail =
+      route === "media-partner"
+        ? "press@agoojiye.com"
+        : route === "industrial-partner"
+          ? "partners@agoojiye.com"
+          : route === "talent-partner"
+            ? "careers@agoojiye.com"
+            : "contact@agoojiye.com";
+    const inbox = await createInboxRecordFromPublicLead(tenantId, {
+      source: `public.contact.${slugify(inquiryType)}`,
+      subject: `${inquiryType} - ${fullName}`,
+      senderName: fullName,
+      senderEmail: email,
+      targetEmail,
+      body: normalizeText(req.body?.message) || null,
+      tags: ["website", "contact", route],
+      organizationId: crm.organizationId,
+      contactId: crm.contactId,
+      opportunityId: crm.opportunityId,
+      leadId: item.id,
+    });
+    await audit(tenantId, { action: "create", entityType: "contact_lead", entityId: item.id, metadata: { inquiryType, crm, inbox } });
     return res.status(201).json({ ok: true, item });
   } catch (error: any) {
     return res.status(500).json({ message: error?.message || "Impossible d'enregistrer le message." });
@@ -1351,6 +1451,137 @@ const resources = {
     }),
     fields: ["opportunityId", "contactId", "templateId", "requesterUserId", "reviewerUserId", "senderIdentityId", "subject", "body", "status", "scheduledAt", "approvedAt", "rejectedAt", "sentAt", "decisionNotes", "agentResearchJson"],
   },
+  "inbox-threads": {
+    table: agoojyeMailThreads,
+    entity: "mail_thread",
+    create: (tenantId: number, body: any) => ({
+      tenantId,
+      providerThreadId: normalizeText(body.providerThreadId) || null,
+      mailboxIdentityId: Number(body.mailboxIdentityId) || null,
+      organizationId: Number(body.organizationId) || null,
+      contactId: Number(body.contactId) || null,
+      opportunityId: Number(body.opportunityId) || null,
+      assignedTo: Number(body.assignedTo) || null,
+      direction: normalizeText(body.direction) || "inbound",
+      subject: normalizeText(body.subject) || "(Sans sujet)",
+      status: normalizeText(body.status) || "open",
+      source: normalizeText(body.source) || "manual",
+      lastMessageAt: parseDate(body.lastMessageAt),
+      tags: parseList(body.tags),
+      internalNotes: normalizeText(body.internalNotes) || null,
+    }),
+    fields: ["providerThreadId", "mailboxIdentityId", "organizationId", "contactId", "opportunityId", "assignedTo", "direction", "subject", "status", "source", "lastMessageAt", "tags", "internalNotes"],
+  },
+  "mail-messages": {
+    table: agoojyeMailMessages,
+    entity: "mail_message",
+    create: (tenantId: number, body: any) => ({
+      tenantId,
+      threadId: Number(body.threadId) || null,
+      providerMessageId: normalizeText(body.providerMessageId) || null,
+      messageIdHeader: normalizeText(body.messageIdHeader) || null,
+      inReplyTo: normalizeText(body.inReplyTo) || null,
+      referencesHeader: normalizeText(body.referencesHeader) || null,
+      fromEmail: normalizeText(body.fromEmail).toLowerCase() || null,
+      toEmails: parseList(body.toEmails).map((entry) => entry.toLowerCase()),
+      ccEmails: parseList(body.ccEmails).map((entry) => entry.toLowerCase()),
+      subject: normalizeText(body.subject) || "(Sans sujet)",
+      bodyText: normalizeText(body.bodyText) || null,
+      bodyPreview: normalizeText(body.bodyPreview) || normalizeText(body.bodyText).slice(0, 220) || null,
+      direction: normalizeText(body.direction) || "inbound",
+      deliveryStatus: normalizeText(body.deliveryStatus) || "received",
+      receivedAt: parseDate(body.receivedAt),
+      sentAt: parseDate(body.sentAt),
+      attachmentMetadata: body.attachmentMetadata && typeof body.attachmentMetadata === "object" ? body.attachmentMetadata : {},
+    }),
+    fields: ["threadId", "providerMessageId", "messageIdHeader", "inReplyTo", "referencesHeader", "fromEmail", "toEmails", "ccEmails", "subject", "bodyText", "bodyPreview", "direction", "deliveryStatus", "receivedAt", "sentAt", "attachmentMetadata"],
+  },
+  sequences: {
+    table: agoojyeOutreachSequences,
+    entity: "outreach_sequence",
+    create: (tenantId: number, body: any) => ({
+      tenantId,
+      name: normalizeText(body.name),
+      sponsorCategoryId: Number(body.sponsorCategoryId) || null,
+      ownerUserId: Number(body.ownerUserId) || null,
+      status: normalizeText(body.status) || "draft",
+      templateIds: parseList(body.templateIds).map((entry) => Number(entry)).filter((value) => Number.isFinite(value) && value > 0),
+      maxSteps: Number(body.maxSteps) || 3,
+      minDelayHours: Number(body.minDelayHours) || 72,
+      dailyLimit: Number(body.dailyLimit) || 10,
+      businessHours: normalizeText(body.businessHours) || null,
+      stopOnReply: body.stopOnReply !== false,
+      stopOnBounce: body.stopOnBounce !== false,
+      notes: normalizeText(body.notes) || null,
+    }),
+    fields: ["name", "sponsorCategoryId", "ownerUserId", "status", "templateIds", "maxSteps", "minDelayHours", "dailyLimit", "businessHours", "stopOnReply", "stopOnBounce", "notes"],
+  },
+  imports: {
+    table: agoojyeImportBatches,
+    entity: "import_batch",
+    create: (tenantId: number, body: any, req: any) => ({
+      tenantId,
+      fileName: normalizeText(body.fileName),
+      sourceType: normalizeText(body.sourceType) || "csv",
+      targetResource: normalizeText(body.targetResource) || "organizations",
+      status: normalizeText(body.status) || "draft",
+      rowCount: Number(body.rowCount) || 0,
+      importedCount: Number(body.importedCount) || 0,
+      skippedCount: Number(body.skippedCount) || 0,
+      duplicateCount: Number(body.duplicateCount) || 0,
+      warnings: body.warnings && typeof body.warnings === "object" ? body.warnings : {},
+      mappingJson: body.mappingJson && typeof body.mappingJson === "object" ? body.mappingJson : {},
+      rollbackNotes: normalizeText(body.rollbackNotes) || null,
+      createdBy: actor(req),
+      confirmedAt: parseDate(body.confirmedAt),
+      completedAt: parseDate(body.completedAt),
+    }),
+    fields: ["fileName", "sourceType", "targetResource", "status", "rowCount", "importedCount", "skippedCount", "duplicateCount", "warnings", "mappingJson", "rollbackNotes", "confirmedAt", "completedAt"],
+  },
+  "agent-research": {
+    table: agoojyeAgentResearchRecords,
+    entity: "agent_research",
+    create: (tenantId: number, body: any) => ({
+      tenantId,
+      organizationId: Number(body.organizationId) || null,
+      contactId: Number(body.contactId) || null,
+      opportunityId: Number(body.opportunityId) || null,
+      requestedByUserId: Number(body.requestedByUserId) || null,
+      approvalId: Number(body.approvalId) || null,
+      researchStatus: normalizeText(body.researchStatus) || "draft",
+      sourceUrls: parseList(body.sourceUrls),
+      summary: normalizeText(body.summary) || null,
+      sponsorCategoryGuess: normalizeText(body.sponsorCategoryGuess) || null,
+      relevanceScore: Number(body.relevanceScore) || 0,
+      confidenceScore: Number(body.confidenceScore) || 0,
+      recommendedTemplateId: Number(body.recommendedTemplateId) || null,
+      recommendedToolboxAssetIds: parseList(body.recommendedToolboxAssetIds).map((entry) => Number(entry)).filter((value) => Number.isFinite(value) && value > 0),
+      draftSubject: normalizeText(body.draftSubject) || null,
+      draftBody: normalizeText(body.draftBody) || null,
+      guardrailNotes: normalizeText(body.guardrailNotes) || null,
+    }),
+    fields: ["organizationId", "contactId", "opportunityId", "requestedByUserId", "approvalId", "researchStatus", "sourceUrls", "summary", "sponsorCategoryGuess", "relevanceScore", "confidenceScore", "recommendedTemplateId", "recommendedToolboxAssetIds", "draftSubject", "draftBody", "guardrailNotes"],
+  },
+  jobs: {
+    table: agoojyeBackgroundJobs,
+    entity: "background_job",
+    create: (tenantId: number, body: any, req: any) => ({
+      tenantId,
+      jobType: normalizeText(body.jobType),
+      status: normalizeText(body.status) || "queued",
+      attemptCount: Number(body.attemptCount) || 0,
+      scheduledAt: parseDate(body.scheduledAt),
+      startedAt: parseDate(body.startedAt),
+      completedAt: parseDate(body.completedAt),
+      error: normalizeText(body.error) || null,
+      relatedEntityType: normalizeText(body.relatedEntityType) || null,
+      relatedEntityId: Number(body.relatedEntityId) || null,
+      createdBy: actor(req),
+      payloadJson: body.payloadJson && typeof body.payloadJson === "object" ? body.payloadJson : {},
+      resultJson: body.resultJson && typeof body.resultJson === "object" ? body.resultJson : {},
+    }),
+    fields: ["jobType", "status", "attemptCount", "scheduledAt", "startedAt", "completedAt", "error", "relatedEntityType", "relatedEntityId", "payloadJson", "resultJson"],
+  },
   media: {
     table: agoojyeMediaAssets,
     entity: "media_asset",
@@ -1424,15 +1655,16 @@ function getResource(key: string): any {
 
 function sanitizePatch(resource: any, body: any) {
   const patch: Record<string, unknown> = {};
-  const listFields = new Set(["skills", "attachments", "tags", "variables", "attachmentIds", "approvedClaims", "prohibitedClaims"]);
-  const dateFields = new Set(["date", "dueDate", "nextActionDate", "lastContactedAt", "lastRepliedAt", "completedAt", "approvedAt", "scheduledAt", "rejectedAt", "sentAt"]);
-  const booleanFields = new Set(["confirmedRole", "emailAccountCreated", "certificateEligible", "canSend", "canReceive", "isTerminal", "doNotContact"]);
-  const jsonFields = new Set(["metadataJson", "metadata", "agentResearchJson"]);
-  const zeroDefaultNumberFields = new Set(["sortOrder", "confidenceScore"]);
-  const nullableNumberFields = new Set(["teamId", "userId", "assignedTo", "createdBy", "uploadedBy", "entityId", "smtpPort", "opportunityOwner", "relationshipOwner"]);
+  const listFields = new Set(["skills", "attachments", "tags", "variables", "attachmentIds", "approvedClaims", "prohibitedClaims", "toEmails", "ccEmails", "sourceUrls", "templateIds", "recommendedToolboxAssetIds"]);
+  const numericListFields = new Set(["attachmentIds", "templateIds", "recommendedToolboxAssetIds"]);
+  const dateFields = new Set(["date", "dueDate", "nextActionDate", "lastContactedAt", "lastRepliedAt", "completedAt", "approvedAt", "scheduledAt", "rejectedAt", "sentAt", "lastMessageAt", "receivedAt", "confirmedAt", "startedAt"]);
+  const booleanFields = new Set(["confirmedRole", "emailAccountCreated", "certificateEligible", "canSend", "canReceive", "isTerminal", "doNotContact", "stopOnReply", "stopOnBounce"]);
+  const jsonFields = new Set(["metadataJson", "metadata", "agentResearchJson", "attachmentMetadata", "warnings", "mappingJson", "payloadJson", "resultJson"]);
+  const zeroDefaultNumberFields = new Set(["sortOrder", "confidenceScore", "relevanceScore", "maxSteps", "minDelayHours", "dailyLimit", "rowCount", "importedCount", "skippedCount", "duplicateCount", "attemptCount"]);
+  const nullableNumberFields = new Set(["teamId", "userId", "assignedTo", "createdBy", "uploadedBy", "entityId", "smtpPort", "opportunityOwner", "relationshipOwner", "relatedEntityId"]);
   for (const field of resource.fields || []) {
     if (!Object.prototype.hasOwnProperty.call(body, field)) continue;
-    if (field === "attachmentIds") {
+    if (numericListFields.has(field)) {
       patch[field] = parseList(body[field])
         .map((entry) => Number(entry))
         .filter((value) => Number.isFinite(value) && value > 0);
@@ -1489,6 +1721,12 @@ adminApi.get("/dashboard", async (req: any, res) => {
       toolboxAssets,
       suppressionEntries,
       outreachApprovals,
+      mailThreads,
+      mailMessages,
+      outreachSequences,
+      importBatches,
+      agentResearchRecords,
+      backgroundJobs,
     ] = await Promise.all([
       count(agoojyeParticipants),
       db.select({ value: sql<number>`count(*)::int` }).from(agoojyeParticipants).where(and(eq(agoojyeParticipants.tenantId, tenantId), eq(agoojyeParticipants.confirmedRole, true))),
@@ -1510,6 +1748,12 @@ adminApi.get("/dashboard", async (req: any, res) => {
       count(agoojyeToolboxAssets),
       count(agoojyeSuppressionEntries),
       count(agoojyeOutreachApprovals),
+      count(agoojyeMailThreads),
+      count(agoojyeMailMessages),
+      count(agoojyeOutreachSequences),
+      count(agoojyeImportBatches),
+      count(agoojyeAgentResearchRecords),
+      count(agoojyeBackgroundJobs),
     ]);
 
     return res.json({
@@ -1535,6 +1779,12 @@ adminApi.get("/dashboard", async (req: any, res) => {
         toolboxAssets,
         suppressionEntries,
         outreachApprovals,
+        mailThreads,
+        mailMessages,
+        outreachSequences,
+        importBatches,
+        agentResearchRecords,
+        backgroundJobs,
       },
       bootstrap: await bootstrapPayload(tenantId, false),
     });
@@ -1576,6 +1826,9 @@ adminApi.post("/:resource", async (req: any, res) => {
     if ("title" in values && !normalizeText((values as any).title)) return res.status(400).json({ message: "title is required" });
     if ("name" in values && !normalizeText((values as any).name)) return res.status(400).json({ message: "name is required" });
     if (req.params.resource === "opportunities" && !(values as any).organizationId) return res.status(400).json({ message: "organizationId is required" });
+    if (req.params.resource === "mail-messages" && !(values as any).threadId) return res.status(400).json({ message: "threadId is required" });
+    if (req.params.resource === "imports" && !normalizeText((values as any).fileName)) return res.status(400).json({ message: "fileName is required" });
+    if (req.params.resource === "jobs" && !normalizeText((values as any).jobType)) return res.status(400).json({ message: "jobType is required" });
     if ((req.params.resource === "approvals" || req.params.resource === "email-templates") && !normalizeText((values as any).subject)) return res.status(400).json({ message: "subject is required" });
     if ((req.params.resource === "approvals" || req.params.resource === "email-templates") && !normalizeText((values as any).body)) return res.status(400).json({ message: "body is required" });
 

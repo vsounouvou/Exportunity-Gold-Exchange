@@ -577,6 +577,175 @@ export const agoojyeOutreachApprovals = pgTable(
   }),
 );
 
+export const agoojyeMailThreads = pgTable(
+  "agoojye_mail_threads",
+  {
+    id: serial("id").primaryKey(),
+    tenantId: integer("tenant_id").references(() => tenants.id, { onDelete: "cascade" }).notNull(),
+    providerThreadId: text("provider_thread_id"),
+    mailboxIdentityId: integer("mailbox_identity_id").references(() => agoojyeEmailIdentities.id, { onDelete: "set null" }),
+    organizationId: integer("organization_id").references(() => agoojyeCrmOrganizations.id, { onDelete: "set null" }),
+    contactId: integer("contact_id").references(() => agoojyeCrmContacts.id, { onDelete: "set null" }),
+    opportunityId: integer("opportunity_id").references(() => agoojyeSponsorOpportunities.id, { onDelete: "set null" }),
+    assignedTo: integer("assigned_to").references(() => agoojyeProjectUsers.id, { onDelete: "set null" }),
+    direction: text("direction").notNull().default("inbound"),
+    subject: text("subject").notNull().default("(Sans sujet)"),
+    status: text("status").notNull().default("open"),
+    source: text("source").notNull().default("manual"),
+    lastMessageAt: timestamp("last_message_at", { withTimezone: true }),
+    tags: jsonb("tags").$type<string[]>().notNull().default([]),
+    internalNotes: text("internal_notes"),
+    createdAt: now(),
+    updatedAt: updated(),
+  },
+  (t) => ({
+    tenantProviderThreadUnique: uniqueIndex("agoojye_mail_threads_tenant_provider_uidx").on(t.tenantId, t.providerThreadId),
+    byTenantStatus: index("agoojye_mail_threads_tenant_status_idx").on(t.tenantId, t.status, t.lastMessageAt),
+    byTenantOpportunity: index("agoojye_mail_threads_tenant_opportunity_idx").on(t.tenantId, t.opportunityId),
+  }),
+);
+
+export const agoojyeMailMessages = pgTable(
+  "agoojye_mail_messages",
+  {
+    id: serial("id").primaryKey(),
+    tenantId: integer("tenant_id").references(() => tenants.id, { onDelete: "cascade" }).notNull(),
+    threadId: integer("thread_id").references(() => agoojyeMailThreads.id, { onDelete: "cascade" }).notNull(),
+    providerMessageId: text("provider_message_id"),
+    messageIdHeader: text("message_id_header"),
+    inReplyTo: text("in_reply_to"),
+    referencesHeader: text("references_header"),
+    fromEmail: text("from_email"),
+    toEmails: jsonb("to_emails").$type<string[]>().notNull().default([]),
+    ccEmails: jsonb("cc_emails").$type<string[]>().notNull().default([]),
+    subject: text("subject").notNull().default("(Sans sujet)"),
+    bodyText: text("body_text"),
+    bodyPreview: text("body_preview"),
+    direction: text("direction").notNull().default("inbound"),
+    deliveryStatus: text("delivery_status").notNull().default("received"),
+    receivedAt: timestamp("received_at", { withTimezone: true }),
+    sentAt: timestamp("sent_at", { withTimezone: true }),
+    attachmentMetadata: jsonb("attachment_metadata").$type<Record<string, unknown>>().notNull().default({}),
+    createdAt: now(),
+    updatedAt: updated(),
+  },
+  (t) => ({
+    tenantProviderMessageUnique: uniqueIndex("agoojye_mail_messages_tenant_provider_uidx").on(t.tenantId, t.providerMessageId),
+    byTenantThread: index("agoojye_mail_messages_tenant_thread_idx").on(t.tenantId, t.threadId, t.createdAt),
+    byTenantDirection: index("agoojye_mail_messages_tenant_direction_idx").on(t.tenantId, t.direction, t.createdAt),
+  }),
+);
+
+export const agoojyeOutreachSequences = pgTable(
+  "agoojye_outreach_sequences",
+  {
+    id: serial("id").primaryKey(),
+    tenantId: integer("tenant_id").references(() => tenants.id, { onDelete: "cascade" }).notNull(),
+    name: text("name").notNull(),
+    sponsorCategoryId: integer("sponsor_category_id").references(() => agoojyeSponsorCategories.id, { onDelete: "set null" }),
+    ownerUserId: integer("owner_user_id").references(() => agoojyeProjectUsers.id, { onDelete: "set null" }),
+    status: text("status").notNull().default("draft"),
+    templateIds: jsonb("template_ids").$type<number[]>().notNull().default([]),
+    maxSteps: integer("max_steps").notNull().default(3),
+    minDelayHours: integer("min_delay_hours").notNull().default(72),
+    dailyLimit: integer("daily_limit").notNull().default(10),
+    businessHours: text("business_hours"),
+    stopOnReply: boolean("stop_on_reply").notNull().default(true),
+    stopOnBounce: boolean("stop_on_bounce").notNull().default(true),
+    notes: text("notes"),
+    createdAt: now(),
+    updatedAt: updated(),
+  },
+  (t) => ({
+    tenantNameUnique: uniqueIndex("agoojye_outreach_sequences_tenant_name_uidx").on(t.tenantId, t.name),
+    byTenantStatus: index("agoojye_outreach_sequences_tenant_status_idx").on(t.tenantId, t.status),
+  }),
+);
+
+export const agoojyeImportBatches = pgTable(
+  "agoojye_import_batches",
+  {
+    id: serial("id").primaryKey(),
+    tenantId: integer("tenant_id").references(() => tenants.id, { onDelete: "cascade" }).notNull(),
+    fileName: text("file_name").notNull(),
+    sourceType: text("source_type").notNull().default("csv"),
+    targetResource: text("target_resource").notNull().default("organizations"),
+    status: text("status").notNull().default("draft"),
+    rowCount: integer("row_count").notNull().default(0),
+    importedCount: integer("imported_count").notNull().default(0),
+    skippedCount: integer("skipped_count").notNull().default(0),
+    duplicateCount: integer("duplicate_count").notNull().default(0),
+    warnings: jsonb("warnings").$type<Record<string, unknown>>().notNull().default({}),
+    mappingJson: jsonb("mapping_json").$type<Record<string, unknown>>().notNull().default({}),
+    rollbackNotes: text("rollback_notes"),
+    createdBy: text("created_by"),
+    confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    createdAt: now(),
+    updatedAt: updated(),
+  },
+  (t) => ({
+    byTenantStatus: index("agoojye_import_batches_tenant_status_idx").on(t.tenantId, t.status, t.createdAt),
+    byTenantTarget: index("agoojye_import_batches_tenant_target_idx").on(t.tenantId, t.targetResource),
+  }),
+);
+
+export const agoojyeAgentResearchRecords = pgTable(
+  "agoojye_agent_research_records",
+  {
+    id: serial("id").primaryKey(),
+    tenantId: integer("tenant_id").references(() => tenants.id, { onDelete: "cascade" }).notNull(),
+    organizationId: integer("organization_id").references(() => agoojyeCrmOrganizations.id, { onDelete: "set null" }),
+    contactId: integer("contact_id").references(() => agoojyeCrmContacts.id, { onDelete: "set null" }),
+    opportunityId: integer("opportunity_id").references(() => agoojyeSponsorOpportunities.id, { onDelete: "set null" }),
+    requestedByUserId: integer("requested_by_user_id").references(() => agoojyeProjectUsers.id, { onDelete: "set null" }),
+    approvalId: integer("approval_id").references(() => agoojyeOutreachApprovals.id, { onDelete: "set null" }),
+    researchStatus: text("research_status").notNull().default("draft"),
+    sourceUrls: jsonb("source_urls").$type<string[]>().notNull().default([]),
+    summary: text("summary"),
+    sponsorCategoryGuess: text("sponsor_category_guess"),
+    relevanceScore: integer("relevance_score").notNull().default(0),
+    confidenceScore: integer("confidence_score").notNull().default(0),
+    recommendedTemplateId: integer("recommended_template_id").references(() => agoojyeEmailTemplates.id, { onDelete: "set null" }),
+    recommendedToolboxAssetIds: jsonb("recommended_toolbox_asset_ids").$type<number[]>().notNull().default([]),
+    draftSubject: text("draft_subject"),
+    draftBody: text("draft_body"),
+    guardrailNotes: text("guardrail_notes"),
+    createdAt: now(),
+    updatedAt: updated(),
+  },
+  (t) => ({
+    byTenantStatus: index("agoojye_agent_research_tenant_status_idx").on(t.tenantId, t.researchStatus, t.createdAt),
+    byTenantOpportunity: index("agoojye_agent_research_tenant_opportunity_idx").on(t.tenantId, t.opportunityId),
+  }),
+);
+
+export const agoojyeBackgroundJobs = pgTable(
+  "agoojye_background_jobs",
+  {
+    id: serial("id").primaryKey(),
+    tenantId: integer("tenant_id").references(() => tenants.id, { onDelete: "cascade" }).notNull(),
+    jobType: text("job_type").notNull(),
+    status: text("status").notNull().default("queued"),
+    attemptCount: integer("attempt_count").notNull().default(0),
+    scheduledAt: timestamp("scheduled_at", { withTimezone: true }),
+    startedAt: timestamp("started_at", { withTimezone: true }),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    error: text("error"),
+    relatedEntityType: text("related_entity_type"),
+    relatedEntityId: integer("related_entity_id"),
+    createdBy: text("created_by"),
+    payloadJson: jsonb("payload_json").$type<Record<string, unknown>>().notNull().default({}),
+    resultJson: jsonb("result_json").$type<Record<string, unknown>>().notNull().default({}),
+    createdAt: now(),
+    updatedAt: updated(),
+  },
+  (t) => ({
+    byTenantStatus: index("agoojye_background_jobs_tenant_status_idx").on(t.tenantId, t.status, t.scheduledAt),
+    byTenantType: index("agoojye_background_jobs_tenant_type_idx").on(t.tenantId, t.jobType, t.createdAt),
+  }),
+);
+
 export const agoojyeMediaAssets = pgTable(
   "agoojye_media_assets",
   {

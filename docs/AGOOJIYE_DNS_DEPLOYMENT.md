@@ -18,7 +18,7 @@ Tenant display name: AGOOJIYE Electric Mobility
 Primary public domain: agoojiye.com
 Default language: French
 Secondary language: English
-Country: Benin
+Country: Bénin
 VPS IPv4: 51.254.143.30
 Docker Compose project: agoojye-bdo
 App container: agoojye-bdo-app-1
@@ -36,7 +36,7 @@ Latest verified runtime on 2026-06-29:
 ```txt
 Commit: 443474c8730c
 Build ID: 1782745798794
-Homepage title: AGOOJIYE - Mobilite electrique nee au Benin
+Homepage title: AGOOJIYE - Mobilité électrique née au Bénin
 Password page title: Mot de passe email - AGOOJIYE
 Mailbox auth: five initial AGOOJIYE accounts verified over IMAPS and SMTP submission
 Mail DNS: not yet cut over; OVH MX/SPF still active

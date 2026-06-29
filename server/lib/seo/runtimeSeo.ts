@@ -212,7 +212,7 @@ function tenantFullTitle(tenantKey: string) {
 
 function tenantDescription(tenantKey: string) {
   if (tenantKey === "agoojye") {
-    return "AGOOJIYE est une plateforme industrielle de mobilite electrique nee au Benin, concue pour l'Afrique.";
+    return "AGOOJIYE est une plateforme industrielle de mobilité électrique née au Bénin, conçue pour l'Afrique.";
   }
   if (tenantKey === "mindbase") {
     return "MindBase helps creators and operators package expertise into deployable AI intellects.";
@@ -338,14 +338,14 @@ export async function resolveSeoHead(input: {
   };
 
   const agoojyeTitleMap: Record<string, string> = {
-    "/": "AGOOJIYE - Mobilite electrique nee au Benin",
+    "/": "AGOOJIYE - Mobilité électrique née au Bénin",
     "/vision": "Vision - AGOOJIYE",
     "/history": "Histoire - AGOOJIYE",
-    "/challenge": "Challenge Vehicule Electrique - AGOOJIYE",
-    "/teams": "Equipes - AGOOJIYE",
+    "/challenge": "Challenge Véhicule Électrique - AGOOJIYE",
+    "/teams": "Équipes - AGOOJIYE",
     "/partners": "Partenaires - AGOOJIYE",
     "/sponsors": "Sponsors - AGOOJIYE",
-    "/media": "Medias - AGOOJIYE",
+    "/media": "Médias - AGOOJIYE",
     "/contact": "Contact - AGOOJIYE",
     "/mail/password": "Mot de passe email - AGOOJIYE",
     "/email/password": "Mot de passe email - AGOOJIYE",
@@ -402,17 +402,17 @@ export async function resolveSeoHead(input: {
   };
 
   const agoojyeDescriptionMap: Record<string, string> = {
-    "/": "AGOOJIYE est une plateforme industrielle de mobilite electrique nee au Benin, inspiree par l'heritage des Amazones du Dahomey et concue pour l'Afrique.",
-    "/vision": "Vision industrielle, souverainete technologique et mobilite electrique africaine portees par AGOOJIYE.",
-    "/history": "Racines historiques, heritage des Amazones du Dahomey et trajectoire contemporaine du mouvement AGOOJIYE.",
-    "/challenge": "Challenge Vehicule Electrique AGOOJIYE: mobilisation publique, sponsors, partenaires et equipes.",
-    "/teams": "Equipes et roles mobilises pour AGOOJIYE.",
+    "/": "AGOOJIYE est une plateforme industrielle de mobilité électrique née au Bénin, inspirée par l'héritage des Amazones du Dahomey et conçue pour l'Afrique.",
+    "/vision": "Vision industrielle, souveraineté technologique et mobilité électrique africaine portées par AGOOJIYE.",
+    "/history": "Racines historiques, héritage des Amazones du Dahomey et trajectoire contemporaine du mouvement AGOOJIYE.",
+    "/challenge": "Challenge Véhicule Électrique AGOOJIYE: mobilisation publique, sponsors, partenaires et équipes.",
+    "/teams": "Équipes et rôles mobilisés pour AGOOJIYE.",
     "/partners": "Partenaires institutionnels, techniques et industriels du mouvement AGOOJIYE.",
     "/sponsors": "Sponsors et categories de contribution pour soutenir AGOOJIYE.",
-    "/media": "Medias, images et ressources officielles AGOOJIYE.",
-    "/contact": "Contacter l'equipe AGOOJIYE pour partenariat, sponsoring, media ou mobilisation.",
-    "/mail/password": "Page securisee permettant aux membres AGOOJIYE de changer le mot de passe de leur boite email officielle.",
-    "/email/password": "Page securisee permettant aux membres AGOOJIYE de changer le mot de passe de leur boite email officielle.",
+    "/media": "Médias, images et ressources officielles AGOOJIYE.",
+    "/contact": "Contacter l'équipe AGOOJIYE pour partenariat, sponsoring, média ou mobilisation.",
+    "/mail/password": "Page sécurisée permettant aux membres AGOOJIYE de changer le mot de passe de leur boîte email officielle.",
+    "/email/password": "Page sécurisée permettant aux membres AGOOJIYE de changer le mot de passe de leur boîte email officielle.",
   };
 
 

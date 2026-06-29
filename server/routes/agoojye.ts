@@ -211,7 +211,7 @@ const MEDIA_ASSETS = [
   },
   {
     title: "Hero shuttle AGOOJIYE",
-    description: "Banniere principale du shuttle electrique, optimisee pour la page d'accueil.",
+    description: "Bannière principale du shuttle électrique, optimisée pour la page d'accueil.",
     mediaType: "image",
     fileUrl: "/brand/agoojiye/vehicle/hero/agoojiye-shuttle-hero-1280.webp",
     thumbnailUrl: "/brand/agoojiye/vehicle/hero/agoojiye-shuttle-hero-640.webp",

@@ -384,7 +384,7 @@ const TENANT_MANIFEST_OVERRIDES: Record<string, TenantManifestOverride> = {
   agoojye: {
     name: "AGOOJIYE",
     short_name: "AGOOJIYE",
-    description: "Mobilite electrique nee au Benin, concue pour l'Afrique.",
+    description: "Mobilité électrique née au Bénin, conçue pour l'Afrique.",
     start_url: "/",
     background_color: "#080808",
     theme_color: "#080808",

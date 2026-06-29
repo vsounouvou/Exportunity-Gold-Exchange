@@ -8,7 +8,7 @@ Brand spelling note: the final public spelling is `AGOOJIYE`. The legacy technic
 
 Verified on 2026-06-29 after deployment commit `443474c8730c`:
 
-- `https://agoojiye.com` returns HTTP 200 with the title `AGOOJIYE - Mobilite electrique nee au Benin`.
+- `https://agoojiye.com` returns HTTP 200 with the title `AGOOJIYE - Mobilité électrique née au Bénin`.
 - `https://agoojiye.com/mail/password` returns HTTP 200 with the title `Mot de passe email - AGOOJIYE`.
 - `https://agoojiye.com/admin/agoojye/email` returns HTTP 200 for the protected app shell.
 - `https://agoojiye.com/api/agoojye/public/bootstrap` returns HTTP 200.

@@ -9,6 +9,10 @@ type ExecResult = {
   stderr: string;
 };
 
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 function getDockerSocketPath() {
   return String(process.env.MAILSERVER_DOCKER_SOCKET_PATH || "/var/run/docker.sock").trim() || "/var/run/docker.sock";
 }
@@ -103,6 +107,44 @@ export async function mailserverDoveadmAuthTest(address: string, password: strin
     ...result,
     ok: result.ok && /auth succeeded/i.test(combinedOutput),
   };
+}
+
+export async function mailserverRefreshAuth() {
+  const flush = await execInMailserver(["doveadm", "auth", "cache", "flush"], { timeoutMs: 10_000 }).catch((err: any) => ({
+    ok: false,
+    exitCode: typeof err?.status === "number" ? err.status : null,
+    stdout: "",
+    stderr: err?.message || "doveadm auth cache flush failed",
+  }));
+  const reload = await execInMailserver(["doveadm", "reload"], { timeoutMs: 10_000 }).catch((err: any) => ({
+    ok: false,
+    exitCode: typeof err?.status === "number" ? err.status : null,
+    stdout: "",
+    stderr: err?.message || "doveadm reload failed",
+  }));
+
+  return { ok: flush.ok || reload.ok, flush, reload };
+}
+
+export async function mailserverDoveadmAuthTestWithRefresh(
+  address: string,
+  password: string,
+  opts?: { attempts?: number; delayMs?: number },
+) {
+  const attempts = Math.max(1, Math.min(opts?.attempts ?? 6, 10));
+  const delayMs = Math.max(250, Math.min(opts?.delayMs ?? 1_000, 5_000));
+  let refresh: Awaited<ReturnType<typeof mailserverRefreshAuth>> | null = null;
+  let last = await mailserverDoveadmAuthTest(address, password);
+  if (last.ok) return { ...last, refresh };
+
+  for (let attempt = 2; attempt <= attempts; attempt += 1) {
+    refresh = await mailserverRefreshAuth();
+    await sleep(delayMs);
+    last = await mailserverDoveadmAuthTest(address, password);
+    if (last.ok) return { ...last, refresh };
+  }
+
+  return { ...last, refresh };
 }
 
 export async function mailserverEmailDelete(address: string) {

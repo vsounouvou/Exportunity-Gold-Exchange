@@ -3,7 +3,13 @@ import { and, eq } from "drizzle-orm";
 import { db } from "@db";
 import { auditLogs, emailAccounts } from "@db/schema";
 import { resolveTenantMailDomain } from "../lib/mail/domainResolver";
-import { isMailserverSetupAvailable, mailserverDoveadmAuthTest, mailserverEmailUpdate } from "../lib/mail/mailserverSetup";
+import {
+  isMailserverSetupAvailable,
+  mailserverDoveadmAuthTest,
+  mailserverDoveadmAuthTestWithRefresh,
+  mailserverEmailUpdate,
+  mailserverRefreshAuth,
+} from "../lib/mail/mailserverSetup";
 
 const router = Router();
 
@@ -84,25 +90,6 @@ function validateNewPassword(input: { email: string; currentPassword: string; ne
   }
 
   return "";
-}
-
-function sleep(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-async function verifyMailserverLoginWithRetry(input: { user: string; password: string; attempts?: number; delayMs?: number }) {
-  const attempts = Math.max(1, Math.min(input.attempts ?? 6, 10));
-  const delayMs = Math.max(250, Math.min(input.delayMs ?? 1_000, 3_000));
-  let last = await mailserverDoveadmAuthTest(input.user, input.password);
-  if (last.ok) return last;
-
-  for (let attempt = 2; attempt <= attempts; attempt += 1) {
-    await sleep(delayMs);
-    last = await mailserverDoveadmAuthTest(input.user, input.password);
-    if (last.ok) return last;
-  }
-
-  return last;
 }
 
 async function resolveAllowedDomains(tenant: any) {
@@ -226,9 +213,11 @@ router.post("/password/change", async (req: any, res) => {
       return res.status(500).json({ message: "Le mot de passe n'a pas pu être mis à jour." });
     }
 
-    const newAuth = await verifyMailserverLoginWithRetry({ user: email, password: newPassword });
+    const newAuth = await mailserverDoveadmAuthTestWithRefresh(email, newPassword);
     if (!newAuth.ok) {
-      await mailserverEmailUpdate(email, currentPassword).catch(() => null);
+      await mailserverEmailUpdate(email, currentPassword)
+        .then(() => mailserverRefreshAuth())
+        .catch(() => null);
       await writePasswordChangeAudit({
         tenantId: Number(tenant.id),
         accountId,

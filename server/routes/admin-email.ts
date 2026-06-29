@@ -38,6 +38,7 @@ import {
   mailserverEmailDelete,
   mailserverEmailUpdate,
   mailserverQuotaSet,
+  mailserverRefreshAuth,
 } from "../lib/mail/mailserverSetup";
 
 const router = Router();
@@ -69,6 +70,26 @@ function parseLimit(value: unknown, fallback: number, max: number) {
 
 function randomPassword() {
   return crypto.randomBytes(18).toString("base64url");
+}
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function verifyImapLoginAfterMailserverChange(input: { user: string; password: string; attempts?: number; delayMs?: number }) {
+  const attempts = Math.max(1, Math.min(input.attempts ?? 6, 10));
+  const delayMs = Math.max(250, Math.min(input.delayMs ?? 1_000, 5_000));
+  let refresh: Awaited<ReturnType<typeof mailserverRefreshAuth>> | null = null;
+
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    refresh = await mailserverRefreshAuth();
+    if (attempt > 1) await sleep(delayMs);
+
+    const result = await verifyImapLogin({ user: input.user, password: input.password });
+    if (result.ok || attempt === attempts) return { ...result, refresh };
+  }
+
+  return { ok: false, host: "", port: 0, message: "IMAP verification failed after mailserver auth refresh", refresh };
 }
 
 function stripWww(value: string) {
@@ -798,7 +819,7 @@ router.post("/email/accounts", async (req: any, res) => {
     const quotaSetup = setup.ok ? await mailserverQuotaSet(address, quotaParsed.quota) : null;
 
     const imap = setup.ok
-      ? await verifyImapLogin({ user: address, password })
+      ? await verifyImapLoginAfterMailserverChange({ user: address, password })
       : { ok: false, host: "", port: 0, message: setup.stderr || setup.stdout || "setup failed" };
 
     const status = setup.ok && imap.ok && (quotaSetup?.ok ?? true) ? "active" : "provision_failed";
@@ -898,7 +919,9 @@ router.post("/email/accounts/:id/reset-password", async (req: any, res) => {
       const add = await mailserverEmailAdd(account.address, password);
       if (add.ok) setup = add;
     }
-    const imap = setup.ok ? await verifyImapLogin({ user: account.address, password }) : { ok: false, host: "", port: 0, message: setup.stderr || setup.stdout || "setup failed" };
+    const imap = setup.ok
+      ? await verifyImapLoginAfterMailserverChange({ user: account.address, password })
+      : { ok: false, host: "", port: 0, message: setup.stderr || setup.stdout || "setup failed" };
 
     const status = setup.ok && imap.ok ? "active" : "provision_failed";
     const updatedAt = new Date();
@@ -983,7 +1006,9 @@ router.patch("/email/accounts/:id", async (req: any, res) => {
         const update = await mailserverEmailUpdate(account.address, tempPassword);
         if (update.ok) setup = update;
       }
-      imap = setup.ok ? await verifyImapLogin({ user: account.address, password: tempPassword }) : { ok: false, host: "", port: 0, message: setup.stderr || setup.stdout || "setup failed" };
+      imap = setup.ok
+        ? await verifyImapLoginAfterMailserverChange({ user: account.address, password: tempPassword })
+        : { ok: false, host: "", port: 0, message: setup.stderr || setup.stdout || "setup failed" };
       patch.status = setup.ok && imap.ok ? "active" : "provision_failed";
     } else if (nextStatus) {
       return res.status(400).json({ message: "Unsupported status" });

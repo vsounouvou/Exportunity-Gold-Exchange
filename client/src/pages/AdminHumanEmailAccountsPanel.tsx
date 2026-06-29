@@ -194,8 +194,8 @@ export function AdminHumanEmailAccountsPanel() {
 
   const createAccountMutation = useMutation({
     mutationFn: async () => {
-      if (!domainId) throw new Error("Select a domain");
-      if (!localPart.trim()) throw new Error("Local-part is required");
+      if (!domainId) throw new Error("Sélectionner un domaine");
+      if (!localPart.trim()) throw new Error("Le préfixe email est requis");
       return apiRequest("/api/admin/email/accounts", "POST", {
         domainId,
         localPart: localPart.trim(),
@@ -208,14 +208,14 @@ export function AdminHumanEmailAccountsPanel() {
       const address = String(res?.account?.address || "");
       const tempPassword = typeof res?.tempPassword === "string" ? res.tempPassword.trim() : "";
       if (address && tempPassword) setLastTempPassword({ address, password: tempPassword });
-      toast({ title: "Mailbox created", description: address || "Created" });
+      toast({ title: "Boîte email créée", description: address || "Créée" });
       setLocalPart("");
       setPassword("");
       await queryClient.invalidateQueries({ queryKey: ["/api/admin/email/domains"] });
       await queryClient.invalidateQueries({ queryKey: [accountsQueryKey] });
     },
     onError: (err: any) => {
-      toast({ title: "Create failed", description: String(err?.message || err), variant: "destructive" });
+      toast({ title: "Création impossible", description: String(err?.message || err), variant: "destructive" });
     },
   });
 
@@ -225,11 +225,11 @@ export function AdminHumanEmailAccountsPanel() {
       const address = String(res?.account?.address || "");
       const password = String(res?.tempPassword || "");
       if (address && password) setLastTempPassword({ address, password });
-      toast({ title: "Password reset", description: address || "Done" });
+      toast({ title: "Mot de passe réinitialisé", description: address || "Terminé" });
       await queryClient.invalidateQueries({ queryKey: [accountsQueryKey] });
     },
     onError: (err: any) => {
-      toast({ title: "Reset failed", description: String(err?.message || err), variant: "destructive" });
+      toast({ title: "Réinitialisation impossible", description: String(err?.message || err), variant: "destructive" });
     },
   });
 
@@ -240,11 +240,11 @@ export function AdminHumanEmailAccountsPanel() {
       const address = String(res?.account?.address || "");
       const password = String(res?.tempPassword || "");
       if (address && password) setLastTempPassword({ address, password });
-      toast({ title: "Updated", description: address || "Done" });
+      toast({ title: "Mis à jour", description: address || "Terminé" });
       await queryClient.invalidateQueries({ queryKey: [accountsQueryKey] });
     },
     onError: (err: any) => {
-      toast({ title: "Update failed", description: String(err?.message || err), variant: "destructive" });
+      toast({ title: "Mise à jour impossible", description: String(err?.message || err), variant: "destructive" });
     },
   });
 
@@ -252,21 +252,21 @@ export function AdminHumanEmailAccountsPanel() {
   const [aliasDestination, setAliasDestination] = useState("");
   const createAliasMutation = useMutation({
     mutationFn: async () => {
-      if (!aliasSource.trim() || !aliasSource.includes("@")) throw new Error("Source email required");
-      if (!aliasDestination.trim() || !aliasDestination.includes("@")) throw new Error("Destination email required");
+      if (!aliasSource.trim() || !aliasSource.includes("@")) throw new Error("Email source requis");
+      if (!aliasDestination.trim() || !aliasDestination.includes("@")) throw new Error("Email destination requis");
       return apiRequest("/api/admin/email/aliases", "POST", {
         sourceAddress: aliasSource.trim(),
         destination: aliasDestination.trim(),
       });
     },
     onSuccess: async () => {
-      toast({ title: "Alias created", description: `${aliasSource.trim()} → ${aliasDestination.trim()}` });
+      toast({ title: "Alias créé", description: `${aliasSource.trim()} -> ${aliasDestination.trim()}` });
       setAliasSource("");
       setAliasDestination("");
       await queryClient.invalidateQueries({ queryKey: [aliasesQueryKey] });
     },
     onError: (err: any) => {
-      toast({ title: "Alias failed", description: String(err?.message || err), variant: "destructive" });
+      toast({ title: "Alias impossible", description: String(err?.message || err), variant: "destructive" });
     },
   });
 
@@ -280,44 +280,44 @@ export function AdminHumanEmailAccountsPanel() {
     <div className="space-y-6">
       <Card className="bg-slate-900/60 border-slate-800">
         <CardHeader>
-          <CardTitle className="text-white">Domain authentication</CardTitle>
+          <CardTitle className="text-white">Authentification du domaine</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           {statusQuery.isError ? (
             <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-2 text-sm text-red-200">
-              Unable to read mail status.
+              Impossible de lire le statut email.
             </div>
           ) : null}
 
           <div className="text-xs text-slate-400">
-            Domain: <span className="text-slate-200">{statusQuery.data?.mail?.domain || "loading..."}</span>
+            Domaine : <span className="text-slate-200">{statusQuery.data?.mail?.domain || "chargement..."}</span>
           </div>
 
           <div className="flex flex-wrap items-center gap-2 text-xs">
             <Badge className={dnsBadgeClass(statusQuery.data?.mail?.inboundDns?.mx?.ok)}>
-              MX: {statusQuery.data?.mail?.inboundDns?.mx?.ok ? "cut over" : "not cut over"}
+              MX : {statusQuery.data?.mail?.inboundDns?.mx?.ok ? "basculé" : "non basculé"}
             </Badge>
             <Badge className={dnsBadgeClass(statusQuery.data?.mail?.inboundDns?.mailHostA?.ok)}>
-              Mail A: {statusQuery.data?.mail?.inboundDns?.mailHostA?.ok ? "ready" : "missing"}
+              A mail : {statusQuery.data?.mail?.inboundDns?.mailHostA?.ok ? "prêt" : "manquant"}
             </Badge>
             <Badge className={dnsBadgeClass(statusQuery.data?.mail?.authDiagnostics?.spf?.ok)}>
-              SPF: {statusQuery.data?.mail?.authDiagnostics?.spf?.ok ? "pass" : "fail"}
+              SPF : {statusQuery.data?.mail?.authDiagnostics?.spf?.ok ? "valide" : "échec"}
             </Badge>
             <Badge className={dnsBadgeClass(statusQuery.data?.mail?.authDiagnostics?.dkim?.ok)}>
-              DKIM: {statusQuery.data?.mail?.authDiagnostics?.dkim?.ok ? "pass" : "fail"}
+              DKIM : {statusQuery.data?.mail?.authDiagnostics?.dkim?.ok ? "valide" : "échec"}
             </Badge>
             <Badge className={dnsBadgeClass(statusQuery.data?.mail?.authDiagnostics?.dmarc?.ok, true)}>
-              DMARC: {statusQuery.data?.mail?.authDiagnostics?.dmarc?.ok ? "present" : "missing"}
+              DMARC : {statusQuery.data?.mail?.authDiagnostics?.dmarc?.ok ? "présent" : "manquant"}
             </Badge>
             <Badge className={dnsBadgeClass(statusQuery.data?.mail?.inboundDns?.readyForInbound)}>
-              Inbound mail: {statusQuery.data?.mail?.inboundDns?.readyForInbound ? "ready" : "DNS pending"}
+              Réception : {statusQuery.data?.mail?.inboundDns?.readyForInbound ? "prête" : "DNS en attente"}
             </Badge>
           </div>
 
           {statusQuery.data?.mail?.inboundDns ? (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 text-xs">
               <div className="rounded-lg border border-slate-800 bg-slate-950/30 p-3">
-                <div className="font-medium text-slate-200">Expected DNS</div>
+                <div className="font-medium text-slate-200">DNS attendu</div>
                 <div className="mt-2 space-y-1 text-slate-400">
                   <div>
                     MX: <span className="font-mono text-slate-200">10 {statusQuery.data.mail.inboundDns.expectedMxHost}.</span>
@@ -325,20 +325,20 @@ export function AdminHumanEmailAccountsPanel() {
                   <div>
                     A:{" "}
                     <span className="font-mono text-slate-200">
-                      {statusQuery.data.mail.inboundDns.expectedMailHost} {statusQuery.data.mail.inboundDns.expectedIpv4 || "configured IP"}
+                      {statusQuery.data.mail.inboundDns.expectedMailHost} {statusQuery.data.mail.inboundDns.expectedIpv4 || "IP configurée"}
                     </span>
                   </div>
                 </div>
               </div>
               <div className="rounded-lg border border-slate-800 bg-slate-950/30 p-3">
-                <div className="font-medium text-slate-200">Observed DNS</div>
+                <div className="font-medium text-slate-200">DNS observé</div>
                 <div className="mt-2 space-y-1 text-slate-400">
                   <div>
                     MX:{" "}
                     <span className="font-mono text-slate-200">
                       {statusQuery.data.mail.inboundDns.mx.records.length
                         ? statusQuery.data.mail.inboundDns.mx.records.map((record) => `${record.priority} ${record.exchange}`).join(", ")
-                        : "none"}
+                        : "aucun"}
                     </span>
                   </div>
                   <div>
@@ -346,7 +346,7 @@ export function AdminHumanEmailAccountsPanel() {
                     <span className="font-mono text-slate-200">
                       {statusQuery.data.mail.inboundDns.mailHostA.records.length
                         ? statusQuery.data.mail.inboundDns.mailHostA.records.join(", ")
-                        : "none"}
+                        : "aucun"}
                     </span>
                   </div>
                 </div>
@@ -365,18 +365,18 @@ export function AdminHumanEmailAccountsPanel() {
 
       <Card className="bg-slate-900/60 border-slate-800">
         <CardHeader>
-          <CardTitle className="text-white">Human mailboxes</CardTitle>
+          <CardTitle className="text-white">Boîtes email humaines</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="text-xs text-slate-400">
-            Tenant: <span className="text-slate-200">{tenant.name}</span> • Provisioning happens on docker-mailserver (Roundcube).
+            Tenant : <span className="text-slate-200">{tenant.name}</span> - provisioning sur docker-mailserver (Roundcube).
           </div>
 
           {lastTempPassword ? (
             <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <div className="text-sm text-amber-200 font-medium">Temporary password (copy now)</div>
+                  <div className="text-sm text-amber-200 font-medium">Mot de passe temporaire (à copier maintenant)</div>
                   <div className="text-xs text-slate-300 mt-1 font-mono break-all">{lastTempPassword.address}</div>
                   <div className="text-xs text-slate-100 mt-2 font-mono break-all">{lastTempPassword.password}</div>
                 </div>
@@ -386,13 +386,13 @@ export function AdminHumanEmailAccountsPanel() {
                     variant="secondary"
                     onClick={async () => {
                       const ok = await copyToClipboard(lastTempPassword.password);
-                      toast({ title: ok ? "Copied" : "Copy failed", description: ok ? "Password copied to clipboard." : "Clipboard unavailable." });
+                      toast({ title: ok ? "Copié" : "Copie impossible", description: ok ? "Mot de passe copié." : "Presse-papiers indisponible." });
                     }}
                   >
-                    Copy
+                    Copier
                   </Button>
                   <Button size="sm" variant="ghost" onClick={() => setLastTempPassword(null)}>
-                    Hide
+                    Masquer
                   </Button>
                 </div>
               </div>
@@ -401,7 +401,7 @@ export function AdminHumanEmailAccountsPanel() {
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             <div className="space-y-2">
-              <Label className="text-slate-200">Domain</Label>
+              <Label className="text-slate-200">Domaine</Label>
               <select
                 value={domainId ?? ""}
                 onChange={(e) => setDomainId(e.target.value ? Number(e.target.value) : null)}
@@ -414,12 +414,12 @@ export function AdminHumanEmailAccountsPanel() {
                 ))}
               </select>
               {domainsQuery.isError ? (
-                <div className="text-xs text-red-300">Failed to load domains.</div>
+                <div className="text-xs text-red-300">Chargement des domaines impossible.</div>
               ) : null}
             </div>
 
             <div className="space-y-2">
-              <Label className="text-slate-200">Local-part</Label>
+              <Label className="text-slate-200">Préfixe email</Label>
               <Input
                 value={localPart}
                 onChange={(e) => setLocalPart(e.target.value)}
@@ -433,17 +433,17 @@ export function AdminHumanEmailAccountsPanel() {
                   variant="secondary"
                   onClick={() => setLocalPart(generateLocalPartFromUser(ownerUser))}
                 >
-                  Auto-generate from user
+                  Générer depuis l'utilisateur
                 </Button>
               ) : null}
             </div>
 
             <div className="space-y-2">
-              <Label className="text-slate-200">Assign to user (optional)</Label>
+              <Label className="text-slate-200">Assigner à un utilisateur (optionnel)</Label>
               <Input
                 value={ownerQuery}
                 onChange={(e) => setOwnerQuery(e.target.value)}
-                placeholder="Search name or email..."
+                placeholder="Rechercher nom ou email..."
                 className="bg-slate-950/40 border-slate-800 text-slate-100"
               />
               {ownerUser ? (
@@ -453,7 +453,7 @@ export function AdminHumanEmailAccountsPanel() {
                     <div className="text-xs text-slate-400 truncate">{ownerUser.email}</div>
                   </div>
                   <Button size="sm" variant="ghost" onClick={() => setOwnerUser(null)}>
-                    Clear
+                    Effacer
                   </Button>
                 </div>
               ) : debouncedOwnerQuery ? (
@@ -461,7 +461,7 @@ export function AdminHumanEmailAccountsPanel() {
                   <ScrollArea className="h-[140px]">
                     <div className="p-2 space-y-1">
                       {(tenantUsersQuery.data?.items ?? []).length === 0 ? (
-                        <div className="text-xs text-slate-400">No users.</div>
+                        <div className="text-xs text-slate-400">Aucun utilisateur.</div>
                       ) : (
                         (tenantUsersQuery.data?.items ?? []).map((u) => (
                           <button
@@ -493,27 +493,27 @@ export function AdminHumanEmailAccountsPanel() {
                 placeholder="2G"
                 className="bg-slate-950/40 border-slate-800 text-slate-100"
               />
-              <div className="text-[11px] text-slate-500">Examples: 2G, 1024M. Default is 2G.</div>
+              <div className="text-[11px] text-slate-500">Exemples : 2G, 1024M. Valeur par défaut : 2G.</div>
             </div>
 
             <div className="space-y-2 lg:col-span-2">
-              <Label className="text-slate-200">Password (optional)</Label>
+              <Label className="text-slate-200">Mot de passe (optionnel)</Label>
               <Input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Leave empty to auto-generate"
+                placeholder="Laisser vide pour générer automatiquement"
                 className="bg-slate-950/40 border-slate-800 text-slate-100"
               />
               <div className="text-[11px] text-slate-500">
-                If the mailbox already exists on the mail server, enter a password to import/reset it.
+                Si la boîte existe déjà sur le serveur mail, saisir un mot de passe pour l'importer ou la réinitialiser.
               </div>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
             <Button onClick={() => createAccountMutation.mutate()} disabled={createAccountMutation.isPending}>
-              Create mailbox
+              Créer la boîte
             </Button>
             <Button
               variant="secondary"
@@ -525,7 +525,7 @@ export function AdminHumanEmailAccountsPanel() {
                 setQuota("2G");
               }}
             >
-              Clear
+              Effacer
             </Button>
           </div>
         </CardContent>
@@ -533,24 +533,24 @@ export function AdminHumanEmailAccountsPanel() {
 
       <Card className="bg-slate-900/60 border-slate-800">
         <CardHeader>
-          <CardTitle className="text-white">Accounts</CardTitle>
+          <CardTitle className="text-white">Comptes</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
             <div className="space-y-2">
-              <Label className="text-slate-200">Search</Label>
+              <Label className="text-slate-200">Recherche</Label>
               <Input
                 value={q}
                 onChange={(e) => {
                   setOffset(0);
                   setQ(e.target.value);
                 }}
-                placeholder="address or user..."
+                placeholder="adresse ou utilisateur..."
                 className="bg-slate-950/40 border-slate-800 text-slate-100"
               />
             </div>
             <div className="space-y-2">
-              <Label className="text-slate-200">Status</Label>
+              <Label className="text-slate-200">Statut</Label>
               <select
                 value={status}
                 onChange={(e) => {
@@ -559,10 +559,10 @@ export function AdminHumanEmailAccountsPanel() {
                 }}
                 className="w-full rounded-md bg-slate-950/40 border border-slate-800 text-slate-100 px-3 py-2 text-sm"
               >
-                <option value="all">All</option>
-                <option value="active">Active</option>
-                <option value="disabled">Disabled</option>
-                <option value="provision_failed">Provision failed</option>
+                <option value="all">Tous</option>
+                <option value="active">Actif</option>
+                <option value="disabled">Désactivé</option>
+                <option value="provision_failed">Provisioning échoué</option>
               </select>
             </div>
             <div className="flex items-end gap-2">
@@ -570,14 +570,14 @@ export function AdminHumanEmailAccountsPanel() {
                 variant="secondary"
                 onClick={() => queryClient.invalidateQueries({ queryKey: [accountsQueryKey] })}
               >
-                Refresh
+                Actualiser
               </Button>
               <div className="flex-1" />
               <Button size="sm" variant="ghost" disabled={!canPrev} onClick={() => setOffset(Math.max(0, offset - 50))}>
-                Prev
+                Préc.
               </Button>
               <Button size="sm" variant="ghost" disabled={!canNext} onClick={() => setOffset(offset + 50)}>
-                Next
+                Suiv.
               </Button>
             </div>
           </div>
@@ -585,13 +585,13 @@ export function AdminHumanEmailAccountsPanel() {
           <ScrollArea className="h-[420px] pr-4">
             <div className="space-y-2">
               {accountsQuery.isLoading ? (
-                <div className="text-sm text-slate-400">Loading...</div>
+                <div className="text-sm text-slate-400">Chargement...</div>
               ) : accountsQuery.isError ? (
                 <div className="text-sm text-red-300 bg-red-500/10 border border-red-500/30 rounded-lg p-2">
-                  Failed to load accounts.
+                  Chargement des comptes impossible.
                 </div>
               ) : accounts.length === 0 ? (
-                <div className="text-sm text-slate-400">No accounts.</div>
+                <div className="text-sm text-slate-400">Aucun compte.</div>
               ) : (
                 accounts.map((row) => {
                   const acct = row.account;
@@ -612,15 +612,15 @@ export function AdminHumanEmailAccountsPanel() {
                           <div className="text-xs text-slate-400 mt-1">
                             {owner ? (
                               <>
-                                Owner: <span className="text-slate-200">{owner.displayName}</span>{" "}
+                                Propriétaire : <span className="text-slate-200">{owner.displayName}</span>{" "}
                                 <span className="text-slate-500">({owner.email})</span>
                               </>
                             ) : (
-                              <span>Unassigned</span>
+                              <span>Non assigné</span>
                             )}
                           </div>
                           <div className="text-xs text-slate-500 mt-1">
-                            Created: {new Date(acct.createdAt).toLocaleString()}
+                            Créé : {new Date(acct.createdAt).toLocaleString()}
                           </div>
                         </div>
                         <Badge className={statusBadge}>{statusLabel}</Badge>
@@ -633,7 +633,7 @@ export function AdminHumanEmailAccountsPanel() {
                           onClick={() => resetPasswordMutation.mutate(acct.id)}
                           disabled={resetPasswordMutation.isPending}
                         >
-                          Reset password
+                          Réinitialiser le mot de passe
                         </Button>
                         {acct.status === "disabled" ? (
                           <Button
@@ -641,7 +641,7 @@ export function AdminHumanEmailAccountsPanel() {
                             onClick={() => updateAccountMutation.mutate({ id: acct.id, status: "active" })}
                             disabled={updateAccountMutation.isPending}
                           >
-                            Enable
+                            Activer
                           </Button>
                         ) : (
                           <Button
@@ -650,7 +650,7 @@ export function AdminHumanEmailAccountsPanel() {
                             onClick={() => updateAccountMutation.mutate({ id: acct.id, status: "disabled" })}
                             disabled={updateAccountMutation.isPending}
                           >
-                            Disable
+                            Désactiver
                           </Button>
                         )}
                         <Button
@@ -658,10 +658,10 @@ export function AdminHumanEmailAccountsPanel() {
                           variant="ghost"
                           onClick={async () => {
                             const ok = await copyToClipboard(acct.address);
-                            toast({ title: ok ? "Copied" : "Copy failed", description: ok ? "Address copied." : "Clipboard unavailable." });
+                            toast({ title: ok ? "Copié" : "Copie impossible", description: ok ? "Adresse copiée." : "Presse-papiers indisponible." });
                           }}
                         >
-                          Copy address
+                          Copier l'adresse
                         </Button>
                       </div>
                     </div>
@@ -675,7 +675,7 @@ export function AdminHumanEmailAccountsPanel() {
 
       <Card className="bg-slate-900/60 border-slate-800">
         <CardHeader>
-          <CardTitle className="text-white">Aliases / Forwarding</CardTitle>
+          <CardTitle className="text-white">Alias / redirection</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
@@ -700,22 +700,22 @@ export function AdminHumanEmailAccountsPanel() {
           </div>
           <div className="flex items-center gap-2">
             <Button onClick={() => createAliasMutation.mutate()} disabled={createAliasMutation.isPending}>
-              Create alias
+              Créer l'alias
             </Button>
             <Button variant="secondary" onClick={() => { setAliasSource(""); setAliasDestination(""); }}>
-              Clear
+              Effacer
             </Button>
           </div>
           <div className="text-xs text-slate-400">
-            Note: alias provisioning calls docker-mailserver `setup alias add`.
+            Note : le provisioning d'alias appelle docker-mailserver `setup alias add`.
           </div>
 
           <div className="space-y-3">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <div className="text-sm font-medium text-slate-100">Current alias routes</div>
+                <div className="text-sm font-medium text-slate-100">Routes d'alias actuelles</div>
                 <div className="text-xs text-slate-500">
-                  Grouped by source address. Shared AGOOJIYE identities should route to approved team mailboxes.
+                  Groupées par adresse source. Les identités partagées AGOOJIYE doivent router vers les boîtes validées.
                 </div>
               </div>
               <Button
@@ -724,20 +724,20 @@ export function AdminHumanEmailAccountsPanel() {
                 onClick={() => void aliasesQuery.refetch()}
                 disabled={aliasesQuery.isFetching}
               >
-                {aliasesQuery.isFetching ? "Refreshing..." : "Refresh"}
+                {aliasesQuery.isFetching ? "Actualisation..." : "Actualiser"}
               </Button>
             </div>
 
             <ScrollArea className="h-[260px] pr-4">
               <div className="space-y-2">
                 {aliasesQuery.isLoading ? (
-                  <div className="text-sm text-slate-400">Loading aliases...</div>
+                  <div className="text-sm text-slate-400">Chargement des alias...</div>
                 ) : aliasesQuery.isError ? (
                   <div className="text-sm text-red-300 bg-red-500/10 border border-red-500/30 rounded-lg p-2">
-                    Failed to load aliases.
+                    Chargement des alias impossible.
                   </div>
                 ) : aliasGroups.length === 0 ? (
-                  <div className="text-sm text-slate-400">No aliases.</div>
+                  <div className="text-sm text-slate-400">Aucun alias.</div>
                 ) : (
                   aliasGroups.map((group) => (
                     <div key={group.sourceAddress} className="rounded-lg border border-slate-800 bg-slate-950/30 p-3">
@@ -746,7 +746,7 @@ export function AdminHumanEmailAccountsPanel() {
                           <div className="text-sm font-mono text-slate-100 break-all">{group.sourceAddress}</div>
                           <div className="mt-1 text-xs text-slate-500">
                             {group.count} route{group.count === 1 ? "" : "s"}
-                            {group.latestCreatedAt ? ` - updated ${new Date(group.latestCreatedAt).toLocaleString()}` : ""}
+                            {group.latestCreatedAt ? ` - mis à jour ${new Date(group.latestCreatedAt).toLocaleString()}` : ""}
                           </div>
                         </div>
                         <Badge className="bg-slate-500/15 text-slate-200 border border-slate-500/30">

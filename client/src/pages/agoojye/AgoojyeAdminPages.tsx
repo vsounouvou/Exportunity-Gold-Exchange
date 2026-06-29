@@ -17,6 +17,7 @@ import {
   Users,
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
+import { AdminHumanEmailAccountsPanel } from "@/pages/AdminHumanEmailAccountsPanel";
 
 type SectionKey =
   | "overview"
@@ -1019,7 +1020,7 @@ export function AgoojyeAdminDashboardPage() {
           <div className="mt-3 grid gap-2 text-sm text-[#D8CFBF]">
             {[
               "Créer les premiers utilisateurs et confirmer les rôles officiels.",
-              "Créer les identités email individuelles uniquement après confirmation.",
+              "Créer les comptes email officiels depuis la page Emails après confirmation.",
               "Mettre à jour les jalons publics du challenge.",
               "Qualifier les partenaires et éviter tout statut exagéré.",
               "Suivre les leads sponsors issus du formulaire public.",
@@ -1032,13 +1033,13 @@ export function AgoojyeAdminDashboardPage() {
           </div>
         </section>
         <section className="rounded-md border border-white/15 bg-white/5 p-4">
-          <h2 className="font-semibold">Provisioning email manuel</h2>
+          <h2 className="font-semibold">Provisioning email officiel</h2>
           <ol className="mt-3 space-y-2 text-sm text-[#D8CFBF]">
             <li>1. Vérifier que le participant a un rôle confirmé.</li>
-            <li>2. Créer l'identité dans AGOOJIYE.</li>
-            <li>3. Provisionner dans Google Workspace, Zoho, Proton ou SMTP.</li>
-            <li>4. Marquer le statut comme provisioned puis active.</li>
-            <li>5. Envoyer l'invitation au participant.</li>
+            <li>2. Créer la boîte depuis Emails avec le domaine agoojiye.com.</li>
+            <li>3. Copier le mot de passe temporaire au moment de la création.</li>
+            <li>4. Demander au membre de le changer sur /mail/password.</li>
+            <li>5. Vérifier les alias partagés et le statut DNS.</li>
           </ol>
         </section>
       </div>
@@ -1411,7 +1412,28 @@ export function AgoojyeAdminParticipantsPage() {
 }
 
 export function AgoojyeAdminEmailsPage() {
-  return <ResourcePage section="emails" />;
+  return (
+    <AdminShell section="emails">
+      <section className="rounded-md border border-white/15 bg-white/5 p-4">
+        <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+          <div>
+            <h2 className="text-xl font-semibold">Emails officiels AGOOJIYE</h2>
+            <p className="mt-1 max-w-4xl text-sm text-[#B8AE9D]">
+              Créer les boîtes professionnelles, réinitialiser les mots de passe temporaires, contrôler les alias
+              partagés et suivre le statut DNS du domaine. Les mots de passe ne sont affichés qu'une seule fois pour
+              remise au membre, puis le changement se fait sur /mail/password.
+            </p>
+          </div>
+          <a href="/mail/password" className="rounded border border-[#C99A36]/35 px-3 py-2 text-xs font-semibold text-[#E4C46A] hover:bg-[#C99A36]/10">
+            Page changement mot de passe
+          </a>
+        </div>
+      </section>
+      <div className="mt-4">
+        <AdminHumanEmailAccountsPanel />
+      </div>
+    </AdminShell>
+  );
 }
 
 export function AgoojyeAdminMessagesPage() {

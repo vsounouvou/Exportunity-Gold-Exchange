@@ -2,8 +2,8 @@
   {
     "id": 24,
     "slug": "agoojye",
-    "name": "AGOOJYE Electric Mobility",
-    "baseUrl": "https://agoojye.com",
+    "name": "AGOOJIYE Electric Mobility",
+    "baseUrl": "https://agoojiye.com",
     "envNamespace": "global",
     "messagingProviderMode": "twilio",
     "providerFlags": {

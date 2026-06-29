@@ -1,6 +1,6 @@
 # AGOOJIYE email DNS and mailbox handoff
 
-Date: 2026-06-27
+Date: 2026-06-29
 
 ## Provisioned mailboxes
 
@@ -53,7 +53,7 @@ The app database has matching AGOOJIYE tenant records:
 
 ## Current public DNS state
 
-As of 2026-06-27, public DNS is not yet cut over for this self-hosted mail stack:
+As of 2026-06-29, public DNS is not yet cut over for this self-hosted mail stack:
 
 - `agoojiye.com` MX still points to OVH: `mx1.mail.ovh.net`, `mx2.mail.ovh.net`, `mx3.mail.ovh.net`
 - `mail.agoojiye.com` has no public `A` record

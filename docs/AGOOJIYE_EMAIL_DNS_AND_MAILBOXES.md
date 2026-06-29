@@ -6,7 +6,7 @@ Brand spelling note: the final public spelling is `AGOOJIYE`. The legacy technic
 
 ## Latest verified live state
 
-Verified on 2026-06-29 after deployment commit `c467f71a9514`:
+Verified on 2026-06-29 after AGOOJIYE production deployment:
 
 - `https://agoojiye.com` returns HTTP 200 with the title `AGOOJIYE - Mobilité électrique née au Bénin`.
 - `https://agoojiye.com/mail/password` returns HTTP 200 with the title `Mot de passe email - AGOOJIYE`.

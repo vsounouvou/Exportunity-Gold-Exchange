@@ -34,8 +34,8 @@ NPM certificate: Let's Encrypt attached in Nginx Proxy Manager
 Latest verified runtime on 2026-06-29:
 
 ```txt
-Commit: c467f71a9514
-Build ID: 1782767050784
+Source branch: codex/agoojye-launch-platform
+Live version endpoint: https://agoojiye.com/api/system/version
 Homepage title: AGOOJIYE - Mobilité électrique née au Bénin
 Password page title: Mot de passe email - AGOOJIYE
 Mailbox auth: five initial AGOOJIYE accounts verified over IMAPS and SMTP submission

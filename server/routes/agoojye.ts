@@ -175,6 +175,72 @@ const DOCUMENTS = [
   ["Plan d'homologation", "Technical", "Plan d'homologation et sécurité."],
 ] as const;
 
+const MEDIA_ASSETS = [
+  {
+    title: "Logo horizontal officiel AGOOJIYE",
+    description: "Wordmark et embleme officiels pour le site, les documents et les signatures. Ne pas redessiner.",
+    mediaType: "brand_asset",
+    fileUrl: "/brand/agoojiye/logo/agoojiye-logo-horizontal.png",
+    thumbnailUrl: "/brand/agoojiye/logo/agoojiye-logo-horizontal.png",
+    category: "brand",
+    tags: ["logo", "wordmark", "officiel"],
+  },
+  {
+    title: "Logo principal officiel AGOOJIYE",
+    description: "Composition principale officielle avec embleme et wordmark, a utiliser comme source de marque.",
+    mediaType: "brand_asset",
+    fileUrl: "/brand/agoojiye/logo/agoojiye-logo-primary.png",
+    thumbnailUrl: "/brand/agoojiye/logo/agoojiye-logo-primary.png",
+    category: "brand",
+    tags: ["logo", "embleme", "officiel"],
+  },
+  {
+    title: "Hero shuttle AGOOJIYE",
+    description: "Banniere principale du shuttle electrique, optimisee pour la page d'accueil.",
+    mediaType: "image",
+    fileUrl: "/brand/agoojiye/vehicle/hero/agoojiye-shuttle-hero-1280.webp",
+    thumbnailUrl: "/brand/agoojiye/vehicle/hero/agoojiye-shuttle-hero-640.webp",
+    category: "vehicle",
+    tags: ["shuttle", "hero", "vehicule"],
+  },
+  {
+    title: "Profil lateral du shuttle",
+    description: "Vue de profil du shuttle pour les supports de vision, produit et dossier sponsor.",
+    mediaType: "image",
+    fileUrl: "/brand/agoojiye/vehicle/sections/agoojiye-shuttle-side-profile-1280.webp",
+    thumbnailUrl: "/brand/agoojiye/vehicle/sections/agoojiye-shuttle-side-profile-1280.webp",
+    category: "vehicle",
+    tags: ["shuttle", "profil", "vehicule"],
+  },
+  {
+    title: "Atelier et construction",
+    description: "Image de contexte industriel pour les pages media, documentaire et communication.",
+    mediaType: "documentary",
+    fileUrl: "/brand/agoojiye/vehicle/sections/agoojiye-shuttle-factory-1280.webp",
+    thumbnailUrl: "/brand/agoojiye/vehicle/sections/agoojiye-shuttle-factory-1280.webp",
+    category: "documentary",
+    tags: ["atelier", "documentaire", "industrie"],
+  },
+  {
+    title: "Detail badge avant",
+    description: "Detail automobile sobre du badge AGOOJIYE pour les usages de marque et produit.",
+    mediaType: "image",
+    fileUrl: "/brand/agoojiye/vehicle/details/agoojiye-shuttle-front-badge-detail-960.webp",
+    thumbnailUrl: "/brand/agoojiye/vehicle/details/agoojiye-shuttle-front-badge-detail-960.webp",
+    category: "vehicle",
+    tags: ["badge", "detail", "marque"],
+  },
+  {
+    title: "Image sociale AGOOJIYE",
+    description: "Image Open Graph pour le partage public du site AGOOJIYE.",
+    mediaType: "press_release",
+    fileUrl: "/brand/agoojiye/og/agoojiye-og-image.webp",
+    thumbnailUrl: "/brand/agoojiye/og/agoojiye-og-image.webp",
+    category: "press",
+    tags: ["og", "presse", "partage"],
+  },
+] as const;
+
 const SPONSOR_CATEGORIES = [
   ["founding-partner", "Founding Partner", "Association strategique de long terme, visibilite de lancement et reconnaissance fondatrice."],
   ["talent-partner", "Talent Partner", "Formation, stages, mobilisation des ecoles et developpement des competences."],
@@ -717,6 +783,34 @@ async function ensureAgoojyeSeed(tenantId: number) {
       },
     });
 
+  for (const asset of MEDIA_ASSETS) {
+    const [existing] = await db
+      .select({ id: agoojyeMediaAssets.id })
+      .from(agoojyeMediaAssets)
+      .where(and(eq(agoojyeMediaAssets.tenantId, tenantId), eq(agoojyeMediaAssets.title, asset.title)))
+      .limit(1);
+
+    const values = {
+      tenantId,
+      title: asset.title,
+      description: asset.description,
+      mediaType: asset.mediaType,
+      fileUrl: asset.fileUrl,
+      thumbnailUrl: asset.thumbnailUrl,
+      category: asset.category,
+      status: "published",
+      visibility: "public",
+      tags: [...asset.tags],
+      updatedAt: now,
+    };
+
+    if (existing?.id) {
+      await db.update(agoojyeMediaAssets).set(values).where(eq(agoojyeMediaAssets.id, existing.id));
+    } else {
+      await db.insert(agoojyeMediaAssets).values({ ...values, createdAt: now });
+    }
+  }
+
   await db
     .insert(agoojyeSponsorCategories)
     .values(
@@ -900,7 +994,11 @@ async function bootstrapPayload(tenantId: number, publicOnly = true) {
     db
       .select()
       .from(agoojyeMediaAssets)
-      .where(publicOnly ? and(eq(agoojyeMediaAssets.tenantId, tenantId), eq(agoojyeMediaAssets.visibility, "public")) : eq(agoojyeMediaAssets.tenantId, tenantId))
+      .where(
+        publicOnly
+          ? and(eq(agoojyeMediaAssets.tenantId, tenantId), eq(agoojyeMediaAssets.visibility, "public"), eq(agoojyeMediaAssets.status, "published"))
+          : eq(agoojyeMediaAssets.tenantId, tenantId),
+      )
       .orderBy(desc(agoojyeMediaAssets.updatedAt)),
     db.select().from(agoojyeContentBlocks).where(eq(agoojyeContentBlocks.tenantId, tenantId)).orderBy(asc(agoojyeContentBlocks.page), asc(agoojyeContentBlocks.section)),
     db.select().from(agoojyeEmailIdentities).where(eq(agoojyeEmailIdentities.tenantId, tenantId)).orderBy(asc(agoojyeEmailIdentities.emailAddress)),

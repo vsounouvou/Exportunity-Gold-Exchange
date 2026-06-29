@@ -24,7 +24,17 @@ type BootstrapPayload = {
   teams: Array<{ id: number; name: string; mission?: string | null; status?: string | null; visibility?: string | null }>;
   partners: Array<{ id: number; name: string; category: string; status: string; description?: string | null; website?: string | null }>;
   milestones: Array<{ id: number; title: string; description?: string | null; date?: string | null; status?: string | null; visibility?: string | null }>;
-  media: Array<{ id: number; title: string; description?: string | null; mediaType?: string | null; fileUrl?: string | null; category?: string | null }>;
+  media: Array<{
+    id: number;
+    title: string;
+    description?: string | null;
+    mediaType?: string | null;
+    fileUrl?: string | null;
+    thumbnailUrl?: string | null;
+    category?: string | null;
+    status?: string | null;
+    visibility?: string | null;
+  }>;
 };
 
 const nav = [
@@ -86,6 +96,12 @@ const publicLabelMap: Record<string, string> = {
   "Supplier Partners": "Fournisseurs partenaires",
   Investor: "Investisseur",
   press: "presse",
+  press_release: "communique",
+  brand_asset: "asset marque",
+  documentary: "documentaire",
+  gallery: "galerie",
+  brand: "marque",
+  vehicle: "vehicule",
   image: "image",
   video: "vidéo",
 };
@@ -577,10 +593,27 @@ export function AgoojyeMediaPage() {
             { id: 3, title: "Documentaire", description: "Suivi de production vidéo fin juillet 2026.", mediaType: "video" },
           ]).map((item) => (
             <article key={item.id} className="rounded-md border border-[#D9C79B] bg-white p-5">
+              {(item as BootstrapPayload["media"][number]).thumbnailUrl || (item as BootstrapPayload["media"][number]).fileUrl ? (
+                <div className="-mx-5 -mt-5 mb-5 aspect-[16/10] overflow-hidden rounded-t-md bg-[#0E0E0E]">
+                  <img
+                    src={(item as BootstrapPayload["media"][number]).thumbnailUrl || (item as BootstrapPayload["media"][number]).fileUrl || ""}
+                    alt={item.title}
+                    width={640}
+                    height={400}
+                    loading="lazy"
+                    className="h-full w-full object-cover"
+                  />
+                </div>
+              ) : null}
               <Video className="h-5 w-5 text-[#C99A36]" />
               <h3 className="mt-3 font-semibold">{item.title}</h3>
               <p className="mt-2 text-sm leading-6 text-[#5B5347]">{item.description}</p>
               <p className="mt-4 text-xs uppercase tracking-wide text-[#8A5A2B]">{publicLabel(item.mediaType)}</p>
+              {(item as BootstrapPayload["media"][number]).fileUrl ? (
+                <a href={(item as BootstrapPayload["media"][number]).fileUrl || ""} className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-[#8A5A2B] hover:text-[#C99A36]">
+                  Ouvrir l'asset <ArrowRight className="h-4 w-4" />
+                </a>
+              ) : null}
             </article>
           ))}
         </div>

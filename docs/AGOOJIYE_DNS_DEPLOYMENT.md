@@ -31,6 +31,17 @@ Current verified runtime commit: see `/api/system/version` after each deploy
 NPM certificate: Let's Encrypt attached in Nginx Proxy Manager
 ```
 
+Latest verified runtime on 2026-06-29:
+
+```txt
+Commit: 443474c8730c
+Build ID: 1782745798794
+Homepage title: AGOOJIYE - Mobilite electrique nee au Benin
+Password page title: Mot de passe email - AGOOJIYE
+Mailbox auth: five initial AGOOJIYE accounts verified over IMAPS and SMTP submission
+Mail DNS: not yet cut over; OVH MX/SPF still active
+```
+
 Nginx Proxy Manager already has an enabled HTTP proxy host for:
 
 ```txt
@@ -173,6 +184,18 @@ AGOOJIYE docker-mailserver mailboxes already exist. To cut public mail over from
 | TXT | @ | v=spf1 mx ip4:51.254.143.30 -all |
 | TXT | _dmarc | v=DMARC1; p=none; rua=mailto:dmarc@agoojiye.com; adkim=s; aspf=s |
 | TXT | mail._domainkey | Use the DKIM value in `docs/AGOOJIYE_EMAIL_DNS_AND_MAILBOXES.md` |
+
+Current public DNS verification still shows the legacy OVH mail records:
+
+```txt
+MX: 1 mx1.mail.ovh.net.
+MX: 5 mx2.mail.ovh.net.
+MX: 100 mx3.mail.ovh.net.
+TXT @: v=spf1 include:mx.ovh.com -all
+mail.agoojiye.com A: missing
+_dmarc.agoojiye.com TXT: missing
+mail._domainkey.agoojiye.com TXT: missing
+```
 
 Request OVH reverse DNS/PTR for the VPS:
 

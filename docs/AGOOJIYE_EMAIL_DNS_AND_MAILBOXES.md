@@ -4,6 +4,17 @@ Date: 2026-06-29
 
 Brand spelling note: the final public spelling is `AGOOJIYE`. The legacy technical key `agoojye` remains in route names, database tables, and private credential-file paths, while public DNS and email use `agoojiye.com`.
 
+## Latest verified live state
+
+Verified on 2026-06-29 after deployment commit `443474c8730c`:
+
+- `https://agoojiye.com` returns HTTP 200 with the title `AGOOJIYE - Mobilite electrique nee au Benin`.
+- `https://agoojiye.com/mail/password` returns HTTP 200 with the title `Mot de passe email - AGOOJIYE`.
+- `https://agoojiye.com/admin/agoojye/email` returns HTTP 200 for the protected app shell.
+- `https://agoojiye.com/api/agoojye/public/bootstrap` returns HTTP 200.
+- All five initial human mailboxes authenticate successfully over IMAPS and SMTP submission using the private credential file.
+- Public DNS is still not cut over for mail; the OVH DNS edits below remain required before external inbound mail will arrive at this self-hosted stack.
+
 ## Provisioned mailboxes
 
 These real docker-mailserver mailboxes now exist on the production mail stack and authenticate over IMAPS through `mail.exportunity.net`.
@@ -59,14 +70,17 @@ The app database has matching AGOOJIYE tenant records:
 
 ## Current public DNS state
 
-As of 2026-06-29, public DNS is not yet cut over for this self-hosted mail stack:
+As of the latest verification on 2026-06-29, public DNS is not yet cut over for this self-hosted mail stack:
 
 - `agoojiye.com` MX still points to OVH: `mx1.mail.ovh.net`, `mx2.mail.ovh.net`, `mx3.mail.ovh.net`
 - `mail.agoojiye.com` has no public `A` record
 - root SPF is still `v=spf1 include:mx.ovh.com -all`
 - `_dmarc.agoojiye.com` does not exist
+- `mail._domainkey.agoojiye.com` does not exist
 
 The mailboxes can log in now, but external inbound mail for `@agoojiye.com` will keep going to OVH until the MX records below are changed.
+
+No OVH API credentials are present in the local environment. Chrome/OVH Manager automation was also unavailable in this Codex session because the Chrome plugin failed before browser control could be established. Complete the DNS edits manually in OVH Manager or provide working OVH API credentials/plugin access for an automated cutover.
 
 ## Required OVH DNS records
 

@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { ExternalLink, LockKeyhole, Mail, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -30,6 +30,10 @@ export default function AgoojyeMailPasswordPage() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [webmailUrl, setWebmailUrl] = useState("https://mail.exportunity.net/");
+
+  useEffect(() => {
+    document.title = "Mot de passe email - AGOOJIYE";
+  }, []);
 
   const mutation = useMutation({
     mutationFn: async (payload: PasswordChangePayload) =>

@@ -1,4 +1,4 @@
--- Make AGOOJYE seed data idempotent and French-first.
+-- Make AGOOJIYE seed data idempotent and French-first.
 
 with ranked_partners as (
   select id, row_number() over (partition by tenant_id, name order by id) as rn

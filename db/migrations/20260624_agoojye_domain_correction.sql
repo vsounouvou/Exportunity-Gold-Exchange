@@ -1,4 +1,4 @@
--- Align AGOOJYE live seed email data with the registered OVH domain spelling.
+-- Align AGOOJIYE live seed email data with the registered OVH domain spelling.
 
 update agoojye_email_identities
 set

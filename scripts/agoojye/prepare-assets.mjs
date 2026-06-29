@@ -11,6 +11,7 @@ const logoRoot =
   "C:/Users/Sedjro Sounouvou/Downloads/AGOOJIYE_web_brand_pack/AGOOJIYE_web_brand_pack/logo";
 const referenceRoot =
   process.env.AGOOJIYE_REFERENCE_ROOT ||
+  process.env.AGOOJIYE_ATTACHMENT_ROOT ||
   process.env.AGOOJYE_ATTACHMENT_ROOT ||
   "C:/Users/Sedjro Sounouvou/.codex/attachments/2fc12441-21c7-42f8-afdc-830012cd59f3";
 

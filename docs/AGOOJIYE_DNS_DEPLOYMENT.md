@@ -2,6 +2,14 @@
 
 This document is the live handoff for the distinct AGOOJIYE tenant on the existing Exportunity platform VPS.
 
+## Brand spelling rule
+
+The final public brand spelling is `AGOOJIYE`.
+
+- Use `AGOOJIYE` in public UI, admin copy, metadata, manifests, docs, and handoff material.
+- Keep `agoojye` only where it is already a technical tenant key, route namespace, database prefix, or legacy deployment identifier.
+- Use `agoojiye.com` for public DNS, websites, and email addresses.
+
 ## Current Deployment
 
 ```txt

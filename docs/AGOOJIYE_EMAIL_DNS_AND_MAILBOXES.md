@@ -2,6 +2,8 @@
 
 Date: 2026-06-29
 
+Brand spelling note: the final public spelling is `AGOOJIYE`. The legacy technical key `agoojye` remains in route names, database tables, and private credential-file paths, while public DNS and email use `agoojiye.com`.
+
 ## Provisioned mailboxes
 
 These real docker-mailserver mailboxes now exist on the production mail stack and authenticate over IMAPS through `mail.exportunity.net`.

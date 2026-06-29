@@ -37,7 +37,7 @@
       "admin.agoojiye.com"
     ],
     "scheme": "http",
-    "forwardHost": "exportunity-app",
+    "forwardHost": "agoojye-app",
     "forwardPort": 5000,
     "ssl": {
       "status": "active",

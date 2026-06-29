@@ -197,6 +197,14 @@ _dmarc.agoojiye.com TXT: missing
 mail._domainkey.agoojiye.com TXT: missing
 ```
 
+After applying the OVH edits, run the repository verifier:
+
+```powershell
+npm run verify:agoojye:mail-dns
+```
+
+It checks MX, `mail.agoojiye.com` A, SPF, DMARC, and DKIM against the expected self-hosted mail records.
+
 Request OVH reverse DNS/PTR for the VPS:
 
 ```txt

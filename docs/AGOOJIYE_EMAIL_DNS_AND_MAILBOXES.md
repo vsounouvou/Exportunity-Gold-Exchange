@@ -82,6 +82,14 @@ The mailboxes can log in now, but external inbound mail for `@agoojiye.com` will
 
 No OVH API credentials are present in the local environment. Chrome/OVH Manager automation was also unavailable in this Codex session because the Chrome plugin failed before browser control could be established. Complete the DNS edits manually in OVH Manager or provide working OVH API credentials/plugin access for an automated cutover.
 
+After editing OVH DNS, verify the public records with:
+
+```powershell
+npm run verify:agoojye:mail-dns
+```
+
+The command exits non-zero until MX, `mail` A, SPF, DMARC, and DKIM all match the required records below.
+
 ## Required OVH DNS records
 
 For the docker-mailserver cutover, update the `agoojiye.com` DNS zone as follows.

@@ -102,6 +102,7 @@
     "qa:messaging:all-tenants": "tsx scripts/debugAllTenantsMessaging.ts",
     "stamp:build": "node scripts/stamp-build.mjs",
     "verify:deploy": "node verify-deploy.mjs",
+    "verify:agoojye:mail-dns": "node scripts/ops/verify-agoojiye-mail-dns.mjs",
     "mail:index": "tsx scripts/mail-indexer.ts",
     "mail:seed": "tsx scripts/seed-agent-email-conversations.ts",
     "mail:test-matrix": "tsx scripts/mail-send-matrix.ts",

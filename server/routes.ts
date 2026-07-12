@@ -119,6 +119,7 @@ import metRouter from "./routes/met";
 import vsRouter from "./routes/vs";
 import hozRouter from "./routes/hoz";
 import agoojyeRouter from "./routes/agoojye";
+import agoojyeMobilityRouter from "./routes/agoojye-mobility";
 import meetRouter from "./routes/meet";
 import sellerRouter from "./routes/seller";
 import emailRouter from "./routes/email";
@@ -1128,6 +1129,7 @@ export function registerRoutes(app: Express): Server {
   // House of Zogue tenant module (public + admin APIs)
   app.use("/", hozRouter);
   // AGOOJIYE electric mobility tenant module (public + admin APIs)
+  app.use("/", agoojyeMobilityRouter);
   app.use("/", agoojyeRouter);
   // Zogueland tenant module (public story generator API)
   app.use("/", zoguelandRouter);

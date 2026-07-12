@@ -27,7 +27,7 @@ test("AGOOJIYE passenger can search, reserve, pay in demo mode and open a QR tic
   await page.waitForURL("**/reservation/passagers");
 
   await page.getByLabel("Prénom").fill("Aminata");
-  await page.getByLabel("Nom").fill("Test mobilité");
+  await page.getByLabel("Nom", { exact: true }).fill("Test mobilité");
   await page.getByLabel("Téléphone", { exact: true }).first().fill("+2290197000000");
   await page.getByLabel("E-mail du passager principal").fill("mobilite.e2e@agoojiye.com");
   await page.getByLabel("E-mail", { exact: true }).fill("mobilite.e2e@agoojiye.com");

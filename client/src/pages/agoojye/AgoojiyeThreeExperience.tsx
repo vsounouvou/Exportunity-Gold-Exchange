@@ -41,6 +41,7 @@ export function AgoojiyeThreeExperiencePage() {
     let disposed = false;
     let frame = 0;
     let resizeObserver: ResizeObserver | null = null;
+    let rendererInstance: any = null;
     const cleanupFns: Array<() => void> = [];
     (async () => {
       try {
@@ -51,10 +52,11 @@ export function AgoojiyeThreeExperiencePage() {
         scene.fog = new THREE.Fog(0x111412, 18, 35);
         const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 100);
         const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: "high-performance" });
+        rendererInstance = renderer;
         renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75));
         renderer.shadowMap.enabled = true;
         renderer.outputColorSpace = THREE.SRGBColorSpace;
-        host.replaceChildren(renderer.domElement);
+        host.appendChild(renderer.domElement);
         renderer.domElement.setAttribute("aria-label", "Maquette 3D interactive du bus AGOOJIYE");
 
         scene.add(new THREE.HemisphereLight(0xfff8e8, 0x2b332e, 2.1));
@@ -204,8 +206,11 @@ export function AgoojiyeThreeExperiencePage() {
       cancelAnimationFrame(frame);
       resizeObserver?.disconnect();
       cleanupFns.forEach((cleanup) => cleanup());
-      if (runtimeRef.current?.renderer) runtimeRef.current.renderer.dispose();
-      runtimeRef.current = null;
+      if (rendererInstance) {
+        rendererInstance.dispose();
+        if (rendererInstance.domElement.parentNode === host) host.removeChild(rendererInstance.domElement);
+      }
+      if (runtimeRef.current?.renderer === rendererInstance) runtimeRef.current = null;
     };
   }, []);
 

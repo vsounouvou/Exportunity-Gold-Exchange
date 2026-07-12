@@ -144,7 +144,7 @@ export function AgoojiyePaymentPage() {
 export function AgoojiyeConfirmationPage({ reference }: { reference: string }) {
   useMobilityMeta("Réservation confirmée", "Votre réservation et vos billets numériques AGOOJIYE.");
   const session = getBookingSession();
-  const booking = useQuery<BookingPayload>({ queryKey: [`/api/agoojye/mobility/bookings/${reference}`, session.accessToken], queryFn: () => apiRequest(`/api/agoojye/mobility/bookings/${reference}`, { headers: { "x-booking-token": session.accessToken || "" } }), enabled: Boolean(session.accessToken) });
+  const booking = useQuery<BookingPayload>({ queryKey: [`/api/agoojye/mobility/bookings/${reference}`, session.accessToken], queryFn: () => apiRequest(`/api/agoojye/mobility/bookings/${reference}`, { headers: { "x-booking-token": session.accessToken || "" } }), enabled: Boolean(session.accessToken), refetchOnMount: "always" });
   if (!session.accessToken) return <MobilityLayout><ErrorState message="Utilisez la page « Retrouver ma réservation » avec votre référence et votre contact." /></MobilityLayout>;
   if (booking.isLoading) return <MobilityLayout><BookingSteps current={4} /><LoadingState /></MobilityLayout>;
   if (!booking.data) return <MobilityLayout><ErrorState message={(booking.error as Error)?.message || "Réservation introuvable."} /></MobilityLayout>;

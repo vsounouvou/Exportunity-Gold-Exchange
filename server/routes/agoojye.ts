@@ -40,6 +40,8 @@ import {
 } from "@db/schema";
 
 import { ensureTenantAdmin } from "./utils/auth";
+import { runMailIndexer } from "../lib/mail/indexer";
+import { ensureAgoojiyeHumanMailProfiles, syncAgoojiyeUnifiedInbox } from "../lib/agoojye/mailBridge";
 
 const router = Router();
 const publicApi = Router();
@@ -667,6 +669,7 @@ async function audit(tenantId: number, input: { actor?: string; action: string; 
 
 async function ensureAgoojyeSeed(tenantId: number) {
   if (!Number.isFinite(tenantId) || tenantId <= 0) return;
+  await ensureAgoojiyeHumanMailProfiles(tenantId);
   if (seededTenants.has(tenantId)) return;
   const now = new Date();
   const legacyBrandMisspelling = ["AGOO", "JYE"].join("");
@@ -2010,6 +2013,24 @@ adminApi.get("/dashboard", async (req: any, res) => {
     });
   } catch (error: any) {
     return res.status(500).json({ message: error?.message || "Impossible de charger le tableau de bord AGOOJIYE." });
+  }
+});
+
+adminApi.post("/mail/sync", async (req: any, res) => {
+  try {
+    const tenantId = Number(req.tenant.id);
+    const profiles = await ensureAgoojiyeHumanMailProfiles(tenantId);
+    const indexed = await runMailIndexer({ tenantId, agentKey: null, limitPerMailbox: 500 });
+    const mirrored = await syncAgoojiyeUnifiedInbox(tenantId);
+    await audit(tenantId, {
+      actor: actor(req),
+      action: "mail_sync",
+      entityType: "unified_inbox",
+      metadata: { profiles, indexed: indexed.indexed, skipped: indexed.skipped, mirrored },
+    });
+    return res.json({ ok: true, profiles, indexed, mirrored });
+  } catch (error: any) {
+    return res.status(500).json({ message: error?.message || "Impossible de synchroniser les boites AGOOJIYE." });
   }
 });
 

@@ -17,6 +17,7 @@ import {
   Users,
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
+import { AdminEmailControlCenterPage } from "@/pages/AdminEmailControlCenterPage";
 import { AdminHumanEmailAccountsPanel } from "@/pages/AdminHumanEmailAccountsPanel";
 
 type SectionKey =
@@ -1501,7 +1502,39 @@ export function AgoojyeAdminApprovalsPage() {
 }
 
 export function AgoojyeAdminInboxThreadsPage() {
-  return <ResourcePage section="inboxThreads" />;
+  const queryClient = useQueryClient();
+  const syncMutation = useMutation({
+    mutationFn: () => apiRequest("/api/admin/agoojye/mail/sync", "POST", {}),
+    onSuccess: () => queryClient.invalidateQueries(),
+  });
+
+  return (
+    <AdminShell section="inboxThreads">
+      <section className="flex flex-col gap-3 rounded-md border border-white/15 bg-white/5 p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 className="text-lg font-semibold">Boîte unifiée AGOOJIYE</h2>
+          <p className="mt-1 text-sm text-[#B8AE9D]">
+            Messages de Regis, Marise, Vital, Surian et Binta, avec réponses et suivi des contacts.
+          </p>
+        </div>
+        <button
+          type="button"
+          disabled={syncMutation.isPending}
+          onClick={() => syncMutation.mutate()}
+          className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-md bg-[#C99A36] px-4 py-2 text-sm font-semibold text-[#080808] disabled:cursor-wait disabled:opacity-60"
+        >
+          <RefreshCw className={`h-4 w-4 ${syncMutation.isPending ? "animate-spin" : ""}`} />
+          {syncMutation.isPending ? "Synchronisation..." : "Synchroniser les boîtes"}
+        </button>
+        {syncMutation.isError ? (
+          <p className="text-sm text-red-300">{String((syncMutation.error as Error)?.message || "Synchronisation impossible.")}</p>
+        ) : null}
+      </section>
+      <div className="mt-4 overflow-hidden rounded-md border border-white/15 bg-[#0B0F16]">
+        <AdminEmailControlCenterPage />
+      </div>
+    </AdminShell>
+  );
 }
 
 export function AgoojyeAdminMailMessagesPage() {

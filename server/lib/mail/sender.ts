@@ -1,6 +1,6 @@
 import nodemailer from "nodemailer";
 import crypto from "crypto";
-import { and, asc, desc, eq, gte, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, sql } from "drizzle-orm";
 import { db } from "@db";
 import {
   actionRequests,
@@ -40,6 +40,7 @@ import {
 } from "./deliveryStatus";
 import { createUnsubscribeToken } from "./unsubscribe";
 import { assertProductionAgentKeyAllowed } from "../agents/productionAllowlist";
+import { canUseExactMailboxSender, isAgoojiyeHumanMailboxAddress } from "../agoojye/mailBridgePolicy";
 
 function truthyEnv(value: unknown) {
   return ["1", "true", "yes", "y", "on"].includes(String(value || "").trim().toLowerCase());
@@ -524,8 +525,20 @@ async function resolveSenderIdentity(opts: {
     preferredDomain,
   });
 
-  const professionalFromEmail = String(profile.emailAddress || "").trim().toLowerCase();
-  if (!isProfessionalAgentEmailAddress(professionalFromEmail)) {
+  const identityMetaBeforePolicy = parseObject(identity?.metadata);
+  const mailboxMetaBeforePolicy = parseObject(opts.mailbox.metadata);
+  const senderAddressMode = String(
+    identityMetaBeforePolicy.senderAddressMode || mailboxMetaBeforePolicy.senderAddressMode || "",
+  ).trim();
+  const useExactMailboxSender = canUseExactMailboxSender({
+    tenantKey: tenant?.key,
+    email: existingFromEmail,
+    senderAddressMode,
+  });
+  const professionalFromEmail = String(useExactMailboxSender ? existingFromEmail : profile.emailAddress || "")
+    .trim()
+    .toLowerCase();
+  if (!useExactMailboxSender && !isProfessionalAgentEmailAddress(professionalFromEmail)) {
     throw new Error(`Agent email identity must be firstname.lastname@domain (got ${professionalFromEmail || "empty"})`);
   }
 
@@ -822,6 +835,20 @@ export async function sendEmailAsAgent(input: SendEmailAsAgentInput) {
     });
     if (unsub) {
       throw new Error(`Recipient ${recipientEmail} is unsubscribed from marketing emails.`);
+    }
+  }
+
+  if (isAgoojiyeHumanMailboxAddress(senderIdentity.fromEmail)) {
+    const suppressed = await db.query.emailUnsubscribes.findFirst({
+      where: and(
+        eq(emailUnsubscribes.tenantId, input.tenantId),
+        inArray(emailUnsubscribes.email, content.recipients),
+        eq(emailUnsubscribes.scope, "marketing"),
+      ),
+      columns: { email: true },
+    });
+    if (suppressed?.email) {
+      throw new Error(`Recipient ${suppressed.email} is on the AGOOJIYE suppression list.`);
     }
   }
 

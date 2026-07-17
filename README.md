@@ -62,6 +62,12 @@ AGOOJIYE_TICKET_SIGNING_SECRET=replace_with_a_long_random_secret
 AGOOJIYE_PAYMENT_PROVIDER=demo
 AGOOJIYE_DEMO_PAYMENT_MODE=true
 AGOOJIYE_EMAIL_PROVIDER=roundcube
+AGOOJIYE_SMTP_HOST=mail.exportunity.net
+AGOOJIYE_MAILBOX_REGIS_PASSWORD=
+AGOOJIYE_MAILBOX_MARISE_PASSWORD=
+AGOOJIYE_MAILBOX_VITAL_PASSWORD=
+AGOOJIYE_MAILBOX_SURIAN_PASSWORD=
+AGOOJIYE_MAILBOX_BINTA_PASSWORD=
 AGOOJIYE_SMS_PROVIDER=disabled
 AGOOJIYE_WHATSAPP_PROVIDER=disabled
 AGOOJIYE_SUPPORT_PHONE=+2290100000000
@@ -216,6 +222,8 @@ Set `AGOOJIYE_PAYMENT_PROVIDER` and disable `AGOOJIYE_DEMO_PAYMENT_MODE` only af
 ## Email, SMS, and WhatsApp
 
 Delivery adapters are configured independently with `AGOOJIYE_EMAIL_PROVIDER`, `AGOOJIYE_SMS_PROVIDER`, and `AGOOJIYE_WHATSAPP_PROVIDER`. RoundCube is the human webmail interface; application delivery should use authenticated SMTP or the existing mail service, not browser automation.
+
+The AGOOJIYE mail bridge registers the five approved human mailboxes in the shared mail engine, indexes their Maildir folders, mirrors conversations into the AGOOJIYE CRM inbox, creates external contacts from replies, and records explicit opt-outs or hard bounces in both suppression registries. Administrators can trigger the same operation from `/admin/agoojye/inbox`. The five password variables contain deployment secrets only; leave them blank in source control and inject them through the production environment.
 
 Adapters should receive a booking/ticket ID, load approved data server-side, record delivery status, retry temporary failures with limits, and never log access tokens or message-provider secrets.
 

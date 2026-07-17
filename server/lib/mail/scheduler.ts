@@ -2,6 +2,7 @@ import { and, eq, sql } from "drizzle-orm";
 import { db } from "@db";
 import { agentMailboxes, tenants } from "@db/schema";
 import { runMailIndexer } from "./indexer";
+import { ensureAgoojiyeHumanMailProfiles, syncAgoojiyeUnifiedInbox } from "../agoojye/mailBridge";
 
 function truthyEnv(value: unknown) {
   return ["1", "true", "yes", "y", "on"].includes(String(value || "").trim().toLowerCase());
@@ -30,6 +31,16 @@ export function startMailIndexerScheduler() {
     const startedAt = Date.now();
 
     try {
+      if (!tenantKey || tenantKey.toLowerCase() === "agoojye") {
+        const agoojyeTenant = await db.query.tenants.findFirst({
+          where: eq(tenants.key, "agoojye"),
+          columns: { id: true },
+        });
+        if (agoojyeTenant?.id) {
+          await ensureAgoojiyeHumanMailProfiles(agoojyeTenant.id);
+        }
+      }
+
       const tenantRows = tenantKey
         ? await db
             .select({ id: tenants.id, key: tenants.key })
@@ -56,6 +67,14 @@ export function startMailIndexerScheduler() {
           const result = await runMailIndexer({ tenantId, agentKey: null, limitPerMailbox });
           totalIndexed += Number(result.indexed || 0);
           totalSkipped += Number(result.skipped || 0);
+
+          const tenant = await db.query.tenants.findFirst({
+            where: eq(tenants.id, tenantId),
+            columns: { key: true },
+          });
+          if (String(tenant?.key || "").toLowerCase() === "agoojye") {
+            await syncAgoojiyeUnifiedInbox(tenantId);
+          }
 
           const mailboxes = Array.isArray(result.mailboxes) ? result.mailboxes : [];
           totalWarnings += mailboxes.filter((m: any) => Array.isArray(m?.errors) && m.errors.length > 0).length;

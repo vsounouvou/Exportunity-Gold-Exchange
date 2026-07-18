@@ -55,7 +55,7 @@ type SectionKey =
   | "settings"
   | "audit";
 
-type FieldKind = "text" | "textarea" | "select" | "date" | "checkbox";
+type FieldKind = "text" | "textarea" | "select" | "date" | "datetime" | "checkbox";
 
 type FieldDef = {
   key: string;
@@ -575,16 +575,11 @@ const resourceConfig: Record<Exclude<SectionKey, "overview">, { endpoint: string
   jobs: {
     endpoint: "jobs",
     title: "Jobs système",
-    description: "Rendre visibles les travaux de synchronisation, suivi, planification et classification sans lancer de processus caché.",
+    description: "File PostgreSQL visible avec prise atomique, retries limités, dead-letter et historique d'exécution.",
     columns: ["jobType", "status", "attemptCount", "scheduledAt", "startedAt", "completedAt", "relatedEntityType"],
     fields: [
-      { key: "jobType", label: "Type job", kind: "select", options: ["mail_sync", "webhook_processing", "attachment_processing", "scheduled_send", "follow_up", "bounce_processing", "reply_classification", "pipeline_summary", "mailbox_health"] },
-      { key: "status", label: "Statut", kind: "select", options: ["queued", "running", "completed", "failed", "dead_letter", "cancelled"] },
-      { key: "attemptCount", label: "Tentatives" },
-      { key: "scheduledAt", label: "Programmé le", kind: "date" },
-      { key: "startedAt", label: "Démarré le", kind: "date" },
-      { key: "completedAt", label: "Terminé le", kind: "date" },
-      { key: "error", label: "Erreur", kind: "textarea" },
+      { key: "jobType", label: "Type job", kind: "select", options: ["mail_sync", "mailbox_health", "pipeline_summary", "overdue_task_notifications", "webhook_processing", "attachment_processing", "scheduled_send", "follow_up", "bounce_processing", "complaint_processing", "reply_classification"] },
+      { key: "scheduledAt", label: "Programmé le", kind: "datetime" },
       { key: "relatedEntityType", label: "Entité liée" },
       { key: "relatedEntityId", label: "ID entité liée" },
     ],
@@ -1131,6 +1126,14 @@ function ResourcePage({ section }: { section: Exclude<SectionKey, "overview"> })
     },
   });
 
+  const runDueMutation = useMutation({
+    mutationFn: () => apiRequest("/api/admin/agoojye/jobs/run-due", "POST", { maxBatch: 10 }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/agoojye/jobs"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/agoojye/dashboard"] });
+    },
+  });
+
   function submit(event: FormEvent) {
     event.preventDefault();
     createMutation.mutate();
@@ -1146,6 +1149,21 @@ function ResourcePage({ section }: { section: Exclude<SectionKey, "overview"> })
           </div>
           <span className="rounded border border-[#C99A36]/35 px-2 py-1 text-xs text-[#E4C46A]">{query.data?.items?.length || 0} entrées</span>
         </div>
+        {section === "jobs" ? (
+          <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-white/10 pt-4">
+            <button
+              type="button"
+              disabled={runDueMutation.isPending}
+              onClick={() => runDueMutation.mutate()}
+              className="inline-flex items-center gap-2 rounded-md border border-[#C99A36]/40 px-3 py-2 text-sm font-semibold text-[#E4C46A] hover:bg-[#C99A36]/10 disabled:opacity-50"
+            >
+              <RefreshCw className={`h-4 w-4 ${runDueMutation.isPending ? "animate-spin" : ""}`} />
+              Exécuter les jobs dus
+            </button>
+            <p className="text-xs text-[#B8AE9D]">Le worker s'exécute aussi automatiquement toutes les 30 secondes en production.</p>
+            {runDueMutation.isError ? <p className="w-full text-sm text-red-300">{String((runDueMutation.error as Error)?.message || "Exécution impossible")}</p> : null}
+          </div>
+        ) : null}
         {section === "emails" ? <EmailChecklist /> : null}
         {section === "settings" ? <SettingsNotice /> : null}
         {section !== "audit" ? (
@@ -1248,7 +1266,7 @@ function EditorField({ field, value, onChange }: { field: FieldDef; value: any; 
   return (
     <label className="text-sm text-[#D8CFBF]">
       {field.label}
-      <input required={field.required} type={field.kind === "date" ? "date" : "text"} value={value || ""} onChange={(event) => onChange(event.target.value)} className={base} placeholder={field.placeholder} />
+      <input required={field.required} type={field.kind === "date" ? "date" : field.kind === "datetime" ? "datetime-local" : "text"} value={value || ""} onChange={(event) => onChange(event.target.value)} className={base} placeholder={field.placeholder} />
     </label>
   );
 }
@@ -1379,6 +1397,8 @@ function QuickActions({
       ];
     }
     if (section === "jobs") {
+      if (item.status === "queued") return [{ label: "Annuler", command: "cancel" }];
+      if (["failed", "dead_letter", "cancelled"].includes(item.status)) return [{ label: "Relancer", command: "retry" }];
       return [];
     }
     if (section === "partners") {

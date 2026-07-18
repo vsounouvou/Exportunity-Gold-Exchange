@@ -34,6 +34,7 @@ import { ensureAgentPhotoColumns, ensureAgentPhotoTables } from "./lib/agents/en
 import { ensureMailEngineTables } from "./lib/mail/ensureTables";
 import { ensureEmailAdminTables } from "./lib/mail/ensureEmailAdminTables";
 import { startMailIndexerScheduler } from "./lib/mail/scheduler";
+import { startAgoojiyeJobWorkerScheduler } from "./lib/agoojye/jobWorker";
 import { ensureCommunicationsTables } from "./lib/communications/ensureTables";
 import { getTwilioConfig, validateTwilioEnv } from "./lib/communications/twilio";
 import { ensureActionRouterTables } from "./lib/actions/ensureTables";
@@ -618,6 +619,15 @@ const errorHandler = (err: any, _req: Request, res: Response, _next: NextFunctio
       );
     } else {
       log("Mail indexer scheduler disabled");
+    }
+
+    const agoojiyeJobWorker = startAgoojiyeJobWorkerScheduler();
+    if (agoojiyeJobWorker) {
+      log(
+        `AGOOJIYE job worker scheduled (intervalMs=${agoojiyeJobWorker.intervalMs}, maxBatch=${agoojiyeJobWorker.maxBatch})`,
+      );
+    } else {
+      log("AGOOJIYE job worker disabled");
     }
 
     const actionsScheduler = startActionsWorkerScheduler();

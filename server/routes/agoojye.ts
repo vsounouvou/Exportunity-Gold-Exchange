@@ -57,11 +57,12 @@ import {
   parseAgoojiyeImportMapping,
   type AgoojiyeImportTarget,
 } from "../lib/agoojye/pipelineImport";
-import { sendEmailAsAgent } from "../lib/mail/sender";
+import { deliverApprovedAgoojiyeOutreach } from "../lib/agoojye/outreachDelivery";
 import {
-  AGOOJIYE_HUMAN_MAILBOX_PROFILES,
-  agoojiyeMailboxAddress,
-} from "../lib/agoojye/mailBridgePolicy";
+  enqueueAgoojiyeJob,
+  isAgoojiyeJobType,
+  runAgoojiyeJobWorkerOnce,
+} from "../lib/agoojye/jobWorker";
 
 const router = Router();
 const publicApi = Router();
@@ -2043,17 +2044,17 @@ const resources = {
     create: (tenantId: number, body: any, req: any) => ({
       tenantId,
       jobType: normalizeText(body.jobType),
-      status: normalizeText(body.status) || "queued",
-      attemptCount: Number(body.attemptCount) || 0,
-      scheduledAt: parseDate(body.scheduledAt),
-      startedAt: parseDate(body.startedAt),
-      completedAt: parseDate(body.completedAt),
-      error: normalizeText(body.error) || null,
+      status: "queued",
+      attemptCount: 0,
+      scheduledAt: parseDate(body.scheduledAt) || new Date(),
+      startedAt: null,
+      completedAt: null,
+      error: null,
       relatedEntityType: normalizeText(body.relatedEntityType) || null,
       relatedEntityId: Number(body.relatedEntityId) || null,
       createdBy: actor(req),
       payloadJson: body.payloadJson && typeof body.payloadJson === "object" ? body.payloadJson : {},
-      resultJson: body.resultJson && typeof body.resultJson === "object" ? body.resultJson : {},
+      resultJson: {},
     }),
     fields: ["jobType", "status", "attemptCount", "scheduledAt", "startedAt", "completedAt", "error", "relatedEntityType", "relatedEntityId", "payloadJson", "resultJson"],
   },
@@ -2382,105 +2383,71 @@ adminApi.post("/approvals/:id/send", async (req: any, res) => {
   const tenantId = Number(req.tenant.id);
   const id = Number(req.params.id);
   if (!Number.isFinite(id) || id <= 0) return res.status(400).json({ message: "ID d'approbation invalide." });
+  try {
+    const delivered = await deliverApprovedAgoojiyeOutreach({
+      tenantId,
+      approvalId: id,
+      actor: actor(req),
+      actorUserId: actorUserId(req),
+    });
+    return res.json({ ok: true, ...delivered });
+  } catch (error: any) {
+    const message = normalizeText(error?.message || error || "Envoi impossible").slice(0, 1_000);
+    return res.status(400).json({ message });
+  }
+});
 
+adminApi.post("/jobs/run-due", async (req: any, res) => {
+  const result = await runAgoojiyeJobWorkerOnce(Math.min(Math.max(Number(req.body?.maxBatch) || 5, 1), 25));
+  await audit(Number(req.tenant.id), {
+    actor: actor(req),
+    action: "background_jobs_run_due",
+    entityType: "background_job",
+    metadata: result,
+  });
+  return res.json({ ok: true, result });
+});
+
+adminApi.post("/jobs/:id/retry", async (req: any, res) => {
+  const tenantId = Number(req.tenant.id);
+  const id = Number(req.params.id);
+  if (!Number.isFinite(id) || id <= 0) return res.status(400).json({ message: "ID de job invalide." });
   const now = new Date();
-  const [approval] = await db
-    .update(agoojyeOutreachApprovals)
-    .set({ status: "sending", updatedAt: now })
+  const [item] = await db
+    .update(agoojyeBackgroundJobs)
+    .set({ status: "queued", scheduledAt: now, startedAt: null, completedAt: null, error: null, updatedAt: now })
     .where(
       and(
-        eq(agoojyeOutreachApprovals.tenantId, tenantId),
-        eq(agoojyeOutreachApprovals.id, id),
-        inArray(agoojyeOutreachApprovals.status, ["approved", "scheduled", "failed"]),
+        eq(agoojyeBackgroundJobs.tenantId, tenantId),
+        eq(agoojyeBackgroundJobs.id, id),
+        inArray(agoojyeBackgroundJobs.status, ["failed", "dead_letter", "cancelled"]),
       ),
     )
     .returning();
-  if (!approval) {
-    return res.status(409).json({ message: "Ce message doit etre approuve et ne peut pas avoir deja ete envoye." });
-  }
+  if (!item) return res.status(409).json({ message: "Seuls les jobs echoues, annules ou dead-letter peuvent etre relances." });
+  await audit(tenantId, { actor: actor(req), action: "background_job_retried", entityType: "background_job", entityId: id });
+  return res.json({ ok: true, item });
+});
 
-  try {
-    if (!approval.approvedAt) throw new Error("L'approbation humaine horodatee est manquante.");
-    if (!approval.contactId) throw new Error("Aucun contact destinataire n'est associe a cette approbation.");
-    if (!approval.senderIdentityId) throw new Error("Aucune identite expediteur n'est associee a cette approbation.");
-
-    const [contact] = await db
-      .select()
-      .from(agoojyeCrmContacts)
-      .where(and(eq(agoojyeCrmContacts.tenantId, tenantId), eq(agoojyeCrmContacts.id, Number(approval.contactId))))
-      .limit(1);
-    if (!contact?.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact.email)) throw new Error("Le contact ne possede pas d'adresse email verifiee.");
-    if (contact.doNotContact) throw new Error("Ce contact est marque ne pas contacter.");
-
-    const [suppression] = await db
-      .select({ id: agoojyeSuppressionEntries.id })
-      .from(agoojyeSuppressionEntries)
-      .where(
-        and(
-          eq(agoojyeSuppressionEntries.tenantId, tenantId),
-          eq(agoojyeSuppressionEntries.email, contact.email.toLowerCase()),
-          eq(agoojyeSuppressionEntries.status, "active"),
-        ),
-      )
-      .limit(1);
-    if (suppression) throw new Error("Ce destinataire figure dans la liste de suppression AGOOJIYE.");
-
-    const [identity] = await db
-      .select()
-      .from(agoojyeEmailIdentities)
-      .where(and(eq(agoojyeEmailIdentities.tenantId, tenantId), eq(agoojyeEmailIdentities.id, Number(approval.senderIdentityId))))
-      .limit(1);
-    if (!identity || identity.status !== "active" || !identity.canSend) throw new Error("L'identite expediteur n'est pas active pour l'envoi.");
-    const profile = AGOOJIYE_HUMAN_MAILBOX_PROFILES.find(
-      (candidate) => agoojiyeMailboxAddress(candidate.localPart) === normalizeText(identity.emailAddress).toLowerCase(),
-    );
-    if (!profile) throw new Error("L'identite expediteur n'est pas l'une des cinq boites humaines autorisees.");
-
-    const sent = await sendEmailAsAgent({
-      tenantId,
-      agentKey: profile.localPart,
-      actorType: "human",
-      to: [contact.email.toLowerCase()],
-      subject: approval.subject,
-      textBody: approval.body,
-      htmlBody: null,
-      requestedByUserId: actorUserId(req),
-      correlationId: `agoojye-approval-${approval.id}`,
-      bypassApproval: true,
-    });
-
-    const sentAt = new Date();
-    const [item] = await db
-      .update(agoojyeOutreachApprovals)
-      .set({ status: "sent", sentAt, updatedAt: sentAt })
-      .where(and(eq(agoojyeOutreachApprovals.tenantId, tenantId), eq(agoojyeOutreachApprovals.id, id)))
-      .returning();
-    await db.insert(agoojyeCrmActivities).values({
-      tenantId,
-      contactId: approval.contactId,
-      opportunityId: approval.opportunityId,
-      actorUserId: actorUserId(req),
-      activityType: "email_sent",
-      channel: "smtp",
-      subject: approval.subject,
-      outcome: "accepted_by_mail_server",
-      completedAt: sentAt,
-      metadata: { approvalId: id, deliveryStatus: sent.message.status, messageId: sent.message.messageId || null },
-      createdAt: sentAt,
-      updatedAt: sentAt,
-    });
-    await syncAgoojiyeUnifiedInbox(tenantId);
-    await audit(tenantId, { actor: actor(req), action: "approved_outreach_sent", entityType: "outreach_approval", entityId: id, metadata: { contactId: approval.contactId, senderIdentityId: approval.senderIdentityId, deliveryStatus: sent.message.status } });
-    return res.json({ ok: true, item, delivery: { status: sent.message.status, queueId: sent.message.queueId || null } });
-  } catch (error: any) {
-    const message = normalizeText(error?.message || error || "Envoi impossible").slice(0, 1_000);
-    await db
-      .update(agoojyeOutreachApprovals)
-      .set({ status: "failed", decisionNotes: message, updatedAt: new Date() })
-      .where(and(eq(agoojyeOutreachApprovals.tenantId, tenantId), eq(agoojyeOutreachApprovals.id, id)));
-    await audit(tenantId, { actor: actor(req), action: "approved_outreach_failed", entityType: "outreach_approval", entityId: id, metadata: { error: message } });
-    return res.status(400).json({ message });
-  }
+adminApi.post("/jobs/:id/cancel", async (req: any, res) => {
+  const tenantId = Number(req.tenant.id);
+  const id = Number(req.params.id);
+  if (!Number.isFinite(id) || id <= 0) return res.status(400).json({ message: "ID de job invalide." });
+  const now = new Date();
+  const [item] = await db
+    .update(agoojyeBackgroundJobs)
+    .set({ status: "cancelled", completedAt: now, updatedAt: now })
+    .where(
+      and(
+        eq(agoojyeBackgroundJobs.tenantId, tenantId),
+        eq(agoojyeBackgroundJobs.id, id),
+        eq(agoojyeBackgroundJobs.status, "queued"),
+      ),
+    )
+    .returning();
+  if (!item) return res.status(409).json({ message: "Seul un job en attente peut etre annule." });
+  await audit(tenantId, { actor: actor(req), action: "background_job_cancelled", entityType: "background_job", entityId: id });
+  return res.json({ ok: true, item });
 });
 
 adminApi.get("/:resource", async (req: any, res) => {
@@ -2520,7 +2487,9 @@ adminApi.post("/:resource", async (req: any, res) => {
     if (req.params.resource === "opportunities" && !(values as any).organizationId) return res.status(400).json({ message: "organizationId is required" });
     if (req.params.resource === "mail-messages" && !(values as any).threadId) return res.status(400).json({ message: "threadId is required" });
     if (req.params.resource === "imports" && !normalizeText((values as any).fileName)) return res.status(400).json({ message: "fileName is required" });
-    if (req.params.resource === "jobs" && !normalizeText((values as any).jobType)) return res.status(400).json({ message: "jobType is required" });
+    if (req.params.resource === "jobs" && !isAgoojiyeJobType((values as any).jobType)) {
+      return res.status(400).json({ message: "Type de job AGOOJIYE inconnu." });
+    }
     if ((req.params.resource === "approvals" || req.params.resource === "email-templates") && !normalizeText((values as any).subject)) return res.status(400).json({ message: "subject is required" });
     if ((req.params.resource === "approvals" || req.params.resource === "email-templates") && !normalizeText((values as any).body)) return res.status(400).json({ message: "body is required" });
 
@@ -2622,8 +2591,14 @@ adminApi.patch("/:resource/:id", async (req: any, res) => {
         patchBody.rejectedAt = new Date().toISOString();
         patchBody.approvedAt = null;
         patchBody.reviewerUserId = actorUserId(req);
-      } else if (requestedStatus === "scheduled" && current.status !== "approved") {
-        return res.status(409).json({ message: "Un message doit etre approuve avant sa programmation." });
+      } else if (requestedStatus === "scheduled") {
+        if (current.status !== "approved") {
+          return res.status(409).json({ message: "Un message doit etre approuve avant sa programmation." });
+        }
+        const scheduledAt = parseDate(patchBody.scheduledAt);
+        if (!scheduledAt || scheduledAt.getTime() <= Date.now()) {
+          return res.status(400).json({ message: "Choisissez une date d'envoi future." });
+        }
       }
     }
 
@@ -2631,6 +2606,18 @@ adminApi.patch("/:resource/:id", async (req: any, res) => {
     if (Object.keys(patch).length <= 1) return res.status(400).json({ message: "No supported fields to update" });
     const [item] = await db.update(table).set(patch).where(and(eq(table.tenantId, tenantId), eq(table.id, id))).returning();
     if (!item) return res.status(404).json({ message: "Resource not found for tenant" });
+    if (req.params.resource === "approvals" && (item as any).status === "scheduled") {
+      await enqueueAgoojiyeJob({
+        tenantId,
+        jobType: "scheduled_send",
+        scheduledAt: (item as any).scheduledAt,
+        relatedEntityType: "outreach_approval",
+        relatedEntityId: id,
+        payloadJson: { approvalId: id, maxAttempts: 3 },
+        createdBy: actor(req),
+        dedupe: true,
+      });
+    }
     if (req.params.resource === "participants" && Object.prototype.hasOwnProperty.call(req.body || {}, "confirmedRole") && (item as any).userId) {
       await db
         .update(agoojyeProjectUsers)

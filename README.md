@@ -244,6 +244,10 @@ The sponsor CRM import at `/admin/agoojye/imports` accepts CSV and XLSX files up
 
 New outreach approvals always start in `awaiting_approval`. Approval and rejection timestamps are set by the server. An approved item is sent only through `POST /api/admin/agoojye/approvals/:id/send`; the endpoint atomically claims the item, verifies the contact, suppression status, and one of the five human sender identities, invokes authenticated SMTP, and marks it `sent` only after mail-server acceptance. Editing approved content returns it to the approval queue. Public DNS preflight intentionally blocks external sending until SPF and DKIM are correct.
 
+The AGOOJIYE operational queue uses `agoojye_background_jobs` as a tenant-scoped PostgreSQL queue. Due jobs are claimed with `FOR UPDATE SKIP LOCKED`, processed sequentially, retried with bounded exponential backoff, and moved to `dead_letter` after permanent failure or the configured attempt limit. The production scheduler starts only for the `agoojye` tenant when `AGOOJIYE_JOB_WORKER_ENABLED=true`; interval and batch size are controlled by `AGOOJIYE_JOB_WORKER_INTERVAL_MS` and `AGOOJIYE_JOB_WORKER_MAX_BATCH`. Administrators can inspect, cancel, retry, or run due jobs from `/admin/agoojye/jobs`.
+
+Implemented processors cover Maildir synchronization, mailbox health, scheduled approved sends, guarded follow-ups, bounce and complaint suppression, inbound reply classification, pipeline summaries, overdue-task reports, and normalized webhook records. Follow-ups stop before sending when the recipient replied, opted out, bounced, is suppressed, or the opportunity is paused, won, lost, or cancelled. Attachment jobs fail visibly into dead-letter until an external antivirus scanner is configured; no attachment is falsely marked clean.
+
 Adapters should receive a booking/ticket ID, load approved data server-side, record delivery status, retry temporary failures with limits, and never log access tokens or message-provider secrets.
 
 ## Deployment
@@ -265,5 +269,6 @@ Adapters should receive a booking/ticket ID, load approved data server-side, rec
 - Connect a licensed payment provider and verified webhooks.
 - Configure transactional email/SMS/WhatsApp adapters and delivery monitoring.
 - Add a scheduled job that releases expired holds even when no API request occurs.
+- Connect a production antivirus service before enabling email-attachment processing.
 - Complete legal approval for fares, cancellation policy, privacy retention, accessibility, and ticket conditions.
 - Monitor database indexes, payment failures, QR validation conflicts, and abandoned bookings.

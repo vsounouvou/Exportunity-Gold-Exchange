@@ -1800,7 +1800,115 @@ export function AgoojyeAdminImportsPage() {
 }
 
 export function AgoojyeAdminAgentResearchPage() {
-  return <ResourcePage section="agentResearch" />;
+  const queryClient = useQueryClient();
+  const organizations = useResource("organizations");
+  const contacts = useResource("contacts");
+  const opportunities = useResource("opportunities");
+  const identities = useResource("email-identities");
+  const templates = useResource("email-templates");
+  const history = useResource("agent-research");
+  const [form, setForm] = useState({
+    organizationId: "",
+    contactId: "",
+    opportunityId: "",
+    senderIdentityId: "",
+    templateId: "",
+    sourceUrls: "",
+  });
+
+  const mutation = useMutation({
+    mutationFn: () => apiRequest("/api/admin/agoojye/agent-research/run", "POST", {
+      ...form,
+      sourceUrls: form.sourceUrls.split(/\r?\n|,/).map((value) => value.trim()).filter(Boolean),
+    }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/agoojye/agent-research"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/agoojye/approvals"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/agoojye/dashboard"] });
+    },
+  });
+
+  const selectedOrganizationId = Number(form.organizationId || 0);
+  const availableContacts = (contacts.data?.items || []).filter((item) => !selectedOrganizationId || Number(item.organizationId) === selectedOrganizationId);
+  const availableOpportunities = (opportunities.data?.items || []).filter((item) => !selectedOrganizationId || Number(item.organizationId) === selectedOrganizationId);
+  const baseInput = "mt-1 w-full rounded-md border border-white/15 bg-[#080808] px-3 py-2 text-sm text-[#F7F2E8] outline-none focus:border-[#C99A36]";
+
+  function submit(event: FormEvent) {
+    event.preventDefault();
+    mutation.mutate();
+  }
+
+  return (
+    <AdminShell section="agentResearch">
+      <section className="rounded-md border border-white/15 bg-white/5 p-4">
+        <h2 className="text-xl font-semibold">Agent de recherche sponsors</h2>
+        <p className="mt-1 max-w-4xl text-sm text-[#B8AE9D]">Consulte jusqu'à cinq sources HTTPS publiques, bloque les réseaux privés, calcule un score explicable et place le brouillon dans la file d'approbation. Aucun message n'est envoyé par cette action.</p>
+
+        <form onSubmit={submit} className="mt-4 grid gap-4 border-t border-white/10 pt-4">
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            <label className="text-sm text-[#D8CFBF]">
+              Organisation CRM
+              <select required value={form.organizationId} onChange={(event) => setForm((current) => ({ ...current, organizationId: event.target.value, contactId: "", opportunityId: "" }))} className={baseInput}>
+                <option value="">Sélectionner</option>
+                {(organizations.data?.items || []).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+              </select>
+            </label>
+            <label className="text-sm text-[#D8CFBF]">
+              Contact vérifié
+              <select value={form.contactId} onChange={(event) => setForm((current) => ({ ...current, contactId: event.target.value }))} className={baseInput}>
+                <option value="">À affecter pendant la revue</option>
+                {availableContacts.map((item) => <option key={item.id} value={item.id}>{[item.firstName, item.lastName].filter(Boolean).join(" ") || item.email || `Contact ${item.id}`}</option>)}
+              </select>
+            </label>
+            <label className="text-sm text-[#D8CFBF]">
+              Opportunité
+              <select value={form.opportunityId} onChange={(event) => setForm((current) => ({ ...current, opportunityId: event.target.value }))} className={baseInput}>
+                <option value="">Aucune</option>
+                {availableOpportunities.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}
+              </select>
+            </label>
+            <label className="text-sm text-[#D8CFBF]">
+              Identité expéditeur humaine
+              <select value={form.senderIdentityId} onChange={(event) => setForm((current) => ({ ...current, senderIdentityId: event.target.value }))} className={baseInput}>
+                <option value="">À affecter pendant la revue</option>
+                {(identities.data?.items || []).filter((item) => item.status === "active" && item.canSend).map((item) => <option key={item.id} value={item.id}>{item.displayName || item.emailAddress} · {item.emailAddress}</option>)}
+              </select>
+            </label>
+            <label className="text-sm text-[#D8CFBF]">
+              Modèle approuvé
+              <select value={form.templateId} onChange={(event) => setForm((current) => ({ ...current, templateId: event.target.value }))} className={baseInput}>
+                <option value="">Meilleur modèle approuvé</option>
+                {(templates.data?.items || []).filter((item) => item.status === "approved").map((item) => <option key={item.id} value={item.id}>{item.name} · {item.version}</option>)}
+              </select>
+            </label>
+          </div>
+          <label className="text-sm text-[#D8CFBF]">
+            Sources publiques officielles, une URL HTTPS par ligne
+            <textarea required rows={5} value={form.sourceUrls} onChange={(event) => setForm((current) => ({ ...current, sourceUrls: event.target.value }))} placeholder={"https://organisation.example/a-propos\nhttps://organisation.example/actualites"} className={baseInput} />
+          </label>
+          {mutation.isError ? <p className="text-sm text-red-300">{String((mutation.error as Error)?.message || "Recherche impossible")}</p> : null}
+          {mutation.isSuccess ? <p className="text-sm text-emerald-300">Recherche enregistrée. Approbation #{mutation.data?.approval?.id || "non créée: sources à vérifier"}.</p> : null}
+          <button disabled={mutation.isPending} className="inline-flex w-fit items-center gap-2 rounded-md bg-[#C99A36] px-4 py-2 text-sm font-semibold text-[#080808] disabled:opacity-50">
+            <Search className="h-4 w-4" />
+            {mutation.isPending ? "Recherche en cours..." : "Lancer la recherche contrôlée"}
+          </button>
+        </form>
+      </section>
+
+      <section className="mt-4 overflow-hidden rounded-md border border-white/15 bg-white/5">
+        <div className="border-b border-white/10 px-4 py-3"><h3 className="font-semibold">Recherches enregistrées</h3></div>
+        <div className="overflow-x-auto">
+          <table className="min-w-full text-left text-sm">
+            <thead className="bg-black/30 text-xs uppercase text-[#B8AE9D]"><tr><th className="px-3 py-3">ID</th><th className="px-3 py-3">Statut</th><th className="px-3 py-3">Organisation</th><th className="px-3 py-3">Catégorie</th><th className="px-3 py-3">Pertinence</th><th className="px-3 py-3">Confiance</th><th className="px-3 py-3">Sources</th><th className="px-3 py-3">Approbation</th></tr></thead>
+            <tbody>{(history.data?.items || []).map((item) => {
+              const sources = Array.isArray(item.sourceRecordsJson) ? item.sourceRecordsJson : [];
+              return <tr key={item.id} className="border-t border-white/10 align-top"><td className="px-3 py-3 text-[#E4C46A]">{item.id}</td><td className="px-3 py-3"><CellValue value={item.researchStatus} /></td><td className="px-3 py-3">#{item.organizationId}</td><td className="px-3 py-3">{item.sponsorCategoryGuess || "—"}</td><td className="px-3 py-3">{item.relevanceScore}/100</td><td className="px-3 py-3">{item.confidenceScore}/100</td><td className="px-3 py-3"><span className="text-emerald-300">{sources.filter((source: any) => source.status === "fetched").length} vérifiée(s)</span>{sources.some((source: any) => source.status === "failed") ? <span className="ml-2 text-amber-200">{sources.filter((source: any) => source.status === "failed").length} échec(s)</span> : null}</td><td className="px-3 py-3">{item.approvalId ? `#${item.approvalId}` : "—"}</td></tr>;
+            })}</tbody>
+          </table>
+        </div>
+      </section>
+    </AdminShell>
+  );
 }
 
 export function AgoojyeAdminJobsPage() {

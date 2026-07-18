@@ -63,6 +63,12 @@ import {
   isAgoojiyeJobType,
   runAgoojiyeJobWorkerOnce,
 } from "../lib/agoojye/jobWorker";
+import { runAgoojiyePublicSourceResearch } from "../lib/agoojye/publicSourceResearch";
+import {
+  buildAgoojiyeResearchDraft,
+  buildAgoojiyeResearchSummary,
+  scoreAgoojiyeResearch,
+} from "../lib/agoojye/researchPolicy";
 
 const router = Router();
 const publicApi = Router();
@@ -2026,6 +2032,7 @@ const resources = {
       approvalId: Number(body.approvalId) || null,
       researchStatus: normalizeText(body.researchStatus) || "draft",
       sourceUrls: parseList(body.sourceUrls),
+      sourceRecordsJson: Array.isArray(body.sourceRecordsJson) ? body.sourceRecordsJson : [],
       summary: normalizeText(body.summary) || null,
       sponsorCategoryGuess: normalizeText(body.sponsorCategoryGuess) || null,
       relevanceScore: Number(body.relevanceScore) || 0,
@@ -2036,7 +2043,7 @@ const resources = {
       draftBody: normalizeText(body.draftBody) || null,
       guardrailNotes: normalizeText(body.guardrailNotes) || null,
     }),
-    fields: ["organizationId", "contactId", "opportunityId", "requestedByUserId", "approvalId", "researchStatus", "sourceUrls", "summary", "sponsorCategoryGuess", "relevanceScore", "confidenceScore", "recommendedTemplateId", "recommendedToolboxAssetIds", "draftSubject", "draftBody", "guardrailNotes"],
+    fields: ["organizationId", "contactId", "opportunityId", "requestedByUserId", "approvalId", "researchStatus", "sourceUrls", "sourceRecordsJson", "summary", "sponsorCategoryGuess", "relevanceScore", "confidenceScore", "recommendedTemplateId", "recommendedToolboxAssetIds", "draftSubject", "draftBody", "guardrailNotes"],
   },
   jobs: {
     table: agoojyeBackgroundJobs,
@@ -2379,6 +2386,218 @@ adminApi.post("/imports/confirm", pipelineImportUpload.single("file"), async (re
   }
 });
 
+adminApi.post("/agent-research/run", async (req: any, res) => {
+  const tenantId = Number(req.tenant.id);
+  const organizationId = Number(req.body?.organizationId || 0);
+  if (!Number.isFinite(organizationId) || organizationId <= 0) {
+    return res.status(400).json({ message: "Selectionnez une organisation CRM." });
+  }
+
+  try {
+    const [organization] = await db
+      .select()
+      .from(agoojyeCrmOrganizations)
+      .where(and(eq(agoojyeCrmOrganizations.tenantId, tenantId), eq(agoojyeCrmOrganizations.id, organizationId)))
+      .limit(1);
+    if (!organization) return res.status(404).json({ message: "Organisation introuvable pour ce tenant." });
+    if (organization.doNotContact) return res.status(409).json({ message: "Cette organisation est marquee ne pas contacter." });
+
+    const contactId = Number(req.body?.contactId || 0) || null;
+    const [contact] = contactId
+      ? await db
+          .select()
+          .from(agoojyeCrmContacts)
+          .where(and(eq(agoojyeCrmContacts.tenantId, tenantId), eq(agoojyeCrmContacts.id, contactId)))
+          .limit(1)
+      : [];
+    if (contactId && !contact) return res.status(404).json({ message: "Contact introuvable pour ce tenant." });
+    if (contact?.organizationId && contact.organizationId !== organizationId) {
+      return res.status(409).json({ message: "Le contact n'appartient pas a l'organisation selectionnee." });
+    }
+    if (contact?.doNotContact) return res.status(409).json({ message: "Ce contact est marque ne pas contacter." });
+
+    const opportunityId = Number(req.body?.opportunityId || 0) || null;
+    const [opportunity] = opportunityId
+      ? await db
+          .select()
+          .from(agoojyeSponsorOpportunities)
+          .where(and(eq(agoojyeSponsorOpportunities.tenantId, tenantId), eq(agoojyeSponsorOpportunities.id, opportunityId)))
+          .limit(1)
+      : [];
+    if (opportunityId && !opportunity) return res.status(404).json({ message: "Opportunite introuvable pour ce tenant." });
+    if (opportunity && opportunity.organizationId !== organizationId) {
+      return res.status(409).json({ message: "L'opportunite n'appartient pas a l'organisation selectionnee." });
+    }
+    if (opportunity?.doNotContact) return res.status(409).json({ message: "Cette opportunite est marquee ne pas contacter." });
+
+    const sourceUrls = Array.isArray(req.body?.sourceUrls) ? req.body.sourceUrls : parseList(req.body?.sourceUrls);
+    const sourceRecords = await runAgoojiyePublicSourceResearch(sourceUrls);
+    const score = scoreAgoojiyeResearch({
+      organizationName: organization.name,
+      industry: organization.industry,
+      strategicRelevance: organization.strategicRelevance,
+      sources: sourceRecords,
+    });
+    const summary = buildAgoojiyeResearchSummary({
+      organizationName: organization.name,
+      sources: sourceRecords,
+      category: score.sponsorCategoryGuess,
+      matchedThemes: score.matchedThemes,
+    });
+
+    const requestedTemplateId = Number(req.body?.templateId || 0) || null;
+    const templateWhere = requestedTemplateId
+      ? and(
+          eq(agoojyeEmailTemplates.tenantId, tenantId),
+          eq(agoojyeEmailTemplates.id, requestedTemplateId),
+          eq(agoojyeEmailTemplates.status, "approved"),
+        )
+      : and(eq(agoojyeEmailTemplates.tenantId, tenantId), eq(agoojyeEmailTemplates.status, "approved"));
+    const [template] = await db
+      .select()
+      .from(agoojyeEmailTemplates)
+      .where(templateWhere)
+      .orderBy(desc(agoojyeEmailTemplates.approvedAt), desc(agoojyeEmailTemplates.updatedAt))
+      .limit(1);
+    if (requestedTemplateId && !template) {
+      return res.status(409).json({ message: "Le modele demande n'existe pas ou n'est pas approuve." });
+    }
+
+    const senderIdentityId = Number(req.body?.senderIdentityId || template?.senderIdentityId || 0) || null;
+    if (senderIdentityId) {
+      const [sender] = await db
+        .select({ id: agoojyeEmailIdentities.id })
+        .from(agoojyeEmailIdentities)
+        .where(
+          and(
+            eq(agoojyeEmailIdentities.tenantId, tenantId),
+            eq(agoojyeEmailIdentities.id, senderIdentityId),
+            eq(agoojyeEmailIdentities.status, "active"),
+            eq(agoojyeEmailIdentities.canSend, true),
+          ),
+        )
+        .limit(1);
+      if (!sender) return res.status(409).json({ message: "Identite expediteur inactive ou non autorisee." });
+    }
+
+    const [category] = await db
+      .select({ id: agoojyeSponsorCategories.id })
+      .from(agoojyeSponsorCategories)
+      .where(
+        and(
+          eq(agoojyeSponsorCategories.tenantId, tenantId),
+          sql`lower(${agoojyeSponsorCategories.name}) = lower(${score.sponsorCategoryGuess})`,
+        ),
+      )
+      .limit(1);
+    const toolboxRows = await db
+      .select({ id: agoojyeToolboxAssets.id })
+      .from(agoojyeToolboxAssets)
+      .where(
+        category?.id
+          ? and(
+              eq(agoojyeToolboxAssets.tenantId, tenantId),
+              eq(agoojyeToolboxAssets.status, "approved"),
+              eq(agoojyeToolboxAssets.sponsorCategoryId, category.id),
+            )
+          : and(eq(agoojyeToolboxAssets.tenantId, tenantId), eq(agoojyeToolboxAssets.status, "approved")),
+      )
+      .orderBy(desc(agoojyeToolboxAssets.updatedAt))
+      .limit(5);
+
+    const draft = buildAgoojiyeResearchDraft({
+      organizationName: organization.name,
+      contactFirstName: contact?.firstName,
+      contactTitle: contact?.jobTitle,
+      category: score.sponsorCategoryGuess,
+      matchedThemes: score.matchedThemes,
+      templateSubject: template?.subject,
+      templateBody: template?.body,
+    });
+    const successfulSources = sourceRecords.filter((source) => source.status === "fetched");
+    const requestedByUserId = Number(req.body?.requestedByUserId || 0) || null;
+    const now = new Date();
+    const result = await db.transaction(async (tx) => {
+      let approval: any = null;
+      if (successfulSources.length) {
+        [approval] = await tx
+          .insert(agoojyeOutreachApprovals)
+          .values({
+            tenantId,
+            opportunityId,
+            contactId,
+            templateId: template?.id || null,
+            requesterUserId: requestedByUserId,
+            reviewerUserId: null,
+            senderIdentityId,
+            subject: draft.subject,
+            body: draft.body,
+            status: "awaiting_approval",
+            scheduledAt: null,
+            approvedAt: null,
+            rejectedAt: null,
+            sentAt: null,
+            decisionNotes: "Brouillon cree par le workflow de recherche publique. Verification humaine obligatoire.",
+            agentResearchJson: {
+              organizationId,
+              sourceRecords,
+              scoreBreakdown: score.breakdown,
+              automatedAssistance: true,
+            },
+            createdAt: now,
+            updatedAt: now,
+          })
+          .returning();
+      }
+
+      const [research] = await tx
+        .insert(agoojyeAgentResearchRecords)
+        .values({
+          tenantId,
+          organizationId,
+          contactId,
+          opportunityId,
+          requestedByUserId,
+          approvalId: approval?.id || null,
+          researchStatus: successfulSources.length ? "ready_for_review" : "needs_verification",
+          sourceUrls: sourceRecords.map((source) => source.url),
+          sourceRecordsJson: sourceRecords,
+          summary,
+          sponsorCategoryGuess: score.sponsorCategoryGuess,
+          relevanceScore: score.relevanceScore,
+          confidenceScore: score.confidenceScore,
+          recommendedTemplateId: template?.id || null,
+          recommendedToolboxAssetIds: toolboxRows.map((asset) => asset.id),
+          draftSubject: draft.subject,
+          draftBody: draft.body,
+          guardrailNotes: "Sources publiques uniquement. Score explicable. Aucune relation, intention ou specification technique inventee. Envoi interdit sans approbation humaine.",
+          createdAt: now,
+          updatedAt: now,
+        })
+        .returning();
+      return { research, approval };
+    });
+
+    await audit(tenantId, {
+      actor: actor(req),
+      action: "agent_public_research_completed",
+      entityType: "agent_research",
+      entityId: result.research.id,
+      metadata: {
+        organizationId,
+        approvalId: result.approval?.id || null,
+        successfulSources: successfulSources.length,
+        failedSources: sourceRecords.length - successfulSources.length,
+        relevanceScore: score.relevanceScore,
+        confidenceScore: score.confidenceScore,
+      },
+    });
+    return res.status(201).json({ ok: true, item: result.research, approval: result.approval, scoreBreakdown: score.breakdown });
+  } catch (error: any) {
+    return res.status(400).json({ message: normalizeText(error?.message || error || "Recherche impossible").slice(0, 1_000) });
+  }
+});
+
 adminApi.post("/approvals/:id/send", async (req: any, res) => {
   const tenantId = Number(req.tenant.id);
   const id = Number(req.params.id);
@@ -2473,6 +2692,9 @@ adminApi.post("/:resource", async (req: any, res) => {
     if (req.params.resource === "imports") {
       return res.status(405).json({ message: "Utilisez la previsualisation CSV/XLSX puis la confirmation securisee de l'import." });
     }
+    if (req.params.resource === "agent-research") {
+      return res.status(405).json({ message: "Utilisez le workflow de recherche publique controle." });
+    }
     if (req.params.resource === "email-settings" && hasForbiddenAgoojiyeSmtpSecret(req.body)) {
       return res.status(400).json({
         message: "Les mots de passe SMTP ne sont jamais acceptes par cette API. Configurez les secrets dans l'environnement serveur.",
@@ -2559,6 +2781,13 @@ adminApi.patch("/:resource/:id", async (req: any, res) => {
 
     const table: any = resource.table;
     let patchBody = { ...(req.body || {}) };
+    if (req.params.resource === "agent-research") {
+      const status = normalizeText(patchBody.researchStatus);
+      if (!["needs_verification", "ready_for_review", "approved", "rejected", "archived"].includes(status)) {
+        return res.status(400).json({ message: "Seul un statut de revue valide peut etre modifie." });
+      }
+      patchBody = { researchStatus: status };
+    }
     if (req.params.resource === "approvals") {
       const [current] = await db
         .select()

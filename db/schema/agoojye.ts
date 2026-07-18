@@ -702,6 +702,7 @@ export const agoojyeAgentResearchRecords = pgTable(
     approvalId: integer("approval_id").references(() => agoojyeOutreachApprovals.id, { onDelete: "set null" }),
     researchStatus: text("research_status").notNull().default("draft"),
     sourceUrls: jsonb("source_urls").$type<string[]>().notNull().default([]),
+    sourceRecordsJson: jsonb("source_records_json").$type<Array<Record<string, unknown>>>().notNull().default([]),
     summary: text("summary"),
     sponsorCategoryGuess: text("sponsor_category_guess"),
     relevanceScore: integer("relevance_score").notNull().default(0),

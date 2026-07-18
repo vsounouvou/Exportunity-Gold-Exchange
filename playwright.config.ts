@@ -14,6 +14,7 @@ const seedAdminPassword =
 const shouldStartServer = !process.env.E2E_BASE_URL;
 const webServerCommand =
   process.env.E2E_WEB_SERVER_COMMAND || "npm run dev";
+const chromiumChannel = process.env.E2E_CHROME_CHANNEL?.trim();
 
 export default defineConfig({
   testDir: "tests/e2e",
@@ -23,7 +24,10 @@ export default defineConfig({
     timeout: 15000,
   },
   projects: [
-    { name: "chromium", use: { browserName: "chromium" } },
+    {
+      name: "chromium",
+      use: { browserName: "chromium", ...(chromiumChannel ? { channel: chromiumChannel } : {}) },
+    },
     { name: "webkit", use: { browserName: "webkit" } },
   ],
   use: {

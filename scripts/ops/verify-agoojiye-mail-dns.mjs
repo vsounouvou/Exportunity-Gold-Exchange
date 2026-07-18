@@ -16,6 +16,7 @@ const server = serverArg ? serverArg.slice("--server=".length).trim() : "1.1.1.1
 
 const resolver = new Resolver();
 resolver.setServers([server]);
+let usedDohFallback = false;
 
 function normalizeHost(value) {
   return String(value || "")
@@ -28,21 +29,70 @@ function flattenTxt(records) {
   return (records || []).map((chunks) => chunks.join(""));
 }
 
-async function query(label, fn) {
+function decodeDohTxt(value) {
+  const raw = String(value || "").trim();
+  const chunks = raw.match(/"(?:[^"\\]|\\.)*"/g);
+  if (!chunks?.length) return raw;
+  return chunks.map((chunk) => JSON.parse(chunk)).join("");
+}
+
+async function resolveDoh(name, type) {
+  const url = new URL("https://dns.google/resolve");
+  url.searchParams.set("name", name);
+  url.searchParams.set("type", type);
+  const response = await fetch(url, { headers: { accept: "application/dns-json" } });
+  if (!response.ok) throw new Error(`DOH_HTTP_${response.status}`);
+
+  const payload = await response.json();
+  if (payload.Status !== 0) {
+    const error = new Error(payload.Status === 3 ? "ENOTFOUND" : `DOH_STATUS_${payload.Status}`);
+    error.code = payload.Status === 3 ? "ENOTFOUND" : `DOH_STATUS_${payload.Status}`;
+    throw error;
+  }
+
+  const answers = Array.isArray(payload.Answer) ? payload.Answer : [];
+  if (type === "MX") {
+    return answers.map((answer) => {
+      const [priority, ...exchange] = String(answer.data || "").trim().split(/\s+/);
+      return { priority: Number(priority), exchange: exchange.join(" ") };
+    });
+  }
+  if (type === "A") return answers.map((answer) => String(answer.data || "").trim()).filter(Boolean);
+  if (type === "TXT") return answers.map((answer) => [decodeDohTxt(answer.data)]);
+  return answers;
+}
+
+async function query(label, name, type, fn) {
   try {
     return { label, ok: true, value: await fn(), error: null };
   } catch (error) {
-    return { label, ok: false, value: null, error: error?.code || error?.message || String(error) };
+    const code = error?.code || error?.message || String(error);
+    if (["ETIMEOUT", "EAI_AGAIN", "ECONNREFUSED", "SERVFAIL"].includes(code)) {
+      try {
+        usedDohFallback = true;
+        return { label, ok: true, value: await resolveDoh(name, type), error: null };
+      } catch (fallbackError) {
+        return {
+          label,
+          ok: false,
+          value: null,
+          error: fallbackError?.code || fallbackError?.message || String(fallbackError),
+        };
+      }
+    }
+    return { label, ok: false, value: null, error: code };
   }
 }
 
 const [mxResult, mailAResult, rootTxtResult, dmarcResult, dkimResult] = await Promise.all([
-  query("mx", () => resolver.resolveMx(DOMAIN)),
-  query("mailA", () => resolver.resolve4(`mail.${DOMAIN}`)),
-  query("rootTxt", () => resolver.resolveTxt(DOMAIN)),
-  query("dmarc", () => resolver.resolveTxt(`_dmarc.${DOMAIN}`)),
-  query("dkim", () => resolver.resolveTxt(`mail._domainkey.${DOMAIN}`)),
+  query("mx", DOMAIN, "MX", () => resolver.resolveMx(DOMAIN)),
+  query("mailA", `mail.${DOMAIN}`, "A", () => resolver.resolve4(`mail.${DOMAIN}`)),
+  query("rootTxt", DOMAIN, "TXT", () => resolver.resolveTxt(DOMAIN)),
+  query("dmarc", `_dmarc.${DOMAIN}`, "TXT", () => resolver.resolveTxt(`_dmarc.${DOMAIN}`)),
+  query("dkim", `mail._domainkey.${DOMAIN}`, "TXT", () => resolver.resolveTxt(`mail._domainkey.${DOMAIN}`)),
 ]);
+
+const resolverLabel = usedDohFallback ? `${server} + dns.google DoH fallback` : server;
 
 const mx = mxResult.ok
   ? mxResult.value.map((record) => ({
@@ -90,9 +140,9 @@ const checks = [
 const ok = checks.every((check) => check.ok);
 
 if (json) {
-  console.log(JSON.stringify({ ok, domain: DOMAIN, resolver: server, checks }, null, 2));
+  console.log(JSON.stringify({ ok, domain: DOMAIN, resolver: resolverLabel, checks }, null, 2));
 } else {
-  console.log(`AGOOJIYE mail DNS verification for ${DOMAIN} via ${server}`);
+  console.log(`AGOOJIYE mail DNS verification for ${DOMAIN} via ${resolverLabel}`);
   for (const check of checks) {
     console.log(`${check.ok ? "PASS" : "FAIL"} ${check.name}`);
     if (!check.ok) {

@@ -149,6 +149,14 @@ Run Playwright:
 npm run test:e2e
 ```
 
+To audit the deployed AGOOJIYE tenant with the locally installed Google Chrome instead of Playwright's bundled Chromium:
+
+```powershell
+$env:E2E_BASE_URL = "https://agoojiye.com"
+$env:E2E_CHROME_CHANNEL = "chrome"
+npx playwright test --project=chromium tests/e2e/agoojye-mobility.spec.ts
+```
+
 Critical coverage includes trip search, seat capacity, payment transitions, opaque QR payloads, duplicate boarding prevention, and database/transaction guards against double booking.
 
 ## Public Routes
@@ -237,6 +245,7 @@ Adapters should receive a booking/ticket ID, load approved data server-side, rec
 6. Deploy the generated client/server release with the existing VPS procedure.
 7. Verify `/api/agoojye/mobility/bootstrap`, the complete demo booking journey, ticket QR rendering, duplicate validation, commercial form persistence, admin authorization, `robots.txt`, and `sitemap.xml`.
 8. Keep demo payments enabled until a real provider and signed webhooks are verified.
+9. Complete the forward and reverse mail-DNS cutover in `docs/AGOOJIYE_EMAIL_DNS_AND_MAILBOXES.md`, then run `npm run verify:agoojye:mail-dns`.
 
 ## Known Production Requirements
 

@@ -1,19 +1,24 @@
 # AGOOJIYE email DNS and mailbox handoff
 
-Date: 2026-06-29
+Date: 2026-07-18
 
 Brand spelling note: the final public spelling is `AGOOJIYE`. The legacy technical key `agoojye` remains in route names, database tables, and private credential-file paths, while public DNS and email use `agoojiye.com`.
 
 ## Latest verified live state
 
-Verified on 2026-06-29 after AGOOJIYE production deployment:
+Verified on 2026-07-18 after AGOOJIYE production deployment:
 
-- `https://agoojiye.com` returns HTTP 200 with the title `AGOOJIYE - Mobilité électrique née au Bénin`.
+- Production runs commit `08ac0587c458` with build ID `20260718022508`; `/api/system/version` reports no client/server build mismatch.
+- `https://agoojiye.com` returns HTTP 200.
 - `https://agoojiye.com/mail/password` returns HTTP 200 with the title `Mot de passe email - AGOOJIYE`.
 - `https://agoojiye.com/admin/agoojye/email` returns HTTP 200 for the protected app shell.
+- `https://agoojiye.com/admin/agoojye/inbox` returns HTTP 200 for the protected unified-inbox shell.
 - `https://agoojiye.com/api/agoojye/public/bootstrap` returns HTTP 200.
 - All five initial human mailboxes authenticate successfully over IMAPS and SMTP submission using the private credential file.
 - The first-login password-change route was verified end-to-end on 2026-06-29: one mailbox was changed to a temporary password through `https://agoojiye.com/mail/password`, authenticated with the temporary password, then reverted to the original initial password and re-verified.
+- The five human mailbox profiles and SMTP identities are persisted for tenant `3162`, linked to the five physical `email_accounts`, and reference environment-secret names instead of storing passwords in the database.
+- A live message sent to `sponsors@agoojiye.com` was delivered to all five Maildir inboxes, indexed as five source messages, and deduplicated by RFC `Message-ID` into one AGOOJIYE CRM thread/message. The completed index cycle reported `warnings=0`.
+- The Postfix alias hash was rebuilt on 2026-07-18 because its generated `.db` file was older than the alias source. All 15 shared aliases now resolve to the five recipients.
 - Public DNS is still not cut over for mail; the OVH DNS edits below remain required before external inbound mail will arrive at this self-hosted stack.
 
 ## Provisioned mailboxes
@@ -68,20 +73,33 @@ The app database has matching AGOOJIYE tenant records:
 - `email_accounts`: 5 active accounts for tenant `3162`
 - `email_aliases`: 75 alias routes for tenant `3162`
 - `agoojye_email_identities`: 20 active identities for tenant `3162`
+- `agent_mailboxes`: 5 enabled human inbox profiles for tenant `3162`
+- `agent_email_identities`: 5 enabled exact-address SMTP identities for tenant `3162`
+
+The production mail indexer reads each human Maildir every five minutes. It mirrors indexed inbound and outbound messages into `/admin/agoojye/inbox`, deduplicates alias fan-out copies by RFC `Message-ID`, records replies, and applies opt-out/bounce suppression rules. A protected manual synchronization endpoint is also available at `POST /api/admin/agoojye/mail/sync`.
+
+When shared aliases are changed directly in docker-mailserver, confirm that the generated Postfix map is current:
+
+```bash
+docker exec mailserver postmap /tmp/docker-mailserver/postfix-virtual.cf
+docker exec mailserver postfix reload
+docker exec mailserver postmap -q sponsors@agoojiye.com hash:/tmp/docker-mailserver/postfix-virtual.cf
+```
 
 ## Current public DNS state
 
-As of the latest verification on 2026-06-29, public DNS is not yet cut over for this self-hosted mail stack:
+As of the independent DNS-over-HTTPS verification on 2026-07-18, public DNS is not yet cut over for this self-hosted mail stack:
 
 - `agoojiye.com` MX still points to OVH: `mx1.mail.ovh.net`, `mx2.mail.ovh.net`, `mx3.mail.ovh.net`
 - `mail.agoojiye.com` has no public `A` record
 - root SPF is still `v=spf1 include:mx.ovh.com -all`
 - `_dmarc.agoojiye.com` does not exist
 - `mail._domainkey.agoojiye.com` does not exist
+- reverse DNS for `51.254.143.30` is still `vps-89f83557.vps.ovh.net`, not `mail.agoojiye.com`
 
 The mailboxes can log in now, but external inbound mail for `@agoojiye.com` will keep going to OVH until the MX records below are changed.
 
-No OVH API credentials are present in the local environment. Chrome/OVH Manager automation was also unavailable in this Codex session because the Chrome plugin failed before browser control could be established. Complete the DNS edits manually in OVH Manager or provide working OVH API credentials/plugin access for an automated cutover.
+No OVH API credentials are present in the local environment. Chrome control is available, but OVH Manager opened on a fresh login page with no authenticated session. An OVH login tab was left open for the account owner. After the account owner signs in, the DNS edits can be entered and submitted in that authenticated session.
 
 After editing OVH DNS, verify the public records with:
 
@@ -155,6 +173,29 @@ v=DMARC1; p=none; rua=mailto:dmarc@agoojiye.com; adkim=s; aspf=s
 ```
 
 DMARC starts in monitoring mode. Move from `p=none` to `p=quarantine` and then `p=reject` only after legitimate senders are verified.
+
+### Set reverse DNS
+
+Reverse DNS is configured on the OVH VPS/IP resource, not in the domain DNS zone. Set:
+
+```text
+IP: 51.254.143.30
+PTR: mail.agoojiye.com
+```
+
+Create the `mail` A record first. OVH may refuse the PTR until `mail.agoojiye.com` resolves forward to `51.254.143.30`.
+
+### OVH Manager sequence
+
+1. Open `Web Cloud -> Domain names -> agoojiye.com -> DNS zone`.
+2. Add `mail` A, DMARC and DKIM.
+3. Replace the root SPF TXT record; keep only one SPF record at the root.
+4. Replace the three OVH MX records with the single priority-10 MX record.
+5. Save the zone changes and wait for propagation.
+6. Open the VPS/IP reverse-DNS control and set the PTR shown above.
+7. Run `npm run verify:agoojye:mail-dns` until all five forward-DNS checks pass, then query the PTR separately.
+
+Changing MX moves external inbound delivery away from OVH mail. Confirm that any mail that must be retained in the old OVH mailboxes has been exported before submitting the MX deletion.
 
 ## Optional branded mail access
 

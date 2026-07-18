@@ -31,14 +31,18 @@ Current verified runtime commit: see `/api/system/version` after each deploy
 NPM certificate: Let's Encrypt attached in Nginx Proxy Manager
 ```
 
-Latest verified runtime on 2026-06-29:
+Latest verified runtime on 2026-07-18:
 
 ```txt
 Source branch: codex/agoojye-launch-platform
 Live version endpoint: https://agoojiye.com/api/system/version
-Homepage title: AGOOJIYE - Mobilité électrique née au Bénin
+Live commit: 08ac0587c458
+Build ID: 20260718022508
+Client/server build mismatch: false
 Password page title: Mot de passe email - AGOOJIYE
 Mailbox auth: five initial AGOOJIYE accounts verified over IMAPS and SMTP submission; password-change flow verified and reverted
+Unified inbox: five Maildir deliveries index to five source messages and deduplicate to one CRM message/thread
+Shared aliases: all 15 resolve to the five human mailboxes after Postfix map rebuild
 Mail DNS: not yet cut over; OVH MX/SPF still active
 ```
 
@@ -195,6 +199,7 @@ TXT @: v=spf1 include:mx.ovh.com -all
 mail.agoojiye.com A: missing
 _dmarc.agoojiye.com TXT: missing
 mail._domainkey.agoojiye.com TXT: missing
+PTR 51.254.143.30: vps-89f83557.vps.ovh.net. (must become mail.agoojiye.com.)
 ```
 
 After applying the OVH edits, run the repository verifier:
@@ -204,6 +209,8 @@ npm run verify:agoojye:mail-dns
 ```
 
 It checks MX, `mail.agoojiye.com` A, SPF, DMARC, and DKIM against the expected self-hosted mail records.
+
+If direct queries to `1.1.1.1` time out, verify the same records through another public resolver before concluding that a record is absent. The 2026-07-18 audit used Google DNS-over-HTTPS as the independent resolver.
 
 Request OVH reverse DNS/PTR for the VPS:
 

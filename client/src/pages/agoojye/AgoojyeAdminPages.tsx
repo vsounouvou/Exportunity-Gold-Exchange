@@ -1,6 +1,7 @@
 import { useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  AlertTriangle,
   BarChart3,
   CalendarDays,
   CheckCircle2,
@@ -14,6 +15,7 @@ import {
   Search,
   Settings,
   ShieldCheck,
+  Upload,
   Users,
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
@@ -623,8 +625,8 @@ const resourceConfig: Record<Exclude<SectionKey, "overview">, { endpoint: string
   settings: {
     endpoint: "email-settings",
     title: "Réglages email tenant",
-    description: "Configurer le provider SMTP sans afficher le secret après sauvegarde. Préférer SMTP_PASSWORD en variable d'environnement.",
-    columns: ["providerName", "status", "smtpHost", "smtpPort", "smtpUsername", "fromEmail", "replyToEmail", "smtpPasswordEncrypted"],
+    description: "Configurer les paramètres non sensibles du provider. Les cinq secrets SMTP restent exclusivement dans l'environnement serveur.",
+    columns: ["providerName", "status", "smtpHost", "smtpPort", "smtpUsername", "fromEmail", "replyToEmail", "credentialsMode"],
     fields: [
       { key: "providerName", label: "Provider", kind: "select", options: ["manual", "smtp", "google_workspace", "zoho", "proton"] },
       { key: "status", label: "Statut", kind: "select", options: ["not_configured", "configured", "testing", "active", "disabled"] },
@@ -812,7 +814,7 @@ const adminLabelMap: Record<string, string> = {
   smtpUsername: "SMTP username",
   fromEmail: "From email",
   replyToEmail: "Reply-to email",
-  smtpPasswordEncrypted: "Secret SMTP",
+  credentialsMode: "Gestion des secrets",
   actor: "Acteur",
   action: "Action",
   entityType: "Entité",
@@ -937,6 +939,8 @@ const adminLabelMap: Record<string, string> = {
   meeting: "reunion",
   public_form: "formulaire public",
   awaiting_approval: "en validation",
+  sending: "en cours d'envoi",
+  failed: "échec",
   scheduled: "programme",
   sent: "envoye",
   cancelled: "annule",
@@ -950,6 +954,11 @@ const adminLabelMap: Record<string, string> = {
   link: "lien",
   checklist: "checklist",
   disabled: "désactivé",
+  environment: "environnement serveur",
+  organizations: "organisations",
+  contacts: "contacts",
+  opportunities: "opportunités",
+  toolbox: "Sponsor Toolbox",
 };
 
 function adminLabel(value: string) {
@@ -1112,6 +1121,16 @@ function ResourcePage({ section }: { section: Exclude<SectionKey, "overview"> })
     },
   });
 
+  const commandMutation = useMutation({
+    mutationFn: ({ id, command }: { id: number; command: string }) =>
+      apiRequest(`/api/admin/agoojye/${config.endpoint}/${id}/${command}`, "POST", {}),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/admin/agoojye/${config.endpoint}`] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/agoojye/dashboard"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/agoojye/inbox-threads"] });
+    },
+  });
+
   function submit(event: FormEvent) {
     event.preventDefault();
     createMutation.mutate();
@@ -1138,6 +1157,7 @@ function ResourcePage({ section }: { section: Exclude<SectionKey, "overview"> })
             </div>
             {createMutation.isError ? <p className="text-sm text-red-300">{String((createMutation.error as Error)?.message || "Erreur")}</p> : null}
             {createMutation.isSuccess ? <p className="text-sm text-[#E4C46A]">Entrée créée.</p> : null}
+            {commandMutation.isError ? <p className="text-sm text-red-300">{String((commandMutation.error as Error)?.message || "Action impossible")}</p> : null}
             <button disabled={createMutation.isPending} className="w-fit rounded-md bg-[#C99A36] px-4 py-2 text-sm font-semibold text-[#080808]">
               {createMutation.isPending ? "Enregistrement..." : "Créer"}
             </button>
@@ -1167,7 +1187,13 @@ function ResourcePage({ section }: { section: Exclude<SectionKey, "overview"> })
                     </td>
                   ))}
                   <td className="px-3 py-3">
-                    <QuickActions section={section} item={item} onPatch={(patch) => patchMutation.mutate({ id: Number(item.id), patch })} pending={patchMutation.isPending} />
+                    <QuickActions
+                      section={section}
+                      item={item}
+                      onPatch={(patch) => patchMutation.mutate({ id: Number(item.id), patch })}
+                      onCommand={(command) => commandMutation.mutate({ id: Number(item.id), command })}
+                      pending={patchMutation.isPending || commandMutation.isPending}
+                    />
                   </td>
                 </tr>
               ))}
@@ -1237,8 +1263,20 @@ function CellValue({ value }: { value: unknown }) {
   return <span className="break-words">{adminLabel(raw)}</span>;
 }
 
-function QuickActions({ section, item, onPatch, pending }: { section: SectionKey; item: any; onPatch: (patch: Record<string, unknown>) => void; pending?: boolean }) {
-  const actions = useMemo(() => {
+function QuickActions({
+  section,
+  item,
+  onPatch,
+  onCommand,
+  pending,
+}: {
+  section: SectionKey;
+  item: any;
+  onPatch: (patch: Record<string, unknown>) => void;
+  onCommand: (command: string) => void;
+  pending?: boolean;
+}) {
+  const actions = useMemo<Array<{ label: string; patch?: Record<string, unknown>; command?: string }>>(() => {
     if (section === "users") {
       return [
         { label: item.confirmedRole ? "Retirer confirmation" : "Confirmer rôle", patch: { confirmedRole: !item.confirmedRole, status: item.status === "Invited" ? "Active" : item.status } },
@@ -1295,11 +1333,13 @@ function QuickActions({ section, item, onPatch, pending }: { section: SectionKey
       ];
     }
     if (section === "approvals") {
-      return [
-        { label: "Approuver", patch: { status: "approved", approvedAt: new Date().toISOString() } },
-        { label: "Rejeter", patch: { status: "rejected", rejectedAt: new Date().toISOString() } },
-        { label: "Envoyé", patch: { status: "sent", sentAt: new Date().toISOString() } },
-      ];
+      const actions: Array<{ label: string; patch?: Record<string, unknown>; command?: string }> = [];
+      if (["awaiting_approval", "rejected", "failed"].includes(item.status)) actions.push({ label: "Approuver", patch: { status: "approved" } });
+      if (!["sent", "sending", "cancelled"].includes(item.status)) actions.push({ label: "Rejeter", patch: { status: "rejected" } });
+      if (["approved", "scheduled", "failed"].includes(item.status)) {
+        actions.push({ label: item.status === "failed" ? "Réessayer l'envoi" : "Envoyer maintenant", command: "send" });
+      }
+      return actions;
     }
     if (section === "suppression") {
       return [
@@ -1329,11 +1369,7 @@ function QuickActions({ section, item, onPatch, pending }: { section: SectionKey
       ];
     }
     if (section === "imports") {
-      return [
-        { label: "Valider", patch: { status: "validated" } },
-        { label: "Confirmer", patch: { status: "confirmed", confirmedAt: new Date().toISOString() } },
-        { label: "Terminer", patch: { status: "completed", completedAt: new Date().toISOString() } },
-      ];
+      return [];
     }
     if (section === "agentResearch") {
       return [
@@ -1343,11 +1379,7 @@ function QuickActions({ section, item, onPatch, pending }: { section: SectionKey
       ];
     }
     if (section === "jobs") {
-      return [
-        { label: "Démarrer", patch: { status: "running", startedAt: new Date().toISOString() } },
-        { label: "Terminer", patch: { status: "completed", completedAt: new Date().toISOString() } },
-        { label: "Échec", patch: { status: "failed" } },
-      ];
+      return [];
     }
     if (section === "partners") {
       return [
@@ -1374,7 +1406,13 @@ function QuickActions({ section, item, onPatch, pending }: { section: SectionKey
   return (
     <div className="flex flex-wrap gap-1">
       {actions.map((action) => (
-        <button key={action.label} disabled={pending} onClick={() => onPatch(action.patch)} className="rounded border border-[#C99A36]/35 px-2 py-1 text-xs text-[#E4C46A] hover:bg-[#C99A36]/10">
+        <button
+          key={action.label}
+          type="button"
+          disabled={pending}
+          onClick={() => (action.command ? onCommand(action.command) : action.patch ? onPatch(action.patch) : undefined)}
+          className="rounded border border-[#C99A36]/35 px-2 py-1 text-xs text-[#E4C46A] hover:bg-[#C99A36]/10 disabled:opacity-50"
+        >
           {action.label}
         </button>
       ))}
@@ -1395,7 +1433,7 @@ function SettingsNotice() {
   return (
     <div className="mt-4 rounded-md border border-[#C99A36]/25 bg-[#080808] p-4 text-sm text-[#D8CFBF]">
       <p className="font-semibold text-[#E4C46A]">Secrets SMTP</p>
-      <p className="mt-2">Utiliser de préférence SMTP_PASSWORD dans l'environnement serveur. L'interface ne réaffiche pas le secret après sauvegarde.</p>
+      <p className="mt-2">Les mots de passe ne sont ni acceptés par cette interface ni stockés dans la base. Les références AGOOJIYE_MAILBOX_*_PASSWORD sont résolues uniquement côté serveur.</p>
     </div>
   );
 }
@@ -1545,8 +1583,200 @@ export function AgoojyeAdminSequencesPage() {
   return <ResourcePage section="sequences" />;
 }
 
+type PipelineImportPreview = {
+  fileName: string;
+  sourceType: "csv" | "xlsx";
+  target: string;
+  rowCount: number;
+  validCount: number;
+  invalidCount: number;
+  duplicateCount: number;
+  headers: string[];
+  fields: Array<{ key: string; label: string; required?: boolean }>;
+  mapping: Record<string, string>;
+  warnings: Array<{ row: number; message: string }>;
+  existingDuplicateRows: number[];
+  preview: Array<{ sourceRow: number; data: Record<string, string> }>;
+};
+
 export function AgoojyeAdminImportsPage() {
-  return <ResourcePage section="imports" />;
+  const queryClient = useQueryClient();
+  const history = useResource("imports");
+  const [file, setFile] = useState<File | null>(null);
+  const [target, setTarget] = useState("organizations");
+  const [mapping, setMapping] = useState<Record<string, string>>({});
+  const [preview, setPreview] = useState<PipelineImportPreview | null>(null);
+  const [mappingDirty, setMappingDirty] = useState(false);
+  const [fileInputKey, setFileInputKey] = useState(0);
+
+  const previewMutation = useMutation({
+    mutationFn: async () => {
+      if (!file) throw new Error("Sélectionnez un fichier CSV ou XLSX.");
+      const payload = new FormData();
+      payload.set("file", file);
+      payload.set("target", target);
+      if (Object.keys(mapping).length) payload.set("mapping", JSON.stringify(mapping));
+      return apiRequest("/api/admin/agoojye/imports/preview", { method: "POST", body: payload }) as Promise<PipelineImportPreview>;
+    },
+    onSuccess: (data) => {
+      setPreview(data);
+      setMapping(data.mapping);
+      setMappingDirty(false);
+    },
+  });
+
+  const confirmMutation = useMutation({
+    mutationFn: async () => {
+      if (!file || !preview || mappingDirty) throw new Error("Actualisez la prévisualisation avant de confirmer.");
+      const payload = new FormData();
+      payload.set("file", file);
+      payload.set("target", target);
+      payload.set("mapping", JSON.stringify(mapping));
+      return apiRequest("/api/admin/agoojye/imports/confirm", { method: "POST", body: payload });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/agoojye/imports"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/agoojye/dashboard"] });
+      setPreview(null);
+      setMapping({});
+      setFile(null);
+      setFileInputKey((value) => value + 1);
+    },
+  });
+
+  function changeMapping(field: string, column: string) {
+    setMapping((current) => ({ ...current, [field]: column }));
+    setMappingDirty(true);
+  }
+
+  return (
+    <AdminShell section="imports">
+      <section className="rounded-md border border-white/15 bg-white/5 p-4">
+        <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+          <div>
+            <h2 className="text-xl font-semibold">Importer le pipeline</h2>
+            <p className="mt-1 max-w-3xl text-sm text-[#B8AE9D]">Prévisualisez un CSV ou XLSX, contrôlez le mapping et les doublons, puis confirmez l'insertion. Aucune donnée existante n'est écrasée.</p>
+          </div>
+          <span className="rounded border border-[#C99A36]/35 px-2 py-1 text-xs text-[#E4C46A]">5 Mo / 2 000 lignes max.</span>
+        </div>
+
+        <div className="mt-4 grid gap-3 border-t border-white/10 pt-4 md:grid-cols-[220px_1fr_auto] md:items-end">
+          <label className="text-sm text-[#D8CFBF]">
+            Destination
+            <select
+              value={target}
+              onChange={(event) => {
+                setTarget(event.target.value);
+                setPreview(null);
+                setMapping({});
+              }}
+              className="mt-1 w-full rounded-md border border-white/15 bg-[#080808] px-3 py-2 text-sm outline-none focus:border-[#C99A36]"
+            >
+              <option value="organizations">Organisations</option>
+              <option value="contacts">Contacts</option>
+              <option value="opportunities">Opportunités</option>
+              <option value="toolbox">Sponsor Toolbox</option>
+            </select>
+          </label>
+          <label className="text-sm text-[#D8CFBF]">
+            Fichier
+            <input
+              key={fileInputKey}
+              type="file"
+              accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+              onChange={(event) => {
+                setFile(event.target.files?.[0] || null);
+                setPreview(null);
+                setMapping({});
+              }}
+              className="mt-1 block min-h-10 w-full rounded-md border border-white/15 bg-[#080808] px-3 py-2 text-sm file:mr-3 file:rounded file:border-0 file:bg-[#C99A36] file:px-3 file:py-1 file:font-semibold file:text-[#080808]"
+            />
+          </label>
+          <button
+            type="button"
+            disabled={!file || previewMutation.isPending}
+            onClick={() => previewMutation.mutate()}
+            className="inline-flex min-h-10 items-center justify-center gap-2 rounded-md bg-[#C99A36] px-4 py-2 text-sm font-semibold text-[#080808] disabled:opacity-50"
+          >
+            <Upload className="h-4 w-4" />
+            {previewMutation.isPending ? "Analyse..." : preview && mappingDirty ? "Actualiser" : "Prévisualiser"}
+          </button>
+        </div>
+        {previewMutation.isError ? <p className="mt-3 text-sm text-red-300">{String((previewMutation.error as Error)?.message || "Prévisualisation impossible")}</p> : null}
+      </section>
+
+      {preview ? (
+        <section className="mt-4 rounded-md border border-white/15 bg-white/5 p-4">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {[
+              ["Lignes", preview.rowCount],
+              ["Valides", preview.validCount],
+              ["Invalides", preview.invalidCount],
+              ["Doublons", preview.duplicateCount],
+            ].map(([label, value]) => (
+              <div key={String(label)} className="border-l-2 border-[#C99A36] bg-black/20 px-3 py-2">
+                <p className="text-xs uppercase text-[#B8AE9D]">{label}</p>
+                <p className="mt-1 text-xl font-semibold text-[#E4C46A]">{value}</p>
+              </div>
+            ))}
+          </div>
+
+          <h3 className="mt-5 font-semibold">Correspondance des colonnes</h3>
+          <div className="mt-3 grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+            {preview.fields.map((field) => (
+              <label key={field.key} className="text-sm text-[#D8CFBF]">
+                {field.label}{field.required ? " *" : ""}
+                <select
+                  value={mapping[field.key] || ""}
+                  onChange={(event) => changeMapping(field.key, event.target.value)}
+                  className="mt-1 w-full rounded-md border border-white/15 bg-[#080808] px-3 py-2 text-sm outline-none focus:border-[#C99A36]"
+                >
+                  <option value="">Ignorer</option>
+                  {preview.headers.map((header) => <option key={header} value={header}>{header}</option>)}
+                </select>
+              </label>
+            ))}
+          </div>
+          {mappingDirty ? <p className="mt-3 text-sm text-amber-200">Le mapping a changé. Actualisez la prévisualisation avant l'import.</p> : null}
+
+          {preview.warnings.length || preview.existingDuplicateRows.length ? (
+            <div className="mt-4 rounded-md border border-amber-300/25 bg-amber-300/5 p-3 text-sm text-amber-100">
+              <p className="flex items-center gap-2 font-semibold"><AlertTriangle className="h-4 w-4" />Points à vérifier</p>
+              {preview.warnings.slice(0, 5).map((warning) => <p key={`${warning.row}-${warning.message}`} className="mt-1">Ligne {warning.row}: {warning.message}</p>)}
+              {preview.existingDuplicateRows.length ? <p className="mt-1">Déjà présents en base: lignes {preview.existingDuplicateRows.slice(0, 20).join(", ")}.</p> : null}
+            </div>
+          ) : null}
+
+          <div className="mt-4 overflow-x-auto border border-white/10">
+            <table className="min-w-full text-left text-xs">
+              <thead className="bg-black/30 text-[#B8AE9D]"><tr><th className="px-3 py-2">Ligne</th>{preview.fields.map((field) => <th key={field.key} className="px-3 py-2">{field.label}</th>)}</tr></thead>
+              <tbody>{preview.preview.map((row) => <tr key={row.sourceRow} className="border-t border-white/10"><td className="px-3 py-2 text-[#E4C46A]">{row.sourceRow}</td>{preview.fields.map((field) => <td key={field.key} className="max-w-[240px] px-3 py-2 text-[#D8CFBF]">{row.data[field.key] || "—"}</td>)}</tr>)}</tbody>
+            </table>
+          </div>
+
+          {confirmMutation.isError ? <p className="mt-3 text-sm text-red-300">{String((confirmMutation.error as Error)?.message || "Import impossible")}</p> : null}
+          <button
+            type="button"
+            disabled={mappingDirty || !preview.validCount || confirmMutation.isPending}
+            onClick={() => confirmMutation.mutate()}
+            className="mt-4 rounded-md bg-[#C99A36] px-4 py-2 text-sm font-semibold text-[#080808] disabled:opacity-50"
+          >
+            {confirmMutation.isPending ? "Import en cours..." : `Confirmer ${preview.validCount} ligne${preview.validCount > 1 ? "s" : ""}`}
+          </button>
+        </section>
+      ) : null}
+
+      <section className="mt-4 overflow-hidden rounded-md border border-white/15 bg-white/5">
+        <div className="border-b border-white/10 px-4 py-3"><h3 className="font-semibold">Historique des imports</h3></div>
+        <div className="overflow-x-auto">
+          <table className="min-w-full text-left text-sm">
+            <thead className="bg-black/30 text-xs uppercase text-[#B8AE9D]"><tr><th className="px-3 py-3">Fichier</th><th className="px-3 py-3">Cible</th><th className="px-3 py-3">Statut</th><th className="px-3 py-3">Lignes</th><th className="px-3 py-3">Importées</th><th className="px-3 py-3">Doublons</th><th className="px-3 py-3">Date</th></tr></thead>
+            <tbody>{(history.data?.items || []).map((item) => <tr key={item.id} className="border-t border-white/10"><td className="px-3 py-3">{item.fileName}</td><td className="px-3 py-3">{adminLabel(item.targetResource)}</td><td className="px-3 py-3"><CellValue value={item.status} /></td><td className="px-3 py-3">{item.rowCount}</td><td className="px-3 py-3 text-emerald-300">{item.importedCount}</td><td className="px-3 py-3">{item.duplicateCount}</td><td className="px-3 py-3"><CellValue value={item.completedAt || item.createdAt} /></td></tr>)}</tbody>
+          </table>
+        </div>
+      </section>
+    </AdminShell>
+  );
 }
 
 export function AgoojyeAdminAgentResearchPage() {

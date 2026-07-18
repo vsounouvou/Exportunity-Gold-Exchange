@@ -1,6 +1,7 @@
 import { Router } from "express";
 import dns from "node:dns/promises";
-import { and, asc, desc, eq, sql } from "drizzle-orm";
+import multer from "multer";
+import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 
 import { db } from "@db";
 import {
@@ -42,10 +43,33 @@ import {
 import { ensureTenantAdmin } from "./utils/auth";
 import { runMailIndexer } from "../lib/mail/indexer";
 import { ensureAgoojiyeHumanMailProfiles, syncAgoojiyeUnifiedInbox } from "../lib/agoojye/mailBridge";
+import {
+  hasForbiddenAgoojiyeSmtpSecret,
+  sanitizeAgoojiyeEmailSettingsRow,
+} from "../lib/agoojye/emailSettingsPolicy";
+import {
+  AGOOJIYE_IMPORT_FIELDS,
+  importDedupeKey,
+  inferAgoojiyeImportMapping,
+  isAgoojiyeImportTarget,
+  normalizeAgoojiyeImportRows,
+  parseAgoojiyeImportFile,
+  parseAgoojiyeImportMapping,
+  type AgoojiyeImportTarget,
+} from "../lib/agoojye/pipelineImport";
+import { sendEmailAsAgent } from "../lib/mail/sender";
+import {
+  AGOOJIYE_HUMAN_MAILBOX_PROFILES,
+  agoojiyeMailboxAddress,
+} from "../lib/agoojye/mailBridgePolicy";
 
 const router = Router();
 const publicApi = Router();
 const adminApi = Router();
+const pipelineImportUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024, files: 1 },
+});
 
 const seededTenants = new Set<number>();
 const publicRateBuckets = new Map<string, { count: number; resetAt: number }>();
@@ -629,6 +653,11 @@ function actor(req: any) {
   return normalizeText(req.adminUser?.email || req.adminUser?.displayName || "admin");
 }
 
+function actorUserId(req: any) {
+  const value = Number(req.adminUser?.id || req.tenantUser?.id || req.staffUser?.id || 0);
+  return Number.isFinite(value) && value > 0 ? value : null;
+}
+
 function ensureAgoojyeTenant(req: any, res: any) {
   const tenant = req.tenant;
   if (!tenant || String(tenant.key || "").trim().toLowerCase() !== "agoojye") {
@@ -665,6 +694,228 @@ async function audit(tenantId: number, input: { actor?: string; action: string; 
     createdAt: new Date(),
     updatedAt: new Date(),
   });
+}
+
+async function existingAgoojiyeImportKeys(tenantId: number, target: AgoojiyeImportTarget, executor: any = db) {
+  if (target === "organizations") {
+    const rows = await executor.select({ value: agoojyeCrmOrganizations.name }).from(agoojyeCrmOrganizations).where(eq(agoojyeCrmOrganizations.tenantId, tenantId));
+    return new Set(rows.map((row: any) => normalizeText(row.value).toLowerCase()).filter(Boolean));
+  }
+  if (target === "contacts") {
+    const rows = await executor.select({ value: agoojyeCrmContacts.email }).from(agoojyeCrmContacts).where(eq(agoojyeCrmContacts.tenantId, tenantId));
+    return new Set(rows.map((row: any) => normalizeText(row.value).toLowerCase()).filter(Boolean));
+  }
+  if (target === "opportunities") {
+    const rows = await executor.select({ value: agoojyeSponsorOpportunities.title }).from(agoojyeSponsorOpportunities).where(eq(agoojyeSponsorOpportunities.tenantId, tenantId));
+    return new Set(rows.map((row: any) => normalizeText(row.value).toLowerCase()).filter(Boolean));
+  }
+  const rows = await executor.select({ value: agoojyeToolboxAssets.title }).from(agoojyeToolboxAssets).where(eq(agoojyeToolboxAssets.tenantId, tenantId));
+  return new Set(rows.map((row: any) => normalizeText(row.value).toLowerCase()).filter(Boolean));
+}
+
+async function findOrCreateImportedOrganization(tx: any, tenantId: number, name: string) {
+  const normalizedName = normalizeText(name);
+  if (!normalizedName) return null;
+  const [existing] = await tx
+    .select({ id: agoojyeCrmOrganizations.id })
+    .from(agoojyeCrmOrganizations)
+    .where(and(eq(agoojyeCrmOrganizations.tenantId, tenantId), sql`lower(${agoojyeCrmOrganizations.name}) = ${normalizedName.toLowerCase()}`))
+    .limit(1);
+  if (existing?.id) return Number(existing.id);
+  const [created] = await tx
+    .insert(agoojyeCrmOrganizations)
+    .values({ tenantId, name: normalizedName, source: "pipeline_import", priority: "medium", currency: "XOF", createdAt: new Date(), updatedAt: new Date() })
+    .onConflictDoNothing()
+    .returning({ id: agoojyeCrmOrganizations.id });
+  if (created?.id) return Number(created.id);
+  const [raced] = await tx
+    .select({ id: agoojyeCrmOrganizations.id })
+    .from(agoojyeCrmOrganizations)
+    .where(and(eq(agoojyeCrmOrganizations.tenantId, tenantId), eq(agoojyeCrmOrganizations.name, normalizedName)))
+    .limit(1);
+  return raced?.id ? Number(raced.id) : null;
+}
+
+async function importAgoojiyePipelineRows(input: {
+  tenantId: number;
+  target: AgoojiyeImportTarget;
+  fileName: string;
+  sourceType: string;
+  mapping: Record<string, string>;
+  rows: Array<{ sourceRow: number; data: Record<string, string> }>;
+  warnings: Array<{ row: number; message: string }>;
+  createdBy: string;
+}) {
+  const now = new Date();
+  const [batch] = await db
+    .insert(agoojyeImportBatches)
+    .values({
+      tenantId: input.tenantId,
+      fileName: input.fileName,
+      sourceType: input.sourceType,
+      targetResource: input.target,
+      status: "importing",
+      rowCount: input.rows.length + input.warnings.length,
+      importedCount: 0,
+      skippedCount: input.warnings.length,
+      duplicateCount: 0,
+      warnings: { rows: input.warnings.slice(0, 100) },
+      mappingJson: input.mapping,
+      createdBy: input.createdBy,
+      confirmedAt: now,
+      createdAt: now,
+      updatedAt: now,
+    })
+    .returning();
+
+  try {
+    const result = await db.transaction(async (tx) => {
+      const existingKeys = await existingAgoojiyeImportKeys(input.tenantId, input.target, tx);
+      let importedCount = 0;
+      let duplicateCount = 0;
+
+      for (const row of input.rows) {
+        const data = row.data;
+        const dedupeKey = importDedupeKey(input.target, data);
+        if (existingKeys.has(dedupeKey)) {
+          duplicateCount += 1;
+          continue;
+        }
+
+        let inserted: Array<{ id: number }> = [];
+        if (input.target === "organizations") {
+          inserted = await tx
+            .insert(agoojyeCrmOrganizations)
+            .values({
+              tenantId: input.tenantId,
+              name: data.name,
+              website: data.website || null,
+              country: data.country || null,
+              industry: data.industry || null,
+              sponsorCategory: data.sponsorCategory || null,
+              companySize: data.companySize || null,
+              publicDescription: data.publicDescription || null,
+              priority: data.priority || "medium",
+              estimatedValue: data.estimatedValue || null,
+              currency: data.currency || "XOF",
+              source: "pipeline_import",
+              nextAction: data.nextAction || null,
+              internalNotes: data.internalNotes || null,
+              createdAt: now,
+              updatedAt: now,
+            })
+            .onConflictDoNothing()
+            .returning({ id: agoojyeCrmOrganizations.id });
+        } else if (input.target === "contacts") {
+          const organizationId = await findOrCreateImportedOrganization(tx, input.tenantId, data.organizationName);
+          inserted = await tx
+            .insert(agoojyeCrmContacts)
+            .values({
+              tenantId: input.tenantId,
+              organizationId,
+              firstName: data.firstName || null,
+              lastName: data.lastName || null,
+              jobTitle: data.jobTitle || null,
+              email: data.email.toLowerCase(),
+              phone: data.phone || null,
+              country: data.country || null,
+              preferredLanguage: data.preferredLanguage || "fr",
+              publicSourceUrl: data.publicSourceUrl || null,
+              verificationStatus: data.verificationStatus || "unverified",
+              confidenceScore: 0,
+              lawfulContactNote: data.lawfulContactNote || null,
+              notes: data.notes || null,
+              createdAt: now,
+              updatedAt: now,
+            })
+            .onConflictDoNothing()
+            .returning({ id: agoojyeCrmContacts.id });
+        } else if (input.target === "opportunities") {
+          const organizationId = await findOrCreateImportedOrganization(tx, input.tenantId, data.organizationName);
+          if (!organizationId) throw new Error(`Organisation introuvable a la ligne ${row.sourceRow}.`);
+          const [contact] = data.contactEmail
+            ? await tx
+                .select({ id: agoojyeCrmContacts.id })
+                .from(agoojyeCrmContacts)
+                .where(and(eq(agoojyeCrmContacts.tenantId, input.tenantId), eq(agoojyeCrmContacts.email, data.contactEmail.toLowerCase())))
+                .limit(1)
+            : [];
+          const [stage] = await tx
+            .select({ id: agoojyePipelineStages.id })
+            .from(agoojyePipelineStages)
+            .where(and(eq(agoojyePipelineStages.tenantId, input.tenantId), eq(agoojyePipelineStages.slug, "target-identified")))
+            .limit(1);
+          inserted = await tx
+            .insert(agoojyeSponsorOpportunities)
+            .values({
+              tenantId: input.tenantId,
+              organizationId,
+              contactId: contact?.id || null,
+              stageId: stage?.id || null,
+              title: data.title,
+              priority: data.priority || "medium",
+              estimatedValue: data.estimatedValue || null,
+              currency: data.currency || "XOF",
+              source: "pipeline_import",
+              status: "active",
+              nextAction: data.nextAction || null,
+              internalNotes: data.internalNotes || null,
+              createdAt: now,
+              updatedAt: now,
+            })
+            .onConflictDoNothing()
+            .returning({ id: agoojyeSponsorOpportunities.id });
+        } else {
+          inserted = await tx
+            .insert(agoojyeToolboxAssets)
+            .values({
+              tenantId: input.tenantId,
+              title: data.title,
+              category: data.category || "Core",
+              description: data.description || null,
+              fileUrl: data.fileUrl || null,
+              assetType: data.assetType || "document",
+              status: data.status || "needed",
+              version: data.version || "1.0",
+              tags: parseList(data.tags),
+              createdAt: now,
+              updatedAt: now,
+            })
+            .onConflictDoNothing()
+            .returning({ id: agoojyeToolboxAssets.id });
+        }
+
+        if (inserted.length) {
+          importedCount += 1;
+          existingKeys.add(dedupeKey);
+        } else {
+          duplicateCount += 1;
+        }
+      }
+
+      return { importedCount, duplicateCount };
+    });
+
+    const [completed] = await db
+      .update(agoojyeImportBatches)
+      .set({
+        status: "completed",
+        importedCount: result.importedCount,
+        duplicateCount: result.duplicateCount,
+        skippedCount: input.warnings.length,
+        completedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(and(eq(agoojyeImportBatches.tenantId, input.tenantId), eq(agoojyeImportBatches.id, batch.id)))
+      .returning();
+    return completed;
+  } catch (error: any) {
+    await db
+      .update(agoojyeImportBatches)
+      .set({ status: "failed", warnings: { rows: input.warnings.slice(0, 100), error: normalizeText(error?.message || error) }, completedAt: new Date(), updatedAt: new Date() })
+      .where(and(eq(agoojyeImportBatches.tenantId, input.tenantId), eq(agoojyeImportBatches.id, batch.id)));
+    throw error;
+  }
 }
 
 async function ensureAgoojyeSeed(tenantId: number) {
@@ -1021,6 +1272,7 @@ async function ensureAgoojyeSeed(tenantId: number) {
     .onConflictDoUpdate({
       target: agoojyeTenantEmailSettings.tenantId,
       set: {
+        smtpPasswordEncrypted: null,
         fromName: "AGOOJIYE",
         fromEmail: "contact@agoojiye.com",
         replyToEmail: "contact@agoojiye.com",
@@ -1664,11 +1916,11 @@ const resources = {
       senderIdentityId: Number(body.senderIdentityId) || null,
       subject: normalizeText(body.subject),
       body: normalizeText(body.body),
-      status: normalizeText(body.status) || "awaiting_approval",
+      status: "awaiting_approval",
       scheduledAt: parseDate(body.scheduledAt),
-      approvedAt: parseDate(body.approvedAt),
-      rejectedAt: parseDate(body.rejectedAt),
-      sentAt: parseDate(body.sentAt),
+      approvedAt: null,
+      rejectedAt: null,
+      sentAt: null,
       decisionNotes: normalizeText(body.decisionNotes) || null,
       agentResearchJson: body.agentResearchJson && typeof body.agentResearchJson === "object" ? body.agentResearchJson : {},
     }),
@@ -1848,14 +2100,14 @@ const resources = {
       smtpHost: normalizeText(body.smtpHost) || null,
       smtpPort: Number(body.smtpPort) || null,
       smtpUsername: normalizeText(body.smtpUsername) || null,
-      smtpPasswordEncrypted: normalizeText(body.smtpPasswordEncrypted || body.smtpPassword) || null,
+      smtpPasswordEncrypted: null,
       fromName: normalizeText(body.fromName) || "AGOOJIYE",
       fromEmail: normalizeText(body.fromEmail) || "contact@agoojiye.com",
       replyToEmail: normalizeText(body.replyToEmail) || "contact@agoojiye.com",
       providerName: normalizeText(body.providerName) || "manual",
       status: normalizeText(body.status) || "not_configured",
     }),
-    fields: ["smtpHost", "smtpPort", "smtpUsername", "smtpPasswordEncrypted", "fromName", "fromEmail", "replyToEmail", "providerName", "status"],
+    fields: ["smtpHost", "smtpPort", "smtpUsername", "fromName", "fromEmail", "replyToEmail", "providerName", "status"],
   },
   audit: {
     table: agoojyeAuditLogs,
@@ -2034,6 +2286,203 @@ adminApi.post("/mail/sync", async (req: any, res) => {
   }
 });
 
+adminApi.post("/imports/preview", pipelineImportUpload.single("file"), async (req: any, res) => {
+  try {
+    const tenantId = Number(req.tenant.id);
+    const target = normalizeText(req.body?.target);
+    if (!isAgoojiyeImportTarget(target)) {
+      return res.status(400).json({ message: "Cible d'import invalide." });
+    }
+    const file = req.file as Express.Multer.File | undefined;
+    if (!file) return res.status(400).json({ message: "Selectionnez un fichier CSV ou XLSX." });
+
+    const parsed = parseAgoojiyeImportFile({ fileName: file.originalname, buffer: file.buffer });
+    const requestedMapping = parseAgoojiyeImportMapping(req.body?.mapping);
+    const inferredMapping = inferAgoojiyeImportMapping(target, parsed.headers);
+    const mapping = Object.keys(requestedMapping).length ? requestedMapping : inferredMapping;
+    const invalidColumns = Object.values(mapping).filter((column) => column && !parsed.headers.includes(column));
+    if (invalidColumns.length) return res.status(400).json({ message: `Colonnes inconnues: ${invalidColumns.join(", ")}.` });
+
+    const normalized = normalizeAgoojiyeImportRows(target, parsed.rows, mapping);
+    const existingKeys = await existingAgoojiyeImportKeys(tenantId, target);
+    const existingDuplicateRows = normalized.validRows
+      .filter((row) => existingKeys.has(importDedupeKey(target, row.data)))
+      .map((row) => row.sourceRow);
+
+    return res.json({
+      ok: true,
+      fileName: file.originalname,
+      sourceType: parsed.sourceType,
+      target,
+      rowCount: parsed.rows.length,
+      validCount: normalized.validRows.length,
+      invalidCount: normalized.warnings.length,
+      duplicateCount: normalized.duplicateKeys.length + existingDuplicateRows.length,
+      existingDuplicateRows: existingDuplicateRows.slice(0, 100),
+      warnings: normalized.warnings.slice(0, 100),
+      headers: parsed.headers,
+      fields: AGOOJIYE_IMPORT_FIELDS[target].map(({ aliases: _aliases, ...field }) => field),
+      mapping,
+      preview: normalized.validRows.slice(0, 10),
+    });
+  } catch (error: any) {
+    return res.status(400).json({ message: error?.message || "Impossible de previsualiser cet import." });
+  }
+});
+
+adminApi.post("/imports/confirm", pipelineImportUpload.single("file"), async (req: any, res) => {
+  try {
+    const tenantId = Number(req.tenant.id);
+    const target = normalizeText(req.body?.target);
+    if (!isAgoojiyeImportTarget(target)) {
+      return res.status(400).json({ message: "Cible d'import invalide." });
+    }
+    const file = req.file as Express.Multer.File | undefined;
+    if (!file) return res.status(400).json({ message: "Le fichier doit etre renvoye pour confirmer l'import." });
+
+    const parsed = parseAgoojiyeImportFile({ fileName: file.originalname, buffer: file.buffer });
+    const mapping = parseAgoojiyeImportMapping(req.body?.mapping);
+    if (!Object.keys(mapping).length) return res.status(400).json({ message: "Previsualisez et mappez les colonnes avant de confirmer." });
+    const invalidColumns = Object.values(mapping).filter((column) => column && !parsed.headers.includes(column));
+    if (invalidColumns.length) return res.status(400).json({ message: `Colonnes inconnues: ${invalidColumns.join(", ")}.` });
+    const normalized = normalizeAgoojiyeImportRows(target, parsed.rows, mapping);
+    if (!normalized.validRows.length) return res.status(400).json({ message: "Aucune ligne valide a importer." });
+
+    const batch = await importAgoojiyePipelineRows({
+      tenantId,
+      target,
+      fileName: file.originalname,
+      sourceType: parsed.sourceType,
+      mapping,
+      rows: normalized.validRows,
+      warnings: normalized.warnings,
+      createdBy: actor(req),
+    });
+    await audit(tenantId, {
+      actor: actor(req),
+      action: "pipeline_import_completed",
+      entityType: "import_batch",
+      entityId: Number(batch?.id || 0) || null,
+      metadata: {
+        target,
+        fileName: file.originalname,
+        rowCount: parsed.rows.length,
+        importedCount: Number(batch?.importedCount || 0),
+        duplicateCount: Number(batch?.duplicateCount || 0),
+        skippedCount: Number(batch?.skippedCount || 0),
+      },
+    });
+    return res.status(201).json({ ok: true, item: batch });
+  } catch (error: any) {
+    return res.status(400).json({ message: error?.message || "Impossible de confirmer cet import." });
+  }
+});
+
+adminApi.post("/approvals/:id/send", async (req: any, res) => {
+  const tenantId = Number(req.tenant.id);
+  const id = Number(req.params.id);
+  if (!Number.isFinite(id) || id <= 0) return res.status(400).json({ message: "ID d'approbation invalide." });
+
+  const now = new Date();
+  const [approval] = await db
+    .update(agoojyeOutreachApprovals)
+    .set({ status: "sending", updatedAt: now })
+    .where(
+      and(
+        eq(agoojyeOutreachApprovals.tenantId, tenantId),
+        eq(agoojyeOutreachApprovals.id, id),
+        inArray(agoojyeOutreachApprovals.status, ["approved", "scheduled", "failed"]),
+      ),
+    )
+    .returning();
+  if (!approval) {
+    return res.status(409).json({ message: "Ce message doit etre approuve et ne peut pas avoir deja ete envoye." });
+  }
+
+  try {
+    if (!approval.approvedAt) throw new Error("L'approbation humaine horodatee est manquante.");
+    if (!approval.contactId) throw new Error("Aucun contact destinataire n'est associe a cette approbation.");
+    if (!approval.senderIdentityId) throw new Error("Aucune identite expediteur n'est associee a cette approbation.");
+
+    const [contact] = await db
+      .select()
+      .from(agoojyeCrmContacts)
+      .where(and(eq(agoojyeCrmContacts.tenantId, tenantId), eq(agoojyeCrmContacts.id, Number(approval.contactId))))
+      .limit(1);
+    if (!contact?.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact.email)) throw new Error("Le contact ne possede pas d'adresse email verifiee.");
+    if (contact.doNotContact) throw new Error("Ce contact est marque ne pas contacter.");
+
+    const [suppression] = await db
+      .select({ id: agoojyeSuppressionEntries.id })
+      .from(agoojyeSuppressionEntries)
+      .where(
+        and(
+          eq(agoojyeSuppressionEntries.tenantId, tenantId),
+          eq(agoojyeSuppressionEntries.email, contact.email.toLowerCase()),
+          eq(agoojyeSuppressionEntries.status, "active"),
+        ),
+      )
+      .limit(1);
+    if (suppression) throw new Error("Ce destinataire figure dans la liste de suppression AGOOJIYE.");
+
+    const [identity] = await db
+      .select()
+      .from(agoojyeEmailIdentities)
+      .where(and(eq(agoojyeEmailIdentities.tenantId, tenantId), eq(agoojyeEmailIdentities.id, Number(approval.senderIdentityId))))
+      .limit(1);
+    if (!identity || identity.status !== "active" || !identity.canSend) throw new Error("L'identite expediteur n'est pas active pour l'envoi.");
+    const profile = AGOOJIYE_HUMAN_MAILBOX_PROFILES.find(
+      (candidate) => agoojiyeMailboxAddress(candidate.localPart) === normalizeText(identity.emailAddress).toLowerCase(),
+    );
+    if (!profile) throw new Error("L'identite expediteur n'est pas l'une des cinq boites humaines autorisees.");
+
+    const sent = await sendEmailAsAgent({
+      tenantId,
+      agentKey: profile.localPart,
+      actorType: "human",
+      to: [contact.email.toLowerCase()],
+      subject: approval.subject,
+      textBody: approval.body,
+      htmlBody: null,
+      requestedByUserId: actorUserId(req),
+      correlationId: `agoojye-approval-${approval.id}`,
+      bypassApproval: true,
+    });
+
+    const sentAt = new Date();
+    const [item] = await db
+      .update(agoojyeOutreachApprovals)
+      .set({ status: "sent", sentAt, updatedAt: sentAt })
+      .where(and(eq(agoojyeOutreachApprovals.tenantId, tenantId), eq(agoojyeOutreachApprovals.id, id)))
+      .returning();
+    await db.insert(agoojyeCrmActivities).values({
+      tenantId,
+      contactId: approval.contactId,
+      opportunityId: approval.opportunityId,
+      actorUserId: actorUserId(req),
+      activityType: "email_sent",
+      channel: "smtp",
+      subject: approval.subject,
+      outcome: "accepted_by_mail_server",
+      completedAt: sentAt,
+      metadata: { approvalId: id, deliveryStatus: sent.message.status, messageId: sent.message.messageId || null },
+      createdAt: sentAt,
+      updatedAt: sentAt,
+    });
+    await syncAgoojiyeUnifiedInbox(tenantId);
+    await audit(tenantId, { actor: actor(req), action: "approved_outreach_sent", entityType: "outreach_approval", entityId: id, metadata: { contactId: approval.contactId, senderIdentityId: approval.senderIdentityId, deliveryStatus: sent.message.status } });
+    return res.json({ ok: true, item, delivery: { status: sent.message.status, queueId: sent.message.queueId || null } });
+  } catch (error: any) {
+    const message = normalizeText(error?.message || error || "Envoi impossible").slice(0, 1_000);
+    await db
+      .update(agoojyeOutreachApprovals)
+      .set({ status: "failed", decisionNotes: message, updatedAt: new Date() })
+      .where(and(eq(agoojyeOutreachApprovals.tenantId, tenantId), eq(agoojyeOutreachApprovals.id, id)));
+    await audit(tenantId, { actor: actor(req), action: "approved_outreach_failed", entityType: "outreach_approval", entityId: id, metadata: { error: message } });
+    return res.status(400).json({ message });
+  }
+});
+
 adminApi.get("/:resource", async (req: any, res) => {
   try {
     const tenantId = Number(req.tenant.id);
@@ -2042,13 +2491,7 @@ adminApi.get("/:resource", async (req: any, res) => {
     const table: any = resource.table;
     const limit = Math.min(Math.max(Number(req.query.limit) || 250, 1), 500);
     const rows = await db.select().from(table).where(eq(table.tenantId, tenantId)).orderBy(desc(table.updatedAt), desc(table.createdAt)).limit(limit);
-    const items =
-      req.params.resource === "email-settings"
-        ? rows.map((row: any) => ({
-            ...row,
-            smtpPasswordEncrypted: row.smtpPasswordEncrypted ? "********" : null,
-          }))
-        : rows;
+    const items = req.params.resource === "email-settings" ? rows.map(sanitizeAgoojiyeEmailSettingsRow) : rows;
     return res.json({ ok: true, items });
   } catch (error: any) {
     return res.status(500).json({ message: error?.message || "Impossible de lister la ressource AGOOJIYE." });
@@ -2060,6 +2503,14 @@ adminApi.post("/:resource", async (req: any, res) => {
     const tenantId = Number(req.tenant.id);
     const resource = getResource(req.params.resource);
     if (!resource) return res.status(404).json({ message: "Ressource AGOOJIYE inconnue." });
+    if (req.params.resource === "imports") {
+      return res.status(405).json({ message: "Utilisez la previsualisation CSV/XLSX puis la confirmation securisee de l'import." });
+    }
+    if (req.params.resource === "email-settings" && hasForbiddenAgoojiyeSmtpSecret(req.body)) {
+      return res.status(400).json({
+        message: "Les mots de passe SMTP ne sont jamais acceptes par cette API. Configurez les secrets dans l'environnement serveur.",
+      });
+    }
     const table: any = resource.table;
     const values = resource.create(tenantId, req.body || {}, req);
     if ("email" in values && !normalizeText((values as any).email)) return res.status(400).json({ message: "email is required" });
@@ -2125,8 +2576,58 @@ adminApi.patch("/:resource/:id", async (req: any, res) => {
     if (!Number.isFinite(id) || id <= 0) return res.status(400).json({ message: "Invalid id" });
     const resource = getResource(req.params.resource);
     if (!resource) return res.status(404).json({ message: "Ressource AGOOJIYE inconnue." });
+    if (req.params.resource === "email-settings" && hasForbiddenAgoojiyeSmtpSecret(req.body)) {
+      return res.status(400).json({
+        message: "Les mots de passe SMTP ne sont jamais acceptes par cette API. Configurez les secrets dans l'environnement serveur.",
+      });
+    }
+    if (req.params.resource === "imports") {
+      return res.status(405).json({ message: "Les resultats d'import sont calcules par le serveur et ne peuvent pas etre modifies manuellement." });
+    }
+    if (req.params.resource === "jobs" && ["running", "completed", "failed", "dead_letter"].includes(normalizeText(req.body?.status))) {
+      return res.status(400).json({ message: "Le statut d'execution d'un job ne peut pas etre simule depuis l'interface." });
+    }
+
     const table: any = resource.table;
-    const patch = sanitizePatch(resource, req.body || {});
+    let patchBody = { ...(req.body || {}) };
+    if (req.params.resource === "approvals") {
+      const [current] = await db
+        .select()
+        .from(agoojyeOutreachApprovals)
+        .where(and(eq(agoojyeOutreachApprovals.tenantId, tenantId), eq(agoojyeOutreachApprovals.id, id)))
+        .limit(1);
+      if (!current) return res.status(404).json({ message: "Approbation introuvable pour ce tenant." });
+
+      const requestedStatus = normalizeText(patchBody.status);
+      if (["sent", "sending", "failed"].includes(requestedStatus)) {
+        return res.status(400).json({ message: "Le statut d'envoi est gere exclusivement par l'action serveur Envoyer maintenant." });
+      }
+      const protectedFields = ["subject", "body", "contactId", "senderIdentityId", "templateId"];
+      const changesApprovedContent = protectedFields.some(
+        (field) => Object.prototype.hasOwnProperty.call(patchBody, field) && String((patchBody as any)[field] ?? "") !== String((current as any)[field] ?? ""),
+      );
+      if (changesApprovedContent && ["approved", "scheduled", "failed"].includes(current.status) && requestedStatus !== "approved") {
+        patchBody.status = "awaiting_approval";
+        patchBody.approvedAt = null;
+        patchBody.reviewerUserId = null;
+        patchBody.scheduledAt = null;
+      } else if (requestedStatus === "approved") {
+        if (!["awaiting_approval", "rejected", "failed"].includes(current.status)) {
+          return res.status(409).json({ message: `Transition d'approbation invalide depuis ${current.status}.` });
+        }
+        patchBody.approvedAt = new Date().toISOString();
+        patchBody.rejectedAt = null;
+        patchBody.reviewerUserId = actorUserId(req);
+      } else if (requestedStatus === "rejected") {
+        patchBody.rejectedAt = new Date().toISOString();
+        patchBody.approvedAt = null;
+        patchBody.reviewerUserId = actorUserId(req);
+      } else if (requestedStatus === "scheduled" && current.status !== "approved") {
+        return res.status(409).json({ message: "Un message doit etre approuve avant sa programmation." });
+      }
+    }
+
+    const patch = sanitizePatch(resource, patchBody);
     if (Object.keys(patch).length <= 1) return res.status(400).json({ message: "No supported fields to update" });
     const [item] = await db.update(table).set(patch).where(and(eq(table.tenantId, tenantId), eq(table.id, id))).returning();
     if (!item) return res.status(404).json({ message: "Resource not found for tenant" });

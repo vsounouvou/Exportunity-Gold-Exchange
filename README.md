@@ -32,6 +32,9 @@ Important modules:
 - `client/src/pages/agoojye/AgoojiyeCommercialPages.tsx`: group, demonstration, order, waitlist, and contact flows.
 - `client/src/pages/agoojye/AgoojiyeThreeExperience.tsx`: interactive 3D viewer.
 - `client/src/pages/agoojye/AgoojiyeMobilityAdmin.tsx`: operations dashboard.
+- `server/lib/agoojye/pipelineImport.ts`: validated CSV/XLSX parsing, mapping, preview, and duplicate rules.
+- `server/lib/agoojye/mailBridge.ts`: five-mailbox indexing and unified CRM inbox synchronization.
+- `server/lib/agoojye/emailSettingsPolicy.ts`: rejects stored SMTP secrets and redacts the legacy database field.
 
 ## Local Installation
 
@@ -89,6 +92,7 @@ For a controlled deployment, apply the versioned migration:
 
 ```powershell
 psql $env:DATABASE_URL -v ON_ERROR_STOP=1 -f db/migrations/20260712_agoojiye_mobility_platform.sql
+psql $env:DATABASE_URL -v ON_ERROR_STOP=1 -f db/migrations/20260718_agoojiye_email_secret_guard.sql
 ```
 
 The seat inventory has a database-level unique constraint on `(tenant_id, trip_id, seat_number)`. Seat holds also use conditional updates inside a transaction, so two customers cannot acquire the same available seat.
@@ -135,6 +139,7 @@ Run the mobility domain tests:
 
 ```powershell
 node --import ./scripts/spawn-debug.mjs --loader ./scripts/ts-loader.mjs --test tests/agoojye-mobility.test.ts
+node --import ./scripts/spawn-debug.mjs --loader ./scripts/ts-loader.mjs --test tests/agoojye-pipeline-import.test.ts
 ```
 
 Run all integration tests:
@@ -233,13 +238,19 @@ Delivery adapters are configured independently with `AGOOJIYE_EMAIL_PROVIDER`, `
 
 The AGOOJIYE mail bridge registers the five approved human mailboxes in the shared mail engine, indexes their Maildir folders, mirrors conversations into the AGOOJIYE CRM inbox, creates external contacts from replies, and records explicit opt-outs or hard bounces in both suppression registries. Administrators can trigger the same operation from `/admin/agoojye/inbox`. The five password variables contain deployment secrets only; leave them blank in source control and inject them through the production environment.
 
+SMTP passwords are never accepted by the AGOOJIYE settings API. The legacy `smtp_password_encrypted` column is cleared and protected by a database constraint; authenticated sends resolve only the five `AGOOJIYE_MAILBOX_*_PASSWORD` environment references on the server.
+
+The sponsor CRM import at `/admin/agoojye/imports` accepts CSV and XLSX files up to 5 MB and 2,000 rows. The administrator selects organizations, contacts, opportunities, or Sponsor Toolbox, reviews inferred column mapping, invalid rows, and database duplicates, then confirms by resubmitting the same file. The server reparses the file, inserts in a transaction, never overwrites an existing dedupe key, stores batch statistics, and writes an audit event.
+
+New outreach approvals always start in `awaiting_approval`. Approval and rejection timestamps are set by the server. An approved item is sent only through `POST /api/admin/agoojye/approvals/:id/send`; the endpoint atomically claims the item, verifies the contact, suppression status, and one of the five human sender identities, invokes authenticated SMTP, and marks it `sent` only after mail-server acceptance. Editing approved content returns it to the approval queue. Public DNS preflight intentionally blocks external sending until SPF and DKIM are correct.
+
 Adapters should receive a booking/ticket ID, load approved data server-side, record delivery status, retry temporary failures with limits, and never log access tokens or message-provider secrets.
 
 ## Deployment
 
 1. Back up PostgreSQL.
 2. Set production environment variables, especially the ticket signing secret.
-3. Apply `20260712_agoojiye_mobility_platform.sql` with `ON_ERROR_STOP=1`.
+3. Apply `20260712_agoojiye_mobility_platform.sql` and `20260718_agoojiye_email_secret_guard.sql` with `ON_ERROR_STOP=1`.
 4. Run `npm run seed:agoojye:mobility`.
 5. Run the mobility tests and `npm run build`.
 6. Deploy the generated client/server release with the existing VPS procedure.

@@ -103,7 +103,11 @@ async function requestPinned(url: URL) {
           Accept: "text/html,text/plain;q=0.8",
           "User-Agent": "AGOOJIYE-Public-Research/1.0 (+https://agoojiye.com)",
         },
-        lookup: ((_hostname: string, _options: unknown, callback: (error: NodeJS.ErrnoException | null, address: string, family: number) => void) => {
+        lookup: ((_hostname: string, options: { all?: boolean } | undefined, callback: (...args: any[]) => void) => {
+          if (options?.all) {
+            callback(null, [{ address: pinned.address, family: pinned.family }]);
+            return;
+          }
           callback(null, pinned.address, pinned.family);
         }) as any,
       },

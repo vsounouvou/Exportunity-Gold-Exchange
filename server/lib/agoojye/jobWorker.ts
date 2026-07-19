@@ -17,6 +17,11 @@ import { runMailIndexer } from "../mail/indexer";
 import { ensureAgoojiyeHumanMailProfiles, syncAgoojiyeUnifiedInbox } from "./mailBridge";
 import { deliverApprovedAgoojiyeOutreach } from "./outreachDelivery";
 import {
+  evaluateAgoojiyeSequenceFollowUp,
+  stopAgoojiyeSequenceEnrollment,
+  stopAgoojiyeSequencesForContact,
+} from "./sequenceService";
+import {
   classifyAgoojiyeReply,
   isAgoojiyeJobType,
   nextAgoojiyeRetry,
@@ -36,6 +41,12 @@ type ClaimedJob = {
 };
 
 class PermanentJobError extends Error {}
+
+class DeferredJobError extends Error {
+  constructor(readonly scheduledAt: Date, message: string) {
+    super(message);
+  }
+}
 
 function truthy(value: unknown) {
   return ["1", "true", "yes", "y", "on"].includes(String(value ?? "").trim().toLowerCase());
@@ -201,6 +212,10 @@ async function claimDueJobs(maxBatch: number): Promise<ClaimedJob[]> {
 async function processSuppression(job: ClaimedJob, reason: "hard_bounce" | "spam_complaint" | "explicit_opt_out") {
   const email = normalizedEmail(job.payloadJson.email);
   const now = new Date();
+  const contacts = await db
+    .select({ id: agoojyeCrmContacts.id })
+    .from(agoojyeCrmContacts)
+    .where(and(eq(agoojyeCrmContacts.tenantId, job.tenantId), eq(agoojyeCrmContacts.email, email)));
   const [entry] = await db
     .insert(agoojyeSuppressionEntries)
     .values({
@@ -223,7 +238,12 @@ async function processSuppression(job: ClaimedJob, reason: "hard_bounce" | "spam
     .update(agoojyeCrmContacts)
     .set({ doNotContact: true, updatedAt: now })
     .where(and(eq(agoojyeCrmContacts.tenantId, job.tenantId), eq(agoojyeCrmContacts.email, email)));
-  return { suppressed: true, email, suppressionId: entry?.id ?? null, reason };
+  let stoppedSequences = 0;
+  for (const contact of contacts) {
+    // eslint-disable-next-line no-await-in-loop
+    stoppedSequences += await stopAgoojiyeSequencesForContact({ tenantId: job.tenantId, contactId: contact.id, reason });
+  }
+  return { suppressed: true, email, suppressionId: entry?.id ?? null, reason, stoppedSequences };
 }
 
 async function shouldStopFollowUp(job: ClaimedJob, approvalId: number) {
@@ -233,7 +253,13 @@ async function shouldStopFollowUp(job: ClaimedJob, approvalId: number) {
     .where(and(eq(agoojyeOutreachApprovals.tenantId, job.tenantId), eq(agoojyeOutreachApprovals.id, approvalId)))
     .limit(1);
   if (!approval) throw new PermanentJobError("Approbation de suivi introuvable.");
-  if (!approval.approvedAt) throw new PermanentJobError("Le suivi ne possede pas d'approbation humaine.");
+
+  const sequenceGuard = await evaluateAgoojiyeSequenceFollowUp({ tenantId: job.tenantId, approval });
+  if (sequenceGuard.stopReason) return sequenceGuard;
+  if (!approval.approvedAt) {
+    if (sequenceGuard.enrollmentId) return { ...sequenceGuard, stopReason: "follow_up_approval_missing" };
+    throw new PermanentJobError("Le suivi ne possede pas d'approbation humaine.");
+  }
 
   const [contact] = approval.contactId
     ? await db
@@ -243,7 +269,7 @@ async function shouldStopFollowUp(job: ClaimedJob, approvalId: number) {
         .limit(1)
     : [];
   if (!contact?.email) throw new PermanentJobError("Contact de suivi introuvable.");
-  if (contact.doNotContact) return "contact_do_not_contact";
+  if (contact.doNotContact) return { ...sequenceGuard, stopReason: "contact_do_not_contact" };
 
   if (approval.opportunityId) {
     const [opportunity] = await db
@@ -256,9 +282,9 @@ async function shouldStopFollowUp(job: ClaimedJob, approvalId: number) {
         ),
       )
       .limit(1);
-    if (opportunity?.doNotContact) return "opportunity_do_not_contact";
+    if (opportunity?.doNotContact) return { ...sequenceGuard, stopReason: "opportunity_do_not_contact" };
     if (["paused", "won", "lost", "cancelled"].includes(String(opportunity?.status || "").toLowerCase())) {
-      return `opportunity_${opportunity?.status}`;
+      return { ...sequenceGuard, stopReason: `opportunity_${opportunity?.status}` };
     }
   }
 
@@ -273,7 +299,7 @@ async function shouldStopFollowUp(job: ClaimedJob, approvalId: number) {
       ),
     )
     .limit(1);
-  if (suppression) return "suppressed";
+  if (suppression) return { ...sequenceGuard, stopReason: "suppressed" };
 
   const [reply] = await db
     .select({ id: agoojyeMailMessages.id })
@@ -288,8 +314,8 @@ async function shouldStopFollowUp(job: ClaimedJob, approvalId: number) {
     )
     .orderBy(desc(agoojyeMailMessages.createdAt))
     .limit(1);
-  if (reply) return "recipient_replied";
-  return null;
+  if (reply) return { ...sequenceGuard, stopReason: "recipient_replied" };
+  return sequenceGuard;
 }
 
 async function executeJob(job: ClaimedJob): Promise<Record<string, unknown>> {
@@ -319,8 +345,20 @@ async function executeJob(job: ClaimedJob): Promise<Record<string, unknown>> {
     const approvalId = Number(job.payloadJson.approvalId || job.relatedEntityId || 0);
     if (!Number.isFinite(approvalId) || approvalId <= 0) throw new PermanentJobError("approvalId manquant.");
     if (job.jobType === "follow_up") {
-      const stopReason = await shouldStopFollowUp(job, approvalId);
-      if (stopReason) return { sent: false, stopped: true, stopReason, approvalId };
+      const guard = await shouldStopFollowUp(job, approvalId);
+      if (guard.stopReason) {
+        if (guard.enrollmentId) {
+          await stopAgoojiyeSequenceEnrollment({
+            tenantId: job.tenantId,
+            enrollmentId: guard.enrollmentId,
+            reason: guard.stopReason,
+          });
+        }
+        return { sent: false, stopped: true, stopReason: guard.stopReason, approvalId };
+      }
+      if (guard.deferUntil) {
+        throw new DeferredJobError(guard.deferUntil, "Limite quotidienne de la sequence atteinte; suivi reporte.");
+      }
     }
     const delivered = await deliverApprovedAgoojiyeOutreach({
       tenantId: job.tenantId,
@@ -345,10 +383,30 @@ async function executeJob(job: ClaimedJob): Promise<Record<string, unknown>> {
     if (!message) throw new PermanentJobError("Message entrant introuvable.");
     if (message.direction !== "inbound") throw new PermanentJobError("Seuls les messages entrants peuvent etre classes.");
     const classification = classifyAgoojiyeReply(message.bodyText || message.bodyPreview || message.subject);
+    let stoppedSequences = 0;
+    if (message.fromEmail) {
+      const contacts = await db
+        .select({ id: agoojyeCrmContacts.id })
+        .from(agoojyeCrmContacts)
+        .where(
+          and(
+            eq(agoojyeCrmContacts.tenantId, job.tenantId),
+            eq(agoojyeCrmContacts.email, message.fromEmail.toLowerCase()),
+          ),
+        );
+      for (const contact of contacts) {
+        // eslint-disable-next-line no-await-in-loop
+        stoppedSequences += await stopAgoojiyeSequencesForContact({
+          tenantId: job.tenantId,
+          contactId: contact.id,
+          reason: classification.classification === "opt_out" ? "explicit_opt_out" : "recipient_replied",
+        });
+      }
+    }
     if (classification.classification === "opt_out" && message.fromEmail) {
       await processSuppression({ ...job, payloadJson: { email: message.fromEmail, reason: "Opt-out detecte dans la reponse." } }, "explicit_opt_out");
     }
-    return { messageId, ...classification };
+    return { messageId, stoppedSequences, ...classification };
   }
 
   if (job.jobType === "pipeline_summary") {
@@ -400,6 +458,22 @@ async function finishJob(job: ClaimedJob, resultJson: Record<string, unknown>) {
 
 async function failJob(job: ClaimedJob, error: unknown) {
   const message = String((error as any)?.message || error || "Job failed").trim().slice(0, 2_000);
+  if (error instanceof DeferredJobError) {
+    await db
+      .update(agoojyeBackgroundJobs)
+      .set({
+        status: "queued",
+        attemptCount: Math.max(0, job.attemptCount - 1),
+        scheduledAt: error.scheduledAt,
+        startedAt: null,
+        completedAt: null,
+        error: null,
+        resultJson: { deferred: true, reason: message },
+        updatedAt: new Date(),
+      })
+      .where(and(eq(agoojyeBackgroundJobs.id, job.id), eq(agoojyeBackgroundJobs.status, "running")));
+    return "deferred" as const;
+  }
   const maxAttempts = integer(job.payloadJson.maxAttempts, 1, 10, 3);
   const permanent = error instanceof PermanentJobError || /suppression|ne pas contacter|invalide|introuvable|manquant/i.test(message);
   const deadLetter = permanent || job.attemptCount >= maxAttempts;
@@ -415,12 +489,14 @@ async function failJob(job: ClaimedJob, error: unknown) {
       updatedAt: now,
     })
     .where(and(eq(agoojyeBackgroundJobs.id, job.id), eq(agoojyeBackgroundJobs.status, "running")));
+  return "failed" as const;
 }
 
 export async function runAgoojiyeJobWorkerOnce(maxBatch = 5) {
   const jobs = await claimDueJobs(integer(maxBatch, 1, 25, 5));
   let completed = 0;
   let failed = 0;
+  let deferred = 0;
   for (const job of jobs) {
     try {
       // Deliberately sequential: outbound limits apply per mailbox and every job remains auditable.
@@ -431,11 +507,12 @@ export async function runAgoojiyeJobWorkerOnce(maxBatch = 5) {
       completed += 1;
     } catch (error) {
       // eslint-disable-next-line no-await-in-loop
-      await failJob(job, error);
-      failed += 1;
+      const outcome = await failJob(job, error);
+      if (outcome === "deferred") deferred += 1;
+      else failed += 1;
     }
   }
-  return { claimed: jobs.length, completed, failed };
+  return { claimed: jobs.length, completed, failed, deferred };
 }
 
 async function recoverStaleJobs() {

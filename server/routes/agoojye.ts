@@ -24,6 +24,7 @@ import {
   agoojyeMilestones,
   agoojyeOutreachApprovals,
   agoojyeOutreachSequences,
+  agoojyeSequenceEnrollments,
   agoojyeParticipants,
   agoojyePartners,
   agoojyePermissions,
@@ -69,6 +70,12 @@ import {
   buildAgoojiyeResearchSummary,
   scoreAgoojiyeResearch,
 } from "../lib/agoojye/researchPolicy";
+import {
+  activateAgoojiyeSequence,
+  AgoojiyeSequenceError,
+  enrollAgoojiyeSequence,
+  stopAgoojiyeSequenceEnrollment,
+} from "../lib/agoojye/sequenceService";
 
 const router = Router();
 const publicApi = Router();
@@ -1986,7 +1993,7 @@ const resources = {
       name: normalizeText(body.name),
       sponsorCategoryId: Number(body.sponsorCategoryId) || null,
       ownerUserId: Number(body.ownerUserId) || null,
-      status: normalizeText(body.status) || "draft",
+      status: "draft",
       templateIds: parseList(body.templateIds).map((entry) => Number(entry)).filter((value) => Number.isFinite(value) && value > 0),
       maxSteps: Number(body.maxSteps) || 3,
       minDelayHours: Number(body.minDelayHours) || 72,
@@ -2207,6 +2214,7 @@ adminApi.get("/dashboard", async (req: any, res) => {
       mailThreads,
       mailMessages,
       outreachSequences,
+      sequenceEnrollments,
       importBatches,
       agentResearchRecords,
       backgroundJobs,
@@ -2234,6 +2242,7 @@ adminApi.get("/dashboard", async (req: any, res) => {
       count(agoojyeMailThreads),
       count(agoojyeMailMessages),
       count(agoojyeOutreachSequences),
+      count(agoojyeSequenceEnrollments),
       count(agoojyeImportBatches),
       count(agoojyeAgentResearchRecords),
       count(agoojyeBackgroundJobs),
@@ -2265,6 +2274,7 @@ adminApi.get("/dashboard", async (req: any, res) => {
         mailThreads,
         mailMessages,
         outreachSequences,
+        sequenceEnrollments,
         importBatches,
         agentResearchRecords,
         backgroundJobs,
@@ -2598,6 +2608,143 @@ adminApi.post("/agent-research/run", async (req: any, res) => {
   }
 });
 
+adminApi.get("/sequence-enrollments", async (req: any, res) => {
+  try {
+    const tenantId = Number(req.tenant.id);
+    const items = await db
+      .select({
+        id: agoojyeSequenceEnrollments.id,
+        tenantId: agoojyeSequenceEnrollments.tenantId,
+        sequenceId: agoojyeSequenceEnrollments.sequenceId,
+        sequenceName: agoojyeOutreachSequences.name,
+        opportunityId: agoojyeSequenceEnrollments.opportunityId,
+        opportunityTitle: agoojyeSponsorOpportunities.title,
+        contactId: agoojyeSequenceEnrollments.contactId,
+        contactFirstName: agoojyeCrmContacts.firstName,
+        contactLastName: agoojyeCrmContacts.lastName,
+        contactEmail: agoojyeCrmContacts.email,
+        senderIdentityId: agoojyeSequenceEnrollments.senderIdentityId,
+        senderEmail: agoojyeEmailIdentities.emailAddress,
+        currentApprovalId: agoojyeSequenceEnrollments.currentApprovalId,
+        status: agoojyeSequenceEnrollments.status,
+        currentStep: agoojyeSequenceEnrollments.currentStep,
+        nextRunAt: agoojyeSequenceEnrollments.nextRunAt,
+        lastSentAt: agoojyeSequenceEnrollments.lastSentAt,
+        activatedBy: agoojyeSequenceEnrollments.activatedBy,
+        activatedAt: agoojyeSequenceEnrollments.activatedAt,
+        stopReason: agoojyeSequenceEnrollments.stopReason,
+        completedAt: agoojyeSequenceEnrollments.completedAt,
+        createdAt: agoojyeSequenceEnrollments.createdAt,
+        updatedAt: agoojyeSequenceEnrollments.updatedAt,
+      })
+      .from(agoojyeSequenceEnrollments)
+      .innerJoin(
+        agoojyeOutreachSequences,
+        and(
+          eq(agoojyeOutreachSequences.tenantId, agoojyeSequenceEnrollments.tenantId),
+          eq(agoojyeOutreachSequences.id, agoojyeSequenceEnrollments.sequenceId),
+        ),
+      )
+      .innerJoin(
+        agoojyeSponsorOpportunities,
+        and(
+          eq(agoojyeSponsorOpportunities.tenantId, agoojyeSequenceEnrollments.tenantId),
+          eq(agoojyeSponsorOpportunities.id, agoojyeSequenceEnrollments.opportunityId),
+        ),
+      )
+      .innerJoin(
+        agoojyeCrmContacts,
+        and(
+          eq(agoojyeCrmContacts.tenantId, agoojyeSequenceEnrollments.tenantId),
+          eq(agoojyeCrmContacts.id, agoojyeSequenceEnrollments.contactId),
+        ),
+      )
+      .innerJoin(
+        agoojyeEmailIdentities,
+        and(
+          eq(agoojyeEmailIdentities.tenantId, agoojyeSequenceEnrollments.tenantId),
+          eq(agoojyeEmailIdentities.id, agoojyeSequenceEnrollments.senderIdentityId),
+        ),
+      )
+      .where(eq(agoojyeSequenceEnrollments.tenantId, tenantId))
+      .orderBy(desc(agoojyeSequenceEnrollments.updatedAt))
+      .limit(500);
+    return res.json({ ok: true, items });
+  } catch (error: any) {
+    return res.status(500).json({ message: error?.message || "Impossible de lister les inscriptions aux sequences." });
+  }
+});
+
+adminApi.post("/sequences/:id/activate", async (req: any, res) => {
+  const tenantId = Number(req.tenant.id);
+  const sequenceId = Number(req.params.id);
+  if (!Number.isFinite(sequenceId) || sequenceId <= 0) return res.status(400).json({ message: "ID de sequence invalide." });
+  try {
+    const item = await activateAgoojiyeSequence({ tenantId, sequenceId });
+    await audit(tenantId, {
+      actor: actor(req),
+      action: "outreach_sequence_activated",
+      entityType: "outreach_sequence",
+      entityId: sequenceId,
+      metadata: { humanApproval: true },
+    });
+    return res.json({ ok: true, item });
+  } catch (error: any) {
+    const status = error instanceof AgoojiyeSequenceError ? error.statusCode : 500;
+    return res.status(status).json({ message: normalizeText(error?.message || error || "Activation impossible").slice(0, 1_000) });
+  }
+});
+
+adminApi.post("/sequences/:id/enroll", async (req: any, res) => {
+  const tenantId = Number(req.tenant.id);
+  const sequenceId = Number(req.params.id);
+  const opportunityId = Number(req.body?.opportunityId);
+  const contactId = Number(req.body?.contactId);
+  const senderIdentityId = Number(req.body?.senderIdentityId);
+  if (![sequenceId, opportunityId, contactId, senderIdentityId].every((value) => Number.isFinite(value) && value > 0)) {
+    return res.status(400).json({ message: "Sequence, opportunite, contact et expediteur sont obligatoires." });
+  }
+  try {
+    const result = await enrollAgoojiyeSequence({
+      tenantId,
+      sequenceId,
+      opportunityId,
+      contactId,
+      senderIdentityId,
+      actor: actor(req),
+      requesterUserId: null,
+    });
+    await audit(tenantId, {
+      actor: actor(req),
+      action: "outreach_sequence_contact_enrolled",
+      entityType: "sequence_enrollment",
+      entityId: result.enrollment.id,
+      metadata: { sequenceId, opportunityId, contactId, approvalId: result.approval.id, initialHumanApprovalRequired: true },
+    });
+    return res.status(201).json({ ok: true, ...result });
+  } catch (error: any) {
+    const status = error instanceof AgoojiyeSequenceError ? error.statusCode : 500;
+    return res.status(status).json({ message: normalizeText(error?.message || error || "Inscription impossible").slice(0, 1_000) });
+  }
+});
+
+adminApi.post("/sequence-enrollments/:id/stop", async (req: any, res) => {
+  const tenantId = Number(req.tenant.id);
+  const enrollmentId = Number(req.params.id);
+  if (!Number.isFinite(enrollmentId) || enrollmentId <= 0) return res.status(400).json({ message: "ID d'inscription invalide." });
+  const reason = normalizeText(req.body?.reason) || "manual_stop";
+  const item = await stopAgoojiyeSequenceEnrollment({ tenantId, enrollmentId, reason });
+  if (!item) return res.status(404).json({ message: "Inscription introuvable pour ce tenant." });
+  await audit(tenantId, {
+    actor: actor(req),
+    action: "outreach_sequence_enrollment_stopped",
+    entityType: "sequence_enrollment",
+    entityId: enrollmentId,
+    metadata: { reason },
+  });
+  return res.json({ ok: true, item });
+});
+
 adminApi.post("/approvals/:id/send", async (req: any, res) => {
   const tenantId = Number(req.tenant.id);
   const id = Number(req.params.id);
@@ -2781,6 +2928,44 @@ adminApi.patch("/:resource/:id", async (req: any, res) => {
 
     const table: any = resource.table;
     let patchBody = { ...(req.body || {}) };
+    if (req.params.resource === "sequences") {
+      const [current] = await db
+        .select()
+        .from(agoojyeOutreachSequences)
+        .where(and(eq(agoojyeOutreachSequences.tenantId, tenantId), eq(agoojyeOutreachSequences.id, id)))
+        .limit(1);
+      if (!current) return res.status(404).json({ message: "Sequence introuvable pour ce tenant." });
+
+      const requestedStatus = Object.prototype.hasOwnProperty.call(patchBody, "status")
+        ? normalizeText(patchBody.status)
+        : current.status;
+      if (requestedStatus === "active") {
+        return res.status(400).json({ message: "Utilisez l'action Activer apres la revue et l'approbation de la sequence." });
+      }
+      const allowedTransitions: Record<string, string[]> = {
+        draft: ["draft", "under_review", "archived"],
+        under_review: ["under_review", "draft", "approved", "archived"],
+        approved: ["approved", "draft", "archived"],
+        active: ["active", "paused"],
+        paused: ["paused", "draft", "approved", "archived"],
+        archived: ["archived"],
+      };
+      if (!(allowedTransitions[current.status] || []).includes(requestedStatus)) {
+        return res.status(409).json({ message: `Transition de sequence invalide depuis ${current.status} vers ${requestedStatus}.` });
+      }
+      const configFields = ["templateIds", "maxSteps", "minDelayHours", "dailyLimit", "businessHours", "stopOnReply", "stopOnBounce"];
+      const changesConfiguration = configFields.some(
+        (field) =>
+          Object.prototype.hasOwnProperty.call(patchBody, field) &&
+          JSON.stringify((patchBody as any)[field]) !== JSON.stringify((current as any)[field]),
+      );
+      if (current.status === "active" && changesConfiguration) {
+        return res.status(409).json({ message: "Mettez la sequence en pause avant de modifier sa cadence ou ses modeles." });
+      }
+      if (changesConfiguration && ["under_review", "approved", "paused"].includes(current.status)) {
+        patchBody.status = "draft";
+      }
+    }
     if (req.params.resource === "agent-research") {
       const status = normalizeText(patchBody.researchStatus);
       if (!["needs_verification", "ready_for_review", "approved", "rejected", "archived"].includes(status)) {
@@ -2846,6 +3031,36 @@ adminApi.patch("/:resource/:id", async (req: any, res) => {
         createdBy: actor(req),
         dedupe: true,
       });
+    }
+    if (req.params.resource === "approvals" && ["rejected", "cancelled"].includes((item as any).status)) {
+      const approvalMetadata =
+        (item as any).agentResearchJson && typeof (item as any).agentResearchJson === "object"
+          ? (item as any).agentResearchJson
+          : {};
+      const enrollmentId = Number(approvalMetadata.sequenceEnrollmentId || 0);
+      if (Number.isFinite(enrollmentId) && enrollmentId > 0) {
+        await stopAgoojiyeSequenceEnrollment({
+          tenantId,
+          enrollmentId,
+          reason: (item as any).status === "rejected" ? "approval_rejected" : "approval_cancelled",
+        });
+      }
+    }
+    if (req.params.resource === "sequences" && (item as any).status === "paused") {
+      const enrollments = await db
+        .select({ id: agoojyeSequenceEnrollments.id })
+        .from(agoojyeSequenceEnrollments)
+        .where(
+          and(
+            eq(agoojyeSequenceEnrollments.tenantId, tenantId),
+            eq(agoojyeSequenceEnrollments.sequenceId, id),
+            inArray(agoojyeSequenceEnrollments.status, ["awaiting_initial_approval", "active"]),
+          ),
+        );
+      for (const enrollment of enrollments) {
+        // eslint-disable-next-line no-await-in-loop
+        await stopAgoojiyeSequenceEnrollment({ tenantId, enrollmentId: enrollment.id, reason: "sequence_paused" });
+      }
     }
     if (req.params.resource === "participants" && Object.prototype.hasOwnProperty.call(req.body || {}, "confirmedRole") && (item as any).userId) {
       await db

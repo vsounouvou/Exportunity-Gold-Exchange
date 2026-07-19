@@ -86,9 +86,18 @@ async function main() {
     "import('./dist/index.js');",
   ].join(" ");
 
+  const serverEnv = {
+    ...process.env,
+    PORT: String(port),
+    NODE_ENV: "production",
+    STARTUP_MODE: "marketing-audit",
+    // The audit mode does not query PostgreSQL, but the shared DB module validates this variable at import time.
+    DATABASE_URL: process.env.DATABASE_URL || "postgresql://quality_gate:quality_gate@127.0.0.1:9/quality_gate",
+  };
+
   const server = spawn(process.execPath, ["--input-type=module", "-e", serverScript], {
     stdio: "inherit",
-    env: { ...process.env, PORT: String(port), NODE_ENV: "production", STARTUP_MODE: "marketing-audit" },
+    env: serverEnv,
   });
 
   const cleanup = async () => {

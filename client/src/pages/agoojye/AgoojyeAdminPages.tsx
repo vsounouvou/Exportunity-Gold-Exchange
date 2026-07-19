@@ -1066,6 +1066,7 @@ const sponsorCrmMetricLabels: Record<string, string> = {
   mailThreads: "Threads inbox",
   mailMessages: "Messages email",
   outreachSequences: "Séquences",
+  sequenceEnrollments: "Inscriptions séquences",
   importBatches: "Imports",
   agentResearchRecords: "Recherches agent",
   backgroundJobs: "Jobs système",
@@ -1183,6 +1184,8 @@ function ResourcePage({ section }: { section: Exclude<SectionKey, "overview"> })
         ) : null}
       </section>
 
+      {section === "sequences" ? <SequenceEnrollmentPanel /> : null}
+
       <section className="mt-4 overflow-hidden rounded-md border border-white/15 bg-white/5">
         <div className="overflow-x-auto">
           <table className="min-w-full text-left text-sm">
@@ -1220,6 +1223,144 @@ function ResourcePage({ section }: { section: Exclude<SectionKey, "overview"> })
         </div>
       </section>
     </AdminShell>
+  );
+}
+
+function SequenceEnrollmentPanel() {
+  const queryClient = useQueryClient();
+  const sequences = useResource("sequences");
+  const contacts = useResource("contacts");
+  const opportunities = useResource("opportunities");
+  const identities = useResource("email-identities");
+  const enrollments = useResource("sequence-enrollments");
+  const [form, setForm] = useState({ sequenceId: "", contactId: "", opportunityId: "", senderIdentityId: "" });
+
+  const refresh = () => {
+    queryClient.invalidateQueries({ queryKey: ["/api/admin/agoojye/sequence-enrollments"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/admin/agoojye/approvals"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/admin/agoojye/jobs"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/admin/agoojye/dashboard"] });
+  };
+  const enrollMutation = useMutation({
+    mutationFn: () =>
+      apiRequest(`/api/admin/agoojye/sequences/${form.sequenceId}/enroll`, "POST", {
+        contactId: Number(form.contactId),
+        opportunityId: Number(form.opportunityId),
+        senderIdentityId: Number(form.senderIdentityId),
+      }),
+    onSuccess: () => {
+      setForm({ sequenceId: "", contactId: "", opportunityId: "", senderIdentityId: "" });
+      refresh();
+    },
+  });
+  const stopMutation = useMutation({
+    mutationFn: (id: number) => apiRequest(`/api/admin/agoojye/sequence-enrollments/${id}/stop`, "POST", { reason: "manual_stop" }),
+    onSuccess: refresh,
+  });
+
+  const activeSequences = (sequences.data?.items || []).filter((item) => item.status === "active");
+  const verifiedContacts = (contacts.data?.items || []).filter(
+    (item) => ["verified", "approved"].includes(String(item.verificationStatus || "").toLowerCase()) && item.email && !item.doNotContact,
+  );
+  const activeOpportunities = (opportunities.data?.items || []).filter(
+    (item) => !item.doNotContact && !["paused", "won", "lost", "cancelled"].includes(String(item.status || "").toLowerCase()),
+  );
+  const senders = (identities.data?.items || []).filter(
+    (item) => item.status === "active" && item.canSend && String(item.emailAddress || "").toLowerCase().endsWith("@agoojiye.com"),
+  );
+  const canSubmit = Boolean(form.sequenceId && form.contactId && form.opportunityId && form.senderIdentityId);
+  const fieldClass = "mt-1 min-h-11 w-full rounded-md border border-white/15 bg-[#080808] px-3 py-2 text-sm text-[#F7F2E8] outline-none focus:border-[#C99A36]";
+
+  return (
+    <section className="mt-4 border-y border-white/15 bg-white/5 px-4 py-5">
+      <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+        <div>
+          <h2 className="text-lg font-semibold">Inscriptions aux séquences</h2>
+          <p className="mt-1 max-w-3xl text-sm text-[#B8AE9D]">
+            Le premier message est toujours créé dans la file d'approbation. Les suivis autorisés sont espacés d'au moins 24 heures et s'arrêtent sur réponse, rebond, opt-out ou clôture.
+          </p>
+        </div>
+        <span className="text-sm text-[#E4C46A]">{enrollments.data?.items?.length || 0} inscriptions</span>
+      </div>
+
+      <form
+        className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4"
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (canSubmit) enrollMutation.mutate();
+        }}
+      >
+        <label className="text-sm text-[#D8CFBF]">
+          Séquence active
+          <select className={fieldClass} required value={form.sequenceId} onChange={(event) => setForm((current) => ({ ...current, sequenceId: event.target.value }))}>
+            <option value="">Sélectionner</option>
+            {activeSequences.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+          </select>
+        </label>
+        <label className="text-sm text-[#D8CFBF]">
+          Contact vérifié
+          <select className={fieldClass} required value={form.contactId} onChange={(event) => setForm((current) => ({ ...current, contactId: event.target.value }))}>
+            <option value="">Sélectionner</option>
+            {verifiedContacts.map((item) => <option key={item.id} value={item.id}>{[item.firstName, item.lastName].filter(Boolean).join(" ") || item.email} · {item.email}</option>)}
+          </select>
+        </label>
+        <label className="text-sm text-[#D8CFBF]">
+          Opportunité
+          <select className={fieldClass} required value={form.opportunityId} onChange={(event) => setForm((current) => ({ ...current, opportunityId: event.target.value }))}>
+            <option value="">Sélectionner</option>
+            {activeOpportunities.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}
+          </select>
+        </label>
+        <label className="text-sm text-[#D8CFBF]">
+          Expéditeur humain
+          <select className={fieldClass} required value={form.senderIdentityId} onChange={(event) => setForm((current) => ({ ...current, senderIdentityId: event.target.value }))}>
+            <option value="">Sélectionner</option>
+            {senders.map((item) => <option key={item.id} value={item.id}>{item.displayName || item.emailAddress} · {item.emailAddress}</option>)}
+          </select>
+        </label>
+        <div className="md:col-span-2 xl:col-span-4">
+          <button type="submit" disabled={!canSubmit || enrollMutation.isPending} className="rounded-md bg-[#C99A36] px-4 py-2 text-sm font-semibold text-[#080808] disabled:opacity-50">
+            {enrollMutation.isPending ? "Création..." : "Créer le message initial à approuver"}
+          </button>
+          {enrollMutation.isError ? <p className="mt-2 text-sm text-red-300">{String((enrollMutation.error as Error)?.message || "Inscription impossible")}</p> : null}
+          {enrollMutation.isSuccess ? <p className="mt-2 text-sm text-emerald-300">Inscription créée. Le premier message attend une approbation humaine.</p> : null}
+        </div>
+      </form>
+
+      <div className="mt-5 overflow-x-auto border-t border-white/10 pt-4">
+        <table className="min-w-full text-left text-sm">
+          <thead className="text-xs uppercase tracking-wide text-[#B8AE9D]">
+            <tr>
+              <th className="px-3 py-2">Contact</th>
+              <th className="px-3 py-2">Séquence</th>
+              <th className="px-3 py-2">Étape</th>
+              <th className="px-3 py-2">Statut</th>
+              <th className="px-3 py-2">Prochain envoi</th>
+              <th className="px-3 py-2">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {(enrollments.data?.items || []).map((item) => (
+              <tr key={item.id} className="border-t border-white/10">
+                <td className="px-3 py-3">{[item.contactFirstName, item.contactLastName].filter(Boolean).join(" ") || item.contactEmail}<span className="block text-xs text-[#B8AE9D]">{item.contactEmail}</span></td>
+                <td className="px-3 py-3">{item.sequenceName}</td>
+                <td className="px-3 py-3">{Number(item.currentStep) + 1}</td>
+                <td className="px-3 py-3"><CellValue value={item.status} />{item.stopReason ? <span className="block text-xs text-red-300">{item.stopReason}</span> : null}</td>
+                <td className="px-3 py-3"><CellValue value={item.nextRunAt} /></td>
+                <td className="px-3 py-3">
+                  {["awaiting_initial_approval", "active"].includes(item.status) ? (
+                    <button type="button" title="Arrêter cette séquence" disabled={stopMutation.isPending} onClick={() => stopMutation.mutate(Number(item.id))} className="rounded border border-red-300/35 px-3 py-2 text-xs font-semibold text-red-200 disabled:opacity-50">
+                      Arrêter
+                    </button>
+                  ) : <span className="text-white/35">—</span>}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {stopMutation.isError ? <p className="mt-3 text-sm text-red-300">{String((stopMutation.error as Error)?.message || "Arrêt impossible")}</p> : null}
+    </section>
   );
 }
 
@@ -1380,11 +1521,11 @@ function QuickActions({
       ];
     }
     if (section === "sequences") {
-      return [
-        { label: "Revue", patch: { status: "under_review" } },
-        { label: "Activer", patch: { status: "active" } },
-        { label: "Pause", patch: { status: "paused" } },
-      ];
+      if (item.status === "draft") return [{ label: "Revue", patch: { status: "under_review" } }];
+      if (item.status === "under_review") return [{ label: "Approuver", patch: { status: "approved" } }];
+      if (["approved", "paused"].includes(item.status)) return [{ label: "Activer", command: "activate" }];
+      if (item.status === "active") return [{ label: "Pause", patch: { status: "paused" } }];
+      return [];
     }
     if (section === "imports") {
       return [];

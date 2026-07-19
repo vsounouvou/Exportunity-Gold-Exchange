@@ -93,6 +93,8 @@ For a controlled deployment, apply the versioned migration:
 ```powershell
 psql $env:DATABASE_URL -v ON_ERROR_STOP=1 -f db/migrations/20260712_agoojiye_mobility_platform.sql
 psql $env:DATABASE_URL -v ON_ERROR_STOP=1 -f db/migrations/20260718_agoojiye_email_secret_guard.sql
+psql $env:DATABASE_URL -v ON_ERROR_STOP=1 -f db/migrations/20260718_agoojiye_research_sources.sql
+psql $env:DATABASE_URL -v ON_ERROR_STOP=1 -f db/migrations/20260718_agoojiye_sequence_enrollments.sql
 ```
 
 The seat inventory has a database-level unique constraint on `(tenant_id, trip_id, seat_number)`. Seat holds also use conditional updates inside a transaction, so two customers cannot acquire the same available seat.
@@ -248,6 +250,8 @@ The AGOOJIYE operational queue uses `agoojye_background_jobs` as a tenant-scoped
 
 Implemented processors cover Maildir synchronization, mailbox health, scheduled approved sends, guarded follow-ups, bounce and complaint suppression, inbound reply classification, pipeline summaries, overdue-task reports, and normalized webhook records. Follow-ups stop before sending when the recipient replied, opted out, bounced, is suppressed, or the opportunity is paused, won, lost, or cancelled. Attachment jobs fail visibly into dead-letter until an external antivirus scanner is configured; no attachment is falsely marked clean.
 
+Outreach sequences are managed at `/admin/agoojye/sequences`. A sequence must move from `draft` to `under_review`, then `approved`, before a separate activation action can enable enrollment. Activation accepts at most five approved templates, a minimum delay of 24 hours, and a daily limit of 20 messages. Enrolling a verified contact creates only the first `awaiting_approval` message. After that message is human-approved and accepted by the mail server, the service transactionally creates the next authorized follow-up and its PostgreSQL job. Enrollment stops and queued messages are cancelled on reply, bounce, complaint, opt-out, suppression, pause, closed opportunity, rejected approval, or manual stop. Reaching a daily limit defers the job without consuming a retry.
+
 The sponsor research workflow at `/admin/agoojye/agent-research` accepts one CRM organization and up to five official public HTTPS sources. Requests use DNS and IP allow-listing, pinned public address resolution, redirect revalidation, a 10-second timeout, and a 1 MB response limit. The server stores each source result, computes a keyword-based category score with its full formula, recommends approved materials, and creates a French draft without claiming sponsor interest. A draft enters `awaiting_approval` only when at least one source was fetched; the research action never sends email.
 
 Adapters should receive a booking/ticket ID, load approved data server-side, record delivery status, retry temporary failures with limits, and never log access tokens or message-provider secrets.
@@ -256,7 +260,7 @@ Adapters should receive a booking/ticket ID, load approved data server-side, rec
 
 1. Back up PostgreSQL.
 2. Set production environment variables, especially the ticket signing secret.
-3. Apply `20260712_agoojiye_mobility_platform.sql`, `20260718_agoojiye_email_secret_guard.sql`, and `20260718_agoojiye_research_sources.sql` with `ON_ERROR_STOP=1`.
+3. Apply `20260712_agoojiye_mobility_platform.sql`, `20260718_agoojiye_email_secret_guard.sql`, `20260718_agoojiye_research_sources.sql`, and `20260718_agoojiye_sequence_enrollments.sql` with `ON_ERROR_STOP=1`.
 4. Run `npm run seed:agoojye:mobility`.
 5. Run the mobility tests and `npm run build`.
 6. Deploy the generated client/server release with the existing VPS procedure.

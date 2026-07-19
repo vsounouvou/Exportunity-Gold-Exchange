@@ -662,6 +662,34 @@ export const agoojyeOutreachSequences = pgTable(
   }),
 );
 
+export const agoojyeSequenceEnrollments = pgTable(
+  "agoojye_sequence_enrollments",
+  {
+    id: serial("id").primaryKey(),
+    tenantId: integer("tenant_id").references(() => tenants.id, { onDelete: "cascade" }).notNull(),
+    sequenceId: integer("sequence_id").references(() => agoojyeOutreachSequences.id, { onDelete: "cascade" }).notNull(),
+    opportunityId: integer("opportunity_id").references(() => agoojyeSponsorOpportunities.id, { onDelete: "cascade" }).notNull(),
+    contactId: integer("contact_id").references(() => agoojyeCrmContacts.id, { onDelete: "cascade" }).notNull(),
+    senderIdentityId: integer("sender_identity_id").references(() => agoojyeEmailIdentities.id, { onDelete: "restrict" }).notNull(),
+    currentApprovalId: integer("current_approval_id").references(() => agoojyeOutreachApprovals.id, { onDelete: "set null" }),
+    status: text("status").notNull().default("awaiting_initial_approval"),
+    currentStep: integer("current_step").notNull().default(0),
+    nextRunAt: timestamp("next_run_at", { withTimezone: true }),
+    lastSentAt: timestamp("last_sent_at", { withTimezone: true }),
+    activatedBy: text("activated_by"),
+    activatedAt: timestamp("activated_at", { withTimezone: true }),
+    stopReason: text("stop_reason"),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    createdAt: now(),
+    updatedAt: updated(),
+  },
+  (t) => ({
+    tenantSequenceContactUnique: uniqueIndex("agoojye_sequence_enrollments_tenant_sequence_contact_uidx").on(t.tenantId, t.sequenceId, t.contactId),
+    byTenantStatus: index("agoojye_sequence_enrollments_tenant_status_idx").on(t.tenantId, t.status, t.nextRunAt),
+    byTenantOpportunity: index("agoojye_sequence_enrollments_tenant_opportunity_idx").on(t.tenantId, t.opportunityId),
+  }),
+);
+
 export const agoojyeImportBatches = pgTable(
   "agoojye_import_batches",
   {

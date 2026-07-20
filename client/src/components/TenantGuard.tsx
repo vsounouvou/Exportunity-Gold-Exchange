@@ -2,6 +2,7 @@ import { ReactNode, useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTenant } from "@/lib/tenant";
 import { clearTenantScopedBrowserState } from "@/lib/tenantScopedState";
+import { shouldBlockTenantRendering } from "@/lib/tenantResolution";
 
 const PRESERVE_QUERY_PREFIXES = ["/api/ece/auth", "/api/mindbase/auth", "/api/tenant", "/api/health/build"];
 
@@ -34,7 +35,14 @@ export function TenantGuard({ children }: { children: ReactNode }) {
     previousTenant.current = current;
   }, [queryClient, tenant?.key]);
 
-  if (loading && !tenant?.id) {
+  const shouldBlock = shouldBlockTenantRendering({
+    loading,
+    tenantId: tenant?.id,
+    host: typeof window !== "undefined" ? window.location.hostname : undefined,
+    sessionToken: typeof window !== "undefined" ? window.localStorage.getItem("ece_session") : null,
+  });
+
+  if (shouldBlock) {
     return <div className="min-h-screen bg-gray-950 text-gray-300 flex items-center justify-center">Resolving tenant...</div>;
   }
 

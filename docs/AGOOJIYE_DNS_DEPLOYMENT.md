@@ -20,7 +20,7 @@ Default language: French
 Secondary language: English
 Country: Bénin
 VPS IPv4: 51.254.143.30
-Docker Compose project: agoojye-bdo
+Docker Compose project: agoojye
 App container: agoojye-bdo-app-1
 App host binding: 127.0.0.1:5005 -> 5000/tcp
 Nginx Proxy Manager container: npm-npm-1
@@ -31,19 +31,24 @@ Current verified runtime commit: see `/api/system/version` after each deploy
 NPM certificate: Let's Encrypt attached in Nginx Proxy Manager
 ```
 
-Latest verified runtime on 2026-07-18:
+Latest verified runtime on 2026-07-20:
 
 ```txt
 Source branch: codex/agoojye-launch-platform
 Live version endpoint: https://agoojiye.com/api/system/version
-Live commit: 08ac0587c458
-Build ID: 20260718022508
+Live commit: f7d766ea0abe
+Build ID: 1784585722185
 Client/server build mismatch: false
+Compose release: /var/www/agoojye/releases/20260720-221408-f7d766ea0abe
+Rollback release: /var/www/agoojye/releases/20260720-214724-b27600d57c1f
+Public mobility routes: HTTP 200
+Passenger E2E: trip search, seat selection, passenger details, demo payment, persisted booking, confirmation, and QR ticket passed
+3D E2E: nonblank canvas, framing, camera interaction, interior view, and tenant-asset isolation passed on mobile, tablet, and desktop
 Password page title: Mot de passe email - AGOOJIYE
 Mailbox auth: five initial AGOOJIYE accounts verified over IMAPS and SMTP submission; password-change flow verified and reverted
 Unified inbox: five Maildir deliveries index to five source messages and deduplicate to one CRM message/thread
 Shared aliases: all 15 resolve to the five human mailboxes after Postfix map rebuild
-Mail DNS: not yet cut over; OVH MX/SPF still active
+Mail DNS: not yet cut over; the 2026-07-20 verifier still reports OVH MX/SPF, missing mail A/DMARC/DKIM, and the legacy OVH PTR
 ```
 
 Nginx Proxy Manager already has an enabled HTTP proxy host for:
@@ -167,15 +172,19 @@ curl.exe -H "Host: agoojiye.com" http://51.254.143.30/api/tenant
 
 ## Production Environment Notes
 
-The AGOOJIYE deployment is a distinct app container behind the existing Nginx Proxy Manager. The shared platform defaults should not be changed for other tenants:
+The AGOOJIYE deployment is a distinct app container behind the existing Nginx Proxy Manager. The shared stack used by other tenants keeps its own defaults. The distinct AGOOJIYE service is launched with these non-secret overrides:
 
 ```bash
-TENANT_DEFAULT=exportunity
-DEPLOY_TENANT=exportunity
+APP_NAME=agoojye
+TENANT_DEFAULT=agoojye
+DEPLOY_TENANT=agoojye
+PUBLIC_BASE_URL=https://agoojiye.com
+APP_BASE_URL=https://agoojiye.com
+PASSWORD_SETUP_BASE_URL=https://agoojiye.com
 MAIL_DOMAIN_AGOOJIYE=agoojiye.com
 ```
 
-Do not switch `TENANT_DEFAULT` on the shared stack to `agoojye`, because the same VPS serves other tenants. Host-based tenant resolution maps the AGOOJIYE domains to the `agoojye` tenant, and NPM routes those domains to the distinct `agoojye-app` upstream.
+Do not switch `TENANT_DEFAULT` on any other shared service to `agoojye`, because the same VPS serves other tenants. Host-based tenant resolution maps the AGOOJIYE domains to the `agoojye` tenant, and NPM routes those domains to the distinct `agoojye-app` upstream.
 
 ## Required Mail DNS For Provisioned Mailboxes
 
@@ -189,7 +198,7 @@ AGOOJIYE docker-mailserver mailboxes already exist. To cut public mail over from
 | TXT | _dmarc | v=DMARC1; p=none; rua=mailto:dmarc@agoojiye.com; adkim=s; aspf=s |
 | TXT | mail._domainkey | Use the DKIM value in `docs/AGOOJIYE_EMAIL_DNS_AND_MAILBOXES.md` |
 
-Current public DNS verification still shows the legacy OVH mail records:
+Current public DNS verification on 2026-07-20 still shows the legacy OVH mail records:
 
 ```txt
 MX: 1 mx1.mail.ovh.net.

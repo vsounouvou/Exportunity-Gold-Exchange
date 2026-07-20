@@ -96,10 +96,10 @@ export default function AgoojyeMailPasswordPage() {
         <header className="flex items-center justify-between gap-4">
           <a href="/" aria-label="AGOOJIYE accueil" className="flex items-center gap-3">
             <img
-              src="/tenants/agoojye/logo-wordmark.png"
+              src="/brand/agoojiye/logo/AGOOJIYE_wordmark_gold_transparent.png"
               alt="AGOOJIYE"
-              width={930}
-              height={200}
+              width={1109}
+              height={201}
               className="h-10 w-auto max-w-[190px] object-contain sm:max-w-[240px]"
             />
           </a>

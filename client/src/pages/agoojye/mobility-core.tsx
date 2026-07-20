@@ -173,7 +173,7 @@ export function MobilityLayout({ children, active }: { children: ReactNode; acti
       <header className="sticky top-0 z-50 border-b border-black/10 bg-[#0b0d0c]/95 text-white backdrop-blur">
         <div className="mx-auto flex h-16 max-w-7xl items-center gap-4 px-4 sm:px-6">
           <a href="/" className="shrink-0" aria-label="Accueil AGOOJIYE">
-            <img src="/brand/agoojiye/logo/AGOOJIYE_logo_horizontal_transparent.png" alt="AGOOJIYE" width={947} height={183} className="h-9 w-auto max-w-[170px] object-contain object-left" />
+            <img src="/brand/agoojiye/logo/AGOOJIYE_wordmark_gold_transparent.png" alt="AGOOJIYE" width={1109} height={201} className="h-8 w-auto max-w-[170px] object-contain object-left" />
           </a>
           <nav className="ml-auto hidden items-center gap-4 xl:flex" aria-label="Navigation principale">
             {navItems.filter(([href]) => !["/reserver", "/reserver-un-bus"].includes(href)).map(([href, label]) => (
@@ -201,7 +201,7 @@ export function MobilityLayout({ children, active }: { children: ReactNode; acti
       <footer className="bg-[#0b0d0c] pb-24 text-white sm:pb-0">
         <div className="mx-auto grid max-w-7xl gap-8 px-4 py-12 sm:px-6 md:grid-cols-[1.2fr_1fr_1fr]">
           <div>
-            <img src="/brand/agoojiye/logo/AGOOJIYE_logo_horizontal_transparent.png" alt="AGOOJIYE" width={947} height={183} loading="lazy" className="h-10 w-auto object-contain object-left" />
+            <img src="/brand/agoojiye/logo/AGOOJIYE_wordmark_gold_transparent.png" alt="AGOOJIYE" width={1109} height={201} loading="lazy" className="h-9 w-auto object-contain object-left" />
             <p className="mt-4 max-w-md text-sm leading-6 text-white/65">Mobilité électrique conçue depuis le Bénin pour des déplacements simples, confortables et adaptés aux réalités africaines.</p>
           </div>
           <div>

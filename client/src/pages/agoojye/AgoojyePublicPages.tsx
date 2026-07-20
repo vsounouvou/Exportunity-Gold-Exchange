@@ -146,10 +146,10 @@ function AgoojyeLayout({ active, children }: { active: string; children: ReactNo
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4">
           <a href="/" className="flex items-center gap-3" aria-label="AGOOJIYE accueil">
             <img
-              src="/tenants/agoojye/logo-wordmark.png"
+              src="/brand/agoojiye/logo/AGOOJIYE_wordmark_gold_transparent.png"
               alt="AGOOJIYE"
-              width={930}
-              height={200}
+              width={1109}
+              height={201}
               className="h-10 w-auto max-w-[180px] object-contain md:max-w-[220px]"
             />
           </a>
@@ -173,10 +173,10 @@ function AgoojyeLayout({ active, children }: { active: string; children: ReactNo
         <div className="mx-auto grid max-w-7xl gap-6 px-4 py-8 md:grid-cols-[1fr_auto]">
           <div>
             <img
-              src="/tenants/agoojye/logo-wordmark.png"
+              src="/brand/agoojiye/logo/AGOOJIYE_wordmark_gold_transparent.png"
               alt="AGOOJIYE"
-              width={930}
-              height={200}
+              width={1109}
+              height={201}
               loading="lazy"
               className="h-10 w-auto max-w-[220px] object-contain"
             />

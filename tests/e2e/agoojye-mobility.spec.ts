@@ -52,7 +52,14 @@ for (const viewport of [
   { name: "tablet", width: 820, height: 1180 },
   { name: "desktop", width: 1440, height: 1000 },
 ]) {
-  test(`3D viewer renders nonblank and stays framed on ${viewport.name}`, async ({ page }) => {
+  test(`3D viewer renders nonblank and stays framed on ${viewport.name}`, async ({ page }, testInfo) => {
+    const foreignTenantRequests: string[] = [];
+    page.on("request", (request) => {
+      const url = request.url();
+      if (url.includes("/tenants/bdo/") || url.includes("/manifest-bdo.webmanifest")) {
+        foreignTenantRequests.push(url);
+      }
+    });
     await page.setViewportSize({ width: viewport.width, height: viewport.height });
     await page.goto("/experience-3d");
     const canvas = page.locator("canvas");
@@ -62,11 +69,22 @@ for (const viewport of [
     expect(box).not.toBeNull();
     expect(box!.width).toBeGreaterThan(Math.min(300, viewport.width - 40));
     expect(box!.height).toBeGreaterThan(350);
+    expect(box!.x).toBeGreaterThanOrEqual(0);
+    expect(box!.x + box!.width).toBeLessThanOrEqual(viewport.width + 1);
     const screenshot = await canvas.screenshot();
     const stats = await sharp(screenshot).stats();
     expect(stats.channels.some((channel) => channel.stdev > 8)).toBeTruthy();
     await page.getByRole("button", { name: "Vue latérale" }).click();
+    await page.waitForTimeout(250);
+    const sideScreenshot = await canvas.screenshot();
+    expect(Buffer.compare(screenshot, sideScreenshot)).not.toBe(0);
     await page.getByRole("button", { name: "Intérieur" }).click();
+    await expect(page.getByRole("button", { name: "Intérieur" })).toHaveClass(/bg-\[#e0b84f\]/);
+    expect(foreignTenantRequests).toEqual([]);
+    await page.screenshot({
+      path: testInfo.outputPath(`agoojye-3d-${viewport.name}.png`),
+      fullPage: false,
+    });
   });
 }
 

@@ -1,5 +1,12 @@
 /* eslint-disable no-restricted-globals */
-const TENANT = "bdo";
+function resolveTenant(hostname) {
+  const host = String(hostname || "").toLowerCase();
+  if (host.includes("agoojiye") || host.includes("agoojye") || host.includes("agojye")) return "agoojye";
+  if (host.includes("boursedelor")) return "bdo";
+  return "neutral";
+}
+
+const TENANT = resolveTenant(self.location.hostname);
 const BUILD_SUFFIX = "dev";
 const VERSION = `${TENANT}-sw-v1-build-${BUILD_SUFFIX}`;
 
@@ -7,14 +14,22 @@ const STATIC_CACHE = `${VERSION}:static`;
 const RUNTIME_CACHE = `${VERSION}:runtime`;
 const API_CACHE = `${VERSION}:api`;
 
-const PRECACHE_URLS = [
-  "/",
-  "/index.html",
-  "/offline.html",
-  "/manifest-bdo.webmanifest",
-  "/tenants/bdo/official/brand/app-icon-512.png",
-  "/tenants/bdo/official/brand/favicon-512.png",
-];
+const PRECACHE_URLS_BY_TENANT = {
+  agoojye: [
+    "/offline.html",
+    "/manifest-agoojiye.webmanifest",
+    "/tenants/agoojye/app-icon-64.png",
+  ],
+  bdo: [
+    "/offline.html",
+    "/manifest-bdo.webmanifest",
+    "/tenants/bdo/official/brand/app-icon-512.png",
+    "/tenants/bdo/official/brand/favicon-512.png",
+  ],
+  neutral: ["/offline.html", "/manifest.webmanifest", "/favicon.svg"],
+};
+
+const PRECACHE_URLS = PRECACHE_URLS_BY_TENANT[TENANT] || PRECACHE_URLS_BY_TENANT.neutral;
 
 function isNavigationRequest(request) {
   return request.mode === "navigate";
@@ -74,7 +89,7 @@ self.addEventListener("install", (event) => {
   event.waitUntil(
     caches
       .open(STATIC_CACHE)
-      .then((cache) => cache.addAll(PRECACHE_URLS))
+      .then((cache) => Promise.all(PRECACHE_URLS.map((url) => cache.add(url).catch(() => undefined))))
       .catch(() => undefined),
   );
 });

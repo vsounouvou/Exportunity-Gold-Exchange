@@ -33,6 +33,7 @@ export function AgoojiyeThreeExperiencePage() {
   const [status, setStatus] = useState<"loading" | "ready" | "error" | "reduced">("loading");
   const [preset, setPreset] = useState<CameraPreset>("exterior");
   const [hotspot, setHotspot] = useState<(typeof hotspots)[number] | null>(null);
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     trackMobilityEvent("3d_experience_opened", { model: "procedural-placeholder" });
@@ -43,6 +44,9 @@ export function AgoojiyeThreeExperiencePage() {
     let resizeObserver: ResizeObserver | null = null;
     let rendererInstance: any = null;
     const cleanupFns: Array<() => void> = [];
+    const loadTimeout = window.setTimeout(() => {
+      if (!disposed) setStatus("error");
+    }, 12_000);
     (async () => {
       try {
         const THREE: any = await import("three");
@@ -58,6 +62,10 @@ export function AgoojiyeThreeExperiencePage() {
         renderer.outputColorSpace = THREE.SRGBColorSpace;
         host.appendChild(renderer.domElement);
         renderer.domElement.setAttribute("aria-label", "Maquette 3D interactive du bus AGOOJIYE");
+        renderer.domElement.style.width = "100%";
+        renderer.domElement.style.height = "100%";
+        renderer.domElement.style.display = "block";
+        renderer.domElement.style.touchAction = "none";
 
         scene.add(new THREE.HemisphereLight(0xfff8e8, 0x2b332e, 2.1));
         const key = new THREE.DirectionalLight(0xffffff, 3.4);
@@ -196,13 +204,16 @@ export function AgoojiyeThreeExperiencePage() {
           frame = requestAnimationFrame(render);
         };
         render();
+        window.clearTimeout(loadTimeout);
         setStatus(reducedMotion ? "reduced" : "ready");
       } catch {
-        setStatus("error");
+        window.clearTimeout(loadTimeout);
+        if (!disposed) setStatus("error");
       }
     })();
     return () => {
       disposed = true;
+      window.clearTimeout(loadTimeout);
       cancelAnimationFrame(frame);
       resizeObserver?.disconnect();
       cleanupFns.forEach((cleanup) => cleanup());
@@ -212,7 +223,7 @@ export function AgoojiyeThreeExperiencePage() {
       }
       if (runtimeRef.current?.renderer === rendererInstance) runtimeRef.current = null;
     };
-  }, []);
+  }, [attempt]);
 
   const selectPreset = (value: CameraPreset) => {
     setPreset(value);
@@ -229,5 +240,10 @@ export function AgoojiyeThreeExperiencePage() {
     else host.requestFullscreen?.();
   };
 
-  return <MobilityLayout active="/experience-3d"><PageHeader eyebrow="Exploration interactive" title="Visitez le bus AGOOJIYE en 3D" description="Maquette procédurale de démonstration. Le modèle d'ingénierie final pourra la remplacer avec une seule URL de configuration." /><section className="bg-[#111412] text-white"><div className="mx-auto max-w-7xl px-4 pb-12 sm:px-6"><div className="flex flex-wrap gap-2 py-4" role="group" aria-label="Vues de la caméra">{presets.map((item) => <button key={item.id} type="button" onClick={() => selectPreset(item.id)} className={`min-h-10 border px-3 text-sm font-bold ${preset === item.id ? "border-[#e0b84f] bg-[#e0b84f] text-[#111]" : "border-white/20 text-white"}`}>{item.label}</button>)}<button type="button" onClick={toggleFullscreen} className="ml-auto inline-flex min-h-10 items-center gap-2 border border-white/20 px-3 text-sm font-bold"><Expand size={17} />Plein écran</button></div><div className="relative h-[58vh] min-h-[440px] max-h-[760px] overflow-hidden border border-white/10 bg-[#111412]" ref={hostRef}>{status === "loading" ? <div className="absolute inset-0 z-10 grid place-items-center bg-[#111412] text-sm text-white/60">Chargement de l'expérience 3D…</div> : null}{status === "error" ? <div className="absolute inset-0 z-10 grid place-items-center bg-[#111412] p-6 text-center"><div><img src="/brand/agoojiye/vehicle/sections/agoojiye-shuttle-side-profile-1280.webp" alt="Vue statique du bus AGOOJIYE" width={1280} height={853} className="mx-auto max-h-[360px] w-auto" /><p className="mt-4 text-sm text-white/70">La 3D n'est pas disponible sur cet appareil. La galerie statique reste accessible.</p></div></div> : null}</div><div className="mt-4 flex flex-wrap gap-5 text-xs text-white/55"><span className="flex items-center gap-2"><Rotate3D size={16} />Glissez pour tourner</span><span className="flex items-center gap-2"><ZoomIn size={16} />Faites défiler pour zoomer</span>{status === "reduced" ? <span>Mouvement automatique désactivé</span> : null}</div></div></section><section className="bg-[#f5f3ee]"><div className="mx-auto grid max-w-7xl gap-8 px-4 py-14 sm:px-6 lg:grid-cols-[1fr_360px]"><div><p className="text-xs font-bold uppercase text-[#805f12]">Points d'intérêt</p><h2 className="mt-2 text-3xl font-bold">Comprendre le bus</h2><div className="mt-6 grid gap-3 sm:grid-cols-2">{hotspots.map((item) => <button key={item[0]} type="button" onClick={() => setHotspot(item)} className="flex min-h-14 items-center justify-between border border-black/10 bg-white px-4 text-left font-bold hover:border-[#15803d]"><span>{item[1]}</span><Info size={18} className="text-[#15803d]" /></button>)}</div></div><aside className="h-fit bg-white p-6"><h3 className="text-xl font-bold">{hotspot?.[1] || "Sélectionnez un point"}</h3><p className="mt-3 text-sm leading-6 text-black/60">{hotspot?.[2] || "Explorez les zones du véhicule pour afficher une information concise."}</p><div className="mt-6 border border-amber-200 bg-amber-50 p-4 text-xs leading-5 text-amber-950"><strong>Maquette remplaçable.</strong> Aucun modèle d'ingénierie final n'a été trouvé dans le dépôt. Ajoutez le GLB validé via <code>AGOOJIYE_3D_MODEL_URL</code>.</div></aside></div></section></MobilityLayout>;
+  const retry = () => {
+    setStatus("loading");
+    setAttempt((value) => value + 1);
+  };
+
+  return <MobilityLayout active="/experience-3d"><PageHeader eyebrow="Exploration interactive" title="Visitez le bus AGOOJIYE en 3D" description="Maquette procédurale de démonstration. Le modèle d'ingénierie final pourra la remplacer avec une seule URL de configuration." /><section className="bg-[#111412] text-white"><div className="mx-auto max-w-7xl px-4 pb-12 sm:px-6"><div className="flex flex-wrap gap-2 py-4" role="group" aria-label="Vues de la caméra">{presets.map((item) => <button key={item.id} type="button" onClick={() => selectPreset(item.id)} className={`min-h-10 border px-3 text-sm font-bold ${preset === item.id ? "border-[#e0b84f] bg-[#e0b84f] text-[#111]" : "border-white/20 text-white"}`}>{item.label}</button>)}<button type="button" onClick={toggleFullscreen} className="ml-auto inline-flex min-h-10 items-center gap-2 border border-white/20 px-3 text-sm font-bold"><Expand size={17} />Plein écran</button></div><div className="relative h-[58vh] min-h-[440px] max-h-[760px] overflow-hidden border border-white/10 bg-[#111412]" ref={hostRef} aria-busy={status === "loading"}>{status === "loading" || status === "error" ? <div className="absolute inset-0 z-10 grid place-items-center bg-[#111412] p-4 text-center"><div><img src="/brand/agoojiye/vehicle/sections/agoojiye-shuttle-side-profile-1280.webp" alt="Aperçu statique du bus AGOOJIYE" width={1280} height={853} className="mx-auto max-h-[320px] max-w-full object-contain" /><p className="mt-4 text-sm text-white/70">{status === "loading" ? "Chargement de l'expérience 3D…" : "La 3D n'est pas disponible pour le moment. L'aperçu statique reste accessible."}</p>{status === "error" ? <button type="button" onClick={retry} className="mt-4 min-h-11 border border-[#e0b84f] px-4 text-sm font-bold text-[#e0b84f]">Réessayer la 3D</button> : null}</div></div> : null}</div><div className="mt-4 flex flex-wrap gap-5 text-xs text-white/55"><span className="flex items-center gap-2"><Rotate3D size={16} />Glissez pour tourner</span><span className="flex items-center gap-2"><ZoomIn size={16} />Faites défiler pour zoomer</span>{status === "reduced" ? <span>Mouvement automatique désactivé</span> : null}</div></div></section><section className="bg-[#f5f3ee]"><div className="mx-auto grid max-w-7xl gap-8 px-4 py-14 sm:px-6 lg:grid-cols-[1fr_360px]"><div><p className="text-xs font-bold uppercase text-[#805f12]">Points d'intérêt</p><h2 className="mt-2 text-3xl font-bold">Comprendre le bus</h2><div className="mt-6 grid gap-3 sm:grid-cols-2">{hotspots.map((item) => <button key={item[0]} type="button" onClick={() => setHotspot(item)} className="flex min-h-14 items-center justify-between border border-black/10 bg-white px-4 text-left font-bold hover:border-[#15803d]"><span>{item[1]}</span><Info size={18} className="text-[#15803d]" /></button>)}</div></div><aside className="h-fit bg-white p-6"><h3 className="text-xl font-bold">{hotspot?.[1] || "Sélectionnez un point"}</h3><p className="mt-3 text-sm leading-6 text-black/60">{hotspot?.[2] || "Explorez les zones du véhicule pour afficher une information concise."}</p><div className="mt-6 border border-amber-200 bg-amber-50 p-4 text-xs leading-5 text-amber-950"><strong>Maquette remplaçable.</strong> Aucun modèle d'ingénierie final n'a été trouvé dans le dépôt. Ajoutez le GLB validé via <code>AGOOJIYE_3D_MODEL_URL</code>.</div></aside></div></section></MobilityLayout>;
 }

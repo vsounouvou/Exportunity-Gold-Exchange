@@ -31,7 +31,7 @@ Current verified runtime commit: see `/api/system/version` after each deploy
 NPM certificate: Let's Encrypt attached in Nginx Proxy Manager
 ```
 
-Latest verified runtime on 2026-07-20:
+Latest verified runtime and mail cutover on 2026-07-21:
 
 ```txt
 Source branch: codex/agoojye-launch-platform
@@ -48,7 +48,8 @@ Password page title: Mot de passe email - AGOOJIYE
 Mailbox auth: five initial AGOOJIYE accounts verified over IMAPS and SMTP submission; password-change flow verified and reverted
 Unified inbox: five Maildir deliveries index to five source messages and deduplicate to one CRM message/thread
 Shared aliases: all 15 resolve to the five human mailboxes after Postfix map rebuild
-Mail DNS: not yet cut over; the 2026-07-20 verifier still reports OVH MX/SPF, missing mail A/DMARC/DKIM, and the legacy OVH PTR
+Mail DNS: cut over to mail.agoojiye.com; MX, mail A, SPF, DMARC, DKIM, and PTR are publicly verified
+Mail service: all five accounts authenticate; SMTP submission and INBOX delivery pass; ports 25, 465, 587, and 993 are publicly reachable
 ```
 
 Nginx Proxy Manager already has an enabled HTTP proxy host for:
@@ -186,9 +187,9 @@ MAIL_DOMAIN_AGOOJIYE=agoojiye.com
 
 Do not switch `TENANT_DEFAULT` on any other shared service to `agoojye`, because the same VPS serves other tenants. Host-based tenant resolution maps the AGOOJIYE domains to the `agoojye` tenant, and NPM routes those domains to the distinct `agoojye-app` upstream.
 
-## Required Mail DNS For Provisioned Mailboxes
+## Live Mail DNS For Provisioned Mailboxes
 
-AGOOJIYE docker-mailserver mailboxes already exist. To cut public mail over from OVH mail to the self-hosted stack, remove the existing OVH MX/SPF records and add:
+AGOOJIYE docker-mailserver mailboxes exist and public mail was cut over from OVH mail to the self-hosted stack on 2026-07-21. The live records are:
 
 | Type | Name | Target / Value |
 | --- | --- | --- |
@@ -198,20 +199,18 @@ AGOOJIYE docker-mailserver mailboxes already exist. To cut public mail over from
 | TXT | _dmarc | v=DMARC1; p=none; rua=mailto:dmarc@agoojiye.com; adkim=s; aspf=s |
 | TXT | mail._domainkey | Use the DKIM value in `docs/AGOOJIYE_EMAIL_DNS_AND_MAILBOXES.md` |
 
-Current public DNS verification on 2026-07-20 still shows the legacy OVH mail records:
+Public DNS verification on 2026-07-21 shows the completed mail cutover:
 
 ```txt
-MX: 1 mx1.mail.ovh.net.
-MX: 5 mx2.mail.ovh.net.
-MX: 100 mx3.mail.ovh.net.
-TXT @: v=spf1 include:mx.ovh.com -all
-mail.agoojiye.com A: missing
-_dmarc.agoojiye.com TXT: missing
-mail._domainkey.agoojiye.com TXT: missing
-PTR 51.254.143.30: vps-89f83557.vps.ovh.net. (must become mail.agoojiye.com.)
+MX: 10 mail.agoojiye.com.
+TXT @: v=spf1 mx ip4:51.254.143.30 -all
+mail.agoojiye.com A: 51.254.143.30
+_dmarc.agoojiye.com TXT: configured and verified
+mail._domainkey.agoojiye.com TXT: configured and verified
+PTR 51.254.143.30: mail.agoojiye.com.
 ```
 
-After applying the OVH edits, run the repository verifier:
+After any future OVH DNS edit, run the repository verifier:
 
 ```powershell
 npm run verify:agoojye:mail-dns
@@ -219,9 +218,9 @@ npm run verify:agoojye:mail-dns
 
 It checks MX, `mail.agoojiye.com` A, SPF, DMARC, and DKIM against the expected self-hosted mail records.
 
-If direct queries to `1.1.1.1` time out, verify the same records through another public resolver before concluding that a record is absent. The 2026-07-18 audit used Google DNS-over-HTTPS as the independent resolver.
+If direct queries to `1.1.1.1` time out, verify the same records through another public resolver before concluding that a record is absent. The 2026-07-21 cutover used Google DNS-over-HTTPS as the independent resolver.
 
-Request OVH reverse DNS/PTR for the VPS:
+The OVH reverse DNS/PTR for the VPS is configured as:
 
 ```txt
 IP: 51.254.143.30

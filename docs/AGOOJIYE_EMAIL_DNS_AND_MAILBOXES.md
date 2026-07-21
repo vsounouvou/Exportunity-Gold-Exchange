@@ -1,14 +1,14 @@
 # AGOOJIYE email DNS and mailbox handoff
 
-Date: 2026-07-18
+Date: 2026-07-21
 
 Brand spelling note: the final public spelling is `AGOOJIYE`. The legacy technical key `agoojye` remains in route names, database tables, and private credential-file paths, while public DNS and email use `agoojiye.com`.
 
 ## Latest verified live state
 
-Verified on 2026-07-18 after AGOOJIYE production deployment:
+Verified on 2026-07-21 after the AGOOJIYE production deployment and public mail cutover:
 
-- Production runs commit `08ac0587c458` with build ID `20260718022508`; `/api/system/version` reports no client/server build mismatch.
+- Production runs commit `f7d766ea0abe` with build ID `1784585722185`; `/api/system/version` reports no client/server build mismatch.
 - `https://agoojiye.com` returns HTTP 200.
 - `https://agoojiye.com/mail/password` returns HTTP 200 with the title `Mot de passe email - AGOOJIYE`.
 - `https://agoojiye.com/admin/agoojye/email` returns HTTP 200 for the protected app shell.
@@ -19,7 +19,10 @@ Verified on 2026-07-18 after AGOOJIYE production deployment:
 - The five human mailbox profiles and SMTP identities are persisted for tenant `3162`, linked to the five physical `email_accounts`, and reference environment-secret names instead of storing passwords in the database.
 - A live message sent to `sponsors@agoojiye.com` was delivered to all five Maildir inboxes, indexed as five source messages, and deduplicated by RFC `Message-ID` into one AGOOJIYE CRM thread/message. The completed index cycle reported `warnings=0`.
 - The Postfix alias hash was rebuilt on 2026-07-18 because its generated `.db` file was older than the alias source. All 15 shared aliases now resolve to the five recipients.
-- Public DNS is still not cut over for mail; the OVH DNS edits below remain required before external inbound mail will arrive at this self-hosted stack.
+- OVH DNS now publishes the self-hosted mail records: one priority-10 MX, `mail` A, SPF, DMARC, DKIM, and the matching `mail.agoojiye.com` PTR.
+- The repository DNS verifier passes all five forward-DNS checks. Google Public DNS also resolves the PTR to `mail.agoojiye.com`.
+- A post-cutover SMTP submission from `vital@agoojiye.com` was accepted and delivered to the INBOX for `regis@agoojiye.com`.
+- Public TCP checks pass for SMTP port 25, SMTPS port 465, submission port 587, and IMAPS port 993.
 
 ## Provisioned mailboxes
 
@@ -44,7 +47,7 @@ Private initial passwords are not committed and are not printed in chat.
 
 Roundcube is available for mailbox login. Password self-service is handled by the AGOOJIYE platform at `/mail/password`: the route verifies the current mailbox password against Dovecot in docker-mailserver, updates docker-mailserver, verifies the new password against Dovecot, and writes only audit metadata. Raw mailbox passwords are not stored in the app database.
 
-Private credential-file format: account lines are whitespace-separated as `<email> <initial-password> <created-marker> <verification-marker>`. The initial password is the second field. Treat the entire file as secret material and do not paste it into chat, logs or commits.
+Private credential-file format: account lines are tab-separated as `<email> <initial-password> <provision-status> <auth-status>`. The initial password is the second field. Treat the entire file as secret material and do not paste it into chat, logs or commits.
 
 ## Shared aliases
 
@@ -88,30 +91,30 @@ docker exec mailserver postmap -q sponsors@agoojiye.com hash:/tmp/docker-mailser
 
 ## Current public DNS state
 
-As of the independent DNS-over-HTTPS verification on 2026-07-18, public DNS is not yet cut over for this self-hosted mail stack:
+The public mail cutover was completed in OVH Manager on 2026-07-21. The authoritative OVH servers and Google Public DNS resolve:
 
-- `agoojiye.com` MX still points to OVH: `mx1.mail.ovh.net`, `mx2.mail.ovh.net`, `mx3.mail.ovh.net`
-- `mail.agoojiye.com` has no public `A` record
-- root SPF is still `v=spf1 include:mx.ovh.com -all`
-- `_dmarc.agoojiye.com` does not exist
-- `mail._domainkey.agoojiye.com` does not exist
-- reverse DNS for `51.254.143.30` is still `vps-89f83557.vps.ovh.net`, not `mail.agoojiye.com`
+```text
+agoojiye.com.                  MX   10 mail.agoojiye.com.
+mail.agoojiye.com.             A    51.254.143.30
+agoojiye.com.                  TXT  v=spf1 mx ip4:51.254.143.30 -all
+_dmarc.agoojiye.com.           TXT  v=DMARC1; p=none; rua=mailto:dmarc@agoojiye.com; adkim=s; aspf=s
+mail._domainkey.agoojiye.com.  TXT  v=DKIM1; h=sha256; k=rsa; p=...
+51.254.143.30                  PTR  mail.agoojiye.com.
+```
 
-The mailboxes can log in now, but external inbound mail for `@agoojiye.com` will keep going to OVH until the MX records below are changed.
+The three legacy OVH MX records and the legacy OVH SPF record have been removed. Keep exactly one root SPF record and one MX record unless the mail architecture changes deliberately.
 
-No OVH API credentials are present in the local environment. Chrome control is available, but OVH Manager opened on a fresh login page with no authenticated session. An OVH login tab was left open for the account owner. After the account owner signs in, the DNS edits can be entered and submitted in that authenticated session.
-
-After editing OVH DNS, verify the public records with:
+Re-verify the public records after any future DNS change with:
 
 ```powershell
 npm run verify:agoojye:mail-dns
 ```
 
-The command exits non-zero until MX, `mail` A, SPF, DMARC, and DKIM all match the required records below.
+The command must pass MX, `mail` A, SPF, DMARC, and DKIM. Query the PTR separately because the verifier intentionally covers only the forward zone.
 
-## Required OVH DNS records
+## Applied OVH DNS records
 
-For the docker-mailserver cutover, update the `agoojiye.com` DNS zone as follows.
+The docker-mailserver cutover applied the following changes to the `agoojiye.com` DNS zone.
 
 ### Remove
 

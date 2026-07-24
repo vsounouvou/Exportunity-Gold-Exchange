@@ -36,11 +36,11 @@ Latest verified runtime and mail configuration on 2026-07-24:
 ```txt
 Source branch: codex/agoojye-launch-platform
 Live version endpoint: https://agoojiye.com/api/system/version
-Live commit: f7d766ea0abe
-Build ID: 1784585722185
+Live commit: 16d0ec2f1556
+Build ID: 1784918929913
 Client/server build mismatch: false
-Compose release: /var/www/agoojye/releases/20260720-221408-f7d766ea0abe
-Rollback release: /var/www/agoojye/releases/20260720-214724-b27600d57c1f
+Compose release: /var/www/agoojye/releases/20260724-184849-16d0ec2f1556
+Rollback release: /var/www/agoojye/releases/20260724-181519-6b436b827e77
 Public mobility routes: HTTP 200
 Passenger E2E: trip search, seat selection, passenger details, demo payment, persisted booking, confirmation, and QR ticket passed
 3D E2E: nonblank canvas, framing, camera interaction, interior view, and tenant-asset isolation passed on mobile, tablet, and desktop

@@ -8,7 +8,7 @@ Brand spelling note: the final public spelling is `AGOOJIYE`. The legacy technic
 
 Verified on 2026-07-24 after the AGOOJIYE production deployment, public mail cutover, mailbox correction, and branded-webmail launch:
 
-- Production runs commit `f7d766ea0abe` with build ID `1784585722185`; `/api/system/version` reports no client/server build mismatch.
+- Production runs commit `16d0ec2f1556` with build ID `1784918929913`; `/api/system/version` reports no client/server build mismatch.
 - `https://agoojiye.com` returns HTTP 200.
 - `https://agoojiye.com/mail/password` returns HTTP 200 with the title `Mot de passe email - AGOOJIYE`.
 - `https://agoojiye.com/admin/agoojye/email` returns HTTP 200 for the protected app shell.

@@ -45,12 +45,12 @@ Public mobility routes: HTTP 200
 Passenger E2E: trip search, seat selection, passenger details, demo payment, persisted booking, confirmation, and QR ticket passed
 3D E2E: nonblank canvas, framing, camera interaction, interior view, and tenant-asset isolation passed on mobile, tablet, and desktop
 Password page title: Mot de passe email - AGOOJIYE
-Mailbox auth: regis, soriane, maryse, and christian verified against Dovecot
+Mailbox auth: regis, soriane, maryse, christian, and vital verified against Dovecot
 Webmail: https://mail.agoojiye.com/ serves French Roundcube with AGOOJIYE branding and valid TLS
-Unified inbox: four approved Maildir profiles are indexed and alias fan-out deduplicates by RFC Message-ID
-Shared aliases: all 15 resolve to the four approved human mailboxes; marise and surian redirect to corrected spellings
+Unified inbox: five approved Maildir profiles are indexed and alias fan-out deduplicates by RFC Message-ID
+Shared aliases: all 15 resolve to the five approved human mailboxes; marise and surian redirect to corrected spellings
 Mail DNS: cut over to mail.agoojiye.com; MX, mail A, SPF, DMARC, DKIM, and PTR are publicly verified
-Mail service: all four approved accounts authenticate; ports 25, 465, 587, and 993 are publicly reachable
+Mail service: all five approved accounts authenticate; ports 25, 465, 587, and 993 are publicly reachable
 ```
 
 Nginx Proxy Manager already has an enabled HTTP proxy host for:

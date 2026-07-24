@@ -6,10 +6,9 @@ export type AgoojiyeHumanMailboxProfile = {
 
 export const AGOOJIYE_HUMAN_MAILBOX_PROFILES: readonly AgoojiyeHumanMailboxProfile[] = [
   { localPart: "regis", displayName: "Regis", passwordEnv: "AGOOJIYE_MAILBOX_REGIS_PASSWORD" },
-  { localPart: "marise", displayName: "Marise", passwordEnv: "AGOOJIYE_MAILBOX_MARISE_PASSWORD" },
-  { localPart: "vital", displayName: "Vital", passwordEnv: "AGOOJIYE_MAILBOX_VITAL_PASSWORD" },
-  { localPart: "surian", displayName: "Surian", passwordEnv: "AGOOJIYE_MAILBOX_SURIAN_PASSWORD" },
-  { localPart: "binta", displayName: "Binta", passwordEnv: "AGOOJIYE_MAILBOX_BINTA_PASSWORD" },
+  { localPart: "soriane", displayName: "Soriane", passwordEnv: "AGOOJIYE_MAILBOX_SORIANE_PASSWORD" },
+  { localPart: "maryse", displayName: "Maryse", passwordEnv: "AGOOJIYE_MAILBOX_MARYSE_PASSWORD" },
+  { localPart: "christian", displayName: "Christian", passwordEnv: "AGOOJIYE_MAILBOX_CHRISTIAN_PASSWORD" },
 ] as const;
 
 export const AGOOJIYE_MAIL_DOMAIN = "agoojiye.com";

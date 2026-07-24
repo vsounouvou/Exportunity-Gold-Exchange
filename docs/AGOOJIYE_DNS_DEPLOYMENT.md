@@ -31,7 +31,7 @@ Current verified runtime commit: see `/api/system/version` after each deploy
 NPM certificate: Let's Encrypt attached in Nginx Proxy Manager
 ```
 
-Latest verified runtime and mail cutover on 2026-07-21:
+Latest verified runtime and mail configuration on 2026-07-24:
 
 ```txt
 Source branch: codex/agoojye-launch-platform
@@ -45,11 +45,12 @@ Public mobility routes: HTTP 200
 Passenger E2E: trip search, seat selection, passenger details, demo payment, persisted booking, confirmation, and QR ticket passed
 3D E2E: nonblank canvas, framing, camera interaction, interior view, and tenant-asset isolation passed on mobile, tablet, and desktop
 Password page title: Mot de passe email - AGOOJIYE
-Mailbox auth: five initial AGOOJIYE accounts verified over IMAPS and SMTP submission; password-change flow verified and reverted
-Unified inbox: five Maildir deliveries index to five source messages and deduplicate to one CRM message/thread
-Shared aliases: all 15 resolve to the five human mailboxes after Postfix map rebuild
+Mailbox auth: regis, soriane, maryse, and christian verified against Dovecot
+Webmail: https://mail.agoojiye.com/ serves French Roundcube with AGOOJIYE branding and valid TLS
+Unified inbox: four approved Maildir profiles are indexed and alias fan-out deduplicates by RFC Message-ID
+Shared aliases: all 15 resolve to the four approved human mailboxes; marise and surian redirect to corrected spellings
 Mail DNS: cut over to mail.agoojiye.com; MX, mail A, SPF, DMARC, DKIM, and PTR are publicly verified
-Mail service: all five accounts authenticate; SMTP submission and INBOX delivery pass; ports 25, 465, 587, and 993 are publicly reachable
+Mail service: all four approved accounts authenticate; ports 25, 465, 587, and 993 are publicly reachable
 ```
 
 Nginx Proxy Manager already has an enabled HTTP proxy host for:

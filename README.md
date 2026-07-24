@@ -67,10 +67,9 @@ AGOOJIYE_DEMO_PAYMENT_MODE=true
 AGOOJIYE_EMAIL_PROVIDER=roundcube
 AGOOJIYE_SMTP_HOST=mail.exportunity.net
 AGOOJIYE_MAILBOX_REGIS_PASSWORD=
-AGOOJIYE_MAILBOX_MARISE_PASSWORD=
-AGOOJIYE_MAILBOX_VITAL_PASSWORD=
-AGOOJIYE_MAILBOX_SURIAN_PASSWORD=
-AGOOJIYE_MAILBOX_BINTA_PASSWORD=
+AGOOJIYE_MAILBOX_SORIANE_PASSWORD=
+AGOOJIYE_MAILBOX_MARYSE_PASSWORD=
+AGOOJIYE_MAILBOX_CHRISTIAN_PASSWORD=
 AGOOJIYE_SMS_PROVIDER=disabled
 AGOOJIYE_WHATSAPP_PROVIDER=disabled
 AGOOJIYE_SUPPORT_PHONE=+2290100000000
@@ -238,13 +237,13 @@ Set `AGOOJIYE_PAYMENT_PROVIDER` and disable `AGOOJIYE_DEMO_PAYMENT_MODE` only af
 
 Delivery adapters are configured independently with `AGOOJIYE_EMAIL_PROVIDER`, `AGOOJIYE_SMS_PROVIDER`, and `AGOOJIYE_WHATSAPP_PROVIDER`. RoundCube is the human webmail interface; application delivery should use authenticated SMTP or the existing mail service, not browser automation.
 
-The AGOOJIYE mail bridge registers the five approved human mailboxes in the shared mail engine, indexes their Maildir folders, mirrors conversations into the AGOOJIYE CRM inbox, creates external contacts from replies, and records explicit opt-outs or hard bounces in both suppression registries. Administrators can trigger the same operation from `/admin/agoojye/inbox`. The five password variables contain deployment secrets only; leave them blank in source control and inject them through the production environment.
+The AGOOJIYE mail bridge registers the four approved human mailboxes (`regis`, `soriane`, `maryse`, and `christian`) in the shared mail engine, indexes their Maildir folders, mirrors conversations into the AGOOJIYE CRM inbox, creates external contacts from replies, and records explicit opt-outs or hard bounces in both suppression registries. Administrators can trigger the same operation from `/admin/agoojye/inbox`. The four password variables contain deployment secrets only; leave them blank in source control and inject them through the production environment. Human webmail is available at `https://mail.agoojiye.com/`.
 
-SMTP passwords are never accepted by the AGOOJIYE settings API. The legacy `smtp_password_encrypted` column is cleared and protected by a database constraint; authenticated sends resolve only the five `AGOOJIYE_MAILBOX_*_PASSWORD` environment references on the server.
+SMTP passwords are never accepted by the AGOOJIYE settings API. The legacy `smtp_password_encrypted` column is cleared and protected by a database constraint; authenticated sends resolve only the four `AGOOJIYE_MAILBOX_*_PASSWORD` environment references on the server.
 
 The sponsor CRM import at `/admin/agoojye/imports` accepts CSV and XLSX files up to 5 MB and 2,000 rows. The administrator selects organizations, contacts, opportunities, or Sponsor Toolbox, reviews inferred column mapping, invalid rows, and database duplicates, then confirms by resubmitting the same file. The server reparses the file, inserts in a transaction, never overwrites an existing dedupe key, stores batch statistics, and writes an audit event.
 
-New outreach approvals always start in `awaiting_approval`. Approval and rejection timestamps are set by the server. An approved item is sent only through `POST /api/admin/agoojye/approvals/:id/send`; the endpoint atomically claims the item, verifies the contact, suppression status, and one of the five human sender identities, invokes authenticated SMTP, and marks it `sent` only after mail-server acceptance. Editing approved content returns it to the approval queue. Public DNS preflight intentionally blocks external sending until SPF and DKIM are correct.
+New outreach approvals always start in `awaiting_approval`. Approval and rejection timestamps are set by the server. An approved item is sent only through `POST /api/admin/agoojye/approvals/:id/send`; the endpoint atomically claims the item, verifies the contact, suppression status, and one of the four human sender identities, invokes authenticated SMTP, and marks it `sent` only after mail-server acceptance. Editing approved content returns it to the approval queue. Public DNS preflight intentionally blocks external sending until SPF and DKIM are correct.
 
 The AGOOJIYE operational queue uses `agoojye_background_jobs` as a tenant-scoped PostgreSQL queue. Due jobs are claimed with `FOR UPDATE SKIP LOCKED`, processed sequentially, retried with bounded exponential backoff, and moved to `dead_letter` after permanent failure or the configured attempt limit. The production scheduler starts only for the `agoojye` tenant when `AGOOJIYE_JOB_WORKER_ENABLED=true`; interval and batch size are controlled by `AGOOJIYE_JOB_WORKER_INTERVAL_MS` and `AGOOJIYE_JOB_WORKER_MAX_BATCH`. Administrators can inspect, cancel, retry, or run due jobs from `/admin/agoojye/jobs`.
 

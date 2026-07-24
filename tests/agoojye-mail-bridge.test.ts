@@ -16,10 +16,9 @@ test("AGOOJIYE human mailbox profiles are stable and tenant-scoped", () => {
     AGOOJIYE_HUMAN_MAILBOX_PROFILES.map((profile) => agoojiyeMailboxAddress(profile.localPart)),
     [
       "regis@agoojiye.com",
-      "marise@agoojiye.com",
-      "vital@agoojiye.com",
-      "surian@agoojiye.com",
-      "binta@agoojiye.com",
+      "soriane@agoojiye.com",
+      "maryse@agoojiye.com",
+      "christian@agoojiye.com",
     ],
   );
   assert.equal(agoojiyeMaildirPath("Regis"), "/var/mail/agoojiye.com/regis");
@@ -36,6 +35,10 @@ test("exact sender policy only allows approved AGOOJIYE human mailboxes", () => 
   );
   assert.equal(
     canUseExactMailboxSender({ tenantKey: "agoojye", email: "attacker@agoojiye.com", senderAddressMode: "mailbox_exact" }),
+    false,
+  );
+  assert.equal(
+    canUseExactMailboxSender({ tenantKey: "agoojye", email: "marise@agoojiye.com", senderAddressMode: "mailbox_exact" }),
     false,
   );
 });

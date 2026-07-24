@@ -1,12 +1,12 @@
 # AGOOJIYE email DNS and mailbox handoff
 
-Date: 2026-07-21
+Date: 2026-07-24
 
 Brand spelling note: the final public spelling is `AGOOJIYE`. The legacy technical key `agoojye` remains in route names, database tables, and private credential-file paths, while public DNS and email use `agoojiye.com`.
 
 ## Latest verified live state
 
-Verified on 2026-07-21 after the AGOOJIYE production deployment and public mail cutover:
+Verified on 2026-07-24 after the AGOOJIYE production deployment, public mail cutover, mailbox correction, and branded-webmail launch:
 
 - Production runs commit `f7d766ea0abe` with build ID `1784585722185`; `/api/system/version` reports no client/server build mismatch.
 - `https://agoojiye.com` returns HTTP 200.
@@ -14,11 +14,11 @@ Verified on 2026-07-21 after the AGOOJIYE production deployment and public mail 
 - `https://agoojiye.com/admin/agoojye/email` returns HTTP 200 for the protected app shell.
 - `https://agoojiye.com/admin/agoojye/inbox` returns HTTP 200 for the protected unified-inbox shell.
 - `https://agoojiye.com/api/agoojye/public/bootstrap` returns HTTP 200.
-- All five initial human mailboxes authenticate successfully over IMAPS and SMTP submission using the private credential file.
+- The four approved human mailboxes authenticate successfully: `regis`, `soriane`, `maryse`, and `christian`.
+- `https://mail.agoojiye.com/` serves the French Roundcube login with AGOOJIYE product name, logo, favicon, and a valid Let's Encrypt certificate.
 - The first-login password-change route was verified end-to-end on 2026-06-29: one mailbox was changed to a temporary password through `https://agoojiye.com/mail/password`, authenticated with the temporary password, then reverted to the original initial password and re-verified.
-- The five human mailbox profiles and SMTP identities are persisted for tenant `3162`, linked to the five physical `email_accounts`, and reference environment-secret names instead of storing passwords in the database.
-- A live message sent to `sponsors@agoojiye.com` was delivered to all five Maildir inboxes, indexed as five source messages, and deduplicated by RFC `Message-ID` into one AGOOJIYE CRM thread/message. The completed index cycle reported `warnings=0`.
-- The Postfix alias hash was rebuilt on 2026-07-18 because its generated `.db` file was older than the alias source. All 15 shared aliases now resolve to the five recipients.
+- The four active human mailbox profiles and SMTP identities are persisted for tenant `3162`, linked to physical `email_accounts`, and reference environment-secret names instead of storing passwords in the database.
+- All 15 shared aliases resolve to the four approved recipients. The former misspellings `marise@agoojiye.com` and `surian@agoojiye.com` redirect to `maryse@agoojiye.com` and `soriane@agoojiye.com`.
 - OVH DNS now publishes the self-hosted mail records: one priority-10 MX, `mail` A, SPF, DMARC, DKIM, and the matching `mail.agoojiye.com` PTR.
 - The repository DNS verifier passes all five forward-DNS checks. Google Public DNS also resolves the PTR to `mail.agoojiye.com`.
 - A post-cutover SMTP submission from `vital@agoojiye.com` was accepted and delivered to the INBOX for `regis@agoojiye.com`.
@@ -26,21 +26,20 @@ Verified on 2026-07-21 after the AGOOJIYE production deployment and public mail 
 
 ## Provisioned mailboxes
 
-These real docker-mailserver mailboxes now exist on the production mail stack and authenticate over IMAPS and SMTP submission through `mail.exportunity.net`.
+These real docker-mailserver mailboxes now exist on the production mail stack. Team members sign in through the AGOOJIYE-owned webmail at `https://mail.agoojiye.com/`.
 
 | Person | Email | Quota | Status |
 | --- | --- | ---: | --- |
 | Regis | `regis@agoojiye.com` | 2 GB | active, IMAPS + SMTP submission verified |
-| Marise | `marise@agoojiye.com` | 2 GB | active, IMAPS + SMTP submission verified |
-| Vital | `vital@agoojiye.com` | 2 GB | active, IMAPS + SMTP submission verified |
-| Surian | `surian@agoojiye.com` | 2 GB | active, IMAPS + SMTP submission verified |
-| Binta | `binta@agoojiye.com` | 2 GB | active, IMAPS + SMTP submission verified; password-change flow verified and reverted |
+| Soriane | `soriane@agoojiye.com` | 2 GB | active, IMAPS + SMTP submission verified |
+| Maryse | `maryse@agoojiye.com` | 2 GB | active, IMAPS + SMTP submission verified |
+| Christian | `christian@agoojiye.com` | 2 GB | active, IMAPS + SMTP submission verified |
 
 Private initial passwords are not committed and are not printed in chat.
 
-- VPS credential file: `/home/vital/secure/agoojye/agoojye-mailbox-initial-credentials-20260625T012859Z.txt`
-- Local handoff copy: `C:\tmp\agoojye-mailbox-initial-credentials-20260625T012859Z.txt`
-- Webmail login: `https://mail.exportunity.net/`
+- VPS credential file: `/home/vital/secure/agoojye/agoojye-mailbox-initial-credentials-20260724T175218Z.txt`
+- Local handoff copy: `C:\tmp\agoojye-mailbox-initial-credentials-20260724T175218Z.txt`
+- Webmail login: `https://mail.agoojiye.com/`
 - First-login password change page: `https://agoojiye.com/mail/password`
 - IMAP host: `mail.exportunity.net`, port `993`, TLS on
 - SMTP submission host: `mail.exportunity.net`, port `587`, STARTTLS
@@ -51,7 +50,7 @@ Private credential-file format: account lines are tab-separated as `<email> <ini
 
 ## Shared aliases
 
-The following aliases are active and currently fan out to all five initial AGOOJIYE mailboxes:
+The following aliases are active and fan out to the four approved AGOOJIYE mailboxes:
 
 ```text
 hello@agoojiye.com
@@ -73,11 +72,11 @@ privacy@agoojiye.com
 
 The app database has matching AGOOJIYE tenant records:
 
-- `email_accounts`: 5 active accounts for tenant `3162`
-- `email_aliases`: 75 alias routes for tenant `3162`
+- `email_accounts`: 4 active team accounts for tenant `3162`; former accounts remain disabled historical records
+- `email_aliases`: 62 routes for tenant `3162` (60 shared routes plus 2 compatibility redirects)
 - `agoojye_email_identities`: 20 active identities for tenant `3162`
-- `agent_mailboxes`: 5 enabled human inbox profiles for tenant `3162`
-- `agent_email_identities`: 5 enabled exact-address SMTP identities for tenant `3162`
+- `agent_mailboxes`: 4 enabled human inbox profiles for tenant `3162`
+- `agent_email_identities`: 4 enabled exact-address SMTP identities for tenant `3162`
 
 The production mail indexer reads each human Maildir every five minutes. It mirrors indexed inbound and outbound messages into `/admin/agoojye/inbox`, deduplicates alias fan-out copies by RFC `Message-ID`, records replies, and applies opt-out/bounce suppression rules. A protected manual synchronization endpoint is also available at `POST /api/admin/agoojye/mail/sync`.
 
@@ -200,6 +199,6 @@ Create the `mail` A record first. OVH may refuse the PTR until `mail.agoojiye.co
 
 Changing MX moves external inbound delivery away from OVH mail. Confirm that any mail that must be retained in the old OVH mailboxes has been exported before submitting the MX deletion.
 
-## Optional branded mail access
+## Branded mail access
 
-The verified login endpoint today is `mail.exportunity.net`. If AGOOJIYE needs branded webmail at `mail.agoojiye.com` or `webmail.agoojiye.com`, add the DNS record and an Nginx Proxy Manager host with a Let's Encrypt certificate before telling users to use that branded URL.
+The production login endpoint is `https://mail.agoojiye.com/`. The existing `mail` A record points to the VPS, Nginx Proxy Manager routes the hostname to Roundcube, and certificate `npm-4` covers both `mail.agoojiye.com` and the legacy backend hostname. Roundcube defaults to French and uses AGOOJIYE branding. The legacy hostname remains available only for protocol compatibility and rollback.

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" role="img" aria-labelledby="title desc">
+  <title id="title">AGOOJIYE icon placeholder</title>
+  <desc id="desc">Temporary shield and road icon for AGOOJIYE.</desc>
+  <rect width="160" height="160" rx="24" fill="#080808"/>
+  <path d="M80 18 128 38v39c0 32-18 54-48 65-30-11-48-33-48-65V38l48-20Z" fill="#123C2F" stroke="#C99A36" stroke-width="6"/>
+  <path d="M79 42 104 113H89l-4-14H63l-4 14H45l25-71h9Zm2 44-7-22-7 22h14Z" fill="#F7F2E8"/>
+  <path d="M37 121c31-12 55-12 86 0" fill="none" stroke="#E4C46A" stroke-width="5" stroke-linecap="round"/>
+</svg>

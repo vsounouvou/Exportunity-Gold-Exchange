@@ -56,3 +56,13 @@ export function resolveTenantKey(input: {
   const fallback = getTenantConfigByKey("exportunity");
   return (fallback?.slug || "exportunity") as TenantKey;
 }
+
+export function shouldBlockTenantRendering(input: {
+  loading: boolean;
+  tenantId?: number | null;
+  host?: string;
+  sessionToken?: string | null;
+}) {
+  if (!input.loading || input.tenantId) return false;
+  return !tenantFromHost(input.host) && !tenantFromSessionToken(input.sessionToken);
+}

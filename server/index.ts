@@ -34,6 +34,7 @@ import { ensureAgentPhotoColumns, ensureAgentPhotoTables } from "./lib/agents/en
 import { ensureMailEngineTables } from "./lib/mail/ensureTables";
 import { ensureEmailAdminTables } from "./lib/mail/ensureEmailAdminTables";
 import { startMailIndexerScheduler } from "./lib/mail/scheduler";
+import { startAgoojiyeJobWorkerScheduler } from "./lib/agoojye/jobWorker";
 import { ensureCommunicationsTables } from "./lib/communications/ensureTables";
 import { getTwilioConfig, validateTwilioEnv } from "./lib/communications/twilio";
 import { ensureActionRouterTables } from "./lib/actions/ensureTables";
@@ -63,6 +64,8 @@ import { validateSmtpEnvAtBoot } from "./lib/mail/smtpProbe";
 const app = express();
 let degradedNoDbMode = false;
 let degradedNoDbReason = "";
+const startupMode = String(process.env.STARTUP_MODE || "").trim().toLowerCase();
+const qualityGateStartup = startupMode === "marketing-audit" || startupMode === "quality-gate";
 const allowStartWithoutDb =
   String(process.env.ALLOW_START_WITHOUT_DB || "").trim().toLowerCase() === "true";
 
@@ -183,6 +186,11 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 });
 
 app.use(async (req, res, next) => {
+  if (qualityGateStartup) {
+    req.tenant = { id: 0, key: "bdo", name: "Marketing quality gate" } as any;
+    req.tenant_id = 0;
+    return next();
+  }
   if (degradedNoDbMode) {
     return next();
   }
@@ -213,7 +221,7 @@ app.use(async (req, res, next) => {
 });
 
 app.use(async (req, _res, next) => {
-  if (degradedNoDbMode) return next();
+  if (degradedNoDbMode || qualityGateStartup) return next();
   try {
     const activeTenant = await resolveActiveTenantForRequest(req);
     if (activeTenant) {
@@ -394,6 +402,21 @@ const errorHandler = (err: any, _req: Request, res: Response, _next: NextFunctio
 
 (async () => {
   try {
+    if (qualityGateStartup) {
+      const server = registerRoutes(app);
+      log(`Routes registered successfully (startupMode=${startupMode})`);
+      app.use(errorHandler);
+      serveStatic(app);
+      log("Static serving configured for production");
+
+      const port = parseInt(process.env.PORT || "5000", 10);
+      server.listen(port, "0.0.0.0", () => {
+        log(`Server running on port ${port}`);
+      });
+      registerShutdown(server);
+      return;
+    }
+
     // Verify database connection first
     try {
       await checkDatabaseConnection();
@@ -472,26 +495,6 @@ const errorHandler = (err: any, _req: Request, res: Response, _next: NextFunctio
       }
     } else {
       log(`[Email] SMTP transport ready (mode=${smtpHealth.mode})`);
-    }
-
-    const startupMode = String(process.env.STARTUP_MODE || "").trim().toLowerCase();
-    if (startupMode === "marketing-audit" || startupMode === "quality-gate") {
-      const server = registerRoutes(app);
-      log(`Routes registered successfully (startupMode=${startupMode})`);
-
-      // Register error handler
-      app.use(errorHandler);
-
-      serveStatic(app);
-      log("Static serving configured for production");
-
-      const port = parseInt(process.env.PORT || "5000", 10);
-      server.listen(port, "0.0.0.0", () => {
-        log(`Server running on port ${port}`);
-      });
-
-      registerShutdown(server);
-      return;
     }
 
     // Ensure agent enums are up-to-date (idempotent).
@@ -618,6 +621,15 @@ const errorHandler = (err: any, _req: Request, res: Response, _next: NextFunctio
       );
     } else {
       log("Mail indexer scheduler disabled");
+    }
+
+    const agoojiyeJobWorker = startAgoojiyeJobWorkerScheduler();
+    if (agoojiyeJobWorker) {
+      log(
+        `AGOOJIYE job worker scheduled (intervalMs=${agoojiyeJobWorker.intervalMs}, maxBatch=${agoojiyeJobWorker.maxBatch})`,
+      );
+    } else {
+      log("AGOOJIYE job worker disabled");
     }
 
     const actionsScheduler = startActionsWorkerScheduler();

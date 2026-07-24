@@ -23,15 +23,22 @@ function notifyUpdate(registration: ServiceWorkerRegistration) {
   window.dispatchEvent(new CustomEvent("bdo-sw-update", { detail: { registration } }));
 }
 
+export function shouldReloadOnControllerChange(wasControlledAtRegistration: boolean) {
+  return wasControlledAtRegistration;
+}
+
 export function registerServiceWorkerWithAutoUpgrade() {
   if (!import.meta.env.PROD) return;
   if (!("serviceWorker" in navigator)) return;
 
   window.addEventListener("load", () => {
+    const wasControlledAtRegistration = Boolean(navigator.serviceWorker.controller);
     navigator.serviceWorker
       .register("/sw.js", { updateViaCache: "none" })
       .then((registration) => {
-        attachControllerChangeReload();
+        if (shouldReloadOnControllerChange(wasControlledAtRegistration)) {
+          attachControllerChangeReload();
+        }
 
         const triggerUpdateCheck = () => {
           try {

@@ -1,5 +1,6 @@
 import { Router } from "express";
 import crypto from "crypto";
+import dns from "node:dns/promises";
 import { and, asc, desc, eq, sql } from "drizzle-orm";
 import { db } from "@db";
 import {
@@ -37,6 +38,7 @@ import {
   mailserverEmailDelete,
   mailserverEmailUpdate,
   mailserverQuotaSet,
+  mailserverRefreshAuth,
 } from "../lib/mail/mailserverSetup";
 
 const router = Router();
@@ -70,6 +72,26 @@ function randomPassword() {
   return crypto.randomBytes(18).toString("base64url");
 }
 
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function verifyImapLoginAfterMailserverChange(input: { user: string; password: string; attempts?: number; delayMs?: number }) {
+  const attempts = Math.max(1, Math.min(input.attempts ?? 6, 10));
+  const delayMs = Math.max(250, Math.min(input.delayMs ?? 1_000, 5_000));
+  let refresh: Awaited<ReturnType<typeof mailserverRefreshAuth>> | null = null;
+
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    refresh = await mailserverRefreshAuth();
+    if (attempt > 1) await sleep(delayMs);
+
+    const result = await verifyImapLogin({ user: input.user, password: input.password });
+    if (result.ok || attempt === attempts) return { ...result, refresh };
+  }
+
+  return { ok: false, host: "", port: 0, message: "IMAP verification failed after mailserver auth refresh", refresh };
+}
+
 function stripWww(value: string) {
   return value.replace(/^www\\./i, "").trim();
 }
@@ -79,6 +101,79 @@ function normalizeDomain(value: string) {
   if (!domain) return "";
   if (!/^[a-z0-9.-]+\\.[a-z]{2,}$/.test(domain)) return "";
   return domain;
+}
+
+function normalizeDnsName(value: string) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/^www[.]/, "")
+    .replace(/[.]$/g, "");
+}
+
+function getExpectedMailHost(domain: string) {
+  const configured = normalizeDnsName(String(process.env.MAIL_EXPECTED_MX_HOST || process.env.MAIL_EXPECTED_MAIL_HOST || ""));
+  return configured || `mail.${normalizeDnsName(domain)}`;
+}
+
+function getExpectedMailIpv4(domain: string) {
+  const configured = String(
+    process.env.MAIL_SMTP_PUBLIC_IP ||
+      process.env.MAIL_SMTP_SOURCE_IP ||
+      process.env.APP_PUBLIC_IP ||
+      process.env.PUBLIC_IP ||
+      "",
+  ).trim();
+  if (configured) return configured;
+  if (domain === "agoojiye.com") return "51.254.143.30";
+  return "";
+}
+
+async function getInboundDnsDiagnostics(domain: string) {
+  const expectedHost = getExpectedMailHost(domain);
+  const expectedIpv4 = getExpectedMailIpv4(domain);
+  const warnings: string[] = [];
+  let mxRecords: Array<{ exchange: string; priority: number }> = [];
+  let mailHostARecords: string[] = [];
+
+  try {
+    mxRecords = (await dns.resolveMx(domain))
+      .map((record) => ({
+        exchange: normalizeDnsName(record.exchange),
+        priority: Number(record.priority),
+      }))
+      .filter((record) => record.exchange)
+      .sort((a, b) => a.priority - b.priority || a.exchange.localeCompare(b.exchange));
+  } catch (error: any) {
+    warnings.push(`mx_lookup_failed:${String(error?.code || error?.message || "unknown")}`);
+  }
+
+  try {
+    mailHostARecords = await dns.resolve4(expectedHost);
+  } catch (error: any) {
+    warnings.push(`mail_host_a_lookup_failed:${String(error?.code || error?.message || "unknown")}`);
+  }
+
+  const mxOk = mxRecords.some((record) => normalizeDnsName(record.exchange) === expectedHost);
+  const mailHostAOk = expectedIpv4 ? mailHostARecords.includes(expectedIpv4) : mailHostARecords.length > 0;
+  if (!mxOk) warnings.push("mx_not_cut_over");
+  if (!mailHostAOk) warnings.push(expectedIpv4 ? "mail_host_a_mismatch" : "mail_host_a_missing");
+
+  return {
+    expectedMxHost: expectedHost,
+    expectedMailHost: expectedHost,
+    expectedIpv4: expectedIpv4 || null,
+    readyForInbound: mxOk && mailHostAOk,
+    mx: {
+      ok: mxOk,
+      records: mxRecords,
+    },
+    mailHostA: {
+      ok: mailHostAOk,
+      records: mailHostARecords,
+    },
+    warnings,
+  };
 }
 
 const RESERVED_LOCAL_PARTS = new Set(
@@ -225,6 +320,7 @@ router.get("/email/status", async (req: any, res) => {
     smtpHost: String(process.env.MAIL_SMTP_HOST || "mail.boursedelor.com").trim(),
     smtpHeloName: String(process.env.MAIL_SMTP_HELO_NAME || process.env.MAIL_HELO_NAME || "").trim(),
   });
+  const inboundDns = await getInboundDnsDiagnostics(effectiveDomain);
 
   res.json({
     ok: true,
@@ -242,6 +338,7 @@ router.get("/email/status", async (req: any, res) => {
         usingSendmail: useSendmail,
       },
       authDiagnostics,
+      inboundDns,
     },
   });
 });
@@ -722,7 +819,7 @@ router.post("/email/accounts", async (req: any, res) => {
     const quotaSetup = setup.ok ? await mailserverQuotaSet(address, quotaParsed.quota) : null;
 
     const imap = setup.ok
-      ? await verifyImapLogin({ user: address, password })
+      ? await verifyImapLoginAfterMailserverChange({ user: address, password })
       : { ok: false, host: "", port: 0, message: setup.stderr || setup.stdout || "setup failed" };
 
     const status = setup.ok && imap.ok && (quotaSetup?.ok ?? true) ? "active" : "provision_failed";
@@ -822,7 +919,9 @@ router.post("/email/accounts/:id/reset-password", async (req: any, res) => {
       const add = await mailserverEmailAdd(account.address, password);
       if (add.ok) setup = add;
     }
-    const imap = setup.ok ? await verifyImapLogin({ user: account.address, password }) : { ok: false, host: "", port: 0, message: setup.stderr || setup.stdout || "setup failed" };
+    const imap = setup.ok
+      ? await verifyImapLoginAfterMailserverChange({ user: account.address, password })
+      : { ok: false, host: "", port: 0, message: setup.stderr || setup.stdout || "setup failed" };
 
     const status = setup.ok && imap.ok ? "active" : "provision_failed";
     const updatedAt = new Date();
@@ -907,7 +1006,9 @@ router.patch("/email/accounts/:id", async (req: any, res) => {
         const update = await mailserverEmailUpdate(account.address, tempPassword);
         if (update.ok) setup = update;
       }
-      imap = setup.ok ? await verifyImapLogin({ user: account.address, password: tempPassword }) : { ok: false, host: "", port: 0, message: setup.stderr || setup.stdout || "setup failed" };
+      imap = setup.ok
+        ? await verifyImapLoginAfterMailserverChange({ user: account.address, password: tempPassword })
+        : { ok: false, host: "", port: 0, message: setup.stderr || setup.stdout || "setup failed" };
       patch.status = setup.ok && imap.ok ? "active" : "provision_failed";
     } else if (nextStatus) {
       return res.status(400).json({ message: "Unsupported status" });
@@ -929,6 +1030,68 @@ router.patch("/email/accounts/:id", async (req: any, res) => {
     res.json({ ok: true, account: updated, tempPassword, setup, imap });
   } catch (err: any) {
     res.status(err?.status || 500).json({ message: err?.message || "Failed to update account" });
+  }
+});
+
+router.get("/email/aliases", async (req: any, res) => {
+  try {
+    const tenant = req.tenant;
+    if (!tenant) return res.status(400).json({ message: "tenant required" });
+
+    const limit = parseLimit(req.query?.limit, 500, 2000);
+    const q = String(req.query?.q || "").trim();
+    const whereParts: any[] = [eq(emailAliases.tenantId, tenant.id)];
+    if (q) {
+      whereParts.push(
+        sql`(${emailAliases.sourceAddress} ILIKE ${"%" + q + "%"} OR ${emailAliases.destination} ILIKE ${"%" + q + "%"})`,
+      );
+    }
+
+    const rows = await db
+      .select()
+      .from(emailAliases)
+      .where(and(...whereParts))
+      .orderBy(asc(emailAliases.sourceAddress), asc(emailAliases.destination), desc(emailAliases.createdAt))
+      .limit(limit);
+
+    const grouped = new Map<
+      string,
+      { sourceAddress: string; destinations: string[]; count: number; latestCreatedAt: string | null }
+    >();
+    for (const row of rows) {
+      const sourceAddress = String(row.sourceAddress || "").toLowerCase();
+      if (!sourceAddress) continue;
+      const destination = String(row.destination || "").toLowerCase();
+      const createdAt =
+        row.createdAt instanceof Date
+          ? row.createdAt.toISOString()
+          : row.createdAt
+            ? new Date(row.createdAt as any).toISOString()
+            : null;
+      const existing =
+        grouped.get(sourceAddress) ||
+        ({ sourceAddress, destinations: [], count: 0, latestCreatedAt: null } satisfies {
+          sourceAddress: string;
+          destinations: string[];
+          count: number;
+          latestCreatedAt: string | null;
+        });
+      if (destination && !existing.destinations.includes(destination)) existing.destinations.push(destination);
+      existing.count += 1;
+      if (createdAt && (!existing.latestCreatedAt || createdAt > existing.latestCreatedAt)) {
+        existing.latestCreatedAt = createdAt;
+      }
+      grouped.set(sourceAddress, existing);
+    }
+
+    res.json({
+      ok: true,
+      items: rows,
+      groups: Array.from(grouped.values()).sort((a, b) => a.sourceAddress.localeCompare(b.sourceAddress)),
+      pagination: { limit, total: rows.length },
+    });
+  } catch (err: any) {
+    res.status(err?.status || 500).json({ message: err?.message || "Failed to load aliases" });
   }
 });
 

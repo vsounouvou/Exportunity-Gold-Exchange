@@ -28,6 +28,7 @@ export const PLATFORM_MODULE_KEYS = [
 export type PlatformModuleKey = (typeof PLATFORM_MODULE_KEYS)[number];
 
 export type TenantSlug =
+  | "agoojye"
   | "bdo"
   | "exportunity"
   | "zone"
@@ -40,7 +41,7 @@ export type TenantSlug =
   | "xportcard"
   | "rayon1km";
 
-export type TenantKeyInput = TenantSlug | "vss" | "rayon";
+export type TenantKeyInput = TenantSlug | "vss" | "rayon" | "agojye";
 
 export type TenantUiMode = "default" | "luxury" | "kids" | "industrial" | "proximity";
 export type TenantHomeMode = "platform" | "marketing" | "hybrid";

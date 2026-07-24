@@ -1,3 +1,4 @@
+import { agoojyeTenantConfig } from "./agoojye/config";
 import { bdoTenantConfig } from "./bdo/config";
 import { exportunityTenantConfig } from "./exportunity/config";
 import { hozTenantConfig } from "./hoz/config";
@@ -12,6 +13,7 @@ import { zoguelandTenantConfig } from "./zogueland/config";
 import type { PlatformModuleKey, TenantConfig, TenantKeyInput, TenantRegistry, TenantSlug } from "./types";
 
 export const TENANT_REGISTRY: TenantRegistry = {
+  agoojye: agoojyeTenantConfig,
   bdo: bdoTenantConfig,
   exportunity: exportunityTenantConfig,
   zone: zoneTenantConfig,
@@ -26,6 +28,8 @@ export const TENANT_REGISTRY: TenantRegistry = {
 };
 
 const TENANT_ALIASES: Record<string, TenantSlug> = {
+  agoojyé: "agoojye",
+  agojye: "agoojye",
   vss: "vs",
   vital: "vs",
   vitalsounouvou: "vs",
@@ -167,6 +171,7 @@ export function hasTenantModule(tenantKey: TenantKeyInput | string, moduleKey: P
 
 export function getTenantDefaultRoute(tenantKey: TenantKeyInput | string) {
   const key = normalizeTenantKey(tenantKey);
+  if (key === "agoojye") return "/admin/agoojye";
   if (key === "mindbase") return "/mindbase";
   if (key === "met") return "/admin/met";
   if (key === "vs") return "/admin/vs";

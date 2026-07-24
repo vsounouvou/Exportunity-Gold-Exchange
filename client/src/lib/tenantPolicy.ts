@@ -6,10 +6,23 @@ import {
 } from "../../../tenants/index";
 import { tenantFromHost } from "@/lib/tenantResolution";
 
-const CORE_BACKOFFICE_TENANTS: TenantKey[] = ["bdo", "exportunity", "zone", "zogueland", "madd", "rayon1km", "xportcard"];
+const CORE_BACKOFFICE_TENANTS: TenantKey[] = ["agoojye", "bdo", "exportunity", "zone", "zogueland", "madd", "rayon1km", "xportcard"];
 const TENANTS_EXPORTUNITY_ZONE: TenantKey[] = ["exportunity", "zone", "rayon1km"];
 const SHARED_MARKETPLACE_CATALOG_TENANTS: TenantKey[] = ["exportunity", "zone"];
-const ALL_TENANTS: TenantKey[] = ["bdo", "exportunity", "zone", "mindbase", "met", "vs", "hoz", "zogueland", "madd", "rayon1km", "xportcard"];
+const ALL_TENANTS: TenantKey[] = [
+  "agoojye",
+  "bdo",
+  "exportunity",
+  "zone",
+  "mindbase",
+  "met",
+  "vs",
+  "hoz",
+  "zogueland",
+  "madd",
+  "rayon1km",
+  "xportcard",
+];
 
 function normalizePath(value: string) {
   const raw = String(value || "").trim();
@@ -135,6 +148,15 @@ const RULES: Array<{ prefix: string; tenants: TenantKey[] }> = [
   { prefix: "/library", tenants: ["hoz", "exportunity", "zogueland"] },
   { prefix: "/jewelry", tenants: ["hoz"] },
   { prefix: "/admin/hoz", tenants: ["hoz"] },
+
+  // Zogueland.
+  { prefix: "/vision", tenants: ["agoojye"] },
+  { prefix: "/history", tenants: ["agoojye"] },
+  { prefix: "/challenge", tenants: ["agoojye"] },
+  { prefix: "/teams", tenants: ["agoojye"] },
+  { prefix: "/partners", tenants: ["agoojye"] },
+  { prefix: "/sponsors", tenants: ["agoojye"] },
+  { prefix: "/admin/agoojye", tenants: ["agoojye"] },
 
   // Zogueland.
   { prefix: "/create", tenants: ["zogueland"] },

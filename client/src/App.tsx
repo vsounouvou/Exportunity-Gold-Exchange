@@ -9,6 +9,7 @@ import { telemetry } from "@platform/telemetry";
 import { getTenantConfigByKey, getTenantHomeRoute } from "../../tenants/index";
 import {
   isBdoHost,
+  isAgoojyeHost,
   isExportunityMarketingHost,
   isHozHost,
   isMetHost,
@@ -313,6 +314,67 @@ const HozAdminMediaPage = lazyPage(() => import("@/pages/hoz/HozAdminPages"), "H
 const HozAdminInboxPage = lazyPage(() => import("@/pages/hoz/HozAdminPages"), "HozAdminInboxPage");
 const HozAdminWebsitePage = lazyPage(() => import("@/pages/hoz/HozAdminPages"), "HozAdminWebsitePage");
 const HozAdminSettingsPage = lazyPage(() => import("@/pages/hoz/HozAdminPages"), "HozAdminSettingsPage");
+const AgoojyeHomePage = lazyPage(() => import("@/pages/agoojye/AgoojiyeMobilityPages"), "AgoojiyeMobilityHomePage");
+const AgoojyeVisionPage = lazyPage(() => import("@/pages/agoojye/AgoojyePublicPages"), "AgoojyeVisionPage");
+const AgoojyeHistoryPage = lazyPage(() => import("@/pages/agoojye/AgoojyePublicPages"), "AgoojyeHistoryPage");
+const AgoojyeChallengePage = lazyPage(() => import("@/pages/agoojye/AgoojyePublicPages"), "AgoojyeChallengePage");
+const AgoojyeTeamsPage = lazyPage(() => import("@/pages/agoojye/AgoojyePublicPages"), "AgoojyeTeamsPage");
+const AgoojyePartnersPage = lazyPage(() => import("@/pages/agoojye/AgoojyePublicPages"), "AgoojyePartnersPage");
+const AgoojyeSponsorsPage = lazyPage(() => import("@/pages/agoojye/AgoojyePublicPages"), "AgoojyeSponsorsPage");
+const AgoojyeMediaPage = lazyPage(() => import("@/pages/agoojye/AgoojyePublicPages"), "AgoojyeMediaPage");
+const AgoojyeContactPage = lazyPage(() => import("@/pages/agoojye/AgoojyePublicPages"), "AgoojyeContactPage");
+const AgoojiyeMobilityContactPage = lazyPage(() => import("@/pages/agoojye/AgoojiyeCommercialPages"), "AgoojiyeMobilityContactPage");
+const AgoojiyeTripsPage = lazyPage(() => import("@/pages/agoojye/AgoojiyeMobilityPages"), "AgoojiyeTripsPage");
+const AgoojiyeTripDetailPage = lazyPage(() => import("@/pages/agoojye/AgoojiyeMobilityPages"), "AgoojiyeTripDetailPage");
+const AgoojiyeBusCatalogPage = lazyPage(() => import("@/pages/agoojye/AgoojiyeMobilityPages"), "AgoojiyeBusCatalogPage");
+const AgoojiyeBusDetailPage = lazyPage(() => import("@/pages/agoojye/AgoojiyeMobilityPages"), "AgoojiyeBusDetailPage");
+const AgoojiyeAboutPage = lazyPage(() => import("@/pages/agoojye/AgoojiyeMobilityPages"), "AgoojiyeAboutPage");
+const AgoojiyeFaqPage = lazyPage(() => import("@/pages/agoojye/AgoojiyeMobilityPages"), "AgoojiyeFaqPage");
+const AgoojiyeSeatSelectionPage = lazyPage(() => import("@/pages/agoojye/AgoojiyeBookingPages"), "AgoojiyeSeatSelectionPage");
+const AgoojiyePassengerPage = lazyPage(() => import("@/pages/agoojye/AgoojiyeBookingPages"), "AgoojiyePassengerPage");
+const AgoojiyePaymentPage = lazyPage(() => import("@/pages/agoojye/AgoojiyeBookingPages"), "AgoojiyePaymentPage");
+const AgoojiyeConfirmationPage = lazyPage(() => import("@/pages/agoojye/AgoojiyeBookingPages"), "AgoojiyeConfirmationPage");
+const AgoojiyeTicketPage = lazyPage(() => import("@/pages/agoojye/AgoojiyeBookingPages"), "AgoojiyeTicketPage");
+const AgoojiyeBookingLookupPage = lazyPage(() => import("@/pages/agoojye/AgoojiyeBookingPages"), "AgoojiyeBookingLookupPage");
+const AgoojiyeControllerPage = lazyPage(() => import("@/pages/agoojye/AgoojiyeBookingPages"), "AgoojiyeControllerPage");
+const AgoojiyeFullBusPage = lazyPage(() => import("@/pages/agoojye/AgoojiyeCommercialPages"), "AgoojiyeFullBusPage");
+const AgoojiyeDemonstrationPage = lazyPage(() => import("@/pages/agoojye/AgoojiyeCommercialPages"), "AgoojiyeDemonstrationPage");
+const AgoojiyeOrderPage = lazyPage(() => import("@/pages/agoojye/AgoojiyeCommercialPages"), "AgoojiyeOrderPage");
+const AgoojiyeWaitlistPage = lazyPage(() => import("@/pages/agoojye/AgoojiyeCommercialPages"), "AgoojiyeWaitlistPage");
+const AgoojiyeThreeExperiencePage = lazyPage(() => import("@/pages/agoojye/AgoojiyeThreeExperience"), "AgoojiyeThreeExperiencePage");
+const AgoojiyeMobilityAdminPage = lazyPage(() => import("@/pages/agoojye/AgoojiyeMobilityAdmin"), "AgoojiyeMobilityAdminPage");
+const AgoojyeMailPasswordPage = lazyPage(() => import("@/pages/agoojye/AgoojyeMailPasswordPage"));
+const AgoojyeAdminDashboardPage = lazyPage(() => import("@/pages/agoojye/AgoojyeAdminPages"), "AgoojyeAdminDashboardPage");
+const AgoojyeAdminUsersPage = lazyPage(() => import("@/pages/agoojye/AgoojyeAdminPages"), "AgoojyeAdminUsersPage");
+const AgoojyeAdminTeamsPage = lazyPage(() => import("@/pages/agoojye/AgoojyeAdminPages"), "AgoojyeAdminTeamsPage");
+const AgoojyeAdminParticipantsPage = lazyPage(() => import("@/pages/agoojye/AgoojyeAdminPages"), "AgoojyeAdminParticipantsPage");
+const AgoojyeAdminEmailsPage = lazyPage(() => import("@/pages/agoojye/AgoojyeAdminPages"), "AgoojyeAdminEmailsPage");
+const AgoojyeAdminMessagesPage = lazyPage(() => import("@/pages/agoojye/AgoojyeAdminPages"), "AgoojyeAdminMessagesPage");
+const AgoojyeAdminTasksPage = lazyPage(() => import("@/pages/agoojye/AgoojyeAdminPages"), "AgoojyeAdminTasksPage");
+const AgoojyeAdminMilestonesPage = lazyPage(() => import("@/pages/agoojye/AgoojyeAdminPages"), "AgoojyeAdminMilestonesPage");
+const AgoojyeAdminDocumentsPage = lazyPage(() => import("@/pages/agoojye/AgoojyeAdminPages"), "AgoojyeAdminDocumentsPage");
+const AgoojyeAdminPartnersPage = lazyPage(() => import("@/pages/agoojye/AgoojyeAdminPages"), "AgoojyeAdminPartnersPage");
+const AgoojyeAdminSponsorsPage = lazyPage(() => import("@/pages/agoojye/AgoojyeAdminPages"), "AgoojyeAdminSponsorsPage");
+const AgoojyeAdminSponsorCategoriesPage = lazyPage(() => import("@/pages/agoojye/AgoojyeAdminPages"), "AgoojyeAdminSponsorCategoriesPage");
+const AgoojyeAdminPipelineStagesPage = lazyPage(() => import("@/pages/agoojye/AgoojyeAdminPages"), "AgoojyeAdminPipelineStagesPage");
+const AgoojyeAdminOrganizationsPage = lazyPage(() => import("@/pages/agoojye/AgoojyeAdminPages"), "AgoojyeAdminOrganizationsPage");
+const AgoojyeAdminContactsPage = lazyPage(() => import("@/pages/agoojye/AgoojyeAdminPages"), "AgoojyeAdminContactsPage");
+const AgoojyeAdminOpportunitiesPage = lazyPage(() => import("@/pages/agoojye/AgoojyeAdminPages"), "AgoojyeAdminOpportunitiesPage");
+const AgoojyeAdminActivitiesPage = lazyPage(() => import("@/pages/agoojye/AgoojyeAdminPages"), "AgoojyeAdminActivitiesPage");
+const AgoojyeAdminEmailTemplatesPage = lazyPage(() => import("@/pages/agoojye/AgoojyeAdminPages"), "AgoojyeAdminEmailTemplatesPage");
+const AgoojyeAdminToolboxPage = lazyPage(() => import("@/pages/agoojye/AgoojyeAdminPages"), "AgoojyeAdminToolboxPage");
+const AgoojyeAdminSuppressionPage = lazyPage(() => import("@/pages/agoojye/AgoojyeAdminPages"), "AgoojyeAdminSuppressionPage");
+const AgoojyeAdminApprovalsPage = lazyPage(() => import("@/pages/agoojye/AgoojyeAdminPages"), "AgoojyeAdminApprovalsPage");
+const AgoojyeAdminInboxThreadsPage = lazyPage(() => import("@/pages/agoojye/AgoojyeAdminPages"), "AgoojyeAdminInboxThreadsPage");
+const AgoojyeAdminMailMessagesPage = lazyPage(() => import("@/pages/agoojye/AgoojyeAdminPages"), "AgoojyeAdminMailMessagesPage");
+const AgoojyeAdminSequencesPage = lazyPage(() => import("@/pages/agoojye/AgoojyeAdminPages"), "AgoojyeAdminSequencesPage");
+const AgoojyeAdminImportsPage = lazyPage(() => import("@/pages/agoojye/AgoojyeAdminPages"), "AgoojyeAdminImportsPage");
+const AgoojyeAdminAgentResearchPage = lazyPage(() => import("@/pages/agoojye/AgoojyeAdminPages"), "AgoojyeAdminAgentResearchPage");
+const AgoojyeAdminJobsPage = lazyPage(() => import("@/pages/agoojye/AgoojyeAdminPages"), "AgoojyeAdminJobsPage");
+const AgoojyeAdminMediaPage = lazyPage(() => import("@/pages/agoojye/AgoojyeAdminPages"), "AgoojyeAdminMediaPage");
+const AgoojyeAdminContentPage = lazyPage(() => import("@/pages/agoojye/AgoojyeAdminPages"), "AgoojyeAdminContentPage");
+const AgoojyeAdminSettingsPage = lazyPage(() => import("@/pages/agoojye/AgoojyeAdminPages"), "AgoojyeAdminSettingsPage");
+const AgoojyeAdminAuditPage = lazyPage(() => import("@/pages/agoojye/AgoojyeAdminPages"), "AgoojyeAdminAuditPage");
 const BdoActualitesPage = lazyPage(() => import("@/pages/bdo/BdoAuthorityPages"), "BdoActualitesPage");
 const BdoReglementationPage = lazyPage(() => import("@/pages/bdo/BdoAuthorityPages"), "BdoReglementationPage");
 const BdoIndustrieMinierePage = lazyPage(() => import("@/pages/bdo/BdoAuthorityPages"), "BdoIndustrieMinierePage");
@@ -463,6 +525,26 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return <AdminLayout>{children}</AdminLayout>;
 }
 
+function TenantProtectedRoute({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated, isGuest, user } = useSession();
+  const { tenant } = useTenant();
+  const [location] = useLocation();
+  if (!isAuthenticated || isGuest) return <Redirect to="/admin" />;
+  if (user?.mustChangePassword) return <Redirect to="/admin/password" />;
+  const path = typeof window !== "undefined" ? window.location.pathname : location;
+  if (!isTenantRouteAllowed(path, tenant.key)) return <Redirect to={getTenantDefaultRoute(tenant.key)} />;
+  return <>{children}</>;
+}
+
+function AdminEntryRoute() {
+  const { tenant } = useTenant();
+  const { isAuthenticated, isGuest } = useSession();
+  if ((tenant.key === "agoojye" || isAgoojyeHost()) && isAuthenticated && !isGuest) {
+    return <Redirect to="/admin/mobilite" />;
+  }
+  return <AdminLoginPage />;
+}
+
 function TenantAdminAliasRoute({ target }: { target: StandardAdminKey }) {
   const { tenant } = useTenant();
   const [location] = useLocation();
@@ -488,6 +570,7 @@ function RootPublicRoute() {
   }
 
   if (tenant.key === "vs") return <VsHomePage />;
+  if (tenant.key === "agoojye") return <AgoojyeHomePage />;
   if (tenant.key === "met") return <MetHomePage />;
   if (tenant.key === "hoz") return <HozHomePage />;
   if (tenant.key === "mindbase") return <MindbaseLandingPage />;
@@ -505,13 +588,19 @@ function StoreRoute() {
       ? "exchange"
       : "city";
   const exchangeVariant = normalizedLocation.startsWith("/pme-exchange") ? "pme" : "export";
-  const isMapRoute = normalizedLocation === "/map" || normalizedLocation === "/marketplace/map" || normalizedLocation.startsWith("/wholesale/map") || normalizedLocation === "/map/";
+  const isMapRoute =
+    normalizedLocation === "/map" ||
+    normalizedLocation === "/map/" ||
+    normalizedLocation === "/marketplace/map" ||
+    normalizedLocation.startsWith("/marketplace/map/") ||
+    normalizedLocation === "/wholesale/map" ||
+    normalizedLocation.startsWith("/wholesale/map/");
   const isMapDominantRoute =
     normalizedLocation.startsWith("/marketplace") ||
     normalizedLocation.startsWith("/wholesale") ||
+    normalizedLocation.startsWith("/zone") ||
     normalizedLocation.startsWith("/ready-for-export") ||
-    normalizedLocation.startsWith("/pme-exchange") ||
-    normalizedLocation === "/store";
+    normalizedLocation.startsWith("/pme-exchange");
   const shellMode = isMapRoute
       ? "mapFull"
       : isMapDominantRoute
@@ -567,10 +656,24 @@ function MarketingAwareAboutRoute() {
 }
 
 function UnifiedContactRoute() {
+  const { tenant } = useTenant();
+  if (tenant.key === "agoojye" || isAgoojyeHost()) return <AgoojiyeMobilityContactPage />;
   if (isVsHost()) return <VsContactPage />;
   if (isMetHost()) return <MetContactPage />;
   if (isHozHost()) return <HozContactPage />;
   return <MarketingRedirect to="/talk" />;
+}
+
+function UnifiedMediaRoute() {
+  const { tenant } = useTenant();
+  if (tenant.key === "agoojye" || isAgoojyeHost()) return <AgoojyeMediaPage />;
+  if (isHozHost()) return <HozMediaPage />;
+  return <ExportunityMarketingMediaPage />;
+}
+
+function AgoojyeOnlyRoute({ children }: { children: React.ReactNode }) {
+  const { tenant } = useTenant();
+  return tenant.key === "agoojye" || isAgoojyeHost() ? <>{children}</> : <Redirect to="/zone" />;
 }
 
 function MarketingAwarePrivacyRoute() {
@@ -754,6 +857,46 @@ function App() {
           </Route>
           <Route path="/blog" component={() => (isMetHost() ? <MetBlogPage /> : <MarketingRedirect to="/media" />)} />
           <Route path="/contact" component={UnifiedContactRoute} />
+          <Route path="/reserver" component={() => <AgoojyeOnlyRoute><AgoojiyeTripsPage /></AgoojyeOnlyRoute>} />
+          <Route path="/trajets/:id">
+            {(params) => <AgoojyeOnlyRoute><AgoojiyeTripDetailPage id={String((params as any).id || "")} /></AgoojyeOnlyRoute>}
+          </Route>
+          <Route path="/trajets" component={() => <AgoojyeOnlyRoute><AgoojiyeTripsPage /></AgoojyeOnlyRoute>} />
+          <Route path="/reservation/sieges" component={() => <AgoojyeOnlyRoute><AgoojiyeSeatSelectionPage /></AgoojyeOnlyRoute>} />
+          <Route path="/reservation/passagers" component={() => <AgoojyeOnlyRoute><AgoojiyePassengerPage /></AgoojyeOnlyRoute>} />
+          <Route path="/reservation/paiement" component={() => <AgoojyeOnlyRoute><AgoojiyePaymentPage /></AgoojyeOnlyRoute>} />
+          <Route path="/reservation/confirmation/:reference">
+            {(params) => <AgoojyeOnlyRoute><AgoojiyeConfirmationPage reference={String((params as any).reference || "")} /></AgoojyeOnlyRoute>}
+          </Route>
+          <Route path="/billet/:token">
+            {(params) => <AgoojyeOnlyRoute><AgoojiyeTicketPage token={String((params as any).token || "")} /></AgoojyeOnlyRoute>}
+          </Route>
+          <Route path="/retrouver-ma-reservation" component={() => <AgoojyeOnlyRoute><AgoojiyeBookingLookupPage /></AgoojyeOnlyRoute>} />
+          <Route path="/bus/:slug">
+            {(params) => <AgoojyeOnlyRoute><AgoojiyeBusDetailPage slug={String((params as any).slug || "")} /></AgoojyeOnlyRoute>}
+          </Route>
+          <Route path="/bus" component={() => <AgoojyeOnlyRoute><AgoojiyeBusCatalogPage /></AgoojyeOnlyRoute>} />
+          <Route path="/experience-3d" component={() => <AgoojyeOnlyRoute><AgoojiyeThreeExperiencePage /></AgoojyeOnlyRoute>} />
+          <Route path="/reserver-un-bus" component={() => <AgoojyeOnlyRoute><AgoojiyeFullBusPage /></AgoojyeOnlyRoute>} />
+          <Route path="/demonstration" component={() => <AgoojyeOnlyRoute><AgoojiyeDemonstrationPage /></AgoojyeOnlyRoute>} />
+          <Route path="/commander" component={() => <AgoojyeOnlyRoute><AgoojiyeOrderPage /></AgoojyeOnlyRoute>} />
+          <Route path="/commander-un-bus" component={() => <AgoojyeOnlyRoute><AgoojiyeOrderPage /></AgoojyeOnlyRoute>} />
+          <Route path="/liste-prioritaire" component={() => <AgoojyeOnlyRoute><AgoojiyeWaitlistPage /></AgoojyeOnlyRoute>} />
+          <Route path="/a-propos" component={() => <AgoojyeOnlyRoute><AgoojiyeAboutPage /></AgoojyeOnlyRoute>} />
+          <Route path="/faq" component={() => <AgoojyeOnlyRoute><AgoojiyeFaqPage /></AgoojyeOnlyRoute>} />
+          <Route path="/vision" component={() => <AgoojyeOnlyRoute><AgoojyeVisionPage /></AgoojyeOnlyRoute>} />
+          <Route path="/history" component={() => <AgoojyeOnlyRoute><AgoojyeHistoryPage /></AgoojyeOnlyRoute>} />
+          <Route path="/challenge" component={() => <AgoojyeOnlyRoute><AgoojyeChallengePage /></AgoojyeOnlyRoute>} />
+          <Route path="/teams" component={() => <AgoojyeOnlyRoute><AgoojyeTeamsPage /></AgoojyeOnlyRoute>} />
+          <Route path="/partners" component={() => <AgoojyeOnlyRoute><AgoojyePartnersPage /></AgoojyeOnlyRoute>} />
+          <Route path="/sponsors" component={() => <AgoojyeOnlyRoute><AgoojyeSponsorsPage /></AgoojyeOnlyRoute>} />
+          <Route path="/mail/password" component={() => <AgoojyeOnlyRoute><AgoojyeMailPasswordPage /></AgoojyeOnlyRoute>} />
+          <Route path="/email/password" component={() => <AgoojyeOnlyRoute><AgoojyeMailPasswordPage /></AgoojyeOnlyRoute>} />
+          <Route path="/controle">
+            <TenantProtectedRoute>
+              <AgoojyeOnlyRoute><AgoojiyeControllerPage /></AgoojyeOnlyRoute>
+            </TenantProtectedRoute>
+          </Route>
           <Route path="/mentions-legales" component={() => (isMetHost() ? <MetLegalMentionsPage /> : <Redirect to="/terms" />)} />
           <Route path="/politique-confidentialite" component={() => (isMetHost() ? <MetPrivacyPolicyPage /> : <Redirect to="/privacy" />)} />
           <Route path="/a/quick" component={ChairmanQuickPage} />
@@ -889,7 +1032,7 @@ function App() {
           <Route path="/platform/screenshots" component={ExportunityMarketingPlatformScreenshotsPage} />
           <Route path="/platform/modules" component={ExportunityMarketingPlatformModulesPage} />
           <Route path="/platform/modules/:slug" component={ExportunityMarketingPlatformModuleDetailPage} />
-          <Route path="/media" component={() => (isHozHost() ? <HozMediaPage /> : <ExportunityMarketingMediaPage />)} />
+          <Route path="/media" component={UnifiedMediaRoute} />
           <Route path="/media/press" component={() => (isHozHost() ? <Redirect to="/media" /> : <MarketingRedirect to="/media" />)} />
           <Route path="/media/videos" component={() => (isHozHost() ? <Redirect to="/media" /> : <MarketingRedirect to="/media" />)} />
           <Route path="/media/profiles" component={() => (isHozHost() ? <Redirect to="/media" /> : <MarketingRedirect to="/media" />)} />
@@ -1033,7 +1176,7 @@ function App() {
           <Route path="/seller/topup" component={SellerTopupPage} />
           <Route path="/switch" component={SwitchSpacePage} />
           <Route path="/admin/login" component={AdminLoginPage} />
-          <Route path="/admin" component={AdminLoginPage} />
+          <Route path="/admin" component={AdminEntryRoute} />
           <Route path="/admin/password" component={AdminPasswordChangePage} />
           <Route path="/admin/dashboard">
             <ProtectedRoute>
@@ -1223,6 +1366,214 @@ function App() {
           <Route path="/admin/vs/website">
             <ProtectedRoute>
               <VsAdminWebsitePage />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/admin/mobilite">
+            <TenantProtectedRoute><AgoojyeOnlyRoute><AgoojiyeMobilityAdminPage section="overview" /></AgoojyeOnlyRoute></TenantProtectedRoute>
+          </Route>
+          <Route path="/admin/bus">
+            <TenantProtectedRoute><AgoojyeOnlyRoute><AgoojiyeMobilityAdminPage section="buses" /></AgoojyeOnlyRoute></TenantProtectedRoute>
+          </Route>
+          <Route path="/admin/trajets">
+            <TenantProtectedRoute><AgoojyeOnlyRoute><AgoojiyeMobilityAdminPage section="routes" /></AgoojyeOnlyRoute></TenantProtectedRoute>
+          </Route>
+          <Route path="/admin/horaires">
+            <TenantProtectedRoute><AgoojyeOnlyRoute><AgoojiyeMobilityAdminPage section="schedules" /></AgoojyeOnlyRoute></TenantProtectedRoute>
+          </Route>
+          <Route path="/admin/voyages">
+            <TenantProtectedRoute><AgoojyeOnlyRoute><AgoojiyeMobilityAdminPage section="trips" /></AgoojyeOnlyRoute></TenantProtectedRoute>
+          </Route>
+          <Route path="/admin/reservations">
+            <TenantProtectedRoute><AgoojyeOnlyRoute><AgoojiyeMobilityAdminPage section="bookings" /></AgoojyeOnlyRoute></TenantProtectedRoute>
+          </Route>
+          <Route path="/admin/billets">
+            <TenantProtectedRoute><AgoojyeOnlyRoute><AgoojiyeMobilityAdminPage section="tickets" /></AgoojyeOnlyRoute></TenantProtectedRoute>
+          </Route>
+          <Route path="/admin/paiements">
+            <TenantProtectedRoute><AgoojyeOnlyRoute><AgoojiyeMobilityAdminPage section="payments" /></AgoojyeOnlyRoute></TenantProtectedRoute>
+          </Route>
+          <Route path="/admin/reservations-bus">
+            <TenantProtectedRoute><AgoojyeOnlyRoute><AgoojiyeMobilityAdminPage section="bus-requests" /></AgoojyeOnlyRoute></TenantProtectedRoute>
+          </Route>
+          <Route path="/admin/demonstrations">
+            <TenantProtectedRoute><AgoojyeOnlyRoute><AgoojiyeMobilityAdminPage section="demonstrations" /></AgoojyeOnlyRoute></TenantProtectedRoute>
+          </Route>
+          <Route path="/admin/commandes-bus">
+            <TenantProtectedRoute><AgoojyeOnlyRoute><AgoojiyeMobilityAdminPage section="orders" /></AgoojyeOnlyRoute></TenantProtectedRoute>
+          </Route>
+          <Route path="/admin/liste-prioritaire">
+            <TenantProtectedRoute><AgoojyeOnlyRoute><AgoojiyeMobilityAdminPage section="waitlist" /></AgoojyeOnlyRoute></TenantProtectedRoute>
+          </Route>
+          <Route path="/admin/controles">
+            <TenantProtectedRoute><AgoojyeOnlyRoute><AgoojiyeMobilityAdminPage section="validations" /></AgoojyeOnlyRoute></TenantProtectedRoute>
+          </Route>
+          <Route path="/admin/messages">
+            <TenantProtectedRoute><AgoojyeOnlyRoute><AgoojyeAdminMessagesPage /></AgoojyeOnlyRoute></TenantProtectedRoute>
+          </Route>
+          <Route path="/admin/utilisateurs">
+            <TenantProtectedRoute><AgoojyeOnlyRoute><AgoojyeAdminUsersPage /></AgoojyeOnlyRoute></TenantProtectedRoute>
+          </Route>
+          <Route path="/admin/parametres">
+            <TenantProtectedRoute><AgoojyeOnlyRoute><AgoojyeAdminSettingsPage /></AgoojyeOnlyRoute></TenantProtectedRoute>
+          </Route>
+          <Route path="/admin/agoojye">
+            <ProtectedRoute>
+              <AgoojyeAdminDashboardPage />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/admin/agoojye/dashboard">
+            <ProtectedRoute>
+              <Redirect to="/admin/agoojye" />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/admin/agoojye/users">
+            <ProtectedRoute>
+              <AgoojyeAdminUsersPage />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/admin/agoojye/teams">
+            <ProtectedRoute>
+              <AgoojyeAdminTeamsPage />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/admin/agoojye/participants">
+            <ProtectedRoute>
+              <AgoojyeAdminParticipantsPage />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/admin/agoojye/emails">
+            <ProtectedRoute>
+              <AgoojyeAdminEmailsPage />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/admin/agoojye/messages">
+            <ProtectedRoute>
+              <AgoojyeAdminMessagesPage />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/admin/agoojye/tasks">
+            <ProtectedRoute>
+              <AgoojyeAdminTasksPage />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/admin/agoojye/milestones">
+            <ProtectedRoute>
+              <AgoojyeAdminMilestonesPage />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/admin/agoojye/documents">
+            <ProtectedRoute>
+              <AgoojyeAdminDocumentsPage />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/admin/agoojye/partners">
+            <ProtectedRoute>
+              <AgoojyeAdminPartnersPage />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/admin/agoojye/sponsors">
+            <ProtectedRoute>
+              <AgoojyeAdminSponsorsPage />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/admin/agoojye/sponsor-categories">
+            <ProtectedRoute>
+              <AgoojyeAdminSponsorCategoriesPage />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/admin/agoojye/pipeline-stages">
+            <ProtectedRoute>
+              <AgoojyeAdminPipelineStagesPage />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/admin/agoojye/organizations">
+            <ProtectedRoute>
+              <AgoojyeAdminOrganizationsPage />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/admin/agoojye/contacts">
+            <ProtectedRoute>
+              <AgoojyeAdminContactsPage />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/admin/agoojye/opportunities">
+            <ProtectedRoute>
+              <AgoojyeAdminOpportunitiesPage />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/admin/agoojye/activities">
+            <ProtectedRoute>
+              <AgoojyeAdminActivitiesPage />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/admin/agoojye/email-templates">
+            <ProtectedRoute>
+              <AgoojyeAdminEmailTemplatesPage />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/admin/agoojye/toolbox">
+            <ProtectedRoute>
+              <AgoojyeAdminToolboxPage />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/admin/agoojye/suppression">
+            <ProtectedRoute>
+              <AgoojyeAdminSuppressionPage />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/admin/agoojye/approvals">
+            <ProtectedRoute>
+              <AgoojyeAdminApprovalsPage />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/admin/agoojye/inbox">
+            <ProtectedRoute>
+              <AgoojyeAdminInboxThreadsPage />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/admin/agoojye/mail-messages">
+            <ProtectedRoute>
+              <AgoojyeAdminMailMessagesPage />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/admin/agoojye/sequences">
+            <ProtectedRoute>
+              <AgoojyeAdminSequencesPage />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/admin/agoojye/imports">
+            <ProtectedRoute>
+              <AgoojyeAdminImportsPage />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/admin/agoojye/agent-research">
+            <ProtectedRoute>
+              <AgoojyeAdminAgentResearchPage />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/admin/agoojye/jobs">
+            <ProtectedRoute>
+              <AgoojyeAdminJobsPage />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/admin/agoojye/media">
+            <ProtectedRoute>
+              <AgoojyeAdminMediaPage />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/admin/agoojye/content">
+            <ProtectedRoute>
+              <AgoojyeAdminContentPage />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/admin/agoojye/settings">
+            <ProtectedRoute>
+              <AgoojyeAdminSettingsPage />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/admin/agoojye/audit">
+            <ProtectedRoute>
+              <AgoojyeAdminAuditPage />
             </ProtectedRoute>
           </Route>
           <Route path="/admin/hoz">

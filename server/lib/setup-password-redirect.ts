@@ -2,6 +2,7 @@ import { resolveTenantKeyFromHost, type TenantKey } from "./tenants";
 
 const REDIRECT_BY_TENANT: Record<TenantKey, string> = {
   bdo: "/dashboard",
+  agoojye: "/admin/agoojye",
   exportunity: "/zone",
   zone: "/zone",
   mindbase: "/admin/mindbase",
@@ -17,6 +18,7 @@ const REDIRECT_BY_TENANT: Record<TenantKey, string> = {
 function asTenantKey(value: unknown): TenantKey | null {
   const normalized = String(value || "").trim().toLowerCase();
   if (normalized === "bdo") return "bdo";
+  if (normalized === "agoojye" || normalized === "agojye") return "agoojye";
   if (normalized === "exportunity") return "exportunity";
   if (normalized === "zone") return "zone";
   if (normalized === "mindbase") return "mindbase";

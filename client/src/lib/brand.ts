@@ -1,4 +1,4 @@
-﻿import type { TenantKey } from "@/types/tenant";
+import type { TenantKey } from "@/types/tenant";
 
 export type ProductScope = "GOLD_ONLY" | "MULTI_CATEGORY";
 export type ConciergeScope = "GOLD_ONLY" | "MULTI_CATEGORY";
@@ -31,6 +31,29 @@ export type BrandInfo = {
 };
 
 export const BRAND_MAP: Record<TenantKey, BrandInfo> = {
+  agoojye: {
+    name: "AGOOJIYE",
+    shortName: "AGOOJIYE",
+    nameAscii: "AGOOJIYE",
+    domain: "agoojiye.com",
+    canonicalUrl: "https://agoojiye.com",
+    metaTitle: "AGOOJIYE - Mobilité électrique née au Bénin",
+    metaDescription:
+      "AGOOJIYE est une plateforme industrielle de mobilité électrique née au Bénin, inspirée par l'héritage des Amazones du Dahomey et conçue pour l'Afrique.",
+    complianceNotice: "Les partenaires, sponsors et participants sont validés par l'équipe AGOOJIYE avant toute annonce officielle.",
+    tagline: "Fait au Bénin. Conçu pour l'Afrique. Regardé par le monde.",
+    subtitle: "Mobilité électrique, héritage et souveraineté industrielle africaine",
+    faviconPath: "/tenants/agoojye/favicon.png",
+    productScope: "MULTI_CATEGORY",
+    conciergeScope: "MULTI_CATEGORY",
+    landing: "browse-first",
+    theme: {
+      primary: "#C99A36",
+      secondary: "#123C2F",
+      accent: "#E4C46A",
+      background: "#080808",
+    },
+  },
   bdo: {
     name: "Bourse de l'Or",
     shortName: "BDO",

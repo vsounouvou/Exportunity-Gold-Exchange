@@ -118,6 +118,9 @@ export * from "./schema/notifications";
 export * from "./schema/mindbase";
 // Export Maison en Terre tenant commerce/cms tables
 export * from "./schema/met";
+// Export AGOOJIYE tenant industrial mobility platform tables
+export * from "./schema/agoojye";
+export * from "./schema/agoojye-mobility";
 
 // Export PME Exchange lead, outreach, and profile tables
 export * from "./schema/pme-exchange";

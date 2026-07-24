@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 520" role="img" aria-labelledby="title desc">
+  <title id="title">AGOOJIYE electric bus placeholder</title>
+  <desc id="desc">Premium graphite and gold electric bus concept placeholder.</desc>
+  <rect width="900" height="520" fill="#F7F2E8"/>
+  <path d="M118 286c11-74 62-128 154-148 82-18 256-13 379 16 71 17 118 58 139 108l18 44c6 14-4 30-19 30H121c-17 0-26-18-19-33l16-17Z" fill="#171717"/>
+  <path d="M183 220c34-42 84-61 149-61h215c74 0 129 25 166 75l16 22H164l19-36Z" fill="#123C2F"/>
+  <path d="M222 194h106v62H180c10-28 24-48 42-62Zm132 0h111v62H354v-62Zm138 0h83c54 0 93 21 119 62H492v-62Z" fill="#F7F2E8" opacity=".88"/>
+  <path d="M143 319h630" stroke="#C99A36" stroke-width="10" stroke-linecap="round"/>
+  <path d="M186 356h526" stroke="#8A5A2B" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="245" cy="365" r="48" fill="#080808" stroke="#C99A36" stroke-width="7"/>
+  <circle cx="245" cy="365" r="18" fill="#E4C46A"/>
+  <circle cx="682" cy="365" r="48" fill="#080808" stroke="#C99A36" stroke-width="7"/>
+  <circle cx="682" cy="365" r="18" fill="#E4C46A"/>
+  <path d="m735 215 48 13 22 41h-53l-17-54Z" fill="#E4C46A"/>
+  <path d="M278 128h280" stroke="#C99A36" stroke-width="6" stroke-linecap="round" opacity=".65"/>
+</svg>

@@ -118,10 +118,13 @@ import mindbaseRouter from "./routes/mindbase";
 import metRouter from "./routes/met";
 import vsRouter from "./routes/vs";
 import hozRouter from "./routes/hoz";
+import agoojyeRouter from "./routes/agoojye";
+import agoojyeMobilityRouter from "./routes/agoojye-mobility";
 import meetRouter from "./routes/meet";
 import sellerRouter from "./routes/seller";
 import emailRouter from "./routes/email";
 import mailRouter from "./routes/mail";
+import publicMailPasswordRouter from "./routes/public-mail-password";
 import zoguelandRouter from "./routes/zogueland";
 import assistantRouter from "./routes/assistant";
 import chairmanConsoleRouter from "./routes/chairman-console";
@@ -379,6 +382,14 @@ const TENANT_MANIFEST_OVERRIDES: Record<string, TenantManifestOverride> = {
     background_color: "#0B0F19",
     theme_color: "#0B0F19",
   },
+  agoojye: {
+    name: "AGOOJIYE",
+    short_name: "AGOOJIYE",
+    description: "Mobilité électrique née au Bénin, conçue pour l'Afrique.",
+    start_url: "/",
+    background_color: "#080808",
+    theme_color: "#080808",
+  },
   met: {
     name: "Maison en Terre",
     short_name: "MET",
@@ -414,7 +425,7 @@ const TENANT_MANIFEST_OVERRIDES: Record<string, TenantManifestOverride> = {
   zogueland: {
     name: "Zogueland",
     short_name: "Zogueland",
-    description: "Stories, learning, and safe AI for children.",
+    description: "Stories, audiobooks, printables, and safe learning tools for children.",
     start_url: "/store",
     background_color: "#F8FAFC",
     theme_color: "#14B8A6",
@@ -432,6 +443,56 @@ const TENANT_MANIFEST_OVERRIDES: Record<string, TenantManifestOverride> = {
 function buildManifestIcons(tenantKey: string) {
   const tenantConfig = getTenantConfigByKey(tenantKey);
   const faviconPath = tenantConfig?.assets?.faviconPath || `/tenants/${tenantKey}/favicon.svg`;
+  if (tenantKey === "agoojye") {
+    return [
+      {
+        src: "/tenants/agoojye/app-icon-64.png",
+        sizes: "64x64",
+        type: "image/png",
+      },
+      {
+        src: "/tenants/agoojye/app-icon-128.png",
+        sizes: "128x128",
+        type: "image/png",
+      },
+      {
+        src: "/tenants/agoojye/app-icon-256.png",
+        sizes: "256x256",
+        type: "image/png",
+      },
+      {
+        src: "/tenants/agoojye/app-icon-512.png",
+        sizes: "512x512",
+        type: "image/png",
+        purpose: "any maskable",
+      },
+    ];
+  }
+  if (tenantKey === "zogueland") {
+    return [
+      {
+        src: faviconPath,
+        sizes: "any",
+        type: "image/svg+xml",
+      },
+      {
+        src: "/tenants/zogueland/pwa/icon-192.png",
+        sizes: "192x192",
+        type: "image/png",
+      },
+      {
+        src: "/tenants/zogueland/pwa/icon-512.png",
+        sizes: "512x512",
+        type: "image/png",
+      },
+      {
+        src: "/tenants/zogueland/pwa/icon-512-maskable.png",
+        sizes: "512x512",
+        type: "image/png",
+        purpose: "maskable",
+      },
+    ];
+  }
   return [
     {
       src: faviconPath,
@@ -1067,6 +1128,9 @@ export function registerRoutes(app: Express): Server {
   app.use("/", vsRouter);
   // House of Zogue tenant module (public + admin APIs)
   app.use("/", hozRouter);
+  // AGOOJIYE electric mobility tenant module (public + admin APIs)
+  app.use("/", agoojyeMobilityRouter);
+  app.use("/", agoojyeRouter);
   // Zogueland tenant module (public story generator API)
   app.use("/", zoguelandRouter);
   // Mindbase marketplace + studio + internal invoke APIs
@@ -1174,6 +1238,18 @@ export function registerRoutes(app: Express): Server {
     res.setHeader("Content-Type", "application/manifest+json; charset=utf-8");
     res.json(buildTenantManifest("bdo"));
   });
+
+  app.get("/manifest-agoojiye.webmanifest", (req, res) => {
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
+    res.setHeader("Content-Type", "application/manifest+json; charset=utf-8");
+    res.json(buildTenantManifest("agoojye"));
+  });
+
+  app.get("/manifest-zogueland.webmanifest", (req, res) => {
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
+    res.setHeader("Content-Type", "application/manifest+json; charset=utf-8");
+    res.json(buildTenantManifest("zogueland"));
+  });
   
   // Register Goals management routes
   app.use("/api/goals", goalsRouter);
@@ -1215,6 +1291,8 @@ export function registerRoutes(app: Express): Server {
 
   // Internal email engine (agent mailboxes)
   app.use("/api/email", emailRouter);
+  // Public mailbox password self-service; authenticated mailbox password is verified server-side.
+  app.use("/api/mail", publicMailPasswordRouter);
   // Platform-native mailbox UI (SSO; no IMAP from client)
   app.use("/api/mail", mailRouter);
 

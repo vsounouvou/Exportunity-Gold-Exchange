@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" role="img" aria-labelledby="title">
+  <title id="title">AGOOJIYE icon placeholder</title>
+  <rect width="160" height="160" rx="24" fill="#080808"/>
+  <path d="M80 18 128 38v39c0 32-18 54-48 65-30-11-48-33-48-65V38l48-20Z" fill="#123C2F" stroke="#C99A36" stroke-width="6"/>
+  <text x="80" y="101" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="58" font-weight="800" fill="#F7F2E8">A</text>
+</svg>

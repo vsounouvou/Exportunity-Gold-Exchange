@@ -58,6 +58,10 @@ function isHozHost(host: string) {
   return host === "houseofzogue.com" || host === "www.houseofzogue.com" || host.endsWith(".houseofzogue.com");
 }
 
+function isAgoojyeHost(host: string) {
+  return host === "agoojiye.com" || host === "www.agoojiye.com" || host === "app.agoojiye.com" || host === "admin.agoojiye.com";
+}
+
 function isExportunityFamilyHost(host: string) {
   return isExportunityPublicMarketingHost(host) || isExportunityNetHost(host) || isExportunityStagingHost(host);
 }
@@ -227,6 +231,20 @@ router.get("/robots.txt", (req: any, res) => {
     return res.send(lines.join("\n"));
   }
 
+  if (isAgoojyeHost(host)) {
+    return res.send([
+      "User-agent: *",
+      "Disallow: /admin",
+      "Disallow: /controle",
+      "Disallow: /api",
+      "Disallow: /reservation/",
+      "Disallow: /billet/",
+      "",
+      "Sitemap: https://agoojiye.com/sitemap.xml",
+      "",
+    ].join("\n"));
+  }
+
   if (isExportunityStagingHost(host) || isExportunityNetHost(host)) {
     res.setHeader("X-Robots-Tag", "noindex, nofollow, noarchive, nosnippet");
     return res.send(["User-agent: *", "Disallow: /", ""].join("\n"));
@@ -357,6 +375,29 @@ router.get("/sitemap.xml", async (req: any, res) => {
     } catch (error: any) {
       return res.status(500).json({ message: error?.message || "Failed to build MindBase sitemap" });
     }
+  }
+
+  if (isAgoojyeHost(host)) {
+    const base = "https://agoojiye.com";
+    const paths = [
+      "/",
+      "/reserver",
+      "/trajets",
+      "/bus",
+      "/experience-3d",
+      "/reserver-un-bus",
+      "/demonstration",
+      "/commander",
+      "/liste-prioritaire",
+      "/a-propos",
+      "/contact",
+      "/faq",
+      "/retrouver-ma-reservation",
+    ];
+    const urls = paths.map((path) => ["<url>", `<loc>${base}${path}</loc>`, `<lastmod>${now}</lastmod>`, "</url>"].join("")).join("");
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>` + `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">` + urls + `</urlset>`;
+    res.type("application/xml");
+    return res.send(xml);
   }
 
   const base = isExportunityFamilyHost(host) ? `https://${EXPORTUNITY_CANONICAL_HOST}` : `https://${host || "boursedelor.com"}`;

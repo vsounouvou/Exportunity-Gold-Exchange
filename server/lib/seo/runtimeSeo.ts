@@ -78,6 +78,21 @@ function isBdoHost(host: unknown) {
   );
 }
 
+function isAgoojyeHost(host: unknown) {
+  const normalized = normalizeHost(host);
+  return (
+    normalized === "agoojiye.com" ||
+    normalized === "www.agoojiye.com" ||
+    normalized.endsWith(".agoojiye.com") ||
+    normalized === "agoojye.com" ||
+    normalized === "www.agoojye.com" ||
+    normalized.endsWith(".agoojye.com") ||
+    normalized === "agojye.com" ||
+    normalized === "www.agojye.com" ||
+    normalized.endsWith(".agojye.com")
+  );
+}
+
 export function canonicalizePath(pathname: string, ctx?: { host?: string; search?: string }) {
   const nextPath = pathname || "/";
   const marketingHost = isExportunityMarketingHost(ctx?.host, ctx?.search);
@@ -85,6 +100,7 @@ export function canonicalizePath(pathname: string, ctx?: { host?: string; search
   const vsHost = isVsHost(ctx?.host);
   const hozHost = isHozHost(ctx?.host);
   const bdoHost = isBdoHost(ctx?.host);
+  const agoojyeHost = isAgoojyeHost(ctx?.host);
 
   if (mindbaseHost) {
     if (nextPath === "/" || nextPath === "/mindbase") return "/";
@@ -132,6 +148,10 @@ export function canonicalizePath(pathname: string, ctx?: { host?: string; search
   }
 
   if (bdoHost) {
+    return nextPath;
+  }
+
+  if (agoojyeHost) {
     return nextPath;
   }
 
@@ -183,6 +203,7 @@ export function canonicalizePath(pathname: string, ctx?: { host?: string; search
 }
 
 function tenantFullTitle(tenantKey: string) {
+  if (tenantKey === "agoojye") return "AGOOJIYE";
   if (tenantKey === "mindbase") return "MindBase";
   if (tenantKey === "vs") return "Vital Sounouvou";
   if (tenantKey === "hoz") return "House of Zogue";
@@ -190,6 +211,9 @@ function tenantFullTitle(tenantKey: string) {
 }
 
 function tenantDescription(tenantKey: string) {
+  if (tenantKey === "agoojye") {
+    return "AGOOJIYE est une plateforme industrielle de mobilité électrique née au Bénin, conçue pour l'Afrique.";
+  }
   if (tenantKey === "mindbase") {
     return "MindBase helps creators and operators package expertise into deployable AI intellects.";
   }
@@ -243,7 +267,9 @@ export async function resolveSeoHead(input: {
       ? "vs"
       : isHozHost(input.host)
         ? "hoz"
-        : "bdo";
+        : isAgoojyeHost(input.host)
+          ? "agoojye"
+          : "bdo";
   const tenantKey = String(input.tenant?.key || inferredTenantKey);
   const baseTitle = tenantFullTitle(tenantKey);
   const defaultDesc = tenantDescription(tenantKey);
@@ -278,6 +304,7 @@ export async function resolveSeoHead(input: {
   const isMindbase = tenantKey === "mindbase" || isMindbaseHost(input.host);
   const isHoz = tenantKey === "hoz" || isHozHost(input.host);
   const isBdo = tenantKey === "bdo" || isBdoHost(input.host);
+  const isAgoojye = tenantKey === "agoojye" || isAgoojyeHost(input.host);
 
   const routeTitleMap: Record<string, string> = {
     "/zone": "Zone",
@@ -308,6 +335,20 @@ export async function resolveSeoHead(input: {
     "/build/chat": "Build - MindBase",
     "/build/advanced": "Advanced Build - MindBase",
     "/workspaces": "Workspaces - MindBase",
+  };
+
+  const agoojyeTitleMap: Record<string, string> = {
+    "/": "AGOOJIYE - Mobilité électrique née au Bénin",
+    "/vision": "Vision - AGOOJIYE",
+    "/history": "Histoire - AGOOJIYE",
+    "/challenge": "Challenge Véhicule Électrique - AGOOJIYE",
+    "/teams": "Équipes - AGOOJIYE",
+    "/partners": "Partenaires - AGOOJIYE",
+    "/sponsors": "Sponsors - AGOOJIYE",
+    "/media": "Médias - AGOOJIYE",
+    "/contact": "Contact - AGOOJIYE",
+    "/mail/password": "Mot de passe email - AGOOJIYE",
+    "/email/password": "Mot de passe email - AGOOJIYE",
   };
 
 
@@ -358,6 +399,20 @@ export async function resolveSeoHead(input: {
     "/build/chat": "Chat-first onboarding to create your MindBase and baseline agents.",
     "/build/advanced": "Advanced MindBase setup for detailed profile and agent controls.",
     "/workspaces": "Collaborate with your team in shared MindBase workspaces.",
+  };
+
+  const agoojyeDescriptionMap: Record<string, string> = {
+    "/": "AGOOJIYE est une plateforme industrielle de mobilité électrique née au Bénin, inspirée par l'héritage des Amazones du Dahomey et conçue pour l'Afrique.",
+    "/vision": "Vision industrielle, souveraineté technologique et mobilité électrique africaine portées par AGOOJIYE.",
+    "/history": "Racines historiques, héritage des Amazones du Dahomey et trajectoire contemporaine du mouvement AGOOJIYE.",
+    "/challenge": "Challenge Véhicule Électrique AGOOJIYE: mobilisation publique, sponsors, partenaires et équipes.",
+    "/teams": "Équipes et rôles mobilisés pour AGOOJIYE.",
+    "/partners": "Partenaires institutionnels, techniques et industriels du mouvement AGOOJIYE.",
+    "/sponsors": "Sponsors et categories de contribution pour soutenir AGOOJIYE.",
+    "/media": "Médias, images et ressources officielles AGOOJIYE.",
+    "/contact": "Contacter l'équipe AGOOJIYE pour partenariat, sponsoring, média ou mobilisation.",
+    "/mail/password": "Page sécurisée permettant aux membres AGOOJIYE de changer le mot de passe de leur boîte email officielle.",
+    "/email/password": "Page sécurisée permettant aux membres AGOOJIYE de changer le mot de passe de leur boîte email officielle.",
   };
 
 
@@ -418,6 +473,7 @@ const pageLabel =
   let description =
     (isMarketing ? marketingDescriptionMap[canonicalPath] : undefined) ??
     (isHoz ? hozDescriptionMap[canonicalPath] : undefined) ??
+    (isAgoojye ? agoojyeDescriptionMap[canonicalPath] : undefined) ??
     routeDescriptionMap[canonicalPath] ??
     defaultDesc;
   if (isMindbase) {
@@ -440,6 +496,12 @@ const pageLabel =
       title = `${prettyName} — Hire on MindBase`;
       description = `Hire ${prettyName} on MindBase and deploy expertise on-demand.`;
     }
+  }
+  if (isAgoojye) {
+    const mappedTitle = agoojyeTitleMap[canonicalPath];
+    const mappedDescription = agoojyeDescriptionMap[canonicalPath];
+    if (mappedTitle) title = mappedTitle;
+    if (mappedDescription) description = mappedDescription;
   }
   if (tenantKey === "exportunity" && canonicalPath === "/zone") {
     title = "Zone — Exportunity";

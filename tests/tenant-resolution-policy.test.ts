@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { resolveTenantKey } from "../client/src/lib/tenantResolution";
+import { resolveTenantKey, shouldBlockTenantRendering } from "../client/src/lib/tenantResolution";
 import { getAllowedTenantsForPath, isTenantRouteAllowed } from "../client/src/lib/tenantPolicy";
 
 test("tenant resolution: host wins over session + api", () => {
@@ -81,6 +81,39 @@ test("tenant resolution: maison(s)enterre hosts resolve to met", () => {
   );
 });
 
+test("tenant bootstrap: known AGOOJIYE host renders while API resolution is pending", () => {
+  assert.equal(
+    shouldBlockTenantRendering({
+      loading: true,
+      tenantId: null,
+      host: "agoojiye.com",
+      sessionToken: null,
+    }),
+    false,
+  );
+});
+
+test("tenant bootstrap: unknown host waits until a tenant source resolves", () => {
+  assert.equal(
+    shouldBlockTenantRendering({
+      loading: true,
+      tenantId: null,
+      host: "unknown.example",
+      sessionToken: null,
+    }),
+    true,
+  );
+  assert.equal(
+    shouldBlockTenantRendering({
+      loading: true,
+      tenantId: 3162,
+      host: "unknown.example",
+      sessionToken: null,
+    }),
+    false,
+  );
+});
+
 test("tenant policy: mindbase-only routes reject bdo", () => {
   const allowed = getAllowedTenantsForPath("/mindbase/workspaces");
   assert.deepEqual(allowed, ["mindbase"]);
@@ -93,9 +126,9 @@ test("tenant policy: shared backoffice routes exclude mindbase", () => {
   assert.equal(allowed.includes("zogueland"), true);
 });
 
-test("tenant policy: marketplace admin route limited to exportunity/zone", () => {
+test("tenant policy: marketplace admin route includes the BDO catalog", () => {
   const allowed = getAllowedTenantsForPath("/admin/marketplace/products");
-  assert.deepEqual(allowed, ["exportunity", "zone", "rayon1km"]);
+  assert.deepEqual(allowed, ["exportunity", "zone", "rayon1km", "bdo"]);
 });
 
 test("tenant policy: met public routes are met-only", () => {

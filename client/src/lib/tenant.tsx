@@ -72,14 +72,22 @@ interface TenantContextValue {
 
 const TenantContext = createContext<TenantContextValue | null>(null);
 
+export const TENANT_FETCH_TIMEOUT_MS = 8_000;
+
 async function fetchTenant(): Promise<TenantInfo> {
   const url = resolveApiUrl("/api/tenant");
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error("Unable to resolve current tenant");
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), TENANT_FETCH_TIMEOUT_MS);
+  try {
+    const response = await fetch(url, { signal: controller.signal });
+    if (!response.ok) {
+      throw new Error("Unable to resolve current tenant");
+    }
+    const payload = (await response.json()) as TenantInfo;
+    return payload;
+  } finally {
+    clearTimeout(timeout);
   }
-  const payload = (await response.json()) as TenantInfo;
-  return payload;
 }
 
 export function TenantProvider({ children }: { children: ReactNode }) {

@@ -250,7 +250,7 @@ router.post("/password/change", async (req: any, res) => {
     res.json({
       ok: true,
       message: "Mot de passe mis à jour.",
-      webmailUrl: "https://mail.exportunity.net/",
+      webmailUrl: "https://mail.agoojiye.com/",
     });
   } catch (err: any) {
     if (tenant?.id && email) {

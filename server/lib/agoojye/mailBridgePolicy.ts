@@ -10,6 +10,7 @@ export const AGOOJIYE_HUMAN_MAILBOX_PROFILES: readonly AgoojiyeHumanMailboxProfi
   { localPart: "maryse", displayName: "Maryse", passwordEnv: "AGOOJIYE_MAILBOX_MARYSE_PASSWORD" },
   { localPart: "christian", displayName: "Christian", passwordEnv: "AGOOJIYE_MAILBOX_CHRISTIAN_PASSWORD" },
   { localPart: "vital", displayName: "Vital", passwordEnv: "AGOOJIYE_MAILBOX_VITAL_PASSWORD" },
+  { localPart: "vs", displayName: "Vital Sounouvou", passwordEnv: "AGOOJIYE_MAILBOX_VS_PASSWORD" },
 ] as const;
 
 export const AGOOJIYE_MAIL_DOMAIN = "agoojiye.com";

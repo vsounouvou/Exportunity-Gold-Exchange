@@ -101,6 +101,10 @@ router.post("/api/auth/setup-password", async (req, res) => {
         : {};
     metadata.mustChangePassword = false;
     metadata.passwordSetupAt = new Date().toISOString();
+    const requiresMfa =
+      Boolean(metadata.requireMfa) ||
+      String(user.email || "").trim().toLowerCase() ===
+        String(process.env.AGOOJIYE_SUPER_ADMIN_EMAIL || "vs@agoojiye.com").trim().toLowerCase();
 
     await db
       .update(eceUsers)
@@ -111,6 +115,21 @@ router.post("/api/auth/setup-password", async (req, res) => {
       })
       .where(eq(eceUsers.id, user.id));
 
+    const setupRedirect = resolveSetupPasswordRedirect({
+      tenantKey: (req as any)?.tenant?.key,
+      host: req.get("host"),
+      forwardedHost: req.get("x-forwarded-host"),
+    });
+
+    if (requiresMfa && setupRedirect.tenantKey === "agoojye") {
+      return res.json({
+        ok: true,
+        mfaRequired: true,
+        redirect: "/workspace/connexion",
+        tenantKey: setupRedirect.tenantKey,
+      });
+    }
+
     const sessionToken = randomBytes(32).toString("hex");
     await db.insert(eceSessions).values({
       userId: user.id,
@@ -119,12 +138,6 @@ router.post("/api/auth/setup-password", async (req, res) => {
       ipAddress: req.ip,
       userAgent: String(req.headers["user-agent"] || ""),
       createdAt: new Date(),
-    });
-
-    const setupRedirect = resolveSetupPasswordRedirect({
-      tenantKey: (req as any)?.tenant?.key,
-      host: req.get("host"),
-      forwardedHost: req.get("x-forwarded-host"),
     });
 
     return res.json({

@@ -163,7 +163,7 @@ self.addEventListener("push", (event) => {
   }
   const title = String(payload.title || "AGOOJIYE OS");
   const body = String(payload.body || "Une nouvelle information nécessite votre attention.");
-  const url = String(payload.url || "/os");
+  const url = String(payload.url || "/workspace");
   event.waitUntil(
     self.registration.showNotification(title, {
       body,
@@ -177,7 +177,7 @@ self.addEventListener("push", (event) => {
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const targetUrl = String(event.notification?.data?.url || "/os");
+  const targetUrl = String(event.notification?.data?.url || "/workspace");
   event.waitUntil(
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {
       for (const client of clients) {

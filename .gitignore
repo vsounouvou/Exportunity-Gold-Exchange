@@ -17,6 +17,7 @@ deploy-report-*.md
 ops/local-releases/
 ops/local-backups/
 ops/tmp/
+ops/private/
 .git_corrupt_*/
 *.log
 .tmp*

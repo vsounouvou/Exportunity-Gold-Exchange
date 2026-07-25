@@ -12,6 +12,48 @@ export type OsInvitationState = {
   allowedEmails?: unknown;
 };
 
+export const AGOOJIYE_DATA_CLASSES = [
+  "PUBLIC",
+  "INTERNAL",
+  "DEPARTMENT_ONLY",
+  "PROJECT_RESTRICTED",
+  "MANAGEMENT_CONFIDENTIAL",
+  "LEGAL_FINANCIAL_RESTRICTED",
+  "SUPER_ADMIN_RESTRICTED",
+] as const;
+
+const DATA_CLASS_MIN_LEVEL: Record<(typeof AGOOJIYE_DATA_CLASSES)[number], number> = {
+  PUBLIC: 0,
+  INTERNAL: 1,
+  DEPARTMENT_ONLY: 2,
+  PROJECT_RESTRICTED: 3,
+  MANAGEMENT_CONFIDENTIAL: 5,
+  LEGAL_FINANCIAL_RESTRICTED: 6,
+  SUPER_ADMIN_RESTRICTED: 7,
+};
+
+export function canAccessAgoojiyeDataClass(input: {
+  member: OsPermissionMember;
+  classification?: string | null;
+  resourceTeamId?: number | null;
+  resourceProjectId?: number | null;
+  projectMembershipIds?: Set<number>;
+}) {
+  const classification = String(input.classification || "INTERNAL").toUpperCase() as keyof typeof DATA_CLASS_MIN_LEVEL;
+  const requiredLevel = DATA_CLASS_MIN_LEVEL[classification];
+  if (requiredLevel === undefined) return false;
+  const accessLevel = Number(input.member.accessLevel || 0);
+  if (accessLevel < requiredLevel) return false;
+  if (accessLevel >= 7) return true;
+  if (classification === "DEPARTMENT_ONLY") {
+    return Boolean(input.resourceTeamId) && Number(input.resourceTeamId) === Number(input.member.teamId || -1);
+  }
+  if (classification === "PROJECT_RESTRICTED") {
+    return Boolean(input.resourceProjectId) && Boolean(input.projectMembershipIds?.has(Number(input.resourceProjectId)));
+  }
+  return true;
+}
+
 export function hasAgoojiyeOsPermission(member: OsPermissionMember, permission: string) {
   const permissions = Array.isArray(member.permissions)
     ? member.permissions.map((entry) => String(entry || "").trim()).filter(Boolean)

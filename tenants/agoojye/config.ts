@@ -18,6 +18,8 @@ export const agoojyeTenantConfig: TenantConfig = {
     "admin.agoojye.com",
     "agojye.com",
     "www.agojye.com",
+    "agoojiye.localhost",
+    "agoojye.localhost",
   ],
   defaultLocale: "fr",
   uiMode: "industrial",

@@ -36,10 +36,12 @@ import {
   userTenantRoles,
 } from "@db/schema";
 
-import { ensureTenantAdmin, ensureTenantUser } from "./utils/auth";
+import { ensureTenantUser } from "./utils/auth";
+import { requireWorkosAdmin, requireWorkosMember } from "./agoojye-workos";
 import { hashAgoojiyeInvitationToken } from "../lib/agoojye/osSeed";
 import {
   canAccessAgoojiyeOsChannel,
+  canAccessAgoojiyeDataClass,
   evaluateAgoojiyeOsInvitation,
   hasAgoojiyeOsPermission,
 } from "../lib/agoojye/osPolicy";
@@ -372,6 +374,7 @@ publicApi.post("/invitations/:token/accept", async (req: any, res) => {
 });
 
 memberApi.use(ensureTenantUser);
+memberApi.use(requireWorkosMember);
 memberApi.use(requireMember);
 
 memberApi.get("/bootstrap", async (req: any, res) => {
@@ -512,8 +515,32 @@ memberApi.get("/bootstrap", async (req: any, res) => {
     status: entry.status,
     isCurrentUser: Number(entry.id) === Number(member.id),
   }));
-  const overdue = tasks.filter((task) => task.dueDate && new Date(task.dueDate).getTime() < Date.now() && !["done", "cancelled"].includes(task.status));
   const unread = notifications.filter((notification) => !notification.readAt);
+  const projectMembershipIdSet = new Set(projectIds);
+  const classifiedTasks = tasks.filter((task) =>
+    canAccessAgoojiyeDataClass({
+      member,
+      classification: task.confidentialityClass,
+      resourceTeamId: task.teamId,
+    }),
+  );
+  const classifiedProjects = projects.filter((project) =>
+    canAccessAgoojiyeDataClass({
+      member,
+      classification: project.confidentialityClass,
+      resourceTeamId: project.teamId,
+      resourceProjectId: project.id,
+      projectMembershipIds: projectMembershipIdSet,
+    }),
+  );
+  const classifiedDocuments = documents.filter((document) =>
+    canAccessAgoojiyeDataClass({
+      member,
+      classification: document.confidentialityClass,
+      resourceTeamId: document.teamId,
+    }),
+  );
+  const overdue = classifiedTasks.filter((task) => task.dueDate && new Date(task.dueDate).getTime() < Date.now() && !["done", "cancelled"].includes(task.status));
 
   return res.json({
     ok: true,
@@ -525,23 +552,25 @@ memberApi.get("/bootstrap", async (req: any, res) => {
     navigation: {
       crm: memberCan(member, "crm"),
       mobility: memberCan(member, "mobility"),
-      administration: leadership,
+      administration:
+        Array.isArray(req.workosTenantRoles) &&
+        req.workosTenantRoles.some((role: string) => ["SUPER_ADMIN", "TENANT_ADMIN"].includes(String(role))),
       ai: true,
     },
     attention: {
-      dueToday: tasks.filter((task) => task.dueDate && new Date(task.dueDate).toDateString() === new Date().toDateString()).length,
+      dueToday: classifiedTasks.filter((task) => task.dueDate && new Date(task.dueDate).toDateString() === new Date().toDateString()).length,
       overdue: overdue.length,
       unreadNotifications: unread.length,
       pendingDecisions: decisions.filter((decision) => decision.status === "pending_approval").length,
-      documentsForReview: documents.filter((document) => document.status === "under_review").length,
+      documentsForReview: classifiedDocuments.filter((document) => document.status === "under_review").length,
     },
     teams: await db.query.agoojyeTeams.findMany({ where: eq(agoojyeTeams.tenantId, tenantId), orderBy: [asc(agoojyeTeams.name)] }),
     directory: memberDirectory,
     channels,
     messages: [...messages].reverse(),
-    tasks,
-    projects,
-    documents,
+    tasks: classifiedTasks,
+    projects: classifiedProjects,
+    documents: classifiedDocuments,
     partners,
     meetings: visibleMeetings,
     decisions,
@@ -816,6 +845,15 @@ const taskSchema = z.object({
   teamId: z.coerce.number().int().positive().optional(),
   priority: z.enum(["low", "medium", "high", "critical"]).default("medium"),
   dueDate: z.string().datetime().optional(),
+  confidentialityClass: z.enum([
+    "PUBLIC",
+    "INTERNAL",
+    "DEPARTMENT_ONLY",
+    "PROJECT_RESTRICTED",
+    "MANAGEMENT_CONFIDENTIAL",
+    "LEGAL_FINANCIAL_RESTRICTED",
+    "SUPER_ADMIN_RESTRICTED",
+  ]).default("INTERNAL"),
 });
 
 memberApi.post("/tasks", async (req: any, res) => {
@@ -826,6 +864,9 @@ memberApi.post("/tasks", async (req: any, res) => {
   const teamId = parsed.data.teamId || Number(member.teamId || 0) || null;
   if (Number(member.accessLevel || 0) < 4 && teamId && Number(teamId) !== Number(member.teamId || 0)) {
     return res.status(403).json({ message: "Vous pouvez créer des tâches uniquement dans votre département." });
+  }
+  if (!canAccessAgoojiyeDataClass({ member, classification: parsed.data.confidentialityClass, resourceTeamId: teamId })) {
+    return res.status(403).json({ message: "Vous ne pouvez pas attribuer ce niveau de confidentialité." });
   }
   const [task] = await db
     .insert(agoojyeTasks)
@@ -840,6 +881,7 @@ memberApi.post("/tasks", async (req: any, res) => {
       status: "todo",
       dueDate: parsed.data.dueDate ? new Date(parsed.data.dueDate) : null,
       attachments: [],
+      confidentialityClass: parsed.data.confidentialityClass,
     })
     .returning();
   const assignedTo = Number(task.assignedTo || 0);
@@ -850,9 +892,9 @@ memberApi.post("/tasks", async (req: any, res) => {
       type: "task",
       title: "Nouvelle tâche assignée",
       body: task.title,
-      link: "/os/travail",
+      link: "/workspace/tasks",
     });
-    void sendPushToUsers(tenantId, [assignedTo], { title: "Nouvelle tâche AGOOJIYE", body: task.title, url: "/os/travail" });
+    void sendPushToUsers(tenantId, [assignedTo], { title: "Nouvelle tâche AGOOJIYE", body: task.title, url: "/workspace/tasks" });
   }
   await audit(tenantId, member, "task_created", "task", Number(task.id));
   return res.status(201).json({ ok: true, item: task });
@@ -887,6 +929,15 @@ const projectSchema = z.object({
   teamId: z.coerce.number().int().positive().optional(),
   deadline: z.string().datetime().optional(),
   confidentiality: z.coerce.number().int().min(1).max(6).default(3),
+  confidentialityClass: z.enum([
+    "PUBLIC",
+    "INTERNAL",
+    "DEPARTMENT_ONLY",
+    "PROJECT_RESTRICTED",
+    "MANAGEMENT_CONFIDENTIAL",
+    "LEGAL_FINANCIAL_RESTRICTED",
+    "SUPER_ADMIN_RESTRICTED",
+  ]).default("INTERNAL"),
 });
 
 memberApi.post("/projects", async (req: any, res) => {
@@ -897,6 +948,18 @@ memberApi.post("/projects", async (req: any, res) => {
   const teamId = parsed.data.teamId || Number(member.teamId || 0) || null;
   if (Number(member.accessLevel || 0) < 4 && teamId !== Number(member.teamId || 0)) {
     return res.status(403).json({ message: "Création de projet limitée à votre département." });
+  }
+  const classMinLevel: Record<string, number> = {
+    PUBLIC: 0,
+    INTERNAL: 1,
+    DEPARTMENT_ONLY: 2,
+    PROJECT_RESTRICTED: 3,
+    MANAGEMENT_CONFIDENTIAL: 5,
+    LEGAL_FINANCIAL_RESTRICTED: 6,
+    SUPER_ADMIN_RESTRICTED: 7,
+  };
+  if (Number(member.accessLevel || 0) < classMinLevel[parsed.data.confidentialityClass]) {
+    return res.status(403).json({ message: "Vous ne pouvez pas attribuer ce niveau de confidentialité." });
   }
   const baseSlug = slugify(parsed.data.name);
   const slug = `${baseSlug}-${randomBytes(2).toString("hex")}`;
@@ -913,6 +976,7 @@ memberApi.post("/projects", async (req: any, res) => {
       progress: 0,
       deadline: parsed.data.deadline ? new Date(parsed.data.deadline) : null,
       confidentiality: Math.min(parsed.data.confidentiality, Number(member.accessLevel || 2)),
+      confidentialityClass: parsed.data.confidentialityClass,
       risks: [],
     })
     .returning();
@@ -953,6 +1017,15 @@ const documentSchema = z.object({
   fileUrl: z.string().url().optional().or(z.literal("")),
   status: z.enum(["draft", "under_review", "approved", "signed", "superseded", "archived"]).default("draft"),
   visibility: z.enum(["internal", "team_only", "admin_only"]).default("team_only"),
+  confidentialityClass: z.enum([
+    "PUBLIC",
+    "INTERNAL",
+    "DEPARTMENT_ONLY",
+    "PROJECT_RESTRICTED",
+    "MANAGEMENT_CONFIDENTIAL",
+    "LEGAL_FINANCIAL_RESTRICTED",
+    "SUPER_ADMIN_RESTRICTED",
+  ]).default("INTERNAL"),
 });
 
 memberApi.post("/documents", async (req: any, res) => {
@@ -960,6 +1033,13 @@ memberApi.post("/documents", async (req: any, res) => {
   if (!parsed.success) return res.status(400).json({ message: "Les informations du document sont invalides." });
   const tenantId = Number(req.osTenantId);
   const member = req.osMember;
+  if (!canAccessAgoojiyeDataClass({
+    member,
+    classification: parsed.data.confidentialityClass,
+    resourceTeamId: Number(member.teamId || 0) || null,
+  })) {
+    return res.status(403).json({ message: "Vous ne pouvez pas attribuer ce niveau de confidentialité." });
+  }
   const [document] = await db
     .insert(agoojyeDocuments)
     .values({
@@ -973,6 +1053,7 @@ memberApi.post("/documents", async (req: any, res) => {
       version: "1.0",
       status: parsed.data.status,
       visibility: Number(member.accessLevel || 0) >= 5 ? parsed.data.visibility : "team_only",
+      confidentialityClass: parsed.data.confidentialityClass,
     })
     .returning();
   await audit(tenantId, member, "document_created", "document", Number(document.id));
@@ -1199,12 +1280,27 @@ memberApi.post("/assistant", async (req: any, res) => {
       : Promise.resolve([]),
   ]);
 
+  const permittedTasks = tasks.filter((item) =>
+    canAccessAgoojiyeDataClass({ member, classification: item.confidentialityClass, resourceTeamId: item.teamId }),
+  );
+  const permittedProjects = projects.filter((item) =>
+    canAccessAgoojiyeDataClass({
+      member,
+      classification: item.confidentialityClass,
+      resourceTeamId: item.teamId,
+      resourceProjectId: item.id,
+      projectMembershipIds: new Set<number>(),
+    }),
+  );
+  const permittedDocuments = documents.filter((item) =>
+    canAccessAgoojiyeDataClass({ member, classification: item.confidentialityClass, resourceTeamId: item.teamId }),
+  );
   const matches = [
-    ...tasks.map((item) => ({ type: "Tâche", title: item.title, detail: `${item.status} · ${item.priority}`, href: "/os/travail" })),
-    ...projects.map((item) => ({ type: "Projet", title: item.name, detail: `${item.progress}% · ${item.status}`, href: "/os/travail" })),
-    ...documents.map((item) => ({ type: "Document", title: item.title, detail: `${item.category} · ${item.status}`, href: "/os/documents" })),
-    ...decisions.map((item) => ({ type: "Décision", title: item.decision, detail: item.status, href: "/os/decisions" })),
-    ...partners.map((item) => ({ type: "CRM", title: item.name, detail: `${item.category} · ${item.status}`, href: "/os/crm" })),
+    ...permittedTasks.map((item) => ({ type: "Tâche", title: item.title, detail: `${item.status} · ${item.priority}`, href: "/workspace/tasks" })),
+    ...permittedProjects.map((item) => ({ type: "Projet", title: item.name, detail: `${item.progress}% · ${item.status}`, href: "/workspace/projects" })),
+    ...permittedDocuments.map((item) => ({ type: "Document", title: item.title, detail: `${item.category} · ${item.status}`, href: "/workspace/files" })),
+    ...decisions.map((item) => ({ type: "Décision", title: item.decision, detail: item.status, href: "/workspace/decisions" })),
+    ...partners.map((item) => ({ type: "CRM", title: item.name, detail: `${item.category} · ${item.status}`, href: "/workspace/crm" })),
   ].slice(0, 15);
   const answer = matches.length
     ? `J'ai trouvé ${matches.length} élément${matches.length > 1 ? "s" : ""} correspondant à votre recherche. Ils sont classés ci-dessous selon vos autorisations.`
@@ -1224,7 +1320,9 @@ memberApi.post("/assistant", async (req: any, res) => {
   });
 });
 
-adminApi.use(ensureTenantAdmin);
+adminApi.use(ensureTenantUser);
+adminApi.use(requireWorkosMember);
+adminApi.use(requireWorkosAdmin);
 adminApi.post("/invitations", async (req: any, res) => {
   const tenantId = requireAgoojiyeTenant(req, res);
   if (!tenantId) return;
@@ -1243,7 +1341,7 @@ adminApi.post("/invitations", async (req: any, res) => {
       allowedEmails: emails,
       maxUses: emails.length,
       expiresAt,
-      createdBy: Number(req.adminUser?.id || 0) || null,
+      createdBy: Number(req.workosUser?.id || 0) || null,
     })
     .returning();
   const origin = `${clean(req.headers["x-forwarded-proto"] || req.protocol || "https").split(",")[0]}://${clean(req.headers["x-forwarded-host"] || req.headers.host)}`;

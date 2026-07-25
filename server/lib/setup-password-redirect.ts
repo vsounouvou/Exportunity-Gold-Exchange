@@ -2,7 +2,7 @@ import { resolveTenantKeyFromHost, type TenantKey } from "./tenants";
 
 const REDIRECT_BY_TENANT: Record<TenantKey, string> = {
   bdo: "/dashboard",
-  agoojye: "/admin/agoojye",
+  agoojye: "/workspace/connexion",
   exportunity: "/zone",
   zone: "/zone",
   mindbase: "/admin/mindbase",

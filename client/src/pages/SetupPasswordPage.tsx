@@ -57,6 +57,10 @@ export default function SetupPasswordPage() {
   const { login } = useSession();
   const [, setLocation] = useLocation();
   const token = useMemo(() => readTokenFromLocation(), []);
+  const isAgoojiye = useMemo(
+    () => typeof window !== "undefined" && /(^|\.)agoojiye\.com$/i.test(window.location.hostname),
+    [],
+  );
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
@@ -77,7 +81,10 @@ export default function SetupPasswordPage() {
         sessionToken,
       });
 
-      toast({ title: "Password set", description: "Your account is ready." });
+      toast({
+        title: isAgoojiye ? "Mot de passe défini" : "Password set",
+        description: isAgoojiye ? "Votre identité AGOOJIYE est prête. Poursuivez avec la vérification de sécurité." : "Your account is ready.",
+      });
       setLocation(postSetup.redirect);
     },
     onError: (error: any) => {
@@ -96,15 +103,15 @@ export default function SetupPasswordPage() {
   const onSubmit = (event: FormEvent) => {
     event.preventDefault();
     if (!token) {
-      toast({ title: "Invalid link", description: "Missing setup token.", variant: "destructive" });
+      toast({ title: isAgoojiye ? "Lien invalide" : "Invalid link", description: isAgoojiye ? "Le jeton d’activation est absent." : "Missing setup token.", variant: "destructive" });
       return;
     }
     if (password.length < 10) {
-      toast({ title: "Password too short", description: "Use at least 10 characters.", variant: "destructive" });
+      toast({ title: isAgoojiye ? "Mot de passe trop court" : "Password too short", description: isAgoojiye ? "Utilisez au moins 10 caractères." : "Use at least 10 characters.", variant: "destructive" });
       return;
     }
     if (password !== confirmPassword) {
-      toast({ title: "Passwords do not match", variant: "destructive" });
+      toast({ title: isAgoojiye ? "Les mots de passe ne correspondent pas" : "Passwords do not match", variant: "destructive" });
       return;
     }
     setupMutation.mutate();
@@ -114,32 +121,32 @@ export default function SetupPasswordPage() {
     <div className="min-h-screen flex items-center justify-center bg-[#090d16] p-4">
       <Card className="w-full max-w-md border-white/10 bg-[#0f1729]">
         <CardHeader>
-          <CardTitle className="text-white">Set your password</CardTitle>
-          <CardDescription>Create your first password to activate this account.</CardDescription>
+          <CardTitle className="text-white">{isAgoojiye ? "Définir votre mot de passe AGOOJIYE" : "Set your password"}</CardTitle>
+          <CardDescription>{isAgoojiye ? "Créez votre premier mot de passe pour activer cette identité." : "Create your first password to activate this account."}</CardDescription>
         </CardHeader>
         <CardContent>
           <form className="space-y-4" onSubmit={onSubmit}>
             <div className="space-y-2">
-              <Label htmlFor="setup-password">New password</Label>
+              <Label htmlFor="setup-password">{isAgoojiye ? "Nouveau mot de passe" : "New password"}</Label>
               <Input
                 id="setup-password"
                 type="password"
                 value={password}
                 minLength={10}
                 onChange={(event) => setPassword(event.target.value)}
-                placeholder="At least 10 characters"
+                placeholder={isAgoojiye ? "Au moins 10 caractères" : "At least 10 characters"}
                 autoComplete="new-password"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="setup-password-confirm">Confirm password</Label>
+              <Label htmlFor="setup-password-confirm">{isAgoojiye ? "Confirmer le mot de passe" : "Confirm password"}</Label>
               <Input
                 id="setup-password-confirm"
                 type="password"
                 value={confirmPassword}
                 minLength={10}
                 onChange={(event) => setConfirmPassword(event.target.value)}
-                placeholder="Re-enter password"
+                placeholder={isAgoojiye ? "Saisissez-le à nouveau" : "Re-enter password"}
                 autoComplete="new-password"
               />
             </div>
@@ -148,7 +155,7 @@ export default function SetupPasswordPage() {
               className="w-full bg-amber-500 text-black hover:bg-amber-600"
               disabled={setupMutation.isPending || !token}
             >
-              {setupMutation.isPending ? "Saving..." : "Set Password"}
+              {setupMutation.isPending ? (isAgoojiye ? "Enregistrement…" : "Saving...") : (isAgoojiye ? "Définir le mot de passe" : "Set Password")}
             </Button>
           </form>
         </CardContent>

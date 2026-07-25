@@ -20,6 +20,7 @@ test("AGOOJIYE human mailbox profiles are stable and tenant-scoped", () => {
       "maryse@agoojiye.com",
       "christian@agoojiye.com",
       "vital@agoojiye.com",
+      "vs@agoojiye.com",
     ],
   );
   assert.equal(agoojiyeMaildirPath("Regis"), "/var/mail/agoojiye.com/regis");

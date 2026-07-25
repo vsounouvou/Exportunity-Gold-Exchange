@@ -1,8 +1,8 @@
 {
-  "name": "AGOOJIYE OS",
-  "short_name": "AGOOJIYE OS",
-  "description": "Le Command Center privé de l'équipe AGOOJIYE.",
-  "start_url": "/os",
+  "name": "AGOOJIYE WorkOS",
+  "short_name": "AGOOJIYE",
+  "description": "L'espace de travail privé et la salle administrative AGOOJIYE.",
+  "start_url": "/workspace",
   "scope": "/",
   "display": "standalone",
   "orientation": "any",
@@ -34,13 +34,13 @@
     {
       "name": "Messages",
       "short_name": "Messages",
-      "url": "/os/messages",
+      "url": "/workspace/messages",
       "icons": [{ "src": "/tenants/agoojye/app-icon-128.png", "sizes": "128x128" }]
     },
     {
       "name": "Mes tâches",
       "short_name": "Travail",
-      "url": "/os/travail",
+      "url": "/workspace/tasks",
       "icons": [{ "src": "/tenants/agoojye/app-icon-128.png", "sizes": "128x128" }]
     }
   ]

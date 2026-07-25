@@ -267,7 +267,7 @@ Set `AGOOJIYE_PAYMENT_PROVIDER` and disable `AGOOJIYE_DEMO_PAYMENT_MODE` only af
 
 Delivery adapters are configured independently with `AGOOJIYE_EMAIL_PROVIDER`, `AGOOJIYE_SMS_PROVIDER`, and `AGOOJIYE_WHATSAPP_PROVIDER`. RoundCube is the human webmail interface; application delivery should use authenticated SMTP or the existing mail service, not browser automation.
 
-The AGOOJIYE mail bridge registers the five approved human mailboxes (`regis`, `soriane`, `maryse`, `christian`, and `vital`) in the shared mail engine, indexes their Maildir folders, mirrors conversations into the AGOOJIYE CRM inbox, creates external contacts from replies, and records explicit opt-outs or hard bounces in both suppression registries. Administrators can trigger the same operation from `/admin/agoojye/inbox`. The five password variables contain deployment secrets only; leave them blank in source control and inject them through the production environment. Human webmail is available at `https://mail.agoojiye.com/`.
+The AGOOJIYE mail bridge registers the approved human mailboxes (`regis`, `soriane`, `maryse`, `christian`, `vital`, and the separate principal identity `vs`) in the shared mail engine, indexes their Maildir folders, mirrors conversations into the AGOOJIYE CRM inbox, creates external contacts from replies, and records explicit opt-outs or hard bounces in both suppression registries. Administrators can trigger the same operation from `/admin/agoojye/inbox`. Mailbox password variables contain deployment secrets only; leave them blank in source control and inject them through the production environment. Human webmail is available at `https://mail.agoojiye.com/`.
 
 SMTP passwords are never accepted by the AGOOJIYE settings API. The legacy `smtp_password_encrypted` column is cleared and protected by a database constraint; authenticated sends resolve only the five `AGOOJIYE_MAILBOX_*_PASSWORD` environment references on the server.
 
@@ -297,6 +297,24 @@ Adapters should receive a booking/ticket ID, load approved data server-side, rec
 8. Keep demo payments enabled until a real provider and signed webhooks are verified.
 9. Complete the forward and reverse mail-DNS cutover in `docs/AGOOJIYE_EMAIL_DNS_AND_MAILBOXES.md`, then run `npm run verify:agoojye:mail-dns`.
 10. Apply `20260725_agoojiye_os.sql`, configure the optional VAPID keys, and run `npm run seed:agoojye:os` once to create the private team invitation.
+11. Apply `20260725_agoojiye_workos.sql`, configure `AGOOJIYE_MFA_ENCRYPTION_KEY`, then run `npm run provision:agoojye:workos`.
+12. Retrieve the one-use super-admin setup handoff only from the private untracked file, enroll MFA, store recovery codes offline, and verify `/admin/command-center`.
+
+## AGOOJIYE WorkOS
+
+The private team workspace starts at `/workspace`; the MFA-protected
+administrative room starts at `/admin/command-center`. WorkOS adds encrypted
+TOTP enrollment, one-use recovery codes, tenant-bound privileged sessions,
+security events, worker CSV/XLSX import, controlled offboarding, data
+classification and the governed HOWJI coordination agent.
+
+The principal application identity is `vs@agoojiye.com` with
+`AGOOJIYE_SUPER_ADMIN`. Its password is never seeded. The provisioner creates a
+24-hour one-use setup link under the ignored `ops/private/` directory and
+requires MFA before any privileged session is issued.
+
+Complete architecture, environment, import, security, deployment and rollback
+instructions are in `docs/AGOOJIYE_OS.md`.
 
 ## Known Production Requirements
 

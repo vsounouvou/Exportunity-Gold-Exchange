@@ -70,7 +70,7 @@ test("AGOOJIYE OS exposes governed AI, push and PWA surfaces", () => {
   assert.match(routeSource, /ai_read_only_search/);
   assert.match(routeSource, /sendPushToUsers/);
   assert.match(swSource, /addEventListener\("push"/);
-  assert.equal(manifest.start_url, "/os");
+  assert.equal(manifest.start_url, "/workspace");
   assert.equal(manifest.lang, "fr");
 });
 
@@ -84,8 +84,9 @@ test("AGOOJIYE OS supports operational message conversion", () => {
 
 test("AGOOJIYE OS administrative invitation creation is protected", () => {
   const source = fs.readFileSync(path.join(root, "server/routes/agoojye-os.ts"), "utf8");
-  const adminUse = source.indexOf("adminApi.use(ensureTenantAdmin)");
+  const adminUse = source.indexOf("adminApi.use(requireWorkosAdmin)");
   const invitationRoute = source.indexOf('adminApi.post("/invitations"');
   assert.ok(adminUse >= 0);
   assert.ok(invitationRoute > adminUse);
+  assert.match(source, /adminApi\.use\(requireWorkosMember\)/);
 });

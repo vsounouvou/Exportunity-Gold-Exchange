@@ -122,6 +122,7 @@ export * from "./schema/met";
 export * from "./schema/agoojye";
 export * from "./schema/agoojye-mobility";
 export * from "./schema/agoojye-os";
+export * from "./schema/agoojye-workos";
 
 // Export PME Exchange lead, outreach, and profile tables
 export * from "./schema/pme-exchange";

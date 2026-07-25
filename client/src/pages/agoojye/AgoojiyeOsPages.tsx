@@ -75,6 +75,7 @@ type OsBootstrap = {
 };
 
 type SectionKey =
+  | "chat"
   | "accueil"
   | "messages"
   | "equipes"
@@ -88,6 +89,7 @@ type SectionKey =
   | "plus";
 
 const sectionNames: Record<SectionKey, string> = {
+  chat: "Assistant de travail",
   accueil: "Command Center",
   messages: "Messages",
   equipes: "Équipes",
@@ -102,6 +104,7 @@ const sectionNames: Record<SectionKey, string> = {
 };
 
 const navItems: Array<{ key: SectionKey; label: string; icon: typeof Home }> = [
+  { key: "chat", label: "Assistant IA", icon: Sparkles },
   { key: "accueil", label: "Command Center", icon: LayoutDashboard },
   { key: "messages", label: "Messages", icon: MessageCircle },
   { key: "equipes", label: "Équipes", icon: Users },
@@ -225,7 +228,7 @@ export function AgoojiyeOsJoinPage({ token }: { token: string }) {
     onSuccess: (payload: any) => {
       login(payload.token, payload.user);
       toast({ title: "Compte activé", description: "Bienvenue dans AGOOJIYE OS." });
-      setLocation("/os");
+      setLocation("/workspace");
     },
     onError: (error: any) =>
       toast({ title: "Activation impossible", description: error?.message || "Vérifiez vos informations.", variant: "destructive" }),
@@ -251,7 +254,7 @@ export function AgoojiyeOsJoinPage({ token }: { token: string }) {
             <ShieldCheck className="text-red-300" />
             <h1 className="mt-5 text-3xl font-semibold">Invitation non disponible</h1>
             <p className="mt-3 leading-7 text-white/65">Ce lien est invalide, expiré ou déjà entièrement utilisé.</p>
-            <a href="/os/connexion" className="mt-6 inline-flex min-h-11 items-center bg-white px-4 font-semibold text-[#111]">Se connecter</a>
+            <a href="/workspace/connexion" className="mt-6 inline-flex min-h-11 items-center bg-white px-4 font-semibold text-[#111]">Se connecter</a>
           </div>
         ) : (
           <>
@@ -284,7 +287,7 @@ export function AgoojiyeOsJoinPage({ token }: { token: string }) {
                 {acceptMutation.isPending ? "Activation…" : "Rejoindre AGOOJIYE OS"} <ChevronRight className="ml-2 h-4 w-4" />
               </Button>
             </form>
-            <p className="mt-7 text-sm text-white/50">Compte déjà activé ? <a href="/os/connexion" className="font-semibold text-[#e5be56]">Se connecter</a></p>
+            <p className="mt-7 text-sm text-white/50">Compte déjà activé ? <a href="/workspace/connexion" className="font-semibold text-[#e5be56]">Se connecter</a></p>
           </>
         )}
       </div>
@@ -299,45 +302,153 @@ export function AgoojiyeOsLoginPage() {
   const [, setLocation] = useLocation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [stage, setStage] = useState<"credentials" | "enroll" | "verify" | "recovery" | "recovery-codes">("credentials");
+  const [challengeToken, setChallengeToken] = useState("");
+  const [mfaCode, setMfaCode] = useState("");
+  const [recoveryCode, setRecoveryCode] = useState("");
+  const [enrollment, setEnrollment] = useState<any>(null);
+  const [recoveryCodes, setRecoveryCodes] = useState<string[]>([]);
+  const [pendingSession, setPendingSession] = useState<any>(null);
+
+  const completeLogin = (payload: any) => {
+    if (Array.isArray(payload?.recoveryCodes) && payload.recoveryCodes.length) {
+      setRecoveryCodes(payload.recoveryCodes);
+      setPendingSession(payload);
+      setStage("recovery-codes");
+      return;
+    }
+    login(payload.token, payload.user);
+    localStorage.setItem("ece_session", payload.token);
+    setLocation(payload.redirect || "/workspace");
+  };
+
   const loginMutation = useMutation({
-    mutationFn: () => apiRequest("/api/ece/auth/login", { method: "POST", body: JSON.stringify({ email, password }) }),
-    onSuccess: async (payload: any) => {
-      login(payload.token, payload.user);
-      localStorage.setItem("ece_session", payload.token);
-      const validation = await authFetch("/api/agoojye/os/member/bootstrap").catch(() => null);
-      if (!validation?.ok) {
-        localStorage.removeItem("ece_session");
-        localStorage.removeItem("ece_user");
-        toast({ title: "Accès non autorisé", description: "Ce compte ne fait pas partie de l'équipe AGOOJIYE.", variant: "destructive" });
-        window.location.reload();
+    mutationFn: () => apiRequest("/api/agoojye/workos/auth/login", { method: "POST", body: JSON.stringify({ email, password }) }),
+    onSuccess: (payload: any) => {
+      if (payload?.status === "mfa_enrollment_required") {
+        setChallengeToken(payload.challengeToken);
+        setEnrollment(payload);
+        setStage("enroll");
         return;
       }
-      setLocation("/os");
+      if (payload?.status === "mfa_required") {
+        setChallengeToken(payload.challengeToken);
+        setStage("verify");
+        return;
+      }
+      completeLogin(payload);
     },
     onError: (error: any) =>
       toast({ title: "Connexion impossible", description: error?.message || "Adresse ou mot de passe incorrect.", variant: "destructive" }),
   });
-  if (isAuthenticated && !isGuest) return <Redirect to="/os" />;
+
+  const mfaMutation = useMutation({
+    mutationFn: () =>
+      apiRequest("/api/agoojye/workos/auth/mfa/verify", {
+        method: "POST",
+        body: JSON.stringify({ challengeToken, code: mfaCode }),
+      }),
+    onSuccess: completeLogin,
+    onError: (error: any) =>
+      toast({ title: "Vérification impossible", description: error?.message || "Code incorrect.", variant: "destructive" }),
+  });
+
+  const recoveryMutation = useMutation({
+    mutationFn: () =>
+      apiRequest("/api/agoojye/workos/auth/mfa/recovery", {
+        method: "POST",
+        body: JSON.stringify({ challengeToken, recoveryCode }),
+      }),
+    onSuccess: completeLogin,
+    onError: (error: any) =>
+      toast({ title: "Récupération impossible", description: error?.message || "Code incorrect.", variant: "destructive" }),
+  });
+
+  if (isAuthenticated && !isGuest) return <Redirect to="/workspace" />;
   return (
     <AccessPageShell>
       <div className="w-full max-w-lg">
         <div className="mb-8 lg:hidden"><BrandMark /></div>
-        <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#d8ad3d]">AGOOJIYE OS</p>
-        <h1 className="mt-3 text-4xl font-semibold">Connexion équipe</h1>
-        <p className="mt-3 leading-7 text-white/60">Accédez à votre Command Center personnalisé avec votre adresse professionnelle.</p>
-        <form className="mt-8 grid gap-5" onSubmit={(event) => { event.preventDefault(); loginMutation.mutate(); }}>
-          <div>
-            <Label htmlFor="login-email" className="text-white">Adresse professionnelle</Label>
-            <Input id="login-email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} required autoComplete="email" placeholder="prenom@agoojiye.com" className="mt-2 h-12 border-white/15 bg-white/[0.06] text-white" />
+        <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#d8ad3d]">AGOOJIYE WorkOS</p>
+        <h1 className="mt-3 text-4xl font-semibold">
+          {stage === "credentials" ? "Connexion équipe" : stage === "enroll" ? "Activer la double authentification" : stage === "recovery-codes" ? "Codes de récupération" : "Vérification de sécurité"}
+        </h1>
+        <p className="mt-3 leading-7 text-white/60">
+          {stage === "credentials"
+            ? "Accédez à votre espace de travail ou à la salle administrative selon vos autorisations."
+            : stage === "enroll"
+              ? "Scannez ce QR code avec votre application d’authentification, puis saisissez le code à six chiffres."
+              : stage === "recovery-codes"
+                ? "Conservez ces codes hors ligne. Chacun ne peut être utilisé qu’une seule fois."
+                : "Saisissez le code généré par votre application d’authentification."}
+        </p>
+
+        {stage === "credentials" ? (
+          <form className="mt-8 grid gap-5" onSubmit={(event) => { event.preventDefault(); loginMutation.mutate(); }}>
+            <div>
+              <Label htmlFor="login-email" className="text-white">Adresse professionnelle</Label>
+              <Input id="login-email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} required autoComplete="email" placeholder="prenom@agoojiye.com" className="mt-2 h-12 border-white/15 bg-white/[0.06] text-white" />
+            </div>
+            <div>
+              <Label htmlFor="login-password" className="text-white">Mot de passe</Label>
+              <Input id="login-password" type="password" value={password} onChange={(event) => setPassword(event.target.value)} required autoComplete="current-password" className="mt-2 h-12 border-white/15 bg-white/[0.06] text-white" />
+            </div>
+            <Button type="submit" disabled={loginMutation.isPending} className="h-12 bg-[#d8ad3d] font-bold text-[#14120b] hover:bg-[#ebc75e]">
+              <LogIn className="mr-2 h-4 w-4" /> {loginMutation.isPending ? "Connexion…" : "Continuer"}
+            </Button>
+          </form>
+        ) : null}
+
+        {stage === "enroll" ? (
+          <div className="mt-7">
+            {enrollment?.qrDataUrl ? <img src={enrollment.qrDataUrl} alt="QR code de configuration MFA" className="h-52 w-52 bg-white p-2" /> : null}
+            <p className="mt-4 break-all border border-white/10 bg-white/[0.04] p-3 font-mono text-xs text-white/65">{enrollment?.secret}</p>
+            <form className="mt-5 grid gap-4" onSubmit={(event) => { event.preventDefault(); mfaMutation.mutate(); }}>
+              <Label htmlFor="mfa-enroll-code" className="text-white">Code à six chiffres</Label>
+              <Input id="mfa-enroll-code" inputMode="numeric" autoComplete="one-time-code" value={mfaCode} onChange={(event) => setMfaCode(event.target.value)} maxLength={8} required className="h-12 border-white/15 bg-white/[0.06] text-xl text-white" />
+              <Button type="submit" disabled={mfaMutation.isPending} className="h-12 bg-[#d8ad3d] font-bold text-[#14120b] hover:bg-[#ebc75e]">{mfaMutation.isPending ? "Vérification…" : "Activer et continuer"}</Button>
+            </form>
           </div>
-          <div>
-            <Label htmlFor="login-password" className="text-white">Mot de passe</Label>
-            <Input id="login-password" type="password" value={password} onChange={(event) => setPassword(event.target.value)} required autoComplete="current-password" className="mt-2 h-12 border-white/15 bg-white/[0.06] text-white" />
+        ) : null}
+
+        {stage === "verify" ? (
+          <form className="mt-8 grid gap-4" onSubmit={(event) => { event.preventDefault(); mfaMutation.mutate(); }}>
+            <Label htmlFor="mfa-login-code" className="text-white">Code à six chiffres</Label>
+            <Input id="mfa-login-code" inputMode="numeric" autoComplete="one-time-code" value={mfaCode} onChange={(event) => setMfaCode(event.target.value)} maxLength={8} required autoFocus className="h-12 border-white/15 bg-white/[0.06] text-xl text-white" />
+            <Button type="submit" disabled={mfaMutation.isPending} className="h-12 bg-[#d8ad3d] font-bold text-[#14120b] hover:bg-[#ebc75e]">{mfaMutation.isPending ? "Vérification…" : "Ouvrir mon espace"}</Button>
+            <button type="button" onClick={() => setStage("recovery")} className="min-h-11 text-left text-sm text-white/55 hover:text-white">Utiliser un code de récupération</button>
+          </form>
+        ) : null}
+
+        {stage === "recovery" ? (
+          <form className="mt-8 grid gap-4" onSubmit={(event) => { event.preventDefault(); recoveryMutation.mutate(); }}>
+            <Label htmlFor="mfa-recovery-code" className="text-white">Code de récupération</Label>
+            <Input id="mfa-recovery-code" autoComplete="one-time-code" value={recoveryCode} onChange={(event) => setRecoveryCode(event.target.value)} required autoFocus className="h-12 border-white/15 bg-white/[0.06] font-mono text-white" />
+            <Button type="submit" disabled={recoveryMutation.isPending} className="h-12 bg-[#d8ad3d] font-bold text-[#14120b] hover:bg-[#ebc75e]">{recoveryMutation.isPending ? "Vérification…" : "Continuer"}</Button>
+            <button type="button" onClick={() => setStage("verify")} className="min-h-11 text-left text-sm text-white/55 hover:text-white">Revenir au code MFA</button>
+          </form>
+        ) : null}
+
+        {stage === "recovery-codes" ? (
+          <div className="mt-7">
+            <div className="grid grid-cols-2 gap-2 border border-amber-300/25 bg-amber-950/20 p-4 font-mono text-sm text-amber-100">
+              {recoveryCodes.map((code) => <span key={code}>{code}</span>)}
+            </div>
+            <Button
+              type="button"
+              onClick={() => {
+                if (!pendingSession) return;
+                login(pendingSession.token, pendingSession.user);
+                localStorage.setItem("ece_session", pendingSession.token);
+                setLocation(pendingSession.redirect || "/workspace");
+              }}
+              className="mt-5 h-12 w-full bg-[#d8ad3d] font-bold text-[#14120b] hover:bg-[#ebc75e]"
+            >
+              J’ai conservé mes codes
+            </Button>
           </div>
-          <Button type="submit" disabled={loginMutation.isPending} className="h-12 bg-[#d8ad3d] font-bold text-[#14120b] hover:bg-[#ebc75e]">
-            <LogIn className="mr-2 h-4 w-4" /> {loginMutation.isPending ? "Connexion…" : "Ouvrir mon espace"}
-          </Button>
-        </form>
+        ) : null}
+
         <div className="mt-8 flex flex-wrap gap-x-5 gap-y-3 border-t border-white/10 pt-6 text-sm text-white/55">
           <a href="https://mail.agoojiye.com/" target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 hover:text-white"><Mail className="h-4 w-4" /> Webmail AGOOJIYE</a>
           <a href="/" className="inline-flex items-center gap-2 hover:text-white"><Home className="h-4 w-4" /> Site public</a>
@@ -474,6 +585,7 @@ function DashboardSection({ data }: { data: OsBootstrap }) {
 function MessagesSection({ data, refresh }: { data: OsBootstrap; refresh: () => void }) {
   const { toast } = useToast();
   const [channelId, setChannelId] = useState<number>(() => Number(new URLSearchParams(window.location.search).get("channel") || data.channels[0]?.id || 0));
+  const [handledDm, setHandledDm] = useState(false);
   const [body, setBody] = useState("");
   const [attachmentUrl, setAttachmentUrl] = useState("");
   const messagesQuery = useQuery<any>({
@@ -506,6 +618,13 @@ function MessagesSection({ data, refresh }: { data: OsBootstrap; refresh: () => 
       refresh();
     },
   });
+  useEffect(() => {
+    const dmId = Number(new URLSearchParams(window.location.search).get("dm") || 0);
+    if (!handledDm && dmId > 0) {
+      setHandledDm(true);
+      directMutation.mutate(dmId);
+    }
+  }, [handledDm]);
   const messageAction = useMutation({
     mutationFn: ({ id, action, body }: { id: number; action: "reaction" | "to-task" | "to-decision"; body?: Record<string, unknown> }) =>
       apiRequest(`/api/agoojye/os/member/messages/${id}/${action}`, {
@@ -915,6 +1034,64 @@ function MoreSection({ data, refresh, logout }: { data: OsBootstrap; refresh: ()
   );
 }
 
+function ContextRail({ data }: { data: OsBootstrap }) {
+  const activeTasks = data.tasks
+    .filter((task) => !["done", "cancelled"].includes(String(task.status || "").toLowerCase()))
+    .sort((a, b) => new Date(a.dueDate || "2999-01-01").getTime() - new Date(b.dueDate || "2999-01-01").getTime());
+  const blockers = activeTasks.filter((task) => task.status === "blocked" || task.blocker);
+  return (
+    <aside className="fixed inset-y-0 right-0 z-30 hidden w-[320px] overflow-y-auto border-l border-black/10 bg-[#eeece5] xl:block">
+      <div className="border-b border-black/10 px-5 py-5">
+        <p className="text-xs font-bold uppercase text-[#805f12]">Contexte de travail</p>
+        <p className="mt-2 text-lg font-semibold">{new Intl.DateTimeFormat("fr-BJ", { weekday: "long", day: "numeric", month: "long" }).format(new Date())}</p>
+        <p className="mt-1 text-xs text-black/45">Fuseau Africa/Porto-Novo</p>
+      </div>
+      <section className="border-b border-black/10 px-5 py-5">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-semibold">À traiter</h2>
+          <a href="/workspace/tasks" className="text-xs font-bold text-[#805f12]">Tout voir</a>
+        </div>
+        <div className="mt-3 divide-y divide-black/10">
+          {activeTasks.slice(0, 5).map((task) => (
+            <a key={task.id} href="/workspace/tasks" className="block py-3">
+              <p className="text-sm font-medium leading-5">{task.title}</p>
+              <p className="mt-1 text-[11px] text-black/45">{task.dueDate ? formatDate(task.dueDate) : "Sans échéance"} · {task.priority}</p>
+            </a>
+          ))}
+          {!activeTasks.length ? <p className="py-4 text-sm text-black/45">Aucune tâche active.</p> : null}
+        </div>
+      </section>
+      <section className="border-b border-black/10 px-5 py-5">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-semibold">Agenda</h2>
+          <a href="/workspace/calendar" className="text-xs font-bold text-[#805f12]">Calendrier</a>
+        </div>
+        <div className="mt-3 space-y-3">
+          {data.meetings.slice(0, 4).map((meeting) => (
+            <a key={meeting.id} href="/workspace/calendar" className="flex gap-3">
+              <CalendarDays className="mt-0.5 h-4 w-4 shrink-0 text-[#19724c]" />
+              <span><strong className="block text-sm font-medium">{meeting.title}</strong><span className="mt-1 block text-[11px] text-black/45">{formatDate(meeting.startsAt)}</span></span>
+            </a>
+          ))}
+          {!data.meetings.length ? <p className="text-sm text-black/45">Aucun rendez-vous à venir.</p> : null}
+        </div>
+      </section>
+      <section className="border-b border-black/10 px-5 py-5">
+        <h2 className="text-sm font-semibold">Blocages et approbations</h2>
+        <div className="mt-3 grid grid-cols-2 gap-px bg-black/10">
+          <a href="/workspace/tasks" className="bg-[#f7f5ef] p-3"><span className="block text-2xl font-semibold text-red-700">{blockers.length}</span><span className="text-[11px] text-black/45">Blocages</span></a>
+          <a href="/workspace/decisions" className="bg-[#f7f5ef] p-3"><span className="block text-2xl font-semibold">{data.attention.pendingDecisions}</span><span className="text-[11px] text-black/45">Décisions</span></a>
+        </div>
+      </section>
+      <section className="px-5 py-5">
+        <h2 className="text-sm font-semibold">HOWJI</h2>
+        <p className="mt-2 text-xs leading-5 text-black/50">Relances internes, synthèse des retards et remontée des blocages. Toute action sensible attend une approbation.</p>
+        {data.navigation.administration ? <a href="/admin/howji" className="mt-3 inline-flex min-h-10 items-center text-xs font-bold text-[#805f12]">Ouvrir la coordination <ChevronRight className="ml-1 h-4 w-4" /></a> : null}
+      </section>
+    </aside>
+  );
+}
+
 function OsShell({ data, section, children, logout }: { data: OsBootstrap; section: SectionKey; children: ReactNode; logout: () => void }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const visibleNav = navItems.filter((item) => {
@@ -923,46 +1100,79 @@ function OsShell({ data, section, children, logout }: { data: OsBootstrap; secti
     return true;
   });
   const mobileNav = [
-    { key: "accueil" as SectionKey, label: "Accueil", icon: Home },
+    { key: "chat" as SectionKey, label: "Assistant", icon: Sparkles },
     { key: "messages" as SectionKey, label: "Messages", icon: MessageCircle },
     { key: "travail" as SectionKey, label: "Travail", icon: ClipboardCheck },
-    { key: "agents" as SectionKey, label: "AGOOJIYE AI", icon: Bot },
+    { key: "accueil" as SectionKey, label: "Contexte", icon: LayoutDashboard },
     { key: "plus" as SectionKey, label: "Plus", icon: Menu },
   ];
   return (
     <div className="min-h-screen bg-[#f5f4ef] text-[#151816]">
-      <aside className={`fixed inset-y-0 left-0 z-50 w-[286px] overflow-y-auto bg-[#101311] px-4 py-5 text-white transition-transform lg:translate-x-0 ${menuOpen ? "translate-x-0" : "-translate-x-full"}`}>
+      <aside className={`fixed inset-y-0 left-0 z-50 w-[300px] overflow-y-auto bg-[#101311] px-4 py-5 text-white transition-transform lg:translate-x-0 ${menuOpen ? "translate-x-0" : "-translate-x-full"}`}>
         <div className="flex items-center justify-between"><BrandMark compact /><button type="button" onClick={() => setMenuOpen(false)} className="grid h-10 w-10 place-items-center lg:hidden" aria-label="Fermer"><X className="h-5 w-5" /></button></div>
         <div className="mt-7 border-y border-white/10 py-4">
           <p className="truncate text-sm font-semibold">{data.member.displayName}</p>
           <p className="mt-1 truncate text-xs text-white/45">{data.member.role}</p>
         </div>
+        <a href="/workspace/chat" className="mt-5 flex min-h-11 items-center justify-center gap-2 bg-[#d8ad3d] px-3 text-sm font-bold text-[#16130c]">
+          <Plus className="h-4 w-4" /> Nouvelle conversation IA
+        </a>
+        <div className="mt-5">
+          <p className="px-3 text-[10px] font-bold uppercase text-white/35">Conversations récentes</p>
+          <a href="/workspace/chat" className="mt-2 flex min-h-10 items-center gap-3 px-3 text-xs text-white/70 hover:bg-white/[0.06]"><Sparkles className="h-4 w-4 text-[#d8ad3d]" /><span><strong className="block">Falovè</strong><span className="text-white/35">Assistant personnel</span></span></a>
+          {data.navigation.administration ? <a href="/admin/howji" className="flex min-h-10 items-center gap-3 px-3 text-xs text-white/70 hover:bg-white/[0.06]"><Bot className="h-4 w-4 text-[#4db684]" /><span><strong className="block">HOWJI</strong><span className="text-white/35">Coordination épinglée</span></span></a> : null}
+        </div>
+        <div className="mt-5 border-t border-white/10 pt-4">
+          <p className="px-3 text-[10px] font-bold uppercase text-white/35">Canaux</p>
+          {data.channels.slice(0, 6).map((channel) => <a key={channel.id} href={`/workspace/messages?channel=${channel.id}`} className="flex min-h-9 items-center gap-2 px-3 text-xs text-white/55 hover:bg-white/[0.06] hover:text-white"><span className="text-white/25">#</span><span className="truncate">{channel.name}</span></a>)}
+        </div>
+        <div className="mt-5 border-t border-white/10 pt-4">
+          <p className="px-3 text-[10px] font-bold uppercase text-white/35">Messages directs</p>
+          {data.directory.filter((person) => person.id !== data.member.id).slice(0, 5).map((person) => <a key={person.id} href={`/workspace/messages?dm=${person.id}`} className="flex min-h-9 items-center gap-2 px-3 text-xs text-white/55 hover:bg-white/[0.06] hover:text-white"><span className="grid h-5 w-5 place-items-center bg-white/10 text-[9px]">{String(person.displayName).slice(0, 1)}</span><span className="truncate">{person.displayName}</span></a>)}
+        </div>
         <nav className="mt-5 grid gap-1" aria-label="Navigation AGOOJIYE OS">
+          <p className="px-3 pb-2 text-[10px] font-bold uppercase text-white/35">Modules</p>
           {visibleNav.map((item) => {
             const Icon = item.icon;
-            return <a key={item.key} href={item.key === "accueil" ? "/os" : `/os/${item.key}`} onClick={() => setMenuOpen(false)} className={`flex min-h-11 items-center gap-3 px-3 text-sm font-medium ${section === item.key ? "bg-[#d8ad3d] text-[#16130c]" : "text-white/65 hover:bg-white/[0.06] hover:text-white"}`}><Icon className="h-[18px] w-[18px]" />{item.label}{item.key === "messages" && data.attention.unreadNotifications > 0 ? <span className="ml-auto bg-white/10 px-2 py-0.5 text-[10px]">{data.attention.unreadNotifications}</span> : null}</a>;
+            return <a key={item.key} href={item.key === "chat" ? "/workspace/chat" : item.key === "accueil" ? "/workspace/dashboard" : `/workspace/${item.key}`} onClick={() => setMenuOpen(false)} className={`flex min-h-10 items-center gap-3 px-3 text-xs font-medium ${section === item.key ? "bg-[#d8ad3d] text-[#16130c]" : "text-white/55 hover:bg-white/[0.06] hover:text-white"}`}><Icon className="h-[17px] w-[17px]" />{item.label}{item.key === "messages" && data.attention.unreadNotifications > 0 ? <span className="ml-auto bg-white/10 px-2 py-0.5 text-[10px]">{data.attention.unreadNotifications}</span> : null}</a>;
           })}
         </nav>
         <div className="mt-7 border-t border-white/10 pt-4"><a href="/" className="flex min-h-10 items-center gap-3 px-3 text-xs text-white/50 hover:text-white"><Home className="h-4 w-4" /> Site public</a><a href="https://mail.agoojiye.com/" target="_blank" rel="noreferrer" className="flex min-h-10 items-center gap-3 px-3 text-xs text-white/50 hover:text-white"><Mail className="h-4 w-4" /> Webmail</a><button type="button" onClick={logout} className="flex min-h-10 w-full items-center gap-3 px-3 text-xs text-white/50 hover:text-white"><LogOut className="h-4 w-4" /> Déconnexion</button></div>
       </aside>
-      <div className="lg:pl-[286px]">
+      <div className="lg:pl-[300px] xl:pr-[320px]">
         <header className="sticky top-0 z-40 flex h-16 items-center border-b border-black/10 bg-[#f5f4ef]/95 px-4 backdrop-blur sm:px-6">
           <button type="button" onClick={() => setMenuOpen(true)} className="grid h-11 w-11 place-items-center border border-black/10 lg:hidden" aria-label="Ouvrir le menu"><Menu className="h-5 w-5" /></button>
           <p className="ml-3 text-sm font-semibold lg:ml-0">{sectionNames[section]}</p>
-          <div className="ml-auto flex items-center gap-3"><span className="hidden text-right sm:block"><span className="block text-xs font-medium">{data.member.displayName}</span><span className="block text-[10px] text-black/40">{data.member.team?.name || "AGOOJIYE"}</span></span><span className="grid h-9 w-9 place-items-center bg-[#171a18] text-xs font-bold text-[#d8ad3d]">{String(data.member.displayName).slice(0, 2).toUpperCase()}</span></div>
+          <div className="ml-auto flex items-center gap-3">{data.navigation.administration ? <a href="/admin/command-center" className="hidden min-h-9 items-center border border-black/15 px-3 text-xs font-semibold md:inline-flex">Salle administrative</a> : null}<span className="hidden text-right sm:block"><span className="block text-xs font-medium">{data.member.displayName}</span><span className="block text-[10px] text-black/40">{data.member.team?.name || "AGOOJIYE"}</span></span><span className="grid h-9 w-9 place-items-center bg-[#171a18] text-xs font-bold text-[#d8ad3d]">{String(data.member.displayName).slice(0, 2).toUpperCase()}</span></div>
         </header>
-        <main className="mx-auto max-w-[1540px] px-4 pb-28 pt-7 sm:px-6 lg:pb-10 lg:pt-9">{children}</main>
+        <main className="mx-auto max-w-[1240px] px-4 pb-28 pt-7 sm:px-6 lg:pb-10 lg:pt-9">{children}</main>
       </div>
+      <ContextRail data={data} />
       <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-black/10 bg-white lg:hidden" aria-label="Navigation mobile">
-        {mobileNav.map((item) => { const Icon = item.icon; return <a key={item.key} href={item.key === "accueil" ? "/os" : `/os/${item.key}`} className={`flex min-h-[68px] flex-col items-center justify-center gap-1 text-[10px] font-medium ${section === item.key ? "text-[#805f12]" : "text-black/50"}`}><Icon className="h-5 w-5" />{item.label}</a>; })}
+        {mobileNav.map((item) => { const Icon = item.icon; return <a key={item.key} href={item.key === "chat" ? "/workspace/chat" : item.key === "accueil" ? "/workspace/dashboard" : `/workspace/${item.key}`} className={`flex min-h-[68px] flex-col items-center justify-center gap-1 text-[10px] font-medium ${section === item.key ? "text-[#805f12]" : "text-black/50"}`}><Icon className="h-5 w-5" />{item.label}</a>; })}
       </nav>
     </div>
   );
 }
 
 function sectionFromLocation(location: string): SectionKey {
-  const segment = location.split("?")[0].split("/").filter(Boolean)[1] || "accueil";
-  return Object.prototype.hasOwnProperty.call(sectionNames, segment) ? (segment as SectionKey) : "accueil";
+  const segments = location.split("?")[0].split("/").filter(Boolean);
+  const segment = segments[1] || (segments[0] === "workspace" ? "chat" : "accueil");
+  const aliases: Record<string, SectionKey> = {
+    chat: "chat",
+    dashboard: "accueil",
+    messages: "messages",
+    channels: "messages",
+    tasks: "travail",
+    projects: "travail",
+    calendar: "reunions",
+    files: "documents",
+    meetings: "reunions",
+    notifications: "plus",
+    settings: "plus",
+    search: "plus",
+  };
+  return aliases[segment] || (Object.prototype.hasOwnProperty.call(sectionNames, segment) ? (segment as SectionKey) : "chat");
 }
 
 export function AgoojiyeOsAppPage() {
@@ -985,18 +1195,19 @@ export function AgoojiyeOsAppPage() {
     refetchInterval: 30_000,
     retry: false,
   });
-  if (!isAuthenticated || isGuest) return <Redirect to="/os/connexion" />;
+  if (!isAuthenticated || isGuest) return <Redirect to="/workspace/connexion" />;
   if (bootstrap.isLoading) return <div className="grid min-h-screen place-items-center bg-[#101311] text-white"><div className="text-center"><img src="/tenants/agoojye/app-icon-128.png" alt="" className="mx-auto h-20 w-20 animate-pulse" /><p className="mt-4 text-sm text-white/60">Ouverture de votre Command Center…</p></div></div>;
   if (bootstrap.isError || !bootstrap.data) return <div className="grid min-h-screen place-items-center bg-[#101311] p-5 text-white"><div className="max-w-md border border-red-500/30 bg-red-950/20 p-7"><ShieldCheck className="text-red-300" /><h1 className="mt-4 text-2xl font-semibold">Accès AGOOJIYE OS refusé</h1><p className="mt-3 text-sm leading-6 text-white/60">Votre session n'est pas rattachée à un profil d'équipe actif.</p><div className="mt-6 flex gap-3"><Button onClick={() => bootstrap.refetch()}>Réessayer</Button><Button variant="outline" onClick={logout} className="border-white/20 bg-transparent text-white">Déconnexion</Button></div></div></div>;
   const data = bootstrap.data;
-  if (section === "crm" && !data.navigation.crm) return <Redirect to="/os" />;
-  if (section === "mobilite" && !data.navigation.mobility) return <Redirect to="/os" />;
+  if (section === "crm" && !data.navigation.crm) return <Redirect to="/workspace" />;
+  if (section === "mobilite" && !data.navigation.mobility) return <Redirect to="/workspace" />;
   const refresh = () => {
     queryClient.invalidateQueries({ queryKey: ["/api/agoojye/os/member/bootstrap"] });
     bootstrap.refetch();
   };
   let content: ReactNode;
-  if (section === "messages") content = <MessagesSection data={data} refresh={refresh} />;
+  if (section === "chat") content = <AiSection data={data} />;
+  else if (section === "messages") content = <MessagesSection data={data} refresh={refresh} />;
   else if (section === "equipes") content = <TeamsSection data={data} />;
   else if (section === "travail") content = <WorkSection data={data} refresh={refresh} />;
   else if (section === "crm") content = <CrmSection data={data} refresh={refresh} />;

@@ -15,6 +15,7 @@ Verified on 2026-07-24 after the AGOOJIYE production deployment, public mail cut
 - `https://agoojiye.com/admin/agoojye/inbox` returns HTTP 200 for the protected unified-inbox shell.
 - `https://agoojiye.com/api/agoojye/public/bootstrap` returns HTTP 200.
 - The five approved human mailboxes authenticate successfully: `regis`, `soriane`, `maryse`, `christian`, and `vital`.
+- WorkOS provisions the separate principal mailbox `vs@agoojiye.com`; its initial credential is held only in the private deployment handoff and must be changed at first use.
 - `https://mail.agoojiye.com/` serves the French Roundcube login with AGOOJIYE product name, logo, favicon, and a valid Let's Encrypt certificate.
 - The first-login password-change route was verified end-to-end on 2026-06-29: one mailbox was changed to a temporary password through `https://agoojiye.com/mail/password`, authenticated with the temporary password, then reverted to the original initial password and re-verified.
 - The five active human mailbox profiles and SMTP identities are persisted for tenant `3162`, linked to physical `email_accounts`, and reference environment-secret names instead of storing passwords in the database.
@@ -35,6 +36,7 @@ These real docker-mailserver mailboxes now exist on the production mail stack. T
 | Maryse | `maryse@agoojiye.com` | 2 GB | active, IMAPS + SMTP submission verified |
 | Christian | `christian@agoojiye.com` | 2 GB | active, IMAPS + SMTP submission verified |
 | Vital | `vital@agoojiye.com` | 2 GB | active, IMAPS + SMTP submission verified |
+| Vital Sounouvou (WorkOS principal) | `vs@agoojiye.com` | 2 GB | provisioned by the WorkOS release; verify IMAPS + SMTP during deployment |
 
 Private initial passwords are not committed and are not printed in chat.
 

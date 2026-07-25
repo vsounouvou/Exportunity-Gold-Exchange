@@ -40,7 +40,7 @@ test("AGOOJIYE service worker uses only AGOOJIYE precache resources", () => {
   assert.ok(worker.precache.includes("/tenants/agoojye/app-icon-64.png"));
   assert.equal(worker.precache.some((url) => url.includes("/bdo/")), false);
   assert.equal(worker.precache.some((url) => url.includes("manifest-bdo")), false);
-  assert.deepEqual(worker.listeners, ["activate", "fetch", "install", "message"]);
+  assert.deepEqual(worker.listeners, ["activate", "fetch", "install", "message", "notificationclick", "push"]);
 });
 
 test("Bourse de l'Or service worker keeps its own cache namespace", () => {

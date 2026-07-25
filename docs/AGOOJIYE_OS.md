@@ -1,15 +1,34 @@
-# AGOOJIYE OS
+# AGOOJIYE WorkOS
 
-AGOOJIYE OS is the private French-first operating system for the AGOOJIYE team.
-It lives in the same Express, React, PostgreSQL, Drizzle, and tenant-aware
-application as the public mobility platform. Operational information is shared
-through server-side queries; the public site never receives private OS data.
+AGOOJIYE WorkOS is the private, French-first operating environment for the
+AGOOJIYE team. It shares the existing Express, React, PostgreSQL, Drizzle and
+tenant-aware runtime with the public electric mobility platform, while keeping
+all private queries behind AGOOJIYE membership and server-side authorization.
 
-## Initial Team
+The public mobility experience, ticketing, bus catalog, controller tools,
+commercial forms and the AGOOJIYE-owned webmail remain separate, working
+surfaces.
 
-The production seed creates five pre-authorized profiles:
+## Private Environments
 
-| Member | Official email | Initial area |
+- `/workspace`: daily three-panel workspace for AI conversations, channels,
+  direct messages, tasks, projects, files, meetings and decisions.
+- `/admin/command-center`: administrative command room for people,
+  organization, projects, imports, HOWJI, security and audits.
+- `/workspace/connexion`: dedicated WorkOS login with required MFA for
+  privileged users.
+- `/workspace/rejoindre/:token`: guarded team activation.
+- `https://mail.agoojiye.com/`: branded AGOOJIYE webmail.
+- `/mail/password`: authenticated first-use and mailbox password change.
+
+Legacy `/os` routes remain available during the transition, but new
+notifications, PWA shortcuts and operational links target `/workspace`.
+
+## Initial Identities
+
+The existing human team is preserved:
+
+| Person | Mailbox | Initial area |
 | --- | --- | --- |
 | Vital | `vital@agoojiye.com` | Direction |
 | Regis | `regis@agoojiye.com` | Operations |
@@ -17,109 +36,215 @@ The production seed creates five pre-authorized profiles:
 | Maryse | `maryse@agoojiye.com` | Communication |
 | Christian | `christian@agoojiye.com` | Engineering |
 
-One invitation can serve the five profiles, but only these exact email
-addresses can activate accounts. Activation takes a PostgreSQL row lock,
-creates or updates the authenticated user, assigns tenant membership, links the
-profile, opens a seven-day server session, increments the invitation use count,
-and writes an audit event.
+The principal WorkOS identity is separate:
 
-## Main Surfaces
+- Application and mailbox email: `vs@agoojiye.com`
+- Application role: `AGOOJIYE_SUPER_ADMIN`
+- Tenant role: `SUPER_ADMIN`
+- Password: created only through a one-use setup link
+- MFA: mandatory before the first privileged session
 
-- `/os`: personalized command center.
-- `/os/canaux`: public, department, project, and direct channels.
-- `/os/equipe`: directory and department hierarchy.
-- `/os/projets`: projects and actionable tasks.
-- `/os/documents`: shared internal knowledge.
-- `/os/crm`: partners, sponsors, prospects, and commercial activity.
-- `/os/mobilite`: shared live mobility indicators.
-- `/os/reunions`: meetings and follow-up.
-- `/os/decisions`: decision register.
-- `/os/agents`: governed read-only Falove search and agent directory.
-- `/os/connexion`: private login.
-- `/os/rejoindre/:token`: guarded account activation.
+No application or mailbox password is committed, printed by the provisioner,
+or returned in normal API responses. Private setup material is written to
+`ops/private/`, which is excluded from Git.
 
-Messages support reactions, pinning, search, and conversion into tasks or
-decisions. Each write is tenant-scoped, authorized server-side, and audited
-where it affects governance or access.
+Olivier appears as the candidate for
+`Responsable / Coordinateur de gestion`. His exact `@agoojiye.com` address
+must be entered by the super-administrator before invitation. Legal,
+financial, technical and management-confidential access is denied by default.
 
-## Access Policy
+## Authentication and Security
 
-Access levels run from 1 to 6. Explicit permissions grant a business surface;
-level 6 grants leadership administration. Channel visibility also checks the
-member's access level, department, project/direct membership, and channel
-confidentiality. UI visibility is never treated as authorization.
+WorkOS privileged authentication uses:
 
-Authentication uses the existing `ece_sessions` cookie/bearer session model.
-Invitations store only token hashes. Private content and AI search require both
-an authenticated user and a linked active AGOOJIYE team profile.
+1. Email and bcrypt password verification.
+2. Tenant membership and active AGOOJIYE profile verification.
+3. A ten-minute, one-use MFA challenge.
+4. TOTP secrets encrypted at rest with AES-256-GCM.
+5. Ten one-use recovery codes stored only as SHA-256 hashes.
+6. A dedicated WorkOS session record tied to the bearer session.
+7. Eight-hour privileged sessions by default.
 
-## Falove Governance
+An ordinary global platform session cannot open AGOOJIYE administration.
+Privileged WorkOS middleware requires the tenant membership, profile,
+privileged role, a non-revoked WorkOS session and an MFA verification
+timestamp.
 
-Falove is a read-only internal search assistant. It searches only records the
-current member may read across tasks, projects, documents, decisions, and CRM.
-It cannot send email, change a record, publish content, pay, or approve a
-decision. Every search writes `ai_read_only_search` to the audit log.
+Users can inspect active WorkOS sessions, revoke one session, or revoke every
+other session. Login, MFA, recovery, session revocation, administrative
+changes, offboarding, imports and HOWJI actions write security events.
 
-## PWA, Push, and Connectivity
+Only the principal super-administrator can create a global AGOOJIYE
+administrator, invite Olivier, perform offboarding, approve sensitive HOWJI
+actions or grant emergency compliance access to a private conversation.
 
-The OS has a dedicated installable manifest and service-worker shell cache.
-Web Push subscriptions are tenant- and user-scoped. Configure:
+Emergency private-message access also requires the already verified MFA
+session, a detailed reason, a target, a duration of 5 to 60 minutes and an
+immutable security event. It does not create permanent visibility.
+
+## Data Classification
+
+Private operational records use these classifications:
+
+1. `PUBLIC`
+2. `INTERNAL`
+3. `DEPARTMENT_ONLY`
+4. `PROJECT_RESTRICTED`
+5. `MANAGEMENT_CONFIDENTIAL`
+6. `LEGAL_FINANCIAL_RESTRICTED`
+7. `SUPER_ADMIN_RESTRICTED`
+
+Unknown labels fail closed. Department records require the same department;
+project-restricted records require project membership; restricted classes
+require the corresponding access level. The checks are applied to server
+queries and the governed assistant, not only to hidden UI controls.
+
+## Offboarding
+
+The Binta offboarding operation is idempotent and preserves attribution:
+
+- profile becomes `Ancien membre`;
+- application account, tenant roles, sessions, channel memberships, project
+  memberships and push subscriptions are revoked;
+- historical messages, documents and audit records remain unchanged;
+- active tasks become unassigned with state `À réattribuer`;
+- a vacancy is created;
+- the mailbox is retained rather than deleted, and its login password is
+  rotated when docker-mailserver is available.
+
+The same guarded behavior is exposed for future departures from the
+administrative People module.
+
+## Worker Import
+
+`/admin/people/import` accepts CSV, XLS and XLSX files up to 5 MB and 1,000
+rows. The flow is intentionally two-phase:
+
+1. Upload and infer or supply column mapping.
+2. Validate required fields and `@agoojiye.com` email addresses.
+3. Detect database and in-file duplicates.
+4. Preview every row without writing accounts.
+5. Confirm the stored preview before its 24-hour expiry.
+6. Create the application identity, tenant role, profile, department,
+   manager relation and one-use setup link.
+7. Optionally provision the physical mailbox when docker-mailserver is
+   available.
+8. Download the result CSV.
+
+Imports cannot create global administrators. That operation has its own
+super-admin-only endpoint.
+
+## HOWJI
+
+HOWJI is configured as:
+
+`HOWJI — Agent IA de coordination et de relance`
+
+It uses `Africa/Porto-Novo`, creates internal overdue/blocker/staleness
+summaries, notifies management, and keeps an action journal. Re-running the
+daily report is idempotent unless an administrator explicitly forces it.
+
+Internal, low-risk coordination may be approved automatically. External,
+financial, legal, public, destructive or permission-changing actions stay
+blocked in `awaiting_approval` until the principal super-administrator
+approves them. The current implementation records approval; a separate
+audited executor must be connected before any external side effect is
+enabled.
+
+## PWA and Limited Connectivity
+
+The dedicated manifest starts at `/workspace`. The service worker caches the
+application shell and static assets, handles install/update lifecycle and
+opens push notifications in WorkOS.
+
+Offline private writes are deliberately not claimed. A future implementation
+must use encrypted local storage, signed idempotent mutations, explicit
+conflict resolution and a visible synchronization state.
+
+## Environment
+
+Required production values:
 
 ```dotenv
-AGOOJIYE_VAPID_PUBLIC_KEY=
-AGOOJIYE_VAPID_PRIVATE_KEY=
-AGOOJIYE_VAPID_SUBJECT=mailto:support@agoojiye.com
+AGOOJIYE_APP_URL=https://agoojiye.com
+AGOOJIYE_WORKOS_URL=https://agoojiye.com/workspace
+AGOOJIYE_SUPER_ADMIN_EMAIL=vs@agoojiye.com
+AGOOJIYE_MFA_ENCRYPTION_KEY=<at-least-32-random-bytes>
+AGOOJIYE_PRIVILEGED_SESSION_HOURS=8
+AGOOJIYE_WORKOS_SESSION_HOURS=168
+AGOOJIYE_WORKER_IMPORT_MAX_MB=5
+AGOOJIYE_HOWJI_TIMEZONE=Africa/Porto-Novo
+AGOOJIYE_WEBMAIL_URL=https://mail.agoojiye.com/
+AGOOJIYE_MAILBOX_VS_PASSWORD=<deployment-secret-only>
 ```
 
-Generate one production key pair with:
+Keep the existing VAPID, mobility, ticket-signing, database, SMTP and provider
+variables from `.env.example`.
 
-```powershell
-npx web-push generate-vapid-keys --json
-```
+## Database and Provisioning
 
-Channel and dashboard data use periodic refresh while connected. The service
-worker caches only the application shell and public static assets. It does not
-claim safe offline writes. A future offline implementation must use an
-encrypted device queue, signed mutations, idempotency keys, conflict handling,
-and explicit synchronization status.
-
-## Database and Seed
-
-Apply the migration after a verified PostgreSQL backup:
+Back up PostgreSQL first, then apply both OS migrations:
 
 ```powershell
 psql "$env:DATABASE_URL" -v ON_ERROR_STOP=1 -f db/migrations/20260725_agoojiye_os.sql
+psql "$env:DATABASE_URL" -v ON_ERROR_STOP=1 -f db/migrations/20260725_agoojiye_workos.sql
 npm run seed:agoojye:os
+npm run provision:agoojye:workos
 ```
 
-The seed is idempotent for teams, profiles, projects, channels, memberships,
-tasks, documents, partners, meetings, decisions, and notifications. It creates
-a new invitation each time it is run; retain only the intended production link
-and revoke older active invitations from the database or admin API.
+The provisioner is idempotent for the super-admin, profile, tenant role,
+Olivier vacancy, HOWJI configuration and channel. It creates a fresh one-use
+password setup link and stores it privately. It provisions `vs@agoojiye.com`
+only when docker-mailserver is available and does not reset an existing
+mailbox unless `--reset-existing-mailbox` is explicitly passed.
 
-Optional seed controls:
+## Verification
 
-```dotenv
-AGOOJIYE_OS_URL=https://agoojiye.com
-AGOOJIYE_OS_INVITE_DAYS=30
-AGOOJIYE_OS_INVITE_MAX_USES=5
+Run:
+
+```powershell
+node --max-old-space-size=6144 ./node_modules/typescript/bin/tsc --noEmit
+node --import ./scripts/spawn-debug.mjs --loader ./scripts/ts-loader.mjs --test tests/agoojye-os.test.ts tests/agoojye-workos.test.ts
+npm run build
 ```
 
-## Production Checklist
+Production smoke checks:
 
-1. Back up PostgreSQL and apply the OS migration with `ON_ERROR_STOP=1`.
-2. Set `AGOOJIYE_OS_URL` and optional VAPID keys in the VPS environment.
-3. Build and deploy the same release as the public AGOOJIYE platform.
-4. Run the OS seed once in the application container.
-5. Open the invitation without consuming it and verify organization, expiry,
-   remaining places, and the five pre-authorized profiles.
-6. Verify unauthenticated `/api/agoojye/os/member/bootstrap` returns `401`.
-7. Verify `/os/connexion`, PWA manifest, service worker, and Web Push key.
-8. Keep the invitation link private and distribute it only to the five members.
-9. Rotate or revoke the invitation immediately after all five activations.
-10. Monitor audit events, failed logins, push failures, and invitation attempts.
+1. Public home, trip booking, tickets and commercial forms still answer.
+2. Webmail and `/mail/password` still answer.
+3. `/workspace/connexion` answers in French.
+4. An unauthenticated member bootstrap returns `401`.
+5. A privileged non-MFA session returns `MFA_REQUIRED`.
+6. The principal setup link sets the password but does not create a bypass
+   session.
+7. MFA enrollment displays recovery codes once.
+8. `/admin/command-center` opens only after MFA.
+9. Worker import preview writes no account.
+10. Duplicate worker emails are rejected.
+11. HOWJI external actions remain blocked pending approval.
+12. PWA manifest starts at `/workspace`.
 
-No DNS change is required when AGOOJIYE OS is served below
-`https://agoojiye.com/os`. The existing TLS certificate and tenant resolution
-cover the private application. Human email remains on the AGOOJIYE webmail at
-`https://mail.agoojiye.com/`.
+## Deployment and Rollback
+
+Use the existing tenant release scripts. They back up the database and current
+files before switching the release symlink:
+
+```bash
+bash scripts/ops/create-release-artifact.sh agoojye --build
+bash scripts/ops/deploy-release.sh agoojye --skip-create
+```
+
+Rollback the application with:
+
+```bash
+bash scripts/ops/rollback-release.sh agoojye
+```
+
+The WorkOS migration is additive. If an application rollback is required,
+leave its tables and columns in place; the previous application ignores them.
+Only remove WorkOS data through a separately reviewed retention migration.
+
+No new DNS record is required because WorkOS is served below
+`https://agoojiye.com`. Keep the existing web and mail records documented in
+`docs/AGOOJIYE_DNS_DEPLOYMENT.md` and
+`docs/AGOOJIYE_EMAIL_DNS_AND_MAILBOXES.md`.

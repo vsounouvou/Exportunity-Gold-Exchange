@@ -1855,7 +1855,7 @@ function resolveInitialLocaleState(): {
   const urlCurrency = normalizeCurrency(readUrlParam("currency"));
   const tenantKey = detectTenantFromHost();
   const tenantMarketplaceLocale = resolveTenantMarketplaceLocale(tenantKey);
-  const isFrenchXofPriorityTenant = tenantKey === "bdo";
+  const isFrenchXofPriorityTenant = tenantKey === "bdo" || tenantKey === "agoojye";
   const isTenantLocaleLocked = tenantKey === "met";
 
   if (isTenantLocaleLocked && !urlLanguage && !urlCurrency) {
@@ -1868,7 +1868,7 @@ function resolveInitialLocaleState(): {
     };
   }
 
-  // Bourse de l'Or and Maison en Terre are French-first + XOF-first unless the user explicitly selected a preference.
+  // Bourse de l'Or and AGOOJIYE are French-first + XOF-first unless the user explicitly selected a preference.
   if (
     isFrenchXofPriorityTenant &&
     !manualLanguage &&

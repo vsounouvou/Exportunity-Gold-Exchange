@@ -75,7 +75,7 @@ test("admin and controller APIs enforce server-side authorization", () => {
 });
 
 test("the 3D viewer adjusts exterior camera framing for narrow mobile canvases", () => {
-  const viewerSource = readFileSync(
+  const viewerSource = fs.readFileSync(
     new URL("../client/src/pages/agoojye/AgoojiyeThreeExperience.tsx", import.meta.url),
     "utf8",
   );

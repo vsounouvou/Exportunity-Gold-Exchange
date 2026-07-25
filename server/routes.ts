@@ -45,6 +45,7 @@ import eceRouter from "./routes/ece"; // ECE platform routes
 import eceAgentsRouter from "./routes/ece-agents";
 import authOtpRouter from "./routes/auth-otp";
 import passwordSetupRouter from "./routes/password-setup";
+import agoojyeOsRouter from "./routes/agoojye-os";
 import marketplaceRouter from "./routes/marketplace"; // Marketplace routes
 import equipmentOpsRouter from "./routes/equipment-ops"; // Equipment marketplace + rentals
 import stampedGoldRouter from "./routes/stamped-gold";
@@ -1131,6 +1132,7 @@ export function registerRoutes(app: Express): Server {
   // AGOOJIYE electric mobility tenant module (public + admin APIs)
   app.use("/", agoojyeMobilityRouter);
   app.use("/", agoojyeRouter);
+  app.use("/", agoojyeOsRouter);
   // Zogueland tenant module (public story generator API)
   app.use("/", zoguelandRouter);
   // Mindbase marketplace + studio + internal invoke APIs

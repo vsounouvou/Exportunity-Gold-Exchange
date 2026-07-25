@@ -180,6 +180,35 @@ Critical coverage includes trip search, seat capacity, payment transitions, opaq
 - `/reserver-un-bus`, `/demonstration`, `/commander` commercial requests.
 - `/liste-prioritaire`, `/a-propos`, `/contact`, `/faq` supporting pages.
 
+## AGOOJIYE OS
+
+The private company operating system is available under `/os`. It shares the
+AGOOJIYE tenant, users, mobility operations, CRM, documents, meetings, tasks,
+audit log, and governed AI-agent directory with the public platform.
+
+Initial team access is restricted to:
+
+- `vital@agoojiye.com`
+- `regis@agoojiye.com`
+- `soriane@agoojiye.com`
+- `maryse@agoojiye.com`
+- `christian@agoojiye.com`
+
+Apply `20260725_agoojiye_os.sql`, then create the team records and one guarded
+invitation link:
+
+```powershell
+npm run seed:agoojye:os
+```
+
+The command prints the join URL once. The invitation token is stored only as a
+SHA-256 hash, accepts only the listed official addresses, has a configurable
+expiry and use limit, and activates one password-based account per team member.
+The French-first PWA manifest is `/manifest-agoojiye-os.webmanifest`; Web Push
+is enabled only when the three `AGOOJIYE_VAPID_*` variables are configured.
+See `docs/AGOOJIYE_OS.md` for architecture, roles, access policy, operations,
+and the deliberately limited offline behavior.
+
 ## Admin Access
 
 Sign in at `/admin`. An authenticated AGOOJIYE administrator is redirected to `/admin/mobilite`.
@@ -267,6 +296,7 @@ Adapters should receive a booking/ticket ID, load approved data server-side, rec
 7. Verify `/api/agoojye/mobility/bootstrap`, the complete demo booking journey, ticket QR rendering, duplicate validation, commercial form persistence, admin authorization, `robots.txt`, and `sitemap.xml`.
 8. Keep demo payments enabled until a real provider and signed webhooks are verified.
 9. Complete the forward and reverse mail-DNS cutover in `docs/AGOOJIYE_EMAIL_DNS_AND_MAILBOXES.md`, then run `npm run verify:agoojye:mail-dns`.
+10. Apply `20260725_agoojiye_os.sql`, configure the optional VAPID keys, and run `npm run seed:agoojye:os` once to create the private team invitation.
 
 ## Known Production Requirements
 

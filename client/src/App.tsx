@@ -343,6 +343,9 @@ const AgoojiyeOrderPage = lazyPage(() => import("@/pages/agoojye/AgoojiyeCommerc
 const AgoojiyeWaitlistPage = lazyPage(() => import("@/pages/agoojye/AgoojiyeCommercialPages"), "AgoojiyeWaitlistPage");
 const AgoojiyeThreeExperiencePage = lazyPage(() => import("@/pages/agoojye/AgoojiyeThreeExperience"), "AgoojiyeThreeExperiencePage");
 const AgoojiyeMobilityAdminPage = lazyPage(() => import("@/pages/agoojye/AgoojiyeMobilityAdmin"), "AgoojiyeMobilityAdminPage");
+const AgoojiyeOsJoinPage = lazyPage(() => import("@/pages/agoojye/AgoojiyeOsPages"), "AgoojiyeOsJoinPage");
+const AgoojiyeOsLoginPage = lazyPage(() => import("@/pages/agoojye/AgoojiyeOsPages"), "AgoojiyeOsLoginPage");
+const AgoojiyeOsAppPage = lazyPage(() => import("@/pages/agoojye/AgoojiyeOsPages"), "AgoojiyeOsAppPage");
 const AgoojyeMailPasswordPage = lazyPage(() => import("@/pages/agoojye/AgoojyeMailPasswordPage"));
 const AgoojyeAdminDashboardPage = lazyPage(() => import("@/pages/agoojye/AgoojyeAdminPages"), "AgoojyeAdminDashboardPage");
 const AgoojyeAdminUsersPage = lazyPage(() => import("@/pages/agoojye/AgoojyeAdminPages"), "AgoojyeAdminUsersPage");
@@ -857,6 +860,12 @@ function App() {
           </Route>
           <Route path="/blog" component={() => (isMetHost() ? <MetBlogPage /> : <MarketingRedirect to="/media" />)} />
           <Route path="/contact" component={UnifiedContactRoute} />
+          <Route path="/os/rejoindre/:token">
+            {(params) => <AgoojyeOnlyRoute><AgoojiyeOsJoinPage token={String((params as any).token || "")} /></AgoojyeOnlyRoute>}
+          </Route>
+          <Route path="/os/connexion" component={() => <AgoojyeOnlyRoute><AgoojiyeOsLoginPage /></AgoojyeOnlyRoute>} />
+          <Route path="/os/:section" component={() => <AgoojyeOnlyRoute><AgoojiyeOsAppPage /></AgoojyeOnlyRoute>} />
+          <Route path="/os" component={() => <AgoojyeOnlyRoute><AgoojiyeOsAppPage /></AgoojyeOnlyRoute>} />
           <Route path="/reserver" component={() => <AgoojyeOnlyRoute><AgoojiyeTripsPage /></AgoojyeOnlyRoute>} />
           <Route path="/trajets/:id">
             {(params) => <AgoojyeOnlyRoute><AgoojiyeTripDetailPage id={String((params as any).id || "")} /></AgoojyeOnlyRoute>}

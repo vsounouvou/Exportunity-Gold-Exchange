@@ -18,6 +18,7 @@ const PRECACHE_URLS_BY_TENANT = {
   agoojye: [
     "/offline.html",
     "/manifest-agoojiye.webmanifest",
+    "/manifest-agoojiye-os.webmanifest",
     "/tenants/agoojye/app-icon-64.png",
   ],
   bdo: [
@@ -149,6 +150,43 @@ self.addEventListener("fetch", (event) => {
       const cached = await caches.match(request);
       if (cached) return cached;
       throw new Error("asset_fetch_failed");
+    }),
+  );
+});
+
+self.addEventListener("push", (event) => {
+  let payload = {};
+  try {
+    payload = event.data ? event.data.json() : {};
+  } catch {
+    payload = { body: event.data ? event.data.text() : "" };
+  }
+  const title = String(payload.title || "AGOOJIYE OS");
+  const body = String(payload.body || "Une nouvelle information nécessite votre attention.");
+  const url = String(payload.url || "/os");
+  event.waitUntil(
+    self.registration.showNotification(title, {
+      body,
+      icon: "/tenants/agoojye/app-icon-128.png",
+      badge: "/tenants/agoojye/app-icon-64.png",
+      data: { url },
+      tag: `agoojiye-os-${url}`,
+    }),
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const targetUrl = String(event.notification?.data?.url || "/os");
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {
+      for (const client of clients) {
+        if ("focus" in client) {
+          client.navigate(targetUrl);
+          return client.focus();
+        }
+      }
+      return self.clients.openWindow(targetUrl);
     }),
   );
 });

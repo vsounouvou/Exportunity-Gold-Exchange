@@ -10,6 +10,7 @@ import {
   uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { tenants } from "./tenants";
+import { eceUsers } from "./ece";
 
 const now = () => timestamp("created_at", { withTimezone: true }).notNull().defaultNow();
 const updated = () => timestamp("updated_at", { withTimezone: true }).notNull().defaultNow();
@@ -84,6 +85,15 @@ export const agoojyeProjectUsers = pgTable(
     status: text("status").notNull().default("Invited"),
     profilePhotoUrl: text("profile_photo_url"),
     bio: text("bio"),
+    authUserId: integer("auth_user_id").references(() => eceUsers.id, { onDelete: "set null" }),
+    managerUserId: integer("manager_user_id"),
+    employmentType: text("employment_type").notNull().default("employee"),
+    responsibilities: jsonb("responsibilities").$type<string[]>().notNull().default([]),
+    availability: text("availability").notNull().default("available"),
+    onboardingProgress: integer("onboarding_progress").notNull().default(0),
+    accessLevel: integer("access_level").notNull().default(2),
+    permissions: jsonb("permissions").$type<string[]>().notNull().default([]),
+    startDate: timestamp("start_date", { withTimezone: true }),
     confirmedRole: boolean("confirmed_role").notNull().default(false),
     emailAccountCreated: boolean("email_account_created").notNull().default(false),
     createdAt: now(),
@@ -91,6 +101,7 @@ export const agoojyeProjectUsers = pgTable(
   },
   (t) => ({
     tenantEmailUnique: uniqueIndex("agoojye_project_users_tenant_email_uidx").on(t.tenantId, t.email),
+    tenantAuthUserUnique: uniqueIndex("agoojye_project_users_tenant_auth_user_uidx").on(t.tenantId, t.authUserId),
     byTenantTeam: index("agoojye_project_users_tenant_team_idx").on(t.tenantId, t.teamId),
     byTenantStatus: index("agoojye_project_users_tenant_status_idx").on(t.tenantId, t.status),
   }),

@@ -73,3 +73,13 @@ test("admin and controller APIs enforce server-side authorization", () => {
   assert.match(route, /adminApi\.use\(ensureTenantAdmin\)/);
   assert.match(route, /requireAgoojyeTenant\(req, res\)/);
 });
+
+test("the 3D viewer adjusts exterior camera framing for narrow mobile canvases", () => {
+  const viewerSource = readFileSync(
+    new URL("../client/src/pages/agoojye/AgoojiyeThreeExperience.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(viewerSource, /camera\.aspect < 1/);
+  assert.match(viewerSource, /mobileFramingScale/);
+  assert.match(viewerSource, /applyPreset\(runtimeRef\.current\?\.preset \|\| "exterior"\)/);
+});

@@ -183,10 +183,10 @@ variables from `.env.example`.
 
 ## Database and Provisioning
 
-Back up PostgreSQL first, then apply both OS migrations:
+Back up PostgreSQL first, then apply the additive WorkOS migration. The
+existing AGOOJIYE OS tables must already be present from the platform release:
 
 ```powershell
-psql "$env:DATABASE_URL" -v ON_ERROR_STOP=1 -f db/migrations/20260725_agoojiye_os.sql
 psql "$env:DATABASE_URL" -v ON_ERROR_STOP=1 -f db/migrations/20260725_agoojiye_workos.sql
 npm run seed:agoojye:os
 npm run provision:agoojye:workos

@@ -95,3 +95,13 @@ test("data classification enforces department, project and super-admin boundarie
 test("unknown classification labels fail closed", () => {
   assert.equal(canAccessAgoojiyeDataClass({ member: { accessLevel: 7 }, classification: "UNMAPPED_SECRET" }), false);
 });
+
+test("administrative assistant keeps legacy routes internal and exposes one AGOOJIYE identity", () => {
+  const routeSource = readFileSync(new URL("../server/routes/agoojye-workos.ts", import.meta.url), "utf8");
+  const provisionSource = readFileSync(new URL("../scripts/provision-agoojiye-workos.ts", import.meta.url), "utf8");
+  assert.match(routeSource, /\["\/assistant", "\/howji"\]/);
+  assert.match(routeSource, /Synthèse quotidienne AGOOJIYE/);
+  assert.doesNotMatch(routeSource, /Synthèse quotidienne HOWJI|HOWJI n'est|Action HOWJI/);
+  assert.match(provisionSource, /name: "AGOOJIYE — Assistant IA"/);
+  assert.doesNotMatch(provisionSource, /name: "HOWJI|body: "HOWJI/);
+});

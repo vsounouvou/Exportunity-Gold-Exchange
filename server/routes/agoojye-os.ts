@@ -585,11 +585,20 @@ memberApi.get("/bootstrap", async (req: any, res) => {
       pendingOrders: Number(mobility[6][0]?.value || 0),
     },
     agents: [
-      { key: "falove", name: "Falovè", role: "Assistante de l'entreprise", department: "Direction", level: 1, status: "active" },
-      { key: "technical", name: "Copilote technique", role: "Synthèse et checklists techniques", department: "Ingénierie", level: 1, status: "active" },
-      { key: "operations", name: "Agent opérations", role: "Manifestes et alertes mobilité", department: "Opérations", level: 1, status: "active" },
-      { key: "communication", name: "Agent communication", role: "Brouillons soumis à validation", department: "Communication", level: 2, status: "active" },
-      { key: "crm", name: "Agent CRM", role: "Suivi partenaires et prochaines actions", department: "Partenariats", level: 1, status: "active" },
+      {
+        key: "assistant",
+        name: "AGOOJIYE — Assistant IA",
+        role: "Assistant de travail contextualisé",
+        department: "Tous les contextes autorisés",
+        level: 1,
+        status: "active",
+        contexts: [
+          "Espace personnel",
+          "Support du département",
+          "Opérations mobilité",
+          "Direction",
+        ],
+      },
     ],
   });
 });
@@ -1234,8 +1243,52 @@ memberApi.post("/assistant", async (req: any, res) => {
   const tenantId = Number(req.osTenantId);
   const member = req.osMember;
   const query = parsed.data.query;
-  const term = `%${query.replace(/[%_]/g, "")}%`;
-  const [tasks, projects, documents, decisions, partners] = await Promise.all([
+  const normalizedQuery = query.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  const asksForMeeting = /reunion|rendez-vous|agenda/.test(normalizedQuery);
+  const asksForOverdue = /retard|echeance depassee/.test(normalizedQuery);
+  const asksForRisks = /risque|critique|blocage/.test(normalizedQuery);
+  const asksForSummary = /dois-je faire|priorite|rapport d'activite|etat complet|synthese/.test(normalizedQuery);
+  const asksForOnboarding = /accueil|onboarding|premier|responsable|mon role|departement/.test(normalizedQuery);
+  const isContextSummary = asksForMeeting || asksForOverdue || asksForRisks || asksForSummary || asksForOnboarding;
+  const term = isContextSummary ? "%" : `%${query.replace(/[%_]/g, "")}%`;
+  const now = new Date();
+  const leadership = Number(member.accessLevel || 0) >= 6;
+  const memberProjectMemberships = leadership
+    ? []
+    : await db.query.agoojyeOsProjectMembers.findMany({
+        where: and(
+          eq(agoojyeOsProjectMembers.tenantId, tenantId),
+          eq(agoojyeOsProjectMembers.userId, Number(member.id)),
+        ),
+      });
+  const memberProjectIds = memberProjectMemberships.map((entry) => Number(entry.projectId));
+  const scopedProjects = leadership
+    ? []
+    : await db.query.agoojyeOsProjects.findMany({
+        where: and(
+          eq(agoojyeOsProjects.tenantId, tenantId),
+          or(
+            Number(member.teamId || 0)
+              ? eq(agoojyeOsProjects.teamId, Number(member.teamId))
+              : sql`false`,
+            memberProjectIds.length
+              ? inArray(agoojyeOsProjects.id, memberProjectIds)
+              : sql`false`,
+          ),
+        ),
+        columns: { id: true },
+      });
+  const scopedProjectIds = new Set(scopedProjects.map((entry) => Number(entry.id)));
+  const memberProjectIdSet = new Set(memberProjectIds);
+  const manager = asksForOnboarding && Number(member.managerUserId || 0)
+    ? await db.query.agoojyeProjectUsers.findFirst({
+        where: and(
+          eq(agoojyeProjectUsers.tenantId, tenantId),
+          eq(agoojyeProjectUsers.id, Number(member.managerUserId)),
+        ),
+      })
+    : null;
+  const [tasks, projects, documents, decisions, partners, meetings] = await Promise.all([
     db.query.agoojyeTasks.findMany({
       where: and(
         eq(agoojyeTasks.tenantId, tenantId),
@@ -1251,6 +1304,11 @@ memberApi.post("/assistant", async (req: any, res) => {
         eq(agoojyeOsProjects.tenantId, tenantId),
         lte(agoojyeOsProjects.confidentiality, Number(member.accessLevel || 1)),
         or(ilike(agoojyeOsProjects.name, term), ilike(agoojyeOsProjects.objective, term)),
+        leadership
+          ? sql`true`
+          : scopedProjectIds.size
+            ? inArray(agoojyeOsProjects.id, [...scopedProjectIds])
+            : sql`false`,
       ),
       limit: 8,
     }),
@@ -1278,45 +1336,146 @@ memberApi.post("/assistant", async (req: any, res) => {
           limit: 8,
         })
       : Promise.resolve([]),
+    db.query.agoojyeOsMeetings.findMany({
+      where: and(
+        eq(agoojyeOsMeetings.tenantId, tenantId),
+        lte(agoojyeOsMeetings.confidentiality, Number(member.accessLevel || 1)),
+        gte(agoojyeOsMeetings.startsAt, now),
+        or(ilike(agoojyeOsMeetings.title, term), ilike(agoojyeOsMeetings.agenda, term)),
+      ),
+      orderBy: [asc(agoojyeOsMeetings.startsAt)],
+      limit: 8,
+    }),
   ]);
 
-  const permittedTasks = tasks.filter((item) =>
+  let permittedTasks = tasks.filter((item) =>
     canAccessAgoojiyeDataClass({ member, classification: item.confidentialityClass, resourceTeamId: item.teamId }),
   );
+  if (asksForOverdue) {
+    permittedTasks = permittedTasks.filter((item) =>
+      item.dueDate && new Date(item.dueDate).getTime() < now.getTime() && !["done", "cancelled"].includes(item.status),
+    );
+  } else if (asksForRisks) {
+    permittedTasks = permittedTasks.filter((item) =>
+      item.priority === "critical" || item.status === "blocked" || Boolean(item.blocker),
+    );
+  } else if (asksForSummary) {
+    permittedTasks = permittedTasks.filter((item) => !["done", "cancelled"].includes(item.status));
+  }
   const permittedProjects = projects.filter((item) =>
     canAccessAgoojiyeDataClass({
       member,
       classification: item.confidentialityClass,
       resourceTeamId: item.teamId,
       resourceProjectId: item.id,
-      projectMembershipIds: new Set<number>(),
+      projectMembershipIds: memberProjectIdSet,
     }),
   );
   const permittedDocuments = documents.filter((item) =>
     canAccessAgoojiyeDataClass({ member, classification: item.confidentialityClass, resourceTeamId: item.teamId }),
   );
+  const permittedMeetings = meetings.filter((item) => {
+    if (leadership) return true;
+    const participants = Array.isArray(item.participantUserIds) ? item.participantUserIds.map(Number) : [];
+    return participants.includes(Number(member.id)) || Number(item.organizerUserId || 0) === Number(member.id);
+  });
+  const permittedDecisions = decisions.filter((item) => {
+    if (leadership) return true;
+    const participants = Array.isArray(item.participantUserIds) ? item.participantUserIds.map(Number) : [];
+    if (participants.includes(Number(member.id)) || Number(item.decisionMakerUserId || 0) === Number(member.id)) return true;
+    return Boolean(item.projectId) && scopedProjectIds.has(Number(item.projectId));
+  });
+  const statusLabels: Record<string, string> = {
+    active: "actif",
+    blocked: "bloqué",
+    cancelled: "annulé",
+    completed: "terminé",
+    done: "terminé",
+    draft: "brouillon",
+    in_progress: "en cours",
+    pending: "en attente",
+    pending_approval: "validation requise",
+    recorded: "enregistrée",
+    scheduled: "planifiée",
+    todo: "à faire",
+    under_review: "en révision",
+  };
+  const priorityLabels: Record<string, string> = {
+    critical: "critique",
+    high: "haute",
+    low: "basse",
+    medium: "normale",
+  };
+  const statusLabel = (value: unknown) => statusLabels[clean(value).toLowerCase()] || clean(value).replaceAll("_", " ");
+  const priorityLabel = (value: unknown) => priorityLabels[clean(value).toLowerCase()] || clean(value).replaceAll("_", " ");
   const matches = [
-    ...permittedTasks.map((item) => ({ type: "Tâche", title: item.title, detail: `${item.status} · ${item.priority}`, href: "/workspace/tasks" })),
-    ...permittedProjects.map((item) => ({ type: "Projet", title: item.name, detail: `${item.progress}% · ${item.status}`, href: "/workspace/projects" })),
-    ...permittedDocuments.map((item) => ({ type: "Document", title: item.title, detail: `${item.category} · ${item.status}`, href: "/workspace/files" })),
-    ...decisions.map((item) => ({ type: "Décision", title: item.decision, detail: item.status, href: "/workspace/decisions" })),
-    ...partners.map((item) => ({ type: "CRM", title: item.name, detail: `${item.category} · ${item.status}`, href: "/workspace/crm" })),
+    ...permittedTasks.map((item) => ({ type: "Tâche", title: item.title, detail: `${statusLabel(item.status)} · priorité ${priorityLabel(item.priority)}`, href: "/workspace/tasks" })),
+    ...permittedMeetings.map((item) => ({ type: "Réunion", title: item.title, detail: new Intl.DateTimeFormat("fr-BJ", { dateStyle: "medium", timeStyle: "short", timeZone: "Africa/Porto-Novo" }).format(item.startsAt), href: "/workspace/calendar" })),
+    ...permittedProjects.map((item) => ({ type: "Projet", title: item.name, detail: `${item.progress}% · ${statusLabel(item.status)}`, href: "/workspace/projects" })),
+    ...permittedDocuments.map((item) => ({ type: "Document", title: item.title, detail: `${item.category} · ${statusLabel(item.status)}`, href: "/workspace/files" })),
+    ...permittedDecisions.map((item) => ({ type: "Décision", title: item.decision, detail: statusLabel(item.status), href: "/workspace/decisions" })),
+    ...partners.map((item) => ({ type: "CRM", title: item.name, detail: `${item.category} · ${statusLabel(item.status)}`, href: "/workspace/crm" })),
   ].slice(0, 15);
-  const answer = matches.length
-    ? `J'ai trouvé ${matches.length} élément${matches.length > 1 ? "s" : ""} correspondant à votre recherche. Ils sont classés ci-dessous selon vos autorisations.`
-    : "Je n'ai trouvé aucun élément autorisé correspondant exactement à cette recherche. Essayez un nom de projet, une tâche, un document, une décision ou un partenaire.";
-  await audit(tenantId, member, "ai_read_only_search", "falove", null, {
+  const answer = asksForOnboarding
+    ? `Bienvenue dans votre espace AGOOJIYE. Votre rôle est « ${clean(member.role) || "à préciser"} »${manager ? ` et votre responsable est ${manager.displayName}` : "; votre responsable doit encore être confirmé"}. Je peux vous aider à parcourir vos ${permittedTasks.length} tâche${permittedTasks.length > 1 ? "s" : ""}, ${permittedProjects.length} projet${permittedProjects.length > 1 ? "s" : ""} et les documents autorisés. Un responsable humain valide toute affectation et toute modification d'accès.`
+    : asksForMeeting
+    ? permittedMeetings.length
+      ? `Votre prochaine réunion est « ${permittedMeetings[0].title} », le ${new Intl.DateTimeFormat("fr-BJ", { dateStyle: "full", timeStyle: "short", timeZone: "Africa/Porto-Novo" }).format(permittedMeetings[0].startsAt)}.`
+      : "Aucune réunion à venir n'est visible dans votre agenda autorisé."
+    : asksForOverdue
+      ? permittedTasks.length
+        ? `${permittedTasks.length} tâche${permittedTasks.length > 1 ? "s sont en retard" : " est en retard"} dans votre périmètre autorisé.`
+        : "Aucune tâche en retard n'est visible dans votre périmètre autorisé."
+      : asksForRisks
+        ? permittedTasks.length
+          ? `${permittedTasks.length} risque${permittedTasks.length > 1 ? "s critiques ou blocages sont visibles" : " critique ou blocage est visible"} dans votre périmètre.`
+          : "Aucun risque critique ni blocage n'est visible dans votre périmètre autorisé."
+        : asksForSummary
+          ? matches.length
+            ? `Voici votre synthèse de travail: ${permittedTasks.length} tâche${permittedTasks.length > 1 ? "s actives" : " active"}, ${permittedMeetings.length} réunion${permittedMeetings.length > 1 ? "s à venir" : " à venir"} et ${permittedProjects.length} projet${permittedProjects.length > 1 ? "s accessibles" : " accessible"}.`
+            : "Aucun élément nécessitant votre attention n'est visible dans votre périmètre autorisé."
+          : matches.length
+            ? `J'ai trouvé ${matches.length} élément${matches.length > 1 ? "s" : ""} correspondant à votre recherche. Ils sont classés ci-dessous selon vos autorisations.`
+            : "Je n'ai trouvé aucun élément autorisé correspondant exactement à cette recherche. Essayez un nom de projet, une tâche, un document, une décision ou un partenaire.";
+  const assistantContext =
+    Number(member.onboardingProgress || 0) < 100
+      ? "onboarding"
+      : Number(member.accessLevel || 0) >= 7
+        ? "super_admin_support"
+        : leadership
+          ? "executive_support"
+          : memberCan(member, "mobility")
+            ? "mobility_operations_support"
+            : Number(member.accessLevel || 0) >= 4
+              ? "department_support"
+              : "personal_workspace";
+  const recordsAccessed = [
+    ...(manager ? [{ type: "project_user", id: Number(manager.id) }] : []),
+    ...permittedTasks.map((item) => ({ type: "task", id: Number(item.id) })),
+    ...permittedMeetings.map((item) => ({ type: "meeting", id: Number(item.id) })),
+    ...permittedProjects.map((item) => ({ type: "project", id: Number(item.id) })),
+    ...permittedDocuments.map((item) => ({ type: "document", id: Number(item.id) })),
+    ...permittedDecisions.map((item) => ({ type: "decision", id: Number(item.id) })),
+    ...partners.map((item) => ({ type: "partner", id: Number(item.id) })),
+  ].slice(0, 50);
+  await audit(tenantId, member, "ai_read_only_search", "assistant", null, {
     query,
     resultCount: matches.length,
     level: 1,
-    sources: ["tasks", "projects", "documents", "decisions", ...(memberCan(member, "crm") ? ["partners"] : [])],
+    context: assistantContext,
+    recordsAccessed,
+    sources: ["tasks", "meetings", "projects", "documents", "decisions", ...(memberCan(member, "crm") ? ["partners"] : [])],
+    recommendation: answer,
+    proposedAction: null,
+    humanApprovalRequired: false,
+    dataUpdated: false,
   });
   return res.json({
     ok: true,
-    agent: { name: "Falovè", badge: "IA", level: 1 },
+    agent: { name: "AGOOJIYE — Assistant IA", badge: "IA", level: 1, context: assistantContext },
     answer,
     matches,
-    governance: "Lecture et recommandation uniquement. Aucune donnée n'a été modifiée.",
+    governance: "Données limitées à vos autorisations. Lecture et recommandation uniquement; aucune donnée n'a été modifiée.",
   });
 });
 

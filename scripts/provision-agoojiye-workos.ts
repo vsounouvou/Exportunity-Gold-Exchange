@@ -271,7 +271,7 @@ async function offboardBinta(tenantId: number, performedBy: number) {
   return { status: "offboarded" as const, tasks: activeTasks.length };
 }
 
-async function ensureOlivierAndHowji(tenantId: number) {
+async function ensureOlivierAndAssistant(tenantId: number) {
   const gestion = await db.query.agoojyeTeams.findFirst({
     where: and(eq(agoojyeTeams.tenantId, tenantId), eq(agoojyeTeams.slug, "direction-coordination")),
   });
@@ -297,13 +297,13 @@ async function ensureOlivierAndHowji(tenantId: number) {
       metadata: { department: "Gestion", invitationBlockedUntilExactEmail: true },
     });
   }
-  const [howji] = await db
+  const [assistant] = await db
     .insert(agoojyeWorkosAgents)
     .values({
       tenantId,
       key: "howji",
-      name: "HOWJI — Agent IA de coordination et de relance",
-      description: "Coordonne les rappels internes, détecte les blocages et prépare les synthèses de direction.",
+      name: "AGOOJIYE — Assistant IA",
+      description: "Assistant unique contextualisé pour le travail personnel, les départements, les opérations mobilité et la direction.",
       timezone: "Africa/Porto-Novo",
       policy: {
         internalReminders: true,
@@ -321,20 +321,21 @@ async function ensureOlivierAndHowji(tenantId: number) {
     .onConflictDoUpdate({
       target: [agoojyeWorkosAgents.tenantId, agoojyeWorkosAgents.key],
       set: {
-        name: "HOWJI — Agent IA de coordination et de relance",
+        name: "AGOOJIYE — Assistant IA",
+        description: "Assistant unique contextualisé pour le travail personnel, les départements, les opérations mobilité et la direction.",
         status: "active",
         timezone: "Africa/Porto-Novo",
         updatedAt: new Date(),
       },
     })
     .returning();
-  const [howjiChannel] = await db
+  const [assistantChannel] = await db
     .insert(agoojyeOsChannels)
     .values({
       tenantId,
       slug: "howji-coordination",
-      name: "HOWJI — Coordination et relances",
-      description: "Conversation épinglée de coordination, relances internes, blocages et synthèses.",
+      name: "AGOOJIYE — Assistant IA",
+      description: "Conversation épinglée de synthèse, échéances, blocages et recommandations contextualisées.",
       channelType: "agent",
       teamId: gestion?.id || null,
       confidentiality: 5,
@@ -343,8 +344,8 @@ async function ensureOlivierAndHowji(tenantId: number) {
     .onConflictDoUpdate({
       target: [agoojyeOsChannels.tenantId, agoojyeOsChannels.slug],
       set: {
-        name: "HOWJI — Coordination et relances",
-        description: "Conversation épinglée de coordination, relances internes, blocages et synthèses.",
+        name: "AGOOJIYE — Assistant IA",
+        description: "Conversation épinglée de synthèse, échéances, blocages et recommandations contextualisées.",
         status: "active",
         updatedAt: new Date(),
       },
@@ -356,28 +357,36 @@ async function ensureOlivierAndHowji(tenantId: number) {
   for (const member of management) {
     await db
       .insert(agoojyeOsChannelMembers)
-      .values({ tenantId, channelId: Number(howjiChannel.id), userId: Number(member.id), role: "member" })
+      .values({ tenantId, channelId: Number(assistantChannel.id), userId: Number(member.id), role: "member" })
       .onConflictDoNothing();
   }
   const pinned = await db.query.agoojyeOsMessages.findFirst({
     where: and(
       eq(agoojyeOsMessages.tenantId, tenantId),
-      eq(agoojyeOsMessages.channelId, Number(howjiChannel.id)),
+      eq(agoojyeOsMessages.channelId, Number(assistantChannel.id)),
       eq(agoojyeOsMessages.messageType, "agent_system"),
     ),
   });
   if (!pinned) {
     await db.insert(agoojyeOsMessages).values({
       tenantId,
-      channelId: Number(howjiChannel.id),
+      channelId: Number(assistantChannel.id),
       senderUserId: null,
-      body: "HOWJI surveille les échéances, prépare les synthèses et propose des relances internes. Les actions externes, financières, juridiques, publiques ou liées aux accès nécessitent une approbation humaine.",
+      body: "AGOOJIYE — Assistant IA prépare les synthèses, suit les échéances et propose des relances selon vos autorisations. Les actions externes, financières, juridiques, publiques ou liées aux accès nécessitent une approbation humaine.",
       messageType: "agent_system",
       pinnedAt: new Date(),
       metadata: { agentKey: "howji", governanceNotice: true },
     });
+  } else {
+    await db
+      .update(agoojyeOsMessages)
+      .set({
+        body: "AGOOJIYE — Assistant IA prépare les synthèses, suit les échéances et propose des relances selon vos autorisations. Les actions externes, financières, juridiques, publiques ou liées aux accès nécessitent une approbation humaine.",
+        updatedAt: new Date(),
+      })
+      .where(eq(agoojyeOsMessages.id, pinned.id));
   }
-  return { howjiId: Number(howji.id) };
+  return { assistantId: Number(assistant.id) };
 }
 
 async function main() {
@@ -387,7 +396,7 @@ async function main() {
   const [mailbox, offboarding, operations] = await Promise.all([
     ensureMailbox(),
     offboardBinta(tenantId, Number(superAdmin.user.id)),
-    ensureOlivierAndHowji(tenantId),
+    ensureOlivierAndAssistant(tenantId),
   ]);
   console.log(JSON.stringify({
     ok: true,
@@ -397,7 +406,7 @@ async function main() {
     mailboxStatus: mailbox.status,
     bintaStatus: offboarding.status,
     transferredTasks: offboarding.tasks,
-    howjiId: operations.howjiId,
+    assistantId: operations.assistantId,
     olivier: "email_required_before_invitation",
   }, null, 2));
 }

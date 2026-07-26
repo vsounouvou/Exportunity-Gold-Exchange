@@ -1376,12 +1376,12 @@ adminApi.post("/people/:id/offboard", requireAgoojiyeSuperAdmin, async (req: any
   return res.json({ ok: true, status: "Ancien membre", tasksReassigned: activeTasks.length, mailboxStatus: "retained_archived" });
 });
 
-adminApi.get("/howji", async (req: any, res) => {
+adminApi.get(["/assistant", "/howji"], async (req: any, res) => {
   const tenantId = Number(req.workosTenantId);
   const agent = await db.query.agoojyeWorkosAgents.findFirst({
     where: and(eq(agoojyeWorkosAgents.tenantId, tenantId), eq(agoojyeWorkosAgents.key, "howji")),
   });
-  if (!agent) return res.status(404).json({ message: "HOWJI n'est pas encore configuré." });
+  if (!agent) return res.status(404).json({ message: "L'assistant AGOOJIYE n'est pas encore configuré." });
   const actions = await db.query.agoojyeWorkosAgentActions.findMany({
     where: and(eq(agoojyeWorkosAgentActions.tenantId, tenantId), eq(agoojyeWorkosAgentActions.agentId, agent.id)),
     orderBy: [desc(agoojyeWorkosAgentActions.createdAt)],
@@ -1390,12 +1390,12 @@ adminApi.get("/howji", async (req: any, res) => {
   return res.json({ ok: true, agent, actions });
 });
 
-adminApi.post("/howji/run", async (req: any, res) => {
+adminApi.post(["/assistant/run", "/howji/run"], async (req: any, res) => {
   const tenantId = Number(req.workosTenantId);
   const agent = await db.query.agoojyeWorkosAgents.findFirst({
     where: and(eq(agoojyeWorkosAgents.tenantId, tenantId), eq(agoojyeWorkosAgents.key, "howji")),
   });
-  if (!agent || agent.status !== "active") return res.status(409).json({ message: "HOWJI n'est pas actif." });
+  if (!agent || agent.status !== "active") return res.status(409).json({ message: "L'assistant AGOOJIYE n'est pas actif." });
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const existing = await db.query.agoojyeWorkosAgentActions.findFirst({
@@ -1455,37 +1455,37 @@ adminApi.post("/howji/run", async (req: any, res) => {
       management.map((member) => ({
         tenantId,
         userId: member.id,
-        type: "howji",
-        title: "Synthèse quotidienne HOWJI",
+        type: "assistant",
+        title: "Synthèse quotidienne AGOOJIYE",
         body: output.summary,
-        link: "/admin/howji",
+        link: "/admin/assistant",
       })),
     );
   }
   await recordSecurityEvent(req, {
     tenantId,
-    eventType: "howji_internal_report_generated",
+    eventType: "assistant_internal_report_generated",
     actorUserId: Number(req.workosUser.id),
     metadata: { actionId: action.id, overdue: overdue.length, blocked: blocked.length, stale: stale.length },
   });
   return res.status(201).json({ ok: true, action });
 });
 
-const howjiActionSchema = z.object({
+const assistantActionSchema = z.object({
   actionType: z.string().min(2).max(120),
   riskLevel: z.enum(["low", "medium", "high", "critical"]).default("medium"),
   target: z.enum(["internal", "external", "financial", "legal", "permissions", "delete", "public"]).default("internal"),
   input: z.record(z.unknown()).default({}),
 });
 
-adminApi.post("/howji/actions", async (req: any, res) => {
-  const parsed = howjiActionSchema.safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ message: "Action HOWJI invalide." });
+adminApi.post(["/assistant/actions", "/howji/actions"], async (req: any, res) => {
+  const parsed = assistantActionSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ message: "Action de l'assistant AGOOJIYE invalide." });
   const tenantId = Number(req.workosTenantId);
   const agent = await db.query.agoojyeWorkosAgents.findFirst({
     where: and(eq(agoojyeWorkosAgents.tenantId, tenantId), eq(agoojyeWorkosAgents.key, "howji")),
   });
-  if (!agent) return res.status(404).json({ message: "HOWJI n'est pas configuré." });
+  if (!agent) return res.status(404).json({ message: "L'assistant AGOOJIYE n'est pas configuré." });
   const requiresApproval =
     parsed.data.target !== "internal" ||
     ["high", "critical"].includes(parsed.data.riskLevel);
@@ -1504,14 +1504,14 @@ adminApi.post("/howji/actions", async (req: any, res) => {
     .returning();
   await recordSecurityEvent(req, {
     tenantId,
-    eventType: "howji_action_proposed",
+    eventType: "assistant_action_proposed",
     actorUserId: Number(req.workosUser.id),
     metadata: { actionId: action.id, target: parsed.data.target, requiresApproval },
   });
   return res.status(201).json({ ok: true, action, execution: requiresApproval ? "blocked_pending_approval" : "approved_internal_action" });
 });
 
-adminApi.post("/howji/actions/:id/approve", requireAgoojiyeSuperAdmin, async (req: any, res) => {
+adminApi.post(["/assistant/actions/:id/approve", "/howji/actions/:id/approve"], requireAgoojiyeSuperAdmin, async (req: any, res) => {
   const tenantId = Number(req.workosTenantId);
   const actionId = Number(req.params.id);
   const action = await db.query.agoojyeWorkosAgentActions.findFirst({
@@ -1529,7 +1529,7 @@ adminApi.post("/howji/actions/:id/approve", requireAgoojiyeSuperAdmin, async (re
     .returning();
   await recordSecurityEvent(req, {
     tenantId,
-    eventType: "howji_action_approved",
+    eventType: "assistant_action_approved",
     actorUserId: Number(req.workosUser.id),
     metadata: { actionId },
   });

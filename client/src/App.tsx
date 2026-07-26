@@ -799,11 +799,17 @@ function ProLandingRedirect() {
 
 function App() {
   const [location] = useLocation();
+  const pathname = location.split("?")[0];
+  const agoojiyeExperience = isAgoojyeHost();
 
   useEffect(() => {
     syncDemoModeFromUrl();
     telemetry().pageView(location);
   }, [location]);
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  }, [pathname]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -819,8 +825,8 @@ function App() {
                 <div className="flex mb-4 gap-4 items-center">
                   <MinerLoadingAnimation className="h-16 w-28 shrink-0" />
                   <div className="min-w-0">
-                    <h1 className="text-2xl font-bold text-white leading-tight">Loading...</h1>
-                    <p className="mt-1 text-sm text-gray-400">Preparing the page.</p>
+                    <h1 className="text-2xl font-bold text-white leading-tight">{agoojiyeExperience ? "Chargement…" : "Loading..."}</h1>
+                    <p className="mt-1 text-sm text-gray-400">{agoojiyeExperience ? "Préparation de la page." : "Preparing the page."}</p>
                   </div>
                 </div>
               </CardContent>
@@ -882,6 +888,7 @@ function App() {
           <Route path="/admin/people/import" component={() => <AgoojyeOnlyRoute><AgoojiyeWorkosAdminPage /></AgoojyeOnlyRoute>} />
           <Route path="/admin/people/:id" component={() => <AgoojyeOnlyRoute><AgoojiyeWorkosAdminPage /></AgoojyeOnlyRoute>} />
           <Route path="/admin/people" component={() => <AgoojyeOnlyRoute><AgoojiyeWorkosAdminPage /></AgoojyeOnlyRoute>} />
+          <Route path="/admin/howji" component={() => <AgoojyeOnlyRoute><Redirect to="/admin/assistant" /></AgoojyeOnlyRoute>} />
           {[
             "departments",
             "org-chart",
@@ -895,7 +902,7 @@ function App() {
             "meetings",
             "decisions",
             "agents",
-            "howji",
+            "assistant",
             "notifications",
             "audit",
             "security",

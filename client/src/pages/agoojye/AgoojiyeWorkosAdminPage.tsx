@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Activity,
   Bot,
+  Bus,
   Building2,
   CalendarDays,
   ChevronRight,
@@ -48,7 +49,7 @@ type AdminOverview = {
 };
 
 const ADMIN_NAV = [
-  ["/admin/command-center", "Command center", LayoutDashboard],
+  ["/admin/command-center", "Pilotage", LayoutDashboard],
   ["/admin/people", "Collaborateurs", Users],
   ["/admin/people/import", "Import CSV / XLSX", FileSpreadsheet],
   ["/admin/departments", "Départements", Building2],
@@ -58,7 +59,7 @@ const ADMIN_NAV = [
   ["/admin/calendars", "Calendriers", CalendarDays],
   ["/admin/channels", "Canaux", MessageCircle],
   ["/admin/documents", "Documents", FileText],
-  ["/admin/howji", "HOWJI", Bot],
+  ["/admin/assistant", "Assistant IA", Bot],
   ["/admin/security", "Sécurité", ShieldCheck],
 ] as const;
 
@@ -93,7 +94,24 @@ function Status({ value }: { value: string }) {
     : normalized.includes("denied") || normalized.includes("blocked") || normalized.includes("ancien")
       ? "bg-red-100 text-red-800"
       : "bg-amber-100 text-amber-800";
-  return <span className={`${tone} inline-flex px-2 py-1 text-[10px] font-bold uppercase`}>{String(value || "—").replaceAll("_", " ")}</span>;
+  const labels: Record<string, string> = {
+    active: "Actif",
+    approved: "Approuvé",
+    awaiting_approval: "Approbation requise",
+    blocked: "Bloqué",
+    completed: "Terminé",
+    denied: "Refusé",
+    failed: "Échoué",
+    inactive: "Inactif",
+    in_progress: "En cours",
+    pending: "En attente",
+    pending_approval: "Validation requise",
+    scheduled: "Planifié",
+    success: "Réussi",
+    todo: "À faire",
+    under_review: "En révision",
+  };
+  return <span className={`${tone} inline-flex px-2 py-1 text-[10px] font-bold uppercase`}>{labels[normalized] || String(value || "—").replaceAll("_", " ")}</span>;
 }
 
 function Metric({ label, value, tone = "dark" }: { label: string; value: number; tone?: "dark" | "gold" | "green" }) {
@@ -229,20 +247,26 @@ function ImportPanel({ refetch }: { refetch: () => void }) {
   );
 }
 
-function HowjiPanel({ data, refetch }: { data: AdminOverview; refetch: () => void }) {
+function AssistantPanel({ data, refetch }: { data: AdminOverview; refetch: () => void }) {
   const { toast } = useToast();
-  const howji = data.agents.find((agent) => agent.key === "howji");
-  const howjiQuery = useQuery<any>({ queryKey: ["/api/admin/agoojye/workos/howji"], queryFn: () => adminFetch("/api/admin/agoojye/workos/howji"), enabled: Boolean(howji), retry: false });
+  const assistant = data.agents.find((agent) => agent.key === "assistant" || agent.key === "howji");
+  const assistantQuery = useQuery<any>({ queryKey: ["/api/admin/agoojye/workos/assistant"], queryFn: () => adminFetch("/api/admin/agoojye/workos/assistant"), enabled: Boolean(assistant), retry: false });
   const run = useMutation({
-    mutationFn: () => apiRequest("/api/admin/agoojye/workos/howji/run", { method: "POST", body: "{}" }),
-    onSuccess: () => { howjiQuery.refetch(); refetch(); toast({ title: "Synthèse HOWJI actualisée" }); },
-    onError: (error: any) => toast({ title: "HOWJI indisponible", description: error?.message, variant: "destructive" }),
+    mutationFn: () => apiRequest("/api/admin/agoojye/workos/assistant/run", { method: "POST", body: "{}" }),
+    onSuccess: () => { assistantQuery.refetch(); refetch(); toast({ title: "Synthèse AGOOJIYE actualisée" }); },
+    onError: (error: any) => toast({ title: "Assistant AGOOJIYE indisponible", description: error?.message, variant: "destructive" }),
   });
+  const actionLabels: Record<string, string> = {
+    daily_coordination_report: "Synthèse quotidienne de coordination",
+    escalation: "Escalade d'un blocage",
+    reminder: "Rappel",
+    weekly_execution_report: "Rapport hebdomadaire d'exécution",
+  };
   return (
     <div className="space-y-7">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-xs font-bold uppercase text-[#805f12]">Coordination assistée</p><h1 className="mt-2 text-3xl font-semibold">HOWJI</h1><p className="mt-2 text-sm text-black/50">Agent IA de coordination et de relance · Africa/Porto-Novo.</p></div><Button type="button" onClick={() => run.mutate()} disabled={run.isPending} className="h-11 bg-[#171a18]"><RefreshCcw className="mr-2 h-4 w-4" /> Générer la synthèse</Button></div>
-      {howji ? <section className="grid gap-px bg-black/10 md:grid-cols-3"><div className="bg-white p-5"><p className="text-xs text-black/45">Statut</p><div className="mt-3"><Status value={howji.status} /></div></div><div className="bg-white p-5"><p className="text-xs text-black/45">Fuseau</p><p className="mt-3 font-semibold">{howji.timezone}</p></div><div className="bg-white p-5"><p className="text-xs text-black/45">Actions sensibles</p><p className="mt-3 font-semibold">Approbation obligatoire</p></div></section> : null}
-      <section><h2 className="mb-3 text-lg font-semibold">Journal des synthèses et actions</h2><div className="space-y-3">{howjiQuery.data?.actions?.map((action: any) => <article key={action.id} className="border border-black/10 bg-white p-5"><div className="flex flex-wrap items-center justify-between gap-2"><p className="font-semibold">{action.actionType.replaceAll("_", " ")}</p><Status value={action.status} /></div><p className="mt-2 text-sm leading-6 text-black/55">{action.output?.summary || (action.requiresApproval ? "Exécution bloquée jusqu’à approbation." : "Action interne enregistrée.")}</p><p className="mt-3 text-xs text-black/40">{formatDate(action.createdAt)}</p></article>)}</div></section>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-xs font-bold uppercase text-[#805f12]">Coordination assistée</p><h1 className="mt-2 text-3xl font-semibold">AGOOJIYE — Assistant IA</h1><p className="mt-2 text-sm text-black/50">Support de direction, synthèses et relances · Africa/Porto-Novo.</p></div><button type="button" onClick={() => run.mutate()} disabled={run.isPending} className="inline-flex h-11 items-center justify-center bg-[#171a18] px-4 text-sm font-semibold text-white transition-colors hover:bg-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#b88917] focus-visible:ring-offset-2 disabled:cursor-wait disabled:bg-[#343936] disabled:text-white"><RefreshCcw className={`mr-2 h-4 w-4 ${run.isPending ? "animate-spin" : ""}`} /> {run.isPending ? "Génération…" : "Générer la synthèse"}</button></div>
+      {assistant ? <section className="grid gap-px bg-black/10 md:grid-cols-3"><div className="bg-white p-5"><p className="text-xs text-black/45">Statut</p><div className="mt-3"><Status value={assistant.status} /></div></div><div className="bg-white p-5"><p className="text-xs text-black/45">Fuseau</p><p className="mt-3 font-semibold">{assistant.timezone}</p></div><div className="bg-white p-5"><p className="text-xs text-black/45">Actions sensibles</p><p className="mt-3 font-semibold">Approbation humaine obligatoire</p></div></section> : null}
+      <section><h2 className="mb-3 text-lg font-semibold">Journal des synthèses et actions</h2><div className="space-y-3">{assistantQuery.data?.actions?.map((action: any) => <article key={action.id} className="border border-black/10 bg-white p-5"><div className="flex flex-wrap items-center justify-between gap-2"><p className="font-semibold">{actionLabels[action.actionType] || action.actionType.replaceAll("_", " ")}</p><Status value={action.status} /></div><p className="mt-2 text-sm leading-6 text-black/55">{action.output?.summary || (action.requiresApproval ? "Exécution bloquée jusqu’à approbation." : "Action interne enregistrée.")}</p><p className="mt-3 text-xs text-black/40">{formatDate(action.createdAt)}</p></article>)}</div>{assistantQuery.isLoading ? <p className="border border-black/10 bg-white p-5 text-sm text-black/50">Chargement du journal…</p> : null}{assistantQuery.isError ? <p className="border border-red-200 bg-red-50 p-5 text-sm text-red-800">Le journal n'est pas disponible pour le moment.</p> : null}{!assistantQuery.isLoading && !assistantQuery.isError && !assistantQuery.data?.actions?.length ? <div className="border border-dashed border-black/20 bg-white p-7 text-center"><p className="font-semibold">Aucune synthèse enregistrée</p><p className="mt-2 text-sm text-black/45">Générez une première synthèse pour examiner les priorités et blocages.</p></div> : null}</section>
     </div>
   );
 }
@@ -270,7 +294,7 @@ function GenericPanel({ section, data }: { section: string; data: AdminOverview 
     crm: "CRM",
     meetings: "Réunions",
     decisions: "Décisions",
-    agents: "Agents IA",
+    agents: "Assistant IA",
     notifications: "Notifications",
     settings: "Paramètres",
     roles: "Rôles et permissions",
@@ -281,7 +305,7 @@ function GenericPanel({ section, data }: { section: string; data: AdminOverview 
   return (
     <div className="space-y-7">
       <div><p className="text-xs font-bold uppercase text-[#805f12]">Administration AGOOJIYE</p><h1 className="mt-2 text-3xl font-semibold">{title}</h1><p className="mt-2 text-sm text-black/50">Vue tenant-isolée selon vos autorisations administratives.</p></div>
-      {source.length ? <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">{source.map((item: any) => <article key={item.id} className="border border-black/10 bg-white p-5"><div className="flex items-start justify-between gap-3"><h2 className="font-semibold">{item.name || item.title}</h2><Status value={item.status || "active"} /></div><p className="mt-2 text-sm leading-6 text-black/50">{item.objective || item.mission || item.description || "Informations opérationnelles AGOOJIYE."}</p></article>)}</div> : <div className="border border-dashed border-black/20 bg-white px-5 py-12 text-center"><p className="font-semibold">Module prêt</p><p className="mt-2 text-sm text-black/45">Les éléments autorisés apparaîtront ici.</p></div>}
+      {source.length ? <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">{source.map((item: any) => <article key={item.id} className="border border-black/10 bg-white p-5"><div className="flex items-start justify-between gap-3"><h2 className="font-semibold">{item.name || item.title}</h2><Status value={item.status || "active"} /></div><p className="mt-2 text-sm leading-6 text-black/50">{item.objective || item.mission || item.description || "Informations opérationnelles AGOOJIYE."}</p></article>)}</div> : <div className="border border-dashed border-black/20 bg-white px-5 py-12 text-center"><p className="font-semibold">Aucun élément à afficher</p><p className="mt-2 text-sm text-black/45">Les données apparaîtront ici dès qu'elles seront disponibles pour votre rôle.</p></div>}
     </div>
   );
 }
@@ -314,15 +338,16 @@ export default function AgoojiyeWorkosAdminPage() {
   if (section === "command-center") content = <OverviewPanel data={data} />;
   else if (location.startsWith("/admin/people/import")) content = <ImportPanel refetch={refresh} />;
   else if (section === "people") content = <PeoplePanel data={data} refetch={refresh} />;
-  else if (section === "howji") content = <HowjiPanel data={data} refetch={refresh} />;
+  else if (section === "assistant" || section === "howji") content = <AssistantPanel data={data} refetch={refresh} />;
   else if (section === "security" || section === "audit") content = <SecurityPanel data={data} />;
   return (
     <div className="min-h-screen bg-[#f4f2ec] text-[#151816]">
+      {menuOpen ? <button type="button" aria-label="Fermer le menu" onClick={() => setMenuOpen(false)} className="fixed inset-0 z-40 bg-black/45 lg:hidden" /> : null}
       <aside className={`fixed inset-y-0 left-0 z-50 w-[280px] overflow-y-auto bg-[#101311] px-4 py-5 text-white transition-transform lg:translate-x-0 ${menuOpen ? "translate-x-0" : "-translate-x-full"}`}>
         <div className="flex items-center justify-between"><a href="/admin/command-center" className="flex items-center gap-3"><img src="/tenants/agoojye/app-icon-128.png" alt="" className="h-10 w-10" /><span><img src="/brand/agoojiye/logo/AGOOJIYE_wordmark_gold_transparent.png" alt="AGOOJIYE" className="h-5 w-auto" /><span className="mt-1 block text-[9px] font-bold uppercase text-white/40">Salle administrative</span></span></a><button type="button" onClick={() => setMenuOpen(false)} className="grid h-10 w-10 place-items-center lg:hidden" aria-label="Fermer"><X className="h-5 w-5" /></button></div>
         <div className="mt-6 border-y border-white/10 py-4"><p className="truncate text-sm font-semibold">{data.currentUser.displayName}</p><p className="mt-1 truncate text-xs text-white/40">{data.currentUser.superAdmin ? "Super-administrateur" : "Administrateur AGOOJIYE"}</p></div>
         <nav className="mt-5 grid gap-1" aria-label="Administration AGOOJIYE">{ADMIN_NAV.map(([href, label, Icon]) => <a key={href} href={href} onClick={() => setMenuOpen(false)} className={`flex min-h-10 items-center gap-3 px-3 text-xs font-medium ${location === href || (href !== "/admin/command-center" && location.startsWith(href)) ? "bg-[#d8ad3d] text-[#17140c]" : "text-white/55 hover:bg-white/[0.06] hover:text-white"}`}><Icon className="h-4 w-4" />{label}</a>)}</nav>
-        <div className="mt-7 border-t border-white/10 pt-4"><a href="/workspace" className="flex min-h-10 items-center gap-3 px-3 text-xs text-white/50 hover:text-white"><ChevronRight className="h-4 w-4 rotate-180" /> Espace de travail</a><button type="button" onClick={logout} className="flex min-h-10 w-full items-center gap-3 px-3 text-xs text-white/50 hover:text-white"><LogOut className="h-4 w-4" /> Déconnexion</button></div>
+        <div className="mt-7 border-t border-white/10 pt-4"><a href="/admin/mobilite" className="flex min-h-10 items-center gap-3 px-3 text-xs text-white/50 hover:text-white"><Bus className="h-4 w-4" /> Administration mobilité</a><a href="/workspace" className="flex min-h-10 items-center gap-3 px-3 text-xs text-white/50 hover:text-white"><ChevronRight className="h-4 w-4 rotate-180" /> Espace de travail</a><button type="button" onClick={logout} className="flex min-h-10 w-full items-center gap-3 px-3 text-xs text-white/50 hover:text-white"><LogOut className="h-4 w-4" /> Déconnexion</button></div>
       </aside>
       <div className="lg:pl-[280px]">
         <header className="sticky top-0 z-40 flex h-16 items-center border-b border-black/10 bg-[#f4f2ec]/95 px-4 backdrop-blur sm:px-6"><button type="button" onClick={() => setMenuOpen(true)} className="grid h-11 w-11 place-items-center border border-black/10 lg:hidden" aria-label="Ouvrir le menu"><Menu className="h-5 w-5" /></button><p className="ml-3 text-sm font-semibold lg:ml-0">Administration AGOOJIYE</p><div className="ml-auto flex items-center gap-2"><button type="button" onClick={refresh} className="grid h-10 w-10 place-items-center border border-black/10" title="Actualiser"><RefreshCcw className="h-4 w-4" /></button><span className="hidden h-10 items-center bg-[#171a18] px-3 text-xs font-semibold text-[#d8ad3d] sm:inline-flex">{data.currentUser.superAdmin ? "SUPER ADMIN" : "ADMIN"}</span></div></header>

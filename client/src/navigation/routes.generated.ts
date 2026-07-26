@@ -79,6 +79,7 @@ export const APP_ROUTE_PATHS = [
   "/admin/evidence",
   "/admin/gateway-images",
   "/admin/horaires",
+  "/admin/howji",
   "/admin/hoz",
   "/admin/hoz/collections",
   "/admin/hoz/dashboard",

@@ -14,7 +14,7 @@ surfaces.
 - `/workspace`: daily three-panel workspace for AI conversations, channels,
   direct messages, tasks, projects, files, meetings and decisions.
 - `/admin/command-center`: administrative command room for people,
-  organization, projects, imports, HOWJI, security and audits.
+  organization, projects, imports, the AGOOJIYE assistant, security and audits.
 - `/workspace/connexion`: dedicated WorkOS login with required MFA for
   privileged users.
 - `/workspace/rejoindre/:token`: guarded team activation.
@@ -31,7 +31,7 @@ The existing human team is preserved:
 | Person | Mailbox | Initial area |
 | --- | --- | --- |
 | Vital | `vital@agoojiye.com` | Direction |
-| Regis | `regis@agoojiye.com` | Operations |
+| Regis | `regis@agoojiye.com` | Opérations |
 | Soriane | `soriane@agoojiye.com` | Partnerships |
 | Maryse | `maryse@agoojiye.com` | Communication |
 | Christian | `christian@agoojiye.com` | Engineering |
@@ -72,10 +72,10 @@ timestamp.
 
 Users can inspect active WorkOS sessions, revoke one session, or revoke every
 other session. Login, MFA, recovery, session revocation, administrative
-changes, offboarding, imports and HOWJI actions write security events.
+changes, offboarding, imports and assistant actions write security events.
 
 Only the principal super-administrator can create a global AGOOJIYE
-administrator, invite Olivier, perform offboarding, approve sensitive HOWJI
+administrator, invite Olivier, perform offboarding, approve sensitive assistant
 actions or grant emergency compliance access to a private conversation.
 
 Emergency private-message access also requires the already verified MFA
@@ -134,15 +134,21 @@ rows. The flow is intentionally two-phase:
 Imports cannot create global administrators. That operation has its own
 super-admin-only endpoint.
 
-## HOWJI
+## AGOOJIYE — Assistant IA
 
-HOWJI is configured as:
+Only one primary assistant identity is visible to users:
 
-`HOWJI — Agent IA de coordination et de relance`
+`AGOOJIYE — Assistant IA`
 
-It uses `Africa/Porto-Novo`, creates internal overdue/blocker/staleness
-summaries, notifies management, and keeps an action journal. Re-running the
-daily report is idempotent unless an administrator explicitly forces it.
+The same identity adapts to the user's personal, department, mobility,
+management or super-admin context. It uses `Africa/Porto-Novo`, creates
+internal overdue/blocker/staleness summaries, notifies management, and keeps
+an action journal. Re-running the daily report is idempotent unless an
+administrator explicitly forces it.
+
+The legacy database key `howji` and channel slug `howji-coordination` remain
+internal compatibility identifiers only. They must never be rendered as
+assistant names, navigation labels or notification titles.
 
 Internal, low-risk coordination may be approved automatically. External,
 financial, legal, public, destructive or permission-changing actions stay
@@ -173,7 +179,7 @@ AGOOJIYE_MFA_ENCRYPTION_KEY=<at-least-32-random-bytes>
 AGOOJIYE_PRIVILEGED_SESSION_HOURS=8
 AGOOJIYE_WORKOS_SESSION_HOURS=168
 AGOOJIYE_WORKER_IMPORT_MAX_MB=5
-AGOOJIYE_HOWJI_TIMEZONE=Africa/Porto-Novo
+AGOOJIYE_ASSISTANT_TIMEZONE=Africa/Porto-Novo
 AGOOJIYE_WEBMAIL_URL=https://mail.agoojiye.com/
 AGOOJIYE_MAILBOX_VS_PASSWORD=<deployment-secret-only>
 ```
@@ -188,12 +194,13 @@ existing AGOOJIYE OS tables must already be present from the platform release:
 
 ```powershell
 psql "$env:DATABASE_URL" -v ON_ERROR_STOP=1 -f db/migrations/20260725_agoojiye_workos.sql
+psql "$env:DATABASE_URL" -v ON_ERROR_STOP=1 -f db/migrations/20260726_agoojye_single_assistant_identity.sql
 npm run seed:agoojye:os
 npm run provision:agoojye:workos
 ```
 
 The provisioner is idempotent for the super-admin, profile, tenant role,
-Olivier vacancy, HOWJI configuration and channel. It creates a fresh one-use
+Olivier vacancy, assistant configuration and channel. It creates a fresh one-use
 password setup link and stores it privately. It provisions `vs@agoojiye.com`
 only when docker-mailserver is available and does not reset an existing
 mailbox unless `--reset-existing-mailbox` is explicitly passed.
@@ -221,7 +228,7 @@ Production smoke checks:
 8. `/admin/command-center` opens only after MFA.
 9. Worker import preview writes no account.
 10. Duplicate worker emails are rejected.
-11. HOWJI external actions remain blocked pending approval.
+11. External assistant actions remain blocked pending approval.
 12. PWA manifest starts at `/workspace`.
 
 ## Deployment and Rollback

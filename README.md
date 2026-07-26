@@ -297,7 +297,7 @@ Adapters should receive a booking/ticket ID, load approved data server-side, rec
 8. Keep demo payments enabled until a real provider and signed webhooks are verified.
 9. Complete the forward and reverse mail-DNS cutover in `docs/AGOOJIYE_EMAIL_DNS_AND_MAILBOXES.md`, then run `npm run verify:agoojye:mail-dns`.
 10. Apply `20260725_agoojiye_os.sql`, configure the optional VAPID keys, and run `npm run seed:agoojye:os` once to create the private team invitation.
-11. Apply `20260725_agoojiye_workos.sql`, configure `AGOOJIYE_MFA_ENCRYPTION_KEY`, then run `npm run provision:agoojye:workos`.
+11. Apply `20260725_agoojiye_workos.sql` and `20260726_agoojye_single_assistant_identity.sql`, configure `AGOOJIYE_MFA_ENCRYPTION_KEY`, then run `npm run provision:agoojye:workos`.
 12. Retrieve the one-use super-admin setup handoff only from the private untracked file, enroll MFA, store recovery codes offline, and verify `/admin/command-center`.
 
 ## AGOOJIYE WorkOS
@@ -306,7 +306,8 @@ The private team workspace starts at `/workspace`; the MFA-protected
 administrative room starts at `/admin/command-center`. WorkOS adds encrypted
 TOTP enrollment, one-use recovery codes, tenant-bound privileged sessions,
 security events, worker CSV/XLSX import, controlled offboarding, data
-classification and the governed HOWJI coordination agent.
+classification and the governed `AGOOJIYE — Assistant IA`, whose context adapts
+to each worker's role and permissions.
 
 The principal application identity is `vs@agoojiye.com` with
 `AGOOJIYE_SUPER_ADMIN`. Its password is never seeded. The provisioner creates a
@@ -315,6 +316,9 @@ requires MFA before any privileged session is issued.
 
 Complete architecture, environment, import, security, deployment and rollback
 instructions are in `docs/AGOOJIYE_OS.md`.
+
+The role-by-role experience review, observed friction and visual acceptance
+matrix are maintained in `docs/AGOOJIYE_UX_AUDIT.md`.
 
 ## Known Production Requirements
 

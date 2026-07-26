@@ -90,7 +90,7 @@ type SectionKey =
 
 const sectionNames: Record<SectionKey, string> = {
   chat: "Assistant de travail",
-  accueil: "Command Center",
+  accueil: "Tableau de bord",
   messages: "Messages",
   equipes: "Équipes",
   travail: "Travail",
@@ -99,13 +99,13 @@ const sectionNames: Record<SectionKey, string> = {
   documents: "Documents",
   reunions: "Réunions",
   decisions: "Décisions",
-  agents: "AGOOJIYE AI",
+  agents: "Assistant IA",
   plus: "Plus",
 };
 
 const navItems: Array<{ key: SectionKey; label: string; icon: typeof Home }> = [
   { key: "chat", label: "Assistant IA", icon: Sparkles },
-  { key: "accueil", label: "Command Center", icon: LayoutDashboard },
+  { key: "accueil", label: "Tableau de bord", icon: LayoutDashboard },
   { key: "messages", label: "Messages", icon: MessageCircle },
   { key: "equipes", label: "Équipes", icon: Users },
   { key: "travail", label: "Projets & tâches", icon: ClipboardCheck },
@@ -114,7 +114,6 @@ const navItems: Array<{ key: SectionKey; label: string; icon: typeof Home }> = [
   { key: "documents", label: "Documents", icon: FileText },
   { key: "reunions", label: "Réunions", icon: CalendarDays },
   { key: "decisions", label: "Décisions", icon: ShieldCheck },
-  { key: "agents", label: "Agents IA", icon: Bot },
   { key: "plus", label: "Plus", icon: Menu },
 ];
 
@@ -193,7 +192,7 @@ function AccessPageShell({ children }: { children: ReactNode }) {
               <p className="text-sm font-bold uppercase tracking-[0.14em] text-[#d8ad3d]">Espace privé de l'équipe</p>
               <h1 className="mt-4 text-5xl font-semibold leading-[1.05]">Le travail AGOOJIYE, réuni au même endroit.</h1>
               <p className="mt-5 max-w-lg text-lg leading-8 text-white/70">
-                Messages, priorités, projets, documents, décisions, opérations mobilité et agents IA, selon vos autorisations.
+                Messages, priorités, projets, documents, décisions, opérations mobilité et assistant IA, selon vos autorisations.
               </p>
             </div>
             <p className="text-xs text-white/45">Accès confidentiel · Activité auditée · Données AGOOJIYE</p>
@@ -254,7 +253,7 @@ export function AgoojiyeOsJoinPage({ token }: { token: string }) {
             <ShieldCheck className="text-red-300" />
             <h1 className="mt-5 text-3xl font-semibold">Invitation non disponible</h1>
             <p className="mt-3 leading-7 text-white/65">Ce lien est invalide, expiré ou déjà entièrement utilisé.</p>
-            <a href="/workspace/connexion" className="mt-6 inline-flex min-h-11 items-center bg-white px-4 font-semibold text-[#111]">Se connecter</a>
+            <div className="mt-6 flex flex-wrap gap-3"><a href="/workspace/connexion" className="inline-flex min-h-11 items-center bg-white px-4 font-semibold text-[#111]">Se connecter</a><a href="mailto:support@agoojiye.com?subject=Invitation%20%C3%A9quipe%20AGOOJIYE" className="inline-flex min-h-11 items-center border border-white/20 px-4 font-semibold text-white">Demander un nouveau lien</a></div>
           </div>
         ) : (
           <>
@@ -263,6 +262,11 @@ export function AgoojiyeOsJoinPage({ token }: { token: string }) {
             <p className="mt-3 leading-7 text-white/60">
               Utilisez l'adresse <strong className="text-white">@agoojiye.com</strong> prévue pour vous. Il reste {inviteQuery.data?.remainingPlaces || 0} activation(s).
             </p>
+            {inviteQuery.data?.label ? <p className="mt-3 border-l-2 border-[#d8ad3d] pl-3 text-sm text-white/70">{inviteQuery.data.label}</p> : null}
+            {inviteQuery.data?.members?.length ? <div className="mt-4 flex flex-wrap gap-2" aria-label="Membres concernés par l'invitation">{inviteQuery.data.members.map((member: any) => <span key={`${member.firstName}-${member.emailHint}`} className="border border-white/15 px-3 py-2 text-xs text-white/65">{member.firstName} · {member.emailHint}{member.activated ? " · activé" : ""}</span>)}</div> : null}
+            <section className="mt-6 border border-[#d8ad3d]/35 bg-[#d8ad3d]/10 p-4">
+              <div className="flex items-start gap-3"><Sparkles className="mt-0.5 h-5 w-5 shrink-0 text-[#e5be56]" /><div><h2 className="font-semibold text-white">AGOOJIYE — Assistant IA vous accompagne</h2><p className="mt-1 text-sm leading-6 text-white/60">Après l'activation, AGOOJIYE vous aide à découvrir votre département, vos premières priorités et les documents utiles. Toute affectation ou modification d'accès reste validée par un responsable humain.</p></div></div>
+            </section>
             <form className="mt-8 grid gap-5" onSubmit={submit}>
               <div>
                 <Label htmlFor="join-email" className="text-white">Adresse professionnelle</Label>
@@ -504,7 +508,48 @@ function StatusPill({ value }: { value: string }) {
         : normalized.includes("review") || normalized.includes("pending") || normalized.includes("invited")
           ? "bg-amber-100 text-amber-800"
           : "bg-black/[0.06] text-black/65";
-  return <span className={`${style} inline-flex min-h-6 items-center px-2 text-[11px] font-bold uppercase`}>{value.replaceAll("_", " ")}</span>;
+  return <span className={`${style} inline-flex min-h-6 items-center px-2 text-[11px] font-bold uppercase`}>{localizedValue(value)}</span>;
+}
+
+const localizedValues: Record<string, string> = {
+  active: "Actif",
+  approved: "Approuvé",
+  awaiting_approval: "Approbation requise",
+  blocked: "Bloqué",
+  cancelled: "Annulé",
+  completed: "Terminé",
+  critical: "Critique",
+  declined: "Refusé",
+  done: "Terminé",
+  draft: "Brouillon",
+  employee: "Salarié",
+  available: "Disponible",
+  unavailable: "Indisponible",
+  invited: "Invité",
+  high: "Haute",
+  in_progress: "En cours",
+  low: "Basse",
+  medium: "Moyenne",
+  on_leave: "En congé",
+  pending: "En attente",
+  pending_approval: "Approbation requise",
+  recorded: "Enregistré",
+  review: "À relire",
+  under_review: "En relecture",
+  volunteer: "Bénévole",
+};
+
+function localizedValue(value: string | null | undefined) {
+  const normalized = String(value || "").toLowerCase();
+  return localizedValues[normalized] || String(value || "Non défini").replaceAll("_", " ");
+}
+
+function assistantContext(data: OsBootstrap) {
+  if (Number(data.member?.onboardingProgress || 0) < 100) return "Accompagnement d'accueil";
+  if (data.navigation.administration) return "Support de direction";
+  if (data.navigation.mobility) return "Support des opérations mobilité";
+  if (Number(data.member?.accessLevel || 0) >= 4) return "Support du département";
+  return "Votre espace personnel";
 }
 
 function DashboardSection({ data }: { data: OsBootstrap }) {
@@ -514,10 +559,16 @@ function DashboardSection({ data }: { data: OsBootstrap }) {
   return (
     <div className="space-y-8">
       <SectionHeader
-        eyebrow="AGOOJIYE Command Center"
+        eyebrow="Tableau de bord AGOOJIYE"
         title={`Bonjour ${firstName} — voici ce qui nécessite votre attention.`}
         description={`${data.member?.role || "Membre AGOOJIYE"} · ${data.member?.team?.name || "Équipe AGOOJIYE"}`}
       />
+      {Number(data.member?.onboardingProgress || 0) < 100 ? (
+        <section className="border-l-4 border-[#d8ad3d] bg-white p-5 sm:flex sm:items-center sm:justify-between sm:gap-5">
+          <div><p className="text-xs font-bold uppercase text-[#805f12]">Votre accueil · {Number(data.member?.onboardingProgress || 0)}%</p><h2 className="mt-2 text-xl font-semibold">Prenez vos repères avec AGOOJIYE</h2><p className="mt-2 max-w-2xl text-sm leading-6 text-black/55">Découvrez votre rôle, votre département, vos premières tâches et les documents à consulter. Les recommandations restent soumises à validation humaine.</p></div>
+          <a href="/workspace/chat" className="mt-4 inline-flex min-h-11 shrink-0 items-center justify-center bg-[#171a18] px-4 text-sm font-semibold text-white sm:mt-0">Continuer avec AGOOJIYE <ChevronRight className="ml-2 h-4 w-4" /></a>
+        </section>
+      ) : null}
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
         <Stat label="À traiter aujourd'hui" value={data.attention.dueToday} detail={`${data.attention.overdue} en retard`} icon={ClipboardCheck} tone="gold" />
         <Stat label="Notifications" value={data.attention.unreadNotifications} detail="Non lues" icon={Bell} />
@@ -527,7 +578,7 @@ function DashboardSection({ data }: { data: OsBootstrap }) {
       </div>
       <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
         <section>
-          <div className="mb-3 flex items-center justify-between"><h2 className="text-lg font-semibold">Mes priorités</h2><a href="/os/travail" className="text-xs font-bold text-[#805f12]">Voir le travail</a></div>
+          <div className="mb-3 flex items-center justify-between"><h2 className="text-lg font-semibold">Mes priorités</h2><a href="/workspace/tasks" className="text-xs font-bold text-[#805f12]">Voir le travail</a></div>
           <div className="divide-y divide-black/10 border-y border-black/10 bg-white">
             {highPriority.length ? highPriority.map((task) => (
               <div key={task.id} className="grid gap-3 px-4 py-4 sm:grid-cols-[1fr_auto] sm:items-center">
@@ -538,10 +589,10 @@ function DashboardSection({ data }: { data: OsBootstrap }) {
           </div>
         </section>
         <section>
-          <div className="mb-3 flex items-center justify-between"><h2 className="text-lg font-semibold">Prochaines réunions</h2><a href="/os/reunions" className="text-xs font-bold text-[#805f12]">Calendrier</a></div>
+          <div className="mb-3 flex items-center justify-between"><h2 className="text-lg font-semibold">Prochaines réunions</h2><a href="/workspace/calendar" className="text-xs font-bold text-[#805f12]">Calendrier</a></div>
           <div className="space-y-2">
             {nextMeetings.length ? nextMeetings.map((meeting) => (
-              <a key={meeting.id} href={meeting.videoUrl || "/os/reunions"} className="flex items-start gap-4 border border-black/10 bg-white p-4 hover:border-[#b58a24]">
+              <a key={meeting.id} href={meeting.videoUrl || "/workspace/calendar"} className="flex items-start gap-4 border border-black/10 bg-white p-4 hover:border-[#b58a24]">
                 <CalendarDays className="mt-1 h-5 w-5 text-[#8a6615]" />
                 <div><p className="font-medium">{meeting.title}</p><p className="mt-1 text-xs text-black/50">{formatDate(meeting.startsAt)}</p></div>
               </a>
@@ -550,7 +601,7 @@ function DashboardSection({ data }: { data: OsBootstrap }) {
         </section>
       </div>
       <section>
-        <div className="mb-3 flex items-center justify-between"><h2 className="text-lg font-semibold">Projets stratégiques</h2><a href="/os/travail" className="text-xs font-bold text-[#805f12]">Tous les projets</a></div>
+        <div className="mb-3 flex items-center justify-between"><h2 className="text-lg font-semibold">Projets stratégiques</h2><a href="/workspace/projects" className="text-xs font-bold text-[#805f12]">Tous les projets</a></div>
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {data.projects.slice(0, 6).map((project) => (
             <div key={project.id} className="border border-black/10 bg-white p-5">
@@ -714,7 +765,7 @@ function TeamsSection({ data }: { data: OsBootstrap }) {
                     <div className="flex items-center gap-3"><span className="grid h-11 w-11 place-items-center bg-[#171a18] font-bold text-[#e2b84d]">{String(person.displayName).slice(0, 2).toUpperCase()}</span><div><h3 className="font-semibold">{person.displayName}</h3><p className="text-xs text-black/50">{person.role}</p></div></div>
                     <StatusPill value={person.status} />
                   </div>
-                  <dl className="mt-5 grid grid-cols-2 gap-3 text-xs"><div><dt className="text-black/40">Type</dt><dd className="mt-1 font-medium">{person.employmentType}</dd></div><div><dt className="text-black/40">Disponibilité</dt><dd className="mt-1 font-medium">{person.availability}</dd></div></dl>
+                  <dl className="mt-5 grid grid-cols-2 gap-3 text-xs"><div><dt className="text-black/40">Type</dt><dd className="mt-1 font-medium">{localizedValue(person.employmentType)}</dd></div><div><dt className="text-black/40">Disponibilité</dt><dd className="mt-1 font-medium">{localizedValue(person.availability)}</dd></div></dl>
                   <div className="mt-4"><div className="flex justify-between text-[11px] text-black/45"><span>Accueil</span><span>{person.onboardingProgress}%</span></div><div className="mt-1 h-1.5 bg-black/[0.08]"><div className="h-full bg-[#19724c]" style={{ width: `${person.onboardingProgress}%` }} /></div></div>
                 </article>
               ))}
@@ -955,20 +1006,31 @@ function DecisionsSection({ data, refresh }: { data: OsBootstrap; refresh: () =>
 function AiSection({ data }: { data: OsBootstrap }) {
   const [query, setQuery] = useState("");
   const [history, setHistory] = useState<Array<{ query: string; response: any }>>([]);
+  const context = assistantContext(data);
+  const suggestedPrompts = Number(data.member?.onboardingProgress || 0) < 100
+    ? ["Aide-moi à terminer mon accueil.", "Présente-moi mes premières priorités.", "Quels documents dois-je consulter ?", "Qui est mon responsable ?"]
+    : data.navigation.administration
+    ? ["Donne-moi l'état complet de l'entreprise.", "Qui est en retard ?", "Montre-moi les risques critiques.", "Prépare mon rapport d'activité."]
+    : ["Que dois-je faire aujourd'hui ?", "Qu'est-ce qui est en retard ?", "Quelle est ma prochaine réunion ?", "Prépare mon rapport d'activité."];
   const mutation = useMutation({
     mutationFn: () => apiRequest("/api/agoojye/os/member/assistant", { method: "POST", body: JSON.stringify({ query }) }),
     onSuccess: (response: any) => { setHistory((current) => [...current, { query, response }]); setQuery(""); },
   });
   return (
     <div className="space-y-6">
-      <SectionHeader eyebrow="Intelligence gouvernée" title="AGOOJIYE AI" description="Les agents sont identifiés, limités par vos autorisations et leurs actions restent auditables." />
+      <SectionHeader eyebrow="Intelligence gouvernée" title="AGOOJIYE — Assistant IA" description={`${context}. Un seul assistant, adapté à votre rôle et limité à vos autorisations.`} />
       <section className="border border-black/10 bg-[#101311] p-5 text-white sm:p-7">
-        <div className="flex items-center gap-4"><span className="grid h-12 w-12 place-items-center bg-[#d8ad3d] text-[#111]"><Sparkles className="h-6 w-6" /></span><div><h2 className="text-xl font-semibold">Falovè</h2><p className="text-sm text-white/50">Assistante de l'entreprise · IA niveau 1 · Lecture et recommandation</p></div></div>
+        <div className="flex items-center gap-4"><span className="grid h-12 w-12 place-items-center bg-[#d8ad3d] text-[#111]"><Sparkles className="h-6 w-6" /></span><div><h2 className="text-xl font-semibold">AGOOJIYE — Assistant IA</h2><p className="text-sm text-white/50">{context} · Lecture, synthèse et recommandation</p></div></div>
+        <div className="mt-5 flex flex-wrap gap-2" aria-label="Questions suggérées">
+          {suggestedPrompts.map((prompt) => <button key={prompt} type="button" onClick={() => setQuery(prompt)} className="min-h-10 border border-white/15 px-3 text-left text-xs text-white/75 hover:border-[#d8ad3d] hover:text-white">{prompt}</button>)}
+        </div>
         <form className="mt-6 flex gap-2" onSubmit={(event) => { event.preventDefault(); if (query.trim()) mutation.mutate(); }}>
-          <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Falovè, que dois-je traiter aujourd'hui ?" className="h-12 border-white/15 bg-white/[0.06] text-white" />
-          <Button type="submit" size="icon" className="h-12 w-12 bg-[#d8ad3d] text-[#111] hover:bg-[#ebc75e]"><Send className="h-5 w-5" /></Button>
+          <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Que dois-je traiter aujourd'hui ?" aria-label="Votre question pour AGOOJIYE" className="h-12 border-white/15 bg-white/[0.06] text-white" />
+          <Button type="submit" size="icon" aria-label="Envoyer la question" disabled={!query.trim() || mutation.isPending} className="h-12 w-12 bg-[#d8ad3d] text-[#111] hover:bg-[#ebc75e]"><Send className="h-5 w-5" /></Button>
         </form>
-        <p className="mt-3 text-xs text-white/40">Falovè recherche uniquement les données que vous êtes autorisé à consulter. Elle ne modifie rien depuis cet écran.</p>
+        {mutation.isPending ? <p className="mt-3 text-xs text-[#e2c56f]" role="status">AGOOJIYE prépare une réponse à partir de vos données autorisées…</p> : null}
+        {mutation.isError ? <p className="mt-3 text-xs text-red-300" role="alert">{(mutation.error as Error).message}</p> : null}
+        <p className="mt-3 text-xs leading-5 text-white/40">AGOOJIYE consulte uniquement les données que vous êtes autorisé à voir. Les actions sensibles sont proposées, tracées et soumises à validation humaine.</p>
       </section>
       {history.length ? <div className="space-y-4">{history.map((entry, index) => (
         <article key={`${entry.query}-${index}`} className="border border-black/10 bg-white p-5">
@@ -976,7 +1038,7 @@ function AiSection({ data }: { data: OsBootstrap }) {
           <div className="mt-4 border-l-2 border-[#d8ad3d] pl-4"><p className="text-sm leading-6">{entry.response.answer}</p><div className="mt-4 grid gap-2">{entry.response.matches?.map((match: any, matchIndex: number) => <a key={`${match.title}-${matchIndex}`} href={match.href} className="flex items-center justify-between gap-3 bg-[#f0f1ee] px-3 py-2 text-sm"><span><strong>{match.type}</strong> · {match.title}</span><span className="text-xs text-black/45">{match.detail}</span></a>)}</div><p className="mt-4 text-xs text-black/40">{entry.response.governance}</p></div>
         </article>
       ))}</div> : null}
-      <section><h2 className="mb-3 text-lg font-semibold">Collègues numériques</h2><div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">{data.agents.map((agent) => <article key={agent.key} className="border border-black/10 bg-white p-5"><div className="flex items-center justify-between"><Bot className="h-5 w-5 text-[#19724c]" /><span className="bg-[#171a18] px-2 py-1 text-[10px] font-bold text-white">IA · NIVEAU {agent.level}</span></div><h3 className="mt-4 font-semibold">{agent.name}</h3><p className="mt-1 text-sm text-black/50">{agent.role}</p><p className="mt-3 text-xs text-[#805f12]">{agent.department}</p></article>)}</div></section>
+      <section><h2 className="mb-3 text-lg font-semibold">Contextes disponibles</h2><div className="grid gap-3 md:grid-cols-2">{(data.agents[0]?.contexts || ["Espace personnel", "Support du département", "Opérations mobilité", "Direction"]).map((item: string) => <article key={item} className="border border-black/10 bg-white p-5"><Bot className="h-5 w-5 text-[#19724c]" /><h3 className="mt-4 font-semibold">{item}</h3><p className="mt-2 text-sm leading-6 text-black/50">La même identité AGOOJIYE adapte ses réponses aux informations et permissions de ce contexte.</p></article>)}</div></section>
     </div>
   );
 }
@@ -1055,7 +1117,7 @@ function ContextRail({ data }: { data: OsBootstrap }) {
           {activeTasks.slice(0, 5).map((task) => (
             <a key={task.id} href="/workspace/tasks" className="block py-3">
               <p className="text-sm font-medium leading-5">{task.title}</p>
-              <p className="mt-1 text-[11px] text-black/45">{task.dueDate ? formatDate(task.dueDate) : "Sans échéance"} · {task.priority}</p>
+              <p className="mt-1 text-[11px] text-black/45">{task.dueDate ? formatDate(task.dueDate) : "Sans échéance"} · {localizedValue(task.priority)}</p>
             </a>
           ))}
           {!activeTasks.length ? <p className="py-4 text-sm text-black/45">Aucune tâche active.</p> : null}
@@ -1084,9 +1146,9 @@ function ContextRail({ data }: { data: OsBootstrap }) {
         </div>
       </section>
       <section className="px-5 py-5">
-        <h2 className="text-sm font-semibold">HOWJI</h2>
-        <p className="mt-2 text-xs leading-5 text-black/50">Relances internes, synthèse des retards et remontée des blocages. Toute action sensible attend une approbation.</p>
-        {data.navigation.administration ? <a href="/admin/howji" className="mt-3 inline-flex min-h-10 items-center text-xs font-bold text-[#805f12]">Ouvrir la coordination <ChevronRight className="ml-1 h-4 w-4" /></a> : null}
+        <h2 className="text-sm font-semibold">AGOOJIYE — Assistant IA</h2>
+        <p className="mt-2 text-xs leading-5 text-black/50">Synthèses, échéances et blocages selon votre contexte. Toute action sensible attend une approbation humaine.</p>
+        {data.navigation.administration ? <a href="/admin/assistant" className="mt-3 inline-flex min-h-10 items-center text-xs font-bold text-[#805f12]">Ouvrir la coordination <ChevronRight className="ml-1 h-4 w-4" /></a> : null}
       </section>
     </aside>
   );
@@ -1103,11 +1165,12 @@ function OsShell({ data, section, children, logout }: { data: OsBootstrap; secti
     { key: "chat" as SectionKey, label: "Assistant", icon: Sparkles },
     { key: "messages" as SectionKey, label: "Messages", icon: MessageCircle },
     { key: "travail" as SectionKey, label: "Travail", icon: ClipboardCheck },
-    { key: "accueil" as SectionKey, label: "Contexte", icon: LayoutDashboard },
+    { key: "accueil" as SectionKey, label: "Accueil", icon: LayoutDashboard },
     { key: "plus" as SectionKey, label: "Plus", icon: Menu },
   ];
   return (
     <div className="min-h-screen bg-[#f5f4ef] text-[#151816]">
+      {menuOpen ? <button type="button" aria-label="Fermer le menu" onClick={() => setMenuOpen(false)} className="fixed inset-0 z-40 bg-black/45 lg:hidden" /> : null}
       <aside className={`fixed inset-y-0 left-0 z-50 w-[300px] overflow-y-auto bg-[#101311] px-4 py-5 text-white transition-transform lg:translate-x-0 ${menuOpen ? "translate-x-0" : "-translate-x-full"}`}>
         <div className="flex items-center justify-between"><BrandMark compact /><button type="button" onClick={() => setMenuOpen(false)} className="grid h-10 w-10 place-items-center lg:hidden" aria-label="Fermer"><X className="h-5 w-5" /></button></div>
         <div className="mt-7 border-y border-white/10 py-4">
@@ -1118,9 +1181,8 @@ function OsShell({ data, section, children, logout }: { data: OsBootstrap; secti
           <Plus className="h-4 w-4" /> Nouvelle conversation IA
         </a>
         <div className="mt-5">
-          <p className="px-3 text-[10px] font-bold uppercase text-white/35">Conversations récentes</p>
-          <a href="/workspace/chat" className="mt-2 flex min-h-10 items-center gap-3 px-3 text-xs text-white/70 hover:bg-white/[0.06]"><Sparkles className="h-4 w-4 text-[#d8ad3d]" /><span><strong className="block">Falovè</strong><span className="text-white/35">Assistant personnel</span></span></a>
-          {data.navigation.administration ? <a href="/admin/howji" className="flex min-h-10 items-center gap-3 px-3 text-xs text-white/70 hover:bg-white/[0.06]"><Bot className="h-4 w-4 text-[#4db684]" /><span><strong className="block">HOWJI</strong><span className="text-white/35">Coordination épinglée</span></span></a> : null}
+          <p className="px-3 text-[10px] font-bold uppercase text-white/35">Assistant</p>
+          <a href="/workspace/chat" className="mt-2 flex min-h-10 items-center gap-3 px-3 text-xs text-white/70 hover:bg-white/[0.06]"><Sparkles className="h-4 w-4 text-[#d8ad3d]" /><span><strong className="block">AGOOJIYE — Assistant IA</strong><span className="text-white/35">{assistantContext(data)}</span></span></a>
         </div>
         <div className="mt-5 border-t border-white/10 pt-4">
           <p className="px-3 text-[10px] font-bold uppercase text-white/35">Canaux</p>
@@ -1196,7 +1258,7 @@ export function AgoojiyeOsAppPage() {
     retry: false,
   });
   if (!isAuthenticated || isGuest) return <Redirect to="/workspace/connexion" />;
-  if (bootstrap.isLoading) return <div className="grid min-h-screen place-items-center bg-[#101311] text-white"><div className="text-center"><img src="/tenants/agoojye/app-icon-128.png" alt="" className="mx-auto h-20 w-20 animate-pulse" /><p className="mt-4 text-sm text-white/60">Ouverture de votre Command Center…</p></div></div>;
+  if (bootstrap.isLoading) return <div className="grid min-h-screen place-items-center bg-[#101311] text-white"><div className="text-center"><img src="/tenants/agoojye/app-icon-128.png" alt="" className="mx-auto h-20 w-20 animate-pulse" /><p className="mt-4 text-sm text-white/60">Ouverture de votre tableau de bord…</p></div></div>;
   if (bootstrap.isError || !bootstrap.data) return <div className="grid min-h-screen place-items-center bg-[#101311] p-5 text-white"><div className="max-w-md border border-red-500/30 bg-red-950/20 p-7"><ShieldCheck className="text-red-300" /><h1 className="mt-4 text-2xl font-semibold">Accès AGOOJIYE OS refusé</h1><p className="mt-3 text-sm leading-6 text-white/60">Votre session n'est pas rattachée à un profil d'équipe actif.</p><div className="mt-6 flex gap-3"><Button onClick={() => bootstrap.refetch()}>Réessayer</Button><Button variant="outline" onClick={logout} className="border-white/20 bg-transparent text-white">Déconnexion</Button></div></div></div>;
   const data = bootstrap.data;
   if (section === "crm" && !data.navigation.crm) return <Redirect to="/workspace" />;

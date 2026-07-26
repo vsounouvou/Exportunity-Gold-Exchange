@@ -168,6 +168,38 @@ const navItems = [
 
 export function MobilityLayout({ children, active }: { children: ReactNode; active?: string }) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [location] = useLocation();
+  const pathname = location.split("?")[0];
+  const mobileBookingCtaHiddenOn = [
+    "/reserver",
+    "/trajets",
+    "/reservation/",
+    "/billet/",
+    "/retrouver-ma-reservation",
+    "/experience-3d",
+    "/reserver-un-bus",
+    "/demonstration",
+    "/commander",
+    "/commander-un-bus",
+    "/liste-prioritaire",
+    "/contact",
+    "/controle",
+    "/workspace",
+    "/admin",
+    "/mail/password",
+    "/email/password",
+  ];
+  const showMobileBookingCta =
+    pathname !== "/" &&
+    !mobileBookingCtaHiddenOn.some((prefix) =>
+      prefix.endsWith("/") ? pathname.startsWith(prefix) : pathname === prefix || pathname.startsWith(`${prefix}/`),
+    );
+
+  useEffect(() => {
+    setMenuOpen(false);
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  }, [pathname]);
+
   return (
     <div className="min-h-screen bg-[#f5f3ee] text-[#171917]">
       <header className="sticky top-0 z-50 border-b border-black/10 bg-[#0b0d0c]/95 text-white backdrop-blur">
@@ -195,10 +227,12 @@ export function MobilityLayout({ children, active }: { children: ReactNode; acti
         ) : null}
       </header>
       <main>{children}</main>
-      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-black/10 bg-white p-3 shadow-[0_-6px_24px_rgba(0,0,0,0.12)] sm:hidden">
-        <a href="/reserver" className="flex min-h-12 items-center justify-center bg-[#d6a82e] px-4 text-base font-bold text-[#111]">Acheter un billet</a>
-      </div>
-      <footer className="bg-[#0b0d0c] pb-24 text-white sm:pb-0">
+      {showMobileBookingCta ? (
+        <div data-testid="mobile-booking-cta" className="fixed inset-x-0 bottom-0 z-40 border-t border-black/10 bg-white p-3 shadow-[0_-6px_24px_rgba(0,0,0,0.12)] sm:hidden">
+          <a href="/reserver" className="flex min-h-12 items-center justify-center bg-[#d6a82e] px-4 text-base font-bold text-[#111]">Acheter un billet</a>
+        </div>
+      ) : null}
+      <footer className={`bg-[#0b0d0c] text-white sm:pb-0 ${showMobileBookingCta ? "pb-24" : "pb-0"}`}>
         <div className="mx-auto grid max-w-7xl gap-8 px-4 py-12 sm:px-6 md:grid-cols-[1.2fr_1fr_1fr]">
           <div>
             <img src="/brand/agoojiye/logo/AGOOJIYE_wordmark_gold_transparent.png" alt="AGOOJIYE" width={1109} height={201} loading="lazy" className="h-9 w-auto object-contain object-left" />

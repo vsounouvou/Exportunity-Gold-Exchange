@@ -65,13 +65,32 @@ test("AGOOJIYE OS acceptance locks invitation rows and requires tenant membershi
 
 test("AGOOJIYE OS exposes governed AI, push and PWA surfaces", () => {
   const routeSource = fs.readFileSync(path.join(root, "server/routes/agoojye-os.ts"), "utf8");
+  const workspaceSource = fs.readFileSync(path.join(root, "client/src/pages/agoojye/AgoojiyeOsPages.tsx"), "utf8");
+  const adminSource = fs.readFileSync(path.join(root, "client/src/pages/agoojye/AgoojiyeWorkosAdminPage.tsx"), "utf8");
+  const readme = fs.readFileSync(path.join(root, "README.md"), "utf8");
   const swSource = fs.readFileSync(path.join(root, "client/public/sw.js"), "utf8");
   const manifest = JSON.parse(fs.readFileSync(path.join(root, "client/public/manifest-agoojiye-os.webmanifest"), "utf8"));
   assert.match(routeSource, /ai_read_only_search/);
+  assert.match(routeSource, /AGOOJIYE — Assistant IA/);
+  assert.match(workspaceSource, /AGOOJIYE — Assistant IA/);
+  assert.match(adminSource, /AGOOJIYE — Assistant IA/);
+  assert.doesNotMatch(workspaceSource, /Falovè|HOWJI|Agents IA|Collègues numériques|AGOOJIYE AI/);
+  assert.doesNotMatch(adminSource, /Falovè|HOWJI|Agents IA|Collègues numériques|AGOOJIYE AI/);
+  assert.doesNotMatch(readme, /governed HOWJI|agent HOWJI|Falovè/);
   assert.match(routeSource, /sendPushToUsers/);
   assert.match(swSource, /addEventListener\("push"/);
   assert.equal(manifest.start_url, "/workspace");
   assert.equal(manifest.lang, "fr");
+});
+
+test("AGOOJIYE assistant scopes project and decision results and records auditable evidence", () => {
+  const source = fs.readFileSync(path.join(root, "server/routes/agoojye-os.ts"), "utf8");
+  assert.match(source, /scopedProjectIds/);
+  assert.match(source, /memberProjectIdSet/);
+  assert.match(source, /permittedDecisions/);
+  assert.match(source, /recordsAccessed/);
+  assert.match(source, /humanApprovalRequired: false/);
+  assert.match(source, /dataUpdated: false/);
 });
 
 test("AGOOJIYE OS supports operational message conversion", () => {

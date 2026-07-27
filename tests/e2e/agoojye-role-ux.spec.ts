@@ -240,6 +240,10 @@ test("contrôleur: validation manuelle, doublon et recherche manifeste sont expl
   await expect(page.getByText("Aminata Sounon")).toBeHidden();
   await expect(page.getByText("Déjà utilisé", { exact: true })).toBeVisible();
   await page.screenshot({ path: testInfo.outputPath("controleur-tablette.png"), fullPage: false });
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBeTruthy();
+  await page.screenshot({ path: testInfo.outputPath("controleur-mobile.png"), fullPage: false });
 });
 
 test("administrateur: l'assistant unique et la gouvernance sensible sont visibles", async ({ page }, testInfo) => {

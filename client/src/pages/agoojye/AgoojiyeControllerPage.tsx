@@ -225,7 +225,7 @@ export default function AgoojiyeControllerPage() {
       />
       <section>
         <div className="mx-auto grid max-w-6xl gap-6 px-4 py-10 sm:px-6 lg:grid-cols-[360px_1fr]">
-          <aside className="h-fit bg-[#111412] p-5 text-white">
+          <aside className="h-fit min-w-0 bg-[#111412] p-5 text-white">
             <label className="grid gap-2 text-sm font-bold">
               <span>Trajet du jour</span>
               <select
@@ -236,7 +236,7 @@ export default function AgoojiyeControllerPage() {
                   setTripId(Number(event.target.value));
                 }}
                 disabled={trips.isLoading || !trips.data?.trips.length}
-                className="h-12 border border-white/20 bg-[#202421] px-3 disabled:opacity-60"
+                className="h-12 w-full min-w-0 border border-white/20 bg-[#202421] px-3 disabled:opacity-60"
               >
                 {trips.isLoading ? <option>Chargement des trajets…</option> : null}
                 {trips.data?.trips.map((row) => (
@@ -298,7 +298,7 @@ export default function AgoojiyeControllerPage() {
                     setCode(event.target.value);
                     if (validate.data || validate.error) validate.reset();
                   }}
-                  className="h-12 border border-white/20 bg-white/5 px-3 uppercase"
+                  className="h-12 w-full min-w-0 border border-white/20 bg-white/5 px-3 uppercase"
                   placeholder="TKT-… ou jeton"
                 />
               </label>

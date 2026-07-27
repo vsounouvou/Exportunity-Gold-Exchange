@@ -117,4 +117,6 @@ test("only the principal super-admin sees the assistant approval control", () =>
   const source = readFileSync(new URL("../client/src/pages/agoojye/AgoojiyeWorkosAdminPage.tsx", import.meta.url), "utf8");
   assert.match(source, /data\.currentUser\.superAdmin && action\.status === "awaiting_approval"/);
   assert.match(source, /assistant\/actions\/\$\{actionId\}\/approve/);
+  assert.match(source, /action\.status === "approved" && action\.requiresApproval/);
+  assert.match(source, /Action approuvée\. Toute exécution reste séparée et auditée\./);
 });

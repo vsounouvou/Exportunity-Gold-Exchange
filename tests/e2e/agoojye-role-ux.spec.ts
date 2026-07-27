@@ -1,5 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
+test.use({ serviceWorkers: "block" });
+
 const now = Date.now();
 const future = (hours: number) => new Date(now + hours * 60 * 60 * 1000).toISOString();
 

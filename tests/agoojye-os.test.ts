@@ -185,6 +185,13 @@ test("AGOOJIYE identity transitions clear user-bound client caches", () => {
   assert.match(source, /agoojye-assistant-history:/);
 });
 
+test("AGOOJIYE workspace navigation stays client-side", () => {
+  const source = fs.readFileSync(path.join(root, "client/src/pages/agoojye/AgoojiyeOsPages.tsx"), "utf8");
+  assert.match(source, /import \{ Link, Redirect, useLocation \} from "wouter"/);
+  assert.match(source, /return <Link key=\{item\.key\} href=/);
+  assert.doesNotMatch(source, /return <a key=\{item\.key\} href=/);
+});
+
 test("AGOOJIYE controller UX exposes explicit access and authenticated manifest states", () => {
   const appSource = fs.readFileSync(path.join(root, "client/src/App.tsx"), "utf8");
   const source = fs.readFileSync(path.join(root, "client/src/pages/agoojye/AgoojiyeControllerPage.tsx"), "utf8");

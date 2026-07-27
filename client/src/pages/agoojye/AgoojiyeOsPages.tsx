@@ -29,7 +29,7 @@ import {
   Users,
   X,
 } from "lucide-react";
-import { Redirect, useLocation } from "wouter";
+import { Link, Redirect, useLocation } from "wouter";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -566,7 +566,7 @@ function DashboardSection({ data }: { data: OsBootstrap }) {
       {Number(data.member?.onboardingProgress || 0) < 100 ? (
         <section className="border-l-4 border-[#d8ad3d] bg-white p-5 sm:flex sm:items-center sm:justify-between sm:gap-5">
           <div><p className="text-xs font-bold uppercase text-[#805f12]">Votre accueil · {Number(data.member?.onboardingProgress || 0)}%</p><h2 className="mt-2 text-xl font-semibold">Prenez vos repères avec AGOOJIYE</h2><p className="mt-2 max-w-2xl text-sm leading-6 text-black/55">Découvrez votre rôle, votre département, vos premières tâches et les documents à consulter. Les recommandations restent soumises à validation humaine.</p></div>
-          <a href="/workspace/chat" className="mt-4 inline-flex min-h-11 shrink-0 items-center justify-center bg-[#171a18] px-4 text-sm font-semibold text-white sm:mt-0">Continuer avec AGOOJIYE <ChevronRight className="ml-2 h-4 w-4" /></a>
+          <Link href="/workspace/chat" className="mt-4 inline-flex min-h-11 shrink-0 items-center justify-center bg-[#171a18] px-4 text-sm font-semibold text-white sm:mt-0">Continuer avec AGOOJIYE <ChevronRight className="ml-2 h-4 w-4" /></Link>
         </section>
       ) : null}
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
@@ -578,7 +578,7 @@ function DashboardSection({ data }: { data: OsBootstrap }) {
       </div>
       <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
         <section>
-          <div className="mb-3 flex items-center justify-between"><h2 className="text-lg font-semibold">Mes priorités</h2><a href="/workspace/tasks" className="text-xs font-bold text-[#805f12]">Voir le travail</a></div>
+          <div className="mb-3 flex items-center justify-between"><h2 className="text-lg font-semibold">Mes priorités</h2><Link href="/workspace/tasks" className="text-xs font-bold text-[#805f12]">Voir le travail</Link></div>
           <div className="divide-y divide-black/10 border-y border-black/10 bg-white">
             {highPriority.length ? highPriority.map((task) => (
               <div key={task.id} className="grid gap-3 px-4 py-4 sm:grid-cols-[1fr_auto] sm:items-center">
@@ -589,7 +589,7 @@ function DashboardSection({ data }: { data: OsBootstrap }) {
           </div>
         </section>
         <section>
-          <div className="mb-3 flex items-center justify-between"><h2 className="text-lg font-semibold">Prochaines réunions</h2><a href="/workspace/calendar" className="text-xs font-bold text-[#805f12]">Calendrier</a></div>
+          <div className="mb-3 flex items-center justify-between"><h2 className="text-lg font-semibold">Prochaines réunions</h2><Link href="/workspace/calendar" className="text-xs font-bold text-[#805f12]">Calendrier</Link></div>
           <div className="space-y-2">
             {nextMeetings.length ? nextMeetings.map((meeting) => (
               <a key={meeting.id} href={meeting.videoUrl || "/workspace/calendar"} className="flex items-start gap-4 border border-black/10 bg-white p-4 hover:border-[#b58a24]">
@@ -601,7 +601,7 @@ function DashboardSection({ data }: { data: OsBootstrap }) {
         </section>
       </div>
       <section>
-        <div className="mb-3 flex items-center justify-between"><h2 className="text-lg font-semibold">Projets stratégiques</h2><a href="/workspace/projects" className="text-xs font-bold text-[#805f12]">Tous les projets</a></div>
+        <div className="mb-3 flex items-center justify-between"><h2 className="text-lg font-semibold">Projets stratégiques</h2><Link href="/workspace/projects" className="text-xs font-bold text-[#805f12]">Tous les projets</Link></div>
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {data.projects.slice(0, 6).map((project) => (
             <div key={project.id} className="border border-black/10 bg-white p-5">
@@ -617,7 +617,7 @@ function DashboardSection({ data }: { data: OsBootstrap }) {
         <section className="bg-[#101311] p-6 text-white">
           <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
             <div><p className="text-xs font-bold uppercase tracking-[0.1em] text-[#d8ad3d]">Opérations mobilité</p><h2 className="mt-2 text-2xl font-semibold">Activité de la plateforme publique</h2></div>
-            <a href="/admin/mobilite" className="inline-flex min-h-11 items-center justify-center border border-white/20 px-4 text-sm font-semibold hover:border-[#d8ad3d]">Ouvrir les opérations <ChevronRight className="ml-2 h-4 w-4" /></a>
+            <Link href="/admin/mobilite" className="inline-flex min-h-11 items-center justify-center border border-white/20 px-4 text-sm font-semibold hover:border-[#d8ad3d]">Ouvrir les opérations <ChevronRight className="ml-2 h-4 w-4" /></Link>
           </div>
           <div className="mt-6 grid gap-px bg-white/10 sm:grid-cols-4">
             {[
@@ -929,7 +929,7 @@ function CrmSection({ data, refresh }: { data: OsBootstrap; refresh: () => void 
 function MobilitySection({ data }: { data: OsBootstrap }) {
   return (
     <div className="space-y-7">
-      <SectionHeader eyebrow="Source de données partagée" title="Opérations mobilité" description="Les ventes publiques, billets et demandes commerciales remontent dans le même système." action={<a href="/admin/mobilite" className="inline-flex min-h-10 items-center bg-[#171a18] px-4 text-sm font-semibold text-white">Ouvrir l'administration</a>} />
+      <SectionHeader eyebrow="Source de données partagée" title="Opérations mobilité" description="Les ventes publiques, billets et demandes commerciales remontent dans le même système." action={<Link href="/admin/mobilite" className="inline-flex min-h-10 items-center bg-[#171a18] px-4 text-sm font-semibold text-white">Ouvrir l'administration</Link>} />
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4"><Stat label="Voyages" value={data.mobility.trips} icon={Activity} tone="green" /><Stat label="Réservations" value={data.mobility.bookings} icon={ClipboardCheck} /><Stat label="Billets émis" value={data.mobility.tickets} icon={TicketCheck} tone="gold" /><Stat label="Revenu confirmé" value={formatXof(data.mobility.revenueXof)} icon={Gauge} /></div>
       <div className="grid gap-3 md:grid-cols-3">
         {[
@@ -1129,14 +1129,14 @@ function ContextRail({ data }: { data: OsBootstrap }) {
       <section className="border-b border-black/10 px-5 py-5">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold">À traiter</h2>
-          <a href="/workspace/tasks" className="text-xs font-bold text-[#805f12]">Tout voir</a>
+          <Link href="/workspace/tasks" className="text-xs font-bold text-[#805f12]">Tout voir</Link>
         </div>
         <div className="mt-3 divide-y divide-black/10">
           {activeTasks.slice(0, 5).map((task) => (
-            <a key={task.id} href="/workspace/tasks" className="block py-3">
+            <Link key={task.id} href="/workspace/tasks" className="block py-3">
               <p className="text-sm font-medium leading-5">{task.title}</p>
               <p className="mt-1 text-[11px] text-black/45">{task.dueDate ? formatDate(task.dueDate) : "Sans échéance"} · {localizedValue(task.priority)}</p>
-            </a>
+            </Link>
           ))}
           {!activeTasks.length ? <p className="py-4 text-sm text-black/45">Aucune tâche active.</p> : null}
         </div>
@@ -1144,14 +1144,14 @@ function ContextRail({ data }: { data: OsBootstrap }) {
       <section className="border-b border-black/10 px-5 py-5">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold">Agenda</h2>
-          <a href="/workspace/calendar" className="text-xs font-bold text-[#805f12]">Calendrier</a>
+          <Link href="/workspace/calendar" className="text-xs font-bold text-[#805f12]">Calendrier</Link>
         </div>
         <div className="mt-3 space-y-3">
           {data.meetings.slice(0, 4).map((meeting) => (
-            <a key={meeting.id} href="/workspace/calendar" className="flex gap-3">
+            <Link key={meeting.id} href="/workspace/calendar" className="flex gap-3">
               <CalendarDays className="mt-0.5 h-4 w-4 shrink-0 text-[#19724c]" />
               <span><strong className="block text-sm font-medium">{meeting.title}</strong><span className="mt-1 block text-[11px] text-black/45">{formatDate(meeting.startsAt)}</span></span>
-            </a>
+            </Link>
           ))}
           {!data.meetings.length ? <p className="text-sm text-black/45">Aucun rendez-vous à venir.</p> : null}
         </div>
@@ -1159,14 +1159,14 @@ function ContextRail({ data }: { data: OsBootstrap }) {
       <section className="border-b border-black/10 px-5 py-5">
         <h2 className="text-sm font-semibold">Blocages et approbations</h2>
         <div className="mt-3 grid grid-cols-2 gap-px bg-black/10">
-          <a href="/workspace/tasks" className="bg-[#f7f5ef] p-3"><span className="block text-2xl font-semibold text-red-700">{blockers.length}</span><span className="text-[11px] text-black/45">Blocages</span></a>
-          <a href="/workspace/decisions" className="bg-[#f7f5ef] p-3"><span className="block text-2xl font-semibold">{data.attention.pendingDecisions}</span><span className="text-[11px] text-black/45">Décisions</span></a>
+          <Link href="/workspace/tasks" className="bg-[#f7f5ef] p-3"><span className="block text-2xl font-semibold text-red-700">{blockers.length}</span><span className="text-[11px] text-black/45">Blocages</span></Link>
+          <Link href="/workspace/decisions" className="bg-[#f7f5ef] p-3"><span className="block text-2xl font-semibold">{data.attention.pendingDecisions}</span><span className="text-[11px] text-black/45">Décisions</span></Link>
         </div>
       </section>
       <section className="px-5 py-5">
         <h2 className="text-sm font-semibold">AGOOJIYE — Assistant IA</h2>
         <p className="mt-2 text-xs leading-5 text-black/50">Synthèses, échéances et blocages selon votre contexte. Toute action sensible attend une approbation humaine.</p>
-        {data.navigation.administration ? <a href="/admin/assistant" className="mt-3 inline-flex min-h-10 items-center text-xs font-bold text-[#805f12]">Ouvrir la coordination <ChevronRight className="ml-1 h-4 w-4" /></a> : null}
+        {data.navigation.administration ? <Link href="/admin/assistant" className="mt-3 inline-flex min-h-10 items-center text-xs font-bold text-[#805f12]">Ouvrir la coordination <ChevronRight className="ml-1 h-4 w-4" /></Link> : null}
       </section>
     </aside>
   );
@@ -1195,26 +1195,26 @@ function OsShell({ data, section, children, logout }: { data: OsBootstrap; secti
           <p className="truncate text-sm font-semibold">{data.member.displayName}</p>
           <p className="mt-1 truncate text-xs text-white/45">{data.member.role}</p>
         </div>
-        <a href="/workspace/chat" className="mt-5 flex min-h-11 items-center justify-center gap-2 bg-[#d8ad3d] px-3 text-sm font-bold text-[#16130c]">
+        <Link href="/workspace/chat" className="mt-5 flex min-h-11 items-center justify-center gap-2 bg-[#d8ad3d] px-3 text-sm font-bold text-[#16130c]">
           <Plus className="h-4 w-4" /> Nouvelle conversation IA
-        </a>
+        </Link>
         <div className="mt-5">
           <p className="px-3 text-[10px] font-bold uppercase text-white/35">Assistant</p>
-          <a href="/workspace/chat" className="mt-2 flex min-h-10 items-center gap-3 px-3 text-xs text-white/70 hover:bg-white/[0.06]"><Sparkles className="h-4 w-4 text-[#d8ad3d]" /><span><strong className="block">AGOOJIYE — Assistant IA</strong><span className="text-white/35">{assistantContext(data)}</span></span></a>
+          <Link href="/workspace/chat" className="mt-2 flex min-h-10 items-center gap-3 px-3 text-xs text-white/70 hover:bg-white/[0.06]"><Sparkles className="h-4 w-4 text-[#d8ad3d]" /><span><strong className="block">AGOOJIYE — Assistant IA</strong><span className="text-white/35">{assistantContext(data)}</span></span></Link>
         </div>
         <div className="mt-5 border-t border-white/10 pt-4">
           <p className="px-3 text-[10px] font-bold uppercase text-white/35">Canaux</p>
-          {data.channels.slice(0, 6).map((channel) => <a key={channel.id} href={`/workspace/messages?channel=${channel.id}`} className="flex min-h-9 items-center gap-2 px-3 text-xs text-white/55 hover:bg-white/[0.06] hover:text-white"><span className="text-white/25">#</span><span className="truncate">{channel.name}</span></a>)}
+          {data.channels.slice(0, 6).map((channel) => <Link key={channel.id} href={`/workspace/messages?channel=${channel.id}`} className="flex min-h-9 items-center gap-2 px-3 text-xs text-white/55 hover:bg-white/[0.06] hover:text-white"><span className="text-white/25">#</span><span className="truncate">{channel.name}</span></Link>)}
         </div>
         <div className="mt-5 border-t border-white/10 pt-4">
           <p className="px-3 text-[10px] font-bold uppercase text-white/35">Messages directs</p>
-          {data.directory.filter((person) => person.id !== data.member.id).slice(0, 5).map((person) => <a key={person.id} href={`/workspace/messages?dm=${person.id}`} className="flex min-h-9 items-center gap-2 px-3 text-xs text-white/55 hover:bg-white/[0.06] hover:text-white"><span className="grid h-5 w-5 place-items-center bg-white/10 text-[9px]">{String(person.displayName).slice(0, 1)}</span><span className="truncate">{person.displayName}</span></a>)}
+          {data.directory.filter((person) => person.id !== data.member.id).slice(0, 5).map((person) => <Link key={person.id} href={`/workspace/messages?dm=${person.id}`} className="flex min-h-9 items-center gap-2 px-3 text-xs text-white/55 hover:bg-white/[0.06] hover:text-white"><span className="grid h-5 w-5 place-items-center bg-white/10 text-[9px]">{String(person.displayName).slice(0, 1)}</span><span className="truncate">{person.displayName}</span></Link>)}
         </div>
         <nav className="mt-5 grid gap-1" aria-label="Navigation AGOOJIYE OS">
           <p className="px-3 pb-2 text-[10px] font-bold uppercase text-white/35">Modules</p>
           {visibleNav.map((item) => {
             const Icon = item.icon;
-            return <a key={item.key} href={item.key === "chat" ? "/workspace/chat" : item.key === "accueil" ? "/workspace/dashboard" : `/workspace/${item.key}`} onClick={() => setMenuOpen(false)} className={`flex min-h-10 items-center gap-3 px-3 text-xs font-medium ${section === item.key ? "bg-[#d8ad3d] text-[#16130c]" : "text-white/55 hover:bg-white/[0.06] hover:text-white"}`}><Icon className="h-[17px] w-[17px]" />{item.label}{item.key === "messages" && data.attention.unreadNotifications > 0 ? <span className="ml-auto bg-white/10 px-2 py-0.5 text-[10px]">{data.attention.unreadNotifications}</span> : null}</a>;
+            return <Link key={item.key} href={item.key === "chat" ? "/workspace/chat" : item.key === "accueil" ? "/workspace/dashboard" : `/workspace/${item.key}`} onClick={() => setMenuOpen(false)} className={`flex min-h-10 items-center gap-3 px-3 text-xs font-medium ${section === item.key ? "bg-[#d8ad3d] text-[#16130c]" : "text-white/55 hover:bg-white/[0.06] hover:text-white"}`}><Icon className="h-[17px] w-[17px]" />{item.label}{item.key === "messages" && data.attention.unreadNotifications > 0 ? <span className="ml-auto bg-white/10 px-2 py-0.5 text-[10px]">{data.attention.unreadNotifications}</span> : null}</Link>;
           })}
         </nav>
         <div className="mt-7 border-t border-white/10 pt-4"><a href="/" className="flex min-h-10 items-center gap-3 px-3 text-xs text-white/50 hover:text-white"><Home className="h-4 w-4" /> Site public</a><a href="https://mail.agoojiye.com/" target="_blank" rel="noreferrer" className="flex min-h-10 items-center gap-3 px-3 text-xs text-white/50 hover:text-white"><Mail className="h-4 w-4" /> Webmail</a><button type="button" onClick={logout} className="flex min-h-10 w-full items-center gap-3 px-3 text-xs text-white/50 hover:text-white"><LogOut className="h-4 w-4" /> Déconnexion</button></div>
@@ -1223,13 +1223,13 @@ function OsShell({ data, section, children, logout }: { data: OsBootstrap; secti
         <header className="sticky top-0 z-40 flex h-16 items-center border-b border-black/10 bg-[#f5f4ef]/95 px-4 backdrop-blur sm:px-6">
           <button type="button" onClick={() => setMenuOpen(true)} className="grid h-11 w-11 place-items-center border border-black/10 lg:hidden" aria-label="Ouvrir le menu"><Menu className="h-5 w-5" /></button>
           <p className="ml-3 text-sm font-semibold lg:ml-0">{sectionNames[section]}</p>
-          <div className="ml-auto flex items-center gap-3">{data.navigation.administration ? <a href="/admin/command-center" className="hidden min-h-9 items-center border border-black/15 px-3 text-xs font-semibold md:inline-flex">Salle administrative</a> : null}<span className="hidden text-right sm:block"><span className="block text-xs font-medium">{data.member.displayName}</span><span className="block text-[10px] text-black/40">{data.member.team?.name || "AGOOJIYE"}</span></span><span className="grid h-9 w-9 place-items-center bg-[#171a18] text-xs font-bold text-[#d8ad3d]">{String(data.member.displayName).slice(0, 2).toUpperCase()}</span></div>
+          <div className="ml-auto flex items-center gap-3">{data.navigation.administration ? <Link href="/admin/command-center" className="hidden min-h-9 items-center border border-black/15 px-3 text-xs font-semibold md:inline-flex">Salle administrative</Link> : null}<span className="hidden text-right sm:block"><span className="block text-xs font-medium">{data.member.displayName}</span><span className="block text-[10px] text-black/40">{data.member.team?.name || "AGOOJIYE"}</span></span><span className="grid h-9 w-9 place-items-center bg-[#171a18] text-xs font-bold text-[#d8ad3d]">{String(data.member.displayName).slice(0, 2).toUpperCase()}</span></div>
         </header>
         <main className="mx-auto max-w-[1240px] px-4 pb-28 pt-7 sm:px-6 lg:pb-10 lg:pt-9">{children}</main>
       </div>
       <ContextRail data={data} />
       <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-black/10 bg-white lg:hidden" aria-label="Navigation mobile">
-        {mobileNav.map((item) => { const Icon = item.icon; return <a key={item.key} href={item.key === "chat" ? "/workspace/chat" : item.key === "accueil" ? "/workspace/dashboard" : `/workspace/${item.key}`} className={`flex min-h-[68px] flex-col items-center justify-center gap-1 text-[10px] font-medium ${section === item.key ? "text-[#805f12]" : "text-black/50"}`}><Icon className="h-5 w-5" />{item.label}</a>; })}
+        {mobileNav.map((item) => { const Icon = item.icon; return <Link key={item.key} href={item.key === "chat" ? "/workspace/chat" : item.key === "accueil" ? "/workspace/dashboard" : `/workspace/${item.key}`} className={`flex min-h-[68px] flex-col items-center justify-center gap-1 text-[10px] font-medium ${section === item.key ? "text-[#805f12]" : "text-black/50"}`}><Icon className="h-5 w-5" />{item.label}</Link>; })}
       </nav>
     </div>
   );

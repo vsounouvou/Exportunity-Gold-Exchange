@@ -236,9 +236,10 @@ test("contrôleur: validation manuelle, doublon et recherche manifeste sont expl
   await expect(page.getByText("Billet déjà utilisé", { exact: true })).toBeVisible();
 
   await page.getByLabel("Rechercher un passager ou une référence").fill("Christian");
-  await expect(page.getByText("Christian Kora")).toBeVisible();
-  await expect(page.getByText("Aminata Sounon")).toBeHidden();
-  await expect(page.getByText("Déjà utilisé", { exact: true })).toBeVisible();
+  const christianRow = page.getByRole("row", { name: /Christian Kora/ });
+  await expect(christianRow).toBeVisible();
+  await expect(page.getByRole("row", { name: /Aminata Sounon/ })).toHaveCount(0);
+  await expect(christianRow.getByText("Déjà utilisé", { exact: true })).toBeVisible();
   await page.screenshot({ path: testInfo.outputPath("controleur-tablette.png"), fullPage: false });
 
   await page.setViewportSize({ width: 390, height: 844 });

@@ -1005,16 +1005,34 @@ function DecisionsSection({ data, refresh }: { data: OsBootstrap; refresh: () =>
 
 function AiSection({ data }: { data: OsBootstrap }) {
   const [query, setQuery] = useState("");
-  const [history, setHistory] = useState<Array<{ query: string; response: any }>>([]);
+  const historyKey = `agoojye-assistant-history:${Number(data.member?.id || 0)}`;
+  const [history, setHistory] = useState<Array<{ query: string; response: any }>>(() => {
+    try {
+      const saved = sessionStorage.getItem(historyKey);
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
   const context = assistantContext(data);
   const suggestedPrompts = Number(data.member?.onboardingProgress || 0) < 100
     ? ["Aide-moi à terminer mon accueil.", "Présente-moi mes premières priorités.", "Quels documents dois-je consulter ?", "Qui est mon responsable ?"]
     : data.navigation.administration
     ? ["Donne-moi l'état complet de l'entreprise.", "Qui est en retard ?", "Montre-moi les risques critiques.", "Prépare mon rapport d'activité."]
     : ["Que dois-je faire aujourd'hui ?", "Qu'est-ce qui est en retard ?", "Quelle est ma prochaine réunion ?", "Prépare mon rapport d'activité."];
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(historyKey, JSON.stringify(history.slice(-12)));
+    } catch {
+      // The conversation remains available in memory when session storage is unavailable.
+    }
+  }, [history, historyKey]);
   const mutation = useMutation({
-    mutationFn: () => apiRequest("/api/agoojye/os/member/assistant", { method: "POST", body: JSON.stringify({ query }) }),
-    onSuccess: (response: any) => { setHistory((current) => [...current, { query, response }]); setQuery(""); },
+    mutationFn: (submittedQuery: string) => apiRequest("/api/agoojye/os/member/assistant", { method: "POST", body: JSON.stringify({ query: submittedQuery }) }),
+    onSuccess: (response: any, submittedQuery: string) => {
+      setHistory((current) => [...current.slice(-11), { query: submittedQuery, response }]);
+      setQuery("");
+    },
   });
   return (
     <div className="space-y-6">
@@ -1024,7 +1042,7 @@ function AiSection({ data }: { data: OsBootstrap }) {
         <div className="mt-5 flex flex-wrap gap-2" aria-label="Questions suggérées">
           {suggestedPrompts.map((prompt) => <button key={prompt} type="button" onClick={() => setQuery(prompt)} className="min-h-10 border border-white/15 px-3 text-left text-xs text-white/75 hover:border-[#d8ad3d] hover:text-white">{prompt}</button>)}
         </div>
-        <form className="mt-6 flex gap-2" onSubmit={(event) => { event.preventDefault(); if (query.trim()) mutation.mutate(); }}>
+        <form className="mt-6 flex gap-2" onSubmit={(event) => { event.preventDefault(); if (query.trim()) mutation.mutate(query.trim()); }}>
           <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Que dois-je traiter aujourd'hui ?" aria-label="Votre question pour AGOOJIYE" className="h-12 border-white/15 bg-white/[0.06] text-white" />
           <Button type="submit" size="icon" aria-label="Envoyer la question" disabled={!query.trim() || mutation.isPending} className="h-12 w-12 bg-[#d8ad3d] text-[#111] hover:bg-[#ebc75e]"><Send className="h-5 w-5" /></Button>
         </form>
@@ -1032,10 +1050,10 @@ function AiSection({ data }: { data: OsBootstrap }) {
         {mutation.isError ? <p className="mt-3 text-xs text-red-300" role="alert">{(mutation.error as Error).message}</p> : null}
         <p className="mt-3 text-xs leading-5 text-white/40">AGOOJIYE consulte uniquement les données que vous êtes autorisé à voir. Les actions sensibles sont proposées, tracées et soumises à validation humaine.</p>
       </section>
-      {history.length ? <div className="space-y-4">{history.map((entry, index) => (
+      {history.length ? <div className="space-y-4"><div className="flex items-center justify-between gap-3"><h2 className="text-lg font-semibold">Conversation de cette session</h2><button type="button" onClick={() => { setHistory([]); sessionStorage.removeItem(historyKey); }} className="min-h-10 text-xs font-bold text-black/55 hover:text-black">Effacer</button></div>{history.map((entry, index) => (
         <article key={`${entry.query}-${index}`} className="border border-black/10 bg-white p-5">
           <p className="text-sm font-semibold">Vous : {entry.query}</p>
-          <div className="mt-4 border-l-2 border-[#d8ad3d] pl-4"><p className="text-sm leading-6">{entry.response.answer}</p><div className="mt-4 grid gap-2">{entry.response.matches?.map((match: any, matchIndex: number) => <a key={`${match.title}-${matchIndex}`} href={match.href} className="flex items-center justify-between gap-3 bg-[#f0f1ee] px-3 py-2 text-sm"><span><strong>{match.type}</strong> · {match.title}</span><span className="text-xs text-black/45">{match.detail}</span></a>)}</div><p className="mt-4 text-xs text-black/40">{entry.response.governance}</p></div>
+          <div className="mt-4 border-l-2 border-[#d8ad3d] pl-4"><p className="text-sm leading-6">{entry.response.answer}</p><div className="mt-4 grid gap-2">{entry.response.matches?.map((match: any, matchIndex: number) => <a key={`${match.title}-${matchIndex}`} href={match.href} className="flex flex-col items-start justify-between gap-1 bg-[#f0f1ee] px-3 py-2 text-sm sm:flex-row sm:items-center"><span><strong>{match.type}</strong> · {match.title}</span><span className="text-xs text-black/45">{match.detail}</span></a>)}</div>{entry.response.generation?.label ? <p className="mt-4 text-xs font-semibold text-[#805f12]">{entry.response.generation.label}</p> : null}<p className="mt-2 text-xs text-black/40">{entry.response.governance}</p></div>
         </article>
       ))}</div> : null}
       <section><h2 className="mb-3 text-lg font-semibold">Contextes disponibles</h2><div className="grid gap-3 md:grid-cols-2">{(data.agents[0]?.contexts || ["Espace personnel", "Support du département", "Opérations mobilité", "Direction"]).map((item: string) => <article key={item} className="border border-black/10 bg-white p-5"><Bot className="h-5 w-5 text-[#19724c]" /><h3 className="mt-4 font-semibold">{item}</h3><p className="mt-2 text-sm leading-6 text-black/50">La même identité AGOOJIYE adapte ses réponses aux informations et permissions de ce contexte.</p></article>)}</div></section>

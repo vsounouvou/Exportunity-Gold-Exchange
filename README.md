@@ -28,7 +28,9 @@ Important modules:
 - `server/routes/agoojye-mobility.ts`: public, staff, and admin mobility APIs.
 - `server/lib/agoojye/mobility-domain.ts`: tested business rules.
 - `client/src/pages/agoojye/AgoojiyeMobilityPages.tsx`: homepage, trips, and bus catalog.
-- `client/src/pages/agoojye/AgoojiyeBookingPages.tsx`: checkout, ticket, lookup, and controller.
+- `client/src/pages/agoojye/AgoojiyeBookingPages.tsx`: checkout, ticket, and lookup.
+- `client/src/pages/agoojye/AgoojiyeControllerPage.tsx`: protected phone/tablet boarding control.
+- `server/lib/agoojye/assistant.ts`: scoped search, provider timeout/fallback, and read-only AI formulation.
 - `client/src/pages/agoojye/AgoojiyeCommercialPages.tsx`: group, demonstration, order, waitlist, and contact flows.
 - `client/src/pages/agoojye/AgoojiyeThreeExperience.tsx`: interactive 3D viewer.
 - `client/src/pages/agoojye/AgoojiyeMobilityAdmin.tsx`: operations dashboard.
@@ -64,8 +66,16 @@ AGOOJIYE_BOOKING_HOLD_MINUTES=15
 AGOOJIYE_TICKET_SIGNING_SECRET=replace_with_a_long_random_secret
 AGOOJIYE_PAYMENT_PROVIDER=demo
 AGOOJIYE_DEMO_PAYMENT_MODE=true
+AI_ENABLED=true
+OPENAI_API_KEY=
+ANTHROPIC_API_KEY=
+AGOOJIYE_ASSISTANT_MODE=hybrid
+AGOOJIYE_ASSISTANT_PROVIDER=auto
+AGOOJIYE_ASSISTANT_TIMEOUT_MS=8000
+AGOOJIYE_OPENAI_MODEL=gpt-4o-mini
+AGOOJIYE_ANTHROPIC_MODEL=claude-sonnet-4-5
 AGOOJIYE_EMAIL_PROVIDER=roundcube
-AGOOJIYE_SMTP_HOST=mail.exportunity.net
+AGOOJIYE_SMTP_HOST=mail.agoojiye.com
 AGOOJIYE_MAILBOX_REGIS_PASSWORD=
 AGOOJIYE_MAILBOX_SORIANE_PASSWORD=
 AGOOJIYE_MAILBOX_MARYSE_PASSWORD=
@@ -166,6 +176,8 @@ npx playwright test --project=chromium tests/e2e/agoojye-mobility.spec.ts
 
 Critical coverage includes trip search, seat capacity, payment transitions, opaque QR payloads, duplicate boarding prevention, and database/transaction guards against double booking.
 
+The team assistant is tested separately in `tests/agoojye-os.test.ts`: natural French search terms, relevance ordering, provider fallback, and the deterministic local response. It never sends messages or changes records.
+
 ## Public Routes
 
 - `/` mobility homepage and quick search.
@@ -216,6 +228,8 @@ Sign in at `/admin`. An authenticated AGOOJIYE administrator is redirected to `/
 Operational routes include `/admin/bus`, `/admin/trajets`, `/admin/horaires`, `/admin/voyages`, `/admin/reservations`, `/admin/billets`, `/admin/paiements`, `/admin/reservations-bus`, `/admin/demonstrations`, `/admin/commandes-bus`, and `/admin/liste-prioritaire`.
 
 The backend independently applies `ensureTenantAdmin`; hiding controls in the browser is not treated as authorization. The controller page `/controle` uses the staff guard and is designed for phones and tablets.
+
+`CONTROLLER`/`contrôleur` accounts are accepted by the staff guard but do not receive admin access. The controller downloads a short-lived authenticated JSON manifest through the application rather than a public link.
 
 ## Demo Payment Flow
 
@@ -308,6 +322,15 @@ TOTP enrollment, one-use recovery codes, tenant-bound privileged sessions,
 security events, worker CSV/XLSX import, controlled offboarding, data
 classification and the governed `AGOOJIYE — Assistant IA`, whose context adapts
 to each worker's role and permissions.
+
+Direct assistant questions are user-triggered and visible. The server retrieves
+only records already authorized for that member, sends only the minimal result
+titles/statuses to the configured provider, and remains read-only. Prompts and
+answers are represented in the audit log by SHA-256 hashes and lengths rather
+than raw text. Provider/model/token totals and fallback state are recorded.
+`AGOOJIYE_ASSISTANT_MODE=deterministic` disables external formulation without
+disabling the local scoped assistant. In `hybrid` mode, an eight-second bounded
+provider call falls back to the local answer on timeout or provider failure.
 
 The principal application identity is `vs@agoojiye.com` with
 `AGOOJIYE_SUPER_ADMIN`. Its password is never seeded. The provisioner creates a

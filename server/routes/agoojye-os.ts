@@ -1,4 +1,4 @@
-import { randomBytes } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 
 import bcrypt from "bcryptjs";
 import { Router } from "express";
@@ -45,6 +45,12 @@ import {
   evaluateAgoojiyeOsInvitation,
   hasAgoojiyeOsPermission,
 } from "../lib/agoojye/osPolicy";
+import {
+  buildAgoojiyeAssistantSearchPatterns,
+  buildAgoojiyeAssistantSearchTokens,
+  generateAgoojiyeAssistantAnswer,
+  rankAgoojiyeAssistantMatches,
+} from "../lib/agoojye/assistant";
 
 const router = Router();
 const publicApi = Router();
@@ -66,6 +72,7 @@ const slugify = (value: unknown) =>
     .replace(/^-+|-+$/g, "");
 
 const invitationBuckets = new Map<string, { count: number; resetAt: number }>();
+const assistantBuckets = new Map<string, { count: number; resetAt: number }>();
 const VAPID_PUBLIC_KEY = clean(process.env.AGOOJIYE_VAPID_PUBLIC_KEY);
 const VAPID_PRIVATE_KEY = clean(process.env.AGOOJIYE_VAPID_PRIVATE_KEY);
 const VAPID_SUBJECT = clean(process.env.AGOOJIYE_VAPID_SUBJECT) || "mailto:support@agoojiye.com";
@@ -92,6 +99,24 @@ function rateLimitInvitation(req: any, res: any) {
   }
   if (bucket.count >= 12) {
     res.status(429).json({ message: "Trop de tentatives. Réessayez dans quelques minutes." });
+    return false;
+  }
+  bucket.count += 1;
+  return true;
+}
+
+function rateLimitAssistant(tenantId: number, memberId: number, res: any) {
+  const key = `${tenantId}:${memberId}`;
+  const now = Date.now();
+  const bucket = assistantBuckets.get(key);
+  if (!bucket || bucket.resetAt <= now) {
+    assistantBuckets.set(key, { count: 1, resetAt: now + 5 * 60_000 });
+    return true;
+  }
+  if (bucket.count >= 20) {
+    res.status(429).json({
+      message: "Vous avez envoyé plusieurs questions rapidement. Réessayez dans quelques minutes.",
+    });
     return false;
   }
   bucket.count += 1;
@@ -1242,6 +1267,7 @@ memberApi.post("/assistant", async (req: any, res) => {
   if (!parsed.success) return res.status(400).json({ message: "Posez une question plus précise." });
   const tenantId = Number(req.osTenantId);
   const member = req.osMember;
+  if (!rateLimitAssistant(tenantId, Number(member.id), res)) return;
   const query = parsed.data.query;
   const normalizedQuery = query.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
   const asksForMeeting = /reunion|rendez-vous|agenda/.test(normalizedQuery);
@@ -1250,7 +1276,14 @@ memberApi.post("/assistant", async (req: any, res) => {
   const asksForSummary = /dois-je faire|priorite|rapport d'activite|etat complet|synthese/.test(normalizedQuery);
   const asksForOnboarding = /accueil|onboarding|premier|responsable|mon role|departement/.test(normalizedQuery);
   const isContextSummary = asksForMeeting || asksForOverdue || asksForRisks || asksForSummary || asksForOnboarding;
-  const term = isContextSummary ? "%" : `%${query.replace(/[%_]/g, "")}%`;
+  const searchTokens = buildAgoojiyeAssistantSearchTokens(query, isContextSummary);
+  const searchPatterns = buildAgoojiyeAssistantSearchPatterns(query, isContextSummary);
+  const matchesSearch = (...columns: any[]) =>
+    or(
+      ...searchPatterns.flatMap((pattern) =>
+        columns.map((column) => ilike(column, pattern)),
+      ),
+    ) || sql`false`;
   const now = new Date();
   const leadership = Number(member.accessLevel || 0) >= 6;
   const memberProjectMemberships = leadership
@@ -1292,48 +1325,51 @@ memberApi.post("/assistant", async (req: any, res) => {
     db.query.agoojyeTasks.findMany({
       where: and(
         eq(agoojyeTasks.tenantId, tenantId),
-        or(ilike(agoojyeTasks.title, term), ilike(agoojyeTasks.description, term)),
+        matchesSearch(agoojyeTasks.title, agoojyeTasks.description),
         Number(member.accessLevel || 0) >= 6
           ? sql`true`
           : or(eq(agoojyeTasks.assignedTo, Number(member.id)), eq(agoojyeTasks.teamId, Number(member.teamId || -1))),
       ),
-      limit: 8,
+      limit: 24,
     }),
     db.query.agoojyeOsProjects.findMany({
       where: and(
         eq(agoojyeOsProjects.tenantId, tenantId),
         lte(agoojyeOsProjects.confidentiality, Number(member.accessLevel || 1)),
-        or(ilike(agoojyeOsProjects.name, term), ilike(agoojyeOsProjects.objective, term)),
+        matchesSearch(agoojyeOsProjects.name, agoojyeOsProjects.objective),
         leadership
           ? sql`true`
           : scopedProjectIds.size
             ? inArray(agoojyeOsProjects.id, [...scopedProjectIds])
             : sql`false`,
       ),
-      limit: 8,
+      limit: 24,
     }),
     db.query.agoojyeDocuments.findMany({
       where: and(
         eq(agoojyeDocuments.tenantId, tenantId),
-        or(ilike(agoojyeDocuments.title, term), ilike(agoojyeDocuments.description, term)),
+        matchesSearch(agoojyeDocuments.title, agoojyeDocuments.description),
         Number(member.accessLevel || 0) >= 6
           ? sql`true`
           : or(inArray(agoojyeDocuments.visibility, ["public", "internal"]), eq(agoojyeDocuments.teamId, Number(member.teamId || -1))),
       ),
-      limit: 8,
+      limit: 24,
     }),
     db.query.agoojyeOsDecisions.findMany({
       where: and(
         eq(agoojyeOsDecisions.tenantId, tenantId),
         lte(agoojyeOsDecisions.confidentiality, Number(member.accessLevel || 1)),
-        or(ilike(agoojyeOsDecisions.decision, term), ilike(agoojyeOsDecisions.context, term)),
+        matchesSearch(agoojyeOsDecisions.decision, agoojyeOsDecisions.context),
       ),
-      limit: 8,
+      limit: 24,
     }),
     memberCan(member, "crm")
       ? db.query.agoojyePartners.findMany({
-          where: and(eq(agoojyePartners.tenantId, tenantId), or(ilike(agoojyePartners.name, term), ilike(agoojyePartners.notes, term))),
-          limit: 8,
+          where: and(
+            eq(agoojyePartners.tenantId, tenantId),
+            matchesSearch(agoojyePartners.name, agoojyePartners.notes),
+          ),
+          limit: 24,
         })
       : Promise.resolve([]),
     db.query.agoojyeOsMeetings.findMany({
@@ -1341,16 +1377,20 @@ memberApi.post("/assistant", async (req: any, res) => {
         eq(agoojyeOsMeetings.tenantId, tenantId),
         lte(agoojyeOsMeetings.confidentiality, Number(member.accessLevel || 1)),
         gte(agoojyeOsMeetings.startsAt, now),
-        or(ilike(agoojyeOsMeetings.title, term), ilike(agoojyeOsMeetings.agenda, term)),
+        matchesSearch(agoojyeOsMeetings.title, agoojyeOsMeetings.agenda),
       ),
       orderBy: [asc(agoojyeOsMeetings.startsAt)],
-      limit: 8,
+      limit: 24,
     }),
   ]);
 
-  let permittedTasks = tasks.filter((item) =>
-    canAccessAgoojiyeDataClass({ member, classification: item.confidentialityClass, resourceTeamId: item.teamId }),
-  );
+  let permittedTasks = rankAgoojiyeAssistantMatches(
+    tasks.filter((item) =>
+      canAccessAgoojiyeDataClass({ member, classification: item.confidentialityClass, resourceTeamId: item.teamId }),
+    ),
+    searchTokens,
+    (item) => `${item.title} ${item.description || ""}`,
+  ).slice(0, 8);
   if (asksForOverdue) {
     permittedTasks = permittedTasks.filter((item) =>
       item.dueDate && new Date(item.dueDate).getTime() < now.getTime() && !["done", "cancelled"].includes(item.status),
@@ -1362,29 +1402,50 @@ memberApi.post("/assistant", async (req: any, res) => {
   } else if (asksForSummary) {
     permittedTasks = permittedTasks.filter((item) => !["done", "cancelled"].includes(item.status));
   }
-  const permittedProjects = projects.filter((item) =>
-    canAccessAgoojiyeDataClass({
-      member,
-      classification: item.confidentialityClass,
-      resourceTeamId: item.teamId,
-      resourceProjectId: item.id,
-      projectMembershipIds: memberProjectIdSet,
+  const permittedProjects = rankAgoojiyeAssistantMatches(
+    projects.filter((item) =>
+      canAccessAgoojiyeDataClass({
+        member,
+        classification: item.confidentialityClass,
+        resourceTeamId: item.teamId,
+        resourceProjectId: item.id,
+        projectMembershipIds: memberProjectIdSet,
+      }),
+    ),
+    searchTokens,
+    (item) => `${item.name} ${item.objective || ""}`,
+  ).slice(0, 8);
+  const permittedDocuments = rankAgoojiyeAssistantMatches(
+    documents.filter((item) =>
+      canAccessAgoojiyeDataClass({ member, classification: item.confidentialityClass, resourceTeamId: item.teamId }),
+    ),
+    searchTokens,
+    (item) => `${item.title} ${item.description || ""}`,
+  ).slice(0, 8);
+  const permittedMeetings = rankAgoojiyeAssistantMatches(
+    meetings.filter((item) => {
+      if (leadership) return true;
+      const participants = Array.isArray(item.participantUserIds) ? item.participantUserIds.map(Number) : [];
+      return participants.includes(Number(member.id)) || Number(item.organizerUserId || 0) === Number(member.id);
     }),
-  );
-  const permittedDocuments = documents.filter((item) =>
-    canAccessAgoojiyeDataClass({ member, classification: item.confidentialityClass, resourceTeamId: item.teamId }),
-  );
-  const permittedMeetings = meetings.filter((item) => {
-    if (leadership) return true;
-    const participants = Array.isArray(item.participantUserIds) ? item.participantUserIds.map(Number) : [];
-    return participants.includes(Number(member.id)) || Number(item.organizerUserId || 0) === Number(member.id);
-  });
-  const permittedDecisions = decisions.filter((item) => {
-    if (leadership) return true;
-    const participants = Array.isArray(item.participantUserIds) ? item.participantUserIds.map(Number) : [];
-    if (participants.includes(Number(member.id)) || Number(item.decisionMakerUserId || 0) === Number(member.id)) return true;
-    return Boolean(item.projectId) && scopedProjectIds.has(Number(item.projectId));
-  });
+    searchTokens,
+    (item) => `${item.title} ${item.agenda || ""}`,
+  ).slice(0, 8);
+  const permittedDecisions = rankAgoojiyeAssistantMatches(
+    decisions.filter((item) => {
+      if (leadership) return true;
+      const participants = Array.isArray(item.participantUserIds) ? item.participantUserIds.map(Number) : [];
+      if (participants.includes(Number(member.id)) || Number(item.decisionMakerUserId || 0) === Number(member.id)) return true;
+      return Boolean(item.projectId) && scopedProjectIds.has(Number(item.projectId));
+    }),
+    searchTokens,
+    (item) => `${item.decision} ${item.context || ""}`,
+  ).slice(0, 8);
+  const permittedPartners = rankAgoojiyeAssistantMatches(
+    partners,
+    searchTokens,
+    (item) => `${item.name} ${item.notes || ""}`,
+  ).slice(0, 8);
   const statusLabels: Record<string, string> = {
     active: "actif",
     blocked: "bloqué",
@@ -1414,9 +1475,9 @@ memberApi.post("/assistant", async (req: any, res) => {
     ...permittedProjects.map((item) => ({ type: "Projet", title: item.name, detail: `${item.progress}% · ${statusLabel(item.status)}`, href: "/workspace/projects" })),
     ...permittedDocuments.map((item) => ({ type: "Document", title: item.title, detail: `${item.category} · ${statusLabel(item.status)}`, href: "/workspace/files" })),
     ...permittedDecisions.map((item) => ({ type: "Décision", title: item.decision, detail: statusLabel(item.status), href: "/workspace/decisions" })),
-    ...partners.map((item) => ({ type: "CRM", title: item.name, detail: `${item.category} · ${statusLabel(item.status)}`, href: "/workspace/crm" })),
+    ...permittedPartners.map((item) => ({ type: "CRM", title: item.name, detail: `${item.category} · ${statusLabel(item.status)}`, href: "/workspace/crm" })),
   ].slice(0, 15);
-  const answer = asksForOnboarding
+  const deterministicAnswer = asksForOnboarding
     ? `Bienvenue dans votre espace AGOOJIYE. Votre rôle est « ${clean(member.role) || "à préciser"} »${manager ? ` et votre responsable est ${manager.displayName}` : "; votre responsable doit encore être confirmé"}. Je peux vous aider à parcourir vos ${permittedTasks.length} tâche${permittedTasks.length > 1 ? "s" : ""}, ${permittedProjects.length} projet${permittedProjects.length > 1 ? "s" : ""} et les documents autorisés. Un responsable humain valide toute affectation et toute modification d'accès.`
     : asksForMeeting
     ? permittedMeetings.length
@@ -1449,6 +1510,13 @@ memberApi.post("/assistant", async (req: any, res) => {
             : Number(member.accessLevel || 0) >= 4
               ? "department_support"
               : "personal_workspace";
+  const generation = await generateAgoojiyeAssistantAnswer({
+    query,
+    deterministicAnswer,
+    matches,
+    contextLabel: `${assistantContext}; rôle ${clean(member.role) || "membre"}`,
+  });
+  const answer = generation.answer;
   const recordsAccessed = [
     ...(manager ? [{ type: "project_user", id: Number(manager.id) }] : []),
     ...permittedTasks.map((item) => ({ type: "task", id: Number(item.id) })),
@@ -1456,16 +1524,28 @@ memberApi.post("/assistant", async (req: any, res) => {
     ...permittedProjects.map((item) => ({ type: "project", id: Number(item.id) })),
     ...permittedDocuments.map((item) => ({ type: "document", id: Number(item.id) })),
     ...permittedDecisions.map((item) => ({ type: "decision", id: Number(item.id) })),
-    ...partners.map((item) => ({ type: "partner", id: Number(item.id) })),
+    ...permittedPartners.map((item) => ({ type: "partner", id: Number(item.id) })),
   ].slice(0, 50);
+  const queryHash = createHash("sha256").update(query).digest("hex");
+  const answerHash = createHash("sha256").update(answer).digest("hex");
   await audit(tenantId, member, "ai_read_only_search", "assistant", null, {
-    query,
+    queryHash,
+    queryLength: query.length,
+    searchTokenCount: searchTokens.length,
     resultCount: matches.length,
     level: 1,
     context: assistantContext,
     recordsAccessed,
     sources: ["tasks", "meetings", "projects", "documents", "decisions", ...(memberCan(member, "crm") ? ["partners"] : [])],
-    recommendation: answer,
+    answerHash,
+    answerLength: answer.length,
+    generationMode: generation.mode,
+    provider: generation.provider,
+    model: generation.model,
+    inputTokens: generation.inputTokens,
+    outputTokens: generation.outputTokens,
+    fallbackUsed: generation.fallbackUsed,
+    failureCode: generation.failureCode || null,
     proposedAction: null,
     humanApprovalRequired: false,
     dataUpdated: false,
@@ -1475,6 +1555,13 @@ memberApi.post("/assistant", async (req: any, res) => {
     agent: { name: "AGOOJIYE — Assistant IA", badge: "IA", level: 1, context: assistantContext },
     answer,
     matches,
+    generation: {
+      mode: generation.mode,
+      label: generation.mode === "ai"
+        ? "Réponse formulée par l'IA à partir de vos données autorisées."
+        : "Réponse locale sécurisée.",
+      fallbackUsed: generation.fallbackUsed,
+    },
     governance: "Données limitées à vos autorisations. Lecture et recommandation uniquement; aucune donnée n'a été modifiée.",
   });
 });

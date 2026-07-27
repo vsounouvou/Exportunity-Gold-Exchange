@@ -2,6 +2,7 @@ import { Router, type Request, type Response, type NextFunction } from "express"
 import { db } from "@db";
 import { eceSessions, eceUsers } from "@db/schema";
 import { eq } from "drizzle-orm";
+import { hasAgoojiyeStaffAccess } from "../../lib/agoojye/staffAccess";
 
 function normalizeRoleLabel(value: string) {
   return value
@@ -40,19 +41,7 @@ function getBearerToken(req: Request) {
 }
 
 function isStaffUser(user: any): boolean {
-  const roles = Array.isArray((user as any)?.roles) ? (user as any).roles : [];
-  const perms = Array.isArray((user as any)?.permissions) ? (user as any).permissions : [];
-  const currentMode = (user as any)?.currentMode;
-  const normalizedRoles = roles.map((r: any) => normalizeRoleLabel(String(r)));
-
-  return (
-    currentMode === "admin" ||
-    perms.includes("*") ||
-    isChairmanAssistantUser(user) ||
-    normalizedRoles.includes("admin") ||
-    normalizedRoles.includes("staff") ||
-    normalizedRoles.includes("agent")
-  );
+  return hasAgoojiyeStaffAccess(user) || isChairmanAssistantUser(user);
 }
 
 async function verifySession(token?: string) {

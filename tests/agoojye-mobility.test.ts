@@ -74,6 +74,20 @@ test("admin and controller APIs enforce server-side authorization", () => {
   assert.match(route, /requireAgoojyeTenant\(req, res\)/);
 });
 
+test("controller manifest exposes only boarding fields", () => {
+  const root = path.resolve(import.meta.dirname, "..");
+  const routeSource = fs.readFileSync(path.join(root, "server/routes/agoojye-mobility.ts"), "utf8");
+  const manifestRoute = routeSource.slice(
+    routeSource.indexOf('staffApi.get("/trips/:id/manifest"'),
+    routeSource.indexOf('staffApi.post("/tickets/validate"'),
+  );
+  assert.match(manifestRoute, /firstName: agoojyeMobilityBookingPassengers\.firstName/);
+  assert.match(manifestRoute, /reference: agoojyeMobilityTickets\.reference/);
+  assert.doesNotMatch(manifestRoute, /publicToken:/);
+  assert.doesNotMatch(manifestRoute, /phone:/);
+  assert.doesNotMatch(manifestRoute, /email:/);
+});
+
 test("mobility administration keeps contact and status values out of date formatting", () => {
   const source = fs.readFileSync(
     new URL("../client/src/pages/agoojye/AgoojiyeMobilityAdmin.tsx", import.meta.url),

@@ -14,6 +14,7 @@ import {
   verifyTotp,
 } from "../server/lib/agoojye/workosSecurity";
 import { canAccessAgoojiyeDataClass } from "../server/lib/agoojye/osPolicy";
+import { hasAgoojiyeStaffAccess } from "../server/lib/agoojye/staffAccess";
 
 test("TOTP follows the RFC test vector and accepts only the configured time window", () => {
   const secret = "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ";
@@ -53,6 +54,12 @@ test("privileged WorkOS roles require MFA while ordinary workers do not", () => 
   assert.equal(hasPrivilegedWorkosRole({ roles: ["staff"], permissions: [] }, ["USER"]), false);
   assert.equal(hasPrivilegedWorkosRole({ roles: ["admin"], permissions: [] }, ["TENANT_ADMIN"]), true);
   assert.equal(hasPrivilegedWorkosRole({ roles: [], permissions: ["admin:*"] }, ["USER"]), true);
+});
+
+test("mobility staff access recognizes the dedicated controller role", () => {
+  assert.equal(hasAgoojiyeStaffAccess({ roles: ["CONTROLLER"], permissions: [] }), true);
+  assert.equal(hasAgoojiyeStaffAccess({ roles: ["contrôleur"], permissions: [] }), true);
+  assert.equal(hasAgoojiyeStaffAccess({ roles: ["USER"], permissions: [] }), false);
 });
 
 test("the principal super-admin identity requires both the exact email and tenant role", () => {
@@ -104,4 +111,10 @@ test("administrative assistant keeps legacy routes internal and exposes one AGOO
   assert.doesNotMatch(routeSource, /Synthèse quotidienne HOWJI|HOWJI n'est|Action HOWJI/);
   assert.match(provisionSource, /name: "AGOOJIYE — Assistant IA"/);
   assert.doesNotMatch(provisionSource, /name: "HOWJI|body: "HOWJI/);
+});
+
+test("only the principal super-admin sees the assistant approval control", () => {
+  const source = readFileSync(new URL("../client/src/pages/agoojye/AgoojiyeWorkosAdminPage.tsx", import.meta.url), "utf8");
+  assert.match(source, /data\.currentUser\.superAdmin && action\.status === "awaiting_approval"/);
+  assert.match(source, /assistant\/actions\/\$\{actionId\}\/approve/);
 });

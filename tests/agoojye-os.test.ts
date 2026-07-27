@@ -8,6 +8,12 @@ import {
   evaluateAgoojiyeOsInvitation,
   hasAgoojiyeOsPermission,
 } from "../server/lib/agoojye/osPolicy";
+import {
+  buildAgoojiyeAssistantSearchPatterns,
+  buildAgoojiyeAssistantSearchTokens,
+  generateAgoojiyeAssistantAnswer,
+  rankAgoojiyeAssistantMatches,
+} from "../server/lib/agoojye/assistant";
 
 const root = process.cwd();
 
@@ -91,6 +97,102 @@ test("AGOOJIYE assistant scopes project and decision results and records auditab
   assert.match(source, /recordsAccessed/);
   assert.match(source, /humanApprovalRequired: false/);
   assert.match(source, /dataUpdated: false/);
+  assert.match(source, /queryHash/);
+  assert.match(source, /generationMode/);
+  assert.doesNotMatch(source, /\n\s*query,\n\s*resultCount/);
+});
+
+test("AGOOJIYE assistant extracts useful terms from a natural French CRM question", () => {
+  const query = "Cherche [QA audit-2026] Partenaire UX dans le CRM et résume son statut.";
+  const tokens = buildAgoojiyeAssistantSearchTokens(query);
+  assert.ok(tokens.includes("partenaire"));
+  assert.ok(tokens.includes("ux"));
+  assert.ok(tokens.includes("audit-2026"));
+  assert.equal(tokens.includes("cherche"), false);
+  assert.equal(tokens.includes("statut"), false);
+  assert.deepEqual(buildAgoojiyeAssistantSearchPatterns("Synthèse", true), ["%"]);
+  assert.ok(buildAgoojiyeAssistantSearchPatterns("Décision énergie").includes("%décision%"));
+  assert.ok(buildAgoojiyeAssistantSearchPatterns("Décision énergie").includes("%decision%"));
+});
+
+test("AGOOJIYE assistant ranks the most specific authorized match first", () => {
+  const items = [
+    { name: "Partenaire général" },
+    { name: "[QA audit-2026] Partenaire UX" },
+  ];
+  const ranked = rankAgoojiyeAssistantMatches(
+    items,
+    ["audit-2026", "partenaire", "ux"],
+    (item) => item.name,
+  );
+  assert.equal(ranked[0].name, "[QA audit-2026] Partenaire UX");
+});
+
+test("AGOOJIYE assistant falls back between providers and never loses the local answer", async () => {
+  const result = await generateAgoojiyeAssistantAnswer(
+    {
+      query: "Résume le partenaire UX.",
+      deterministicAnswer: "Réponse locale fiable.",
+      contextLabel: "department_support",
+      matches: [{ type: "CRM", title: "Partenaire UX", detail: "actif", href: "/workspace/crm" }],
+    },
+    {
+      aiEnabled: true,
+      timeoutMs: 1_000,
+      providers: [
+        { provider: "openai", run: async () => { throw new Error("provider unavailable"); } },
+        {
+          provider: "anthropic",
+          run: async () => ({
+            text: "Le partenaire UX est actif selon le CRM autorisé.",
+            model: "test-model",
+            inputTokens: 20,
+            outputTokens: 10,
+          }),
+        },
+      ],
+    },
+  );
+  assert.equal(result.mode, "ai");
+  assert.equal(result.provider, "anthropic");
+  assert.equal(result.fallbackUsed, true);
+
+  const local = await generateAgoojiyeAssistantAnswer(
+    {
+      query: "Résume le partenaire UX.",
+      deterministicAnswer: "Réponse locale fiable.",
+      contextLabel: "department_support",
+      matches: [{ type: "CRM", title: "Partenaire UX", detail: "actif", href: "/workspace/crm" }],
+    },
+    {
+      aiEnabled: true,
+      timeoutMs: 1_000,
+      providers: [
+        { provider: "openai", run: async () => { throw new Error("provider unavailable"); } },
+      ],
+    },
+  );
+  assert.equal(local.mode, "deterministic");
+  assert.equal(local.answer, "Réponse locale fiable.");
+  assert.equal(local.failureCode, "provider_error");
+});
+
+test("AGOOJIYE identity transitions clear user-bound client caches", () => {
+  const source = fs.readFileSync(path.join(root, "client/src/lib/session.tsx"), "utf8");
+  assert.match(source, /function clearIdentityBoundClientState[\s\S]*?queryClient\.clear\(\)/);
+  assert.match(source, /const login[\s\S]*?clearIdentityBoundClientState\(\)/);
+  assert.match(source, /const logout[\s\S]*?clearIdentityBoundClientState\(\)/);
+  assert.match(source, /agoojye-assistant-history:/);
+});
+
+test("AGOOJIYE controller UX exposes explicit access and authenticated manifest states", () => {
+  const appSource = fs.readFileSync(path.join(root, "client/src/App.tsx"), "utf8");
+  const source = fs.readFileSync(path.join(root, "client/src/pages/agoojye/AgoojiyeControllerPage.tsx"), "utf8");
+  assert.match(appSource, /pages\/agoojye\/AgoojiyeControllerPage/);
+  assert.match(source, /trips\.error instanceof ApiError/);
+  assert.match(source, /Accès au contrôle refusé/);
+  assert.match(source, /downloadManifest/);
+  assert.match(source, /md:hidden/);
 });
 
 test("AGOOJIYE OS supports operational message conversion", () => {

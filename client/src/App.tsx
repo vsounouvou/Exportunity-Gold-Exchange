@@ -336,7 +336,7 @@ const AgoojiyePaymentPage = lazyPage(() => import("@/pages/agoojye/AgoojiyeBooki
 const AgoojiyeConfirmationPage = lazyPage(() => import("@/pages/agoojye/AgoojiyeBookingPages"), "AgoojiyeConfirmationPage");
 const AgoojiyeTicketPage = lazyPage(() => import("@/pages/agoojye/AgoojiyeBookingPages"), "AgoojiyeTicketPage");
 const AgoojiyeBookingLookupPage = lazyPage(() => import("@/pages/agoojye/AgoojiyeBookingPages"), "AgoojiyeBookingLookupPage");
-const AgoojiyeControllerPage = lazyPage(() => import("@/pages/agoojye/AgoojiyeBookingPages"), "AgoojiyeControllerPage");
+const AgoojiyeControllerPage = lazyPage(() => import("@/pages/agoojye/AgoojiyeControllerPage"));
 const AgoojiyeFullBusPage = lazyPage(() => import("@/pages/agoojye/AgoojiyeCommercialPages"), "AgoojiyeFullBusPage");
 const AgoojiyeDemonstrationPage = lazyPage(() => import("@/pages/agoojye/AgoojiyeCommercialPages"), "AgoojiyeDemonstrationPage");
 const AgoojiyeOrderPage = lazyPage(() => import("@/pages/agoojye/AgoojiyeCommercialPages"), "AgoojiyeOrderPage");

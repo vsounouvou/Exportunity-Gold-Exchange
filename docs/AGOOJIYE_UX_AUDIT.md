@@ -1,6 +1,6 @@
 # Audit UX AGOOJIYE
 
-Date de revue : 26 juillet 2026
+Date de revue : 27 juillet 2026
 
 ## Objectif
 
@@ -58,14 +58,14 @@ Vérifier que chaque public peut accomplir sa tâche sans ambiguïté :
 
 | Persona | Parcours vérifié ou couvert | État |
 | --- | --- | --- |
-| Voyageur mobile | Recherche, voyage, siège, passager, paiement, billet, récupération | Audit production effectué ; nouveau test local à relancer |
-| Client commercial | Réserver un bus, démonstration, commande, liste prioritaire | Audit et corrections effectués ; test visuel à relancer |
-| Nouveau membre | Invitation, identité AGOOJIYE, autorité humaine | Scénario Playwright ajouté |
-| Collaborateur | Priorités, assistant personnel, restrictions CRM/mobilité | Scénario Playwright ajouté |
-| Responsable | Contexte départemental, équipe, CRM et mobilité autorisés | Scénario Playwright ajouté |
-| Contrôleur | Validation, doublon, recherche manifeste, caméra | Scénario Playwright ajouté |
-| Administrateur mobilité | Données lisibles, recherche, export, changement de statut confirmé | Scénario Playwright ajouté |
-| Super-administrateur | Pilotage, assistant unique, synthèse et gouvernance | Scénario Playwright ajouté |
+| Voyageur mobile | Recherche, voyage, siège, passager, paiement, billet, récupération | Parcours complet vérifié, réservation de contrôle nettoyée après audit |
+| Client commercial | Réserver un bus, démonstration, commande, liste prioritaire | Pages et formulaires vérifiés sur mobile et bureau ; persistance couverte par les tests ciblés |
+| Nouveau membre | Invitation, identité AGOOJIYE, autorité humaine | Scénario Playwright validé en production |
+| Collaborateur | Priorités, assistant personnel, restrictions CRM/mobilité | Scénario Playwright validé en production |
+| Responsable | Contexte départemental, équipe, CRM et mobilité autorisés | Scénario Playwright validé en production |
+| Contrôleur | Validation, doublon, recherche manifeste, caméra | Scénario Playwright validé en production, hors caméra physique |
+| Administrateur mobilité | Données lisibles, recherche, export, changement de statut confirmé | Scénario Playwright validé en production |
+| Super-administrateur | Pilotage, assistant unique, synthèse et gouvernance | Scénario Playwright validé en production, avec données isolées de test |
 
 ## Critères de réussite visuelle
 
@@ -79,22 +79,23 @@ Vérifier que chaque public peut accomplir sa tâche sans ambiguïté :
 
 ## Vérifications techniques
 
-Déjà obtenues avant les derniers raffinements :
+Validées :
 
-- compilation TypeScript réussie ;
+- compilation TypeScript complète réussie ;
 - 29 tests unitaires ciblés réussis ;
 - build de production et contrôle qualité marketing réussis ;
-- compilation des scénarios Playwright multi-rôles réussie.
+- 7 scénarios Playwright multi-rôles réussis sur `https://agoojiye.com` ;
+- 18 contrôles Playwright des pages publiques réussis sur mobile et bureau ;
+- rendu 3D non vide, cadré et interactif validé sur mobile, tablette et bureau ;
+- version client et serveur identique : `b3ef41f6651f`, build `1785111853398` ;
+- tenant de production isolé : `3162 / agoojye` ;
+- sauvegarde de base vérifiée avant migration et réservation de contrôle nettoyée.
 
-À relancer après les derniers raffinements :
+Contrôles physiques à programmer avec l'équipe :
 
-- contrôle TypeScript complet ;
-- tests unitaires ciblés ;
-- build de production ;
-- scénarios Playwright avec captures mobile, tablette et desktop ;
-- vérification physique de la caméra sur téléphone ;
-- test réel des rôles protégés avec MFA, sans contourner l'authentification ;
-- contrôle après déploiement sur `https://agoojiye.com`.
+- confirmer la caméra sur un téléphone disposant de `BarcodeDetector` ;
+- parcourir les rôles protégés avec les comptes MFA réels, sans contourner
+  l'authentification.
 
 ## Risques restant explicitement assumés
 

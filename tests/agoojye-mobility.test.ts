@@ -73,3 +73,39 @@ test("admin and controller APIs enforce server-side authorization", () => {
   assert.match(route, /adminApi\.use\(ensureTenantAdmin\)/);
   assert.match(route, /requireAgoojyeTenant\(req, res\)/);
 });
+
+test("controller manifest exposes only boarding fields", () => {
+  const root = path.resolve(import.meta.dirname, "..");
+  const routeSource = fs.readFileSync(path.join(root, "server/routes/agoojye-mobility.ts"), "utf8");
+  const manifestRoute = routeSource.slice(
+    routeSource.indexOf('staffApi.get("/trips/:id/manifest"'),
+    routeSource.indexOf('staffApi.post("/tickets/validate"'),
+  );
+  assert.match(manifestRoute, /firstName: agoojyeMobilityBookingPassengers\.firstName/);
+  assert.match(manifestRoute, /reference: agoojyeMobilityTickets\.reference/);
+  assert.doesNotMatch(manifestRoute, /publicToken:/);
+  assert.doesNotMatch(manifestRoute, /phone:/);
+  assert.doesNotMatch(manifestRoute, /email:/);
+});
+
+test("mobility administration keeps contact and status values out of date formatting", () => {
+  const source = fs.readFileSync(
+    new URL("../client/src/pages/agoojye/AgoojiyeMobilityAdmin.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(source, /dateColumns\.has\(key\)/);
+  assert.doesNotMatch(source, /key\.toLowerCase\(\)\.includes\("at"\)/);
+  assert.match(source, /Enregistrer le statut de l'élément/);
+  assert.match(source, /contactEmail: "E-mail"/);
+  assert.match(source, /Administration équipe/);
+});
+
+test("the 3D viewer adjusts exterior camera framing for narrow mobile canvases", () => {
+  const viewerSource = fs.readFileSync(
+    new URL("../client/src/pages/agoojye/AgoojiyeThreeExperience.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(viewerSource, /camera\.aspect < 1/);
+  assert.match(viewerSource, /mobileFramingScale/);
+  assert.match(viewerSource, /applyPreset\(runtimeRef\.current\?\.preset \|\| "exterior"\)/);
+});

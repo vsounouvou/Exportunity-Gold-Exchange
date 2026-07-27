@@ -2,6 +2,40 @@ import { QueryClient } from "@tanstack/react-query";
 import { resolveApiUrl } from "./runtimeConfig";
 import { getDemoModeHeaders } from "./demoMode";
 
+export class ApiError extends Error {
+  status: number;
+
+  constructor(status: number, message: string) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+  }
+}
+
+async function readApiError(res: Response) {
+  const text = await res.text().catch(() => "");
+  const contentType = String(res.headers.get("content-type") || "").toLowerCase();
+  let message = text;
+
+  if (text && (contentType.includes("application/json") || text.trim().startsWith("{") || text.trim().startsWith("["))) {
+    try {
+      const parsed = JSON.parse(text);
+      if (parsed && typeof parsed === "object") {
+        const extracted =
+          (parsed as any).message ||
+          (parsed as any).error ||
+          (parsed as any).details ||
+          (parsed as any).reason;
+        if (typeof extracted === "string" && extracted.trim()) message = extracted.trim();
+      }
+    } catch {
+      // Keep the response text when it is not valid JSON.
+    }
+  }
+
+  return new ApiError(res.status, message || `${res.status}: ${res.statusText}`);
+}
+
 function getClientLanguage(): string | null {
   if (typeof window === "undefined") return null;
   const raw = localStorage.getItem("ece_language");
@@ -32,11 +66,7 @@ export const queryClient = new QueryClient({
         });
 
         if (!res.ok) {
-          if (res.status >= 500) {
-            throw new Error(`${res.status}: ${res.statusText}`);
-          }
-
-          throw new Error(`${res.status}: ${await res.text()}`);
+          throw await readApiError(res);
         }
 
         return res.json();
@@ -106,27 +136,7 @@ export async function apiRequest(
   });
 
   if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    const contentType = String(res.headers.get("content-type") || "").toLowerCase();
-
-    let message = text;
-    if (text && (contentType.includes("application/json") || text.trim().startsWith("{") || text.trim().startsWith("["))) {
-      try {
-        const parsed = JSON.parse(text);
-        if (parsed && typeof parsed === "object") {
-          const extracted =
-            (parsed as any).message ||
-            (parsed as any).error ||
-            (parsed as any).details ||
-            (parsed as any).reason;
-          if (typeof extracted === "string" && extracted.trim()) message = extracted.trim();
-        }
-      } catch {
-        // ignore JSON parse errors
-      }
-    }
-
-    throw new Error(message || `${res.status}: ${res.statusText}`);
+    throw await readApiError(res);
   }
 
   return res.json();

@@ -156,6 +156,7 @@ const RULES: Array<{ prefix: string; tenants: TenantKey[] }> = [
   { prefix: "/teams", tenants: ["agoojye"] },
   { prefix: "/partners", tenants: ["agoojye"] },
   { prefix: "/sponsors", tenants: ["agoojye"] },
+  { prefix: "/os", tenants: ["agoojye"] },
   { prefix: "/admin/agoojye", tenants: ["agoojye"] },
 
   // Zogueland.

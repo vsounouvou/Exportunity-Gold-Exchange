@@ -336,13 +336,17 @@ const AgoojiyePaymentPage = lazyPage(() => import("@/pages/agoojye/AgoojiyeBooki
 const AgoojiyeConfirmationPage = lazyPage(() => import("@/pages/agoojye/AgoojiyeBookingPages"), "AgoojiyeConfirmationPage");
 const AgoojiyeTicketPage = lazyPage(() => import("@/pages/agoojye/AgoojiyeBookingPages"), "AgoojiyeTicketPage");
 const AgoojiyeBookingLookupPage = lazyPage(() => import("@/pages/agoojye/AgoojiyeBookingPages"), "AgoojiyeBookingLookupPage");
-const AgoojiyeControllerPage = lazyPage(() => import("@/pages/agoojye/AgoojiyeBookingPages"), "AgoojiyeControllerPage");
+const AgoojiyeControllerPage = lazyPage(() => import("@/pages/agoojye/AgoojiyeControllerPage"));
 const AgoojiyeFullBusPage = lazyPage(() => import("@/pages/agoojye/AgoojiyeCommercialPages"), "AgoojiyeFullBusPage");
 const AgoojiyeDemonstrationPage = lazyPage(() => import("@/pages/agoojye/AgoojiyeCommercialPages"), "AgoojiyeDemonstrationPage");
 const AgoojiyeOrderPage = lazyPage(() => import("@/pages/agoojye/AgoojiyeCommercialPages"), "AgoojiyeOrderPage");
 const AgoojiyeWaitlistPage = lazyPage(() => import("@/pages/agoojye/AgoojiyeCommercialPages"), "AgoojiyeWaitlistPage");
 const AgoojiyeThreeExperiencePage = lazyPage(() => import("@/pages/agoojye/AgoojiyeThreeExperience"), "AgoojiyeThreeExperiencePage");
 const AgoojiyeMobilityAdminPage = lazyPage(() => import("@/pages/agoojye/AgoojiyeMobilityAdmin"), "AgoojiyeMobilityAdminPage");
+const AgoojiyeOsJoinPage = lazyPage(() => import("@/pages/agoojye/AgoojiyeOsPages"), "AgoojiyeOsJoinPage");
+const AgoojiyeOsLoginPage = lazyPage(() => import("@/pages/agoojye/AgoojiyeOsPages"), "AgoojiyeOsLoginPage");
+const AgoojiyeOsAppPage = lazyPage(() => import("@/pages/agoojye/AgoojiyeOsPages"), "AgoojiyeOsAppPage");
+const AgoojiyeWorkosAdminPage = lazyPage(() => import("@/pages/agoojye/AgoojiyeWorkosAdminPage"));
 const AgoojyeMailPasswordPage = lazyPage(() => import("@/pages/agoojye/AgoojyeMailPasswordPage"));
 const AgoojyeAdminDashboardPage = lazyPage(() => import("@/pages/agoojye/AgoojyeAdminPages"), "AgoojyeAdminDashboardPage");
 const AgoojyeAdminUsersPage = lazyPage(() => import("@/pages/agoojye/AgoojyeAdminPages"), "AgoojyeAdminUsersPage");
@@ -795,11 +799,17 @@ function ProLandingRedirect() {
 
 function App() {
   const [location] = useLocation();
+  const pathname = location.split("?")[0];
+  const agoojiyeExperience = isAgoojyeHost();
 
   useEffect(() => {
     syncDemoModeFromUrl();
     telemetry().pageView(location);
   }, [location]);
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  }, [pathname]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -815,8 +825,8 @@ function App() {
                 <div className="flex mb-4 gap-4 items-center">
                   <MinerLoadingAnimation className="h-16 w-28 shrink-0" />
                   <div className="min-w-0">
-                    <h1 className="text-2xl font-bold text-white leading-tight">Loading...</h1>
-                    <p className="mt-1 text-sm text-gray-400">Preparing the page.</p>
+                    <h1 className="text-2xl font-bold text-white leading-tight">{agoojiyeExperience ? "Chargement…" : "Loading..."}</h1>
+                    <p className="mt-1 text-sm text-gray-400">{agoojiyeExperience ? "Préparation de la page." : "Preparing the page."}</p>
                   </div>
                 </div>
               </CardContent>
@@ -857,6 +867,49 @@ function App() {
           </Route>
           <Route path="/blog" component={() => (isMetHost() ? <MetBlogPage /> : <MarketingRedirect to="/media" />)} />
           <Route path="/contact" component={UnifiedContactRoute} />
+          <Route path="/os/rejoindre/:token">
+            {(params) => <AgoojyeOnlyRoute><AgoojiyeOsJoinPage token={String((params as any).token || "")} /></AgoojyeOnlyRoute>}
+          </Route>
+          <Route path="/os/connexion" component={() => <AgoojyeOnlyRoute><AgoojiyeOsLoginPage /></AgoojyeOnlyRoute>} />
+          <Route path="/os/:section" component={() => <AgoojyeOnlyRoute><AgoojiyeOsAppPage /></AgoojyeOnlyRoute>} />
+          <Route path="/os" component={() => <AgoojyeOnlyRoute><AgoojiyeOsAppPage /></AgoojyeOnlyRoute>} />
+          <Route path="/workspace/rejoindre/:token">
+            {(params) => <AgoojyeOnlyRoute><AgoojiyeOsJoinPage token={String((params as any).token || "")} /></AgoojyeOnlyRoute>}
+          </Route>
+          <Route path="/workspace/connexion" component={() => <AgoojyeOnlyRoute><AgoojiyeOsLoginPage /></AgoojyeOnlyRoute>} />
+          <Route path="/workspace/projects/:id" component={() => <AgoojyeOnlyRoute><AgoojiyeOsAppPage /></AgoojyeOnlyRoute>} />
+          <Route path="/workspace/tasks/:id" component={() => <AgoojyeOnlyRoute><AgoojiyeOsAppPage /></AgoojyeOnlyRoute>} />
+          <Route path="/workspace/files/:id" component={() => <AgoojyeOnlyRoute><AgoojiyeOsAppPage /></AgoojyeOnlyRoute>} />
+          <Route path="/workspace/channels/:id" component={() => <AgoojyeOnlyRoute><AgoojiyeOsAppPage /></AgoojyeOnlyRoute>} />
+          <Route path="/workspace/meetings/:id" component={() => <AgoojyeOnlyRoute><AgoojiyeOsAppPage /></AgoojyeOnlyRoute>} />
+          <Route path="/workspace/:section" component={() => <AgoojyeOnlyRoute><AgoojiyeOsAppPage /></AgoojyeOnlyRoute>} />
+          <Route path="/workspace" component={() => <AgoojyeOnlyRoute><AgoojiyeOsAppPage /></AgoojyeOnlyRoute>} />
+          <Route path="/admin/command-center" component={() => <AgoojyeOnlyRoute><AgoojiyeWorkosAdminPage /></AgoojyeOnlyRoute>} />
+          <Route path="/admin/people/import" component={() => <AgoojyeOnlyRoute><AgoojiyeWorkosAdminPage /></AgoojyeOnlyRoute>} />
+          <Route path="/admin/people/:id" component={() => <AgoojyeOnlyRoute><AgoojiyeWorkosAdminPage /></AgoojyeOnlyRoute>} />
+          <Route path="/admin/people" component={() => <AgoojyeOnlyRoute><AgoojiyeWorkosAdminPage /></AgoojyeOnlyRoute>} />
+          <Route path="/admin/howji" component={() => <AgoojyeOnlyRoute><Redirect to="/admin/assistant" /></AgoojyeOnlyRoute>} />
+          {[
+            "departments",
+            "org-chart",
+            "roles",
+            "projects",
+            "tasks",
+            "calendars",
+            "channels",
+            "documents",
+            "crm",
+            "meetings",
+            "decisions",
+            "agents",
+            "assistant",
+            "notifications",
+            "audit",
+            "security",
+            "settings",
+          ].map((section) => (
+            <Route key={`agoojiye-workos-admin-${section}`} path={`/admin/${section}`} component={() => <AgoojyeOnlyRoute><AgoojiyeWorkosAdminPage /></AgoojyeOnlyRoute>} />
+          ))}
           <Route path="/reserver" component={() => <AgoojyeOnlyRoute><AgoojiyeTripsPage /></AgoojyeOnlyRoute>} />
           <Route path="/trajets/:id">
             {(params) => <AgoojyeOnlyRoute><AgoojiyeTripDetailPage id={String((params as any).id || "")} /></AgoojyeOnlyRoute>}

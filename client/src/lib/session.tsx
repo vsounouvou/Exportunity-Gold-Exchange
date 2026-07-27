@@ -1,6 +1,6 @@
 	import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from "react";
 	import { nanoid } from "nanoid";
-	import { apiRequest } from "./queryClient";
+	import { apiRequest, queryClient } from "./queryClient";
 	import { resolveApiUrl } from "./runtimeConfig";
 	import { getDemoModeHeaders } from "./demoMode";
 
@@ -130,6 +130,15 @@ function isMindbaseJwtToken(token: string | null) {
   return issuer === "mindbase" || audience === "mindbase-api" || kind === "access";
 }
 
+function clearIdentityBoundClientState() {
+  queryClient.clear();
+  if (typeof window === "undefined") return;
+  for (let index = sessionStorage.length - 1; index >= 0; index -= 1) {
+    const key = sessionStorage.key(index);
+    if (key?.startsWith("agoojye-assistant-history:")) sessionStorage.removeItem(key);
+  }
+}
+
 	export function SessionProvider({ children }: { children: ReactNode }) {
 	  const [session, setSession] = useState<SessionState>(() => {
 	    const guestSessionId = getOrCreateGuestSessionId();
@@ -145,6 +154,7 @@ function isMindbaseJwtToken(token: string | null) {
 	  });
 	
 	  const login = useCallback((token: string, user: User) => {
+	    clearIdentityBoundClientState();
 	    localStorage.setItem("ece_session", token);
 	    localStorage.setItem("ece_user", JSON.stringify(user));
 	    
@@ -158,6 +168,7 @@ function isMindbaseJwtToken(token: string | null) {
 	  }, []);
 	
 	  const logout = useCallback(() => {
+	    clearIdentityBoundClientState();
 	    localStorage.removeItem("ece_session");
 	    localStorage.removeItem("ece_user");
 	    

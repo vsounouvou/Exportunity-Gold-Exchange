@@ -25,13 +25,13 @@ test("AGOOJIYE passenger can search, reserve, pay in demo mode and open a QR tic
   await availableSeat.click();
   await page.getByRole("button", { name: "Continuer" }).click();
   await page.waitForURL("**/reservation/passagers");
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeLessThan(40);
 
   await page.getByLabel("Prénom").fill("Aminata");
   await page.getByLabel("Nom", { exact: true }).fill("Test mobilité");
-  await page.getByLabel("Téléphone", { exact: true }).first().fill("+2290197000000");
+  await page.getByLabel("Téléphone du passager principal").fill("+2290197000000");
   await page.getByLabel("E-mail du passager principal").fill("mobilite.e2e@agoojiye.com");
-  await page.getByLabel("E-mail", { exact: true }).fill("mobilite.e2e@agoojiye.com");
-  await page.getByLabel("Téléphone", { exact: true }).last().fill("+2290197000000");
+  await expect(page.getByText("Utiliser le contact du passager principal")).toBeVisible();
   await page.getByRole("button", { name: "Voir le récapitulatif" }).click();
   await page.waitForURL("**/reservation/paiement");
 

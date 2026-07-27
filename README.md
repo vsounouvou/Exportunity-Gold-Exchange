@@ -28,7 +28,9 @@ Important modules:
 - `server/routes/agoojye-mobility.ts`: public, staff, and admin mobility APIs.
 - `server/lib/agoojye/mobility-domain.ts`: tested business rules.
 - `client/src/pages/agoojye/AgoojiyeMobilityPages.tsx`: homepage, trips, and bus catalog.
-- `client/src/pages/agoojye/AgoojiyeBookingPages.tsx`: checkout, ticket, lookup, and controller.
+- `client/src/pages/agoojye/AgoojiyeBookingPages.tsx`: checkout, ticket, and lookup.
+- `client/src/pages/agoojye/AgoojiyeControllerPage.tsx`: protected phone/tablet boarding control.
+- `server/lib/agoojye/assistant.ts`: scoped search, provider timeout/fallback, and read-only AI formulation.
 - `client/src/pages/agoojye/AgoojiyeCommercialPages.tsx`: group, demonstration, order, waitlist, and contact flows.
 - `client/src/pages/agoojye/AgoojiyeThreeExperience.tsx`: interactive 3D viewer.
 - `client/src/pages/agoojye/AgoojiyeMobilityAdmin.tsx`: operations dashboard.
@@ -64,8 +66,16 @@ AGOOJIYE_BOOKING_HOLD_MINUTES=15
 AGOOJIYE_TICKET_SIGNING_SECRET=replace_with_a_long_random_secret
 AGOOJIYE_PAYMENT_PROVIDER=demo
 AGOOJIYE_DEMO_PAYMENT_MODE=true
+AI_ENABLED=true
+OPENAI_API_KEY=
+ANTHROPIC_API_KEY=
+AGOOJIYE_ASSISTANT_MODE=hybrid
+AGOOJIYE_ASSISTANT_PROVIDER=auto
+AGOOJIYE_ASSISTANT_TIMEOUT_MS=8000
+AGOOJIYE_OPENAI_MODEL=gpt-4o-mini
+AGOOJIYE_ANTHROPIC_MODEL=claude-sonnet-4-5
 AGOOJIYE_EMAIL_PROVIDER=roundcube
-AGOOJIYE_SMTP_HOST=mail.exportunity.net
+AGOOJIYE_SMTP_HOST=mail.agoojiye.com
 AGOOJIYE_MAILBOX_REGIS_PASSWORD=
 AGOOJIYE_MAILBOX_SORIANE_PASSWORD=
 AGOOJIYE_MAILBOX_MARYSE_PASSWORD=
@@ -166,6 +176,8 @@ npx playwright test --project=chromium tests/e2e/agoojye-mobility.spec.ts
 
 Critical coverage includes trip search, seat capacity, payment transitions, opaque QR payloads, duplicate boarding prevention, and database/transaction guards against double booking.
 
+The team assistant is tested separately in `tests/agoojye-os.test.ts`: natural French search terms, relevance ordering, provider fallback, and the deterministic local response. It never sends messages or changes records.
+
 ## Public Routes
 
 - `/` mobility homepage and quick search.
@@ -180,6 +192,35 @@ Critical coverage includes trip search, seat capacity, payment transitions, opaq
 - `/reserver-un-bus`, `/demonstration`, `/commander` commercial requests.
 - `/liste-prioritaire`, `/a-propos`, `/contact`, `/faq` supporting pages.
 
+## AGOOJIYE OS
+
+The private company operating system is available under `/os`. It shares the
+AGOOJIYE tenant, users, mobility operations, CRM, documents, meetings, tasks,
+audit log, and governed AI-agent directory with the public platform.
+
+Initial team access is restricted to:
+
+- `vital@agoojiye.com`
+- `regis@agoojiye.com`
+- `soriane@agoojiye.com`
+- `maryse@agoojiye.com`
+- `christian@agoojiye.com`
+
+Apply `20260725_agoojiye_os.sql`, then create the team records and one guarded
+invitation link:
+
+```powershell
+npm run seed:agoojye:os
+```
+
+The command prints the join URL once. The invitation token is stored only as a
+SHA-256 hash, accepts only the listed official addresses, has a configurable
+expiry and use limit, and activates one password-based account per team member.
+The French-first PWA manifest is `/manifest-agoojiye-os.webmanifest`; Web Push
+is enabled only when the three `AGOOJIYE_VAPID_*` variables are configured.
+See `docs/AGOOJIYE_OS.md` for architecture, roles, access policy, operations,
+and the deliberately limited offline behavior.
+
 ## Admin Access
 
 Sign in at `/admin`. An authenticated AGOOJIYE administrator is redirected to `/admin/mobilite`.
@@ -187,6 +228,8 @@ Sign in at `/admin`. An authenticated AGOOJIYE administrator is redirected to `/
 Operational routes include `/admin/bus`, `/admin/trajets`, `/admin/horaires`, `/admin/voyages`, `/admin/reservations`, `/admin/billets`, `/admin/paiements`, `/admin/reservations-bus`, `/admin/demonstrations`, `/admin/commandes-bus`, and `/admin/liste-prioritaire`.
 
 The backend independently applies `ensureTenantAdmin`; hiding controls in the browser is not treated as authorization. The controller page `/controle` uses the staff guard and is designed for phones and tablets.
+
+`CONTROLLER`/`contrôleur` accounts are accepted by the staff guard but do not receive admin access. The controller downloads a short-lived authenticated JSON manifest through the application rather than a public link.
 
 ## Demo Payment Flow
 
@@ -238,7 +281,7 @@ Set `AGOOJIYE_PAYMENT_PROVIDER` and disable `AGOOJIYE_DEMO_PAYMENT_MODE` only af
 
 Delivery adapters are configured independently with `AGOOJIYE_EMAIL_PROVIDER`, `AGOOJIYE_SMS_PROVIDER`, and `AGOOJIYE_WHATSAPP_PROVIDER`. RoundCube is the human webmail interface; application delivery should use authenticated SMTP or the existing mail service, not browser automation.
 
-The AGOOJIYE mail bridge registers the five approved human mailboxes (`regis`, `soriane`, `maryse`, `christian`, and `vital`) in the shared mail engine, indexes their Maildir folders, mirrors conversations into the AGOOJIYE CRM inbox, creates external contacts from replies, and records explicit opt-outs or hard bounces in both suppression registries. Administrators can trigger the same operation from `/admin/agoojye/inbox`. The five password variables contain deployment secrets only; leave them blank in source control and inject them through the production environment. Human webmail is available at `https://mail.agoojiye.com/`.
+The AGOOJIYE mail bridge registers the approved human mailboxes (`regis`, `soriane`, `maryse`, `christian`, `vital`, and the separate principal identity `vs`) in the shared mail engine, indexes their Maildir folders, mirrors conversations into the AGOOJIYE CRM inbox, creates external contacts from replies, and records explicit opt-outs or hard bounces in both suppression registries. Administrators can trigger the same operation from `/admin/agoojye/inbox`. Mailbox password variables contain deployment secrets only; leave them blank in source control and inject them through the production environment. Human webmail is available at `https://mail.agoojiye.com/`.
 
 SMTP passwords are never accepted by the AGOOJIYE settings API. The legacy `smtp_password_encrypted` column is cleared and protected by a database constraint; authenticated sends resolve only the five `AGOOJIYE_MAILBOX_*_PASSWORD` environment references on the server.
 
@@ -267,6 +310,38 @@ Adapters should receive a booking/ticket ID, load approved data server-side, rec
 7. Verify `/api/agoojye/mobility/bootstrap`, the complete demo booking journey, ticket QR rendering, duplicate validation, commercial form persistence, admin authorization, `robots.txt`, and `sitemap.xml`.
 8. Keep demo payments enabled until a real provider and signed webhooks are verified.
 9. Complete the forward and reverse mail-DNS cutover in `docs/AGOOJIYE_EMAIL_DNS_AND_MAILBOXES.md`, then run `npm run verify:agoojye:mail-dns`.
+10. Apply `20260725_agoojiye_os.sql`, configure the optional VAPID keys, and run `npm run seed:agoojye:os` once to create the private team invitation.
+11. Apply `20260725_agoojiye_workos.sql` and `20260726_agoojye_single_assistant_identity.sql`, configure `AGOOJIYE_MFA_ENCRYPTION_KEY`, then run `npm run provision:agoojye:workos`.
+12. Retrieve the one-use super-admin setup handoff only from the private untracked file, enroll MFA, store recovery codes offline, and verify `/admin/command-center`.
+
+## AGOOJIYE WorkOS
+
+The private team workspace starts at `/workspace`; the MFA-protected
+administrative room starts at `/admin/command-center`. WorkOS adds encrypted
+TOTP enrollment, one-use recovery codes, tenant-bound privileged sessions,
+security events, worker CSV/XLSX import, controlled offboarding, data
+classification and the governed `AGOOJIYE — Assistant IA`, whose context adapts
+to each worker's role and permissions.
+
+Direct assistant questions are user-triggered and visible. The server retrieves
+only records already authorized for that member, sends only the minimal result
+titles/statuses to the configured provider, and remains read-only. Prompts and
+answers are represented in the audit log by SHA-256 hashes and lengths rather
+than raw text. Provider/model/token totals and fallback state are recorded.
+`AGOOJIYE_ASSISTANT_MODE=deterministic` disables external formulation without
+disabling the local scoped assistant. In `hybrid` mode, an eight-second bounded
+provider call falls back to the local answer on timeout or provider failure.
+
+The principal application identity is `vs@agoojiye.com` with
+`AGOOJIYE_SUPER_ADMIN`. Its password is never seeded. The provisioner creates a
+24-hour one-use setup link under the ignored `ops/private/` directory and
+requires MFA before any privileged session is issued.
+
+Complete architecture, environment, import, security, deployment and rollback
+instructions are in `docs/AGOOJIYE_OS.md`.
+
+The role-by-role experience review, observed friction and visual acceptance
+matrix are maintained in `docs/AGOOJIYE_UX_AUDIT.md`.
 
 ## Known Production Requirements
 

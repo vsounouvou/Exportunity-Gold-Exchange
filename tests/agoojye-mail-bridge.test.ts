@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import {
@@ -20,6 +21,7 @@ test("AGOOJIYE human mailbox profiles are stable and tenant-scoped", () => {
       "maryse@agoojiye.com",
       "christian@agoojiye.com",
       "vital@agoojiye.com",
+      "vs@agoojiye.com",
     ],
   );
   assert.equal(agoojiyeMaildirPath("Regis"), "/var/mail/agoojiye.com/regis");
@@ -58,4 +60,10 @@ test("conversation keys deduplicate alias fan-out without merging unrelated fall
   assert.equal(agoojiyeConversationKey("<Message-1@Example.com>", 10, 20), "rfc:<message-1@example.com>");
   assert.equal(agoojiyeConversationKey(null, 10, 20), "mail-engine:10:20");
   assert.notEqual(agoojiyeConversationKey(null, 10, 20), agoojiyeConversationKey(null, 11, 20));
+});
+
+test("AGOOJIYE mail bridge defaults to its own branded SMTP host", () => {
+  const bridgeSource = readFileSync(new URL("../server/lib/agoojye/mailBridge.ts", import.meta.url), "utf8");
+  assert.match(bridgeSource, /AGOOJIYE_SMTP_HOST \|\| "mail\.agoojiye\.com"/);
+  assert.doesNotMatch(bridgeSource, /AGOOJIYE_SMTP_HOST \|\| "mail\.exportunity\.net"/);
 });

@@ -722,7 +722,38 @@ staffApi.get("/trips/today", async (req: any, res) => {
 staffApi.get("/trips/:id/manifest", async (req: any, res) => {
   const tenantId = req.mobilityTenantId as number;
   const tripId = Number(req.params.id);
-  const manifest = await db.select({ ticket: agoojyeMobilityTickets, passenger: agoojyeMobilityBookingPassengers, booking: agoojyeMobilityBookings }).from(agoojyeMobilityTickets).innerJoin(agoojyeMobilityBookingPassengers, eq(agoojyeMobilityTickets.passengerId, agoojyeMobilityBookingPassengers.id)).innerJoin(agoojyeMobilityBookings, eq(agoojyeMobilityTickets.bookingId, agoojyeMobilityBookings.id)).where(and(eq(agoojyeMobilityTickets.tenantId, tenantId), eq(agoojyeMobilityTickets.tripId, tripId))).orderBy(asc(agoojyeMobilityBookingPassengers.lastName));
+  const manifest = await db
+    .select({
+      ticket: {
+        id: agoojyeMobilityTickets.id,
+        reference: agoojyeMobilityTickets.reference,
+        seatNumber: agoojyeMobilityTickets.seatNumber,
+        status: agoojyeMobilityTickets.status,
+      },
+      passenger: {
+        firstName: agoojyeMobilityBookingPassengers.firstName,
+        lastName: agoojyeMobilityBookingPassengers.lastName,
+      },
+      booking: {
+        reference: agoojyeMobilityBookings.reference,
+      },
+    })
+    .from(agoojyeMobilityTickets)
+    .innerJoin(
+      agoojyeMobilityBookingPassengers,
+      eq(agoojyeMobilityTickets.passengerId, agoojyeMobilityBookingPassengers.id),
+    )
+    .innerJoin(
+      agoojyeMobilityBookings,
+      eq(agoojyeMobilityTickets.bookingId, agoojyeMobilityBookings.id),
+    )
+    .where(
+      and(
+        eq(agoojyeMobilityTickets.tenantId, tenantId),
+        eq(agoojyeMobilityTickets.tripId, tripId),
+      ),
+    )
+    .orderBy(asc(agoojyeMobilityBookingPassengers.lastName));
   res.setHeader("Cache-Control", "private, max-age=60");
   res.json({ ok: true, generatedAt: new Date().toISOString(), offlineSnapshot: true, manifest });
 });

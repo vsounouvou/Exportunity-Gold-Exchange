@@ -121,6 +121,8 @@ export * from "./schema/met";
 // Export AGOOJIYE tenant industrial mobility platform tables
 export * from "./schema/agoojye";
 export * from "./schema/agoojye-mobility";
+export * from "./schema/agoojye-os";
+export * from "./schema/agoojye-workos";
 
 // Export PME Exchange lead, outreach, and profile tables
 export * from "./schema/pme-exchange";

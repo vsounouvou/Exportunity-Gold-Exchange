@@ -1,0 +1,47 @@
+{
+  "name": "AGOOJIYE WorkOS",
+  "short_name": "AGOOJIYE",
+  "description": "L'espace de travail privé et la salle administrative AGOOJIYE.",
+  "start_url": "/workspace",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#101311",
+  "theme_color": "#101311",
+  "lang": "fr",
+  "categories": ["business", "productivity"],
+  "icons": [
+    {
+      "src": "/tenants/agoojye/app-icon-128.png",
+      "sizes": "128x128",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/tenants/agoojye/app-icon-256.png",
+      "sizes": "256x256",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/tenants/agoojye/app-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Messages",
+      "short_name": "Messages",
+      "url": "/workspace/messages",
+      "icons": [{ "src": "/tenants/agoojye/app-icon-128.png", "sizes": "128x128" }]
+    },
+    {
+      "name": "Mes tâches",
+      "short_name": "Travail",
+      "url": "/workspace/tasks",
+      "icons": [{ "src": "/tenants/agoojye/app-icon-128.png", "sizes": "128x128" }]
+    }
+  ]
+}

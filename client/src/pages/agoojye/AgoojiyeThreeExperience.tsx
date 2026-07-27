@@ -165,7 +165,13 @@ export function AgoojiyeThreeExperiencePage() {
         };
         const applyPreset = (name: CameraPreset) => {
           const value = presetValues[name];
-          camera.position.set(...value.camera);
+          const target = new THREE.Vector3(...value.target);
+          const position = new THREE.Vector3(...value.camera);
+          if (camera.aspect < 1 && ["exterior", "front", "side"].includes(name)) {
+            const mobileFramingScale = Math.min(1.45, 1 + (1 - camera.aspect) * 1.2);
+            position.sub(target).multiplyScalar(mobileFramingScale).add(target);
+          }
+          camera.position.copy(position);
           camera.lookAt(...value.target);
           bus.rotation.y = value.busY;
         };
@@ -190,6 +196,7 @@ export function AgoojiyeThreeExperiencePage() {
           const height = Math.max(1, host.clientHeight);
           camera.aspect = width / height;
           camera.updateProjectionMatrix();
+          applyPreset(runtimeRef.current?.preset || "exterior");
           renderer.setSize(width, height, false);
         };
         resizeObserver = new ResizeObserver(resize);

@@ -18,6 +18,7 @@ import {
   type AgoojiyeAssistantMatch,
 } from "./assistant";
 import { listAccessibleAgoojiyeChatChannels } from "./chatAccess";
+import { extractAgoojiyeTaskProposal } from "./chatLogic";
 import { canAccessAgoojiyeDataClass } from "./osPolicy";
 
 const clean = (value: unknown) => String(value ?? "").trim();
@@ -342,16 +343,13 @@ export async function runAgoojiyeChatAssistant(input: {
   });
 
   const proposedActions: AgoojiyeAssistantContextResult["proposedActions"] = [];
-  if (/(cr[eé]e|ajoute|transforme).{0,30}(t[aâ]che|action)/i.test(query)) {
-    const title = query
-      .replace(/.*?(cr[eé]e|ajoute|transforme).{0,30}(t[aâ]che|action)\s*:?\s*/i, "")
-      .trim()
-      .slice(0, 180);
+  const taskProposal = extractAgoojiyeTaskProposal(query);
+  if (taskProposal) {
     proposedActions.push({
       type: "create_task",
-      label: `Créer la tâche « ${title || "Nouvelle tâche"} »`,
+      label: `Créer la tâche « ${taskProposal.title} »`,
       payload: {
-        title: title || query.slice(0, 180),
+        title: taskProposal.title,
         description: `Proposition issue de la conversation avec AGOOJIYE — Assistant IA.`,
         priority: /urgent|critique/i.test(query) ? "high" : "medium",
       },

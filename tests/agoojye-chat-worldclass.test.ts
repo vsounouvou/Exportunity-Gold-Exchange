@@ -6,9 +6,11 @@ import test from "node:test";
 import {
   attachmentKind,
   directConversationSlug,
+  extractAgoojiyeTaskProposal,
   extractAgoojiyeMentions,
   isActiveAgoojiyeMember,
   isAgoojiyeAssistantMentioned,
+  isMeaningfulAgoojiyeTaskTitle,
   messageCanBeEdited,
   normalizeAgoojiyeMemberStatus,
   normalizeAgoojiyePresence,
@@ -200,6 +202,33 @@ test("AGOOJIYE assistant never performs a proposed task before approval", () => 
   assert.ok(proposeIndex >= 0);
   assert.ok(approveIndex > proposeIndex);
   assert.ok(taskInsertIndex > approveIndex);
+});
+
+test("AGOOJIYE assistant respects negation and requires a meaningful task title", () => {
+  assert.equal(
+    extractAgoojiyeTaskProposal(
+      "Confirme que l'assistant est disponible, sans créer d'action.",
+    ),
+    null,
+  );
+  assert.equal(
+    extractAgoojiyeTaskProposal("Ne crée pas de tâche pour ce contrôle."),
+    null,
+  );
+  assert.equal(extractAgoojiyeTaskProposal("Crée une action."), null);
+  assert.deepEqual(
+    extractAgoojiyeTaskProposal(
+      "Transforme ce suivi en tâche : Relancer le fournisseur de batteries.",
+    ),
+    { title: "Relancer le fournisseur de batteries" },
+  );
+  assert.deepEqual(
+    extractAgoojiyeTaskProposal("Ajoute une tâche pour préparer le rapport hebdomadaire."),
+    { title: "préparer le rapport hebdomadaire" },
+  );
+  assert.equal(isMeaningfulAgoojiyeTaskTitle("."), false);
+  assert.equal(isMeaningfulAgoojiyeTaskTitle("Nouvelle tâche"), false);
+  assert.equal(isMeaningfulAgoojiyeTaskTitle("RDV Régis"), true);
 });
 
 test("AGOOJIYE composer exposes direct uploads and keyboard-first navigation", () => {

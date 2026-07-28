@@ -19,6 +19,7 @@ import {
 import { ensureTenantUser } from "./utils/auth";
 import { requireWorkosMember } from "./agoojye-workos";
 import { runAgoojiyeChatAssistant } from "../lib/agoojye/chatAssistant";
+import { isMeaningfulAgoojiyeTaskTitle } from "../lib/agoojye/chatLogic";
 import { canAccessAgoojiyeDataClass } from "../lib/agoojye/osPolicy";
 
 const router = Router();
@@ -448,6 +449,12 @@ router.post("/actions/:id/approve", async (req: any, res) => {
     return res.status(409).json({ message: "Cette action n'est pas encore exécutable." });
   }
   const payload = (action.payload || {}) as Record<string, unknown>;
+  const taskTitle = clean(payload.title).replace(/\s+/g, " ").slice(0, 240);
+  if (!isMeaningfulAgoojiyeTaskTitle(taskTitle)) {
+    return res.status(422).json({
+      message: "Cette proposition ne contient pas un intitulé de tâche exploitable.",
+    });
+  }
   const [task] = await db
     .insert(agoojyeTasks)
     .values({
@@ -455,7 +462,7 @@ router.post("/actions/:id/approve", async (req: any, res) => {
       teamId: Number(member.teamId || 0) || null,
       assignedTo: Number(member.id),
       createdBy: Number(member.id),
-      title: clean(payload.title).slice(0, 240) || "Nouvelle tâche",
+      title: taskTitle,
       description: clean(payload.description).slice(0, 5000) || null,
       priority: ["low", "medium", "high", "critical"].includes(clean(payload.priority))
         ? clean(payload.priority)

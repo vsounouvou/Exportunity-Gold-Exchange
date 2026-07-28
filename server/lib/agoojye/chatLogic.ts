@@ -51,6 +51,54 @@ export function isAgoojiyeAssistantMentioned(body: string) {
   return /(^|\s)@agoojiye(?:\s|$|[.,!?;:])/iu.test(String(body || ""));
 }
 
+function normalizeAssistantIntent(value: unknown) {
+  return String(value ?? "")
+    .trim()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[’]/g, "'")
+    .replace(/\s+/g, " ")
+    .toLowerCase();
+}
+
+export function isMeaningfulAgoojiyeTaskTitle(value: unknown) {
+  const title = String(value ?? "").trim().replace(/\s+/g, " ");
+  const alphanumeric = title.match(/[\p{L}\p{N}]/gu)?.join("") || "";
+  if (alphanumeric.length < 3) return false;
+
+  const normalized = normalizeAssistantIntent(title)
+    .replace(/^[\s:;,.'!?()[\]{}"“”«»–—-]+|[\s:;,.'!?()[\]{}"“”«»–—-]+$/g, "")
+    .trim();
+  return !/^(?:(?:une?|la|cette|nouvelle?)\s+)?(?:tache|action)$/.test(normalized);
+}
+
+export function extractAgoojiyeTaskProposal(value: unknown) {
+  const query = String(value ?? "").trim().replace(/\s+/g, " ");
+  const normalized = normalizeAssistantIntent(query);
+  const negatedIntent = [
+    /\bsans\s+(?:jamais\s+)?(?:creer|ajouter|transformer)\b.{0,50}\b(?:tache|action)\b/,
+    /\b(?:ne\s+|n'\s*)(?:cree|ajoute|transforme)\b.{0,16}\bpas\b/,
+    /\bne\s+pas\s+(?:creer|ajouter|transformer)\b/,
+    /\bpas\s+(?:creer|ajouter|transformer)\b/,
+    /\b(?:pas|aucune?)\s+(?:(?:de|d')\s*)?(?:tache|action)\b/,
+  ].some((pattern) => pattern.test(normalized));
+  if (negatedIntent) return null;
+
+  const command = query.match(
+    /\b(?:cr[eé](?:e|er)|ajout(?:e|er)|transform(?:e|er))\b.{0,50}?\b(?:t[aâ]che|action)\b([\s\S]*)$/i,
+  );
+  if (!command) return null;
+
+  const title = String(command[1] ?? "")
+    .trim()
+    .replace(/^[\s:;,.'!?()[\]{}"“”«»–—-]+/, "")
+    .replace(/^(?:pour|afin de|appel[ée]e?|intitul[ée]e?|nomm[ée]e?)\s+/i, "")
+    .replace(/[\s:;,.'!?()[\]{}"“”«»–—-]+$/g, "")
+    .trim()
+    .slice(0, 180);
+  return isMeaningfulAgoojiyeTaskTitle(title) ? { title } : null;
+}
+
 export function messageCanBeEdited(input: {
   senderUserId?: number | null;
   currentUserId: number;

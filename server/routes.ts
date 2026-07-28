@@ -47,6 +47,8 @@ import authOtpRouter from "./routes/auth-otp";
 import passwordSetupRouter from "./routes/password-setup";
 import agoojyeOsRouter from "./routes/agoojye-os";
 import agoojyeWorkosRouter from "./routes/agoojye-workos";
+import agoojyeChatRouter from "./routes/agoojye-chat";
+import agoojyeChatAiRouter from "./routes/agoojye-chat-ai";
 import marketplaceRouter from "./routes/marketplace"; // Marketplace routes
 import equipmentOpsRouter from "./routes/equipment-ops"; // Equipment marketplace + rentals
 import stampedGoldRouter from "./routes/stamped-gold";
@@ -1135,6 +1137,8 @@ export function registerRoutes(app: Express): Server {
   app.use("/", agoojyeRouter);
   app.use("/", agoojyeOsRouter);
   app.use("/", agoojyeWorkosRouter);
+  app.use("/", agoojyeChatRouter);
+  app.use("/api/agoojye/chat/member/ai", agoojyeChatAiRouter);
   // Zogueland tenant module (public story generator API)
   app.use("/", zoguelandRouter);
   // Mindbase marketplace + studio + internal invoke APIs

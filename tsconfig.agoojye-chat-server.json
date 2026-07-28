@@ -1,0 +1,21 @@
+{
+  "extends": "./tsconfig.json",
+  "include": [
+    "db/index.ts",
+    "db/schema.ts",
+    "db/schema/agoojye.ts",
+    "db/schema/agoojye-os.ts",
+    "db/schema/agoojye-chat.ts",
+    "server/lib/agoojye/chatAccess.ts",
+    "server/lib/agoojye/chatAssistant.ts",
+    "server/lib/agoojye/chatLogic.ts",
+    "server/lib/agoojye/chatSocket.ts",
+    "server/routes/agoojye-chat.ts",
+    "server/routes/agoojye-chat-ai.ts"
+  ],
+  "exclude": ["node_modules", "build", "dist", "**/*.test.ts"],
+  "compilerOptions": {
+    "incremental": false,
+    "noEmit": true
+  }
+}

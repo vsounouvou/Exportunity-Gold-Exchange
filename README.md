@@ -37,6 +37,11 @@ Important modules:
 - `server/lib/agoojye/pipelineImport.ts`: validated CSV/XLSX parsing, mapping, preview, and duplicate rules.
 - `server/lib/agoojye/mailBridge.ts`: five-mailbox indexing and unified CRM inbox synchronization.
 - `server/lib/agoojye/emailSettingsPolicy.ts`: rejects stored SMTP secrets and redacts the legacy database field.
+- `db/schema/agoojye-chat.ts`: reads, deliveries, reactions, attachments, drafts, pins, and persistent AI conversations.
+- `server/routes/agoojye-chat.ts`: tenant-scoped messaging, signed files, unread state, threads, search, and `@AGOOJIYE`.
+- `server/routes/agoojye-chat-ai.ts`: persistent assistant history, visible SSE streaming, sources, feedback, and approvals.
+- `server/lib/agoojye/chatSocket.ts`: authenticated Socket.IO presence, typing, read, and message events.
+- `client/src/features/agoojye-chat/`: desktop/mobile communications and assistant workspaces.
 
 ## Local Installation
 
@@ -74,6 +79,11 @@ AGOOJIYE_ASSISTANT_PROVIDER=auto
 AGOOJIYE_ASSISTANT_TIMEOUT_MS=8000
 AGOOJIYE_OPENAI_MODEL=gpt-4o-mini
 AGOOJIYE_ANTHROPIC_MODEL=claude-sonnet-4-5
+AGOOJIYE_CHAT_ATTACHMENT_SECRET=replace_with_an_independent_long_random_secret
+AGOOJIYE_CHAT_ATTACHMENT_MAX_BYTES=20971520
+AGOOJIYE_CHAT_ATTACHMENT_URL_TTL_SECONDS=900
+AGOOJIYE_CHAT_EDIT_WINDOW_MINUTES=30
+AGOOJIYE_CHAT_DELETE_WINDOW_MINUTES=60
 AGOOJIYE_EMAIL_PROVIDER=roundcube
 AGOOJIYE_SMTP_HOST=mail.agoojiye.com
 AGOOJIYE_MAILBOX_REGIS_PASSWORD=
@@ -105,6 +115,7 @@ psql $env:DATABASE_URL -v ON_ERROR_STOP=1 -f db/migrations/20260712_agoojiye_mob
 psql $env:DATABASE_URL -v ON_ERROR_STOP=1 -f db/migrations/20260718_agoojiye_email_secret_guard.sql
 psql $env:DATABASE_URL -v ON_ERROR_STOP=1 -f db/migrations/20260718_agoojiye_research_sources.sql
 psql $env:DATABASE_URL -v ON_ERROR_STOP=1 -f db/migrations/20260718_agoojiye_sequence_enrollments.sql
+psql $env:DATABASE_URL -v ON_ERROR_STOP=1 -f db/migrations/20260728_agoojye_chat_worldclass.sql
 ```
 
 The seat inventory has a database-level unique constraint on `(tenant_id, trip_id, seat_number)`. Seat holds also use conditional updates inside a transaction, so two customers cannot acquire the same available seat.
@@ -152,6 +163,7 @@ Run the mobility domain tests:
 ```powershell
 node --import ./scripts/spawn-debug.mjs --loader ./scripts/ts-loader.mjs --test tests/agoojye-mobility.test.ts
 node --import ./scripts/spawn-debug.mjs --loader ./scripts/ts-loader.mjs --test tests/agoojye-pipeline-import.test.ts
+node --import ./scripts/spawn-debug.mjs --loader ./scripts/ts-loader.mjs --test tests/agoojye-chat-worldclass.test.ts
 ```
 
 Run all integration tests:
@@ -172,6 +184,7 @@ To audit the deployed AGOOJIYE tenant with the locally installed Google Chrome i
 $env:E2E_BASE_URL = "https://agoojiye.com"
 $env:E2E_CHROME_CHANNEL = "chrome"
 npx playwright test --project=chromium tests/e2e/agoojye-mobility.spec.ts
+npx playwright test --project=chromium tests/e2e/agoojye-chat-worldclass.spec.ts
 ```
 
 Critical coverage includes trip search, seat capacity, payment transitions, opaque QR payloads, duplicate boarding prevention, and database/transaction guards against double booking.
@@ -313,6 +326,8 @@ Adapters should receive a booking/ticket ID, load approved data server-side, rec
 10. Apply `20260725_agoojiye_os.sql`, configure the optional VAPID keys, and run `npm run seed:agoojye:os` once to create the private team invitation.
 11. Apply `20260725_agoojiye_workos.sql` and `20260726_agoojye_single_assistant_identity.sql`, configure `AGOOJIYE_MFA_ENCRYPTION_KEY`, then run `npm run provision:agoojye:workos`.
 12. Retrieve the one-use super-admin setup handoff only from the private untracked file, enroll MFA, store recovery codes offline, and verify `/admin/command-center`.
+13. Apply `20260728_agoojye_chat_worldclass.sql`, set `AGOOJIYE_CHAT_ATTACHMENT_SECRET`, and confirm that the reverse proxy permits Socket.IO upgrades on `/socket.io/`.
+14. Run the chat domain and four-viewport Playwright suites, then verify a channel message, a DM, one file upload, one explicit `@AGOOJIYE` response, and one approved assistant action.
 
 ## AGOOJIYE WorkOS
 
@@ -331,6 +346,23 @@ than raw text. Provider/model/token totals and fallback state are recorded.
 `AGOOJIYE_ASSISTANT_MODE=deterministic` disables external formulation without
 disabling the local scoped assistant. In `hybrid` mode, an eight-second bounded
 provider call falls back to the local answer on timeout or provider failure.
+
+Communications use one authoritative conversation list, a full-height timeline,
+and an optional context drawer. Messages are inserted optimistically and then
+acknowledged through a tenant-scoped Socket.IO namespace. Direct messages remain
+accessible only to their members; privileged sessions still require MFA.
+Attachments are uploaded directly, stored under the tenant asset directory, and
+served only through short-lived signed URLs. `AGOOJIYE_CHAT_ATTACHMENT_SECRET`
+is mandatory in production.
+
+The assistant keeps persistent per-user conversations. External formulation is
+performed only after a visible user request when AI is enabled. `@AGOOJIYE` in
+human conversations is explicit and idempotent; it never answers every message
+automatically. Proposed record changes remain in `proposed` state until the
+requesting human confirms them. The current executable action is task creation.
+
+Detailed architecture, proxy configuration, migration, verification, rollback,
+and known limits are in `docs/AGOOJIYE_CHAT_AND_AI.md`.
 
 The principal application identity is `vs@agoojiye.com` with
 `AGOOJIYE_SUPER_ADMIN`. Its password is never seeded. The provisioner creates a

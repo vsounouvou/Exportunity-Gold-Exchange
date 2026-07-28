@@ -805,6 +805,8 @@ memberApi.post("/messages/:id/to-task", async (req: any, res) => {
       createdBy: Number(member.id),
       title,
       description: `${message.body}\n\nSource : message #${message.id}`,
+      sourceChannelId: Number(message.channelId),
+      sourceMessageId: Number(message.id),
       priority: clean(req.body?.priority) || "medium",
       status: "todo",
       dueDate: req.body?.dueDate ? new Date(req.body.dueDate) : null,
@@ -824,6 +826,8 @@ memberApi.post("/messages/:id/to-decision", async (req: any, res) => {
     .insert(agoojyeOsDecisions)
     .values({
       tenantId,
+      sourceChannelId: Number(message.channelId),
+      sourceMessageId: Number(message.id),
       decision: clean(req.body?.decision) || message.body,
       context: `Décision issue du message #${message.id}.`,
       decisionMakerUserId: Number(member.id),

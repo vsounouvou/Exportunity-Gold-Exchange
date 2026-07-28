@@ -220,6 +220,8 @@ export const agoojyeTasks = pgTable(
     reminderAt: timestamp("reminder_at", { withTimezone: true }),
     approvalStatus: text("approval_status").notNull().default("not_required"),
     confidentialityClass: text("confidentiality_class").notNull().default("INTERNAL"),
+    sourceChannelId: integer("source_channel_id"),
+    sourceMessageId: integer("source_message_id"),
     metadata: jsonb("metadata").$type<Record<string, unknown>>().notNull().default({}),
     createdAt: now(),
     updatedAt: updated(),

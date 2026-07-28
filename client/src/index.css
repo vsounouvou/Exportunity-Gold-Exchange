@@ -116,6 +116,63 @@
   }
 }
 
+@layer components {
+  .agoojye-message-markdown p,
+  .agoojye-assistant-markdown p {
+    margin: 0;
+  }
+
+  .agoojye-message-markdown p + p,
+  .agoojye-assistant-markdown p + p {
+    margin-top: 0.75rem;
+  }
+
+  .agoojye-message-markdown ul,
+  .agoojye-assistant-markdown ul {
+    margin: 0.65rem 0;
+    list-style: disc;
+    padding-left: 1.25rem;
+  }
+
+  .agoojye-message-markdown ol,
+  .agoojye-assistant-markdown ol {
+    margin: 0.65rem 0;
+    list-style: decimal;
+    padding-left: 1.25rem;
+  }
+
+  .agoojye-message-markdown blockquote,
+  .agoojye-assistant-markdown blockquote {
+    margin: 0.75rem 0;
+    border-left: 2px solid #b58a24;
+    padding-left: 0.75rem;
+    opacity: 0.78;
+  }
+
+  .agoojye-assistant-markdown h1,
+  .agoojye-assistant-markdown h2,
+  .agoojye-assistant-markdown h3 {
+    margin: 1rem 0 0.45rem;
+    font-size: 0.95rem;
+    font-weight: 700;
+    line-height: 1.4;
+  }
+
+  .agoojye-assistant-markdown hr {
+    margin: 1rem 0;
+    border-color: rgb(0 0 0 / 0.1);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .agoojye-message-markdown *,
+    .agoojye-assistant-markdown * {
+      scroll-behavior: auto !important;
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
 @layer base {
   * {
     @apply border-border;

@@ -3,6 +3,7 @@ import { Server } from "socket.io";
 import { db } from "@db";
 import { messages, agents } from "@db/schema";
 import { eq } from "drizzle-orm";
+import { attachAgoojiyeChatSocket } from "./agoojye/chatSocket";
 
 // Enhanced logging with timestamp
 const debug = (context: string, message: string, data?: any) => {
@@ -30,6 +31,7 @@ export function setupWebSocket(server: HttpServer) {
   });
 
   const connections = new Map<string, ConnectionState>();
+  attachAgoojiyeChatSocket(io);
 
   io.on("connection", (socket) => {
     debug("socket", "New connection established");

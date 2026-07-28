@@ -63,10 +63,20 @@ export function hasAgoojiyeOsPermission(member: OsPermissionMember, permission: 
 
 export function canAccessAgoojiyeOsChannel(input: {
   member: OsPermissionMember;
-  channel: { id: number; teamId?: number | null; projectId?: number | null; confidentiality?: number | null };
+  channel: {
+    id: number;
+    teamId?: number | null;
+    projectId?: number | null;
+    confidentiality?: number | null;
+    channelType?: string | null;
+  };
   memberChannelIds?: Set<number>;
 }) {
   const accessLevel = Number(input.member.accessLevel || 1);
+  const isDirectMember =
+    String(input.channel.channelType || "").toLowerCase() === "direct" &&
+    input.memberChannelIds?.has(Number(input.channel.id));
+  if (isDirectMember) return true;
   if (Number(input.channel.confidentiality || 1) > accessLevel) return false;
   if (accessLevel >= 6) return true;
   if (input.memberChannelIds?.has(Number(input.channel.id))) return true;

@@ -1,0 +1,13 @@
+{
+  "extends": "./tsconfig.json",
+  "include": [
+    "client/src/features/agoojye-chat/**/*.ts",
+    "client/src/features/agoojye-chat/**/*.tsx",
+    "client/src/pages/agoojye/AgoojiyeOsPages.tsx"
+  ],
+  "exclude": ["node_modules", "build", "dist", "**/*.test.ts"],
+  "compilerOptions": {
+    "incremental": false,
+    "noEmit": true
+  }
+}

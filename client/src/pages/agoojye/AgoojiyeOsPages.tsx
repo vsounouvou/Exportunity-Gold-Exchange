@@ -39,6 +39,8 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { resolveApiUrl } from "@/lib/runtimeConfig";
 import { useSession } from "@/lib/session";
+import { CommunicationWorkspace } from "@/features/agoojye-chat/CommunicationWorkspace";
+import { AssistantWorkspace } from "@/features/agoojye-chat/AssistantWorkspace";
 
 type OsBootstrap = {
   ok: boolean;
@@ -1174,6 +1176,8 @@ function ContextRail({ data }: { data: OsBootstrap }) {
 
 function OsShell({ data, section, children, logout }: { data: OsBootstrap; section: SectionKey; children: ReactNode; logout: () => void }) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [contextVisible, setContextVisible] = useState(true);
+  const immersive = section === "chat" || section === "messages";
   const visibleNav = navItems.filter((item) => {
     if (item.key === "crm") return data.navigation.crm;
     if (item.key === "mobilite") return data.navigation.mobility;
@@ -1189,45 +1193,69 @@ function OsShell({ data, section, children, logout }: { data: OsBootstrap; secti
   return (
     <div className="min-h-screen bg-[#f5f4ef] text-[#151816]">
       {menuOpen ? <button type="button" aria-label="Fermer le menu" onClick={() => setMenuOpen(false)} className="fixed inset-0 z-40 bg-black/45 lg:hidden" /> : null}
-      <aside className={`fixed inset-y-0 left-0 z-50 w-[300px] overflow-y-auto bg-[#101311] px-4 py-5 text-white transition-transform lg:translate-x-0 ${menuOpen ? "translate-x-0" : "-translate-x-full"}`}>
-        <div className="flex items-center justify-between"><BrandMark compact /><button type="button" onClick={() => setMenuOpen(false)} className="grid h-10 w-10 place-items-center lg:hidden" aria-label="Fermer"><X className="h-5 w-5" /></button></div>
-        <div className="mt-7 border-y border-white/10 py-4">
+      <aside className={`fixed inset-y-0 left-0 z-50 flex w-[280px] flex-col overflow-y-auto bg-[#101311] px-3 py-4 text-white transition-transform lg:w-[84px] lg:translate-x-0 lg:overflow-hidden lg:px-2 ${menuOpen ? "translate-x-0" : "-translate-x-full"}`}>
+        <div className="flex min-h-12 items-center justify-between lg:justify-center">
+          <div className="lg:hidden"><BrandMark compact /></div>
+          <img src="/tenants/agoojye/app-icon-128.png" alt="AGOOJIYE" className="hidden h-11 w-11 object-contain lg:block" />
+          <button type="button" onClick={() => setMenuOpen(false)} className="grid h-10 w-10 place-items-center lg:hidden" aria-label="Fermer"><X className="h-5 w-5" /></button>
+        </div>
+        <div className="mt-3 border-y border-white/10 py-3 lg:hidden">
           <p className="truncate text-sm font-semibold">{data.member.displayName}</p>
           <p className="mt-1 truncate text-xs text-white/45">{data.member.role}</p>
         </div>
-        <Link href="/workspace/chat" className="mt-5 flex min-h-11 items-center justify-center gap-2 bg-[#d8ad3d] px-3 text-sm font-bold text-[#16130c]">
-          <Plus className="h-4 w-4" /> Nouvelle conversation IA
-        </Link>
-        <div className="mt-5">
-          <p className="px-3 text-[10px] font-bold uppercase text-white/35">Assistant</p>
-          <Link href="/workspace/chat" className="mt-2 flex min-h-10 items-center gap-3 px-3 text-xs text-white/70 hover:bg-white/[0.06]"><Sparkles className="h-4 w-4 text-[#d8ad3d]" /><span><strong className="block">AGOOJIYE — Assistant IA</strong><span className="text-white/35">{assistantContext(data)}</span></span></Link>
-        </div>
-        <div className="mt-5 border-t border-white/10 pt-4">
-          <p className="px-3 text-[10px] font-bold uppercase text-white/35">Canaux</p>
-          {data.channels.slice(0, 6).map((channel) => <Link key={channel.id} href={`/workspace/messages?channel=${channel.id}`} className="flex min-h-9 items-center gap-2 px-3 text-xs text-white/55 hover:bg-white/[0.06] hover:text-white"><span className="text-white/25">#</span><span className="truncate">{channel.name}</span></Link>)}
-        </div>
-        <div className="mt-5 border-t border-white/10 pt-4">
-          <p className="px-3 text-[10px] font-bold uppercase text-white/35">Messages directs</p>
-          {data.directory.filter((person) => person.id !== data.member.id).slice(0, 5).map((person) => <Link key={person.id} href={`/workspace/messages?dm=${person.id}`} className="flex min-h-9 items-center gap-2 px-3 text-xs text-white/55 hover:bg-white/[0.06] hover:text-white"><span className="grid h-5 w-5 place-items-center bg-white/10 text-[9px]">{String(person.displayName).slice(0, 1)}</span><span className="truncate">{person.displayName}</span></Link>)}
-        </div>
-        <nav className="mt-5 grid gap-1" aria-label="Navigation AGOOJIYE OS">
-          <p className="px-3 pb-2 text-[10px] font-bold uppercase text-white/35">Modules</p>
+        <nav className="mt-3 grid gap-1 lg:min-h-0 lg:flex-1 lg:overflow-y-auto" aria-label="Navigation AGOOJIYE OS">
           {visibleNav.map((item) => {
             const Icon = item.icon;
-            return <Link key={item.key} href={item.key === "chat" ? "/workspace/chat" : item.key === "accueil" ? "/workspace/dashboard" : `/workspace/${item.key}`} onClick={() => setMenuOpen(false)} className={`flex min-h-10 items-center gap-3 px-3 text-xs font-medium ${section === item.key ? "bg-[#d8ad3d] text-[#16130c]" : "text-white/55 hover:bg-white/[0.06] hover:text-white"}`}><Icon className="h-[17px] w-[17px]" />{item.label}{item.key === "messages" && data.attention.unreadNotifications > 0 ? <span className="ml-auto bg-white/10 px-2 py-0.5 text-[10px]">{data.attention.unreadNotifications}</span> : null}</Link>;
+            const href = item.key === "chat" ? "/workspace/chat" : item.key === "accueil" ? "/workspace/dashboard" : `/workspace/${item.key}`;
+            return (
+              <Link
+                key={item.key}
+                href={href}
+                title={item.label}
+                onClick={() => setMenuOpen(false)}
+                className={`flex min-h-11 items-center gap-3 px-3 text-xs font-medium lg:min-h-[52px] lg:flex-col lg:justify-center lg:gap-1 lg:px-1 lg:text-[9px] ${
+                  section === item.key
+                    ? "bg-[#d8ad3d] text-[#16130c]"
+                    : "text-white/55 hover:bg-white/[0.06] hover:text-white"
+                }`}
+              >
+                <Icon className="h-[18px] w-[18px] shrink-0" />
+                <span className="truncate lg:max-w-[72px]">{item.label}</span>
+              </Link>
+            );
           })}
         </nav>
-        <div className="mt-7 border-t border-white/10 pt-4"><a href="/" className="flex min-h-10 items-center gap-3 px-3 text-xs text-white/50 hover:text-white"><Home className="h-4 w-4" /> Site public</a><a href="https://mail.agoojiye.com/" target="_blank" rel="noreferrer" className="flex min-h-10 items-center gap-3 px-3 text-xs text-white/50 hover:text-white"><Mail className="h-4 w-4" /> Webmail</a><button type="button" onClick={logout} className="flex min-h-10 w-full items-center gap-3 px-3 text-xs text-white/50 hover:text-white"><LogOut className="h-4 w-4" /> Déconnexion</button></div>
+        <div className="mt-auto border-t border-white/10 pt-2">
+          {data.navigation.administration ? (
+            <Link href="/admin/command-center" title="Administration" className="flex min-h-10 items-center gap-3 px-3 text-xs text-white/50 hover:text-white lg:justify-center lg:px-1">
+              <ShieldCheck className="h-4 w-4" /><span className="lg:hidden">Administration</span>
+            </Link>
+          ) : null}
+          <a href="https://mail.agoojiye.com/" target="_blank" rel="noreferrer" title="Webmail AGOOJIYE" className="flex min-h-10 items-center gap-3 px-3 text-xs text-white/50 hover:text-white lg:justify-center lg:px-1">
+            <Mail className="h-4 w-4" /><span className="lg:hidden">Webmail</span>
+          </a>
+          <button type="button" onClick={logout} title="Déconnexion" className="flex min-h-10 w-full items-center gap-3 px-3 text-xs text-white/50 hover:text-white lg:justify-center lg:px-1">
+            <LogOut className="h-4 w-4" /><span className="lg:hidden">Déconnexion</span>
+          </button>
+        </div>
       </aside>
-      <div className="lg:pl-[300px] xl:pr-[320px]">
+      <div className={`lg:pl-[84px] ${!immersive && contextVisible ? "xl:pr-[320px]" : ""}`}>
         <header className="sticky top-0 z-40 flex h-16 items-center border-b border-black/10 bg-[#f5f4ef]/95 px-4 backdrop-blur sm:px-6">
           <button type="button" onClick={() => setMenuOpen(true)} className="grid h-11 w-11 place-items-center border border-black/10 lg:hidden" aria-label="Ouvrir le menu"><Menu className="h-5 w-5" /></button>
           <p className="ml-3 text-sm font-semibold lg:ml-0">{sectionNames[section]}</p>
-          <div className="ml-auto flex items-center gap-3">{data.navigation.administration ? <Link href="/admin/command-center" className="hidden min-h-9 items-center border border-black/15 px-3 text-xs font-semibold md:inline-flex">Salle administrative</Link> : null}<span className="hidden text-right sm:block"><span className="block text-xs font-medium">{data.member.displayName}</span><span className="block text-[10px] text-black/40">{data.member.team?.name || "AGOOJIYE"}</span></span><span className="grid h-9 w-9 place-items-center bg-[#171a18] text-xs font-bold text-[#d8ad3d]">{String(data.member.displayName).slice(0, 2).toUpperCase()}</span></div>
+          <div className="ml-auto flex items-center gap-2">
+            {!immersive ? (
+              <button type="button" onClick={() => setContextVisible((value) => !value)} title={contextVisible ? "Masquer le contexte" : "Afficher le contexte"} aria-label={contextVisible ? "Masquer le contexte" : "Afficher le contexte"} className="hidden h-9 w-9 place-items-center border border-black/10 xl:grid">
+                {contextVisible ? <ChevronRight className="h-4 w-4" /> : <Activity className="h-4 w-4" />}
+              </button>
+            ) : null}
+            <span className="hidden text-right sm:block"><span className="block text-xs font-medium">{data.member.displayName}</span><span className="block text-[10px] text-black/40">{data.member.team?.name || "AGOOJIYE"}</span></span>
+            <span className="grid h-9 w-9 place-items-center bg-[#171a18] text-xs font-bold text-[#d8ad3d]">{String(data.member.displayName).slice(0, 2).toUpperCase()}</span>
+          </div>
         </header>
-        <main className="mx-auto max-w-[1240px] px-4 pb-28 pt-7 sm:px-6 lg:pb-10 lg:pt-9">{children}</main>
+        <main className={immersive ? "pb-[68px] lg:pb-0" : "mx-auto max-w-[1240px] px-4 pb-28 pt-7 sm:px-6 lg:pb-10 lg:pt-9"}>{children}</main>
       </div>
-      <ContextRail data={data} />
+      {!immersive && contextVisible ? <ContextRail data={data} /> : null}
       <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-black/10 bg-white lg:hidden" aria-label="Navigation mobile">
         {mobileNav.map((item) => { const Icon = item.icon; return <Link key={item.key} href={item.key === "chat" ? "/workspace/chat" : item.key === "accueil" ? "/workspace/dashboard" : `/workspace/${item.key}`} className={`flex min-h-[68px] flex-col items-center justify-center gap-1 text-[10px] font-medium ${section === item.key ? "text-[#805f12]" : "text-black/50"}`}><Icon className="h-5 w-5" />{item.label}</Link>; })}
       </nav>
@@ -1286,8 +1314,8 @@ export function AgoojiyeOsAppPage() {
     bootstrap.refetch();
   };
   let content: ReactNode;
-  if (section === "chat") content = <AiSection data={data} />;
-  else if (section === "messages") content = <MessagesSection data={data} refresh={refresh} />;
+  if (section === "chat") content = <AssistantWorkspace data={data} />;
+  else if (section === "messages") content = <CommunicationWorkspace data={data} />;
   else if (section === "equipes") content = <TeamsSection data={data} />;
   else if (section === "travail") content = <WorkSection data={data} refresh={refresh} />;
   else if (section === "crm") content = <CrmSection data={data} refresh={refresh} />;

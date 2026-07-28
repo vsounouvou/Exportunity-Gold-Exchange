@@ -231,6 +231,18 @@ test("AGOOJIYE assistant respects negation and requires a meaningful task title"
   assert.equal(isMeaningfulAgoojiyeTaskTitle("RDV Régis"), true);
 });
 
+test("AGOOJIYE update banner is French-first and accessible", () => {
+  const source = fs.readFileSync(
+    path.join(root, "client/src/components/ServiceWorkerUpdateBanner.tsx"),
+    "utf8",
+  );
+
+  assert.match(source, /Nouvelle version disponible/);
+  assert.match(source, /Actualisez pour charger les dernières améliorations/);
+  assert.match(source, /window\.location\.hostname === "agoojiye\.com"/);
+  assert.match(source, /aria-label=\{copy\.close\}/);
+});
+
 test("AGOOJIYE composer exposes direct uploads and keyboard-first navigation", () => {
   const source = fs.readFileSync(
     path.join(root, "client/src/features/agoojye-chat/CommunicationWorkspace.tsx"),

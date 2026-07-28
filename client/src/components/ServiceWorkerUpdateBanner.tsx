@@ -11,6 +11,24 @@ function isSwUpdateEvent(event: Event): event is CustomEvent<SwUpdateDetail> {
 export default function ServiceWorkerUpdateBanner() {
   const [registration, setRegistration] = useState<ServiceWorkerRegistration | null>(null);
   const [pendingReload, setPendingReload] = useState(false);
+  const isFrench =
+    typeof window === "undefined" ||
+    window.localStorage.getItem("ece_language")?.toLowerCase().startsWith("fr") ||
+    window.location.hostname === "agoojiye.com" ||
+    window.location.hostname.endsWith(".agoojiye.com");
+  const copy = isFrench
+    ? {
+        title: "Nouvelle version disponible",
+        description: "Actualisez pour charger les dernières améliorations.",
+        refresh: "Actualiser",
+        close: "Fermer",
+      }
+    : {
+        title: "New version available",
+        description: "Refresh to load the latest updates.",
+        refresh: "Refresh",
+        close: "Close",
+      };
 
   useEffect(() => {
     const handler = (event: Event) => {
@@ -48,21 +66,23 @@ export default function ServiceWorkerUpdateBanner() {
       <div className="pointer-events-auto mx-auto max-w-xl rounded-2xl border border-white/10 bg-black/80 backdrop-blur-xl text-white px-4 py-3 shadow-2xl">
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
-            <div className="text-sm font-semibold text-white truncate">New version available</div>
-            <div className="text-[11px] text-white/60 truncate">
-              Refresh to load the latest updates.
-            </div>
+            <div className="text-sm font-semibold text-white truncate">{copy.title}</div>
+            <div className="text-[11px] text-white/60 truncate">{copy.description}</div>
           </div>
 
           <div className="flex items-center gap-2 flex-shrink-0">
             <Button
+              type="button"
               size="sm"
               className="bg-white/10 hover:bg-white/15 text-white border border-white/10"
               onClick={() => setRegistration(null)}
+              aria-label={copy.close}
+              title={copy.close}
             >
               <X className="h-4 w-4" />
             </Button>
             <Button
+              type="button"
               size="sm"
               className="bg-emerald-500 hover:bg-emerald-600 text-black font-semibold"
               onClick={() => {
@@ -75,7 +95,7 @@ export default function ServiceWorkerUpdateBanner() {
               }}
             >
               <RefreshCw className="h-4 w-4 mr-2" />
-              Refresh
+              {copy.refresh}
             </Button>
           </div>
         </div>

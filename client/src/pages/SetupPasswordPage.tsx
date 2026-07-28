@@ -83,7 +83,11 @@ export default function SetupPasswordPage() {
 
       toast({
         title: isAgoojiye ? "Mot de passe défini" : "Password set",
-        description: isAgoojiye ? "Votre identité AGOOJIYE est prête. Poursuivez avec la vérification de sécurité." : "Your account is ready.",
+        description: isAgoojiye
+          ? payload?.webmailReady
+            ? "Votre compte et votre webmail AGOOJIYE utilisent maintenant ce même mot de passe."
+            : "Votre compte AGOOJIYE est prêt. Le webmail sera vérifié séparément si nécessaire."
+          : "Your account is ready.",
       });
       setLocation(postSetup.redirect);
     },
@@ -122,7 +126,11 @@ export default function SetupPasswordPage() {
       <Card className="w-full max-w-md border-white/10 bg-[#0f1729]">
         <CardHeader>
           <CardTitle className="text-white">{isAgoojiye ? "Définir votre mot de passe AGOOJIYE" : "Set your password"}</CardTitle>
-          <CardDescription>{isAgoojiye ? "Créez votre premier mot de passe pour activer cette identité." : "Create your first password to activate this account."}</CardDescription>
+          <CardDescription>
+            {isAgoojiye
+              ? "Créez votre mot de passe. Il servira pour la plateforme et le webmail AGOOJIYE."
+              : "Create your first password to activate this account."}
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <form className="space-y-4" onSubmit={onSubmit}>

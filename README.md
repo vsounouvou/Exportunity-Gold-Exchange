@@ -375,6 +375,39 @@ instructions are in `docs/AGOOJIYE_OS.md`.
 The role-by-role experience review, observed friction and visual acceptance
 matrix are maintained in `docs/AGOOJIYE_UX_AUDIT.md`.
 
+### Engineering team preparation
+
+The electric-vehicle workbook is reconciled into 34 unique engineering
+identities, five technical workstreams, the S1-S6 prototype plan, component
+review tasks, work sessions and the launch communication plan.
+
+Preview the production impact without writing:
+
+```bash
+npm run provision:agoojye:engineering-team -- \
+  --workbook=/run/secrets/agoojye/electric-vehicle-team.xlsx
+```
+
+After the engineering-team migration is applied, account and mailbox creation
+requires the explicit no-email guard:
+
+```bash
+npm run provision:agoojye:engineering-team -- \
+  --workbook=/run/secrets/agoojye/electric-vehicle-team.xlsx \
+  --apply \
+  --confirm-no-email
+```
+
+This command never generates setup links and contains no delivery adapter. It
+stores initial mailbox credentials under `AGOOJIYE_SECURE_HANDOFF_DIR` with
+owner-only permissions. Fresh setup links must be generated only after explicit
+owner authorization. The password chosen through a setup link is synchronized
+with the user's AGOOJIYE-owned webmail.
+
+Roster reconciliation, prepared corporate addresses, unresolved source data,
+security controls and the later delivery procedure are documented in
+`docs/AGOOJIYE_ENGINEERING_TEAM_ONBOARDING.md`.
+
 ## Known Production Requirements
 
 - Replace indicative bus specifications with engineering-approved values.

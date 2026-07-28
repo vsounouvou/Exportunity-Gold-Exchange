@@ -135,6 +135,47 @@ export const agoojyeParticipants = pgTable(
   }),
 );
 
+export const agoojyeEngineeringProfiles = pgTable(
+  "agoojye_engineering_profiles",
+  {
+    id: serial("id").primaryKey(),
+    tenantId: integer("tenant_id").references(() => tenants.id, { onDelete: "cascade" }).notNull(),
+    projectUserId: integer("project_user_id")
+      .references(() => agoojyeProjectUsers.id, { onDelete: "cascade" })
+      .notNull(),
+    sourceUid: text("source_uid").notNull(),
+    sourceName: text("source_name").notNull(),
+    sourceRows: jsonb("source_rows").$type<number[]>().notNull().default([]),
+    sourceHash: text("source_hash").notNull(),
+    corporateEmail: text("corporate_email").notNull(),
+    personalEmail: text("personal_email"),
+    studyProgram: text("study_program"),
+    sourceSquad: text("source_squad"),
+    discipline: text("discipline").notNull(),
+    assignmentConfidence: text("assignment_confidence").notNull().default("source"),
+    skills: jsonb("skills").$type<string[]>().notNull().default([]),
+    ndaStatus: text("nda_status").notNull().default("not_recorded"),
+    ndaUrl: text("nda_url"),
+    onboardingState: text("onboarding_state").notNull().default("prepared"),
+    invitationState: text("invitation_state").notNull().default("not_sent"),
+    mailboxState: text("mailbox_state").notNull().default("pending"),
+    sourceMetadata: jsonb("source_metadata").$type<Record<string, unknown>>().notNull().default({}),
+    createdAt: now(),
+    updatedAt: updated(),
+  },
+  (t) => ({
+    tenantSourceUnique: uniqueIndex("agoojye_engineering_profiles_tenant_source_uidx").on(t.tenantId, t.sourceUid),
+    tenantUserUnique: uniqueIndex("agoojye_engineering_profiles_tenant_user_uidx").on(t.tenantId, t.projectUserId),
+    tenantEmailUnique: uniqueIndex("agoojye_engineering_profiles_tenant_email_uidx").on(t.tenantId, t.corporateEmail),
+    byTenantDiscipline: index("agoojye_engineering_profiles_tenant_discipline_idx").on(t.tenantId, t.discipline),
+    byTenantOnboarding: index("agoojye_engineering_profiles_tenant_onboarding_idx").on(
+      t.tenantId,
+      t.onboardingState,
+      t.invitationState,
+    ),
+  }),
+);
+
 export const agoojyeEmailIdentities = pgTable(
   "agoojye_email_identities",
   {

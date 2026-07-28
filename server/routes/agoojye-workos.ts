@@ -11,6 +11,7 @@ import { z } from "zod";
 import { db } from "@db";
 import {
   agoojyeAuditLogs,
+  agoojyeEngineeringProfiles,
   agoojyeOsChannelMembers,
   agoojyeOsChannels,
   agoojyeOsNotifications,
@@ -735,10 +736,13 @@ adminApi.get("/overview", async (req: any, res) => {
   const tenantId = Number(req.workosTenantId);
   const now = new Date();
   const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-  const [people, teams, tasks, projects, vacancies, agents, securityEvents] = await Promise.all([
+  const [people, engineeringProfiles, teams, tasks, projects, vacancies, agents, securityEvents] = await Promise.all([
     db.query.agoojyeProjectUsers.findMany({
       where: eq(agoojyeProjectUsers.tenantId, tenantId),
       orderBy: [asc(agoojyeProjectUsers.displayName)],
+    }),
+    db.query.agoojyeEngineeringProfiles.findMany({
+      where: eq(agoojyeEngineeringProfiles.tenantId, tenantId),
     }),
     db.query.agoojyeTeams.findMany({
       where: eq(agoojyeTeams.tenantId, tenantId),
@@ -775,6 +779,9 @@ adminApi.get("/overview", async (req: any, res) => {
   const openTasks = tasks.filter((task) => !["done", "cancelled"].includes(clean(task.status).toLowerCase()));
   const blocked = openTasks.filter((task) => clean(task.status).toLowerCase() === "blocked" || Boolean(task.blocker));
   const overdue = openTasks.filter((task) => task.dueDate && new Date(task.dueDate) < now);
+  const engineeringByUserId = new Map(
+    engineeringProfiles.map((profile) => [Number(profile.projectUserId), profile]),
+  );
   return res.json({
     ok: true,
     currentUser: {
@@ -792,17 +799,48 @@ adminApi.get("/overview", async (req: any, res) => {
       blockers: blocked.length,
       vacancies: vacancies.filter((vacancy) => !["filled", "closed"].includes(vacancy.status)).length,
       securityEvents7d: securityEvents.length,
+      engineeringPrepared: engineeringProfiles.filter((profile) =>
+        ["prepared", "needs_role_confirmation"].includes(profile.onboardingState),
+      ).length,
+      engineeringMailboxesReady: engineeringProfiles.filter((profile) =>
+        ["provisioned", "existing"].includes(profile.mailboxState),
+      ).length,
+      engineeringMissingPersonalEmail: engineeringProfiles.filter((profile) => !profile.personalEmail).length,
+      engineeringNdaToReview: engineeringProfiles.filter((profile) => profile.ndaStatus === "not_recorded").length,
+      engineeringAssignmentsToConfirm: engineeringProfiles.filter(
+        (profile) => profile.assignmentConfidence === "inferred_needs_confirmation",
+      ).length,
     },
-    people: people.map((person) => ({
-      id: person.id,
-      displayName: person.displayName,
-      email: person.email,
-      role: person.role,
-      teamId: person.teamId,
-      status: person.status,
-      accessLevel: person.accessLevel,
-      onboardingProgress: person.onboardingProgress,
-    })),
+    people: people.map((person) => {
+      const engineering = engineeringByUserId.get(Number(person.id));
+      return {
+        id: person.id,
+        displayName: person.displayName,
+        email: person.email,
+        phone: person.phone,
+        role: person.role,
+        teamId: person.teamId,
+        status: person.status,
+        accessLevel: person.accessLevel,
+        onboardingProgress: person.onboardingProgress,
+        emailAccountCreated: person.emailAccountCreated,
+        engineering: engineering
+          ? {
+              personalEmail: engineering.personalEmail,
+              studyProgram: engineering.studyProgram,
+              sourceSquad: engineering.sourceSquad,
+              discipline: engineering.discipline,
+              assignmentConfidence: engineering.assignmentConfidence,
+              skills: engineering.skills,
+              ndaStatus: engineering.ndaStatus,
+              ndaUrl: engineering.ndaUrl,
+              onboardingState: engineering.onboardingState,
+              invitationState: engineering.invitationState,
+              mailboxState: engineering.mailboxState,
+            }
+          : null,
+      };
+    }),
     teams,
     tasks: tasks.slice(0, 30),
     projects,
@@ -814,10 +852,13 @@ adminApi.get("/overview", async (req: any, res) => {
 
 adminApi.get("/people", async (req: any, res) => {
   const tenantId = Number(req.workosTenantId);
-  const [people, teams, vacancies] = await Promise.all([
+  const [people, engineeringProfiles, teams, vacancies] = await Promise.all([
     db.query.agoojyeProjectUsers.findMany({
       where: eq(agoojyeProjectUsers.tenantId, tenantId),
       orderBy: [asc(agoojyeProjectUsers.displayName)],
+    }),
+    db.query.agoojyeEngineeringProfiles.findMany({
+      where: eq(agoojyeEngineeringProfiles.tenantId, tenantId),
     }),
     db.query.agoojyeTeams.findMany({
       where: eq(agoojyeTeams.tenantId, tenantId),
@@ -828,7 +869,7 @@ adminApi.get("/people", async (req: any, res) => {
       orderBy: [desc(agoojyeWorkosVacancies.createdAt)],
     }),
   ]);
-  return res.json({ ok: true, people, teams, vacancies });
+  return res.json({ ok: true, people, engineeringProfiles, teams, vacancies });
 });
 
 adminApi.post("/people/import/preview", workerImportUpload.single("file"), async (req: any, res) => {

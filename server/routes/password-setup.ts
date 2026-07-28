@@ -2,10 +2,16 @@ import { randomBytes } from "crypto";
 
 import bcrypt from "bcryptjs";
 import { Router } from "express";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 
 import { db } from "@db";
-import { eceSessions, eceUsers } from "@db/schema";
+import {
+  agoojyeEngineeringProfiles,
+  agoojyeProjectUsers,
+  eceSessions,
+  eceUsers,
+  emailAccounts,
+} from "@db/schema";
 
 import { ensureTenantAdmin } from "./utils/auth";
 import {
@@ -15,6 +21,11 @@ import {
   resolvePasswordSetupBaseUrl,
 } from "../lib/password-setup";
 import { resolveSetupPasswordRedirect } from "../lib/setup-password-redirect";
+import {
+  isMailserverSetupAvailable,
+  mailserverDoveadmAuthTestWithRefresh,
+  mailserverEmailUpdate,
+} from "../lib/mail/mailserverSetup";
 
 const router = Router();
 
@@ -106,6 +117,39 @@ router.post("/api/auth/setup-password", async (req, res) => {
       String(user.email || "").trim().toLowerCase() ===
         String(process.env.AGOOJIYE_SUPER_ADMIN_EMAIL || "vs@agoojiye.com").trim().toLowerCase();
 
+    const setupRedirect = resolveSetupPasswordRedirect({
+      tenantKey: (req as any)?.tenant?.key,
+      host: req.get("host"),
+      forwardedHost: req.get("x-forwarded-host"),
+    });
+    const corporateEmail = String(user.email || "").trim().toLowerCase();
+    let webmailReady = false;
+    if (
+      setupRedirect.tenantKey === "agoojye" &&
+      corporateEmail.endsWith("@agoojiye.com") &&
+      isMailserverSetupAvailable()
+    ) {
+      const mailbox = await db.query.emailAccounts.findFirst({
+        where: and(
+          eq(emailAccounts.address, corporateEmail),
+          eq(emailAccounts.status, "active"),
+        ),
+      });
+      if (mailbox) {
+        const updatedMailbox = await mailserverEmailUpdate(corporateEmail, password).catch(() => null);
+        if (updatedMailbox?.ok) {
+          const verifiedMailbox = await mailserverDoveadmAuthTestWithRefresh(
+            corporateEmail,
+            password,
+            { attempts: 4, delayMs: 750 },
+          ).catch(() => null);
+          webmailReady = Boolean(verifiedMailbox?.ok);
+        }
+      }
+    }
+    metadata.webmailPasswordSyncStatus = webmailReady ? "ready" : "not_confirmed";
+    if (webmailReady) metadata.webmailPasswordSyncedAt = new Date().toISOString();
+
     await db
       .update(eceUsers)
       .set({
@@ -115,11 +159,36 @@ router.post("/api/auth/setup-password", async (req, res) => {
       })
       .where(eq(eceUsers.id, user.id));
 
-    const setupRedirect = resolveSetupPasswordRedirect({
-      tenantKey: (req as any)?.tenant?.key,
-      host: req.get("host"),
-      forwardedHost: req.get("x-forwarded-host"),
-    });
+    if (setupRedirect.tenantKey === "agoojye") {
+      const tenantId = Number((req as any)?.tenant?.id || 0);
+      const projectUser = await db.query.agoojyeProjectUsers.findFirst({
+        where: tenantId
+          ? and(
+              eq(agoojyeProjectUsers.tenantId, tenantId),
+              eq(agoojyeProjectUsers.authUserId, Number(user.id)),
+            )
+          : eq(agoojyeProjectUsers.authUserId, Number(user.id)),
+      });
+      if (projectUser) {
+        await db
+          .update(agoojyeProjectUsers)
+          .set({
+            status: "Active",
+            onboardingProgress: Math.max(Number(projectUser.onboardingProgress || 0), 25),
+            updatedAt: new Date(),
+          })
+          .where(eq(agoojyeProjectUsers.id, Number(projectUser.id)));
+        await db
+          .update(agoojyeEngineeringProfiles)
+          .set({
+            onboardingState: "activated",
+            invitationState: "accepted",
+            ...(webmailReady ? { mailboxState: "provisioned" } : {}),
+            updatedAt: new Date(),
+          })
+          .where(eq(agoojyeEngineeringProfiles.projectUserId, Number(projectUser.id)));
+      }
+    }
 
     if (requiresMfa && setupRedirect.tenantKey === "agoojye") {
       return res.json({
@@ -127,6 +196,8 @@ router.post("/api/auth/setup-password", async (req, res) => {
         mfaRequired: true,
         redirect: "/workspace/connexion",
         tenantKey: setupRedirect.tenantKey,
+        webmailReady,
+        webmailUrl: webmailReady ? "https://mail.agoojiye.com/" : null,
       });
     }
 
@@ -145,6 +216,8 @@ router.post("/api/auth/setup-password", async (req, res) => {
       token: sessionToken,
       redirect: setupRedirect.redirect,
       tenantKey: setupRedirect.tenantKey,
+      webmailReady,
+      webmailUrl: webmailReady ? "https://mail.agoojiye.com/" : null,
       user: buildSessionUserPayload(user),
     });
   } catch (error: any) {

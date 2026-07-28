@@ -58,6 +58,7 @@
     "seed:agoojye:mobility": "tsx scripts/seed-agoojiye-mobility.ts",
     "seed:agoojye:os": "tsx scripts/seed-agoojiye-os.ts",
     "provision:agoojye:workos": "tsx scripts/provision-agoojiye-workos.ts",
+    "provision:agoojye:engineering-team": "tsx scripts/provision-agoojiye-engineering-team.ts",
     "reset:db": "drizzle-kit push && tsx server/seed.ts --reset",
     "push": "drizzle-kit push",
     "db:push": "drizzle-kit push",

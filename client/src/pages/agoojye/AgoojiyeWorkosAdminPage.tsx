@@ -89,7 +89,14 @@ function formatDate(value: string | Date | null | undefined) {
 
 function Status({ value }: { value: string }) {
   const normalized = String(value || "").toLowerCase();
-  const tone = normalized.includes("active") || normalized.includes("completed") || normalized.includes("success")
+  const tone =
+    normalized.includes("active") ||
+    normalized.includes("completed") ||
+    normalized.includes("success") ||
+    normalized.includes("provisioned") ||
+    normalized.includes("signed") ||
+    normalized.includes("accepted") ||
+    normalized.includes("existing")
     ? "bg-emerald-100 text-emerald-800"
     : normalized.includes("denied") || normalized.includes("blocked") || normalized.includes("ancien")
       ? "bg-red-100 text-red-800"
@@ -106,6 +113,14 @@ function Status({ value }: { value: string }) {
     in_progress: "En cours",
     pending: "En attente",
     pending_approval: "Validation requise",
+    prepared: "Préparé",
+    provisioned: "Prête",
+    existing: "Prête",
+    not_sent: "Non envoyée",
+    accepted: "Activée",
+    signed: "Signé",
+    not_recorded: "À vérifier",
+    needs_role_confirmation: "Rôle à confirmer",
     scheduled: "Planifié",
     success: "Réussi",
     todo: "À faire",
@@ -170,6 +185,8 @@ function OverviewPanel({ data }: { data: AdminOverview }) {
 function PeoplePanel({ data, refetch }: { data: AdminOverview; refetch: () => void }) {
   const { toast } = useToast();
   const [email, setEmail] = useState("");
+  const [search, setSearch] = useState("");
+  const [teamFilter, setTeamFilter] = useState("all");
   const [offboardId, setOffboardId] = useState<number | null>(null);
   const [offboardReason, setOffboardReason] = useState("");
   const invite = useMutation({
@@ -183,25 +200,80 @@ function PeoplePanel({ data, refetch }: { data: AdminOverview; refetch: () => vo
     onError: (error: any) => toast({ title: "Départ impossible", description: error?.message, variant: "destructive" }),
   });
   const olivierVacancy = data.vacancies.find((vacancy) => vacancy.candidateName === "Olivier");
+  const engineeringPeople = data.people.filter((person) => Boolean(person.engineering));
+  const visiblePeople = data.people.filter((person) => {
+    const query = search.trim().toLowerCase();
+    const matchesSearch =
+      !query ||
+      [person.displayName, person.email, person.role, person.engineering?.personalEmail]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(query));
+    return matchesSearch && (teamFilter === "all" || String(person.teamId) === teamFilter);
+  });
   return (
     <div className="space-y-7">
-      <div><p className="text-xs font-bold uppercase text-[#805f12]">Organisation</p><h1 className="mt-2 text-3xl font-semibold">Collaborateurs et accès</h1></div>
+      <div>
+        <p className="text-xs font-bold uppercase text-[#805f12]">Organisation</p>
+        <h1 className="mt-2 text-3xl font-semibold">Collaborateurs et accès</h1>
+        <p className="mt-2 text-sm text-black/50">Comptes, métiers, webmail et état d'onboarding dans un seul registre.</p>
+      </div>
+      {engineeringPeople.length ? (
+        <>
+          <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+            <Metric label="Comptes ingénierie préparés" value={data.metrics.engineeringPrepared || 0} tone="gold" />
+            <Metric label="Webmails prêts" value={data.metrics.engineeringMailboxesReady || 0} tone="green" />
+            <Metric label="Contacts personnels manquants" value={data.metrics.engineeringMissingPersonalEmail || 0} />
+            <Metric label="NDA à vérifier" value={data.metrics.engineeringNdaToReview || 0} />
+          </div>
+          <div className="border-l-4 border-[#18563b] bg-emerald-50 px-5 py-4 text-sm text-emerald-950">
+            Les comptes et boîtes peuvent être préparés sans contacter l'équipe. Aucun e-mail d'activation n'est envoyé tant que la direction ne l'autorise pas.
+          </div>
+        </>
+      ) : null}
       {olivierVacancy && !olivierVacancy.candidateEmail ? (
         <form className="border-l-4 border-[#d8ad3d] bg-white p-5" onSubmit={(event) => { event.preventDefault(); invite.mutate(); }}>
           <div className="flex items-start gap-4"><UserPlus className="mt-1 h-6 w-6 text-[#805f12]" /><div><h2 className="font-semibold">Olivier · Gestion</h2><p className="mt-1 text-sm text-black/50">Renseignez son adresse exacte avant de créer l’invitation. Les accès juridiques, financiers, techniques et confidentiels restent bloqués.</p></div></div>
           <div className="mt-4 flex flex-col gap-2 sm:flex-row"><Input type="email" value={email} onChange={(event) => setEmail(event.target.value)} required placeholder="adresse.exacte@agoojiye.com" className="h-11 max-w-lg" /><Button type="submit" disabled={invite.isPending} className="h-11 bg-[#171a18]">Créer l’invitation</Button></div>
         </form>
       ) : null}
+      <div className="flex flex-col gap-2 sm:flex-row">
+        <Input
+          type="search"
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          placeholder="Rechercher un nom, un rôle ou un e-mail"
+          className="h-11 max-w-xl bg-white"
+        />
+        <select
+          aria-label="Filtrer par département"
+          value={teamFilter}
+          onChange={(event) => setTeamFilter(event.target.value)}
+          className="h-11 border border-black/15 bg-white px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#b88917]"
+        >
+          <option value="all">Tous les départements</option>
+          {data.teams.map((team) => <option key={team.id} value={String(team.id)}>{team.name}</option>)}
+        </select>
+      </div>
       <div className="overflow-x-auto border border-black/10 bg-white">
         <table className="w-full min-w-[920px] text-left text-sm">
-          <thead className="bg-[#ebe9e2] text-[11px] uppercase text-black/50"><tr><th className="px-4 py-3">Collaborateur</th><th className="px-4 py-3">Rôle</th><th className="px-4 py-3">Département</th><th className="px-4 py-3">Accès</th><th className="px-4 py-3">Onboarding</th><th className="px-4 py-3">Statut</th><th className="px-4 py-3"></th></tr></thead>
+          <thead className="bg-[#ebe9e2] text-[11px] uppercase text-black/50"><tr><th className="px-4 py-3">Collaborateur</th><th className="px-4 py-3">Métier</th><th className="px-4 py-3">Département</th><th className="px-4 py-3">Webmail</th><th className="px-4 py-3">Invitation</th><th className="px-4 py-3">NDA</th><th className="px-4 py-3">Statut</th><th className="px-4 py-3"></th></tr></thead>
           <tbody className="divide-y divide-black/10">
-            {data.people.map((person) => {
+            {visiblePeople.map((person) => {
               const team = data.teams.find((entry) => entry.id === person.teamId);
-              return <tr key={person.id}><td className="px-4 py-4"><strong>{person.displayName}</strong><span className="mt-1 block text-xs text-black/45">{person.email}</span></td><td className="px-4 py-4">{person.role}</td><td className="px-4 py-4">{team?.name || "À définir"}</td><td className="px-4 py-4">Niveau {person.accessLevel}</td><td className="px-4 py-4">{person.onboardingProgress}%</td><td className="px-4 py-4"><Status value={person.status} /></td><td className="px-4 py-4">{data.currentUser.superAdmin && person.status === "Active" && person.email !== data.currentUser.email ? <button type="button" onClick={() => setOffboardId(person.id)} className="text-xs font-semibold text-red-700">Retirer</button> : null}</td></tr>;
+              return <tr key={person.id}>
+                <td className="px-4 py-4"><strong>{person.displayName}</strong><span className="mt-1 block text-xs text-black/45">{person.email}</span>{person.engineering && !person.engineering.personalEmail ? <span className="mt-1 block text-xs font-semibold text-amber-700">Contact personnel manquant</span> : null}</td>
+                <td className="max-w-[260px] px-4 py-4"><span>{person.role}</span>{person.engineering?.assignmentConfidence === "inferred_needs_confirmation" ? <span className="mt-2 block"><Status value="needs_role_confirmation" /></span> : null}</td>
+                <td className="px-4 py-4">{team?.name || "À définir"}</td>
+                <td className="px-4 py-4">{person.engineering ? <Status value={person.engineering.mailboxState} /> : person.emailAccountCreated ? <Status value="provisioned" /> : "—"}</td>
+                <td className="px-4 py-4">{person.engineering ? <Status value={person.engineering.invitationState} /> : "—"}</td>
+                <td className="px-4 py-4">{person.engineering ? <Status value={person.engineering.ndaStatus} /> : "—"}</td>
+                <td className="px-4 py-4"><Status value={person.status} /><span className="mt-2 block text-xs text-black/45">{person.onboardingProgress}%</span></td>
+                <td className="px-4 py-4">{data.currentUser.superAdmin && person.status === "Active" && person.email !== data.currentUser.email ? <button type="button" onClick={() => setOffboardId(person.id)} className="text-xs font-semibold text-red-700">Retirer</button> : null}</td>
+              </tr>;
             })}
           </tbody>
         </table>
+        {!visiblePeople.length ? <p className="px-5 py-10 text-center text-sm text-black/45">Aucun collaborateur ne correspond à ce filtre.</p> : null}
       </div>
       {offboardId ? (
         <form className="border border-red-200 bg-red-50 p-5" onSubmit={(event) => { event.preventDefault(); offboard.mutate(); }}>

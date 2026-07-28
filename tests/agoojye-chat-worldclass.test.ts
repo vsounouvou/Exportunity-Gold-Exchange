@@ -15,6 +15,11 @@ import {
   resolveThreadRoot,
 } from "../server/lib/agoojye/chatLogic";
 import { canAccessAgoojiyeOsChannel } from "../server/lib/agoojye/osPolicy";
+import { reconcileIncomingMessage } from "../client/src/features/agoojye-chat/reconciliation";
+import type {
+  ChatMessage,
+  MessagePagePayload,
+} from "../client/src/features/agoojye-chat/types";
 
 const root = process.cwd();
 
@@ -31,6 +36,52 @@ test("AGOOJIYE chat normalizes member status and presence labels", () => {
 test("AGOOJIYE direct-conversation slug is stable in both directions", () => {
   assert.equal(directConversationSlug(42, 7), "dm-7-42");
   assert.equal(directConversationSlug(7, 42), "dm-7-42");
+});
+
+test("AGOOJIYE realtime reconciliation collapses optimistic and socket copies", () => {
+  const optimistic: ChatMessage = {
+    id: -1,
+    channelId: 22,
+    senderUserId: 1,
+    body: "Message de contrôle",
+    messageType: "text",
+    clientMessageId: "client-message-1",
+    attachments: [],
+    reactions: [],
+    pinned: false,
+    deliveryStatus: "sending",
+    createdAt: "2026-07-28T02:00:00.000Z",
+    threadReplyCount: 0,
+    optimistic: true,
+  };
+  const confirmed: ChatMessage = {
+    ...optimistic,
+    id: 5,
+    deliveryStatus: "sent",
+    optimistic: false,
+    updatedAt: "2026-07-28T02:00:01.000Z",
+  };
+  const page: MessagePagePayload = {
+    ok: true,
+    items: [optimistic],
+    page: { hasMore: false, nextBefore: null },
+  };
+  const seed = { pages: [page], pageParams: [null] };
+
+  const socketFirst = reconcileIncomingMessage(seed, confirmed);
+  assert.deepEqual(socketFirst?.pages[0].items.map((message) => message.id), [5]);
+
+  const httpResponseAfterSocket = reconcileIncomingMessage(socketFirst, confirmed);
+  assert.equal(httpResponseAfterSocket?.pages[0].items.length, 1);
+  assert.equal(httpResponseAfterSocket?.pages[0].items[0].optimistic, false);
+
+  const withoutOptimistic = {
+    pages: [{ ...page, items: [] }],
+    pageParams: [null],
+  };
+  const firstEvent = reconcileIncomingMessage(withoutOptimistic, confirmed);
+  const duplicateEvent = reconcileIncomingMessage(firstEvent, confirmed);
+  assert.deepEqual(duplicateEvent?.pages[0].items.map((message) => message.id), [5]);
 });
 
 test("AGOOJIYE direct members can access their DM without weakening private channels", () => {

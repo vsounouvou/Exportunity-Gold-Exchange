@@ -50,6 +50,7 @@ import { apiRequest } from "@/lib/queryClient";
 
 import { chatApi, uploadChatAttachment } from "./api";
 import { MessageContent } from "./MessageContent";
+import { reconcileIncomingMessage } from "./reconciliation";
 import { getAgoojiyeChatSocket } from "./socket";
 import type {
   ChatAttachment,
@@ -759,14 +760,7 @@ export function CommunicationWorkspace({ data }: { data: BootstrapLike }) {
       if (Number(item.channelId) === channelId) {
         queryClient.setQueryData<InfiniteData<MessagePagePayload>>(
           ["/api/agoojye/chat/member/channels", channelId, "messages"],
-          (current) => {
-            if (!current || current.pages.some((page) => page.items.some((entry) => entry.id === item.id))) {
-              return current;
-            }
-            const pages = [...current.pages];
-            pages[0] = { ...pages[0], items: [...pages[0].items, item] };
-            return { ...current, pages };
-          },
+          (current) => reconcileIncomingMessage(current, item),
         );
         requestAnimationFrame(() => scrollToBottom(true));
       }
@@ -896,13 +890,7 @@ export function CommunicationWorkspace({ data }: { data: BootstrapLike }) {
       );
       queryClient.setQueryData<InfiniteData<MessagePagePayload>>(
         ["/api/agoojye/chat/member/channels", pending.channelId, "messages"],
-        (current) =>
-          updateMessagePages(current, (message) =>
-            message.clientMessageId === pending.payload.clientMessageId ||
-            (optimisticId && message.id === optimisticId)
-              ? response.item
-              : message,
-          ),
+        (current) => reconcileIncomingMessage(current, response.item),
       );
       return response.item;
     },

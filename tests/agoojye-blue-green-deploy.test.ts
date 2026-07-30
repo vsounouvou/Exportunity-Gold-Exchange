@@ -32,12 +32,15 @@ test("deployment verifies the candidate before switching the proxy", () => {
   assert.match(deploy, /blue-green-remote\.sh/);
 
   const candidateHealth = blueGreen.indexOf("candidate_ready=0");
+  const dockerHealth = blueGreen.indexOf('"${candidate_health}" == "healthy"');
   const proxyReload = blueGreen.indexOf('nginx -s reload');
   const publicHealth = blueGreen.indexOf("public_ready=0");
   const activeMarker = blueGreen.indexOf('mv "${active_slot_path}.next"');
 
   assert.ok(candidateHealth > 0);
+  assert.ok(dockerHealth > candidateHealth);
   assert.ok(proxyReload > candidateHealth);
+  assert.ok(proxyReload > dockerHealth);
   assert.ok(publicHealth > proxyReload);
   assert.ok(activeMarker > publicHealth);
   assert.match(blueGreen, /restore_proxy/);

@@ -121,11 +121,20 @@ SHARED_UPLOAD_VOLUME="${shared_upload_volume}" \
 COMPOSE_PROJECT_NAME="${candidate_project}" \
   docker compose -p "${candidate_project}" "${compose_files[@]}" up -d --build bdo-app
 
+candidate_container="$(
+  docker compose -p "${candidate_project}" "${compose_files[@]}" ps -q bdo-app
+)"
 candidate_ready=0
+candidate_health="starting"
 for attempt in $(seq 1 48); do
   payload="$(curl --silent --show-error --max-time 10 "${candidate_health_url}" 2>/dev/null || true)"
+  candidate_health="$(
+    docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}missing{{end}}' \
+      "${candidate_container}" 2>/dev/null || true
+  )"
   if grep -Fq "\"gitSha\":\"${GIT_SHA}\"" <<<"${payload}" &&
-    grep -Fq "\"buildId\":\"${BUILD_ID}\"" <<<"${payload}"; then
+    grep -Fq "\"buildId\":\"${BUILD_ID}\"" <<<"${payload}" &&
+    [[ "${candidate_health}" == "healthy" ]]; then
     candidate_ready=1
     break
   fi
@@ -133,21 +142,9 @@ for attempt in $(seq 1 48); do
 done
 
 if [[ "${candidate_ready}" != "1" ]]; then
-  echo "[blue-green] candidate did not become healthy: ${candidate_health_url}" >&2
+  echo "[blue-green] candidate did not become healthy: ${candidate_health_url} (${candidate_health})" >&2
   docker compose -p "${candidate_project}" "${compose_files[@]}" ps >&2 || true
   docker compose -p "${candidate_project}" "${compose_files[@]}" logs --tail=80 bdo-app >&2 || true
-  exit 22
-fi
-
-candidate_container="$(
-  docker compose -p "${candidate_project}" "${compose_files[@]}" ps -q bdo-app
-)"
-candidate_health="$(
-  docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}missing{{end}}' \
-    "${candidate_container}"
-)"
-if [[ "${candidate_health}" != "healthy" ]]; then
-  echo "[blue-green] candidate Docker health is ${candidate_health}" >&2
   exit 22
 fi
 

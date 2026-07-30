@@ -17,6 +17,24 @@ WHERE nda_access_state = 'blocked'
   AND nda_submitted_at IS NULL
   AND nda_approved_at IS NULL;
 
+ALTER TABLE agoojye_engineering_profiles
+  DROP CONSTRAINT IF EXISTS agoojye_engineering_profiles_invitation_state_check;
+
+ALTER TABLE agoojye_engineering_profiles
+  ADD CONSTRAINT agoojye_engineering_profiles_invitation_state_check
+  CHECK (
+    invitation_state IN (
+      'not_sent',
+      'prepared',
+      'sending',
+      'sent',
+      'delivery_failed',
+      'delivery_unconfirmed',
+      'accepted',
+      'cancelled'
+    )
+  );
+
 DO $$
 BEGIN
   IF NOT EXISTS (

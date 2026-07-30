@@ -122,6 +122,9 @@ test("account activation synchronizes the chosen password with AGOOJIYE webmail"
   assert.match(routeSource, /mailserverEmailUpdate\(corporateEmail, password\)/);
   assert.match(routeSource, /webmailPasswordSyncStatus/);
   assert.match(routeSource, /invitationState: "accepted"/);
+  assert.match(routeSource, /createEngineeringNdaSession/);
+  assert.match(routeSource, /status: ndaUploadRequired \? "NDA Required" : "Active"/);
+  assert.match(routeSource, /sessionScope: "agoojye_nda"/);
   assert.match(
     pageSource,
     /Il servira pour la plateforme et le webmail AGOOJIYE/,

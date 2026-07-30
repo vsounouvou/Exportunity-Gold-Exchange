@@ -512,6 +512,7 @@ export const APP_ROUTE_PATHS = [
   "/workspace/connexion",
   "/workspace/files/:id",
   "/workspace/meetings/:id",
+  "/workspace/onboarding/nda",
   "/workspace/projects/:id",
   "/workspace/rejoindre/:token",
   "/workspace/tasks/:id",

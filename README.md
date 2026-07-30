@@ -79,6 +79,10 @@ AGOOJIYE_ASSISTANT_PROVIDER=auto
 AGOOJIYE_ASSISTANT_TIMEOUT_MS=8000
 AGOOJIYE_OPENAI_MODEL=gpt-4o-mini
 AGOOJIYE_ANTHROPIC_MODEL=claude-sonnet-4-5
+AGOOJIYE_NDA_ENCRYPTION_SECRET=replace_with_an_independent_long_random_secret
+AGOOJIYE_NDA_STORAGE_DIR=/data/uploads/agoojye-private/nda
+AGOOJIYE_NDA_UPLOAD_MAX_MB=10
+AGOOJIYE_INVITATION_TTL_HOURS=72
 AGOOJIYE_CHAT_ATTACHMENT_SECRET=replace_with_an_independent_long_random_secret
 AGOOJIYE_CHAT_ATTACHMENT_MAX_BYTES=20971520
 AGOOJIYE_CHAT_ATTACHMENT_URL_TTL_SECONDS=900
@@ -328,6 +332,7 @@ Adapters should receive a booking/ticket ID, load approved data server-side, rec
 12. Retrieve the one-use super-admin setup handoff only from the private untracked file, enroll MFA, store recovery codes offline, and verify `/admin/command-center`.
 13. Apply `20260728_agoojye_chat_worldclass.sql`, set `AGOOJIYE_CHAT_ATTACHMENT_SECRET`, and confirm that the reverse proxy permits Socket.IO upgrades on `/socket.io/`.
 14. Run the chat domain and four-viewport Playwright suites, then verify a channel message, a DM, one file upload, one explicit `@AGOOJIYE` response, and one approved assistant action.
+15. Apply `20260730_agoojiye_engineering_nda_gate.sql`, set `AGOOJIYE_NDA_ENCRYPTION_SECRET`, verify the private upload volume, preview the eligible engineering cohort, and send invitations only with the guarded command documented below.
 
 ## AGOOJIYE WorkOS
 
@@ -403,6 +408,16 @@ stores initial mailbox credentials under `AGOOJIYE_SECURE_HANDOFF_DIR` with
 owner-only permissions. Fresh setup links must be generated only after explicit
 owner authorization. The password chosen through a setup link is synchronized
 with the user's AGOOJIYE-owned webmail.
+
+Engineering access has an additional NDA gate. Only a profile whose NDA is
+registered and whose personal delivery address is present can receive an
+invitation. After choosing a password, the member receives a restricted
+24-hour session that can only upload a signed PDF, JPG, or PNG. The document is
+validated by file signature, encrypted with
+`AGOOJIYE_NDA_ENCRYPTION_SECRET`, and stored outside the public tree. Normal
+WorkOS APIs stay inaccessible until the upload succeeds. Administrators can
+download, approve, or reject the document from `/admin/people`; rejection
+revokes active sessions.
 
 Roster reconciliation, prepared corporate addresses, unresolved source data,
 security controls and the later delivery procedure are documented in

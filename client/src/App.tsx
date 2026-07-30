@@ -346,6 +346,7 @@ const AgoojiyeMobilityAdminPage = lazyPage(() => import("@/pages/agoojye/Agoojiy
 const AgoojiyeOsJoinPage = lazyPage(() => import("@/pages/agoojye/AgoojiyeOsPages"), "AgoojiyeOsJoinPage");
 const AgoojiyeOsLoginPage = lazyPage(() => import("@/pages/agoojye/AgoojiyeOsPages"), "AgoojiyeOsLoginPage");
 const AgoojiyeOsAppPage = lazyPage(() => import("@/pages/agoojye/AgoojiyeOsPages"), "AgoojiyeOsAppPage");
+const AgoojiyeNdaOnboardingPage = lazyPage(() => import("@/pages/agoojye/AgoojiyeNdaOnboardingPage"));
 const AgoojiyeWorkosAdminPage = lazyPage(() => import("@/pages/agoojye/AgoojiyeWorkosAdminPage"));
 const AgoojyeMailPasswordPage = lazyPage(() => import("@/pages/agoojye/AgoojyeMailPasswordPage"));
 const AgoojyeAdminDashboardPage = lazyPage(() => import("@/pages/agoojye/AgoojyeAdminPages"), "AgoojyeAdminDashboardPage");
@@ -877,6 +878,7 @@ function App() {
             {(params) => <AgoojyeOnlyRoute><AgoojiyeOsJoinPage token={String((params as any).token || "")} /></AgoojyeOnlyRoute>}
           </Route>
           <Route path="/workspace/connexion" component={() => <AgoojyeOnlyRoute><AgoojiyeOsLoginPage /></AgoojyeOnlyRoute>} />
+          <Route path="/workspace/onboarding/nda" component={() => <AgoojyeOnlyRoute><AgoojiyeNdaOnboardingPage /></AgoojyeOnlyRoute>} />
           <Route path="/workspace/projects/:id" component={() => <AgoojyeOnlyRoute><AgoojiyeOsAppPage /></AgoojyeOnlyRoute>} />
           <Route path="/workspace/tasks/:id" component={() => <AgoojyeOnlyRoute><AgoojiyeOsAppPage /></AgoojyeOnlyRoute>} />
           <Route path="/workspace/files/:id" component={() => <AgoojyeOnlyRoute><AgoojiyeOsAppPage /></AgoojyeOnlyRoute>} />

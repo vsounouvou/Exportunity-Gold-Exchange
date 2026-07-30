@@ -8,6 +8,7 @@ import {
   text,
   timestamp,
   uniqueIndex,
+  uuid,
 } from "drizzle-orm/pg-core";
 import { tenants } from "./tenants";
 import { eceUsers } from "./ece";
@@ -156,8 +157,14 @@ export const agoojyeEngineeringProfiles = pgTable(
     skills: jsonb("skills").$type<string[]>().notNull().default([]),
     ndaStatus: text("nda_status").notNull().default("not_recorded"),
     ndaUrl: text("nda_url"),
+    ndaAccessState: text("nda_access_state").notNull().default("blocked"),
+    ndaSubmittedAt: timestamp("nda_submitted_at", { withTimezone: true }),
+    ndaApprovedAt: timestamp("nda_approved_at", { withTimezone: true }),
     onboardingState: text("onboarding_state").notNull().default("prepared"),
     invitationState: text("invitation_state").notNull().default("not_sent"),
+    invitationSentAt: timestamp("invitation_sent_at", { withTimezone: true }),
+    invitationDeliveryId: text("invitation_delivery_id"),
+    invitationLastError: text("invitation_last_error"),
     mailboxState: text("mailbox_state").notNull().default("pending"),
     sourceMetadata: jsonb("source_metadata").$type<Record<string, unknown>>().notNull().default({}),
     createdAt: now(),
@@ -172,6 +179,71 @@ export const agoojyeEngineeringProfiles = pgTable(
       t.tenantId,
       t.onboardingState,
       t.invitationState,
+    ),
+  }),
+);
+
+export const agoojyeEngineeringNdaDocuments = pgTable(
+  "agoojye_engineering_nda_documents",
+  {
+    id: serial("id").primaryKey(),
+    tenantId: integer("tenant_id").references(() => tenants.id, { onDelete: "cascade" }).notNull(),
+    engineeringProfileId: integer("engineering_profile_id")
+      .references(() => agoojyeEngineeringProfiles.id, { onDelete: "cascade" })
+      .notNull(),
+    projectUserId: integer("project_user_id")
+      .references(() => agoojyeProjectUsers.id, { onDelete: "cascade" })
+      .notNull(),
+    uploadedByAuthUserId: integer("uploaded_by_auth_user_id")
+      .references(() => eceUsers.id, { onDelete: "set null" }),
+    originalName: text("original_name").notNull(),
+    storageKey: text("storage_key").notNull(),
+    mimeType: text("mime_type").notNull(),
+    byteSize: integer("byte_size").notNull(),
+    sha256: text("sha256").notNull(),
+    encryptionVersion: text("encryption_version").notNull().default("aes-256-gcm-v1"),
+    status: text("status").notNull().default("submitted"),
+    submittedAt: timestamp("submitted_at", { withTimezone: true }).notNull().defaultNow(),
+    reviewedBy: integer("reviewed_by").references(() => eceUsers.id, { onDelete: "set null" }),
+    reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+    reviewNote: text("review_note"),
+    createdAt: now(),
+    updatedAt: updated(),
+  },
+  (t) => ({
+    byTenantProfile: index("agoojye_engineering_nda_documents_tenant_profile_idx").on(
+      t.tenantId,
+      t.engineeringProfileId,
+      t.createdAt,
+    ),
+    byTenantStatus: index("agoojye_engineering_nda_documents_tenant_status_idx").on(
+      t.tenantId,
+      t.status,
+      t.createdAt,
+    ),
+    storageKeyUnique: uniqueIndex("agoojye_engineering_nda_documents_storage_key_uidx").on(t.storageKey),
+  }),
+);
+
+export const agoojyeEngineeringNdaSessions = pgTable(
+  "agoojye_engineering_nda_sessions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: integer("tenant_id").references(() => tenants.id, { onDelete: "cascade" }).notNull(),
+    engineeringProfileId: integer("engineering_profile_id")
+      .references(() => agoojyeEngineeringProfiles.id, { onDelete: "cascade" })
+      .notNull(),
+    userId: integer("user_id").references(() => eceUsers.id, { onDelete: "cascade" }).notNull(),
+    tokenHash: text("token_hash").notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    createdAt: now(),
+  },
+  (t) => ({
+    tokenUnique: uniqueIndex("agoojye_engineering_nda_sessions_token_uidx").on(t.tokenHash),
+    byProfileExpiry: index("agoojye_engineering_nda_sessions_profile_expiry_idx").on(
+      t.engineeringProfileId,
+      t.expiresAt,
     ),
   }),
 );

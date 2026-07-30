@@ -306,9 +306,9 @@ router.get("/cache-reset", (req, res) => {
   }
 
   if (preserveStorage) {
-    res.setHeader("Clear-Site-Data", "\"cache\", \"executionContexts\"");
+    res.setHeader("Clear-Site-Data", "\"cache\"");
   } else {
-    res.setHeader("Clear-Site-Data", "\"cache\", \"cookies\", \"storage\", \"executionContexts\"");
+    res.setHeader("Clear-Site-Data", "\"cache\", \"cookies\", \"storage\"");
   }
   res.setHeader("Content-Type", "text/html; charset=utf-8");
 

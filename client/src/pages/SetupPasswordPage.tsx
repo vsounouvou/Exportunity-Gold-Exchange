@@ -84,7 +84,9 @@ export default function SetupPasswordPage() {
       toast({
         title: isAgoojiye ? "Mot de passe défini" : "Password set",
         description: isAgoojiye
-          ? payload?.webmailReady
+          ? payload?.ndaRequired
+            ? "Dernière étape : ajoutez maintenant votre NDA signé pour ouvrir votre espace de travail."
+            : payload?.webmailReady
             ? "Votre compte et votre webmail AGOOJIYE utilisent maintenant ce même mot de passe."
             : "Votre compte AGOOJIYE est prêt. Le webmail sera vérifié séparément si nécessaire."
           : "Your account is ready.",

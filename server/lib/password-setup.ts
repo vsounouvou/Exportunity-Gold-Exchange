@@ -95,6 +95,27 @@ export async function createPasswordSetupToken(input: {
   };
 }
 
+export async function inspectPasswordSetupToken(
+  rawToken: string,
+): Promise<ConsumePasswordSetupResult> {
+  const tokenHash = hashPasswordSetupToken(rawToken);
+  if (!tokenHash) return { ok: false, reason: "invalid" };
+  const tokenRow = await db.query.passwordSetupTokens.findFirst({
+    where: eq(passwordSetupTokens.tokenHash, tokenHash),
+  });
+  if (!tokenRow) return { ok: false, reason: "invalid" };
+  const tokenState = evaluatePasswordSetupTokenState({
+    usedAt: tokenRow.usedAt,
+    expiresAt: tokenRow.expiresAt,
+  });
+  if (tokenState) return { ok: false, reason: tokenState };
+  return {
+    ok: true,
+    userId: Number(tokenRow.userId),
+    tokenId: String(tokenRow.id),
+  };
+}
+
 export async function consumePasswordSetupToken(rawToken: string): Promise<ConsumePasswordSetupResult> {
   const tokenHash = hashPasswordSetupToken(rawToken);
   if (!tokenHash) return { ok: false, reason: "invalid" };
@@ -108,10 +129,31 @@ export async function consumePasswordSetupToken(rawToken: string): Promise<Consu
   const tokenState = evaluatePasswordSetupTokenState({ usedAt: tokenRow.usedAt, expiresAt: tokenRow.expiresAt }, now.getTime());
   if (tokenState) return { ok: false, reason: tokenState };
 
-  await db
+  const [consumed] = await db
     .update(passwordSetupTokens)
     .set({ usedAt: now })
-    .where(and(eq(passwordSetupTokens.id, tokenRow.id), isNull(passwordSetupTokens.usedAt)));
+    .where(
+      and(
+        eq(passwordSetupTokens.id, tokenRow.id),
+        isNull(passwordSetupTokens.usedAt),
+        gt(passwordSetupTokens.expiresAt, now),
+      ),
+    )
+    .returning({ id: passwordSetupTokens.id });
+  if (!consumed?.id) {
+    const current = await db.query.passwordSetupTokens.findFirst({
+      where: eq(passwordSetupTokens.id, tokenRow.id),
+    });
+    if (!current) return { ok: false, reason: "invalid" };
+    return {
+      ok: false,
+      reason:
+        evaluatePasswordSetupTokenState(
+          { usedAt: current.usedAt, expiresAt: current.expiresAt },
+          Date.now(),
+        ) || "used",
+    };
+  }
 
   return {
     ok: true,

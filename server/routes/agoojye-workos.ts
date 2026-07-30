@@ -11,6 +11,8 @@ import { z } from "zod";
 import { db } from "@db";
 import {
   agoojyeAuditLogs,
+  agoojyeEngineeringNdaDocuments,
+  agoojyeEngineeringNdaSessions,
   agoojyeEngineeringProfiles,
   agoojyeOsChannelMembers,
   agoojyeOsChannels,
@@ -55,9 +57,20 @@ import {
   resolvePasswordSetupBaseUrl,
 } from "../lib/password-setup";
 import { isMailserverSetupAvailable, mailserverEmailAdd } from "../lib/mail/mailserverSetup";
+import { engineeringNdaDecision } from "../lib/agoojye/ndaAccess";
+import {
+  createEngineeringNdaSession,
+  hashEngineeringNdaSessionToken,
+} from "../lib/agoojye/ndaOnboarding";
+import {
+  persistEncryptedNdaDocument,
+  readEncryptedNdaDocument,
+  removeEncryptedNdaDocument,
+} from "../lib/agoojye/ndaDocuments";
 
 const router = Router();
 const authApi = Router();
+const onboardingApi = Router();
 const memberApi = Router();
 const adminApi = Router();
 const loginBuckets = new Map<string, { count: number; resetAt: number }>();
@@ -74,6 +87,24 @@ const workerImportUpload = multer({
       ].includes(file.mimetype);
     if (!allowed) {
       callback(new Error("Format CSV ou XLSX requis"));
+      return;
+    }
+    callback(null, true);
+  },
+});
+const ndaUploadMaxBytes =
+  Math.max(1, Math.min(15, Number(process.env.AGOOJIYE_NDA_UPLOAD_MAX_MB || 10))) *
+  1024 *
+  1024;
+const ndaUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: ndaUploadMaxBytes, files: 1 },
+  fileFilter: (_req, file, callback) => {
+    const mimeType = String(file.mimetype || "").trim().toLowerCase();
+    const allowedMimeTypes = new Set(["application/pdf", "image/jpeg", "image/png"]);
+    const allowedExtension = /\.(pdf|jpe?g|png)$/i.test(file.originalname);
+    if (!allowedMimeTypes.has(mimeType) || !allowedExtension) {
+      callback(new Error("Le NDA doit être un fichier PDF, JPG ou PNG."));
       return;
     }
     callback(null, true);
@@ -192,6 +223,49 @@ async function createWorkosSession(req: any, tenantId: number, user: any, mfaVer
   return { token, expiresAt };
 }
 
+async function engineeringProfileForMember(tenantId: number, projectUserId: number) {
+  return db.query.agoojyeEngineeringProfiles.findFirst({
+    where: and(
+      eq(agoojyeEngineeringProfiles.tenantId, tenantId),
+      eq(agoojyeEngineeringProfiles.projectUserId, projectUserId),
+    ),
+  });
+}
+
+async function enforceEngineeringNdaAccess(
+  req: any,
+  res: any,
+  tenantId: number,
+  member: any,
+) {
+  const profile = await engineeringProfileForMember(tenantId, Number(member.id));
+  if (!profile) return true;
+  const decision = engineeringNdaDecision(profile);
+  if (decision.allowed) return true;
+  await recordSecurityEvent(req, {
+    tenantId,
+    eventType: "engineering_nda_gate",
+    subjectUserId: Number(member.authUserId || 0) || null,
+    result: "denied",
+    reason: decision.code,
+    metadata: {
+      projectUserId: Number(member.id),
+      ndaAccessState: decision.state,
+    },
+  });
+  res.status(403).json({
+    message:
+      decision.code === "NDA_NOT_REGISTERED"
+        ? "Votre NDA doit être enregistré par l'administration avant l'activation."
+        : decision.code === "NDA_REJECTED"
+          ? "Le document NDA déposé doit être remplacé."
+          : "Déposez votre NDA signé avant d'accéder à l'espace AGOOJIYE.",
+    code: decision.code,
+    redirect: "/workspace/onboarding/nda",
+  });
+  return false;
+}
+
 async function createChallenge(tenantId: number, userId: number, purpose: "login" | "enroll") {
   const rawToken = randomBytes(32).toString("base64url");
   const expiresAt = new Date(Date.now() + 10 * 60_000);
@@ -262,6 +336,51 @@ authApi.post("/login", async (req: any, res) => {
   }
   if ((user.metadata as any)?.mustChangePassword) {
     return res.status(403).json({ message: "Vous devez d'abord définir votre mot de passe depuis le lien sécurisé.", code: "PASSWORD_SETUP_REQUIRED" });
+  }
+
+  const engineeringProfile = await engineeringProfileForMember(tenantId, Number(member.id));
+  if (engineeringProfile) {
+    const ndaDecision = engineeringNdaDecision(engineeringProfile);
+    if (!ndaDecision.allowed) {
+      if (ndaDecision.code === "NDA_NOT_REGISTERED") {
+        await recordSecurityEvent(req, {
+          tenantId,
+          eventType: "engineering_nda_gate",
+          subjectUserId: Number(user.id),
+          result: "denied",
+          reason: ndaDecision.code,
+          metadata: { projectUserId: Number(member.id) },
+        });
+        return res.status(403).json({
+          message: "Votre NDA doit être enregistré par l'administration avant l'activation.",
+          code: ndaDecision.code,
+        });
+      }
+      const onboardingSession = await createEngineeringNdaSession({
+        tenantId,
+        engineeringProfileId: Number(engineeringProfile.id),
+        userId: Number(user.id),
+      });
+      await recordSecurityEvent(req, {
+        tenantId,
+        eventType: "engineering_nda_upload_required",
+        subjectUserId: Number(user.id),
+        result: "pending",
+        reason: ndaDecision.code,
+        metadata: { projectUserId: Number(member.id) },
+      });
+      return res.status(202).json({
+        ok: true,
+        status: "nda_required",
+        token: onboardingSession.token,
+        expiresAt: onboardingSession.expiresAt,
+        user: {
+          ...sessionUser(user, roles, member),
+          sessionScope: "agoojye_nda",
+        },
+        redirect: "/workspace/onboarding/nda",
+      });
+    }
   }
 
   const privileged = hasPrivilegedWorkosRole(user, roles);
@@ -593,6 +712,7 @@ export async function requireWorkosMember(req: any, res: any, next: any) {
   if (!member || ["suspended", "archived", "inactive", "ancien membre"].includes(clean(member.status).toLowerCase())) {
     return res.status(403).json({ message: "Le profil AGOOJIYE n'est pas actif." });
   }
+  if (!(await enforceEngineeringNdaAccess(req, res, tenantId, member))) return;
   const privileged = hasPrivilegedWorkosRole(user, roles);
   if (privileged) {
     const session = await db.query.agoojyeWorkosSessions.findFirst({
@@ -613,6 +733,270 @@ export async function requireWorkosMember(req: any, res: any, next: any) {
   req.workosTenantRoles = roles;
   next();
 }
+
+async function requireEngineeringNdaSession(req: any, res: any, next: any) {
+  const tenantId = requireAgoojiyeTenant(req, res);
+  if (!tenantId) return;
+  const rawToken = getBearerToken(req);
+  if (!rawToken) {
+    return res.status(401).json({ message: "Session de dépôt NDA requise." });
+  }
+  const session = await db.query.agoojyeEngineeringNdaSessions.findFirst({
+    where: and(
+      eq(agoojyeEngineeringNdaSessions.tenantId, tenantId),
+      eq(
+        agoojyeEngineeringNdaSessions.tokenHash,
+        hashEngineeringNdaSessionToken(rawToken),
+      ),
+      isNull(agoojyeEngineeringNdaSessions.revokedAt),
+      gt(agoojyeEngineeringNdaSessions.expiresAt, new Date()),
+    ),
+  });
+  if (!session) {
+    return res.status(401).json({
+      message: "Votre session de dépôt a expiré. Reconnectez-vous pour continuer.",
+      code: "NDA_SESSION_EXPIRED",
+    });
+  }
+  const [user, member, profile] = await Promise.all([
+    db.query.eceUsers.findFirst({
+      where: eq(eceUsers.id, Number(session.userId)),
+    }),
+    db.query.agoojyeProjectUsers.findFirst({
+      where: and(
+        eq(agoojyeProjectUsers.tenantId, tenantId),
+        eq(agoojyeProjectUsers.authUserId, Number(session.userId)),
+      ),
+    }),
+    db.query.agoojyeEngineeringProfiles.findFirst({
+      where: and(
+        eq(agoojyeEngineeringProfiles.tenantId, tenantId),
+        eq(
+          agoojyeEngineeringProfiles.id,
+          Number(session.engineeringProfileId),
+        ),
+      ),
+    }),
+  ]);
+  if (
+    !user?.isActive ||
+    !member ||
+    !profile ||
+    Number(profile.projectUserId) !== Number(member.id)
+  ) {
+    return res.status(403).json({ message: "Dossier AGOOJIYE invalide." });
+  }
+  req.tenantUser = user;
+  req.ndaOnboardingSession = session;
+  req.ndaMember = member;
+  req.ndaEngineeringProfile = profile;
+  next();
+}
+
+onboardingApi.use(requireEngineeringNdaSession);
+
+onboardingApi.get("/nda", async (req: any, res) => {
+  const tenantId = requireAgoojiyeTenant(req, res);
+  if (!tenantId) return;
+  const member = req.ndaMember;
+  const profile = req.ndaEngineeringProfile;
+  const document = await db.query.agoojyeEngineeringNdaDocuments.findFirst({
+    where: and(
+      eq(agoojyeEngineeringNdaDocuments.tenantId, tenantId),
+      eq(agoojyeEngineeringNdaDocuments.engineeringProfileId, Number(profile.id)),
+      inArray(agoojyeEngineeringNdaDocuments.status, [
+        "submitted",
+        "approved",
+        "rejected",
+      ]),
+    ),
+    orderBy: [desc(agoojyeEngineeringNdaDocuments.createdAt)],
+  });
+  const decision = engineeringNdaDecision(profile);
+  return res.json({
+    ok: true,
+    displayName: member.displayName,
+    corporateEmail: member.email,
+    ndaRegistered: profile.ndaStatus === "signed",
+    ndaAccessState: profile.ndaAccessState,
+    accessAllowed: decision.allowed,
+    document: document
+      ? {
+          originalName: document.originalName,
+          mimeType: document.mimeType,
+          byteSize: document.byteSize,
+          status: document.status,
+          submittedAt: document.submittedAt,
+        }
+      : null,
+    upload: {
+      acceptedMimeTypes: ["application/pdf", "image/jpeg", "image/png"],
+      maxBytes: ndaUploadMaxBytes,
+    },
+  });
+});
+
+onboardingApi.post(
+  "/nda",
+  (req, res, next) => {
+    ndaUpload.single("file")(req, res, (error) => {
+      if (error) {
+        const message =
+          error instanceof multer.MulterError && error.code === "LIMIT_FILE_SIZE"
+            ? `Le fichier dépasse la limite de ${Math.round(ndaUploadMaxBytes / 1024 / 1024)} Mo.`
+            : error?.message || "Le NDA n'a pas pu être ajouté.";
+        res.status(400).json({ message });
+        return;
+      }
+      next();
+    });
+  },
+  async (req: any, res) => {
+    const tenantId = requireAgoojiyeTenant(req, res);
+    if (!tenantId) return;
+    if (!req.file?.buffer?.length) {
+      return res.status(400).json({ message: "Sélectionnez votre NDA signé." });
+    }
+    const member = req.ndaMember;
+    const profile = req.ndaEngineeringProfile;
+    if (profile.ndaStatus !== "signed") {
+      return res.status(403).json({
+        message: "Votre NDA doit d'abord être enregistré par l'administration.",
+        code: "NDA_NOT_REGISTERED",
+      });
+    }
+
+    let stored: Awaited<ReturnType<typeof persistEncryptedNdaDocument>>;
+    try {
+      stored = await persistEncryptedNdaDocument({
+        tenantId,
+        engineeringProfileId: Number(profile.id),
+        buffer: req.file.buffer,
+        mimeType: req.file.mimetype,
+        originalName: req.file.originalname,
+      });
+    } catch (error: any) {
+      return res.status(400).json({
+        message: error?.message || "Le NDA signé n'a pas pu être enregistré.",
+      });
+    }
+
+    const now = new Date();
+    let document: any;
+    try {
+      document = await db.transaction(async (tx) => {
+        const [claimedSession] = await tx
+          .update(agoojyeEngineeringNdaSessions)
+          .set({ revokedAt: now })
+          .where(
+            and(
+              eq(
+                agoojyeEngineeringNdaSessions.id,
+                req.ndaOnboardingSession.id,
+              ),
+              isNull(agoojyeEngineeringNdaSessions.revokedAt),
+            ),
+          )
+          .returning({ id: agoojyeEngineeringNdaSessions.id });
+        if (!claimedSession?.id) {
+          throw new Error("NDA_SESSION_ALREADY_USED");
+        }
+        await tx
+          .update(agoojyeEngineeringNdaDocuments)
+          .set({ status: "replaced", updatedAt: now })
+          .where(
+            and(
+              eq(agoojyeEngineeringNdaDocuments.tenantId, tenantId),
+              eq(
+                agoojyeEngineeringNdaDocuments.engineeringProfileId,
+                Number(profile.id),
+              ),
+              inArray(agoojyeEngineeringNdaDocuments.status, [
+                "submitted",
+                "rejected",
+              ]),
+            ),
+          );
+        const [created] = await tx
+          .insert(agoojyeEngineeringNdaDocuments)
+          .values({
+            tenantId,
+            engineeringProfileId: Number(profile.id),
+            projectUserId: Number(member.id),
+            uploadedByAuthUserId: Number(req.tenantUser.id),
+            originalName: stored.originalName,
+            storageKey: stored.storageKey,
+            mimeType: stored.mimeType,
+            byteSize: stored.byteSize,
+            sha256: stored.sha256,
+            encryptionVersion: stored.encryptionVersion,
+            status: "submitted",
+            submittedAt: now,
+          })
+          .returning();
+        await tx
+          .update(agoojyeEngineeringProfiles)
+          .set({
+            ndaAccessState: "submitted",
+            ndaSubmittedAt: now,
+            onboardingState: "active",
+            updatedAt: now,
+          })
+          .where(eq(agoojyeEngineeringProfiles.id, Number(profile.id)));
+        await tx
+          .update(agoojyeProjectUsers)
+          .set({
+            status: "Active",
+            onboardingProgress: Math.max(
+              Number(member.onboardingProgress || 0),
+              50,
+            ),
+            updatedAt: now,
+          })
+          .where(eq(agoojyeProjectUsers.id, Number(member.id)));
+        return created;
+      });
+    } catch {
+      await removeEncryptedNdaDocument({ storageKey: stored.storageKey }).catch(
+        () => undefined,
+      );
+      return res.status(500).json({
+        message:
+          "Le document n'a pas pu être relié à votre dossier. Réessayez.",
+      });
+    }
+    await db.insert(agoojyeAuditLogs).values({
+      tenantId,
+      actor: member.email,
+      action: "engineering_nda_uploaded",
+      entityType: "engineering_nda_document",
+      entityId: Number(document.id),
+      metadata: {
+        projectUserId: Number(member.id),
+        sha256: stored.sha256,
+        byteSize: stored.byteSize,
+        mimeType: stored.mimeType,
+        accessGranted: true,
+      },
+    });
+    await recordSecurityEvent(req, {
+      tenantId,
+      eventType: "engineering_nda_uploaded",
+      actorUserId: Number(req.tenantUser.id),
+      subjectUserId: Number(req.tenantUser.id),
+      metadata: {
+        projectUserId: Number(member.id),
+        documentId: Number(document.id),
+      },
+    });
+    return res.status(201).json({
+      ok: true,
+      ndaAccessState: "submitted",
+      accessAllowed: true,
+      redirect: "/workspace/connexion",
+    });
+  },
+);
 
 export function requireWorkosAdmin(req: any, res: any, next: any) {
   const roles = Array.isArray(req.workosTenantRoles) ? req.workosTenantRoles : [];
@@ -807,6 +1191,12 @@ adminApi.get("/overview", async (req: any, res) => {
       ).length,
       engineeringMissingPersonalEmail: engineeringProfiles.filter((profile) => !profile.personalEmail).length,
       engineeringNdaToReview: engineeringProfiles.filter((profile) => profile.ndaStatus === "not_recorded").length,
+      engineeringNdaUploadRequired: engineeringProfiles.filter(
+        (profile) => profile.ndaAccessState === "required",
+      ).length,
+      engineeringNdaSubmitted: engineeringProfiles.filter((profile) =>
+        ["submitted", "approved"].includes(profile.ndaAccessState),
+      ).length,
       engineeringAssignmentsToConfirm: engineeringProfiles.filter(
         (profile) => profile.assignmentConfidence === "inferred_needs_confirmation",
       ).length,
@@ -834,8 +1224,13 @@ adminApi.get("/overview", async (req: any, res) => {
               skills: engineering.skills,
               ndaStatus: engineering.ndaStatus,
               ndaUrl: engineering.ndaUrl,
+              ndaAccessState: engineering.ndaAccessState,
+              ndaSubmittedAt: engineering.ndaSubmittedAt,
+              ndaApprovedAt: engineering.ndaApprovedAt,
               onboardingState: engineering.onboardingState,
               invitationState: engineering.invitationState,
+              invitationSentAt: engineering.invitationSentAt,
+              invitationLastError: engineering.invitationLastError,
               mailboxState: engineering.mailboxState,
             }
           : null,
@@ -870,6 +1265,199 @@ adminApi.get("/people", async (req: any, res) => {
     }),
   ]);
   return res.json({ ok: true, people, engineeringProfiles, teams, vacancies });
+});
+
+adminApi.get("/people/:id/nda-document", async (req: any, res) => {
+  const tenantId = Number(req.workosTenantId);
+  const projectUserId = Number(req.params.id);
+  if (!Number.isFinite(projectUserId) || projectUserId <= 0) {
+    return res.status(400).json({ message: "Collaborateur invalide." });
+  }
+  const profile = await engineeringProfileForMember(tenantId, projectUserId);
+  if (!profile) return res.status(404).json({ message: "Dossier NDA introuvable." });
+  const document = await db.query.agoojyeEngineeringNdaDocuments.findFirst({
+    where: and(
+      eq(agoojyeEngineeringNdaDocuments.tenantId, tenantId),
+      eq(agoojyeEngineeringNdaDocuments.engineeringProfileId, Number(profile.id)),
+      inArray(agoojyeEngineeringNdaDocuments.status, [
+        "submitted",
+        "approved",
+        "rejected",
+      ]),
+    ),
+    orderBy: [desc(agoojyeEngineeringNdaDocuments.createdAt)],
+  });
+  if (!document) return res.status(404).json({ message: "Aucun NDA signé n'a été déposé." });
+  let decrypted: Buffer;
+  try {
+    decrypted = await readEncryptedNdaDocument({ storageKey: document.storageKey });
+  } catch {
+    return res.status(503).json({ message: "Le document privé est momentanément indisponible." });
+  }
+  await recordSecurityEvent(req, {
+    tenantId,
+    eventType: "engineering_nda_downloaded",
+    actorUserId: Number(req.workosUser.id),
+    metadata: { projectUserId, documentId: Number(document.id) },
+  });
+  const encodedName = encodeURIComponent(document.originalName).replaceAll("'", "%27");
+  res.setHeader("Content-Type", document.mimeType);
+  res.setHeader("Content-Length", String(decrypted.length));
+  res.setHeader(
+    "Content-Disposition",
+    `attachment; filename="nda-signe"; filename*=UTF-8''${encodedName}`,
+  );
+  res.setHeader("Cache-Control", "private, no-store");
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  return res.send(decrypted);
+});
+
+const ndaReviewSchema = z
+  .object({
+    decision: z.enum(["approved", "rejected"]),
+    note: z.string().trim().max(1000).optional().default(""),
+  })
+  .superRefine((value, context) => {
+    if (value.decision === "rejected" && value.note.length < 5) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["note"],
+        message: "Expliquez la raison du refus.",
+      });
+    }
+  });
+
+adminApi.post("/people/:id/nda-review", async (req: any, res) => {
+  const tenantId = Number(req.workosTenantId);
+  const projectUserId = Number(req.params.id);
+  if (!Number.isFinite(projectUserId) || projectUserId <= 0) {
+    return res.status(400).json({ message: "Collaborateur invalide." });
+  }
+  const parsed = ndaReviewSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({
+      message:
+        parsed.error.issues[0]?.message ||
+        "La décision de revue NDA est invalide.",
+    });
+  }
+  const profile = await engineeringProfileForMember(tenantId, projectUserId);
+  if (!profile) return res.status(404).json({ message: "Dossier NDA introuvable." });
+  const member = await db.query.agoojyeProjectUsers.findFirst({
+    where: and(
+      eq(agoojyeProjectUsers.tenantId, tenantId),
+      eq(agoojyeProjectUsers.id, projectUserId),
+    ),
+  });
+  if (!member) return res.status(404).json({ message: "Collaborateur introuvable." });
+  const document = await db.query.agoojyeEngineeringNdaDocuments.findFirst({
+    where: and(
+      eq(agoojyeEngineeringNdaDocuments.tenantId, tenantId),
+      eq(
+        agoojyeEngineeringNdaDocuments.engineeringProfileId,
+        Number(profile.id),
+      ),
+      inArray(agoojyeEngineeringNdaDocuments.status, [
+        "submitted",
+        "approved",
+      ]),
+    ),
+    orderBy: [desc(agoojyeEngineeringNdaDocuments.createdAt)],
+  });
+  if (!document) {
+    return res.status(404).json({
+      message: "Aucun NDA en attente de revue n'a été déposé.",
+    });
+  }
+  const now = new Date();
+  const approving = parsed.data.decision === "approved";
+  const activeSessions =
+    !approving && member.authUserId
+      ? await db.query.agoojyeWorkosSessions.findMany({
+          where: and(
+            eq(agoojyeWorkosSessions.tenantId, tenantId),
+            eq(agoojyeWorkosSessions.userId, Number(member.authUserId)),
+            isNull(agoojyeWorkosSessions.revokedAt),
+          ),
+        })
+      : [];
+  await db.transaction(async (tx) => {
+    await tx
+      .update(agoojyeEngineeringNdaDocuments)
+      .set({
+        status: parsed.data.decision,
+        reviewedBy: Number(req.workosUser.id),
+        reviewedAt: now,
+        reviewNote: parsed.data.note || null,
+        updatedAt: now,
+      })
+      .where(eq(agoojyeEngineeringNdaDocuments.id, Number(document.id)));
+    await tx
+      .update(agoojyeEngineeringProfiles)
+      .set({
+        ndaAccessState: parsed.data.decision,
+        ndaApprovedAt: approving ? now : null,
+        onboardingState: approving ? "active" : "nda_required",
+        updatedAt: now,
+      })
+      .where(eq(agoojyeEngineeringProfiles.id, Number(profile.id)));
+    await tx
+      .update(agoojyeProjectUsers)
+      .set({
+        status: approving ? "Active" : "NDA Required",
+        onboardingProgress: approving
+          ? Math.max(Number(member.onboardingProgress || 0), 50)
+          : Math.min(Number(member.onboardingProgress || 0), 49),
+        updatedAt: now,
+      })
+      .where(eq(agoojyeProjectUsers.id, projectUserId));
+    if (!approving && member.authUserId) {
+      await tx
+        .update(agoojyeWorkosSessions)
+        .set({ revokedAt: now })
+        .where(
+          and(
+            eq(agoojyeWorkosSessions.tenantId, tenantId),
+            eq(agoojyeWorkosSessions.userId, Number(member.authUserId)),
+            isNull(agoojyeWorkosSessions.revokedAt),
+          ),
+        );
+      const eceSessionIds = activeSessions
+        .map((session) => Number(session.eceSessionId || 0))
+        .filter((id) => id > 0);
+      if (eceSessionIds.length) {
+        await tx.delete(eceSessions).where(inArray(eceSessions.id, eceSessionIds));
+      }
+    }
+  });
+  await db.insert(agoojyeAuditLogs).values({
+    tenantId,
+    actor: req.workosUser.email,
+    action: `engineering_nda_${parsed.data.decision}`,
+    entityType: "engineering_nda_document",
+    entityId: Number(document.id),
+    metadata: {
+      projectUserId,
+      note: parsed.data.note || null,
+      sessionsRevoked: activeSessions.length,
+    },
+  });
+  await recordSecurityEvent(req, {
+    tenantId,
+    eventType: `engineering_nda_${parsed.data.decision}`,
+    actorUserId: Number(req.workosUser.id),
+    subjectUserId: Number(member.authUserId || 0) || null,
+    metadata: {
+      projectUserId,
+      documentId: Number(document.id),
+      sessionsRevoked: activeSessions.length,
+    },
+  });
+  return res.json({
+    ok: true,
+    ndaAccessState: parsed.data.decision,
+    accessAllowed: approving,
+  });
 });
 
 adminApi.post("/people/import/preview", workerImportUpload.single("file"), async (req: any, res) => {
@@ -1609,6 +2197,7 @@ adminApi.post("/compliance-access", requireAgoojiyeSuperAdmin, async (req: any, 
 });
 
 router.use("/api/agoojye/workos/auth", authApi);
+router.use("/api/agoojye/onboarding", onboardingApi);
 router.use("/api/agoojye/workos/member", memberApi);
 router.use("/api/admin/agoojye/workos", adminApi);
 

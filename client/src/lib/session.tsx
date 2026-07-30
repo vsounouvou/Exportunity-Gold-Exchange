@@ -52,6 +52,7 @@ export interface User {
   buyerType?: BuyerType;
   verificationLevel?: "NONE" | "BASIC_VERIFIED" | "GOLD_VERIFIED";
   mustChangePassword?: boolean;
+  sessionScope?: "agoojye_nda";
 }
 
 export interface SessionState {
@@ -187,6 +188,7 @@ function clearIdentityBoundClientState() {
 	    const validate = async () => {
 	      const token = session.token;
 	      if (!token || !session.user) return;
+	      if (session.user.sessionScope === "agoojye_nda") return;
 	
 	      try {
 	        const headers = new Headers();

@@ -76,7 +76,20 @@ export async function recoverFromStaleClient(reason: string, targetBuildId?: str
   resetUrl.searchParams.set("targetBuild", normalizedBuildId);
   resetUrl.searchParams.set("mode", "soft");
   resetUrl.searchParams.set("v", normalizedBuildId);
-  window.location.replace(resetUrl.toString());
+  try {
+    await fetch(resetUrl.toString(), {
+      cache: "no-store",
+      credentials: "same-origin",
+      headers: {
+        Accept: "application/json",
+        "Cache-Control": "no-cache",
+        Pragma: "no-cache",
+      },
+    });
+  } catch {
+    // The reload below still recovers stale clients when the reset call fails.
+  }
+  window.location.replace(`/?v=${encodeURIComponent(normalizedBuildId)}`);
 }
 
 export async function runVersionGuardOnce() {

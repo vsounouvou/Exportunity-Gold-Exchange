@@ -556,6 +556,8 @@ async function prepareMember(input: {
       skills: rosterMember.skills,
       ndaStatus: rosterMember.ndaStatus,
       ndaUrl: rosterMember.ndaUrl,
+      ndaAccessState:
+        rosterMember.ndaStatus === "signed" ? "required" : "blocked",
       onboardingState:
         rosterMember.assignmentConfidence === "source"
           ? "prepared"

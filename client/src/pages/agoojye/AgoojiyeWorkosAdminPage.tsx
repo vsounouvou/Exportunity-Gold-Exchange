@@ -6,8 +6,10 @@ import {
   Bus,
   Building2,
   CalendarDays,
+  CheckCircle2,
   ChevronRight,
   ClipboardCheck,
+  Download,
   FileSpreadsheet,
   FileText,
   Gauge,
@@ -23,6 +25,7 @@ import {
   UserPlus,
   Users,
   X,
+  XCircle,
 } from "lucide-react";
 import { Redirect, useLocation } from "wouter";
 
@@ -80,6 +83,33 @@ function adminFetch(path: string, input: RequestInit = {}) {
   });
 }
 
+async function adminDownload(path: string, fallbackName: string) {
+  const token = localStorage.getItem("ece_session");
+  const headers = new Headers();
+  if (token) headers.set("Authorization", `Bearer ${token}`);
+  const response = await fetch(resolveApiUrl(path), {
+    headers,
+    credentials: "include",
+    cache: "no-store",
+  });
+  if (!response.ok) {
+    const payload = await response.json().catch(() => null);
+    throw new Error(payload?.message || "Le téléchargement a échoué.");
+  }
+  const blob = await response.blob();
+  const disposition = response.headers.get("Content-Disposition") || "";
+  const encodedName = disposition.match(/filename\*=UTF-8''([^;]+)/i)?.[1];
+  const fileName = encodedName ? decodeURIComponent(encodedName) : fallbackName;
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = fileName;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
+}
+
 function formatDate(value: string | Date | null | undefined) {
   if (!value) return "Non définie";
   const date = new Date(value);
@@ -98,7 +128,10 @@ function Status({ value }: { value: string }) {
     normalized.includes("accepted") ||
     normalized.includes("existing")
     ? "bg-emerald-100 text-emerald-800"
-    : normalized.includes("denied") || normalized.includes("blocked") || normalized.includes("ancien")
+    : normalized.includes("denied") ||
+        normalized.includes("blocked") ||
+        normalized.includes("ancien") ||
+        normalized.includes("rejected")
       ? "bg-red-100 text-red-800"
       : "bg-amber-100 text-amber-800";
   const labels: Record<string, string> = {
@@ -117,9 +150,17 @@ function Status({ value }: { value: string }) {
     provisioned: "Prête",
     existing: "Prête",
     not_sent: "Non envoyée",
+    sent: "Envoyée",
+    sending: "Envoi en cours",
+    delivery_failed: "Échec d’envoi",
+    delivery_unconfirmed: "Livraison à vérifier",
     accepted: "Activée",
-    signed: "Signé",
+    signed: "Enregistré",
     not_recorded: "À vérifier",
+    required: "Dépôt requis",
+    submitted: "Déposé",
+    rejected: "À remplacer",
+    nda_required: "NDA requis",
     needs_role_confirmation: "Rôle à confirmer",
     scheduled: "Planifié",
     success: "Réussi",
@@ -189,6 +230,9 @@ function PeoplePanel({ data, refetch }: { data: AdminOverview; refetch: () => vo
   const [teamFilter, setTeamFilter] = useState("all");
   const [offboardId, setOffboardId] = useState<number | null>(null);
   const [offboardReason, setOffboardReason] = useState("");
+  const [ndaReviewId, setNdaReviewId] = useState<number | null>(null);
+  const [ndaReviewNote, setNdaReviewNote] = useState("");
+  const [ndaDownloadingId, setNdaDownloadingId] = useState<number | null>(null);
   const invite = useMutation({
     mutationFn: () => apiRequest("/api/admin/agoojye/workos/people/olivier/invite", { method: "POST", body: JSON.stringify({ email }) }),
     onSuccess: () => { toast({ title: "Invitation d’Olivier créée" }); setEmail(""); refetch(); },
@@ -199,6 +243,48 @@ function PeoplePanel({ data, refetch }: { data: AdminOverview; refetch: () => vo
     onSuccess: () => { toast({ title: "Départ enregistré" }); setOffboardId(null); setOffboardReason(""); refetch(); },
     onError: (error: any) => toast({ title: "Départ impossible", description: error?.message, variant: "destructive" }),
   });
+  const reviewNda = useMutation({
+    mutationFn: (input: { id: number; decision: "approved" | "rejected" }) =>
+      adminFetch(`/api/admin/agoojye/workos/people/${input.id}/nda-review`, {
+        method: "POST",
+        body: JSON.stringify({ decision: input.decision, note: ndaReviewNote }),
+      }),
+    onSuccess: (_payload, input) => {
+      toast({
+        title:
+          input.decision === "approved"
+            ? "NDA approuvé"
+            : "NDA refusé et accès suspendu",
+      });
+      setNdaReviewId(null);
+      setNdaReviewNote("");
+      refetch();
+    },
+    onError: (error: any) =>
+      toast({
+        title: "Revue impossible",
+        description: error?.message,
+        variant: "destructive",
+      }),
+  });
+  const downloadNda = async (person: any) => {
+    setNdaDownloadingId(Number(person.id));
+    try {
+      await adminDownload(
+        `/api/admin/agoojye/workos/people/${person.id}/nda-document`,
+        `NDA-${person.displayName}.pdf`,
+      );
+      toast({ title: "NDA téléchargé" });
+    } catch (error: any) {
+      toast({
+        title: "Téléchargement impossible",
+        description: error?.message,
+        variant: "destructive",
+      });
+    } finally {
+      setNdaDownloadingId(null);
+    }
+  };
   const olivierVacancy = data.vacancies.find((vacancy) => vacancy.candidateName === "Olivier");
   const engineeringPeople = data.people.filter((person) => Boolean(person.engineering));
   const visiblePeople = data.people.filter((person) => {
@@ -219,14 +305,15 @@ function PeoplePanel({ data, refetch }: { data: AdminOverview; refetch: () => vo
       </div>
       {engineeringPeople.length ? (
         <>
-          <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
             <Metric label="Comptes ingénierie préparés" value={data.metrics.engineeringPrepared || 0} tone="gold" />
             <Metric label="Webmails prêts" value={data.metrics.engineeringMailboxesReady || 0} tone="green" />
             <Metric label="Contacts personnels manquants" value={data.metrics.engineeringMissingPersonalEmail || 0} />
             <Metric label="NDA à vérifier" value={data.metrics.engineeringNdaToReview || 0} />
+            <Metric label="NDA déposés" value={data.metrics.engineeringNdaSubmitted || 0} tone="green" />
           </div>
           <div className="border-l-4 border-[#18563b] bg-emerald-50 px-5 py-4 text-sm text-emerald-950">
-            Les comptes et boîtes peuvent être préparés sans contacter l'équipe. Aucun e-mail d'activation n'est envoyé tant que la direction ne l'autorise pas.
+            Une invitation n'est autorisée que si le NDA est enregistré et qu'un contact personnel existe. L'accès au travail reste bloqué jusqu'au dépôt du document signé.
           </div>
         </>
       ) : null}
@@ -255,7 +342,7 @@ function PeoplePanel({ data, refetch }: { data: AdminOverview; refetch: () => vo
         </select>
       </div>
       <div className="overflow-x-auto border border-black/10 bg-white">
-        <table className="w-full min-w-[920px] text-left text-sm">
+        <table className="w-full min-w-[1120px] text-left text-sm">
           <thead className="bg-[#ebe9e2] text-[11px] uppercase text-black/50"><tr><th className="px-4 py-3">Collaborateur</th><th className="px-4 py-3">Métier</th><th className="px-4 py-3">Département</th><th className="px-4 py-3">Webmail</th><th className="px-4 py-3">Invitation</th><th className="px-4 py-3">NDA</th><th className="px-4 py-3">Statut</th><th className="px-4 py-3"></th></tr></thead>
           <tbody className="divide-y divide-black/10">
             {visiblePeople.map((person) => {
@@ -266,15 +353,68 @@ function PeoplePanel({ data, refetch }: { data: AdminOverview; refetch: () => vo
                 <td className="px-4 py-4">{team?.name || "À définir"}</td>
                 <td className="px-4 py-4">{person.engineering ? <Status value={person.engineering.mailboxState} /> : person.emailAccountCreated ? <Status value="provisioned" /> : "—"}</td>
                 <td className="px-4 py-4">{person.engineering ? <Status value={person.engineering.invitationState} /> : "—"}</td>
-                <td className="px-4 py-4">{person.engineering ? <Status value={person.engineering.ndaStatus} /> : "—"}</td>
+                <td className="px-4 py-4">{person.engineering ? <><Status value={person.engineering.ndaStatus} /><span className="mt-2 block"><Status value={person.engineering.ndaAccessState} /></span></> : "—"}</td>
                 <td className="px-4 py-4"><Status value={person.status} /><span className="mt-2 block text-xs text-black/45">{person.onboardingProgress}%</span></td>
-                <td className="px-4 py-4">{data.currentUser.superAdmin && person.status === "Active" && person.email !== data.currentUser.email ? <button type="button" onClick={() => setOffboardId(person.id)} className="text-xs font-semibold text-red-700">Retirer</button> : null}</td>
+                <td className="px-4 py-4">
+                  <div className="flex flex-col items-start gap-2">
+                    {person.engineering && ["submitted", "approved", "rejected"].includes(person.engineering.ndaAccessState) ? <button type="button" onClick={() => downloadNda(person)} disabled={ndaDownloadingId === Number(person.id)} className="inline-flex min-h-9 items-center text-xs font-semibold text-[#18563b] disabled:opacity-50"><Download className="mr-1.5 h-4 w-4" />{ndaDownloadingId === Number(person.id) ? "Ouverture…" : "Voir le NDA"}</button> : null}
+                    {person.engineering?.ndaAccessState === "submitted" ? <button type="button" onClick={() => { setNdaReviewId(Number(person.id)); setNdaReviewNote(""); }} className="inline-flex min-h-9 items-center text-xs font-semibold text-[#805f12]"><FileText className="mr-1.5 h-4 w-4" />Examiner</button> : null}
+                    {data.currentUser.superAdmin && person.status === "Active" && person.email !== data.currentUser.email ? <button type="button" onClick={() => setOffboardId(person.id)} className="min-h-9 text-xs font-semibold text-red-700">Retirer</button> : null}
+                  </div>
+                </td>
               </tr>;
             })}
           </tbody>
         </table>
         {!visiblePeople.length ? <p className="px-5 py-10 text-center text-sm text-black/45">Aucun collaborateur ne correspond à ce filtre.</p> : null}
       </div>
+      {ndaReviewId ? (
+        <section className="border border-black/10 bg-white p-5">
+          <p className="text-xs font-bold uppercase text-[#805f12]">Revue confidentielle</p>
+          <h2 className="mt-2 text-xl font-semibold">
+            {data.people.find((person) => Number(person.id) === ndaReviewId)?.displayName}
+          </h2>
+          <p className="mt-2 text-sm leading-6 text-black/50">
+            Consultez le document avant de décider. Un refus révoque immédiatement les sessions actives et exige un nouveau dépôt.
+          </p>
+          <Textarea
+            value={ndaReviewNote}
+            onChange={(event) => setNdaReviewNote(event.target.value)}
+            placeholder="Note de revue, obligatoire en cas de refus"
+            className="mt-4 max-w-2xl bg-white"
+          />
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Button
+              type="button"
+              onClick={() => reviewNda.mutate({ id: ndaReviewId, decision: "approved" })}
+              disabled={reviewNda.isPending}
+              className="bg-[#18563b] hover:bg-[#10432d]"
+            >
+              <CheckCircle2 className="mr-2 h-4 w-4" />
+              Approuver
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={() => reviewNda.mutate({ id: ndaReviewId, decision: "rejected" })}
+              disabled={reviewNda.isPending || ndaReviewNote.trim().length < 5}
+            >
+              <XCircle className="mr-2 h-4 w-4" />
+              Refuser
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setNdaReviewId(null);
+                setNdaReviewNote("");
+              }}
+            >
+              Annuler
+            </Button>
+          </div>
+        </section>
+      ) : null}
       {offboardId ? (
         <form className="border border-red-200 bg-red-50 p-5" onSubmit={(event) => { event.preventDefault(); offboard.mutate(); }}>
           <h2 className="font-semibold text-red-900">Confirmer le départ</h2>

@@ -303,7 +303,7 @@ export function AgoojiyeOsJoinPage({ token }: { token: string }) {
 
 export function AgoojiyeOsLoginPage() {
   useOsMeta("Connexion");
-  const { login, isAuthenticated, isGuest } = useSession();
+  const { login, isAuthenticated, isGuest, user } = useSession();
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const [email, setEmail] = useState("");
@@ -370,7 +370,17 @@ export function AgoojiyeOsLoginPage() {
       toast({ title: "Récupération impossible", description: error?.message || "Code incorrect.", variant: "destructive" }),
   });
 
-  if (isAuthenticated && !isGuest) return <Redirect to="/workspace" />;
+  if (isAuthenticated && !isGuest) {
+    return (
+      <Redirect
+        to={
+          user?.sessionScope === "agoojye_nda"
+            ? "/workspace/onboarding/nda"
+            : "/workspace"
+        }
+      />
+    );
+  }
   return (
     <AccessPageShell>
       <div className="w-full max-w-lg">

@@ -116,15 +116,54 @@ inside a public web root or committed to Git.
 No activation token is generated during account preparation because tokens are
 short lived. After explicit owner authorization, the delivery operation must:
 
-1. generate a fresh, single-use setup link for each approved recipient;
-2. deliver only to the reconciled personal address;
-3. skip Fried BOCOVO and Prince ATCHIN until a personal address is provided;
-4. record the exact delivery result without storing a raw token in the database;
-5. keep WhatsApp copy separate and visible for owner review.
+1. select only profiles whose NDA is registered as `signed`;
+2. require a reconciled personal delivery address;
+3. generate a fresh, single-use setup link for each approved recipient;
+4. send the French personal message through authenticated AGOOJIYE SMTP;
+5. record the delivery identifier and timestamp without storing a raw token;
+6. leave all ineligible profiles untouched.
+
+Preview the eligible cohort without generating links or contacting anyone:
+
+```bash
+npm run invite:agoojye:engineering-team
+```
+
+The production send requires all four guards:
+
+```bash
+npm run invite:agoojye:engineering-team -- \
+  --apply \
+  --send \
+  --eligible-signed-nda-only \
+  --confirm-owner-authorization
+```
+
+The operation verifies SMTP before generating any token, skips Fried BOCOVO
+and Prince ATCHIN until a personal address is provided, skips the seven NDA
+entries marked `not_recorded`, and never stores or logs a raw setup link. A
+profile whose invitation is already sent or accepted is not contacted again.
 
 When the recipient opens the setup link, the password they choose is applied to
 both the AGOOJIYE platform account and the AGOOJIYE-owned webmail. Webmail is
 available at `https://mail.agoojiye.com/`.
+
+Activation does not open WorkOS immediately. It creates a restricted session
+for `/workspace/onboarding/nda`, where the member must attach the signed NDA as
+PDF, JPG or PNG. The file signature is validated, the content is encrypted at
+rest, and the one-purpose session is revoked after a successful upload. The
+member then reconnects normally. Administrators review documents from
+`/admin/people`; a rejection revokes active sessions and requires a replacement
+upload.
+
+Production requires:
+
+```text
+AGOOJIYE_NDA_ENCRYPTION_SECRET=<independent-secret-at-least-32-characters>
+AGOOJIYE_NDA_STORAGE_DIR=/data/uploads/agoojye-private/nda
+AGOOJIYE_NDA_UPLOAD_MAX_MB=10
+AGOOJIYE_INVITATION_TTL_HOURS=72
+```
 
 ## Admin review queue
 

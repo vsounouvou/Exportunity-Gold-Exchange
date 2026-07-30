@@ -18,9 +18,12 @@ import {
   buildPasswordSetupLink,
   consumePasswordSetupToken,
   createPasswordSetupToken,
+  inspectPasswordSetupToken,
   resolvePasswordSetupBaseUrl,
 } from "../lib/password-setup";
 import { resolveSetupPasswordRedirect } from "../lib/setup-password-redirect";
+import { engineeringNdaDecision } from "../lib/agoojye/ndaAccess";
+import { createEngineeringNdaSession } from "../lib/agoojye/ndaOnboarding";
 import {
   isMailserverSetupAvailable,
   mailserverDoveadmAuthTestWithRefresh,
@@ -89,6 +92,57 @@ router.post("/api/auth/setup-password", async (req, res) => {
     if (!rawToken) return res.status(400).json({ message: "token is required" });
     if (password.length < 10) return res.status(400).json({ message: "Password must be at least 10 characters" });
 
+    const inspectedToken = await inspectPasswordSetupToken(rawToken);
+    if (!inspectedToken.ok) {
+      return res.status(400).json({
+        message: "Invalid or expired setup token",
+        code: maskSetupReason(inspectedToken),
+      });
+    }
+
+    const user = await db.query.eceUsers.findFirst({
+      where: eq(eceUsers.id, inspectedToken.userId),
+    });
+    if (!user) return res.status(404).json({ message: "User not found" });
+    if (!user.isActive) return res.status(403).json({ message: "Account is disabled" });
+
+    const setupRedirect = resolveSetupPasswordRedirect({
+      tenantKey: (req as any)?.tenant?.key,
+      host: req.get("host"),
+      forwardedHost: req.get("x-forwarded-host"),
+    });
+    const tenantId = Number((req as any)?.tenant?.id || 0);
+    let projectUser: any = null;
+    let engineeringProfile: any = null;
+    if (setupRedirect.tenantKey === "agoojye") {
+      projectUser = await db.query.agoojyeProjectUsers.findFirst({
+        where: tenantId
+          ? and(
+              eq(agoojyeProjectUsers.tenantId, tenantId),
+              eq(agoojyeProjectUsers.authUserId, Number(user.id)),
+            )
+          : eq(agoojyeProjectUsers.authUserId, Number(user.id)),
+      });
+      if (projectUser) {
+        engineeringProfile = await db.query.agoojyeEngineeringProfiles.findFirst({
+          where: eq(
+            agoojyeEngineeringProfiles.projectUserId,
+            Number(projectUser.id),
+          ),
+        });
+      }
+      if (
+        engineeringProfile &&
+        String(engineeringProfile.ndaStatus || "").trim().toLowerCase() !== "signed"
+      ) {
+        return res.status(403).json({
+          message:
+            "Votre NDA doit être enregistré par l'administration avant l'activation.",
+          code: "NDA_NOT_REGISTERED",
+        });
+      }
+    }
+
     const tokenStatus = await consumePasswordSetupToken(rawToken);
     if (!tokenStatus.ok) {
       return res.status(400).json({
@@ -96,12 +150,6 @@ router.post("/api/auth/setup-password", async (req, res) => {
         code: maskSetupReason(tokenStatus),
       });
     }
-
-    const user = await db.query.eceUsers.findFirst({
-      where: eq(eceUsers.id, tokenStatus.userId),
-    });
-    if (!user) return res.status(404).json({ message: "User not found" });
-    if (!user.isActive) return res.status(403).json({ message: "Account is disabled" });
 
     const roundsRaw = Number(process.env.PASSWORD_HASH_ROUNDS || 10);
     const rounds = Number.isFinite(roundsRaw) ? Math.max(10, Math.trunc(roundsRaw)) : 10;
@@ -117,11 +165,6 @@ router.post("/api/auth/setup-password", async (req, res) => {
       String(user.email || "").trim().toLowerCase() ===
         String(process.env.AGOOJIYE_SUPER_ADMIN_EMAIL || "vs@agoojiye.com").trim().toLowerCase();
 
-    const setupRedirect = resolveSetupPasswordRedirect({
-      tenantKey: (req as any)?.tenant?.key,
-      host: req.get("host"),
-      forwardedHost: req.get("x-forwarded-host"),
-    });
     const corporateEmail = String(user.email || "").trim().toLowerCase();
     let webmailReady = false;
     if (
@@ -159,35 +202,66 @@ router.post("/api/auth/setup-password", async (req, res) => {
       })
       .where(eq(eceUsers.id, user.id));
 
-    if (setupRedirect.tenantKey === "agoojye") {
-      const tenantId = Number((req as any)?.tenant?.id || 0);
-      const projectUser = await db.query.agoojyeProjectUsers.findFirst({
-        where: tenantId
-          ? and(
-              eq(agoojyeProjectUsers.tenantId, tenantId),
-              eq(agoojyeProjectUsers.authUserId, Number(user.id)),
-            )
-          : eq(agoojyeProjectUsers.authUserId, Number(user.id)),
-      });
+    let ndaUploadRequired = false;
+    if (setupRedirect.tenantKey === "agoojye" && projectUser) {
+      const ndaDecision = engineeringProfile
+        ? engineeringNdaDecision(engineeringProfile)
+        : null;
+      ndaUploadRequired = Boolean(ndaDecision && !ndaDecision.allowed);
       if (projectUser) {
         await db
           .update(agoojyeProjectUsers)
           .set({
-            status: "Active",
-            onboardingProgress: Math.max(Number(projectUser.onboardingProgress || 0), 25),
+            status: ndaUploadRequired ? "NDA Required" : "Active",
+            onboardingProgress: Math.max(
+              Number(projectUser.onboardingProgress || 0),
+              ndaUploadRequired ? 35 : 25,
+            ),
             updatedAt: new Date(),
           })
           .where(eq(agoojyeProjectUsers.id, Number(projectUser.id)));
-        await db
-          .update(agoojyeEngineeringProfiles)
-          .set({
-            onboardingState: "activated",
-            invitationState: "accepted",
-            ...(webmailReady ? { mailboxState: "provisioned" } : {}),
-            updatedAt: new Date(),
-          })
-          .where(eq(agoojyeEngineeringProfiles.projectUserId, Number(projectUser.id)));
+        if (engineeringProfile) {
+          await db
+            .update(agoojyeEngineeringProfiles)
+            .set({
+              ndaAccessState: ndaUploadRequired
+                ? ndaDecision?.state || "required"
+                : engineeringProfile.ndaAccessState,
+              onboardingState: ndaUploadRequired ? "nda_required" : "activated",
+              invitationState: "accepted",
+              ...(webmailReady ? { mailboxState: "provisioned" } : {}),
+              updatedAt: new Date(),
+            })
+            .where(
+              eq(
+                agoojyeEngineeringProfiles.projectUserId,
+                Number(projectUser.id),
+              ),
+            );
+        }
       }
+    }
+
+    if (ndaUploadRequired && engineeringProfile && tenantId) {
+      const ndaSession = await createEngineeringNdaSession({
+        tenantId,
+        engineeringProfileId: Number(engineeringProfile.id),
+        userId: Number(user.id),
+      });
+      return res.json({
+        ok: true,
+        ndaRequired: true,
+        token: ndaSession.token,
+        expiresAt: ndaSession.expiresAt,
+        redirect: "/workspace/onboarding/nda",
+        tenantKey: setupRedirect.tenantKey,
+        webmailReady,
+        webmailUrl: webmailReady ? "https://mail.agoojiye.com/" : null,
+        user: {
+          ...buildSessionUserPayload(user),
+          sessionScope: "agoojye_nda",
+        },
+      });
     }
 
     if (requiresMfa && setupRedirect.tenantKey === "agoojye") {

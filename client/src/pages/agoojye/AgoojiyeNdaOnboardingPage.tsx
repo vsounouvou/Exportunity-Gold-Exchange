@@ -288,11 +288,13 @@ export default function AgoojiyeNdaOnboardingPage() {
                 <div className="mt-6 flex items-start gap-3">
                   <Checkbox
                     id="nda-confirmation"
+                    aria-labelledby="nda-confirmation-label"
                     checked={confirmed}
                     onCheckedChange={(value) => setConfirmed(value === true)}
                     className="mt-0.5 border-white/40 data-[state=checked]:border-[#d8ad3d] data-[state=checked]:bg-[#d8ad3d] data-[state=checked]:text-black"
                   />
                   <Label
+                    id="nda-confirmation-label"
                     htmlFor="nda-confirmation"
                     className="cursor-pointer text-sm leading-6 text-white/70"
                   >

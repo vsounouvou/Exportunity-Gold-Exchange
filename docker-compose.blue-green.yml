@@ -1,0 +1,7 @@
+volumes:
+  bdo_assets:
+    external: true
+    name: ${SHARED_ASSET_VOLUME}
+  bdo_uploads:
+    external: true
+    name: ${SHARED_UPLOAD_VOLUME}

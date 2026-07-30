@@ -323,7 +323,7 @@ Adapters should receive a booking/ticket ID, load approved data server-side, rec
 3. Apply `20260712_agoojiye_mobility_platform.sql`, `20260718_agoojiye_email_secret_guard.sql`, `20260718_agoojiye_research_sources.sql`, and `20260718_agoojiye_sequence_enrollments.sql` with `ON_ERROR_STOP=1`.
 4. Run `npm run seed:agoojye:mobility`.
 5. Run the mobility tests and `npm run build`.
-6. Deploy the generated client/server release with the existing VPS procedure.
+6. Deploy with `scripts/ops/deploy-release.sh agoojye --build-artifact`. AGOOJIYE uses the blue/green procedure described below; never replace its active container directly.
 7. Verify `/api/agoojye/mobility/bootstrap`, the complete demo booking journey, ticket QR rendering, duplicate validation, commercial form persistence, admin authorization, `robots.txt`, and `sitemap.xml`.
 8. Keep demo payments enabled until a real provider and signed webhooks are verified.
 9. Complete the forward and reverse mail-DNS cutover in `docs/AGOOJIYE_EMAIL_DNS_AND_MAILBOXES.md`, then run `npm run verify:agoojye:mail-dns`.
@@ -333,6 +333,33 @@ Adapters should receive a booking/ticket ID, load approved data server-side, rec
 13. Apply `20260728_agoojye_chat_worldclass.sql`, set `AGOOJIYE_CHAT_ATTACHMENT_SECRET`, and confirm that the reverse proxy permits Socket.IO upgrades on `/socket.io/`.
 14. Run the chat domain and four-viewport Playwright suites, then verify a channel message, a DM, one file upload, one explicit `@AGOOJIYE` response, and one approved assistant action.
 15. Apply `20260730_agoojiye_engineering_nda_gate.sql`, set `AGOOJIYE_NDA_ENCRYPTION_SECRET`, verify the private upload volume, preview the eligible engineering cohort, and send invitations only with the guarded command documented below.
+
+### Zero-downtime AGOOJIYE deployment
+
+AGOOJIYE production alternates between `blue` on host port `5005` and `green`
+on host port `5006`. Both slots use the same PostgreSQL database and the same
+external asset/upload volumes. A release is built in the inactive slot while
+the active slot continues to serve users.
+
+The proxy switch occurs only after all of these checks pass:
+
+1. Docker reports the candidate as healthy.
+2. `/api/health/ready` confirms PostgreSQL access.
+3. Server and client report the expected commit and build ID.
+4. The public domain returns that same commit and build ID after the proxy reload.
+
+If any check fails before the switch, the active slot is untouched. If public
+verification fails after the switch, the proxy configuration is restored
+automatically. The previous slot stays available for rollback:
+
+```bash
+scripts/ops/rollback-release.sh agoojye
+```
+
+Keep `VERSION_GUARD_ENABLED=false` for the team workspace. New service workers
+display an update prompt instead of reloading an active form, meeting, chat, or
+NDA upload. Do not run `docker compose up`, restart Nginx Proxy Manager, or
+remove the active slot as part of a normal AGOOJIYE release.
 
 ## AGOOJIYE WorkOS
 

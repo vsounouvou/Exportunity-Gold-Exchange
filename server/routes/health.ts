@@ -110,6 +110,56 @@ router.get("/", (_req, res) => {
   });
 });
 
+router.get("/ready", async (_req, res) => {
+  res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
+  res.setHeader("Pragma", "no-cache");
+  res.setHeader("Expires", "0");
+
+  const publicDir = findClientPublicDir();
+  const clientBuildRaw = publicDir ? readClientBuild(publicDir) : null;
+  const gitSha = String(readGitSha() || clientBuildRaw?.gitSha || "unknown");
+  const buildId = String(pickBuildId() || clientBuildRaw?.buildId || "unknown");
+  const buildMatches =
+    Boolean(clientBuildRaw) &&
+    String(clientBuildRaw?.gitSha || "") === gitSha &&
+    String(clientBuildRaw?.buildId || "") === buildId;
+
+  try {
+    await db.execute(sql`select 1 as ready`);
+    if (!buildMatches) {
+      return res.status(503).json({
+        ok: false,
+        status: "not_ready",
+        database: "ready",
+        buildMatches: false,
+        gitSha,
+        buildId,
+        serverTime: new Date().toISOString(),
+      });
+    }
+
+    return res.json({
+      ok: true,
+      status: "ready",
+      database: "ready",
+      buildMatches: true,
+      gitSha,
+      buildId,
+      serverTime: new Date().toISOString(),
+    });
+  } catch {
+    return res.status(503).json({
+      ok: false,
+      status: "not_ready",
+      database: "unavailable",
+      buildMatches,
+      gitSha,
+      buildId,
+      serverTime: new Date().toISOString(),
+    });
+  }
+});
+
 async function getSessionUser(req: any) {
   try {
     const token = String(req?.headers?.authorization || "").replace("Bearer ", "").trim();

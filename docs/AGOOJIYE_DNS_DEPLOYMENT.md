@@ -20,13 +20,15 @@ Default language: French
 Secondary language: English
 Country: Bénin
 VPS IPv4: 51.254.143.30
-Docker Compose project: agoojye
-App container: agoojye-bdo-app-1
-App host binding: 127.0.0.1:5005 -> 5000/tcp
+Deployment strategy: blue/green with an atomic proxy switch
+Blue project/port: agoojye-blue / 127.0.0.1:5005
+Green project/port: agoojye-green / 127.0.0.1:5006
+Legacy project retained only for the first blue/green rollback: agoojye
 Nginx Proxy Manager container: npm-npm-1
 NPM proxy host ID: 23
-NPM upstream host: agoojye-app
+NPM upstream host: selected by /data/nginx/custom/server_proxy.conf
 NPM upstream port: 5000
+Readiness endpoint: https://agoojiye.com/api/health/ready
 Current verified runtime commit: see `/api/system/version` after each deploy
 NPM certificate: Let's Encrypt attached in Nginx Proxy Manager
 ```
@@ -187,6 +189,37 @@ MAIL_DOMAIN_AGOOJIYE=agoojiye.com
 ```
 
 Do not switch `TENANT_DEFAULT` on any other shared service to `agoojye`, because the same VPS serves other tenants. Host-based tenant resolution maps the AGOOJIYE domains to the `agoojye` tenant, and NPM routes those domains to the distinct `agoojye-app` upstream.
+
+## Availability Policy
+
+AGOOJIYE is an active production workspace. Normal releases must use:
+
+```bash
+scripts/ops/deploy-release.sh agoojye --build-artifact
+```
+
+The release script builds the inactive slot, waits for Docker health, verifies
+PostgreSQL and build parity through `/api/health/ready`, switches the Nginx
+upstream atomically, and verifies the public domain. The active slot is never
+stopped to make room for a candidate.
+
+Rollback switches back to the still-available previous slot:
+
+```bash
+scripts/ops/rollback-release.sh agoojye
+```
+
+Production must keep `VERSION_GUARD_ENABLED=false`. Updates are offered through
+the in-app update prompt and do not reload a member while they are editing,
+chatting, meeting, or uploading an NDA.
+
+Forbidden during a normal release:
+
+- direct `docker compose up` against the active AGOOJIYE project;
+- stopping the active slot before candidate readiness;
+- changing DNS during an application deployment;
+- reloading the proxy before `nginx -t` succeeds;
+- marking a release successful before the public build ID matches.
 
 ## Live Mail DNS For Provisioned Mailboxes
 

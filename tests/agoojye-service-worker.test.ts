@@ -7,11 +7,34 @@ const source = readFileSync(new URL("../client/public/sw.js", import.meta.url), 
 
 function inspectWorker(hostname: string) {
   const listeners = new Map<string, unknown>();
+  const cacheEntries = new Map<string, Response>();
   const context: Record<string, any> = {
+    Response,
     URL,
-    caches: {},
+    caches: {
+      async keys() {
+        return [];
+      },
+      async open() {
+        return {
+          async add() {},
+          async match(key: string) {
+            return cacheEntries.get(key);
+          },
+          async put(key: string, response: Response) {
+            cacheEntries.set(key, response);
+          },
+        };
+      },
+      async match(key: string) {
+        return cacheEntries.get(key);
+      },
+      async delete() {
+        return true;
+      },
+    },
     self: {
-      clients: {},
+      clients: { claim() {} },
       location: { hostname, origin: `https://${hostname}` },
       addEventListener(type: string, listener: unknown) {
         listeners.set(type, listener);
@@ -28,6 +51,9 @@ function inspectWorker(hostname: string) {
   return {
     ...context.__workerSnapshot,
     listeners: [...listeners.keys()].sort(),
+    listener(type: string) {
+      return listeners.get(type) as (event: any) => void;
+    },
   } as { tenant: string; version: string; precache: string[]; listeners: string[] };
 }
 
@@ -41,6 +67,35 @@ test("AGOOJIYE service worker uses only AGOOJIYE precache resources", () => {
   assert.equal(worker.precache.some((url) => url.includes("/bdo/")), false);
   assert.equal(worker.precache.some((url) => url.includes("manifest-bdo")), false);
   assert.deepEqual(worker.listeners, ["activate", "fetch", "install", "message", "notificationclick", "push"]);
+});
+
+test("navigation failure always returns a usable French offline document", async () => {
+  const worker = inspectWorker("agoojiye.com") as any;
+  const originalFetch = globalThis.fetch;
+  let responsePromise: Promise<Response> | null = null;
+
+  try {
+    globalThis.fetch = async () => {
+      throw new Error("network unavailable");
+    };
+    worker.listener("fetch")({
+      request: {
+        method: "GET",
+        mode: "navigate",
+        url: "https://agoojiye.com/",
+      },
+      respondWith(value: Promise<Response>) {
+        responsePromise = value;
+      },
+    });
+
+    assert.ok(responsePromise);
+    const response = await responsePromise;
+    assert.equal(response.status, 503);
+    assert.match(await response.text(), /Connexion interrompue/);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });
 
 test("Bourse de l'Or service worker keeps its own cache namespace", () => {

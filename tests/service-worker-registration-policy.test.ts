@@ -7,6 +7,6 @@ test("service worker bootstrap does not reload a first visit", () => {
   assert.equal(shouldReloadOnControllerChange(false), false);
 });
 
-test("service worker bootstrap reloads an existing controlled page after an upgrade", () => {
-  assert.equal(shouldReloadOnControllerChange(true), true);
+test("service worker bootstrap does not interrupt an active page after an upgrade", () => {
+  assert.equal(shouldReloadOnControllerChange(true), false);
 });

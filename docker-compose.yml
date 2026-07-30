@@ -15,6 +15,18 @@ services:
         APP_BASE_URL: ${APP_BASE_URL}
         PASSWORD_SETUP_BASE_URL: ${PASSWORD_SETUP_BASE_URL}
     restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:5000/api/health/ready').then((response)=>{if(!response.ok)process.exit(1)}).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
     env_file:
       - .env
     environment:
@@ -52,7 +64,7 @@ services:
       AGOOJIYE_JOB_WORKER_INTERVAL_MS: ${AGOOJIYE_JOB_WORKER_INTERVAL_MS:-30000}
       AGOOJIYE_JOB_WORKER_MAX_BATCH: ${AGOOJIYE_JOB_WORKER_MAX_BATCH:-5}
     volumes:
-      - ../data/attached_assets:/app/attached_assets
+      - ${ATTACHED_ASSETS_PATH:-../data/attached_assets}:/app/attached_assets
       - bdo_assets:/data/assets
       - bdo_uploads:/data/uploads
       - /home/vital/infra/mailserver/maildata:/var/mail:ro

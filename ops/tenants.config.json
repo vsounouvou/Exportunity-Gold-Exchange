@@ -52,7 +52,13 @@
       ],
       "domain": "https://agoojiye.com",
       "composeProject": "agoojye",
+      "healthCheckPath": "/api/health/ready",
       "hostPort": "5005",
+      "deploymentStrategy": "blue-green",
+      "blueGreenAlternatePort": "5006",
+      "blueGreenProxyContainer": "npm-npm-1",
+      "blueGreenProxyConfigPath": "/data/nginx/custom/server_proxy.conf",
+      "blueGreenHostPattern": "^(agoojiye\\.com|www\\.agoojiye\\.com|app\\.agoojiye\\.com|admin\\.agoojiye\\.com)$",
       "proxyAlias": "agoojye-app",
       "remoteDeployRoot": "/var/www/agoojye"
     },

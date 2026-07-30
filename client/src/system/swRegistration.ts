@@ -1,30 +1,9 @@
-function markControllerReloadedOnce() {
-  const key = "ece_sw_controllerchange_reload_once";
-  if (sessionStorage.getItem(key) === "1") return false;
-  sessionStorage.setItem(key, "1");
-  return true;
-}
-
-function attachControllerChangeReload() {
-  const onControllerChange = () => {
-    if (!markControllerReloadedOnce()) return;
-    window.location.reload();
-  };
-  navigator.serviceWorker.addEventListener("controllerchange", onControllerChange);
-}
-
-function triggerSkipWaiting(registration: ServiceWorkerRegistration) {
-  const waiting = registration.waiting;
-  if (!waiting) return;
-  waiting.postMessage({ type: "SKIP_WAITING" });
-}
-
 function notifyUpdate(registration: ServiceWorkerRegistration) {
   window.dispatchEvent(new CustomEvent("bdo-sw-update", { detail: { registration } }));
 }
 
-export function shouldReloadOnControllerChange(wasControlledAtRegistration: boolean) {
-  return wasControlledAtRegistration;
+export function shouldReloadOnControllerChange(_wasControlledAtRegistration: boolean) {
+  return false;
 }
 
 export function registerServiceWorkerWithAutoUpgrade() {
@@ -32,14 +11,9 @@ export function registerServiceWorkerWithAutoUpgrade() {
   if (!("serviceWorker" in navigator)) return;
 
   window.addEventListener("load", () => {
-    const wasControlledAtRegistration = Boolean(navigator.serviceWorker.controller);
     navigator.serviceWorker
       .register("/sw.js", { updateViaCache: "none" })
       .then((registration) => {
-        if (shouldReloadOnControllerChange(wasControlledAtRegistration)) {
-          attachControllerChangeReload();
-        }
-
         const triggerUpdateCheck = () => {
           try {
             if (document.visibilityState && document.visibilityState !== "visible") return;
@@ -56,7 +30,6 @@ export function registerServiceWorkerWithAutoUpgrade() {
 
         if (registration.waiting && navigator.serviceWorker.controller) {
           notifyUpdate(registration);
-          triggerSkipWaiting(registration);
         }
 
         registration.addEventListener("updatefound", () => {
@@ -65,7 +38,6 @@ export function registerServiceWorkerWithAutoUpgrade() {
           worker.addEventListener("statechange", () => {
             if (worker.state === "installed" && navigator.serviceWorker.controller) {
               notifyUpdate(registration);
-              triggerSkipWaiting(registration);
             }
           });
         });

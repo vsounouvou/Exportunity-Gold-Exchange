@@ -12,7 +12,6 @@ const VERSION = `${TENANT}-sw-v1-build-${BUILD_SUFFIX}`;
 
 const STATIC_CACHE = `${VERSION}:static`;
 const RUNTIME_CACHE = `${VERSION}:runtime`;
-const API_CACHE = `${VERSION}:api`;
 
 const PRECACHE_URLS_BY_TENANT = {
   agoojye: [
@@ -65,6 +64,54 @@ async function networkFirst(request, cacheName = RUNTIME_CACHE) {
   }
 }
 
+function createOfflineDocumentResponse() {
+  return new Response(
+    `<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>Connexion interrompue | AGOOJIYE</title>
+    <style>
+      :root{color-scheme:dark}
+      *{box-sizing:border-box}
+      body{margin:0;min-height:100vh;display:grid;place-items:center;padding:24px;background:#0b100d;color:#fff;font-family:Arial,sans-serif}
+      main{width:min(100%,520px);border-top:3px solid #d2aa35;padding:28px 0}
+      h1{margin:0 0 12px;font-size:clamp(28px,7vw,44px);line-height:1.05}
+      p{margin:0 0 22px;color:#c9d0cb;line-height:1.65}
+      button{min-height:48px;border:0;background:#d2aa35;color:#111;padding:0 20px;font-weight:700;cursor:pointer}
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Connexion interrompue</h1>
+      <p>AGOOJIYE n'a pas pu joindre le réseau. Vos données ne sont pas perdues. Vérifiez votre connexion puis réessayez.</p>
+      <button type="button" onclick="location.reload()">Réessayer</button>
+    </main>
+  </body>
+</html>`,
+    {
+      status: 503,
+      statusText: "Service Unavailable",
+      headers: {
+        "Cache-Control": "no-store",
+        "Content-Type": "text/html; charset=utf-8",
+        "X-Robots-Tag": "noindex",
+      },
+    },
+  );
+}
+
+async function navigationNetworkFirst(request) {
+  try {
+    return await fetch(request, { cache: "no-store" });
+  } catch {
+    const cachedOffline = await caches.match("/offline.html");
+    return cachedOffline || createOfflineDocumentResponse();
+  }
+}
+
 async function staleWhileRevalidate(request, cacheName = RUNTIME_CACHE) {
   const cache = await caches.open(cacheName);
   const cached = await cache.match(request);
@@ -86,7 +133,6 @@ async function staleWhileRevalidate(request, cacheName = RUNTIME_CACHE) {
 }
 
 self.addEventListener("install", (event) => {
-  self.skipWaiting();
   event.waitUntil(
     caches
       .open(STATIC_CACHE)
@@ -124,8 +170,8 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
 
+  // Authenticated and operational API responses must never be stored by the SW.
   if (isApiRequest(url)) {
-    event.respondWith(networkFirst(request, API_CACHE));
     return;
   }
 
@@ -135,13 +181,7 @@ self.addEventListener("fetch", (event) => {
   }
 
   if (isNavigationRequest(request)) {
-    event.respondWith(
-      networkFirst(request, STATIC_CACHE).catch(async () => {
-        const cachedShell = await caches.match("/index.html");
-        if (cachedShell) return cachedShell;
-        return caches.match("/offline.html");
-      }),
-    );
+    event.respondWith(navigationNetworkFirst(request));
     return;
   }
 

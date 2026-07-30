@@ -13,6 +13,7 @@ tenants
 .env.example
 Dockerfile
 docker-compose.yml
+docker-compose.blue-green.yml
 drizzle.config.ts
 env.ts
 package-lock.json

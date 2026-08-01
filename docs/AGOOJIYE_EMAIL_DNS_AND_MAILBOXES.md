@@ -1,6 +1,6 @@
 # AGOOJIYE email DNS and mailbox handoff
 
-Date: 2026-07-24
+Last updated: 2026-08-01
 
 Brand spelling note: the final public spelling is `AGOOJIYE`. The legacy technical key `agoojye` remains in route names, database tables, and private credential-file paths, while public DNS and email use `agoojiye.com`.
 
@@ -24,6 +24,29 @@ Verified on 2026-07-24 after the AGOOJIYE production deployment, public mail cut
 - The repository DNS verifier passes all five forward-DNS checks. Google Public DNS also resolves the PTR to `mail.agoojiye.com`.
 - A post-cutover SMTP submission from `vital@agoojiye.com` was accepted and delivered to the INBOX for `regis@agoojiye.com`.
 - Public TCP checks pass for SMTP port 25, SMTPS port 465, submission port 587, and IMAPS port 993.
+
+## Roundcube internal routing
+
+Roundcube must not connect back to the public mail hostname from the same VPS. That path can time out even while Dovecot and Postfix are healthy. Production therefore uses the private `mailserver_mailnet` Docker network:
+
+```text
+IMAP: ssl://mailserver:993
+SMTP: tls://mailserver:587
+TLS peer name: mail.exportunity.net
+```
+
+The certificate presented by docker-mailserver covers both `mail.exportunity.net` and `mail.agoojiye.com`. Roundcube keeps peer and hostname verification enabled; its connection options set `peer_name` to `mail.exportunity.net` while the socket uses the internal `mailserver` service name.
+
+Source-of-truth files on the VPS:
+
+```text
+/home/vital/infra/mailserver/docker-compose.yml
+/home/vital/infra/mailserver/roundcube-config/20-agoojiye.php
+```
+
+The custom PHP configuration is mounted read-only in the container but must remain host-readable (`0644`). A stricter host mode prevents the Roundcube PHP worker from including it and silently restores the generated external endpoints.
+
+This route was re-verified end-to-end on 2026-08-01 with an ephemeral mailbox: French web login, TLS IMAP authentication, SMTP submission, clean filtering, INBOX delivery, and logout all passed. The test mailbox was deleted afterward, and neither Roundcube nor docker-mailserver was restarted for the fix.
 
 ## Provisioned mailboxes
 

@@ -181,8 +181,20 @@ export function getTenantDefaultRoute(tenantKey: TenantKeyInput | string) {
   if (key === "zogueland") return "/admin/zogueland";
   if (key === "madd") return "/admin/madd";
   if (key === "xportcard") return "/admin/xportcard";
-  if (key === "exportunity") return "/zone";
+  if (key === "exportunity") return "/industrial";
   return "/dashboard";
+}
+
+/**
+ * Public tenant homes and signed-in operational homes are intentionally
+ * different for Exportunity. The Industrial hub is public; administrators
+ * return to the existing AI operations workspace.
+ */
+export function getTenantAdminHomeRoute(tenantKey: TenantKeyInput | string) {
+  const key = normalizeTenantKey(tenantKey);
+  if (key === "exportunity") return "/ai-team";
+  if (key === "mindbase") return "/admin/mindbase";
+  return getTenantDefaultRoute(key || "");
 }
 
 export function getTenantHomeRoute(tenantKey: TenantKeyInput | string) {

@@ -2,7 +2,7 @@ import { Component, Suspense, lazy, useEffect, type ComponentType, type ErrorInf
 import { Switch, Route, Redirect, useLocation } from "wouter";
 import { useSession } from "@/lib/session";
 import { useTenant } from "@/lib/tenant";
-import { getTenantDefaultRoute, isTenantRouteAllowed } from "@/lib/tenantPolicy";
+import { getTenantAdminHomeRoute, getTenantDefaultRoute, isTenantRouteAllowed } from "@/lib/tenantPolicy";
 import { resolveTenantAdminAliasDestination, type StandardAdminKey } from "@/lib/adminIa";
 import { syncDemoModeFromUrl } from "@/lib/demoMode";
 import { telemetry } from "@platform/telemetry";
@@ -220,6 +220,7 @@ const MindbaseAdminAgentsPage = lazyPage(() => import("@/pages/mindbase/Mindbase
 const MindbaseAdminSettingsPage = lazyPage(() => import("@/pages/mindbase/MindbaseAdminPages"), "MindbaseAdminSettingsPage");
 
 // Exportunity marketing clone (exportunity.com)
+const ExportunityIndustrialHubPage = lazyPage(() => import("@/pages/exportunity/IndustrialHubPage"));
 const ExportunityMarketingHomePage = lazyPage(() => import("@/pages/exportunity/MarketingHomePage"));
 const ExportunityMarketingVitrinePage = lazyPage(() => import("@/pages/exportunity/MarketingVitrinePage"));
 const ExportunityMarketingAboutPage = lazyPage(() => import("@/pages/exportunity/MarketingAboutPage"));
@@ -482,7 +483,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
   const path = typeof window !== "undefined" ? window.location.pathname : location;
   if (!isTenantRouteAllowed(path, tenant.key)) {
-    return <Redirect to={getTenantDefaultRoute(tenant.key)} />;
+    return <Redirect to={getTenantAdminHomeRoute(tenant.key)} />;
   }
   
   return <AdminLayout>{children}</AdminLayout>;
@@ -492,7 +493,7 @@ function TenantAdminAliasRoute({ target }: { target: StandardAdminKey }) {
   const { tenant } = useTenant();
   const [location] = useLocation();
   const destination = resolveTenantAdminAliasDestination(tenant.key, target);
-  const fallback = getTenantDefaultRoute(tenant.key);
+  const fallback = getTenantAdminHomeRoute(tenant.key);
   if (!destination) return <Redirect to={fallback} />;
   if (destination === location) return <Redirect to={fallback} />;
   return <Redirect to={destination} />;
@@ -552,10 +553,38 @@ function StoreRoute() {
   return <StorePage initialSpace={initialSpace} shellMode={shellMode} exchangeVariant={exchangeVariant} />;
 }
 
+function ExportunityIndustrialRoute() {
+  const { tenant } = useTenant();
+  if (tenant.key === "exportunity" && !isExportunityMarketingHost()) {
+    return <ExportunityIndustrialHubPage />;
+  }
+  return <Redirect to="/zone" />;
+}
+
+function ExportunityIndustrialMapRoute() {
+  const { tenant } = useTenant();
+  if (tenant.key === "exportunity" && !isExportunityMarketingHost()) {
+    return <ExportunityIndustrialHubPage />;
+  }
+  return <StoreRoute />;
+}
+
+function ExportunityMachineryRoute() {
+  const { tenant } = useTenant();
+  if (tenant.key === "exportunity" && !isExportunityMarketingHost()) {
+    return <ExportunityIndustrialHubPage />;
+  }
+  return isExportunityMarketingHost() ? (
+    <ExportunityMarketingVitrinePage />
+  ) : (
+    <MarketingOrAuthRedirect marketingTo="/platform?module=machinery" authTo="/auth?next=/app/machinery/catalog" />
+  );
+}
+
 function BdoWholesaleRoute() {
   const { tenant } = useTenant();
   if (isBdoHost() || tenant.key === "bdo") return <StoreRoute />;
-  return tenant.key === "exportunity" ? <StoreRoute /> : <Redirect to="/zone" />;
+  return tenant.key === "exportunity" ? <Redirect to="/industrial-supply" /> : <Redirect to="/zone" />;
 }
 
 function CollectionsRoute() {
@@ -864,9 +893,19 @@ function App() {
           <Route path="/mindbase/c/:slug">
             {(params) => <MindbaseCreatorProfilePage slug={String((params as any)?.slug || "")} />}
           </Route>
+          <Route path="/industrial" component={ExportunityIndustrialRoute} />
+          <Route path="/industrial-map" component={ExportunityIndustrialRoute} />
+          <Route path="/factories" component={ExportunityIndustrialRoute} />
+          <Route path="/factories/:rest*" component={ExportunityIndustrialRoute} />
+          <Route path="/export-products" component={ExportunityIndustrialRoute} />
+          <Route path="/export-products/:rest*" component={ExportunityIndustrialRoute} />
+          <Route path="/industrial-supply" component={ExportunityIndustrialRoute} />
+          <Route path="/industrial-supply/:rest*" component={ExportunityIndustrialRoute} />
+          <Route path="/request-quote" component={ExportunityIndustrialRoute} />
+          <Route path="/my-factory" component={ExportunityIndustrialRoute} />
           <Route path="/zone" component={StoreRoute} />
           <Route path="/zone/:rest*" component={StoreRoute} />
-          <Route path="/map" component={StoreRoute} />
+          <Route path="/map" component={ExportunityIndustrialMapRoute} />
           <Route path="/marketplace/map" component={StoreRoute} />
           <Route path="/pme-exchange" component={StoreRoute} />
           <Route path="/ready-for-export" component={StoreRoute} />
@@ -954,7 +993,7 @@ function App() {
           <Route path="/contracts" component={() => <MarketingOrAuthRedirect marketingTo="/platform?module=contracts" authTo="/auth?next=/app/contracts" />} />
           <Route path="/business" component={() => <MarketingOrAuthRedirect marketingTo="/platform?module=business" authTo="/auth?next=/app" />} />
           <Route path="/ops" component={() => <MarketingOrAuthRedirect marketingTo="/platform?module=business" authTo="/auth?next=/app" />} />
-          <Route path="/machinery" component={() => (isExportunityMarketingHost() ? <ExportunityMarketingVitrinePage /> : <MarketingOrAuthRedirect marketingTo="/platform?module=machinery" authTo="/auth?next=/app/machinery/catalog" />)} />
+          <Route path="/machinery" component={ExportunityMachineryRoute} />
           <Route path="/invest" component={() => <MarketingOrAuthRedirect marketingTo="/platform?module=invest" authTo="/auth?next=/app/invest/opportunities" />} />
           <Route path="/compliance" component={() => <MarketingOrAuthRedirect marketingTo="/platform?module=compliance" authTo="/auth?next=/app/governance/logs" />} />
           <Route path="/communications" component={() => <MarketingOrAuthRedirect marketingTo="/platform?module=communications" authTo="/auth?next=/app/messaging" />} />
@@ -1085,6 +1124,11 @@ function App() {
           <Route path="/seller/topup" component={SellerTopupPage} />
           <Route path="/switch" component={SwitchSpacePage} />
           <Route path="/admin/login" component={AdminLoginPage} />
+          <Route path="/admin/exportunity">
+            <ProtectedRoute>
+              <Redirect to="/ai-team" />
+            </ProtectedRoute>
+          </Route>
           <Route path="/admin" component={AdminLoginPage} />
           <Route path="/admin/password" component={AdminPasswordChangePage} />
           <Route path="/admin/dashboard">

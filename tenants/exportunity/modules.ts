@@ -1,19 +1,17 @@
 import type { PlatformModuleKey } from "../types";
 
 export const exportunityModulesEnabled: PlatformModuleKey[] = [
-  "products",
-  "collections",
-  "cart",
-  "checkout",
   "wallet",
   "agents",
   "analytics",
+  "map",
   "wholesale",
   "image_gen",
 ];
 
 export const exportunityModulesDisabled: PlatformModuleKey[] = [
-  "map",
+  "products",
+  "collections",
   "stories",
   "audio",
   "insights",
@@ -28,4 +26,6 @@ export const exportunityModulesDisabled: PlatformModuleKey[] = [
   "bulkQuotes",
   "bulk_quotes",
   "suppliers",
+  "cart",
+  "checkout",
 ];

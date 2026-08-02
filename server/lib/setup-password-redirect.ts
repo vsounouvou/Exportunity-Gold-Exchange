@@ -1,9 +1,11 @@
-import { resolveTenantKeyFromHost, type TenantKey } from "./tenants";
+import { resolveTenantConfigWithOverrides, type TenantSlug } from "../../tenants/index";
+
+type TenantKey = TenantSlug;
 
 const REDIRECT_BY_TENANT: Record<TenantKey, string> = {
   bdo: "/dashboard",
   agoojye: "/admin/agoojye",
-  exportunity: "/zone",
+  exportunity: "/ai-team",
   zone: "/zone",
   mindbase: "/admin/mindbase",
   met: "/admin/met",
@@ -47,7 +49,12 @@ export function resolveSetupPasswordTenantKey(input: {
   if (fromTenant) return fromTenant;
 
   const host = pickPrimaryHost(input.forwardedHost, input.host);
-  return resolveTenantKeyFromHost(host);
+  return resolveTenantConfigWithOverrides({
+    host,
+    forcedKey: process.env.TENANT_FORCE_KEY,
+    envHostMap: process.env.TENANT_HOST_MAP,
+    defaultKey: process.env.TENANT_DEFAULT || "exportunity",
+  }).slug;
 }
 
 export function resolveSetupPasswordRedirect(input: {

@@ -15,6 +15,7 @@ import {
   resolvePasswordSetupBaseUrl,
 } from "../lib/password-setup";
 import { resolveSetupPasswordRedirect } from "../lib/setup-password-redirect";
+import { hydrateTenantUserAccess } from "../lib/tenantUserAccess";
 
 const router = Router();
 
@@ -127,12 +128,14 @@ router.post("/api/auth/setup-password", async (req, res) => {
       forwardedHost: req.get("x-forwarded-host"),
     });
 
+    const effectiveUser = await hydrateTenantUserAccess(user, Number((req as any)?.tenant?.id || 0));
+
     return res.json({
       ok: true,
       token: sessionToken,
       redirect: setupRedirect.redirect,
       tenantKey: setupRedirect.tenantKey,
-      user: buildSessionUserPayload(user),
+      user: buildSessionUserPayload(effectiveUser || user),
     });
   } catch (error: any) {
     return res.status(500).json({ message: error?.message || "Failed to setup password" });

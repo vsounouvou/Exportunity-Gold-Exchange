@@ -1,6 +1,9 @@
-<svg xmlns='http://www.w3.org/2000/svg' width='512' height='128' viewBox='0 0 512 128'>
-  <rect width='512' height='128' rx='20' fill='#0b1324'/>
-  <circle cx='64' cy='64' r='34' fill=''/>
-  <circle cx='64' cy='64' r='18' fill=''/>
-  <text x='116' y='74' fill='white' font-family='Inter,Arial,sans-serif' font-weight='700' font-size='34'></text>
+<svg xmlns="http://www.w3.org/2000/svg" width="520" height="144" viewBox="0 0 520 144" role="img" aria-label="Exportunity">
+  <title>Exportunity</title>
+  <rect width="520" height="144" rx="16" fill="#07121F"/>
+  <g transform="translate(20 20)">
+    <path d="M0 0h112v22H32v19h68v21H32v20h80v22H0V0Z" fill="#FFFFFF"/>
+    <path d="M0 93h112v10H0z" fill="#E2A416"/>
+  </g>
+  <text x="154" y="85" fill="#FFFFFF" font-family="Agency FB, Bahnschrift Condensed, Arial Narrow, sans-serif" font-size="47" font-weight="700" letter-spacing="1.4">EXPORTUNITY</text>
 </svg>

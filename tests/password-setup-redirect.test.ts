@@ -6,7 +6,7 @@ import { resolveSetupPasswordRedirect, resolveSetupPasswordTenantKey } from "../
 test("setup-password redirect mapping: all tenant keys map to expected admin home", () => {
   const cases: Array<{ tenantKey: string; redirect: string }> = [
     { tenantKey: "bdo", redirect: "/dashboard" },
-    { tenantKey: "exportunity", redirect: "/zone" },
+    { tenantKey: "exportunity", redirect: "/ai-team" },
     { tenantKey: "zone", redirect: "/zone" },
     { tenantKey: "mindbase", redirect: "/admin/mindbase" },
     { tenantKey: "met", redirect: "/admin/met" },

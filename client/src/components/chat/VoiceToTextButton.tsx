@@ -26,6 +26,7 @@ type VoiceToTextButtonProps = {
   helperText?: string;
   recordingText?: string;
   unavailableText?: string;
+  hideHelper?: boolean;
 };
 
 const RECORDING_MAX_MS = 120_000;
@@ -75,6 +76,7 @@ export function VoiceToTextButton({
   helperText,
   recordingText,
   unavailableText,
+  hideHelper = false,
 }: VoiceToTextButtonProps) {
   const { toast } = useToast();
   const mediaRecorderSupported = useMemo(() => typeof window !== "undefined" && "MediaRecorder" in window, []);
@@ -491,6 +493,7 @@ export function VoiceToTextButton({
               : "Start recording voice input"
         }
         aria-pressed={isRecording}
+        title={micHelperText}
         onClick={(event) => {
           event.preventDefault();
           if (isRecording) {
@@ -507,41 +510,43 @@ export function VoiceToTextButton({
         )}
       </Button>
 
-      <div className="min-h-[24px] text-xs text-gray-300">
-        {statusText ? <span className="inline-flex items-center gap-1">{statusText}</span> : <span>{micHelperText}</span>}
-        {serverFallbackHint ? <div className="text-amber-300">{serverFallbackHint}</div> : null}
-        {state === "ERROR" ? (
-          <div className="inline-flex items-center gap-2 text-amber-300">
-            <span>Transcription failed.</span>
-            <button
-              type="button"
-              className="underline underline-offset-2 hover:opacity-90"
-              onClick={() => {
-                const payload = lastPayloadRef.current;
-                if (!payload) {
-                  resetToIdle();
-                  return;
-                }
-                setState((prev) => nextVoiceInputState(prev, "RETRY"));
-                void transcribePayload(payload);
-              }}
-            >
-              <span className="inline-flex items-center gap-1">
-                <RotateCcw className="h-3 w-3" />
-                Retry
-              </span>
-            </button>
-            <button
-              type="button"
-              className="underline underline-offset-2 hover:opacity-90"
-              onClick={resetToIdle}
-            >
-              Type instead
-            </button>
-            {errorMessage ? <span className="text-gray-400">({errorMessage})</span> : null}
-          </div>
-        ) : null}
-      </div>
+      {!hideHelper ? (
+        <div className="min-h-[24px] text-xs text-gray-300">
+          {statusText ? <span className="inline-flex items-center gap-1">{statusText}</span> : <span>{micHelperText}</span>}
+          {serverFallbackHint ? <div className="text-amber-300">{serverFallbackHint}</div> : null}
+          {state === "ERROR" ? (
+            <div className="inline-flex items-center gap-2 text-amber-300">
+              <span>Transcription failed.</span>
+              <button
+                type="button"
+                className="underline underline-offset-2 hover:opacity-90"
+                onClick={() => {
+                  const payload = lastPayloadRef.current;
+                  if (!payload) {
+                    resetToIdle();
+                    return;
+                  }
+                  setState((prev) => nextVoiceInputState(prev, "RETRY"));
+                  void transcribePayload(payload);
+                }}
+              >
+                <span className="inline-flex items-center gap-1">
+                  <RotateCcw className="h-3 w-3" />
+                  Retry
+                </span>
+              </button>
+              <button
+                type="button"
+                className="underline underline-offset-2 hover:opacity-90"
+                onClick={resetToIdle}
+              >
+                Type instead
+              </button>
+              {errorMessage ? <span className="text-gray-400">({errorMessage})</span> : null}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -56,6 +56,7 @@ import { ensurePageRegistryTables } from "./lib/platform/ensurePageRegistryTable
 import { ensureCadastreTables } from "./lib/cadastre/ensureCadastreTables";
 import { ensureMindbaseTables } from "./lib/mindbase/ensureTables";
 import { ensureVsTenantTables } from "./lib/vs/ensureTables";
+import { ensureIndustrialTables } from "./lib/industrial/ensureTables";
 import { assertWhatsAppOtpConfigured, getWhatsAppOtpHealth } from "./services/whatsappOtp.service";
 import { getMessagingHealth } from "./lib/messaging/config";
 import { validateSmtpEnvAtBoot } from "./lib/mail/smtpProbe";
@@ -565,6 +566,8 @@ const errorHandler = (err: any, _req: Request, res: Response, _next: NextFunctio
     await ensureWalletOsTables();
     // Ensure marketplace map marker schema exists (db-driven marker styles + category/shop marker keys)
     await ensureMarketplaceMapTables();
+    // Exportunity's industrial schema is additive and idempotent.
+    await ensureIndustrialTables();
     // Ensure shared communications tables exist (Twilio SMS/WhatsApp, etc.)
     await ensureCommunicationsTables();
     // Ensure public contact form tables exist

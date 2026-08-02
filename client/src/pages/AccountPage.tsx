@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useLocale } from "@/contexts/LocaleContext";
 import { useSession } from "@/lib/session";
-import { getTenantDefaultRoute } from "@/lib/tenantPolicy";
+import { getTenantAdminHomeRoute } from "@/lib/tenantPolicy";
 import { useTenant } from "@/lib/tenant";
 import { ArrowLeft, ClipboardList, Home, LogIn, LogOut, Settings, Store, Truck, UserCircle } from "lucide-react";
 import { useLocation } from "wouter";
@@ -15,7 +15,7 @@ export default function AccountPage() {
   const { t } = useLocale();
 
   const isSignedIn = session.isAuthenticated && !session.isGuest;
-  const tenantAdminRoute = getTenantDefaultRoute(tenant.key);
+  const tenantAdminRoute = getTenantAdminHomeRoute(tenant.key);
   const goBack = () => {
     if (typeof window !== "undefined" && window.history.length > 1) {
       window.history.back();

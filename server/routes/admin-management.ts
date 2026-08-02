@@ -43,13 +43,14 @@ import bcrypt from "bcryptjs";
 import { nanoid } from "nanoid";
 import { randomBytes } from "crypto";
 import { isChairmanAssistantUser } from "./utils/auth";
+import { hydrateTenantUserAccess } from "../lib/tenantUserAccess";
 import { resolveAgentRuntimeEnv } from "../lib/agents/visibility";
 import { normalizeAgentKey } from "../lib/mail/agentSlugs";
 import { readLatestToolMatrixReport, runToolMatrixReport } from "../lib/agent-os/toolMatrix";
 
 const router = Router();
 
-async function verifyAdminSession(token: string | undefined) {
+async function verifyAdminSession(token: string | undefined, tenantId?: number) {
   if (!token) return null;
   
   const session = await db.query.eceSessions.findFirst({
@@ -64,26 +65,36 @@ async function verifyAdminSession(token: string | undefined) {
     where: eq(eceUsers.id, session.userId)
   });
 
-  return user;
+  return hydrateTenantUserAccess(user, tenantId);
 }
 
 async function requireAdmin(req: Request, res: Response, next: NextFunction) {
   const token = req.headers.authorization?.replace('Bearer ', '');
-  const user = await verifyAdminSession(token);
+  const user = await verifyAdminSession(token, Number((req as any)?.tenant?.id || 0));
 
   if (!user) {
     return res.status(401).json({ error: "Authentication required" });
   }
 
-  const activeMode = (user as any)?.currentMode;
-  const userPerms = (user as any)?.permissions || [];
-  const userRoles = (user as any)?.roles || [];
+  const activeMode = String((user as any)?.currentMode || "").trim().toLowerCase();
+  const userPerms = Array.isArray((user as any)?.permissions) ? (user as any).permissions : [];
+  const userRoles = Array.isArray((user as any)?.roles) ? (user as any).roles : [];
+  const normalizedRoles = userRoles.map((role: unknown) =>
+    String(role || "")
+      .trim()
+      .toLowerCase()
+      .replace(/[_-]+/g, " ")
+      .replace(/\s+/g, " "),
+  );
   
   const isAdmin =
     activeMode === "admin" ||
     userPerms.includes("*") ||
     userPerms.includes("admin:*") ||
-    userRoles.includes("admin") ||
+    normalizedRoles.includes("admin") ||
+    normalizedRoles.includes("super admin") ||
+    normalizedRoles.includes("platform admin") ||
+    normalizedRoles.includes("chairman") ||
     isChairmanAssistantUser(user);
 
   if (!isAdmin) {

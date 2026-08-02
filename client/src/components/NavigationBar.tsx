@@ -3,14 +3,14 @@ import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import { MessageSquare, BarChart2, Wallet, AlertCircle, ClipboardList } from "lucide-react";
 import { useTenant } from "@/lib/tenant";
-import { getTenantDefaultRoute } from "@/lib/tenantPolicy";
+import { getTenantAdminHomeRoute } from "@/lib/tenantPolicy";
 
 export function NavigationBar() {
   const [location] = useLocation();
   const { tenant } = useTenant();
   const menuItems = useMemo(
     () => [
-      { href: getTenantDefaultRoute(tenant.key), label: "Dashboard", icon: BarChart2 },
+      { href: getTenantAdminHomeRoute(tenant.key), label: "Dashboard", icon: BarChart2 },
       { href: "/ai-team", label: "Operations Center", icon: MessageSquare },
       { href: "/tasks", label: "Tasks", icon: ClipboardList },
       { href: "/agent-economy", label: "Wallets & Credits", icon: Wallet },

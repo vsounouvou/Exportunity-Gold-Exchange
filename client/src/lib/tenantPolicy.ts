@@ -1,5 +1,6 @@
 import type { TenantKey } from "@/types/tenant";
 import {
+  getTenantAdminHomeRoute as getTenantAdminHomeRouteFromRegistry,
   getTenantDefaultRoute as getTenantDefaultRouteFromRegistry,
   hasTenantModule,
   type PlatformModuleKey,
@@ -85,7 +86,7 @@ const RULES: Array<{ prefix: string; tenants: TenantKey[] }> = [
   { prefix: "/pro/livraison", tenants: ["bdo"] },
   { prefix: "/pro/partenaires", tenants: ["bdo"] },
   { prefix: "/pro/parametres", tenants: ["bdo"] },
-  { prefix: "/wholesale", tenants: ["bdo"] },
+  { prefix: "/wholesale", tenants: ["bdo", "exportunity"] },
   { prefix: "/bureaus", tenants: ["bdo"] },
   { prefix: "/admin/stamped-gold", tenants: ["bdo"] },
   { prefix: "/machinery", tenants: ["bdo", "exportunity"] },
@@ -98,6 +99,12 @@ const RULES: Array<{ prefix: string; tenants: TenantKey[] }> = [
   // Exportunity + zone.
   { prefix: "/zone", tenants: [...ALL_TENANTS] },
   { prefix: "/map", tenants: [...ALL_TENANTS] },
+  { prefix: "/industrial", tenants: ["exportunity"] },
+  { prefix: "/industrial-map", tenants: ["exportunity"] },
+  { prefix: "/factories", tenants: ["exportunity"] },
+  { prefix: "/export-products", tenants: ["exportunity"] },
+  { prefix: "/industrial-supply", tenants: ["exportunity"] },
+  { prefix: "/request-quote", tenants: ["exportunity"] },
   { prefix: "/retail", tenants: [...ALL_TENANTS] },
   { prefix: "/marketplace", tenants: [...ALL_TENANTS] },
   { prefix: "/marketplace/map", tenants: [...ALL_TENANTS] },
@@ -358,4 +365,8 @@ export function isTenantRouteAllowed(path: string, tenantKey: TenantKey) {
 
 export function getTenantDefaultRoute(tenantKey: TenantKey) {
   return getTenantDefaultRouteFromRegistry(tenantKey);
+}
+
+export function getTenantAdminHomeRoute(tenantKey: TenantKey) {
+  return getTenantAdminHomeRouteFromRegistry(tenantKey);
 }

@@ -1,6 +1,6 @@
 import type { TenantKey } from "@/types/tenant";
 
-import { getTenantDefaultRoute, isTenantRouteAllowed } from "./tenantPolicy";
+import { getTenantAdminHomeRoute, isTenantRouteAllowed } from "./tenantPolicy";
 import { resolveTenantKey } from "./tenantResolution";
 import { normalizeTenantKey } from "../../../tenants/index";
 
@@ -33,7 +33,7 @@ export function resolveSetupPasswordRedirect(input: { tenantKey: TenantKey; serv
   if (redirect && isTenantRouteAllowed(redirect, input.tenantKey)) {
     return redirect;
   }
-  return getTenantDefaultRoute(input.tenantKey);
+  return getTenantAdminHomeRoute(input.tenantKey);
 }
 
 export function resolveSetupPasswordPostSetupPath(input: {

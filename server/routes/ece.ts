@@ -33,6 +33,7 @@ import path from "path";
 import fs from "fs/promises";
 import { generateChatResponse, type UserRole } from "../lib/ece-ai";
 import { isChairmanAssistantUser } from "./utils/auth";
+import { hydrateTenantUserAccess } from "../lib/tenantUserAccess";
 import { getOrCreateWalletAccount } from "../lib/wallet/wallet";
 import { getDefaultEceOnboardingConfig, getEceOnboardingConfig } from "../lib/ece-onboarding";
 import { ensureEceAgentsTables } from "../lib/ece-agents/ensureTables";
@@ -113,13 +114,23 @@ function isMineUser(user: any) {
 }
 
 function isEceAdmin(user: any) {
-  const roles = Array.isArray(user?.roles) ? user.roles.map(String) : [];
-  const permissions = Array.isArray(user?.permissions) ? user.permissions.map(String) : [];
-  const mode = String(user?.currentMode || user?.role || "").toLowerCase();
+  const roles: string[] = Array.isArray(user?.roles)
+    ? user.roles.map((role: unknown) => String(role))
+    : [];
+  const permissions: string[] = Array.isArray(user?.permissions)
+    ? user.permissions.map((permission: unknown) => String(permission))
+    : [];
+  const normalizeRole = (value: unknown) =>
+    String(value || "")
+      .trim()
+      .toLowerCase()
+      .replace(/[_-]+/g, " ")
+      .replace(/\s+/g, " ");
+  const normalizedRoles = roles.map(normalizeRole);
+  const mode = normalizeRole(user?.currentMode || user?.role || "");
   return (
-    mode === "admin" ||
-    roles.includes("admin") ||
-    roles.includes("operator") ||
+    ["admin", "super admin", "platform admin", "chairman"].includes(mode) ||
+    normalizedRoles.some((role) => ["admin", "super admin", "platform admin", "chairman", "operator"].includes(role)) ||
     permissions.includes("*") ||
     permissions.includes("admin:*") ||
     isChairmanAssistantUser(user)
@@ -241,7 +252,7 @@ function rateLimitOtp(key: string, limit: number, windowMs: number) {
   row.count += 1;
 }
 
-async function verifySession(token: string | undefined) {
+async function verifySession(token: string | undefined, tenantId?: number) {
   if (!token) return null;
   
   const session = await db.query.eceSessions.findFirst({
@@ -258,7 +269,7 @@ async function verifySession(token: string | undefined) {
     where: eq(eceUsers.id, session.userId)
   });
 
-  return user;
+  return hydrateTenantUserAccess(user, tenantId);
 }
 
 function normalizeRoomKey(value: unknown) {
@@ -1761,6 +1772,7 @@ router.post("/auth/login", async (req, res) => {
       return res.status(403).json({ message: "Account is disabled" });
     }
 
+    const effectiveUser = await hydrateTenantUserAccess(user, tenantId);
     const token = generateToken();
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
@@ -1776,7 +1788,7 @@ router.post("/auth/login", async (req, res) => {
       .set({ lastLoginAt: new Date() })
       .where(eq(eceUsers.id, user.id));
 
-    const activeMode = (user as any).currentMode || 'buyer';
+    const activeMode = (effectiveUser as any)?.currentMode || 'buyer';
     await db.insert(auditLogs).values({
       tenantId,
       userId: user.id,
@@ -1798,9 +1810,9 @@ router.post("/auth/login", async (req, res) => {
         id: user.id,
         email: user.email,
         displayName: user.displayName,
-        roles: (user as any).roles || ['buyer'],
-        permissions: (user as any).permissions || [],
-        currentMode: (user as any).currentMode || 'buyer',
+        roles: (effectiveUser as any)?.roles || ['buyer'],
+        permissions: (effectiveUser as any)?.permissions || [],
+        currentMode: (effectiveUser as any)?.currentMode || 'buyer',
         buyerType: (user as any).buyerType || 'retail',
         verificationLevel: (user as any).verificationLevel || 'NONE',
         mustChangePassword: mustChangePassword(user),
@@ -2122,7 +2134,7 @@ router.post("/auth/buyer-type", async (req, res) => {
 router.get("/auth/me", async (req, res) => {
   try {
     const token = req.headers.authorization?.replace('Bearer ', '');
-    const user = await verifySession(token);
+    const user = await verifySession(token, Number((req as any)?.tenant?.id || 0));
 
     if (!user) {
       return res.status(401).json({ message: "Not authenticated" });
@@ -2152,7 +2164,7 @@ router.post("/auth/change-password", async (req, res) => {
     const tenantId = tenant.id;
 
     const token = req.headers.authorization?.replace('Bearer ', '');
-    const user = await verifySession(token);
+    const user = await verifySession(token, tenantId);
 
     if (!user) {
       return res.status(401).json({ message: "Not authenticated" });
@@ -2209,7 +2221,7 @@ router.post("/auth/switch-space", async (req, res) => {
     if (!tenant) return;
 
     const token = req.headers.authorization?.replace("Bearer ", "");
-    const user = await verifySession(token);
+    const user = await verifySession(token, tenant.id);
     if (!user) {
       return res.status(401).json({ message: "Not authenticated" });
     }
@@ -2270,7 +2282,7 @@ router.post("/auth/switch-space/refresh", async (req, res) => {
     if (!tenant) return;
 
     const token = req.headers.authorization?.replace("Bearer ", "");
-    const user = await verifySession(token);
+    const user = await verifySession(token, tenant.id);
     if (!user) {
       return res.status(401).json({ message: "Not authenticated" });
     }

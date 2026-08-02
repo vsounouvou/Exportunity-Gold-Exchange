@@ -2,6 +2,7 @@ import { Router, type Request, type Response, type NextFunction } from "express"
 import { db } from "@db";
 import { eceSessions, eceUsers } from "@db/schema";
 import { eq } from "drizzle-orm";
+import { hydrateTenantUserAccess } from "../../lib/tenantUserAccess";
 
 function normalizeRoleLabel(value: string) {
   return value
@@ -55,18 +56,18 @@ function isStaffUser(user: any): boolean {
   );
 }
 
-async function verifySession(token?: string) {
+async function verifySession(token?: string, tenantId?: number) {
   if (!token) return null;
   const session = await db.query.eceSessions.findFirst({ where: eq(eceSessions.token, token) });
   if (!session || new Date(session.expiresAt) < new Date()) return null;
   const user = await db.query.eceUsers.findFirst({ where: eq(eceUsers.id, session.userId) });
-  return user;
+  return hydrateTenantUserAccess(user, tenantId);
 }
 
 export async function ensureTenantUser(req: Request, res: Response, next: NextFunction) {
   try {
     const token = getBearerToken(req);
-    const user = await verifySession(token);
+    const user = await verifySession(token, Number((req as any)?.tenant?.id || 0));
     if (!user) return res.status(401).json({ message: "Authentication required" });
     (req as any).tenantUser = user;
     next();
@@ -78,7 +79,7 @@ export async function ensureTenantUser(req: Request, res: Response, next: NextFu
 export async function ensureTenantAdmin(req: Request, res: Response, next: NextFunction) {
   try {
     const token = getBearerToken(req);
-    const user = await verifySession(token);
+    const user = await verifySession(token, Number((req as any)?.tenant?.id || 0));
     if (!user) return res.status(401).json({ message: "Authentication required" });
     const roles = Array.isArray((user as any).roles) ? (user as any).roles : [];
     const perms = Array.isArray((user as any).permissions) ? (user as any).permissions : [];
@@ -103,7 +104,7 @@ export async function ensureTenantAdmin(req: Request, res: Response, next: NextF
 
 export async function resolveTenantStaffFromRequest(req: Request) {
   const token = getBearerToken(req);
-  const user = await verifySession(token);
+  const user = await verifySession(token, Number((req as any)?.tenant?.id || 0));
   if (!user) return null;
   if (!isStaffUser(user)) return null;
   return user;
@@ -112,7 +113,7 @@ export async function resolveTenantStaffFromRequest(req: Request) {
 export async function ensureTenantStaff(req: Request, res: Response, next: NextFunction) {
   try {
     const token = getBearerToken(req);
-    const user = await verifySession(token);
+    const user = await verifySession(token, Number((req as any)?.tenant?.id || 0));
     if (!user) return res.status(401).json({ message: "Authentication required" });
 
     if (!isStaffUser(user)) return res.status(403).json({ message: "Staff access required" });

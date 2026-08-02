@@ -56,7 +56,7 @@ import { cn } from "@/lib/utils";
 import { ChairmanChatDock } from "./ChairmanChatDock";
 import { BrandMark } from "@/components/branding/index.ts";
 import { useTenant } from "@/lib/tenant";
-import { getTenantDefaultRoute, isTenantRouteAllowed } from "@/lib/tenantPolicy";
+import { getTenantAdminHomeRoute, isTenantRouteAllowed } from "@/lib/tenantPolicy";
 import { getTenantStandardAdminIa, resolveTenantAdminAliasDestination } from "@/lib/adminIa";
 import { TenantSwitcher } from "@/components/TenantSwitcher";
 import { LocaleSwitcher } from "@/components/LocaleSwitcher";
@@ -528,7 +528,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
   const internalAgentsQuickAccessActive =
     location === "/operations/agents" || location.startsWith("/operations/agents/");
   const inboxQuickAccessActive = location === "/admin/inbox" || location.startsWith("/admin/inbox/");
-  const tenantHomePath = useMemo(() => getTenantDefaultRoute(tenant.key), [tenant.key]);
+  const tenantHomePath = useMemo(() => getTenantAdminHomeRoute(tenant.key), [tenant.key]);
   const showOperationsQuickAccess = isTenantRouteAllowed("/ai-team", tenant.key);
   const showInboxQuickAccess = isTenantRouteAllowed("/admin/inbox", tenant.key);
   const showInternalAgentsQuickAccess = isTenantRouteAllowed("/operations/agents", tenant.key);

@@ -1,9 +1,16 @@
 import type { TenantSeedPlan } from "../_shared/seedCommon";
 
 export const exportunitySeedPlan: TenantSeedPlan = {
-  categories: ["Retail", "Wholesale", "Services", "Equipment", "Financial tools"],
+  categories: [
+    "Export-Ready Factory Products",
+    "Machinery and Production Equipment",
+    "Raw Materials",
+    "Industrial Inputs and Consumables",
+    "Spare Parts and Components",
+    "Industrial Services",
+  ],
   demoContent: [
-    { key: "marketplace_products", title: "Marketplace products", count: 40 },
-    { key: "agents", title: "Operational agents", count: 20 },
+    { key: "industrial_taxonomy", title: "Industrial taxonomy", count: 6 },
+    { key: "industrial_agents", title: "Industrial operations agents", count: 0 },
   ],
 };

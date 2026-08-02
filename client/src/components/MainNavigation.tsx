@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ChevronLeft, ChevronRight, MessageSquare, BarChart2, Wallet, AlertCircle, ClipboardList } from "lucide-react";
 import { useTenant } from "@/lib/tenant";
-import { getTenantDefaultRoute } from "@/lib/tenantPolicy";
+import { getTenantAdminHomeRoute } from "@/lib/tenantPolicy";
 
 interface MainNavigationProps {
   isCollapsed?: boolean;
@@ -23,7 +23,7 @@ export function MainNavigation({
   const setCollapsed = onCollapsedChange ?? setInternalCollapsed;
 
   const menuItems = useMemo(() => [
-    { name: "Dashboard", icon: BarChart2, href: getTenantDefaultRoute(tenant.key) },
+    { name: "Dashboard", icon: BarChart2, href: getTenantAdminHomeRoute(tenant.key) },
     { name: "Operations Center", icon: MessageSquare, href: "/ai-team" },
     { name: "Tasks", icon: ClipboardList, href: "/tasks" },
     { name: "Wallets & Credits", icon: Wallet, href: "/agent-economy" },

@@ -124,6 +124,9 @@ export * from "./schema/agoojye";
 // Export PME Exchange lead, outreach, and profile tables
 export * from "./schema/pme-exchange";
 
+// Export Exportunity industrial factory, catalog, and requirement foundation.
+export * from "./schema/industrial";
+
 // Export Action Router tables (background action requests + results)
 export * from "./schema/actions";
 

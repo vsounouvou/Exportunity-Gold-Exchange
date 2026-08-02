@@ -9,6 +9,9 @@ export type UserRole =
   | "seller"
   | "shop_owner"
   | "admin"
+  | "super admin"
+  | "platform admin"
+  | "chairman"
   | "delivery"
   | "chairman_assistant"
   // ECE & commodity roles (stored as JSON in `ece_users.roles`)
@@ -30,6 +33,7 @@ export type UserRole =
   | "client";
 export type Permission =
   | "*"
+  | "admin:*"
   | "manage_products"
   | "view_financials"
   | "manage_users"
@@ -282,12 +286,22 @@ function isMindbaseJwtToken(token: string | null) {
     const roles = session.user?.roles || [];
     if (role === "admin") {
       const normalized = roles.map((r) => normalizeRoleLabel(String(r)));
-      const isChairmanAssistant =
-        normalized.includes("chairman assistant") || normalized.includes("chairmans assistant");
+      const currentMode = normalizeRoleLabel(String(session.user?.currentMode || ""));
+      const isAdministrator = normalized.some((value) =>
+        [
+          "admin",
+          "super admin",
+          "platform admin",
+          "chairman",
+          "chairman assistant",
+          "chairmans assistant",
+        ].includes(value),
+      );
       const perms = session.user?.permissions || [];
-      return roles.includes("admin") || isChairmanAssistant || perms.includes("*");
+      return isAdministrator || currentMode === "admin" || perms.includes("*") || perms.includes("admin:*");
     }
-    return roles.includes(role) || false;
+    const normalizedRole = normalizeRoleLabel(String(role));
+    return roles.some((candidate) => normalizeRoleLabel(String(candidate)) === normalizedRole);
   };
 
   const hasPermission = (permission: Permission): boolean => {

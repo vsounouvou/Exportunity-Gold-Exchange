@@ -46,6 +46,7 @@ import eceAgentsRouter from "./routes/ece-agents";
 import authOtpRouter from "./routes/auth-otp";
 import passwordSetupRouter from "./routes/password-setup";
 import marketplaceRouter from "./routes/marketplace"; // Marketplace routes
+import industrialRouter from "./routes/industrial";
 import equipmentOpsRouter from "./routes/equipment-ops"; // Equipment marketplace + rentals
 import stampedGoldRouter from "./routes/stamped-gold";
 import pickupRouter from "./routes/pickup";
@@ -1030,9 +1031,11 @@ export function registerRoutes(app: Express): Server {
   app.use("/api/assistant", assistantRouter);
   app.use("/api", adminAgentsOsRouter);
   
-  // Register Marketplace routes
-  app.use("/api/marketplace", marketplaceRouter);
-  // Equipment marketplace + rentals (multi-tenant)
+    // Register Marketplace routes
+    app.use("/api/marketplace", marketplaceRouter);
+    // Exportunity's factory-first industrial platform routes.
+    app.use("/api/industrial", industrialRouter);
+    // Equipment marketplace + rentals (multi-tenant)
   app.use("/api", equipmentOpsRouter);
   // Stamped Gold SKU+Item verification + admin
   app.use("/api/stamped-gold", stampedGoldRouter);

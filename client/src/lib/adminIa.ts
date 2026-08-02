@@ -1,5 +1,5 @@
 import type { TenantKey } from "@/types/tenant";
-import { getTenantDefaultRoute } from "@/lib/tenantPolicy";
+import { getTenantAdminHomeRoute } from "@/lib/tenantPolicy";
 import { hasTenantModule, type PlatformModuleKey } from "../../../tenants/index";
 
 export type StandardAdminKey =
@@ -50,7 +50,7 @@ function resolveSettingsRoute(tenantKey: TenantKey) {
 export function resolveTenantAdminAliasDestination(tenantKey: TenantKey, target: StandardAdminKey) {
   switch (target) {
     case "dashboard":
-      return getTenantDefaultRoute(tenantKey);
+      return getTenantAdminHomeRoute(tenantKey);
     case "orders":
       if (tenantKey === "agoojye") return "/admin/agoojye/sponsors";
       if (tenantKey === "bdo") return "/admin/dashboard";
@@ -112,7 +112,7 @@ export function resolveTenantAdminAliasDestination(tenantKey: TenantKey, target:
       if (tenantKey === "agoojye") return "/admin/agoojye/settings";
       return "/admin/system/update";
     default:
-      return getTenantDefaultRoute(tenantKey);
+      return getTenantAdminHomeRoute(tenantKey);
   }
 }
 

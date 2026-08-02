@@ -1749,34 +1749,35 @@ export function AITeamHubPage() {
   const createMeetingMutation = useMutation({
     mutationFn: async (data: { title: string }) => {
       console.log("[Meeting] Creating new meeting:", data.title, "companyId:", selectedCompanyId);
-      const response = await fetch(resolveApiUrl("/api/chatrooms"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: data.title,
-          type: "meeting",
-          description: "Team meeting",
-          companyId: selectedCompanyId,
-        }),
+      const result = await apiRequest("/api/meetings", "POST", {
+        title: data.title,
+        description: "Team meeting",
+        type: "spontaneous",
+        startTime: new Date().toISOString(),
+        duration: 30,
+        companyId: selectedCompanyId,
       });
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("[Meeting] Failed to create:", errorText);
-        throw new Error("Failed to create meeting");
+      const room = result?.chatRoom;
+      if (!room?.conversationId) {
+        throw new Error("The meeting was created without a conversation room");
       }
-      const result = await response.json();
       console.log("[Meeting] Created successfully:", result);
-      return result;
+      return room as ChatRoom;
     },
     onSuccess: (newRoom) => {
       console.log("[Meeting] Setting current meeting:", newRoom);
       setCurrentMeeting(newRoom);
       queryClient.invalidateQueries({ queryKey: ["/api/chatrooms"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/meetings"] });
       toast({ title: "Meeting Started", description: "Use @agent to invite team members" });
     },
     onError: (error) => {
       console.error("[Meeting] Error:", error);
-      toast({ title: "Error", description: "Failed to create meeting", variant: "destructive" });
+      toast({
+        title: "Meeting could not be created",
+        description: error instanceof Error ? error.message : "Please try again.",
+        variant: "destructive",
+      });
     },
   });
 

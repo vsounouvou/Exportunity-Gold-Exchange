@@ -8778,13 +8778,47 @@ Respond helpfully with your full platform awareness.`,
       const plannedStart = startTime ? new Date(startTime) : new Date();
       if (!Number.isFinite(plannedStart.getTime())) return res.status(400).json({ message: "Invalid startTime" });
 
-      const roomIdInt = Number.parseInt(String(roomId ?? ""), 10);
-      if (!Number.isFinite(roomIdInt) || roomIdInt <= 0) return res.status(400).json({ message: "roomId is required" });
+      const requestedRoomId = Number.parseInt(String(roomId ?? ""), 10);
+      let room: typeof meetingRooms.$inferSelect | undefined;
 
-      const room = await db.query.meetingRooms.findFirst({
-        where: and(eq(meetingRooms.id, roomIdInt), or(eq(meetingRooms.tenantId, tenantId), isNull(meetingRooms.tenantId))),
-      });
-      if (!room) return res.status(404).json({ message: "Room not found" });
+      if (Number.isFinite(requestedRoomId) && requestedRoomId > 0) {
+        room = await db.query.meetingRooms.findFirst({
+          where: and(eq(meetingRooms.id, requestedRoomId), or(eq(meetingRooms.tenantId, tenantId), isNull(meetingRooms.tenantId))),
+        });
+        if (!room) return res.status(404).json({ message: "Room not found" });
+      } else {
+        room = await db.query.meetingRooms.findFirst({
+          where: and(or(eq(meetingRooms.tenantId, tenantId), isNull(meetingRooms.tenantId)), eq(meetingRooms.isAvailable, true)),
+          orderBy: [desc(meetingRooms.createdAt)],
+        });
+
+        // The Operations Center can begin a live meeting without forcing an
+        // administrator to configure a room first. The room remains tenant-scoped.
+        if (!room) {
+          const [createdRoom] = await db
+            .insert(meetingRooms)
+            .values({
+              tenantId,
+              name: "Virtual Operations Room",
+              capacity: 50,
+              capacityHumans: 50,
+              location: "Virtual",
+              locationLabel: "Operations Center",
+              timezone: "UTC",
+              isVirtual: true,
+              defaultAgentsJson: null,
+              features: { chat: true, agenda: true },
+              isAvailable: true,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            } as any)
+            .returning();
+          room = createdRoom;
+        }
+      }
+
+      if (!room) return res.status(500).json({ message: "Unable to prepare a meeting room" });
+      const roomIdInt = room.id;
 
       // Validate organizerId exists if provided
       let validOrganizerId = null;

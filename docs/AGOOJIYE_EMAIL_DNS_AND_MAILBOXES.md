@@ -1,6 +1,6 @@
 # AGOOJIYE email DNS and mailbox handoff
 
-Last updated: 2026-08-01
+Last updated: 2026-08-02
 
 Brand spelling note: the final public spelling is `AGOOJIYE`. The legacy technical key `agoojye` remains in route names, database tables, and private credential-file paths, while public DNS and email use `agoojiye.com`.
 
@@ -15,7 +15,7 @@ Verified on 2026-07-24 after the AGOOJIYE production deployment, public mail cut
 - `https://agoojiye.com/admin/agoojye/inbox` returns HTTP 200 for the protected unified-inbox shell.
 - `https://agoojiye.com/api/agoojye/public/bootstrap` returns HTTP 200.
 - The five approved human mailboxes authenticate successfully: `regis`, `soriane`, `maryse`, `christian`, and `vital`.
-- WorkOS provisions the separate principal mailbox `vs@agoojiye.com`; its initial credential is held only in the private deployment handoff and must be changed at first use.
+- WorkOS provisions the separate principal mailbox `vs@agoojiye.com`; its IMAP and Roundcube login were verified on 2026-08-02. Its initial credential is held only in the private deployment handoff and must be changed at first use.
 - `https://mail.agoojiye.com/` serves the French Roundcube login with AGOOJIYE product name, logo, favicon, and a valid Let's Encrypt certificate.
 - The first-login password-change route was verified end-to-end on 2026-06-29: one mailbox was changed to a temporary password through `https://agoojiye.com/mail/password`, authenticated with the temporary password, then reverted to the original initial password and re-verified.
 - The five active human mailbox profiles and SMTP identities are persisted for tenant `3162`, linked to physical `email_accounts`, and reference environment-secret names instead of storing passwords in the database.
@@ -48,6 +48,16 @@ The custom PHP configuration is mounted read-only in the container but must rema
 
 This route was re-verified end-to-end on 2026-08-01 with an ephemeral mailbox: French web login, TLS IMAP authentication, SMTP submission, clean filtering, INBOX delivery, and logout all passed. The test mailbox was deleted afterward, and neither Roundcube nor docker-mailserver was restarted for the fix.
 
+### Fail2ban and the private Roundcube network
+
+Roundcube shares one private source address for all webmail IMAP logins. Dovecot must therefore never ban the `mailserver_mailnet` subnet after an end user mistypes a password, because such a ban blocks webmail for every mailbox. The production override is versioned at `ops/mailserver/fail2ban-jail.cf` and deployed to:
+
+```text
+/home/vital/infra/mailserver/config/fail2ban-jail.cf
+```
+
+The override trusts only loopback and the dedicated `172.20.0.0/16` mail network. Fail2ban continues to protect public IMAP and SMTP clients. After changing the Docker network subnet, update this override before recreating either mail container.
+
 ## Provisioned mailboxes
 
 These real docker-mailserver mailboxes now exist on the production mail stack. Team members sign in through the AGOOJIYE-owned webmail at `https://mail.agoojiye.com/`.
@@ -59,12 +69,14 @@ These real docker-mailserver mailboxes now exist on the production mail stack. T
 | Maryse | `maryse@agoojiye.com` | 2 GB | active, IMAPS + SMTP submission verified |
 | Christian | `christian@agoojiye.com` | 2 GB | active, IMAPS + SMTP submission verified |
 | Vital | `vital@agoojiye.com` | 2 GB | active, IMAPS + SMTP submission verified |
-| Vital Sounouvou (WorkOS principal) | `vs@agoojiye.com` | 2 GB | provisioned by the WorkOS release; verify IMAPS + SMTP during deployment |
+| Vital Sounouvou (WorkOS principal) | `vs@agoojiye.com` | 2 GB | active, IMAPS + Roundcube login verified |
 
 Private initial passwords are not committed and are not printed in chat.
 
 - VPS credential file: `/home/vital/secure/agoojye/agoojye-mailbox-initial-credentials-20260724T181337Z.txt`
+- VPS WorkOS principal credential: `/home/vital/secure/agoojye/workos-20260725-125956/agoojye-vs-mailbox-initial.json`
 - Local handoff copy: `C:\tmp\agoojye-mailbox-initial-credentials-20260724T181337Z.txt`
+- Local WorkOS principal handoff: `C:\tmp\agoojiye-vs-mailbox-initial-20260725.json`
 - Webmail login: `https://mail.agoojiye.com/`
 - First-login password change page: `https://agoojiye.com/mail/password`
 - IMAP host: `mail.exportunity.net`, port `993`, TLS on

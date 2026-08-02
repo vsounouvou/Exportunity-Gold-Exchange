@@ -1,0 +1,5 @@
+[DEFAULT]
+
+# Roundcube is the only application client on this private Docker network.
+# User password mistakes must not ban the shared Roundcube-to-IMAP connection.
+ignoreip = 127.0.0.1/8 ::1 172.20.0.0/16

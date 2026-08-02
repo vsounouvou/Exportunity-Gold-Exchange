@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useCompany } from "@/hooks/use-company";
 import { useSession } from "@/lib/session";
+import { useTenant } from "@/lib/tenant";
 import { cn } from "@/lib/utils";
 import { resolveApiUrl } from "@/lib/runtimeConfig";
 import { getAgentAvatarUrl } from "@/lib/agentAvatar";
@@ -708,7 +709,9 @@ export function AITeamHubPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { selectedCompanyId, companies, isLoading: companiesLoading } = useCompany();
+  const { tenant } = useTenant();
   const isMobile = useIsMobile();
+  const useExportunityLightWorkspace = tenant.key === "exportunity";
   const [messageInput, setMessageInput] = useState("");
   const [pendingAttachments, setPendingAttachments] = useState<ChannelAttachment[]>([]);
   const [isUploadingAttachments, setIsUploadingAttachments] = useState(false);
@@ -3132,7 +3135,14 @@ export function AITeamHubPage() {
   const currentMeetingPresence = currentMeeting ? getMeetingPresenceState(currentMeeting) : "live";
 
   return (
-    <div className="h-[calc(100dvh-var(--admin-header-height))] min-h-0 flex bg-gradient-to-b from-gray-950 to-[#020817] overflow-hidden">
+    <div
+      className={cn(
+        "h-[calc(100dvh-var(--admin-header-height))] min-h-0 flex overflow-hidden",
+        useExportunityLightWorkspace
+          ? "exportunity-operations-light"
+          : "bg-gradient-to-b from-gray-950 to-[#020817]",
+      )}
+    >
       {/* Mobile Left Sheet - Meetings */}
       {isMobile && (
         <Sheet open={mobileLeftSheet} onOpenChange={setMobileLeftSheet}>

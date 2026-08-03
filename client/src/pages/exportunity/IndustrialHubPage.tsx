@@ -1,4 +1,5 @@
 import {
+  Fragment,
   FormEvent,
   useEffect,
   useMemo,
@@ -9,6 +10,7 @@ import {
 import L from "leaflet";
 import { Link, useLocation } from "wouter";
 import {
+  CircleMarker,
   MapContainer,
   Marker,
   Polyline,
@@ -19,12 +21,14 @@ import {
 } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import {
+  Anchor,
   ArrowRight,
   Building2,
   CheckCircle2,
   ChevronRight,
   ClipboardList,
   Factory,
+  GraduationCap,
   Landmark,
   Languages,
   List,
@@ -37,6 +41,7 @@ import {
   Settings2,
   Sun,
   Trash2,
+  Wheat,
   Wrench,
 } from "lucide-react";
 
@@ -199,6 +204,40 @@ const PORT_COTONOU_CONTEXT = BENIN_INDUSTRIAL_CONTEXT_LOCATIONS.find(
   (context) => context.id === "port-cotonou",
 )!;
 
+const INDUSTRIAL_CONTEXT_VISUALS = {
+  industrial_zone: { icon: Factory, markerCode: "I" },
+  logistics_gateway: { icon: Anchor, markerCode: "L" },
+  innovation_hub: { icon: GraduationCap, markerCode: "S" },
+  agro_processing_reference: { icon: Wheat, markerCode: "A" },
+} satisfies Record<
+  IndustrialContextLocation["kind"],
+  { icon: typeof Factory; markerCode: string }
+>;
+
+function industrialContextLayerLabel(
+  kind: IndustrialContextLocation["kind"],
+  language: "fr" | "en",
+) {
+  const labels = {
+    industrial_zone: language === "fr" ? "Industrie" : "Industry",
+    logistics_gateway: language === "fr" ? "Logistique" : "Logistics",
+    innovation_hub: language === "fr" ? "Competences" : "Skills",
+    agro_processing_reference: language === "fr" ? "Agro" : "Agro",
+  } as const;
+  return labels[kind];
+}
+
+function IndustrialContextIcon({
+  context,
+  className,
+}: {
+  context: IndustrialContextLocation;
+  className?: string;
+}) {
+  const Icon = INDUSTRIAL_CONTEXT_VISUALS[context.kind].icon;
+  return <Icon className={className} aria-hidden="true" />;
+}
+
 const NAVIGATION = [
   { href: "/factories", key: "factories", icon: Factory },
   { href: "/map", key: "map", icon: MapPinned },
@@ -290,39 +329,48 @@ function mapFactoryIcon(active: boolean) {
   });
 }
 
-function mapIndustrialContextIcon(
-  context: IndustrialContextLocation,
-  active: boolean,
-) {
+function industrialContextMarkerStyle(kind: IndustrialContextLocation["kind"]) {
   const markerStyles = {
     industrial_zone: {
       background: "#07111F",
       border: "#F5A623",
       color: "#F5A623",
+      pulse: "#F5A623",
     },
     logistics_gateway: {
       background: "#FFFFFF",
       border: "#0B1D33",
       color: "#07111F",
+      pulse: "#0B1D33",
     },
     innovation_hub: {
       background: "#F5A623",
       border: "#07111F",
       color: "#07111F",
+      pulse: "#F5A623",
     },
     agro_processing_reference: {
       background: "#07111F",
       border: "#FFFFFF",
       color: "#FFFFFF",
+      pulse: "#FFFFFF",
     },
   } as const;
-  const style = markerStyles[context.kind];
+  return markerStyles[kind];
+}
+
+function mapIndustrialContextIcon(
+  context: IndustrialContextLocation,
+  active: boolean,
+) {
+  const style = industrialContextMarkerStyle(context.kind);
+  const markerCode = INDUSTRIAL_CONTEXT_VISUALS[context.kind].markerCode;
   const label = context.markerLabel;
   return L.divIcon({
     className: "exportunity-industrial-context-marker",
-    html: `<span style="display:flex;align-items:center;justify-content:center;min-width:${active ? 58 : 50}px;height:${active ? 42 : 38}px;padding:0 8px;border-radius:12px;border:2px solid ${style.border};background:${style.background};box-shadow:0 10px 24px rgba(7,17,31,.38);color:${style.color};font-weight:900;font-size:11px;letter-spacing:.08em;transition:all .2s ease">${label}</span>`,
-    iconSize: [active ? 58 : 50, active ? 42 : 38],
-    iconAnchor: [active ? 29 : 25, active ? 21 : 19],
+    html: `<span style="display:flex;align-items:center;justify-content:center;gap:6px;min-width:${active ? 66 : 58}px;height:${active ? 42 : 38}px;padding:0 9px;border-radius:12px;border:2px solid ${style.border};background:${style.background};box-shadow:0 10px 24px rgba(7,17,31,.38);color:${style.color};font-weight:900;font-size:11px;letter-spacing:.08em;transition:all .2s ease"><span style="display:flex;align-items:center;justify-content:center;width:17px;height:17px;border-radius:6px;background:${style.color};color:${style.background};font-size:9px;letter-spacing:0">${markerCode}</span><span>${label}</span></span>`,
+    iconSize: [active ? 66 : 58, active ? 42 : 38],
+    iconAnchor: [active ? 33 : 29, active ? 21 : 19],
   });
 }
 
@@ -425,33 +473,48 @@ function IndustrialMap({
             </span>
           </Tooltip>
         </Polyline>
-        {BENIN_INDUSTRIAL_CONTEXT_LOCATIONS.map((context) => (
-          <Marker
-            key={context.id}
-            position={[context.latitude, context.longitude]}
-            icon={mapIndustrialContextIcon(
-              context,
-              selectedContext?.id === context.id,
-            )}
-            eventHandlers={
-              onSelectContext
-                ? { click: () => onSelectContext(context) }
-                : undefined
-            }
-            zIndexOffset={selectedContext?.id === context.id ? 900 : 450}
-          >
-            <Tooltip direction="top" offset={[0, -22]} opacity={1}>
-              <span className="block text-sm font-semibold">
-                {industrialContextText(context.name, language)}
-              </span>
-              <span className="mt-0.5 block text-xs text-slate-600">
-                {language === "fr"
-                  ? "Information publique - pas une usine verifiee"
-                  : "Public information - not a verified factory"}
-              </span>
-            </Tooltip>
-          </Marker>
-        ))}
+        {BENIN_INDUSTRIAL_CONTEXT_LOCATIONS.map((context) => {
+          const active = selectedContext?.id === context.id;
+          const style = industrialContextMarkerStyle(context.kind);
+          const eventHandlers = onSelectContext
+            ? { click: () => onSelectContext(context) }
+            : undefined;
+          return (
+            <Fragment key={context.id}>
+              <CircleMarker
+                key={`${context.id}-signal`}
+                center={[context.latitude, context.longitude]}
+                radius={active ? 22 : 16}
+                pathOptions={{
+                  color: style.border,
+                  fillColor: style.pulse,
+                  fillOpacity: active ? 0.3 : 0.16,
+                  opacity: active ? 0.75 : 0.42,
+                  weight: active ? 2 : 1,
+                }}
+                eventHandlers={eventHandlers}
+              />
+              <Marker
+                key={context.id}
+                position={[context.latitude, context.longitude]}
+                icon={mapIndustrialContextIcon(context, active)}
+                eventHandlers={eventHandlers}
+                zIndexOffset={active ? 900 : 450}
+              >
+                <Tooltip direction="top" offset={[0, -22]} opacity={1}>
+                  <span className="block text-sm font-semibold">
+                    {industrialContextText(context.name, language)}
+                  </span>
+                  <span className="mt-0.5 block text-xs text-slate-600">
+                    {language === "fr"
+                      ? "Information publique - pas une usine verifiee"
+                      : "Public information - not a verified factory"}
+                  </span>
+                </Tooltip>
+              </Marker>
+            </Fragment>
+          );
+        })}
         {visibleFactories.map((factory) => (
           <Marker
             key={factory.id}
@@ -997,7 +1060,10 @@ function FactoryMapContextPanel({
                   {industrialContextText(selectedContext.name, language)}
                 </h2>
               </div>
-              <Landmark className="mt-1 h-5 w-5 shrink-0 text-[#a96f0b]" />
+              <IndustrialContextIcon
+                context={selectedContext}
+                className="mt-1 h-5 w-5 shrink-0 text-[#a96f0b] dark:text-[#F5A623]"
+              />
             </div>
             <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">
               {industrialContextText(selectedContext.summary, language)}
@@ -1050,13 +1116,21 @@ function FactoryMapContextPanel({
                   onClick={() => onSelectContext(context)}
                   className="rounded-xl border border-[#F5A623]/30 bg-[#F5A623]/10 p-3 text-left transition hover:border-[#F5A623]/60 hover:bg-[#F5A623]/15"
                 >
-                  <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[#865400] dark:text-[#F5A623]">
-                    {industrialContextText(context.eyebrow, language)}
+                  <span className="flex items-start gap-2">
+                    <IndustrialContextIcon
+                      context={context}
+                      className="mt-0.5 h-4 w-4 shrink-0 text-[#a96f0b] dark:text-[#F5A623]"
+                    />
+                    <span>
+                      <span className="block text-xs font-semibold uppercase tracking-[0.12em] text-[#865400] dark:text-[#F5A623]">
+                        {industrialContextLayerLabel(context.kind, language)}
+                      </span>
+                      <span className="mt-1 block text-sm font-semibold text-slate-950 dark:text-white">
+                        {industrialContextText(context.name, language)}
+                      </span>
+                    </span>
                   </span>
-                  <span className="mt-1 block text-sm font-semibold text-slate-950 dark:text-white">
-                    {industrialContextText(context.name, language)}
-                  </span>
-                  <span className="mt-1 line-clamp-2 block text-xs leading-5 text-slate-600 dark:text-slate-300">
+                  <span className="mt-2 line-clamp-2 block text-xs leading-5 text-slate-600 dark:text-slate-300">
                     {industrialContextText(context.summary, language)}
                   </span>
                   <span className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-[#865400] dark:text-[#F5A623]">
@@ -5509,13 +5583,55 @@ export default function IndustrialHubPage() {
                     language={locale}
                     className="absolute inset-0 min-h-[520px] shadow-[0_24px_64px_rgba(7,17,31,0.18)]"
                   />
-                  <div className="absolute left-4 top-4 max-w-[245px] rounded-xl border border-white/60 bg-white/90 p-4 shadow-lg backdrop-blur dark:border-white/15 dark:bg-[#07111F]/90">
-                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#a96f0b]">
-                      {copy.verifiedMap}
-                    </p>
-                    <p className="mt-2 text-sm leading-5 text-slate-700 dark:text-slate-200">
-                      {copy.mapDetail}
-                    </p>
+                  <div className="absolute left-4 top-4 z-[600] w-[calc(100%-2rem)] max-w-[294px] rounded-xl border border-white/70 bg-white/95 p-3.5 shadow-[0_16px_38px_rgba(7,17,31,0.18)] backdrop-blur-xl dark:border-white/15 dark:bg-[#07111F]/95">
+                    <div className="flex items-start gap-2.5">
+                      <span className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#F5A623]/15 text-[#865400] dark:text-[#F5A623]">
+                        <MapPinned className="h-4 w-4" />
+                      </span>
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#a96f0b] dark:text-[#F5A623]">
+                          {copy.verifiedMap}
+                        </p>
+                        <p className="mt-1 text-xs leading-5 text-slate-600 dark:text-slate-300">
+                          {copy.mapDetail}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="mt-3 grid grid-cols-2 gap-2">
+                      {BENIN_INDUSTRIAL_CONTEXT_LOCATIONS.map((context) => {
+                        const active = selectedIndustrialContext?.id === context.id;
+                        return (
+                          <button
+                            key={context.id}
+                            type="button"
+                            aria-pressed={active}
+                            onClick={() => {
+                              setSelectedFactory(null);
+                              setSelectedIndustrialContext(context);
+                            }}
+                            className={cn(
+                              "rounded-lg border p-2 text-left transition",
+                              active
+                                ? "border-[#F5A623] bg-[#F5A623]/15 shadow-[0_6px_14px_rgba(245,166,35,0.16)]"
+                                : "border-slate-200/90 bg-white/70 hover:border-[#F5A623]/65 hover:bg-[#F5A623]/10 dark:border-white/10 dark:bg-white/[0.04]",
+                            )}
+                          >
+                            <span className="flex items-center gap-1.5">
+                              <IndustrialContextIcon
+                                context={context}
+                                className="h-3.5 w-3.5 shrink-0 text-[#865400] dark:text-[#F5A623]"
+                              />
+                              <span className="truncate text-xs font-bold tracking-[0.08em] text-slate-900 dark:text-white">
+                                {context.markerLabel}
+                              </span>
+                            </span>
+                            <span className="mt-1 block truncate text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400">
+                              {industrialContextLayerLabel(context.kind, locale)}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
                     <Link
                       href="/map"
                       className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-[#865400] hover:text-[#6f4300] dark:text-[#F5A623] dark:hover:text-[#f9b54b]"

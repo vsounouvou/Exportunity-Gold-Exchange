@@ -5480,7 +5480,7 @@ export default function IndustrialHubPage() {
           {view === "home" ? (
             <>
               <section className="grid items-stretch gap-6 xl:grid-cols-[minmax(0,1.08fr)_minmax(440px,0.92fr)]">
-                <div className="relative min-h-[520px] overflow-hidden rounded-2xl border border-[#F5A623]/35 bg-[#07111F] px-5 py-7 shadow-[0_28px_64px_rgba(7,17,31,0.2)] sm:px-8 sm:py-9">
+                <div className="relative min-h-[520px] overflow-hidden rounded-2xl border border-[#F5A623]/35 bg-[#07111F] px-5 py-6 shadow-[0_28px_64px_rgba(7,17,31,0.2)] sm:px-8 sm:py-9">
                   <img
                     src="/tenants/exportunity/industrial/machinery-team.png"
                     alt=""
@@ -5492,10 +5492,10 @@ export default function IndustrialHubPage() {
                     <p className="text-sm font-semibold text-[#F5A623]">
                       {copy.heroEyebrow}
                     </p>
-                    <h1 className="mt-4 max-w-2xl text-3xl font-semibold leading-tight text-white sm:text-4xl">
+                    <h1 className="mt-3 max-w-2xl text-[26px] font-semibold leading-tight text-white sm:mt-4 sm:text-4xl">
                       {copy.heroTitle}
                     </h1>
-                    <p className="mt-4 max-w-2xl text-base leading-7 text-slate-200">
+                    <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-200 sm:mt-4 sm:text-base sm:leading-7">
                       {copy.heroText}
                     </p>
                     <IndustrialAssistantChat language={locale} requester={user} />

@@ -359,7 +359,7 @@ export function IndustrialAssistantChat({
   return (
     <section
       aria-label={copy.name}
-      className="mt-7 overflow-hidden rounded-2xl border border-white/20 bg-[#02070e]/72 shadow-[0_18px_48px_rgba(0,0,0,0.28)] backdrop-blur-md"
+      className="mt-5 overflow-hidden rounded-2xl border border-white/20 bg-[#02070e]/72 shadow-[0_18px_48px_rgba(0,0,0,0.28)] backdrop-blur-md sm:mt-7"
     >
       <div className="flex items-center justify-between gap-3 border-b border-white/10 px-3 py-2 sm:px-4 sm:py-3">
         <div className="flex min-w-0 items-center gap-3">
@@ -385,14 +385,14 @@ export function IndustrialAssistantChat({
       </div>
 
       <div
-        className="max-h-[260px] space-y-3 overflow-y-auto px-3 py-3 sm:max-h-[280px] sm:px-4 sm:py-4"
+        className="max-h-[230px] space-y-3 overflow-y-auto px-3 py-2.5 sm:max-h-[280px] sm:px-4 sm:py-4"
         aria-live="polite"
       >
         {messages.map((message) => (
           <div
             key={message.id}
             className={cn(
-              "max-w-[92%] rounded-2xl px-3.5 py-3 text-sm leading-6 shadow-sm",
+              "max-w-[92%] rounded-2xl px-3 py-2.5 text-sm leading-5 shadow-sm sm:px-3.5 sm:py-3 sm:leading-6",
               message.sender === "assistant"
                 ? "border border-white/10 bg-white/10 text-slate-100"
                 : "ml-auto bg-[#F5A623] text-[#07111F]",

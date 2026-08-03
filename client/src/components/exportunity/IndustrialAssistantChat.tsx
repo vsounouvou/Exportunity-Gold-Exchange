@@ -156,6 +156,7 @@ export function IndustrialAssistantChat({
   const [isPreviewing, setIsPreviewing] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [caseReference, setCaseReference] = useState<string | null>(null);
+  const [caseAssignee, setCaseAssignee] = useState<string | null>(null);
   const [attachmentSession, setAttachmentSession] =
     useState<AttachmentSession | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -165,6 +166,7 @@ export function IndustrialAssistantChat({
     setMessages([{ id: "welcome", sender: "assistant", text: copy.greeting }]);
     setIntake(null);
     setCaseReference(null);
+    setCaseAssignee(null);
     setAttachmentSession(null);
     setError(null);
   }, [copy.greeting]);
@@ -183,6 +185,7 @@ export function IndustrialAssistantChat({
     setLastMessage(message);
     setIntake(null);
     setCaseReference(null);
+    setCaseAssignee(null);
     setAttachmentSession(null);
     setMessages((current) => [
       ...current,
@@ -301,9 +304,13 @@ export function IndustrialAssistantChat({
           ? await uploadAttachments(activeAttachmentSession, attachments)
           : 0;
       const reference = createdReference;
+      const assignedAgentName = String(
+        payload.requirement?.operationsHandoff?.assignedAgentName || "",
+      ).trim();
       setAttachments([]);
       setAttachmentSession(null);
       setCaseReference(reference);
+      setCaseAssignee(assignedAgentName || null);
       setMessages((current) => [
         ...current,
         {
@@ -311,8 +318,8 @@ export function IndustrialAssistantChat({
           sender: "assistant",
           text:
             language === "fr"
-              ? `Dossier ${reference} enregistre${uploaded ? ` avec ${uploaded} fichier${uploaded > 1 ? "s" : ""}` : ""}. Notre equipe le qualifie avant tout contact fournisseur.`
-              : `Case ${reference} has been recorded${uploaded ? ` with ${uploaded} file${uploaded > 1 ? "s" : ""}` : ""}. Our team qualifies it before any supplier contact.`,
+              ? `Dossier ${reference} enregistre${uploaded ? ` avec ${uploaded} fichier${uploaded > 1 ? "s" : ""}` : ""}.${assignedAgentName ? ` ${assignedAgentName} est assigne a la revue interne.` : ""} Aucun fournisseur n'est contacte automatiquement.`
+              : `Case ${reference} has been recorded${uploaded ? ` with ${uploaded} file${uploaded > 1 ? "s" : ""}` : ""}.${assignedAgentName ? ` ${assignedAgentName} has been assigned to the internal review.` : ""} No supplier is contacted automatically.`,
         },
       ]);
     } catch (nextError: any) {
@@ -527,8 +534,12 @@ export function IndustrialAssistantChat({
           <span className="font-semibold">{caseReference}</span>
           <span className="ml-2">
             {language === "fr"
-              ? "est maintenant en revue technique."
-              : "is now under technical review."}
+              ? caseAssignee
+                ? `est assigne a ${caseAssignee} pour revue interne.`
+                : "est enregistre. Aucun fournisseur n'est contacte automatiquement."
+              : caseAssignee
+                ? `is assigned to ${caseAssignee} for internal review.`
+                : "has been recorded. No supplier is contacted automatically."}
           </span>
           {attachmentSession && attachments.length ? (
             <button

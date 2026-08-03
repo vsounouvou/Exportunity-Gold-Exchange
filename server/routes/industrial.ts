@@ -6263,6 +6263,9 @@ router.post("/requirements", async (req: any, res) => {
     // A front-office requirement becomes a visible Operations Center task. This
     // deliberately creates no agent conversation, supplier outreach, or other
     // external action; those remain subject to the normal approval workflow.
+    let operationsHandoff: Awaited<
+      ReturnType<typeof createIndustrialRequirementOperationsHandoff>
+    > | null = null;
     try {
       const handoff = await createIndustrialRequirementOperationsHandoff({
         tenantId: tenant.id,
@@ -6279,6 +6282,7 @@ router.post("/requirements", async (req: any, res) => {
         requesterCompany: parsed.data.requesterCompany,
         requesterName: parsed.data.requesterName,
       });
+      operationsHandoff = handoff;
 
       if (handoff.taskId) {
         await db
@@ -6350,6 +6354,13 @@ router.post("/requirements", async (req: any, res) => {
           expiresAt: attachmentUploadExpiresAt.toISOString(),
           maxFiles: INDUSTRIAL_REQUIREMENT_ATTACHMENT_MAX_FILES,
         },
+        operationsHandoff:
+          operationsHandoff?.taskId && operationsHandoff.assignedAgentName
+            ? {
+                status: operationsHandoff.status,
+                assignedAgentName: operationsHandoff.assignedAgentName,
+              }
+            : null,
       },
       message:
         "Your industrial requirement has been received. An Exportunity account manager will review it before any supplier contact begins.",

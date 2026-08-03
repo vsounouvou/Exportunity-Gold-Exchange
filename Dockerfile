@@ -65,6 +65,7 @@ COPY package.json package-lock.json tsconfig.json drizzle.config.ts env.ts ./
 COPY db ./db
 COPY server ./server
 COPY scripts ./scripts
+COPY tenants ./tenants
 COPY client/src/App.tsx ./client/src/App.tsx
 
 RUN mkdir -p /app/attached_assets

@@ -868,6 +868,29 @@ export function AITeamHubPage() {
     }
     return agents.filter((agent) => !workspaceCompanyId || agent.companyId === workspaceCompanyId);
   }, [agents, exportunityOrganizationAgents, useExportunityLightWorkspace, workspaceCompanyId]);
+  const suggestedMeetingAgentIds = useMemo(() => {
+    const activeIds = Array.from(
+      new Set(
+        activeAgentIds.filter((id) => Number.isInteger(id) && id > 0),
+      ),
+    );
+    if (activeIds.length) return activeIds;
+
+    const activeByOrganizationKey = new Map(
+      companyAgents
+        .filter((agent) => agent.status === "active")
+        .map((agent) => [getAgentOrganizationKey(agent), agent] as const),
+    );
+    if (useExportunityLightWorkspace) {
+      return EXPORTUNITY_CORE_AGENT_KEYS.map((key) => activeByOrganizationKey.get(key)?.id).filter(
+        (id): id is number => typeof id === "number" && id > 0,
+      );
+    }
+    return companyAgents
+      .filter((agent) => agent.status === "active")
+      .slice(0, 3)
+      .map((agent) => agent.id);
+  }, [activeAgentIds, companyAgents, useExportunityLightWorkspace]);
 
   const { data: chatRooms = [], isLoading: roomsLoading } = useQuery<ChatRoom[]>({
     queryKey: ["/api/chatrooms"],
@@ -1797,6 +1820,8 @@ export function AITeamHubPage() {
         startTime: new Date().toISOString(),
         duration: 30,
         companyId,
+        organizerId: suggestedMeetingAgentIds[0] ?? undefined,
+        participants: suggestedMeetingAgentIds,
       });
       const room = result?.chatRoom;
       if (!room?.conversationId) {
@@ -1810,7 +1835,12 @@ export function AITeamHubPage() {
       setCurrentMeeting(newRoom);
       queryClient.invalidateQueries({ queryKey: ["/api/chatrooms"] });
       queryClient.invalidateQueries({ queryKey: ["/api/meetings"] });
-      toast({ title: "Meeting Started", description: "Use @agent to invite team members" });
+      toast({
+        title: "Meeting Started",
+        description: suggestedMeetingAgentIds.length
+          ? `${suggestedMeetingAgentIds.length} core agent${suggestedMeetingAgentIds.length === 1 ? "" : "s"} joined. Add or remove people from the meeting roster.`
+          : "Use @agent to invite team members.",
+      });
     },
     onError: (error) => {
       console.error("[Meeting] Error:", error);

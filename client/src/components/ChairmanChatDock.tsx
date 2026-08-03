@@ -94,8 +94,8 @@ type DockLayout = {
 const DOCK_LAYOUT_STORAGE_KEY = "exportunity:chairman-chat-dock-layout:v4";
 const MIN_DOCK_WIDTH = 300;
 const MIN_DOCK_HEIGHT = 320;
-const DEFAULT_DOCK_WIDTH = 324;
-const DEFAULT_DOCK_HEIGHT = 392;
+const DEFAULT_DOCK_WIDTH = 312;
+const DEFAULT_DOCK_HEIGHT = 360;
 const WORK_SURFACE_PATH_PATTERN = /^\/(admin|dashboard|meetings|m\/|operations|actions|agenda|goals|objectives|decisions|tasks)(\/|$)/i;
 
 function getDefaultDockLayout(): DockLayout {
@@ -113,8 +113,8 @@ function getDefaultDockLayout(): DockLayout {
 
 function getWorkSurfaceDockLayout(): DockLayout {
   if (typeof window === "undefined") return getDefaultDockLayout();
-  const width = Math.min(340, Math.max(MIN_DOCK_WIDTH, window.innerWidth - 32));
-  const height = Math.min(420, Math.max(MIN_DOCK_HEIGHT, window.innerHeight - 132));
+  const width = Math.min(316, Math.max(MIN_DOCK_WIDTH, window.innerWidth - 32));
+  const height = Math.min(360, Math.max(MIN_DOCK_HEIGHT, window.innerHeight - 132));
   return clampDockLayout({
     x: window.innerWidth - width - 16,
     y: Math.max(76, window.innerHeight - height - 24),
@@ -339,6 +339,14 @@ export function ChairmanChatDock() {
 
   const headers = useMemo(() => ({ "x-chairman-admin-override": "1" }), []);
 
+  const openDock = useCallback(() => {
+    setDockLayout((current) => ({
+      ...clampDockLayout(current),
+      collapsed: false,
+    }));
+    setIsOpen(true);
+  }, []);
+
   useEffect(() => {
     if (isMobile || typeof window === "undefined") return;
     setDockLayout((current) => clampDockLayout(current));
@@ -362,10 +370,7 @@ export function ChairmanChatDock() {
         managerName: typeof detail?.managerName === "string" ? detail.managerName : null,
         managerRole: typeof detail?.managerRole === "string" ? detail.managerRole : null,
       });
-      setDockLayout((current) =>
-        isWorkSurface && !isMobile ? getWorkSurfaceDockLayout() : { ...current, collapsed: false },
-      );
-      setIsOpen(true);
+      openDock();
     };
     const handleContext = (event: Event) => {
       const detail = (event as CustomEvent<any>)?.detail || {};
@@ -383,7 +388,7 @@ export function ChairmanChatDock() {
       window.removeEventListener("chairman-dock:open", handleOpen as EventListener);
       window.removeEventListener("chairman-dock:context", handleContext as EventListener);
     };
-  }, [isMobile, isWorkSurface]);
+  }, [openDock]);
 
   const terminalAgentQuery = useQuery<{ agent: TerminalAgent }>({
     queryKey: ["/api/tenants", tenantId, "terminal-agent"],
@@ -823,7 +828,9 @@ export function ChairmanChatDock() {
   };
 
   const resetDockLayout = () => {
-    setDockLayout(getDefaultDockLayout());
+    setDockLayout(
+      isWorkSurface && !isMobile ? getWorkSurfaceDockLayout() : getDefaultDockLayout(),
+    );
   };
 
   const snapDockToSide = () => {
@@ -938,12 +945,7 @@ export function ChairmanChatDock() {
         type="button"
         className="fixed bottom-5 right-5 z-40 rounded-full border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-950 shadow-lg hover:bg-slate-50"
         title="Open Tassi. You can drag, resize, snap, minimize, or close the assistant."
-        onClick={() => {
-          setDockLayout((current) =>
-            isWorkSurface && !isMobile ? getWorkSurfaceDockLayout() : { ...current, collapsed: false },
-          );
-          setIsOpen(true);
-        }}
+        onClick={openDock}
       >
         Tassi assistant
       </button>

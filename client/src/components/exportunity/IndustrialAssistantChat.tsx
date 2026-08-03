@@ -361,7 +361,7 @@ export function IndustrialAssistantChat({
       aria-label={copy.name}
       className="mt-7 overflow-hidden rounded-2xl border border-white/20 bg-[#02070e]/72 shadow-[0_18px_48px_rgba(0,0,0,0.28)] backdrop-blur-md"
     >
-      <div className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3">
+      <div className="flex items-center justify-between gap-3 border-b border-white/10 px-3 py-2 sm:px-4 sm:py-3">
         <div className="flex min-w-0 items-center gap-3">
           <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-[#F5A623]/60 bg-[#07111F] p-1.5 shadow-[0_8px_20px_rgba(245,166,35,0.2)]">
             <img
@@ -385,7 +385,7 @@ export function IndustrialAssistantChat({
       </div>
 
       <div
-        className="max-h-[280px] space-y-3 overflow-y-auto px-4 py-4"
+        className="max-h-[260px] space-y-3 overflow-y-auto px-3 py-3 sm:max-h-[280px] sm:px-4 sm:py-4"
         aria-live="polite"
       >
         {messages.map((message) => (
@@ -414,7 +414,7 @@ export function IndustrialAssistantChat({
       </div>
 
       {!intake ? (
-        <div className="flex gap-2 overflow-x-auto border-t border-white/10 px-4 py-3">
+        <div className="flex gap-2 overflow-x-auto border-t border-white/10 px-3 py-2 sm:px-4 sm:py-3">
           {copy.firstReplies.map((reply) => (
             <button
               key={reply}
@@ -547,7 +547,7 @@ export function IndustrialAssistantChat({
           event.preventDefault();
           void sendMessage();
         }}
-        className="flex items-center gap-2 border-t border-white/10 bg-white p-2.5 shadow-[0_-10px_28px_rgba(0,0,0,0.16)]"
+        className="flex items-center gap-2 border-t border-white/10 bg-white p-2 shadow-[0_-10px_28px_rgba(0,0,0,0.16)] sm:p-2.5"
       >
         <button
           type="button"

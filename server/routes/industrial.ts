@@ -54,6 +54,7 @@ import {
   isIndustrialCategoryCode,
   normalizeIndustrialText,
 } from "../lib/industrial/taxonomy";
+import { classifyIndustrialIntake } from "../lib/industrial/intakeAssistant";
 import {
   industrialSearchRequirementContext,
   industrialSearchTerms,
@@ -177,6 +178,8 @@ const router = Router();
 const PUBLIC_SUBMISSION_LIMIT = 8;
 const PUBLIC_SUBMISSION_WINDOW_MS = 60 * 60 * 1000;
 const submissionWindows = new Map<string, { count: number; resetAt: number }>();
+const PUBLIC_INTAKE_PREVIEW_LIMIT = 24;
+const intakePreviewWindows = new Map<string, { count: number; resetAt: number }>();
 const PUBLIC_ATTACHMENT_UPLOAD_LIMIT = 24;
 const publicAttachmentUploadWindows = new Map<
   string,
@@ -673,6 +676,11 @@ const legacyProductReviewSchema = z
     }
   });
 
+const industrialAssistantIntakeSchema = z.object({
+  message: z.string().trim().min(10).max(6000),
+  language: z.enum(["fr", "en"]).optional().default("fr"),
+});
+
 const requirementMatchSchema = z.object({
   catalogItemId: z.string().uuid(),
   status: z.enum(MATCH_STATUSES).default("candidate"),
@@ -1099,6 +1107,30 @@ function consumePublicSubmission(req: any, tenantId: number) {
   current.count += 1;
   submissionWindows.set(key, current);
   return { allowed: true, remaining: PUBLIC_SUBMISSION_LIMIT - current.count };
+}
+
+function consumePublicIntakePreview(req: any, tenantId: number) {
+  const key = submissionKey(req, tenantId);
+  const now = Date.now();
+  const existing = intakePreviewWindows.get(key);
+  const current =
+    existing && existing.resetAt > now
+      ? existing
+      : { count: 0, resetAt: now + PUBLIC_SUBMISSION_WINDOW_MS };
+
+  if (current.count >= PUBLIC_INTAKE_PREVIEW_LIMIT) {
+    return {
+      allowed: false,
+      retryAfterSeconds: Math.max(1, Math.ceil((current.resetAt - now) / 1000)),
+    };
+  }
+
+  current.count += 1;
+  intakePreviewWindows.set(key, current);
+  return {
+    allowed: true,
+    remaining: PUBLIC_INTAKE_PREVIEW_LIMIT - current.count,
+  };
 }
 
 function consumePublicAttachmentUpload(req: any, tenantId: number) {
@@ -2283,6 +2315,49 @@ router.get("/taxonomy", (req: any, res) => {
     ok: true,
     taxonomy: INDUSTRIAL_TAXONOMY,
     requirementTypes: INDUSTRIAL_REQUIREMENT_TYPES,
+  });
+});
+
+router.post("/assistant/intake-preview", (req: any, res) => {
+  const tenant = resolveExportunityTenant(req, res);
+  if (!tenant) return;
+
+  const rate = consumePublicIntakePreview(req, tenant.id);
+  if (!rate.allowed) {
+    res.setHeader("Retry-After", String(rate.retryAfterSeconds));
+    return res.status(429).json({
+      ok: false,
+      message:
+        "Too many intake messages were sent from this connection. Please try again shortly.",
+      retryAfterSeconds: rate.retryAfterSeconds,
+    });
+  }
+
+  const parsed = industrialAssistantIntakeSchema.safeParse(req.body || {});
+  if (!parsed.success) {
+    return res.status(400).json({
+      ok: false,
+      message: "Please describe the industrial need before sending it.",
+      issues: parsed.error.flatten(),
+    });
+  }
+
+  const intake = classifyIndustrialIntake(
+    parsed.data.message,
+    parsed.data.language,
+  );
+  return res.json({
+    ok: true,
+    assistant: {
+      name: "Exportunity AI",
+      response: intake.response,
+      intake: {
+        requirementType: intake.requirementType,
+        categoryCode: intake.categoryCode,
+        title: intake.title,
+        urgency: intake.urgency,
+      },
+    },
   });
 });
 

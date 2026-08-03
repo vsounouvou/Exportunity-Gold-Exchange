@@ -54,6 +54,7 @@ import {
   industrialContextText,
   type IndustrialContextLocation,
 } from "@/components/exportunity/industrialContext";
+import { IndustrialAssistantChat } from "@/components/exportunity/IndustrialAssistantChat";
 import FactoryWorkspacePage from "@/pages/exportunity/FactoryWorkspacePage";
 
 type ThemeMode = "light" | "dark";
@@ -2463,6 +2464,35 @@ const TECHNICAL_ATTACHMENT_ACCEPT =
   ".pdf,.jpg,.jpeg,.png,.webp,.txt,.csv,.docx,.xlsx,.dxf,.dwg,.step,.stp,.stl,.iges,.igs";
 const TECHNICAL_ATTACHMENT_MAX_BYTES = 15 * 1024 * 1024;
 
+async function uploadRequirementAttachments(
+  session: RequirementAttachmentUploadSession,
+  files: File[],
+  onUploaded?: (file: File) => void,
+) {
+  let uploaded = 0;
+  for (const file of files) {
+    const upload = new FormData();
+    upload.append("file", file, file.name);
+    const response = await fetch(
+      `/api/industrial/requirements/${encodeURIComponent(session.requirementId)}/attachments`,
+      {
+        method: "POST",
+        headers: { "x-industrial-upload-token": session.token },
+        body: upload,
+      },
+    );
+    const payload = await response.json().catch(() => null);
+    if (!response.ok || !payload?.ok) {
+      throw new Error(
+        payload?.message || "The technical document could not be uploaded.",
+      );
+    }
+    uploaded += 1;
+    onUploaded?.(file);
+  }
+  return uploaded;
+}
+
 function QuoteForm({
   taxonomy,
   language,
@@ -2537,24 +2567,7 @@ function QuoteForm({
     session: RequirementAttachmentUploadSession,
     files: File[],
   ) => {
-    let uploaded = 0;
-    for (const file of files) {
-      const upload = new FormData();
-      upload.append("file", file, file.name);
-      const response = await fetch(
-        `/api/industrial/requirements/${encodeURIComponent(session.requirementId)}/attachments`,
-        {
-          method: "POST",
-          headers: { "x-industrial-upload-token": session.token },
-          body: upload,
-        },
-      );
-      const payload = await response.json().catch(() => null);
-      if (!response.ok || !payload?.ok)
-        throw new Error(
-          payload?.message || "The technical document could not be uploaded.",
-        );
-      uploaded += 1;
+    return uploadRequirementAttachments(session, files, (file) => {
       setAttachments((current) =>
         current.filter(
           (item) =>
@@ -2562,8 +2575,7 @@ function QuoteForm({
             `${file.name}:${file.size}:${file.lastModified}`,
         ),
       );
-    }
-    return uploaded;
+    });
   };
 
   const onAttachmentSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -4685,7 +4697,7 @@ function FactoryRegistrationForm({ language }: { language: "fr" | "en" }) {
 export default function IndustrialHubPage() {
   const [location, navigate] = useLocation();
   const { language, setLanguage } = useLocale();
-  const { isAuthenticated } = useSession();
+  const { isAuthenticated, user } = useSession();
   const locale: "fr" | "en" = language === "en" ? "en" : "fr";
   const [theme, setTheme] = useState<ThemeMode>(() =>
     typeof window !== "undefined" &&
@@ -5486,9 +5498,10 @@ export default function IndustrialHubPage() {
                     <p className="mt-4 max-w-2xl text-base leading-7 text-slate-200">
                       {copy.heroText}
                     </p>
+                    <IndustrialAssistantChat language={locale} requester={user} />
                     <section
                       aria-label={copy.assistantName}
-                      className="mt-7 rounded-2xl border border-white/20 bg-[#02070e]/60 p-3 shadow-[0_18px_48px_rgba(0,0,0,0.28)] backdrop-blur-md"
+                      className="hidden mt-7 rounded-2xl border border-white/20 bg-[#02070e]/60 p-3 shadow-[0_18px_48px_rgba(0,0,0,0.28)] backdrop-blur-md"
                     >
                       <div className="flex items-center gap-3 px-1 pb-3">
                         <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-[#F5A623] text-[#07111F] shadow-[0_8px_20px_rgba(245,166,35,0.24)]">

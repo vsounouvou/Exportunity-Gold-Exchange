@@ -71,6 +71,7 @@
     "seed:bdo-territories:benin": "tsx scripts/seed-bdo-territories-benin.ts",
     "seed:equipment-ops-demo": "tsx scripts/seed-equipment-ops-demo.ts",
     "seed:exportunity-agent-economy": "tsx scripts/seed-exportunity-agent-economy.ts",
+    "seed:exportunity-industrial-agents": "tsx scripts/seed-exportunity-industrial-agents.ts",
     "seed:zogueland": "tsx scripts/seed-zogueland.ts",
     "seed:rayon1km": "tsx scripts/seed-rayon1km.ts",
     "taxonomy:normalize-gold": "tsx scripts/normalize-gold-taxonomy.ts",

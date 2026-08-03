@@ -157,6 +157,10 @@ export async function generateAgentResponse(
       activeAgents?: string[];
       participants?: Array<{ name: string; role: string }>;
       agentDirectory?: Array<{ id: number; name: string; role: string }>;
+      companyContext?: string;
+      agentMission?: string;
+      agentResponsibilities?: string[];
+      approvalRules?: Record<string, unknown>;
       emailContext?: AgentEmailContext;
     };
   }
@@ -191,10 +195,13 @@ export async function generateAgentResponse(
     }
   );
 
-  const sanitized = sanitizeBdoText(result.response);
-  if (sanitized.violated && sanitized.text !== result.response) {
-    debug("BDO compliance wording sanitized", { violations: sanitized.violations, agentId: options.agentId });
-    return { ...result, response: sanitized.text };
+  const isExportunityContext = /Exportunity is a B2B/i.test(String(options.context.companyContext || ""));
+  if (!isExportunityContext) {
+    const sanitized = sanitizeBdoText(result.response);
+    if (sanitized.violated && sanitized.text !== result.response) {
+      debug("BDO compliance wording sanitized", { violations: sanitized.violations, agentId: options.agentId });
+      return { ...result, response: sanitized.text };
+    }
   }
 
   return result;

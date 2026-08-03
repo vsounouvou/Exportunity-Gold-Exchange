@@ -1114,6 +1114,10 @@ async function runProfileAgentPrompt(input: {
   prompt: string;
   history: Array<{ role: string; content: string }>;
 }) {
+  const metadata =
+    input.agent?.metadata && typeof input.agent.metadata === "object" && !Array.isArray(input.agent.metadata)
+      ? input.agent.metadata
+      : {};
   const recentMessages = input.history
     .slice(-8)
     .map((item) => ({
@@ -1136,6 +1140,15 @@ async function runProfileAgentPrompt(input: {
       roomType: "direct_profile_chat",
       activeAgents: [String(input.agent.name || "Agent")],
       agentDirectory: [{ id: Number(input.agent.id), name: String(input.agent.name || "Agent"), role: String(input.agent.role || "Assistant") }],
+      companyContext: String(metadata.companyContext || "").trim() || undefined,
+      agentMission: String(input.agent.mission || "").trim() || undefined,
+      agentResponsibilities: Array.isArray(input.agent.responsibilities)
+        ? input.agent.responsibilities.map((item: unknown) => String(item || "").trim()).filter(Boolean)
+        : undefined,
+      approvalRules:
+        input.agent.approvalRules && typeof input.agent.approvalRules === "object" && !Array.isArray(input.agent.approvalRules)
+          ? input.agent.approvalRules
+          : undefined,
     },
   });
 

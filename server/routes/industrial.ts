@@ -54,7 +54,7 @@ import {
   isIndustrialCategoryCode,
   normalizeIndustrialText,
 } from "../lib/industrial/taxonomy";
-import { classifyIndustrialIntake } from "../lib/industrial/intakeAssistant";
+import { generateIndustrialIntakeReply } from "../lib/industrial/intakeAssistant";
 import {
   industrialSearchRequirementContext,
   industrialSearchTerms,
@@ -2318,7 +2318,7 @@ router.get("/taxonomy", (req: any, res) => {
   });
 });
 
-router.post("/assistant/intake-preview", (req: any, res) => {
+router.post("/assistant/intake-preview", async (req: any, res) => {
   const tenant = resolveExportunityTenant(req, res);
   if (!tenant) return;
 
@@ -2342,7 +2342,7 @@ router.post("/assistant/intake-preview", (req: any, res) => {
     });
   }
 
-  const intake = classifyIndustrialIntake(
+  const intake = await generateIndustrialIntakeReply(
     parsed.data.message,
     parsed.data.language,
   );

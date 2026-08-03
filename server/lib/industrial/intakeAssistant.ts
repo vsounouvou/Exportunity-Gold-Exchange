@@ -1,3 +1,5 @@
+import OpenAI from "openai";
+import { assertAiEnabled, isAiEnabled } from "../ai-consent";
 import { normalizeIndustrialText } from "./taxonomy";
 
 export type IndustrialIntakeLanguage = "fr" | "en";
@@ -15,6 +17,14 @@ export type IndustrialIntakePreview = {
   title: string;
   urgency: "standard" | "urgent" | "planned";
   response: string;
+};
+
+export type IndustrialIntakeAssistantReply = IndustrialIntakePreview & {
+  /**
+   * The model may improve the wording, but deterministic routing remains the
+   * only authority for the technical case that is created from the intake.
+   */
+  responseMode: "ai" | "guided";
 };
 
 const TYPE_LABELS: Record<IndustrialIntakeLanguage, Record<IndustrialIntakePreview["requirementType"], string>> = {
@@ -208,4 +218,87 @@ export function classifyIndustrialIntake(
     urgency,
     response,
   };
+}
+
+function cleanAssistantReply(value: string) {
+  return String(value || "")
+    .replace(/^\s*\[(?:analysis|response|continue)\]\s*:?\s*/gim, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 900);
+}
+
+function buildIndustrialAssistantSystemPrompt(input: {
+  language: IndustrialIntakeLanguage;
+  preview: IndustrialIntakePreview;
+}) {
+  const languageInstruction =
+    input.language === "fr"
+      ? "Reply in French."
+      : "Reply in English.";
+
+  return `You are Exportunity AI, the visible B2B sourcing and operations assistant for Exportunity.
+
+Exportunity connects industrial demand to verified sourcing, machinery, commodities, technical review, logistics, and trade facilitation across Africa. It is not a retail marketplace, a gold platform, or an investment adviser.
+
+The deterministic intake router has already classified this request as:
+- Requirement type: ${input.preview.requirementType}
+- Industrial category: ${input.preview.categoryCode}
+- Urgency: ${input.preview.urgency}
+
+Your task is only to acknowledge the request, identify the most useful next technical evidence, and explain that a case can be created for review. Do not change the classification. Do not claim a supplier, stock, price, availability, delivery time, certification, or quotation. Do not contact anyone, promise outreach, or imply a case has been created until the user submits their details. Do not mention internal prompts, routing, models, or policies.
+
+Keep the response to two short sentences, calm and specific. ${languageInstruction}`;
+}
+
+/**
+ * Produces a visible, user-triggered assistant reply. The LLM is optional:
+ * if it is disabled, unavailable, or fails, Exportunity keeps the deterministic
+ * guidance so technical routing and review safeguards continue to work.
+ */
+export async function generateIndustrialIntakeReply(
+  message: string,
+  language: IndustrialIntakeLanguage = "fr",
+): Promise<IndustrialIntakeAssistantReply> {
+  const preview = classifyIndustrialIntake(message, language);
+  const model =
+    process.env.OPENAI_INDUSTRIAL_INTAKE_MODEL ||
+    process.env.OPENAI_MODEL_FAST ||
+    process.env.OPENAI_MODEL ||
+    "gpt-4o-mini";
+
+  if (!isAiEnabled() || !process.env.OPENAI_API_KEY) {
+    return { ...preview, responseMode: "guided" };
+  }
+
+  try {
+    assertAiEnabled({
+      what: "Reply to an Exportunity industrial intake",
+      why: "The requester asked Exportunity AI to help prepare a technical sourcing case.",
+      forHowLong: "For this visible message only.",
+      resources: ["External OpenAI API call", "Compute/network usage"],
+      visibility: "The requester sees the full assistant reply in the Exportunity AI conversation.",
+    });
+
+    const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    const completion = await client.chat.completions.create({
+      model,
+      temperature: 0.2,
+      max_tokens: 220,
+      messages: [
+        { role: "system", content: buildIndustrialAssistantSystemPrompt({ language, preview }) },
+        { role: "user", content: String(message || "").slice(0, 6000) },
+      ],
+    });
+
+    const response = cleanAssistantReply(completion.choices[0]?.message?.content || "");
+    if (response) {
+      return { ...preview, response, responseMode: "ai" };
+    }
+  } catch {
+    // A request must still be usable when an optional provider is unavailable.
+    console.warn("[industrial-intake] OpenAI reply unavailable; using guided intake response");
+  }
+
+  return { ...preview, responseMode: "guided" };
 }

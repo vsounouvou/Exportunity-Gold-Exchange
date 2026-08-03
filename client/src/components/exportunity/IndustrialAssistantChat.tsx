@@ -6,7 +6,7 @@ import {
   type FormEvent,
 } from "react";
 import { Link } from "wouter";
-import { Paperclip, Send, Trash2 } from "lucide-react";
+import { MessageCircle, Paperclip, Send, Trash2 } from "lucide-react";
 
 import { VoiceToTextButton } from "@/components/chat/VoiceToTextButton";
 import { cn } from "@/lib/utils";
@@ -74,6 +74,9 @@ export function IndustrialAssistantChat({
       ? {
           name: "Exportunity AI",
           role: "Assistant sourcing et operations",
+          conversation: "Conversation avec Exportunity AI",
+          ready: "Conversation prete",
+          composerLabel: "Votre message a Exportunity AI",
           greeting:
             "Bonjour. Decrivez une piece, une machine, une matiere ou un besoin de transport. Je prepare le bon dossier technique avant toute mise en relation.",
           placeholder:
@@ -106,6 +109,9 @@ export function IndustrialAssistantChat({
       : {
           name: "Exportunity AI",
           role: "Sourcing and operations assistant",
+          conversation: "Conversation with Exportunity AI",
+          ready: "Conversation ready",
+          composerLabel: "Your message to Exportunity AI",
           greeting:
             "Hello. Describe a part, machine, material, or transport need. I will prepare the right technical case before any introduction is made.",
           placeholder:
@@ -359,7 +365,8 @@ export function IndustrialAssistantChat({
   return (
     <section
       aria-label={copy.name}
-      className="mt-5 overflow-hidden rounded-2xl border border-white/20 bg-[#02070e]/72 shadow-[0_18px_48px_rgba(0,0,0,0.28)] backdrop-blur-md sm:mt-7"
+      data-testid="exportunity-ai-chat"
+      className="mt-5 overflow-hidden rounded-2xl border border-[#F5A623]/35 bg-[#02070e]/80 shadow-[0_22px_54px_rgba(0,0,0,0.32)] backdrop-blur-md sm:mt-7"
     >
       <div className="flex items-center justify-between gap-3 border-b border-white/10 px-3 py-2 sm:px-4 sm:py-3">
         <div className="flex min-w-0 items-center gap-3">
@@ -380,13 +387,15 @@ export function IndustrialAssistantChat({
           </span>
         </div>
         <span className="shrink-0 rounded-full border border-[#F5A623]/35 bg-[#F5A623]/10 px-2.5 py-1 text-[11px] font-semibold text-[#f8c45b]">
-          {language === "fr" ? "Pret" : "Ready"}
+          {copy.ready}
         </span>
       </div>
 
       <div
-        className="max-h-[230px] space-y-3 overflow-y-auto px-3 py-2.5 sm:max-h-[280px] sm:px-4 sm:py-4"
+        className="max-h-[230px] space-y-3 overflow-y-auto px-3 py-3 sm:max-h-[280px] sm:px-4 sm:py-4"
         aria-live="polite"
+        aria-label={copy.conversation}
+        role="log"
       >
         {messages.map((message) => (
           <div
@@ -547,58 +556,72 @@ export function IndustrialAssistantChat({
           event.preventDefault();
           void sendMessage();
         }}
-        className="flex items-center gap-2 border-t border-white/10 bg-white p-2 shadow-[0_-10px_28px_rgba(0,0,0,0.16)] sm:p-2.5"
+        className="border-t border-white/10 bg-white px-2.5 py-2 shadow-[0_-10px_28px_rgba(0,0,0,0.16)] sm:px-3 sm:py-2.5"
       >
-        <button
-          type="button"
-          onClick={() => attachmentInputRef.current?.click()}
-          className="grid h-10 w-10 shrink-0 place-items-center rounded-lg text-[#8d5a00] transition hover:bg-[#F5A623]/15 hover:text-[#07111F]"
-          aria-label={copy.attach}
-          title={copy.attach}
-        >
-          <Paperclip className="h-5 w-5" />
-        </button>
-        <input
-          ref={attachmentInputRef}
-          type="file"
-          multiple
-          accept={ACCEPTED_ATTACHMENTS}
-          className="sr-only"
-          onChange={onAttachmentSelect}
-        />
-        <input
-          value={draft}
-          onChange={(event) => setDraft(event.target.value)}
-          className="min-w-0 flex-1 bg-transparent px-1 py-2 text-sm text-slate-950 outline-none placeholder:text-slate-400"
-          placeholder={copy.placeholder}
-          aria-label={copy.placeholder}
-        />
-        <VoiceToTextButton
-          draftText={draft}
-          setDraftText={setDraft}
-          appendDraftText={(text) =>
-            setDraft((current) => `${current} ${text}`.trim())
-          }
-          hideHelper
-          helperText={copy.name}
-          recordingText={
-            language === "fr"
-              ? "Touchez pour arreter l'enregistrement"
-              : "Tap again to stop recording"
-          }
-          unavailableText={
-            language === "fr" ? "Microphone indisponible" : "Microphone unavailable"
-          }
-        />
-        <button
-          type="submit"
-          disabled={!draft.trim() || isPreviewing}
-          className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-[#F5A623] text-[#07111F] transition hover:bg-[#f9a800] disabled:cursor-not-allowed disabled:opacity-55"
-          aria-label={copy.send}
-          title={copy.send}
-        >
-          <Send className="h-4 w-4" />
-        </button>
+        <div className="flex items-end gap-2 rounded-xl border border-slate-200 bg-slate-50 p-1.5 focus-within:border-[#F5A623] focus-within:bg-white focus-within:ring-2 focus-within:ring-[#F5A623]/20">
+          <button
+            type="button"
+            onClick={() => attachmentInputRef.current?.click()}
+            className="grid h-10 w-10 shrink-0 place-items-center rounded-lg text-[#8d5a00] transition hover:bg-[#F5A623]/15 hover:text-[#07111F]"
+            aria-label={copy.attach}
+            title={copy.attach}
+          >
+            <Paperclip className="h-5 w-5" />
+          </button>
+          <input
+            ref={attachmentInputRef}
+            type="file"
+            multiple
+            accept={ACCEPTED_ATTACHMENTS}
+            className="sr-only"
+            onChange={onAttachmentSelect}
+          />
+          <MessageCircle className="mb-2 h-4 w-4 shrink-0 text-[#a96f0b]" aria-hidden="true" />
+          <label className="min-w-0 flex-1">
+            <span className="sr-only">{copy.composerLabel}</span>
+            <textarea
+              value={draft}
+              onChange={(event) => setDraft(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && !event.shiftKey) {
+                  event.preventDefault();
+                  void sendMessage();
+                }
+              }}
+              rows={2}
+              maxLength={4000}
+              className="block min-h-10 w-full resize-none bg-transparent px-1 py-1.5 text-sm leading-5 text-slate-950 outline-none placeholder:text-slate-400"
+              placeholder={copy.placeholder}
+              aria-label={copy.composerLabel}
+            />
+          </label>
+          <VoiceToTextButton
+            draftText={draft}
+            setDraftText={setDraft}
+            appendDraftText={(text) =>
+              setDraft((current) => `${current} ${text}`.trim())
+            }
+            hideHelper
+            helperText={copy.name}
+            recordingText={
+              language === "fr"
+                ? "Touchez pour arreter l'enregistrement"
+                : "Tap again to stop recording"
+            }
+            unavailableText={
+              language === "fr" ? "Microphone indisponible" : "Microphone unavailable"
+            }
+          />
+          <button
+            type="submit"
+            disabled={!draft.trim() || isPreviewing}
+            className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-[#F5A623] text-[#07111F] transition hover:bg-[#f9a800] disabled:cursor-not-allowed disabled:opacity-55"
+            aria-label={copy.send}
+            title={copy.send}
+          >
+            <Send className="h-4 w-4" />
+          </button>
+        </div>
       </form>
     </section>
   );

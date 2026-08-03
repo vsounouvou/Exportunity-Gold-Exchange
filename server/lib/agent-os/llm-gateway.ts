@@ -2,6 +2,7 @@ import type { AgentPolicy } from "./registry";
 import type { ChatMessage } from "./anthropic-gateway";
 import { generateText as generateAnthropicText } from "./anthropic-gateway";
 import { generateText as generateOpenAiText } from "./openai-gateway";
+import { injectCompanyContext } from "./company-context";
 
 export type LlmProvider = "openai" | "anthropic";
 export type LlmTier = "fast" | "balanced" | "quality";
@@ -87,6 +88,7 @@ export async function generateText(params: {
   usage?: { promptTokens: number; completionTokens: number; totalTokens: number };
 }> {
   const tier = computeTier(params.policy);
+  const messages = injectCompanyContext(params.policy, params.messages);
 
   const openaiConfigured = !!process.env.OPENAI_API_KEY;
   const anthropicConfigured = !!(process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY || process.env.ANTHROPIC_API_KEY);
@@ -99,7 +101,7 @@ export async function generateText(params: {
       const response = await generateOpenAiText({
         jobId: params.jobId,
         policy: params.policy,
-        messages: params.messages,
+        messages,
         model,
         maxTokens: params.maxTokens,
         temperature: params.temperature,
@@ -118,7 +120,7 @@ export async function generateText(params: {
       const response = await generateAnthropicText({
         jobId: params.jobId,
         policy: params.policy,
-        messages: params.messages,
+        messages,
         model,
         maxTokens: params.maxTokens,
         temperature: params.temperature,

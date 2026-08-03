@@ -19,13 +19,9 @@ import {
   Settings,
   Edit,
   Network,
-  ShoppingCart,
-  Brain,
   MessageSquare,
   Zap,
-  Star,
   ChevronRight,
-  Filter
 } from "lucide-react";
 import { useCompany } from "@/hooks/use-company";
 import { AgentProfileDialog } from "@/components/AgentProfileDialog";
@@ -76,15 +72,9 @@ const departmentColors: Record<string, string> = {
   Executive: "bg-orange-500/20 text-orange-400 border-orange-500/30",
 };
 
-const marketplaceAgents = [
-  { id: 1, name: "Sales Specialist Pro", role: "Senior Sales Rep", category: "Sales", rating: 4.8, hires: 1250, price: 49, description: "Expert in B2B sales with proven closing techniques" },
-  { id: 2, name: "Content Creator AI", role: "Content Writer", category: "Marketing", rating: 4.9, hires: 890, price: 39, description: "Creates engaging blog posts, social media content, and copy" },
-  { id: 3, name: "Data Analyst Pro", role: "Business Analyst", category: "Operations", rating: 4.7, hires: 560, price: 59, description: "Advanced data analysis and reporting capabilities" },
-  { id: 4, name: "Customer Success Lead", role: "Account Manager", category: "Sales", rating: 4.6, hires: 340, price: 44, description: "Manages customer relationships and ensures satisfaction" },
-];
-
 export function AgentsPage() {
-  const { brand } = useTenant();
+  const { brand, tenant } = useTenant();
+  const isExportunityTenant = tenant.key === "exportunity";
   const [location] = useLocation();
   const { selectedCompanyId, companies, isLoading: companiesLoading } = useCompany();
   const { toast } = useToast();
@@ -99,13 +89,15 @@ export function AgentsPage() {
   const [newAgentRole, setNewAgentRole] = useState("");
   const [newAgentDepartmentId, setNewAgentDepartmentId] = useState<string>("");
   const [activeTab, setActiveTab] = useState(() => {
-    if (location.includes('/marketplace')) return 'marketplace';
     if (location.includes('/hierarchy')) return 'hierarchy';
     return 'list';
   });
+
   const effectiveCompanyId =
     selectedCompanyId ??
-    companies.find((c) => c.name.toLowerCase().replace(/\s+/g, " ").trim() === "exportunity gold exchange")?.id ??
+    (isExportunityTenant
+      ? companies.find((c) => /\bexportunity(?: machinery)?\b/i.test(String(c.name || "")))?.id
+      : companies.find((c) => c.name.toLowerCase().replace(/\s+/g, " ").trim() === "exportunity gold exchange")?.id) ??
     companies[0]?.id ??
     null;
 
@@ -149,11 +141,12 @@ export function AgentsPage() {
     queryKey: effectiveCompanyId
       ? [`/api/companies/${effectiveCompanyId}/agent-proposals/ege-core-v1`]
       : ["__no_company_proposal__"],
-    enabled: !!effectiveCompanyId && isProposalOpen,
+    enabled: !!effectiveCompanyId && isProposalOpen && !isExportunityTenant,
   });
 
   const createAgentMutation = useMutation({
     mutationFn: async () => {
+      if (isExportunityTenant) throw new Error("Exportunity uses its configured operating team rather than the legacy proposal.");
       if (!effectiveCompanyId) throw new Error(companiesLoading ? "Loading company..." : "No company found");
       if (!newAgentName.trim() || !newAgentRole.trim()) throw new Error("Name and role are required");
       const res = await fetch(resolveApiUrl("/api/agents"), {
@@ -231,16 +224,20 @@ export function AgentsPage() {
   });
 
   return (
-    <div className="min-h-screen bg-gray-950 p-4 md:p-6">
+    <div className={isExportunityTenant ? "exportunity-operations-light min-h-screen bg-[#f7f8fa] p-4 md:p-6" : "min-h-screen bg-gray-950 p-4 md:p-6"}>
       <div className="max-w-7xl mx-auto">
         {/* Header - stacks on mobile */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
           <div>
             <h1 className="text-xl md:text-2xl font-bold text-white flex items-center gap-2">
               <Users className="h-5 w-5 md:h-6 md:w-6 text-blue-400" />
-              Agents
+              {isExportunityTenant ? "Exportunity AI team" : "Agents"}
             </h1>
-            <p className="text-gray-400 text-sm mt-1">Manage your AI team members and hire new agents</p>
+            <p className="text-gray-400 text-sm mt-1">
+              {isExportunityTenant
+                ? "Visible roles, responsibilities, and approval gates for the Exportunity operating team."
+                : "Manage your AI team members and hire new agents"}
+            </p>
           </div>
           <div className="flex items-center gap-2">
             <Link href="/hierarchy">
@@ -249,7 +246,7 @@ export function AgentsPage() {
                 <span className="hidden md:inline">View Hierarchy</span>
               </Button>
             </Link>
-            <Dialog open={isProposalOpen} onOpenChange={(open) => { setIsProposalOpen(open); if (!open) setConfirmProposalCreate(false); }}>
+            {!isExportunityTenant && <Dialog open={isProposalOpen} onOpenChange={(open) => { setIsProposalOpen(open); if (!open) setConfirmProposalCreate(false); }}>
               <DialogTrigger asChild>
                 <Button variant="outline" className="border-gray-700 h-11 min-w-[44px]">
                   <Settings className="h-4 w-4 md:mr-2" />
@@ -319,7 +316,7 @@ export function AgentsPage() {
                   )}
                 </div>
               </DialogContent>
-            </Dialog>
+            </Dialog>}
 
             <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
               <DialogTrigger asChild>
@@ -328,7 +325,7 @@ export function AgentsPage() {
                   <span className="hidden md:inline">Create Agent</span>
                 </Button>
               </DialogTrigger>
-              <DialogContent className="bg-gray-950 border-gray-800">
+              <DialogContent className={isExportunityTenant ? "exportunity-operations-light bg-white border-slate-200" : "bg-gray-950 border-gray-800"}>
                 <DialogHeader>
                   <DialogTitle className="text-white">Create Agent</DialogTitle>
                   <DialogDescription className="text-gray-400">
@@ -443,8 +440,8 @@ export function AgentsPage() {
             <CardContent className="pt-4 px-3 md:px-4">
               <div className="flex items-center justify-between gap-2">
                 <div>
-                  <p className="text-gray-400 text-xs md:text-sm">Messages Today</p>
-                  <p className="text-xl md:text-2xl font-bold text-white">247</p>
+                  <p className="text-gray-400 text-xs md:text-sm">Execution</p>
+                  <p className="text-base md:text-lg font-bold text-white">Approval-gated</p>
                 </div>
                 <div className="h-9 w-9 md:h-10 md:w-10 rounded-full bg-orange-500/20 flex items-center justify-center flex-shrink-0">
                   <MessageSquare className="h-4 w-4 md:h-5 md:w-5 text-orange-400" />
@@ -459,7 +456,6 @@ export function AgentsPage() {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <TabsList className="bg-gray-900 border border-gray-800 w-full sm:w-auto">
               <TabsTrigger value="list" className="data-[state=active]:bg-gray-800 flex-1 sm:flex-initial h-11">Agent List</TabsTrigger>
-              <TabsTrigger value="marketplace" className="data-[state=active]:bg-gray-800 flex-1 sm:flex-initial h-11">Marketplace</TabsTrigger>
             </TabsList>
             
             <div className="relative w-full sm:w-64">
@@ -517,7 +513,7 @@ export function AgentsPage() {
                         <div className="mt-3 md:mt-4 flex items-center justify-between">
                           <div className="flex items-center gap-2 text-xs md:text-sm text-gray-500">
                             <MessageSquare className="h-3.5 w-3.5 md:h-4 md:w-4" />
-                            <span>12 messages</span>
+                            <span>Profile available</span>
                           </div>
                           <Button
                             variant="ghost"
@@ -544,7 +540,7 @@ export function AgentsPage() {
                 <CardContent className="py-12 text-center">
                   <Users className="h-12 w-12 mx-auto mb-4 text-gray-600" />
                   <p className="text-gray-400">No agents found</p>
-                  <p className="text-sm text-gray-500 mt-1">Create your first agent or hire from the marketplace</p>
+                  <p className="text-sm text-gray-500 mt-1">Create an agent with a clear role, ownership, and approval rules.</p>
                   <Button className="mt-4 h-11">
                     <Plus className="h-4 w-4 mr-2" />
                     Create Agent
@@ -554,63 +550,6 @@ export function AgentsPage() {
             )}
           </TabsContent>
 
-          <TabsContent value="marketplace" className="space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
-              <div>
-                <h3 className="text-base md:text-lg font-semibold text-white">Agent Marketplace</h3>
-                <p className="text-xs md:text-sm text-gray-400">Hire pre-trained expert agents for your team</p>
-              </div>
-              <Button variant="outline" size="sm" className="border-gray-700 h-11 w-full sm:w-auto">
-                <Filter className="h-4 w-4 mr-2" />
-                Filter
-              </Button>
-            </div>
-
-            {/* Marketplace grid - 1 col mobile, 2 col tablet+ */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
-              {marketplaceAgents.map((agent) => (
-                <Card key={agent.id} className="bg-gray-900 border-gray-800 hover:border-blue-500/50 cursor-pointer transition-all">
-                  <CardContent className="p-4 md:p-5">
-                    <div className="flex items-start justify-between mb-3 md:mb-4 gap-2">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className="h-12 w-12 md:h-14 md:w-14 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center flex-shrink-0">
-                          <Brain className="h-6 w-6 md:h-7 md:w-7 text-white" />
-                        </div>
-                        <div className="min-w-0">
-                          <div className="font-semibold text-white text-sm md:text-base truncate">{agent.name}</div>
-                          <div className="text-xs md:text-sm text-gray-400 truncate">{agent.role}</div>
-                        </div>
-                      </div>
-                      <Badge variant="outline" className={`${departmentColors[agent.category] || "bg-gray-500/20 text-gray-400"} flex-shrink-0 text-xs`}>
-                        {agent.category}
-                      </Badge>
-                    </div>
-                    
-                    <p className="text-xs md:text-sm text-gray-400 mb-3 md:mb-4 line-clamp-2">{agent.description}</p>
-                    
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3 md:gap-4 text-xs md:text-sm">
-                        <div className="flex items-center gap-1 text-yellow-400">
-                          <Star className="h-3.5 w-3.5 md:h-4 md:w-4 fill-current" />
-                          <span>{agent.rating}</span>
-                        </div>
-                        <div className="text-gray-500">{agent.hires} hires</div>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <span className="text-base md:text-lg font-bold text-white">${agent.price}</span>
-                        <span className="text-xs md:text-sm text-gray-500">/mo</span>
-                      </div>
-                    </div>
-                    
-                    <Button className="w-full mt-3 md:mt-4 bg-blue-600 hover:bg-blue-700 h-11">
-                      <ShoppingCart className="h-4 w-4 mr-2" />
-                      Hire Agent
-                    </Button>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </TabsContent>
         </Tabs>
       </div>
 

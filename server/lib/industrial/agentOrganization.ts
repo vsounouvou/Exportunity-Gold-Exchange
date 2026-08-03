@@ -4,9 +4,15 @@ import { agents, agentsProduction, companies } from "@db/schema";
 import { ensureAgentsProductionTables } from "../agents/ensureProductionAgents";
 import { ensureTenants, getTenantByKey } from "../tenants";
 
-const ORGANIZATION_VERSION = "exportunity-industrial-org-v1";
+const ORGANIZATION_VERSION = "exportunity-industrial-org-v2";
 
-export const EXPORTUNITY_COMPANY_CONTEXT = `Exportunity is a B2B African trade, sourcing, commodities, machinery, and industrial-operations platform. It traces supply from origin to end user through technical intake, verified sourcing, factory and supplier review, quality control, logistics, trade facilitation, and export readiness. Exportunity is not a retail marketplace, a gold business, a crypto product, or a public investment adviser. The company must not claim stock, prices, suppliers, delivery commitments, certifications, or commercial approval without verified evidence. External outreach, spending, purchases, contract acceptance, and public statements require visible human approval.`;
+export const EXPORTUNITY_COMPANY_CONTEXT = `Exportunity is a B2B African trade, sourcing, commodities, machinery, and industrial-operations platform. It helps factories, importers, distributors, workshops, agro-processors, and suppliers trace an industrial need from intake to a controlled commercial outcome.
+
+Exportunity Machinery is the industrial operating model: demand capture, technical intake and scan-to-manufacture review, evidence-backed supplier routing, quality and assembly preparation, logistics and trade facilitation, and a reusable industrial data layer. The model is demand-first: photograph or document the need, classify it, decide whether to make, buy, repair, or source, then prepare a human-approved case. Initial industrial focus includes spare parts, power transmission components, bearing housings, couplings, conveyor parts, pump parts, bearings, belts, chain, seals, motors, and reducers.
+
+Treat every commercial fact as either verified, awaiting validation, or an unverified signal. Never invent inventory, price, supplier capacity, certifications, lead times, delivery dates, GDIZ facilities, payment status, or commercial approval. Exportunity is not a retail marketplace, a gold business, a crypto product, or a public investment adviser.
+
+Agents may clarify, analyze, draft, route work, and create visible internal recommendations. They must not start background conversations, contact third parties, spend money, place orders, accept contracts, make public claims, or commit Exportunity without explicit human approval in the visible interface. Keep context with the responsible named specialist and escalate uncertainty, compliance, financial, or external-action decisions for review.`;
 
 type AgentHierarchy = "super" | "director" | "manager" | "executor";
 type AgentSpec = {

@@ -23,6 +23,8 @@ export type AgentPolicy = {
   agentId: number;
   companyId: number | null;
   departmentId: number | null;
+  organizationKey: string | null;
+  companyContext: string | null;
   role: string;
   roleLevel: number | null;
   decisionAuthority: string | null;
@@ -36,6 +38,9 @@ export type AgentPolicy = {
 };
 
 const DEFAULT_ALLOWED_MODELS = [
+  "gpt-5",
+  "gpt-5-mini",
+  "gpt-5-nano",
   "gpt-4o-mini",
   "gpt-4.1-mini",
   "gpt-4o",
@@ -79,6 +84,22 @@ function deriveToolPermissions(agent: typeof agents.$inferSelect): string[] {
   if (perms.calendar) allowed.add("calendar");
 
   return Array.from(allowed);
+}
+
+function readAgentOrganizationMetadata(agent: typeof agents.$inferSelect) {
+  const metadata =
+    agent.metadata && typeof agent.metadata === "object" && !Array.isArray(agent.metadata)
+      ? (agent.metadata as Record<string, unknown>)
+      : {};
+
+  return {
+    organizationKey: typeof metadata.organizationKey === "string" && metadata.organizationKey.trim()
+      ? metadata.organizationKey.trim()
+      : null,
+    companyContext: typeof metadata.companyContext === "string" && metadata.companyContext.trim()
+      ? metadata.companyContext.trim()
+      : null,
+  };
 }
 
 export async function getAgentPolicy(agentId: number): Promise<AgentPolicy> {
@@ -149,10 +170,14 @@ export async function getAgentPolicy(agentId: number): Promise<AgentPolicy> {
     timeoutMs: 25_000,
   };
 
+  const organization = readAgentOrganizationMetadata(agent);
+
   return {
     agentId,
     companyId: agent.companyId ?? null,
     departmentId: agent.departmentId ?? null,
+    organizationKey: organization.organizationKey,
+    companyContext: organization.companyContext,
     role: agent.role,
     roleLevel: agent.roleLevel ?? null,
     decisionAuthority: (agent.decisionAuthority as any) ?? null,

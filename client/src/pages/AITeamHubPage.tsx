@@ -705,6 +705,28 @@ function workstationChipClass(state: WorkstationChipState) {
   return "border-slate-600 bg-slate-700/40 text-slate-200";
 }
 
+const EXPORTUNITY_CORE_AGENT_KEYS = ["ceo", "tassi", "technical", "sourcing", "commercial"];
+
+function getAgentOrganizationKey(agent: Agent) {
+  const metadata =
+    agent.metadata && typeof agent.metadata === "object" && !Array.isArray(agent.metadata)
+      ? (agent.metadata as Record<string, unknown>)
+      : {};
+  return typeof metadata.organizationKey === "string" ? metadata.organizationKey.trim() : "";
+}
+
+function isExportunityOrganizationAgent(agent: Agent) {
+  const metadata =
+    agent.metadata && typeof agent.metadata === "object" && !Array.isArray(agent.metadata)
+      ? (agent.metadata as Record<string, unknown>)
+      : {};
+  return (
+    typeof metadata.organizationVersion === "string" &&
+    metadata.organizationVersion.startsWith("exportunity-industrial-org-") &&
+    Boolean(getAgentOrganizationKey(agent))
+  );
+}
+
 export function AITeamHubPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -826,13 +848,34 @@ export function AITeamHubPage() {
     enabled: true
   });
 
+  const exportunityOrganizationAgents = useMemo(
+    () => (useExportunityLightWorkspace ? agents.filter(isExportunityOrganizationAgent) : []),
+    [agents, useExportunityLightWorkspace],
+  );
+  const exportunityOrganizationCompanyId = useMemo(
+    () =>
+      exportunityOrganizationAgents
+        .map((agent) => Number(agent.companyId || 0))
+        .find((companyId) => Number.isInteger(companyId) && companyId > 0) ??
+      companies.find((company) => /\bexportunity(?: machinery)?\b/i.test(String(company.name || "")))?.id ??
+      null,
+    [companies, exportunityOrganizationAgents],
+  );
+  const workspaceCompanyId = selectedCompanyId ?? (useExportunityLightWorkspace ? exportunityOrganizationCompanyId : null);
+  const companyAgents = useMemo(() => {
+    if (useExportunityLightWorkspace && exportunityOrganizationAgents.length) {
+      return exportunityOrganizationAgents;
+    }
+    return agents.filter((agent) => !workspaceCompanyId || agent.companyId === workspaceCompanyId);
+  }, [agents, exportunityOrganizationAgents, useExportunityLightWorkspace, workspaceCompanyId]);
+
   const { data: chatRooms = [], isLoading: roomsLoading } = useQuery<ChatRoom[]>({
     queryKey: ["/api/chatrooms"],
     refetchInterval: 5000,
   });
 
-  const channelConversationEndpoint = selectedCompanyId
-    ? `/api/companies/${selectedCompanyId}/channels/all-team/conversation`
+  const channelConversationEndpoint = workspaceCompanyId
+    ? `/api/companies/${workspaceCompanyId}/channels/all-team/conversation`
     : "";
   const channelConversationQueryKey = [channelConversationEndpoint];
 
@@ -882,7 +925,7 @@ export function AITeamHubPage() {
     refetchInterval: 3000,
   });
 
-  const channelConversationId = !currentMeeting && selectedCompanyId ? `channel:${selectedCompanyId}:all-team` : null;
+  const channelConversationId = !currentMeeting && workspaceCompanyId ? `channel:${workspaceCompanyId}:all-team` : null;
   const currentConversationId = currentMeeting?.conversationId || channelConversationId || null;
   const currentMeetingId = currentMeeting ? asPositiveInt((currentMeeting as any).id) : null;
   const membershipAuditKey = currentConversationId
@@ -935,14 +978,14 @@ export function AITeamHubPage() {
     }>;
     pagination: { limit: number; offset: number; hasMore: boolean };
   }>({
-    queryKey: [selectedCompanyId ? `/api/companies/${selectedCompanyId}/activity-feed` : ""],
-    enabled: !!selectedCompanyId,
+    queryKey: [workspaceCompanyId ? `/api/companies/${workspaceCompanyId}/activity-feed` : ""],
+    enabled: !!workspaceCompanyId,
     refetchInterval: 30000
   });
 
   const { data: activityLogItems = [] } = useQuery<ActivityItem[]>({
-    queryKey: [`/api/companies/${selectedCompanyId}/activity`],
-    enabled: !!selectedCompanyId,
+    queryKey: [workspaceCompanyId ? `/api/companies/${workspaceCompanyId}/activity` : ""],
+    enabled: !!workspaceCompanyId,
     refetchInterval: 5000,
   });
 
@@ -1187,10 +1230,6 @@ export function AITeamHubPage() {
     refetchInterval: agendaEnabled ? 15_000 : false,
   });
 
-  const companyAgents = agents.filter(a => 
-    !selectedCompanyId || a.companyId === selectedCompanyId
-  );
-
   useEffect(() => {
     if (opsView !== "background") return;
     if (!selectedCompanyId) return;
@@ -1222,7 +1261,7 @@ export function AITeamHubPage() {
     return Number.isFinite(companyId) && companyId > 0 && tenantCompanyIdSet.has(companyId);
   })?.companyId ?? null;
   const executionCompanyId =
-    selectedCompanyId ?? safeMeetingCompanyId ?? safeMeetingAgentCompanyId ?? companyAgents[0]?.companyId ?? null;
+    selectedCompanyId ?? safeMeetingCompanyId ?? safeMeetingAgentCompanyId ?? workspaceCompanyId ?? companyAgents[0]?.companyId ?? null;
 
   const meetingGoalId = currentMeeting ? toPositiveInt((currentMeeting as any)?.metadata?.goalId) : null;
 
@@ -1748,14 +1787,16 @@ export function AITeamHubPage() {
 
   const createMeetingMutation = useMutation({
     mutationFn: async (data: { title: string }) => {
-      console.log("[Meeting] Creating new meeting:", data.title, "companyId:", selectedCompanyId);
+      const companyId = resolveEffectiveCompanyId();
+      if (!companyId) throw new Error(companiesLoading ? "Loading company context" : "No company found");
+      console.log("[Meeting] Creating new meeting:", data.title, "companyId:", companyId);
       const result = await apiRequest("/api/meetings", "POST", {
         title: data.title,
         description: "Team meeting",
         type: "spontaneous",
         startTime: new Date().toISOString(),
         duration: 30,
-        companyId: selectedCompanyId,
+        companyId,
       });
       const room = result?.chatRoom;
       if (!room?.conversationId) {
@@ -1986,7 +2027,10 @@ export function AITeamHubPage() {
 
   const resolveEffectiveCompanyId = () => {
     return (
-      selectedCompanyId ??
+      workspaceCompanyId ??
+      (useExportunityLightWorkspace
+        ? companies.find((c) => /\bexportunity(?: machinery)?\b/i.test(String(c.name || "")))?.id
+        : null) ??
       companies.find((c) => c.name.toLowerCase().replace(/\s+/g, " ").trim() === "exportunity gold exchange")?.id ??
       companies[0]?.id ??
       null
@@ -2041,7 +2085,7 @@ export function AITeamHubPage() {
       setActiveAgentIds((prev) => Array.from(new Set([...prev, agentId])));
       didHydrateChannelMembers.current = true;
       queryClient.invalidateQueries({
-        queryKey: [selectedCompanyId ? `/api/companies/${selectedCompanyId}/channels/all-team/conversation` : ""],
+        queryKey: channelConversationQueryKey,
       });
       queryClient.invalidateQueries({
         queryKey: [channelConversationId ? `/api/chatrooms/${encodeURIComponent(channelConversationId)}/members` : ""],
@@ -2073,7 +2117,7 @@ export function AITeamHubPage() {
       setActiveAgentIds((prev) => prev.filter((id) => id !== agentId));
       didHydrateChannelMembers.current = true;
       queryClient.invalidateQueries({
-        queryKey: [selectedCompanyId ? `/api/companies/${selectedCompanyId}/channels/all-team/conversation` : ""],
+        queryKey: channelConversationQueryKey,
       });
       queryClient.invalidateQueries({
         queryKey: [channelConversationId ? `/api/chatrooms/${encodeURIComponent(channelConversationId)}/members` : ""],
@@ -2144,7 +2188,7 @@ export function AITeamHubPage() {
         setActiveAgentIds((prev) => Array.from(new Set([...prev, ...ids])));
         didHydrateChannelMembers.current = true;
         queryClient.invalidateQueries({
-          queryKey: [selectedCompanyId ? `/api/companies/${selectedCompanyId}/channels/all-team/conversation` : ""],
+          queryKey: channelConversationQueryKey,
         });
         queryClient.invalidateQueries({
           queryKey: [channelConversationId ? `/api/chatrooms/${encodeURIComponent(channelConversationId)}/members` : ""],
@@ -2190,7 +2234,7 @@ export function AITeamHubPage() {
         setActiveAgentIds([]);
         didHydrateChannelMembers.current = true;
         queryClient.invalidateQueries({
-          queryKey: [selectedCompanyId ? `/api/companies/${selectedCompanyId}/channels/all-team/conversation` : ""],
+          queryKey: channelConversationQueryKey,
         });
         queryClient.invalidateQueries({
           queryKey: [channelConversationId ? `/api/chatrooms/${encodeURIComponent(channelConversationId)}/members` : ""],
@@ -2731,7 +2775,7 @@ export function AITeamHubPage() {
   useEffect(() => {
     if (didHydrateChannelMembers.current) return;
     if (currentMeeting) return;
-    if (!selectedCompanyId) return;
+    if (!workspaceCompanyId) return;
 
     const ids = channelMemberships
       .map((m) => m.agent?.id)
@@ -2741,14 +2785,23 @@ export function AITeamHubPage() {
       setActiveAgentIds(Array.from(new Set(ids)));
       didHydrateChannelMembers.current = true;
     }
-  }, [channelMemberships, currentMeeting, selectedCompanyId]);
+  }, [channelMemberships, currentMeeting, workspaceCompanyId]);
 
   useEffect(() => {
     if (companyAgents.length > 0 && activeAgentIds.length === 0 && !currentMeeting) {
-      const defaultAgents = companyAgents.filter(a => a.status === 'active').slice(0, 3).map(a => a.id);
+      const activeByOrganizationKey = new Map(
+        companyAgents
+          .filter((agent) => agent.status === "active")
+          .map((agent) => [getAgentOrganizationKey(agent), agent] as const),
+      );
+      const defaultAgents = useExportunityLightWorkspace
+        ? EXPORTUNITY_CORE_AGENT_KEYS.map((key) => activeByOrganizationKey.get(key)?.id).filter(
+            (id): id is number => typeof id === "number" && id > 0,
+          )
+        : companyAgents.filter((agent) => agent.status === "active").slice(0, 3).map((agent) => agent.id);
       if (defaultAgents.length > 0) setActiveAgentIds(defaultAgents);
     }
-  }, [companyAgents, currentMeeting]);
+  }, [companyAgents, currentMeeting, useExportunityLightWorkspace]);
 
   const formatTime = (dateStr: string) => {
     const date = new Date(dateStr);
@@ -3147,7 +3200,13 @@ export function AITeamHubPage() {
       {/* Mobile Left Sheet - Meetings */}
       {isMobile && (
         <Sheet open={mobileLeftSheet} onOpenChange={setMobileLeftSheet}>
-          <SheetContent side="left" className="w-[300px] p-0 bg-gray-900 border-gray-800">
+          <SheetContent
+            side="left"
+            className={cn(
+              "w-[300px] p-0",
+              useExportunityLightWorkspace ? "exportunity-operations-light bg-white border-slate-200" : "bg-gray-900 border-gray-800",
+            )}
+          >
             <MeetingsSidebar />
           </SheetContent>
         </Sheet>
@@ -3156,7 +3215,13 @@ export function AITeamHubPage() {
       {/* Mobile Right Sheet - Agents */}
       {isMobile && (
         <Sheet open={mobileRightSheet} onOpenChange={setMobileRightSheet}>
-          <SheetContent side="right" className="w-[300px] p-0 bg-gray-900 border-gray-800">
+          <SheetContent
+            side="right"
+            className={cn(
+              "w-[300px] p-0",
+              useExportunityLightWorkspace ? "exportunity-operations-light bg-white border-slate-200" : "bg-gray-900 border-gray-800",
+            )}
+          >
             <AgentsSidebar />
           </SheetContent>
         </Sheet>
@@ -5883,7 +5948,15 @@ export function AITeamHubPage() {
       )}
 
       <Sheet open={membersAuditOpen} onOpenChange={setMembersAuditOpen}>
-        <SheetContent side="right" className="w-[420px] sm:max-w-[90vw] bg-gray-950 border-gray-800 text-gray-100">
+        <SheetContent
+          side="right"
+          className={cn(
+            "w-[420px] sm:max-w-[90vw]",
+            useExportunityLightWorkspace
+              ? "exportunity-operations-light bg-white border-slate-200 text-slate-900"
+              : "bg-gray-950 border-gray-800 text-gray-100",
+          )}
+        >
           <SheetHeader>
             <SheetTitle className="text-white">Members ({activeAgents.length})</SheetTitle>
           </SheetHeader>

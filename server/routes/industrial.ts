@@ -172,6 +172,7 @@ import {
   normalizeLegacyProductName,
   recommendLegacyProductReview,
 } from "../lib/industrial/legacyProductReview";
+import { createIndustrialRequirementOperationsHandoff } from "../lib/industrial/operationsHandoff";
 
 const router = Router();
 
@@ -6258,6 +6259,84 @@ router.post("/requirements", async (req: any, res) => {
         intake: "public",
       },
     });
+
+    // A front-office requirement becomes a visible Operations Center task. This
+    // deliberately creates no agent conversation, supplier outreach, or other
+    // external action; those remain subject to the normal approval workflow.
+    try {
+      const handoff = await createIndustrialRequirementOperationsHandoff({
+        tenantId: tenant.id,
+        requirementId: requirement.id,
+        referenceCode: requirement.referenceCode,
+        requirementType: parsed.data.requirementType,
+        categoryCode: parsed.data.categoryCode,
+        title: parsed.data.title,
+        details: parsed.data.details,
+        quantityText: parsed.data.quantityText,
+        deliveryCountryCode: parsed.data.deliveryCountryCode,
+        deliveryCity: parsed.data.deliveryCity,
+        urgency: parsed.data.urgency,
+        requesterCompany: parsed.data.requesterCompany,
+        requesterName: parsed.data.requesterName,
+      });
+
+      if (handoff.taskId) {
+        await db
+          .update(industrialRequirements)
+          .set({
+            metadata: {
+              intake: "public_industrial_requirement",
+              source: "exportunity.net",
+              requiredByText: parsed.data.requiredBy || null,
+              technicalDetails: parsed.data.technicalDetails,
+              attachmentUpload: {
+                tokenHash: attachmentUpload.tokenHash,
+                expiresAt: attachmentUploadExpiresAt.toISOString(),
+                maxFiles: INDUSTRIAL_REQUIREMENT_ATTACHMENT_MAX_FILES,
+              },
+              operationsHandoff: {
+                taskId: handoff.taskId,
+                assignedAgentId: handoff.assignedAgentId,
+                assignedAgentName: handoff.assignedAgentName,
+                participantAgentIds: handoff.participantAgentIds,
+                status: handoff.status,
+                createdAt: new Date().toISOString(),
+              },
+            },
+            updatedAt: new Date(),
+          })
+          .where(eq(industrialRequirements.id, requirement.id));
+
+        await db.insert(industrialAuditLogs).values({
+          tenantId: tenant.id,
+          action: "industrial_requirement.operations_handoff_created",
+          entityType: "industrial_requirement",
+          entityId: requirement.id,
+          metadata: {
+            taskId: handoff.taskId,
+            assignedAgentId: handoff.assignedAgentId,
+            participantAgentIds: handoff.participantAgentIds,
+            source: "exportunity_industrial_front_office",
+          },
+        });
+      } else if (handoff.status === "unavailable") {
+        await db.insert(industrialAuditLogs).values({
+          tenantId: tenant.id,
+          action: "industrial_requirement.operations_handoff_unavailable",
+          entityType: "industrial_requirement",
+          entityId: requirement.id,
+          metadata: { reason: handoff.reason || "unknown" },
+        });
+      }
+    } catch (handoffError) {
+      console.error("industrial_requirement_operations_handoff_failed", {
+        requirementId: requirement.id,
+        message:
+          handoffError instanceof Error
+            ? handoffError.message
+            : "unknown error",
+      });
+    }
 
     return res.status(201).json({
       ok: true,

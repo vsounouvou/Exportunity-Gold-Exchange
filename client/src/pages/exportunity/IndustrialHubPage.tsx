@@ -20,7 +20,6 @@ import {
 import "leaflet/dist/leaflet.css";
 import {
   ArrowRight,
-  Bot,
   Building2,
   CheckCircle2,
   ChevronRight,
@@ -30,13 +29,11 @@ import {
   Languages,
   List,
   MapPinned,
-  MessageCircle,
   Moon,
   PackageSearch,
   Paperclip,
   Plus,
   Search,
-  Send,
   Settings2,
   Sun,
   Trash2,
@@ -44,7 +41,6 @@ import {
 } from "lucide-react";
 
 import { useLocale } from "@/contexts/LocaleContext";
-import { VoiceToTextButton } from "@/components/chat/VoiceToTextButton";
 import { useSession } from "@/lib/session";
 import { cn } from "@/lib/utils";
 import {
@@ -4748,16 +4744,6 @@ export default function IndustrialHubPage() {
           heroTitle: "Quel besoin industriel bloque votre production ?",
           heroText:
             "Décrivez une pièce, une machine, une ligne ou un intrant. Ajoutez une photo, une référence ou un plan : Exportunity organise le dossier pour revue technique avant toute mise en relation.",
-          assistantName: "Exportunity AI",
-          assistantRole: "Assistant industriel",
-          assistantGreeting:
-            "Dites-moi ce qui bloque votre production. Je peux organiser une recherche vérifiée ou préparer votre demande technique.",
-          assistantPlaceholder:
-            "Décrivez une pièce, une machine, un matériau ou un problème de production…",
-          assistantSend: "Envoyer à Exportunity AI",
-          assistantVoice: "Parler à Exportunity AI",
-          assistantHint:
-            "Exportunity AI transmet votre demande vers les usines, produits et fournisseurs vérifiés.",
           searchPlaceholder:
             "Rechercher une usine, un produit, une machine, une matière première ou une pièce",
           search: "Rechercher",
@@ -4822,16 +4808,6 @@ export default function IndustrialHubPage() {
           heroTitle: "What industrial need is blocking your production?",
           heroText:
             "Describe a part, machine, line, or material. Add a photo, reference, or drawing and Exportunity prepares the case for technical review before any supplier introduction.",
-          assistantName: "Exportunity AI",
-          assistantRole: "Industrial assistant",
-          assistantGreeting:
-            "Tell me what is blocking production. I can organize a verified search or prepare your technical request.",
-          assistantPlaceholder:
-            "Describe a part, machine, material, or production issue…",
-          assistantSend: "Send to Exportunity AI",
-          assistantVoice: "Speak to Exportunity AI",
-          assistantHint:
-            "Exportunity AI routes your request to verified factories, products, and suppliers.",
           searchPlaceholder:
             "Search a factory, product, machine, raw material, or part number",
           search: "Search",
@@ -5071,17 +5047,6 @@ export default function IndustrialHubPage() {
       href: "/request-quote?type=custom_manufacturing",
       icon: ClipboardList,
     },
-  ];
-
-  const assistantQuickReplies = [
-    locale === "fr" ? "Trouver une pièce détachée" : "Find a spare part",
-    locale === "fr" ? "Sourcer une machine" : "Source a machine",
-    locale === "fr"
-      ? "Trouver un intrant industriel"
-      : "Find an industrial input",
-    locale === "fr"
-      ? "Fabriquer une pièce localement"
-      : "Manufacture a part locally",
   ];
 
   const industrialNeedFlow = [
@@ -5499,85 +5464,6 @@ export default function IndustrialHubPage() {
                       {copy.heroText}
                     </p>
                     <IndustrialAssistantChat language={locale} requester={user} />
-                    <section
-                      aria-label={copy.assistantName}
-                      className="hidden mt-7 rounded-2xl border border-white/20 bg-[#02070e]/60 p-3 shadow-[0_18px_48px_rgba(0,0,0,0.28)] backdrop-blur-md"
-                    >
-                      <div className="flex items-center gap-3 px-1 pb-3">
-                        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-[#F5A623] text-[#07111F] shadow-[0_8px_20px_rgba(245,166,35,0.24)]">
-                          <Bot className="h-5 w-5" />
-                        </span>
-                        <span className="min-w-0">
-                          <span className="block text-sm font-semibold text-white">
-                            {copy.assistantName}
-                          </span>
-                          <span className="block text-xs text-slate-300">
-                            {copy.assistantRole}
-                          </span>
-                        </span>
-                      </div>
-                      <div className="rounded-xl border border-white/10 bg-white/10 px-3 py-2.5 text-sm leading-6 text-slate-100">
-                        {copy.assistantGreeting}
-                      </div>
-                      <form
-                        onSubmit={goSearch}
-                        className="mt-3 flex items-center gap-2 rounded-xl border border-white/20 bg-white p-2 shadow-[0_10px_28px_rgba(0,0,0,0.2)]"
-                      >
-                        <MessageCircle className="ml-1 h-5 w-5 shrink-0 text-[#a96f0b]" />
-                        <input
-                          value={search}
-                          onChange={(event) => setSearch(event.target.value)}
-                          className="min-w-0 flex-1 bg-transparent px-2 py-2.5 text-sm text-slate-950 outline-none placeholder:text-slate-400"
-                          placeholder={copy.assistantPlaceholder}
-                          aria-label={copy.assistantPlaceholder}
-                        />
-                        <VoiceToTextButton
-                          draftText={search}
-                          setDraftText={setSearch}
-                          appendDraftText={(text) =>
-                            setSearch((current) => `${current} ${text}`.trim())
-                          }
-                          hideHelper
-                          helperText={copy.assistantVoice}
-                          recordingText={
-                            locale === "fr"
-                              ? "Touchez pour arrêter l'enregistrement"
-                              : "Tap again to stop recording"
-                          }
-                          unavailableText={
-                            locale === "fr"
-                              ? "Microphone indisponible"
-                              : "Microphone unavailable"
-                          }
-                        />
-                        <button
-                          type="submit"
-                          className="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-[#F5A623] text-[#07111F] transition hover:bg-[#f9a800] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#07111F] focus-visible:ring-offset-2"
-                          aria-label={copy.assistantSend}
-                          title={copy.assistantSend}
-                        >
-                          <Send className="h-4 w-4" />
-                        </button>
-                      </form>
-                      <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
-                        {assistantQuickReplies.map((prompt) => (
-                          <button
-                            key={prompt}
-                            type="button"
-                            onClick={() => {
-                              setSearch(prompt);
-                              navigate(`/factories?q=${encodeURIComponent(prompt)}`);
-                            }}
-                            className="shrink-0 rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-medium text-white transition hover:border-[#F5A623]/80 hover:bg-[#F5A623]/15"
-                          >
-                            {prompt}
-                          </button>
-                        ))}
-                      </div>
-                      <p className="mt-3 text-xs leading-5 text-slate-300">
-                        {copy.assistantHint}
-                      </p>
-                    </section>
                     <div className="mt-6 grid gap-x-5 sm:grid-cols-2">
                       {heroNeedActions.map((action) => {
                         const Icon = action.icon;

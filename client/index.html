@@ -47,6 +47,7 @@
           if (!hostname) return "neutral";
           if (hostname.indexOf("boursedelor") !== -1) return "bdo";
           if (hostname.indexOf("agoojiye") !== -1 || hostname.indexOf("agoojye") !== -1 || hostname.indexOf("agojye") !== -1) return "agoojye";
+          if (hostname.indexOf("exportunity") !== -1) return "exportunity";
           return "neutral";
         }
 
@@ -72,6 +73,17 @@
           manifest: "/manifest-agoojiye.webmanifest"
         };
 
+        var exportunityMeta = {
+          title: "Exportunity | Industrial trade, sourcing and manufacturing",
+          app: "Exportunity",
+          color: "#07111F",
+          description: "Exportunity connects industrial demand to technical intake, verified sourcing, local manufacturing, quality control, logistics, and export readiness across Africa.",
+          image: "/tenants/exportunity/industrial/machinery-team.png",
+          icon: "/tenants/exportunity/favicon.svg",
+          iconIco: "/tenants/exportunity/favicon.ico",
+          manifest: "/manifest-exportunity.webmanifest"
+        };
+
         var neutralMeta = {
           title: "Platform",
           app: "Platform",
@@ -82,7 +94,7 @@
           manifest: "/manifest.webmanifest"
         };
 
-        var tenantMeta = tenant === "bdo" ? bdoMeta : tenant === "agoojye" ? agoojiyeMeta : neutralMeta;
+        var tenantMeta = tenant === "bdo" ? bdoMeta : tenant === "agoojye" ? agoojiyeMeta : tenant === "exportunity" ? exportunityMeta : neutralMeta;
 
         function withBuster(path) {
           if (!path) return path;

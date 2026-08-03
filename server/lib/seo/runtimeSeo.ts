@@ -203,7 +203,7 @@ function tenantDescription(tenantKey: string) {
     return "BOURSE DE L'OR - certified physical gold, verified jewelry, certificate verification, secure delivery, and resale requests.";
   }
   if (tenantKey === "exportunity") {
-    return "Exportunity — proximity retail + wholesale marketplace on a shared wallet foundation.";
+    return "Exportunity connects industrial demand to technical intake, verified sourcing, local manufacturing, quality control, logistics, and export readiness across Africa.";
   }
   return "BOURSE DE L'OR - certified physical gold, verified jewelry, certificate verification, secure delivery, and resale requests.";
 }

@@ -366,12 +366,12 @@ const TENANT_MANIFEST_OVERRIDES: Record<string, TenantManifestOverride> = {
     theme_color: "#0B0B0D",
   },
   exportunity: {
-    name: "Exportunity Marketplace",
+    name: "Exportunity",
     short_name: "Exportunity",
-    description: "Exportunity marketplace for export-ready products and wholesale sourcing.",
-    start_url: "/zone",
-    background_color: "#0B0F19",
-    theme_color: "#0B0F19",
+    description: "Industrial sourcing, manufacturing, quality control, logistics, and export readiness across Africa.",
+    start_url: "/industrial",
+    background_color: "#07111F",
+    theme_color: "#F5A623",
   },
   zone: {
     name: "Exportunity Marketplace",

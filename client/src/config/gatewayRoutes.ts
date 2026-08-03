@@ -10,7 +10,7 @@ export type GatewayDestinations = {
 
 const TENANT_ENTRY_URLS: Record<TenantKey, string> = {
   bdo: "/marketplace?mode=retail",
-  exportunity: "/marketplace?mode=retail",
+  exportunity: "/industrial",
   agoojye: "/",
   zone: "/marketplace?mode=retail",
   mindbase: "/mindbase",
@@ -32,11 +32,11 @@ const TENANT_ROLE_URLS: Record<TenantKey, Record<GatewayRoleKey, string>> = {
     explore: "/marketplace?mode=demo",
   },
   exportunity: {
-    miner: "/apply/shop",
-    wholesaler: "/marketplace?mode=wholesale",
-    buyer: "/marketplace?mode=retail",
-    investor: "/marketplace?mode=invest",
-    explore: "/marketplace?mode=demo",
+    miner: "/factories/register",
+    wholesaler: "/industrial-supply",
+    buyer: "/industrial",
+    investor: "/request-quote?type=machinery&financing=discussion",
+    explore: "/map",
   },
   agoojye: {
     miner: "/admin/agoojye/teams",

@@ -24,6 +24,7 @@ import {
 } from "../lib/communications/twilio";
 import { createInboundMessageLog, mapTwilioStatusToLogStatus, updateOutboundMessageLogBySid } from "../lib/communications/message-logs";
 import { resolveInboundTwilioContext } from "../lib/communications/sender-resolution";
+import { canSendLegacyInboundAutoReply } from "../lib/communications/inbound-auto-reply-policy";
 
 const router = Router();
 
@@ -50,8 +51,11 @@ function getTwilioSigningSecret() {
   );
 }
 
-function shouldAutoReply() {
-  return String(process.env.TWILIO_AUTO_REPLY || "true").trim().toLowerCase() !== "false";
+function shouldAutoReply(tenantKey?: string | null) {
+  return canSendLegacyInboundAutoReply({
+    tenantKey,
+    enabled: process.env.TWILIO_AUTO_REPLY,
+  });
 }
 
 function shouldVoiceVoicemail() {
@@ -388,7 +392,7 @@ async function handleMessageInbound(req: Request, res: Response) {
   });
 
   // Only auto-reply once (idempotent on MessageSid).
-  if (inserted.length && shouldAutoReply() && bodyText) {
+  if (inserted.length && shouldAutoReply(tenantKey) && bodyText) {
     try {
       const reply = await replyRouter(bodyText, { tenantId, tenantKey: tenantKey || "exportunity" });
       const out = await sendOutboundCommunication({

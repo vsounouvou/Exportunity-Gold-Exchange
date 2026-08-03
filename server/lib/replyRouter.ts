@@ -4,6 +4,7 @@ import { lbmaPriceCache, messageTemplates } from "@db/schema";
 import { generateAgentResponse } from "./ai-provider";
 import { isAiEnabled } from "./ai-consent";
 import { insertLbmaPriceCacheRow } from "./lbmaPriceCache";
+import { buildExportunityIndustrialInboundReply } from "./communications/exportunity-inbound-response";
 
 export type ReplyMode = "canned" | "data" | "llm";
 
@@ -104,8 +105,16 @@ export async function replyRouter(
   ctx?: { tenantId?: number | null; tenantKey?: string | null; language?: "fr" | "en" }
 ): Promise<ReplyRouterResult> {
   const raw = String(message || "").trim();
+  const tenantKey = String(ctx?.tenantKey || "").trim().toLowerCase();
   const normalized = normalizeText(raw);
   const lang = ctx?.language ?? detectLanguage(raw, "fr");
+
+  // Exportunity has a dedicated industrial intake path. Keep this legacy router
+  // from leaking gold, KYC, payment, or escrow language into that tenant.
+  if (tenantKey === "exportunity") {
+    return buildExportunityIndustrialInboundReply(lang);
+  }
+
   const templates = await fetchTemplates({ tenantId: ctx?.tenantId ?? null, language: lang });
 
   // Tier 0 — canned / template-first

@@ -16,6 +16,7 @@ import { downloadWhatsAppMedia } from "../lib/whatsapp/media";
 import { processIncomingWhatsAppMessage } from "../lib/whatsapp/orchestrator";
 import { getWhatsAppProvider } from "../lib/whatsapp/provider";
 import { normalizeWaPhoneE164, hashOtp } from "../lib/whatsapp/waGateway";
+import { canRunLegacyWhatsAppAutomation } from "../lib/communications/inbound-auto-reply-policy";
 import { isChairmanAssistantUser } from "./utils/auth";
 import { AGENT_KEYS } from "../agents";
 
@@ -454,6 +455,7 @@ export async function whatsappWebhook(req: AuthedRequest, res: Response) {
 
   const payload = req.body;
   const tenantId = (req as any)?.tenant?.id as number | undefined;
+  const tenantKey = String((req as any)?.tenant?.key || "").trim().toLowerCase();
 
   // Status updates (delivery receipts)
   const statuses = payload?.entry?.flatMap((e: any) => e?.changes?.flatMap((c: any) => c?.value?.statuses || []) || []) || [];
@@ -528,6 +530,13 @@ export async function whatsappWebhook(req: AuthedRequest, res: Response) {
         waPhoneE164: from,
         lastInboundAt: new Date(),
       });
+    }
+
+    if (!canRunLegacyWhatsAppAutomation({
+      tenantKey,
+      enabled: process.env.WHATSAPP_LEGACY_AUTOMATION_ENABLED,
+    })) {
+      continue;
     }
 
     await processIncomingWhatsAppMessage({

@@ -569,6 +569,14 @@ function ExportunityIndustrialMapRoute() {
   return <StoreRoute />;
 }
 
+function ExportunityIndustrialAliasRoute({ to }: { to: string }) {
+  const { tenant } = useTenant();
+  if (tenant.key === "exportunity" && !isExportunityMarketingHost()) {
+    return <Redirect to={to} />;
+  }
+  return <StoreRoute />;
+}
+
 function ExportunityMachineryRoute() {
   const { tenant } = useTenant();
   if (tenant.key === "exportunity" && !isExportunityMarketingHost()) {
@@ -684,6 +692,10 @@ function MarketingOrAuthRedirect({ marketingTo, authTo }: { marketingTo: string;
 }
 
 function RetailAliasRedirect() {
+  const { tenant } = useTenant();
+  if (tenant.key === "exportunity" && !isExportunityMarketingHost()) {
+    return <Redirect to="/industrial" />;
+  }
   if (typeof window === "undefined") return <Redirect to="/zone" />;
   const pathname = String(window.location.pathname || "/retail");
   const suffix = pathname.startsWith("/retail/") ? pathname.slice("/retail".length) : "";
@@ -903,16 +915,21 @@ function App() {
           <Route path="/industrial-supply/:rest*" component={ExportunityIndustrialRoute} />
           <Route path="/request-quote" component={ExportunityIndustrialRoute} />
           <Route path="/my-factory" component={ExportunityIndustrialRoute} />
-          <Route path="/zone" component={StoreRoute} />
-          <Route path="/zone/:rest*" component={StoreRoute} />
+          <Route path="/zone" component={() => <ExportunityIndustrialAliasRoute to="/industrial" />} />
+          <Route path="/zone/:rest*" component={() => <ExportunityIndustrialAliasRoute to="/industrial" />} />
           <Route path="/map" component={ExportunityIndustrialMapRoute} />
-          <Route path="/marketplace/map" component={StoreRoute} />
-          <Route path="/pme-exchange" component={StoreRoute} />
-          <Route path="/ready-for-export" component={StoreRoute} />
+          <Route path="/marketplace/map" component={ExportunityIndustrialMapRoute} />
+          <Route path="/marketplace/map/:rest*" component={ExportunityIndustrialMapRoute} />
+          <Route path="/pme-exchange" component={() => <ExportunityIndustrialAliasRoute to="/factories" />} />
+          <Route path="/pme-exchange/:rest*" component={() => <ExportunityIndustrialAliasRoute to="/factories" />} />
+          <Route path="/ready-for-export" component={() => <ExportunityIndustrialAliasRoute to="/export-products" />} />
+          <Route path="/ready-for-export/:rest*" component={() => <ExportunityIndustrialAliasRoute to="/export-products" />} />
           <Route path="/retail" component={RetailAliasRedirect} />
           <Route path="/retail/:rest*" component={RetailAliasRedirect} />
-          <Route path="/marketplace" component={StoreRoute} />
-          <Route path="/shop" component={StoreRoute} />
+          <Route path="/marketplace" component={() => <ExportunityIndustrialAliasRoute to="/industrial" />} />
+          <Route path="/marketplace/:rest*" component={() => <ExportunityIndustrialAliasRoute to="/industrial" />} />
+          <Route path="/shop" component={() => <ExportunityIndustrialAliasRoute to="/industrial" />} />
+          <Route path="/shop/:rest*" component={() => <ExportunityIndustrialAliasRoute to="/industrial" />} />
           <Route path="/wholesale" component={BdoWholesaleRoute} />
           <Route path="/wholesale/:rest*" component={BdoWholesaleRoute} />
           <Route path="/gateway" component={GatewayPage} />

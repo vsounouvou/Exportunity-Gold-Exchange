@@ -78,6 +78,7 @@ import {
   PanelRight,
   Paperclip,
   FileText,
+  ShieldCheck,
 } from "lucide-react";
 import type { Agent } from "@db/schema";
 import { format, formatDistanceToNowStrict } from "date-fns";
@@ -3066,9 +3067,9 @@ export function AITeamHubPage() {
     <div className="flex flex-col h-full">
       <div className="p-4 border-b border-gray-800">
         <div className="flex items-center justify-between mb-3">
-          <h3 className="text-white font-semibold flex items-center gap-2">
-            <Users className="h-4 w-4 text-blue-400" />
-            {currentMeeting ? "Participants" : "Team Members"}
+            <h3 className="text-white font-semibold flex items-center gap-2">
+              <Users className="h-4 w-4 text-blue-400" />
+              {currentMeeting ? "Participants" : useExportunityLightWorkspace ? "Exportunity team" : "Team Members"}
           </h3>
           {!isMobile && (
             <Button variant="ghost" size="sm" onClick={() => setShowAgentList(false)} className="text-gray-400 hover:text-white h-8 w-8 p-0">
@@ -3088,6 +3089,22 @@ export function AITeamHubPage() {
       </div>
 
       <ScrollArea className="flex-1">
+        {useExportunityLightWorkspace && companyAgents.length > 0 ? (
+          <div className="mx-4 mt-4 rounded-xl border border-blue-500/30 bg-blue-500/10 p-3">
+            <div className="flex items-start gap-2.5">
+              <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-blue-400" />
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-white">Exportunity industrial team</p>
+                <p className="mt-0.5 text-xs leading-5 text-gray-400">
+                  {companyAgents.length} named specialists for sourcing, technical review, trade, controls, and client work.
+                </p>
+              </div>
+            </div>
+            <p className="mt-2 text-[11px] leading-4 text-gray-500">
+              Conversations stay visible. External communication, commitments, and payments require approval.
+            </p>
+          </div>
+        ) : null}
         {hasBackgroundActivity && !currentMeeting && (
           <div className="p-4 border-b border-gray-800">
             <div className="flex items-center justify-between mb-3">
@@ -3164,9 +3181,9 @@ export function AITeamHubPage() {
         <div className="p-4">
           <div className="flex items-center justify-between mb-3">
             <h4 className="text-xs font-medium text-gray-500 uppercase tracking-wide">
-              Available ({availableAgents.length})
+              {useExportunityLightWorkspace ? "Specialists ready" : "Available"} ({availableAgents.length})
             </h4>
-            {availableAgents.length > 0 && !currentMeeting && (
+            {availableAgents.length > 0 && !currentMeeting && !useExportunityLightWorkspace && (
               <Button variant="ghost" size="sm" className="h-6 text-xs text-blue-400 hover:text-blue-300 px-1" onClick={addAllAgents}>
                 Add All
               </Button>
@@ -3210,6 +3227,11 @@ export function AITeamHubPage() {
                 {agentSearch ? "No agents match search" : "All agents added"}
               </div>
             )}
+            {useExportunityLightWorkspace && availableAgents.length > 0 && !agentSearch ? (
+              <p className="px-1 pt-1 text-xs leading-5 text-gray-500">
+                Invite the specialist needed for this case. The core team stays available without crowding the conversation.
+              </p>
+            ) : null}
           </div>
         </div>
       </ScrollArea>
@@ -5591,7 +5613,7 @@ export function AITeamHubPage() {
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-white font-semibold flex items-center gap-2">
                 <Users className="h-4 w-4 text-blue-400" />
-                {currentMeeting ? "Participants" : "Team Members"}
+                {currentMeeting ? "Participants" : useExportunityLightWorkspace ? "Exportunity team" : "Team Members"}
               </h3>
               <Button variant="ghost" size="sm" onClick={() => setShowAgentList(false)} className="text-gray-400 hover:text-white h-6 w-6 p-0">
                 <X className="h-4 w-4" />
@@ -5609,6 +5631,22 @@ export function AITeamHubPage() {
           </div>
 
           <ScrollArea className="ops-team-scroll-area flex-1 min-h-0">
+            {useExportunityLightWorkspace && companyAgents.length > 0 && !currentMeeting ? (
+              <div className="m-4 rounded-xl border border-blue-500/30 bg-blue-500/10 p-3">
+                <div className="flex items-start gap-2.5">
+                  <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-blue-400" />
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-white">Exportunity industrial team</p>
+                    <p className="mt-0.5 text-xs leading-5 text-gray-400">
+                      {companyAgents.length} named specialists for sourcing, technical review, trade, controls, and client work.
+                    </p>
+                  </div>
+                </div>
+                <p className="mt-2 text-[11px] leading-4 text-gray-500">
+                  Conversations stay visible. External communication, commitments, and payments require approval.
+                </p>
+              </div>
+            ) : null}
             {/* Execution Panel (Meeting mode) */}
             {currentMeeting && executionCompanyId && meetingRoomId && (
               <div className="p-4 border-b border-gray-800 space-y-3">
@@ -5921,9 +5959,9 @@ export function AITeamHubPage() {
             <div className="p-4">
               <div className="flex items-center justify-between mb-3">
                 <h4 className="text-xs font-medium text-gray-500 uppercase tracking-wide">
-                  Available ({availableAgents.length})
+                  {useExportunityLightWorkspace ? "Specialists ready" : "Available"} ({availableAgents.length})
                 </h4>
-                {availableAgents.length > 0 && !currentMeeting && (
+                {availableAgents.length > 0 && !currentMeeting && !useExportunityLightWorkspace && (
                   <Button variant="ghost" size="sm" className="h-5 text-xs text-blue-400 hover:text-blue-300 px-1" onClick={addAllAgents}>
                     Add All
                   </Button>
@@ -5971,6 +6009,11 @@ export function AITeamHubPage() {
                     {agentSearch ? "No agents match search" : "All agents added"}
                   </div>
                 )}
+                {useExportunityLightWorkspace && availableAgents.length > 0 && !agentSearch ? (
+                  <p className="px-1 pt-1 text-xs leading-5 text-gray-500">
+                    Invite the specialist needed for this case. The core team remains available without crowding the conversation.
+                  </p>
+                ) : null}
               </div>
             </div>
           </ScrollArea>

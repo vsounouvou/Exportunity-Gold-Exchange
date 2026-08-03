@@ -414,7 +414,7 @@ export function IndustrialAssistantChat({
       </div>
 
       {!intake ? (
-        <div className="flex gap-2 overflow-x-auto border-t border-white/10 px-3 py-2 sm:px-4 sm:py-3">
+        <div className="flex gap-2 overflow-x-auto border-t border-white/10 px-3 py-2 sm:flex-wrap sm:overflow-visible sm:px-4 sm:py-3">
           {copy.firstReplies.map((reply) => (
             <button
               key={reply}

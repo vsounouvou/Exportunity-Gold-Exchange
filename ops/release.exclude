@@ -33,7 +33,6 @@ dist/public/images/agents
 dist/public/images/boursedelor
 client/public/product-images
 dist/public/product-images
-client/public/tenants/exportunity
 client/public/tenants/hoz
 client/public/tenants/mindbase
 client/public/tenants/rayon1km
@@ -41,7 +40,6 @@ client/public/tenants/vs
 client/public/tenants/xportcard
 client/public/tenants/zogueland
 client/public/tenants/zone
-dist/public/tenants/exportunity
 dist/public/tenants/hoz
 dist/public/tenants/mindbase
 dist/public/tenants/rayon1km

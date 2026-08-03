@@ -23,6 +23,9 @@ test("Exportunity industrial home leads with the case-backed AI conversation", (
   const homeAssistantIndex = hub.indexOf(
     "<IndustrialAssistantChat language={locale} requester={user} />",
   );
+  const homeStart = hub.indexOf('{view === "home" ? (');
+  const publicDirectoryStart = hub.indexOf('{view !== "map"', homeStart);
+  const homeMarkup = hub.slice(homeStart, publicDirectoryStart);
   const firstGenericSearchIndex = hub.indexOf(
     "placeholder={copy.searchPlaceholder}",
   );
@@ -32,8 +35,14 @@ test("Exportunity industrial home leads with the case-backed AI conversation", (
     /import \{ IndustrialAssistantChat \} from "@\/components\/exportunity\/IndustrialAssistantChat";/,
   );
   assert.ok(homeAssistantIndex >= 0);
+  assert.ok(homeStart >= 0);
+  assert.ok(publicDirectoryStart > homeStart);
+  assert.match(homeMarkup, /<IndustrialAssistantChat language=\{locale\} requester=\{user\} \/>/);
+  assert.doesNotMatch(homeMarkup, /onSubmit=\{goSearch\}/);
+  assert.doesNotMatch(homeMarkup, /placeholder=\{copy\.searchPlaceholder\}/);
   assert.ok(firstGenericSearchIndex > homeAssistantIndex);
   assert.match(assistant, /\/api\/industrial\/assistant\/intake-preview/);
   assert.match(assistant, /\/api\/industrial\/requirements/);
   assert.match(assistant, /Message Exportunity AI/);
+  assert.match(assistant, /VoiceToTextButton/);
 });

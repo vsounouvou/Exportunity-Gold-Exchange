@@ -76,11 +76,11 @@ export function IndustrialAssistantChat({
           role: "Assistant sourcing et operations",
           conversation: "Conversation avec Exportunity AI",
           ready: "Conversation prete",
-          composerLabel: "Votre message a Exportunity AI",
+          composerLabel: "Envoyer un message à Exportunity AI",
           greeting:
-            "Bonjour. Decrivez une piece, une machine, une matiere ou un besoin de transport. Je prepare le bon dossier technique avant toute mise en relation.",
+            "Bonjour, je suis Exportunity AI. Dites-moi ce que vous devez sourcer, fabriquer ou acheminer. Je prépare le bon dossier pour une revue interne avant toute mise en relation.",
           placeholder:
-            "Ecrivez votre besoin industriel ou expliquez ce qui bloque la production...",
+            "Écrivez à Exportunity AI au sujet d'une pièce, machine, matière, commodité ou expédition...",
           attach: "Joindre une photo ou un fichier",
           send: "Envoyer a Exportunity AI",
           preparing: "Exportunity AI organise votre demande...",
@@ -96,6 +96,10 @@ export function IndustrialAssistantChat({
           attachmentError: "Chaque fichier doit faire 15 Mo ou moins.",
           emptyMessage:
             "Ajoutez plus de details sur la piece, la machine, la quantite ou le probleme a resoudre.",
+          evidenceSaved:
+            "fichier technique joint comme élément de preuve privé pour la revue interne",
+          evidenceSavedPlural:
+            "fichiers techniques joints comme éléments de preuve privés pour la revue interne",
           submissionError:
             "Le dossier n'a pas pu etre enregistre. Verifiez vos coordonnees puis reessayez.",
           firstReplies: [
@@ -111,11 +115,11 @@ export function IndustrialAssistantChat({
           role: "Sourcing and operations assistant",
           conversation: "Conversation with Exportunity AI",
           ready: "Conversation ready",
-          composerLabel: "Your message to Exportunity AI",
+          composerLabel: "Message Exportunity AI",
           greeting:
-            "Hello. Describe a part, machine, material, or transport need. I will prepare the right technical case before any introduction is made.",
+            "Hello, I am Exportunity AI. Tell me what you need to source, manufacture, or move. I will prepare the right case for internal review before any introduction is made.",
           placeholder:
-            "Describe your industrial need or explain what is blocking production...",
+            "Message Exportunity AI about a part, machine, material, commodity, or shipment...",
           attach: "Attach a photo or file",
           send: "Send to Exportunity AI",
           preparing: "Exportunity AI is organizing your request...",
@@ -131,6 +135,10 @@ export function IndustrialAssistantChat({
           attachmentError: "Each file must be 15 MB or smaller.",
           emptyMessage:
             "Add more detail about the part, machine, quantity, or issue to solve.",
+          evidenceSaved:
+            "technical file attached as private evidence for internal review",
+          evidenceSavedPlural:
+            "technical files attached as private evidence for internal review",
           submissionError:
             "The case could not be saved. Check your details and try again.",
           firstReplies: [
@@ -318,8 +326,8 @@ export function IndustrialAssistantChat({
           sender: "assistant",
           text:
             language === "fr"
-              ? `Dossier ${reference} enregistre${uploaded ? ` avec ${uploaded} fichier${uploaded > 1 ? "s" : ""}` : ""}.${assignedAgentName ? ` ${assignedAgentName} est assigne a la revue interne.` : ""} Aucun fournisseur n'est contacte automatiquement.`
-              : `Case ${reference} has been recorded${uploaded ? ` with ${uploaded} file${uploaded > 1 ? "s" : ""}` : ""}.${assignedAgentName ? ` ${assignedAgentName} has been assigned to the internal review.` : ""} No supplier is contacted automatically.`,
+              ? `Dossier ${reference} enregistre.${uploaded ? ` ${uploaded} ${uploaded > 1 ? copy.evidenceSavedPlural : copy.evidenceSaved}.` : ""}${assignedAgentName ? ` ${assignedAgentName} est assigne a la revue interne.` : ""} Aucun fournisseur n'est contacte automatiquement.`
+              : `Case ${reference} has been recorded.${uploaded ? ` ${uploaded} ${uploaded > 1 ? copy.evidenceSavedPlural : copy.evidenceSaved}.` : ""}${assignedAgentName ? ` ${assignedAgentName} has been assigned to the internal review.` : ""} No supplier is contacted automatically.`,
         },
       ]);
     } catch (nextError: any) {
@@ -354,8 +362,8 @@ export function IndustrialAssistantChat({
           sender: "assistant",
           text:
             language === "fr"
-              ? `${uploaded} fichier${uploaded > 1 ? "s" : ""} joint${uploaded > 1 ? "s" : ""} au dossier ${caseReference}.`
-              : `${uploaded} file${uploaded > 1 ? "s" : ""} attached to case ${caseReference}.`,
+              ? `${uploaded} ${uploaded > 1 ? copy.evidenceSavedPlural : copy.evidenceSaved} au dossier ${caseReference}.`
+              : `${uploaded} ${uploaded > 1 ? copy.evidenceSavedPlural : copy.evidenceSaved} for case ${caseReference}.`,
         },
       ]);
     } catch (nextError: any) {

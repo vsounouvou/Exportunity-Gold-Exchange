@@ -4814,10 +4814,10 @@ export default function IndustrialHubPage() {
           quote: "Demander un devis",
           account: "Compte",
           login: "Se connecter",
-          heroEyebrow: "Exportunity",
-          heroTitle: "Quel besoin industriel bloque votre production ?",
+          heroEyebrow: "Exportunity AI",
+          heroTitle: "Parlez à Exportunity AI de ce que vous devez sourcer, fabriquer ou acheminer.",
           heroText:
-            "Décrivez une pièce, une machine, une ligne ou un intrant. Ajoutez une photo, une référence ou un plan : Exportunity organise le dossier pour revue technique avant toute mise en relation.",
+            "Décrivez une pièce, une machine, une matière, une commodité ou un besoin logistique. Ajoutez une photo, une référence ou un plan : Exportunity organise le dossier pour une revue interne avant toute mise en relation.",
           searchPlaceholder:
             "Rechercher une usine, un produit, une machine, une matière première ou une pièce",
           search: "Rechercher",
@@ -4878,10 +4878,10 @@ export default function IndustrialHubPage() {
           quote: "Request a Quote",
           account: "Account",
           login: "Sign in",
-          heroEyebrow: "Exportunity",
-          heroTitle: "What industrial need is blocking your production?",
+          heroEyebrow: "Exportunity AI",
+          heroTitle: "Talk to Exportunity AI about what you need to source, manufacture, or move.",
           heroText:
-            "Describe a part, machine, line, or material. Add a photo, reference, or drawing and Exportunity prepares the case for technical review before any supplier introduction.",
+            "Describe a part, machine, material, commodity, or logistics need. Add a photo, reference, or drawing and Exportunity prepares the case for internal review before any supplier introduction.",
           searchPlaceholder:
             "Search a factory, product, machine, raw material, or part number",
           search: "Search",

@@ -43,6 +43,7 @@ test("Exportunity industrial home leads with the case-backed AI conversation", (
   assert.ok(firstGenericSearchIndex > homeAssistantIndex);
   assert.match(assistant, /\/api\/industrial\/assistant\/intake-preview/);
   assert.match(assistant, /\/api\/industrial\/requirements/);
-  assert.match(assistant, /Message Exportunity AI/);
+  assert.match(assistant, /Message Tassi/);
+  assert.match(assistant, /Exportunity AI/);
   assert.match(assistant, /VoiceToTextButton/);
 });

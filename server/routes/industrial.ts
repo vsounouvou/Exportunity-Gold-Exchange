@@ -2351,7 +2351,7 @@ router.post("/assistant/intake-preview", async (req: any, res) => {
   return res.json({
     ok: true,
     assistant: {
-      name: "Exportunity AI",
+      name: "Tassi",
       response: intake.response,
       intake: {
         requirementType: intake.requirementType,

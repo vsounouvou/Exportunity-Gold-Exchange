@@ -72,18 +72,18 @@ export function IndustrialAssistantChat({
   const copy =
     language === "fr"
       ? {
-          name: "Exportunity AI",
-          role: "Assistant sourcing et operations",
-          conversation: "Conversation avec Exportunity AI",
-          ready: "Conversation prete",
-          composerLabel: "Envoyer un message à Exportunity AI",
+          name: "Tassi",
+          role: "Exportunity AI | Sourcing et operations",
+          conversation: "Conversation avec Tassi",
+          ready: "Tassi est prete",
+          composerLabel: "Envoyer un message à Tassi",
           greeting:
-            "Bonjour, je suis Exportunity AI. Dites-moi ce que vous devez sourcer, fabriquer ou acheminer. Je prépare le bon dossier pour une revue interne avant toute mise en relation.",
+            "Bonjour, je suis Tassi, l'assistante Exportunity AI. Dites-moi ce que vous devez sourcer, fabriquer ou acheminer. Je prépare le bon dossier pour une revue interne avant toute mise en relation.",
           placeholder:
-            "Écrivez à Exportunity AI au sujet d'une pièce, machine, matière, commodité ou expédition...",
+            "Écrivez à Tassi au sujet d'une pièce, machine, matière, commodité ou expédition...",
           attach: "Joindre une photo ou un fichier",
-          send: "Envoyer a Exportunity AI",
-          preparing: "Exportunity AI organise votre demande...",
+          send: "Envoyer a Tassi",
+          preparing: "Tassi organise votre demande...",
           contactTitle: "Ouvrir le dossier technique",
           contactText:
             "Ajoutez vos coordonnees professionnelles pour enregistrer le dossier. Aucun fournisseur n'est contacte a cette etape.",
@@ -111,18 +111,18 @@ export function IndustrialAssistantChat({
           ],
         }
       : {
-          name: "Exportunity AI",
-          role: "Sourcing and operations assistant",
-          conversation: "Conversation with Exportunity AI",
-          ready: "Conversation ready",
-          composerLabel: "Message Exportunity AI",
+          name: "Tassi",
+          role: "Exportunity AI | Sourcing and operations",
+          conversation: "Conversation with Tassi",
+          ready: "Tassi is ready",
+          composerLabel: "Message Tassi",
           greeting:
-            "Hello, I am Exportunity AI. Tell me what you need to source, manufacture, or move. I will prepare the right case for internal review before any introduction is made.",
+            "Hello, I am Tassi, Exportunity AI's sourcing and operations assistant. Tell me what you need to source, manufacture, or move. I will prepare the right case for internal review before any introduction is made.",
           placeholder:
-            "Message Exportunity AI about a part, machine, material, commodity, or shipment...",
+            "Message Tassi about a part, machine, material, commodity, or shipment...",
           attach: "Attach a photo or file",
-          send: "Send to Exportunity AI",
-          preparing: "Exportunity AI is organizing your request...",
+          send: "Send to Tassi",
+          preparing: "Tassi is organizing your request...",
           contactTitle: "Open the technical case",
           contactText:
             "Add your business details to record this case. No supplier is contacted at this stage.",

@@ -3,16 +3,12 @@ import { db } from "@db";
 import { agents, agentsProduction, companies } from "@db/schema";
 import { ensureAgentsProductionTables } from "../agents/ensureProductionAgents";
 import { ensureTenants, getTenantByKey } from "../tenants";
+import { EXPORTUNITY_COMPANY_CONTEXT } from "./companyContext";
+import { getExportunityAgentModelPolicy } from "./modelPolicy";
 
-const ORGANIZATION_VERSION = "exportunity-industrial-org-v2";
+export { EXPORTUNITY_COMPANY_CONTEXT } from "./companyContext";
 
-export const EXPORTUNITY_COMPANY_CONTEXT = `Exportunity is a B2B African trade, sourcing, commodities, machinery, and industrial-operations platform. It helps factories, importers, distributors, workshops, agro-processors, and suppliers trace an industrial need from intake to a controlled commercial outcome.
-
-Exportunity Machinery is the industrial operating model: demand capture, technical intake and scan-to-manufacture review, evidence-backed supplier routing, quality and assembly preparation, logistics and trade facilitation, and a reusable industrial data layer. The model is demand-first: photograph or document the need, classify it, decide whether to make, buy, repair, or source, then prepare a human-approved case. Initial industrial focus includes spare parts, power transmission components, bearing housings, couplings, conveyor parts, pump parts, bearings, belts, chain, seals, motors, and reducers.
-
-Treat every commercial fact as either verified, awaiting validation, or an unverified signal. Never invent inventory, price, supplier capacity, certifications, lead times, delivery dates, GDIZ facilities, payment status, or commercial approval. Exportunity is not a retail marketplace, a gold business, a crypto product, or a public investment adviser.
-
-Agents may clarify, analyze, draft, route work, and create visible internal recommendations. They must not start background conversations, contact third parties, spend money, place orders, accept contracts, make public claims, or commit Exportunity without explicit human approval in the visible interface. Keep context with the responsible named specialist and escalate uncertainty, compliance, financial, or external-action decisions for review.`;
+const ORGANIZATION_VERSION = "exportunity-industrial-org-v3";
 
 type AgentHierarchy = "super" | "director" | "manager" | "executor";
 type AgentSpec = {
@@ -186,6 +182,7 @@ function profileFor(hierarchy: AgentHierarchy) {
 
 function safeMetadata(existing: unknown, spec: AgentSpec) {
   const base = existing && typeof existing === "object" && !Array.isArray(existing) ? (existing as Record<string, unknown>) : {};
+  const modelPolicy = getExportunityAgentModelPolicy(spec.key);
   return {
     ...base,
     organizationKey: spec.key,
@@ -194,6 +191,13 @@ function safeMetadata(existing: unknown, spec: AgentSpec) {
     externalActions: "approval_required",
     backgroundConversations: "disabled",
     departmentKey: spec.key,
+    modelPolicy: {
+      model: modelPolicy.model,
+      source: modelPolicy.source,
+      reasoningEffort: modelPolicy.reasoningEffort,
+      maxOutputTokens: modelPolicy.maxOutputTokens,
+      purpose: modelPolicy.purpose,
+    },
   };
 }
 
@@ -299,6 +303,7 @@ export async function ensureExportunityIndustrialAgentOrganization(input?: { dry
     for (const spec of ORGANIZATION) {
       const agentId = agentIds.get(spec.key);
       if (!agentId) continue;
+      const modelPolicy = getExportunityAgentModelPolicy(spec.key);
       const existing = productionRows.find((row) => Number(row.agentId) === agentId || row.agentKey === spec.key);
       const productionValues = {
         tenantId,
@@ -311,6 +316,13 @@ export async function ensureExportunityIndustrialAgentOrganization(input?: { dry
           role: spec.role,
           externalActions: "approval_required",
           backgroundConversations: "disabled",
+          modelPolicy: {
+            model: modelPolicy.model,
+            source: modelPolicy.source,
+            reasoningEffort: modelPolicy.reasoningEffort,
+            maxOutputTokens: modelPolicy.maxOutputTokens,
+            purpose: modelPolicy.purpose,
+          },
         },
         updatedAt: new Date(),
       };

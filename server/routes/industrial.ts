@@ -2346,6 +2346,7 @@ router.post("/assistant/intake-preview", async (req: any, res) => {
   const intake = await generateIndustrialIntakeReply(
     parsed.data.message,
     parsed.data.language,
+    submissionKey(req, tenant.id),
   );
   return res.json({
     ok: true,

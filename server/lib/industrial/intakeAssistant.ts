@@ -1,5 +1,8 @@
 import OpenAI from "openai";
+import { createHash } from "crypto";
 import { assertAiEnabled, isAiEnabled } from "../ai-consent";
+import { EXPORTUNITY_COMPANY_CONTEXT } from "./companyContext";
+import { getExportunityAgentModelPolicy } from "./modelPolicy";
 import { normalizeIndustrialText } from "./taxonomy";
 
 export type IndustrialIntakeLanguage = "fr" | "en";
@@ -228,6 +231,22 @@ function cleanAssistantReply(value: string) {
     .slice(0, 900);
 }
 
+function responseText(response: any) {
+  if (typeof response?.output_text === "string") return response.output_text;
+  if (!Array.isArray(response?.output)) return "";
+
+  return response.output
+    .flatMap((item: any) => (Array.isArray(item?.content) ? item.content : []))
+    .map((part: any) => String(part?.text || part?.refusal || ""))
+    .filter(Boolean)
+    .join("\n");
+}
+
+function toSafetyIdentifier(requesterIdentity?: string) {
+  const stableIdentity = String(requesterIdentity || "public-industrial-intake").trim();
+  return `exportunity_${createHash("sha256").update(stableIdentity).digest("hex").slice(0, 48)}`;
+}
+
 function buildIndustrialAssistantSystemPrompt(input: {
   language: IndustrialIntakeLanguage;
   preview: IndustrialIntakePreview;
@@ -237,9 +256,10 @@ function buildIndustrialAssistantSystemPrompt(input: {
       ? "Reply in French."
       : "Reply in English.";
 
-  return `You are Exportunity AI, the visible B2B sourcing and operations assistant for Exportunity.
+  return `You are Tassi Hangbe, the visible B2B sourcing and operations assistant for Exportunity.
 
-Exportunity connects industrial demand to verified sourcing, machinery, commodities, technical review, logistics, and trade facilitation across Africa. It is not a retail marketplace, a gold platform, or an investment adviser.
+Company context:
+${EXPORTUNITY_COMPANY_CONTEXT}
 
 The deterministic intake router has already classified this request as:
 - Requirement type: ${input.preview.requirementType}
@@ -259,15 +279,13 @@ Keep the response to two short sentences, calm and specific. ${languageInstructi
 export async function generateIndustrialIntakeReply(
   message: string,
   language: IndustrialIntakeLanguage = "fr",
+  requesterIdentity?: string,
 ): Promise<IndustrialIntakeAssistantReply> {
   const preview = classifyIndustrialIntake(message, language);
-  const model =
-    process.env.OPENAI_INDUSTRIAL_INTAKE_MODEL ||
-    process.env.OPENAI_MODEL_FAST ||
-    process.env.OPENAI_MODEL ||
-    "gpt-4o-mini";
+  const policy = getExportunityAgentModelPolicy("tassi");
+  const apiKey = process.env.OPENAI_API_KEY || process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
 
-  if (!isAiEnabled() || !process.env.OPENAI_API_KEY) {
+  if (!isAiEnabled() || !apiKey) {
     return { ...preview, responseMode: "guided" };
   }
 
@@ -280,18 +298,18 @@ export async function generateIndustrialIntakeReply(
       visibility: "The requester sees the full assistant reply in the Exportunity AI conversation.",
     });
 
-    const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-    const completion = await client.chat.completions.create({
-      model,
-      temperature: 0.2,
-      max_tokens: 220,
-      messages: [
-        { role: "system", content: buildIndustrialAssistantSystemPrompt({ language, preview }) },
-        { role: "user", content: String(message || "").slice(0, 6000) },
-      ],
-    });
+    const client = new OpenAI({ apiKey });
+    const completion: any = await client.responses.create({
+      model: policy.model,
+      instructions: buildIndustrialAssistantSystemPrompt({ language, preview }),
+      input: String(message || "").slice(0, 6000),
+      max_output_tokens: policy.maxOutputTokens,
+      reasoning: { effort: policy.reasoningEffort },
+      text: { verbosity: "low" },
+      safety_identifier: toSafetyIdentifier(requesterIdentity),
+    } as any);
 
-    const response = cleanAssistantReply(completion.choices[0]?.message?.content || "");
+    const response = cleanAssistantReply(responseText(completion));
     if (response) {
       return { ...preview, response, responseMode: "ai" };
     }

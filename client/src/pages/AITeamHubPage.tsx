@@ -719,6 +719,24 @@ function workstationChipClass(state: WorkstationChipState) {
   return "border-slate-600 bg-slate-700/40 text-slate-200";
 }
 
+const COMPACT_OPERATIONS_WORKSPACE_QUERY = "(max-width: 1719px)";
+
+function useCompactOperationsWorkspace() {
+  const getMatch = () =>
+    typeof window !== "undefined" && window.matchMedia(COMPACT_OPERATIONS_WORKSPACE_QUERY).matches;
+  const [isCompact, setIsCompact] = useState(getMatch);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia(COMPACT_OPERATIONS_WORKSPACE_QUERY);
+    const update = () => setIsCompact(mediaQuery.matches);
+    update();
+    mediaQuery.addEventListener("change", update);
+    return () => mediaQuery.removeEventListener("change", update);
+  }, []);
+
+  return isCompact;
+}
+
 const EXPORTUNITY_CORE_AGENT_KEYS = ["ceo", "tassi", "technical", "sourcing", "commercial"];
 
 function getAgentOrganizationKey(agent: Agent) {
@@ -747,6 +765,7 @@ export function AITeamHubPage() {
   const { selectedCompanyId, companies, isLoading: companiesLoading } = useCompany();
   const { tenant } = useTenant();
   const isMobile = useIsMobile();
+  const isCompactOperationsWorkspace = useCompactOperationsWorkspace();
   const useExportunityLightWorkspace = tenant.key === "exportunity";
   const [messageInput, setMessageInput] = useState("");
   const [pendingAttachments, setPendingAttachments] = useState<ChannelAttachment[]>([]);
@@ -755,7 +774,9 @@ export function AITeamHubPage() {
   const [activeAgentIds, setActiveAgentIds] = useState<number[]>([]);
   const [membersAuditOpen, setMembersAuditOpen] = useState(false);
   const [agentSearch, setAgentSearch] = useState("");
-  const [showAgentList, setShowAgentList] = useState(!isMobile);
+  const [showAgentList, setShowAgentList] = useState(
+    () => !isMobile && !isCompactOperationsWorkspace,
+  );
   const [meetingSearch, setMeetingSearch] = useState("");
   const [currentMeeting, setCurrentMeeting] = useState<ChatRoom | null>(null);
   const [isThinking, setIsThinking] = useState(false);
@@ -781,6 +802,10 @@ export function AITeamHubPage() {
   const [mobileLeftSheet, setMobileLeftSheet] = useState(false);
   const [mobileRightSheet, setMobileRightSheet] = useState(false);
   const [executionApproverAgentId, setExecutionApproverAgentId] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (isCompactOperationsWorkspace) setShowAgentList(false);
+  }, [isCompactOperationsWorkspace]);
   const [opsView, setOpsView] = useState<
     | "chat"
     | "objectives"
@@ -3256,7 +3281,7 @@ export function AITeamHubPage() {
   return (
     <div
       className={cn(
-        "h-[calc(100dvh-var(--admin-header-height))] min-h-0 flex overflow-hidden",
+        "h-[calc(100dvh-var(--admin-header-height))] md:h-[calc(100dvh-9rem)] min-h-0 flex overflow-hidden",
         useExportunityLightWorkspace
           ? "exportunity-operations-light"
           : "bg-gradient-to-b from-gray-950 to-[#020817]",
@@ -3293,7 +3318,7 @@ export function AITeamHubPage() {
       )}
 
       {/* Desktop Left Sidebar - Meetings List */}
-      <div className="hidden md:flex w-[21rem] min-w-[19rem] max-w-[23rem] shrink-0 border-r border-gray-800/80 flex-col bg-gray-900/30 backdrop-blur-sm">
+      <div className="hidden md:flex w-[17rem] min-w-[16rem] max-w-[18rem] 2xl:w-[20rem] 2xl:min-w-[19rem] 2xl:max-w-[21rem] shrink-0 border-r border-gray-800/80 flex-col bg-gray-900/30 backdrop-blur-sm">
         <div className="p-4 border-b border-gray-800">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-white flex items-center gap-2">
@@ -3515,7 +3540,7 @@ export function AITeamHubPage() {
                 </span>
               )}
             </Button>
-          ) : (
+          ) : !isCompactOperationsWorkspace ? (
             <Button
               variant="ghost"
               size="sm"
@@ -3524,7 +3549,7 @@ export function AITeamHubPage() {
             >
               <Users className="h-4 w-4" />
             </Button>
-          )}
+          ) : null}
         </div>
 
         {/* Active Agents Bar */}
@@ -5623,7 +5648,7 @@ export function AITeamHubPage() {
       </div>
 
       {/* Right Sidebar - Agents (Desktop only) */}
-      {showAgentList && !isMobile && (
+      {showAgentList && !isMobile && !isCompactOperationsWorkspace && (
         <div className="w-[20rem] lg:w-[22rem] xl:w-[24rem] min-w-[19rem] max-w-[24rem] shrink-0 border-l border-gray-800/80 bg-gray-900/55 backdrop-blur-sm flex flex-col overflow-hidden overflow-x-hidden">
           <div className="p-4 border-b border-gray-800">
             <div className="flex items-center justify-between mb-3">

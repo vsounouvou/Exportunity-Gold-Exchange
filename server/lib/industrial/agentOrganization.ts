@@ -4,7 +4,7 @@ import { agents, agentsProduction, companies } from "@db/schema";
 import { ensureAgentsProductionTables } from "../agents/ensureProductionAgents";
 import { ensureTenants, getTenantByKey } from "../tenants";
 import { EXPORTUNITY_COMPANY_CONTEXT } from "./companyContext";
-import { getExportunityAgentModelPolicy } from "./modelPolicy";
+import { getExportunityAgentModelPolicy, type ExportunityAgentKey } from "./modelPolicy";
 
 export { EXPORTUNITY_COMPANY_CONTEXT } from "./companyContext";
 
@@ -12,11 +12,11 @@ const ORGANIZATION_VERSION = "exportunity-industrial-org-v3";
 
 type AgentHierarchy = "super" | "director" | "manager" | "executor";
 type AgentSpec = {
-  key: string;
+  key: ExportunityAgentKey;
   name: string;
   role: string;
   hierarchy: AgentHierarchy;
-  managerKey?: string;
+  managerKey?: ExportunityAgentKey;
   mission: string;
   responsibilities: string[];
   capabilities: string[];

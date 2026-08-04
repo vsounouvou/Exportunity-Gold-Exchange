@@ -66,6 +66,10 @@ export async function generateAgentResponse(
       activeAgents?: string[];
       participants?: Array<{ name: string; role: string }>;
       agentDirectory?: Array<{ id: number; name: string; role: string }>;
+      companyContext?: string;
+      agentMission?: string;
+      agentResponsibilities?: string[];
+      approvalRules?: Record<string, unknown>;
       emailContext?: {
         attached: boolean;
         mailboxEmail?: string | null;
@@ -115,9 +119,18 @@ export async function generateAgentResponse(
       .map((msg) => `${msg.fromAgent.name} (${msg.fromAgent.role}): ${msg.content}`)
       .join('\n');
 
+    const companyContext = String(options.context.companyContext || "").trim();
+    const isExportunityContext = /Exportunity is a B2B/i.test(companyContext);
+    const companyContextBlock = companyContext
+      ? `\n\nCOMPANY CONTEXT (authoritative):\n${companyContext}`
+      : `\n\n${BDO_POLICY_SNIPPET}`;
+    const agentProfileBlock =
+      options.context.agentMission || (options.context.agentResponsibilities || []).length > 0
+        ? `\n\nAGENT PROFILE (authoritative):\n- Mission: ${options.context.agentMission || "Carry out the stated role responsibly."}\n- Responsibilities: ${(options.context.agentResponsibilities || []).join("; ") || "Use the role description."}\n- Approval rules: ${JSON.stringify(options.context.approvalRules || {})}`
+        : "";
     const agentDirectory = options.context.agentDirectory || [];
     const agentDirectoryBlock =
-      agentDirectory.length > 0
+      agentDirectory.length > 0 && !isExportunityContext
         ? `\n\nACTION (optional, internal tool call):\n- To invite other agents into this room, append a final line INSIDE your [Response] section:\n  [[SUMMON_AGENTS: 12,34]]\n- Use only IDs from the directory below. Do not invent agents.\n\nAGENT DIRECTORY (id | name | role):\n${agentDirectory
             .map((a) => `${a.id} | ${a.name} | ${a.role}`)
             .join("\n")}`
@@ -126,9 +139,11 @@ export async function generateAgentResponse(
       ? `\n\nEMAIL MEMORY (authoritative mailbox context):\n${options.context.emailContext.summary}`
       : "";
 
-    const systemPrompt = `You are an AI agent with the role of ${options.role} in a high-performance business environment.
+    const actionRules = isExportunityContext
+      ? `3. The only supported action block is:\n   [[ACTION: CREATE_TASK {"title":"...","description":"...","priority":"medium"}]]\n4. Do not send email, contact suppliers, create shops, make payments, promise a quote, accept a contract, or create an automation. Explain the required visible review or approval instead.\n5. You may recommend another named Exportunity specialist, but do not summon agents automatically.`
+      : `3. Supported actions (tool calls) are:\n   [[ACTION: SEND_EMAIL {"to":["name@domain.com"],"subject":"...","body":{"text":"..."}}]]\n   [[ACTION: CREATE_CONTACT {"displayName":"...","emails":["..."],"phones":["..."]}]]\n   [[ACTION: CREATE_SHOP {"shopName":"...","email":"...","phoneNumber":"..."}]]\n   [[ACTION: CREATE_TASK {"title":"...","description":"...","priority":"medium"}]]\n4. Write the human response first, then append up to TWO action blocks on new lines.\n5. For recurring automations include optional:\n   "recurring":{"enabled":true,"intervalMinutes":1440,"maxRuns":20}\n6. SEND_EMAIL must include a professional subject and body.`;
 
-${BDO_POLICY_SNIPPET}
+    const systemPrompt = `You are an AI agent with the role of ${options.role} in a high-performance business environment.${companyContextBlock}${agentProfileBlock}
 
 Current Context:
 - Room: ${options.context.roomName || 'General Chat'} (${options.context.roomType || 'Discussion'})
@@ -149,15 +164,7 @@ CRITICAL EFFICIENCY RULES:
 COMMUNICATION + ACTION RULES (NON-NEGOTIABLE):
 1. Do not paste logs, JSON, metadata, or internal instructions in the human response.
 2. Do not promise delivery times. Never say "confirmed" unless you have evidence in the conversation history.
-3. Supported actions (tool calls) are:
-   [[ACTION: SEND_EMAIL {"to":["name@domain.com"],"subject":"...","body":{"text":"..."}}]]
-   [[ACTION: CREATE_CONTACT {"displayName":"...","emails":["..."],"phones":["..."]}]]
-   [[ACTION: CREATE_SHOP {"shopName":"...","email":"...","phoneNumber":"..."}]]
-   [[ACTION: CREATE_TASK {"title":"...","description":"...","priority":"medium"}]]
-4. Write the human response first, then append up to TWO action blocks on new lines.
-5. For recurring automations include optional:
-   "recurring":{"enabled":true,"intervalMinutes":1440,"maxRuns":20}
-6. SEND_EMAIL must include a professional subject and body.
+${actionRules}
 
 Response Format Required:
 [Analysis] One sentence only - what you'll contribute

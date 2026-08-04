@@ -3,9 +3,10 @@ import * as claudeLib from './claude';
 import * as geminiLib from './gemini';
 import { AiConsentRequiredError, assertAiEnabled } from "./ai-consent";
 import { db } from "@db";
-import { companies } from "@db/schema";
+import { agents, companies } from "@db/schema";
 import { eq } from "drizzle-orm";
 import { sanitizeBdoText } from "./bdo/policy";
+import { EXPORTUNITY_COMPANY_CONTEXT } from "./industrial/companyContext";
 
 export type AIProvider = 'openai' | 'claude' | 'gemini';
 export type AgentEmailContext = {
@@ -24,6 +25,33 @@ type AiRoutingConfig = {
   strategy: RoutingStrategy;
   allowedProviders?: AIProvider[];
   forcedProvider?: AIProvider | null;
+};
+
+type AgentResponseContext = {
+  recentMessages: Array<{
+    content: string;
+    fromAgent: { name: string; role: string };
+    timestamp: Date;
+  }>;
+  exchanges?: number;
+  roomName?: string;
+  roomType?: string;
+  sentiment?: { score: number };
+  activeAgents?: string[];
+  participants?: Array<{ name: string; role: string }>;
+  agentDirectory?: Array<{ id: number; name: string; role: string }>;
+  companyContext?: string;
+  agentMission?: string;
+  agentResponsibilities?: string[];
+  approvalRules?: Record<string, unknown>;
+  emailContext?: AgentEmailContext;
+};
+
+type AgentResponseOptions = {
+  role: string;
+  agentId?: number;
+  companyId?: number | null;
+  context: AgentResponseContext;
 };
 
 const debug = (message: string, data?: any) => {
@@ -101,6 +129,68 @@ async function getProvidersForCompany(companyId: number | null | undefined): Pro
   return order.filter((p) => allowed.includes(p));
 }
 
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
+}
+
+function isExportunityCompanyName(value: unknown) {
+  return /^exportunity(?:\s+machinery)?$/i.test(String(value || "").trim());
+}
+
+/**
+ * The legacy channel/meeting callers are shared by multiple tenants. Hydrate
+ * the named agent and company context here so Exportunity never falls through
+ * to another tenant's default policy when a caller omits it.
+ */
+async function hydrateAgentResponseOptions(options: AgentResponseOptions): Promise<AgentResponseOptions> {
+  const context: AgentResponseContext = { ...options.context };
+  const agentRow = options.agentId
+    ? await db.query.agents.findFirst({
+        where: eq(agents.id, options.agentId),
+        columns: {
+          companyId: true,
+          metadata: true,
+          mission: true,
+          responsibilities: true,
+          approvalRules: true,
+        },
+      })
+    : null;
+  const effectiveCompanyId = options.companyId ?? agentRow?.companyId ?? null;
+  const company = effectiveCompanyId
+    ? await db.query.companies.findFirst({
+        where: eq(companies.id, effectiveCompanyId),
+        columns: { name: true },
+      })
+    : null;
+  const metadata = asRecord(agentRow?.metadata);
+  const metadataCompanyContext = typeof metadata.companyContext === "string" ? metadata.companyContext.trim() : "";
+
+  if (isExportunityCompanyName(company?.name)) {
+    context.companyContext = EXPORTUNITY_COMPANY_CONTEXT;
+  } else if (!context.companyContext && metadataCompanyContext) {
+    context.companyContext = metadataCompanyContext;
+  }
+
+  if (!context.agentMission && typeof agentRow?.mission === "string") {
+    context.agentMission = agentRow.mission;
+  }
+  if (!context.agentResponsibilities && Array.isArray(agentRow?.responsibilities)) {
+    context.agentResponsibilities = agentRow.responsibilities.map((item) => String(item)).filter(Boolean);
+  }
+  if (!context.approvalRules && agentRow?.approvalRules && typeof agentRow.approvalRules === "object") {
+    context.approvalRules = agentRow.approvalRules as Record<string, unknown>;
+  }
+
+  return {
+    ...options,
+    companyId: effectiveCompanyId,
+    context,
+  };
+}
+
 /**
  * Try providers in order until one succeeds
  */
@@ -140,30 +230,7 @@ async function tryProviders<T>(
  */
 export async function generateAgentResponse(
   message: string,
-  options: {
-    role: string;
-    agentId?: number;
-    companyId?: number | null;
-    context: {
-      recentMessages: Array<{
-        content: string;
-        fromAgent: { name: string; role: string };
-        timestamp: Date;
-      }>;
-      exchanges?: number;
-      roomName?: string;
-      roomType?: string;
-      sentiment?: { score: number };
-      activeAgents?: string[];
-      participants?: Array<{ name: string; role: string }>;
-      agentDirectory?: Array<{ id: number; name: string; role: string }>;
-      companyContext?: string;
-      agentMission?: string;
-      agentResponsibilities?: string[];
-      approvalRules?: Record<string, unknown>;
-      emailContext?: AgentEmailContext;
-    };
-  }
+  options: AgentResponseOptions,
 ): Promise<{ analysis: string; response: string; shouldContinue: boolean }> {
   assertAiEnabled({
     what: "Generate an AI agent response",
@@ -171,7 +238,8 @@ export async function generateAgentResponse(
     forHowLong: "For this request only.",
     resources: ["External AI API calls", "Compute/network usage"],
   });
-  const providers = await getProvidersForCompany(options.companyId);
+  const effectiveOptions = await hydrateAgentResponseOptions(options);
+  const providers = await getProvidersForCompany(effectiveOptions.companyId);
   
   if (providers.length === 0) {
     return {
@@ -186,16 +254,16 @@ export async function generateAgentResponse(
     providers,
     async (provider) => {
       if (provider === 'openai') {
-        return openaiLib.generateAgentResponse(message, options);
+        return openaiLib.generateAgentResponse(message, effectiveOptions);
       } else if (provider === 'claude') {
-        return claudeLib.generateAgentResponse(message, options);
+        return claudeLib.generateAgentResponse(message, effectiveOptions);
       } else {
-        return geminiLib.generateAgentResponse(message, options);
+        return geminiLib.generateAgentResponse(message, effectiveOptions);
       }
     }
   );
 
-  const isExportunityContext = /Exportunity is a B2B/i.test(String(options.context.companyContext || ""));
+  const isExportunityContext = /Exportunity is a B2B/i.test(String(effectiveOptions.context.companyContext || ""));
   if (!isExportunityContext) {
     const sanitized = sanitizeBdoText(result.response);
     if (sanitized.violated && sanitized.text !== result.response) {

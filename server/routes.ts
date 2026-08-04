@@ -164,6 +164,8 @@ import {
 import { getSettingsByPrefix } from "./lib/settings";
 import { deriveAgentMemoryAccessPolicy, isTassiGlobalAgent } from "./lib/memory/scoping";
 import { getTenantConfigByKey } from "../tenants/index";
+import { EXPORTUNITY_COMPANY_CONTEXT } from "./lib/industrial/companyContext";
+import { isTenantContentVisible } from "./lib/tenant-content-guard";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -4096,6 +4098,7 @@ ${governanceContext}`;
           ? requestedByUserEmailRaw.trim().toLowerCase()
           : null;
       const tenantId = scopedTenantId;
+      const isExportunityTenant = String(tenant?.key || "").trim().toLowerCase() === "exportunity";
       const conversationGovernanceEnabled = isFeatureEnabledForRequest(req, "FEATURE_CONVERSATION_GOVERNANCE", true);
       const accountabilityEnabled = isFeatureEnabledForRequest(req, "FEATURE_AGENT_ACCOUNTABILITY", true);
       const noiseFeatureEnabled = isFeatureEnabledForRequest(req, "FEATURE_NOISE_SUPPRESSION", true);
@@ -4403,6 +4406,15 @@ ${governanceContext}`;
       };
 
       const buildFallback = (agentName: string, agentRole: string) => {
+        if (isExportunityTenant) {
+          if (contentLower.includes("hello") || contentLower.includes("hi") || contentLower === "hi") {
+            return `Je suis ${agentName}, ${agentRole}. Exportunity coordonne le sourcing B2B, les machines, les commodites et la facilitation du commerce. Decrivez le besoin, la preuve disponible et l'echeance.`;
+          }
+          if (contentLower.includes("status") || contentLower.includes("update")) {
+            return `Je verifie l'etat du besoin dans le flux Exportunity: qualification, revue technique, sourcing, controles et logistique. Je n'affirmerai aucune capacite, prix ou delai avant preuve et approbation.`;
+          }
+          return `Je traite cela dans le cadre Exportunity: besoin B2B, preuve disponible, responsable et prochaine etape. Je peux preparer une tache visible ou vous orienter vers le specialiste approprie; aucune action externe ne sera lancee sans approbation.`;
+        }
         if (contentLower.includes("hello") || contentLower.includes("hi") || contentLower === "hi") {
           return `Hello! I'm ${agentName}, your ${agentRole}. How can I help the team today?`;
         }
@@ -4463,6 +4475,15 @@ ${governanceContext}`;
                 }))
                 .filter((p: any) => p.name && p.role),
               agentDirectory,
+              companyContext: isExportunityTenant ? EXPORTUNITY_COMPANY_CONTEXT : undefined,
+              agentMission: typeof responderAgent?.mission === "string" ? responderAgent.mission : undefined,
+              agentResponsibilities: Array.isArray(responderAgent?.responsibilities)
+                ? responderAgent.responsibilities.map((item: unknown) => String(item)).filter(Boolean)
+                : undefined,
+              approvalRules:
+                responderAgent?.approvalRules && typeof responderAgent.approvalRules === "object"
+                  ? responderAgent.approvalRules as Record<string, unknown>
+                  : undefined,
               emailContext,
             },
           });
@@ -4751,6 +4772,15 @@ ${governanceContext}`;
                 })
                 .filter((p): p is { name: string; role: string } => !!p),
               agentDirectory,
+              companyContext: isExportunityTenant ? EXPORTUNITY_COMPANY_CONTEXT : undefined,
+              agentMission: typeof responderAgent?.mission === "string" ? responderAgent.mission : undefined,
+              agentResponsibilities: Array.isArray(responderAgent?.responsibilities)
+                ? responderAgent.responsibilities.map((item: unknown) => String(item)).filter(Boolean)
+                : undefined,
+              approvalRules:
+                responderAgent?.approvalRules && typeof responderAgent.approvalRules === "object"
+                  ? responderAgent.approvalRules as Record<string, unknown>
+                  : undefined,
               emailContext,
             },
           });
@@ -5234,7 +5264,12 @@ ${governanceContext}`;
         },
       });
 
-      const storedMessages = storedRows.slice().reverse().map(formatChannelMessageRow);
+      const tenantKey = String((req as any)?.tenant?.key || "");
+      const storedMessages = storedRows
+        .filter((row) => isTenantContentVisible({ tenantKey, content: row.content, metadata: row.metadata }))
+        .slice()
+        .reverse()
+        .map(formatChannelMessageRow);
       
       // Also get background conversation rooms
       const includeBackground =
@@ -5253,6 +5288,7 @@ ${governanceContext}`;
       
       const backgroundMessages = rooms
         .filter((room: any) => {
+          if (!isTenantContentVisible({ tenantKey, content: room.metadata?.summary || room.name, metadata: room.metadata })) return false;
           if (channelId === 'all-team') return true;
           const topic = room.name?.toLowerCase() || '';
           if (channelId === 'sales' && topic.includes('sales')) return true;
@@ -8031,8 +8067,12 @@ Respond helpfully with your full platform awareness.`,
         },
       });
 
-      console.log(`[API] Found ${conversationMessages.length} messages`);
-      res.json(conversationMessages);
+      const tenantKey = String((req as any)?.tenant?.key || "");
+      const visibleConversationMessages = conversationMessages.filter((message) =>
+        isTenantContentVisible({ tenantKey, content: message.content, metadata: message.metadata }),
+      );
+      console.log(`[API] Found ${visibleConversationMessages.length} visible messages`);
+      res.json(visibleConversationMessages);
     } catch (error) {
       console.error("[API Error] GET /api/messages/:conversationId:", error);
       res.status(500).json({ message: "Failed to fetch messages" });
@@ -8049,6 +8089,9 @@ Respond helpfully with your full platform awareness.`,
       if (isNaN(companyId) || companyId <= 0) {
         return res.json({ items: [], pagination: { limit: 50, offset: 0, hasMore: false } });
       }
+      const scoped = await requireTenantScopedCompany(req, res, companyId);
+      if (!scoped) return;
+      const tenantKey = String((req as any)?.tenant?.key || "");
       
       const limit = Math.min(parseInt(req.query.limit as string) || 50, 200);
       const offset = parseInt(req.query.offset as string) || 0;
@@ -8082,6 +8125,7 @@ Respond helpfully with your full platform awareness.`,
       // Format activity items - only include messages from company agents
       const activityItems = activityMessages
         .filter(msg => msg.fromAgent && agentIds.includes(msg.fromAgent.id))
+        .filter(msg => isTenantContentVisible({ tenantKey, content: msg.content, metadata: msg.metadata }))
         .map(msg => ({
           id: `msg-${msg.id}`,
           type: 'agent_conversation' as const,
@@ -9316,7 +9360,12 @@ Respond helpfully with your full platform awareness.`,
         },
       });
 
-      res.json(messagesList);
+      const tenantKey = String((req as any)?.tenant?.key || "");
+      res.json(
+        messagesList.filter((message) =>
+          isTenantContentVisible({ tenantKey, content: message.content, metadata: message.metadata }),
+        ),
+      );
     } catch (error) {
       console.error("[API Error] GET /api/meetings/:id/messages:", error);
       res.status(500).json({ message: "Failed to fetch meeting messages" });

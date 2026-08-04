@@ -938,6 +938,12 @@ export function ChairmanChatDock() {
           width: dockLayout.width,
           height: dockLayout.height,
         };
+  const assistantScopeLabel =
+    tenant?.key === "exportunity" && isTassiAssistant(assistantName, agent?.role)
+      ? "Exportunity workspace"
+      : isTassiAssistant(assistantName, agent?.role)
+        ? "Tassi (Global)"
+        : "Tenant-scoped";
 
   return (
     <>
@@ -988,9 +994,7 @@ export function ChairmanChatDock() {
                   <span>{assistantName}</span>
                   {!dockLayout.collapsed || isMobile ? (
                   <Badge variant="outline" className="border-slate-200 text-[10px] text-slate-600">
-                    {isTassiAssistant(assistantName, agent?.role)
-                      ? "Tassi (Global)"
-                      : "Tenant-scoped"}
+                    {assistantScopeLabel}
                   </Badge>
                   ) : null}
                 </div>

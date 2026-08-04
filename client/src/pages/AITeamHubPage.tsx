@@ -694,7 +694,20 @@ function toWorkstationState(permissionState: string, runtimeStatus: string): Wor
 
 function workstationChipLabel(state: WorkstationChipState) {
   if (state === "NEEDS_PERMISSION") return "NEEDS PERMISSION";
+  // This state belongs to an optional virtual workstation, not the agent.
+  // Keep the distinction visible so an available specialist never looks offline.
+  if (state === "DISABLED") return "DESK OFF";
   return state;
+}
+
+function workstationAvailabilityHint(state: WorkstationChipState) {
+  if (state === "DISABLED") {
+    return "Virtual workstation is off. The agent remains available for chat, routing, and approved work.";
+  }
+  if (state === "NEEDS_PERMISSION") {
+    return "A virtual workstation needs approval. The agent remains available for chat and planning.";
+  }
+  return "";
 }
 
 function workstationChipClass(state: WorkstationChipState) {
@@ -3516,28 +3529,32 @@ export function AITeamHubPage() {
 
         {/* Active Agents Bar */}
         {activeAgents.length > 0 && !currentMeeting && (
-          <div className="border-b border-gray-800 bg-gray-900/30 px-3 md:px-6 py-2">
-            <div className="flex items-center gap-1.5 md:gap-2 flex-wrap">
-              <span className="text-[10px] md:text-xs text-gray-500 mr-1 md:mr-2">In conversation:</span>
+          <div className="border-b border-gray-800 bg-gray-900/30 px-3 md:px-6 py-1.5">
+            <div className="flex min-w-0 items-center gap-1.5 md:gap-2 overflow-x-auto scrollbar-hide">
+              <span className="shrink-0 text-[10px] md:text-xs text-gray-500 mr-1 md:mr-2">In conversation:</span>
               {activeAgents.map((agent) => {
                 const dept = getDepartmentFromRole(agent.role || "");
                 const config = DEPARTMENT_CONFIG[dept];
                 const workstationSnapshot = workstationStatusByAgentId[Number(agent.id)];
                 const chipLabel = workstationSnapshot ? workstationChipLabel(workstationSnapshot.state) : "UNKNOWN";
                 const canOpenLive = Boolean(workstationSnapshot?.canOpenLive);
-                const chipTitle = workstationSnapshot?.detail || "Workstation status unavailable";
+                const chipTitle = workstationSnapshot
+                  ? [workstationSnapshot.detail, workstationAvailabilityHint(workstationSnapshot.state)].filter(Boolean).join(" ")
+                  : "Workstation status unavailable";
                 return (
                   <Badge 
                     key={agent.id}
                     variant="outline" 
-                    className={cn("text-[10px] md:text-xs pr-0.5 md:pr-1 flex items-center gap-0.5 md:gap-1", config.bgColor, config.color)}
+                    className={cn("shrink-0 text-[10px] md:text-xs pr-0.5 md:pr-1 flex items-center gap-0.5 md:gap-1", config.bgColor, config.color)}
                   >
                     <Circle className="h-1.5 w-1.5 md:h-2 md:w-2 fill-current" />
                     <span className="max-w-[60px] md:max-w-none truncate">{agent.name}</span>
                     <span className="rounded border border-gray-600 bg-gray-900/50 px-1 py-[1px] text-[9px] uppercase tracking-wide text-gray-300">
-                      {isTassiAgentIdentity(agent)
-                        ? "Tassi (Global)"
-                        : "Tenant-scoped"}
+                      {useExportunityLightWorkspace && isTassiAgentIdentity(agent)
+                        ? "Exportunity concierge"
+                        : isTassiAgentIdentity(agent)
+                          ? "Tassi (Global)"
+                          : "Tenant-scoped"}
                     </span>
                     <button
                       type="button"
@@ -3563,7 +3580,7 @@ export function AITeamHubPage() {
               })}
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-6 text-xs text-blue-400 hover:text-blue-300 hover:bg-blue-500/10">
+                  <Button variant="ghost" size="sm" className="h-6 shrink-0 text-xs text-blue-400 hover:text-blue-300 hover:bg-blue-500/10">
                     <Plus className="h-3 w-3 mr-1" />
                     Add
                   </Button>
@@ -3606,19 +3623,25 @@ export function AITeamHubPage() {
         )}
 
         {!currentMeeting && (
-          <div className="border-b border-gray-800 bg-gray-900/30 px-3 md:px-6 py-2">
+          <div className="border-b border-gray-800 bg-gray-900/30 px-3 md:px-6 py-1.5">
             <Tabs value={opsView} onValueChange={(value) => setOpsView(value as any)}>
-              <TabsList className="bg-gray-800/50 flex-wrap h-auto p-1">
-                <TabsTrigger value="chat">Chat</TabsTrigger>
-                <TabsTrigger value="objectives">Objectives</TabsTrigger>
-                <TabsTrigger value="agenda">Agenda</TabsTrigger>
-                <TabsTrigger value="background">Background conversations</TabsTrigger>
-                <TabsTrigger value="decisions">Decisions</TabsTrigger>
-                <TabsTrigger value="tasks">Tasks</TabsTrigger>
-                <TabsTrigger value="actions">Actions</TabsTrigger>
-                <TabsTrigger value="automations">Automations</TabsTrigger>
-                <TabsTrigger value="arborescence">Arborescence</TabsTrigger>
-                <TabsTrigger value="live">Live activity</TabsTrigger>
+              <TabsList className="h-9 w-full justify-start gap-1 overflow-x-auto overflow-y-hidden bg-gray-800/50 p-1 scrollbar-hide">
+                <TabsTrigger value="chat" className="shrink-0 whitespace-nowrap">Chat</TabsTrigger>
+                <TabsTrigger value="objectives" className="shrink-0 whitespace-nowrap">Objectives</TabsTrigger>
+                <TabsTrigger value="agenda" className="shrink-0 whitespace-nowrap">Agenda</TabsTrigger>
+                <TabsTrigger
+                  value="background"
+                  title="No background work starts unless you explicitly approve it."
+                  className="shrink-0 whitespace-nowrap"
+                >
+                  Background {hasBackgroundActivity ? "" : "(off)"}
+                </TabsTrigger>
+                <TabsTrigger value="decisions" className="shrink-0 whitespace-nowrap">Decisions</TabsTrigger>
+                <TabsTrigger value="tasks" className="shrink-0 whitespace-nowrap">Tasks</TabsTrigger>
+                <TabsTrigger value="actions" className="shrink-0 whitespace-nowrap">Actions</TabsTrigger>
+                <TabsTrigger value="automations" className="shrink-0 whitespace-nowrap">Automations</TabsTrigger>
+                <TabsTrigger value="arborescence" className="shrink-0 whitespace-nowrap">Arborescence</TabsTrigger>
+                <TabsTrigger value="live" className="shrink-0 whitespace-nowrap">Live activity</TabsTrigger>
               </TabsList>
             </Tabs>
           </div>
@@ -3626,13 +3649,6 @@ export function AITeamHubPage() {
 
         {(currentMeeting || opsView === "chat") && (
           <>
-            {!currentMeeting && (
-              <div className="border-b border-amber-500/20 bg-amber-500/5 px-3 md:px-6 py-2">
-                <div className="max-w-4xl mx-auto text-xs text-amber-200">
-                  Plan first for better traceability: open a scheduled room from the <span className="font-semibold">Agenda</span> tab.
-                </div>
-              </div>
-            )}
             {/* Messages Area */}
             <ScrollArea ref={chatScrollAreaRef} className="ops-chat-scroll-area flex-1 px-3 md:px-6 py-3 md:py-4">
           <div className="max-w-4xl mx-auto space-y-3 md:space-y-4">
@@ -5907,7 +5923,9 @@ export function AITeamHubPage() {
                     const workstationSnapshot = workstationStatusByAgentId[Number(agent.id)];
                     const chipLabel = workstationSnapshot ? workstationChipLabel(workstationSnapshot.state) : "UNKNOWN";
                     const canOpenLive = Boolean(workstationSnapshot?.canOpenLive);
-                    const chipTitle = workstationSnapshot?.detail || "Workstation status unavailable";
+                    const chipTitle = workstationSnapshot
+                      ? [workstationSnapshot.detail, workstationAvailabilityHint(workstationSnapshot.state)].filter(Boolean).join(" ")
+                      : "Workstation status unavailable";
                     return (
                       <div key={agent.id} className="ops-row-interactive flex items-center gap-3 p-2 pr-2 rounded-lg bg-gray-800/50 group min-w-0 overflow-hidden">
                         <Avatar className="h-8 w-8 bg-gray-700">

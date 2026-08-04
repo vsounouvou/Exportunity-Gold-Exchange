@@ -438,7 +438,7 @@ export function IndustrialAssistantChat({
       </div>
 
       {!intake ? (
-        <div className="flex gap-2 overflow-x-auto border-t border-white/10 px-3 py-2 sm:flex-nowrap sm:px-4">
+        <div className="flex gap-2 overflow-x-auto border-t border-white/10 px-3 py-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:flex-nowrap sm:px-4">
           {copy.firstReplies.map((reply) => (
             <button
               key={reply}

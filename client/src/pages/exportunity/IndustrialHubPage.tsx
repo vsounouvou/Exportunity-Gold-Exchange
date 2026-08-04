@@ -4814,10 +4814,10 @@ export default function IndustrialHubPage() {
           quote: "Demander un devis",
           account: "Compte",
           login: "Se connecter",
-          heroEyebrow: "Exportunity AI",
-          heroTitle: "Parlez à Exportunity AI de ce que vous devez sourcer, fabriquer ou acheminer.",
+          heroEyebrow: "Exportunity AI | Tassi",
+          heroTitle: "Que devons-nous sourcer, fabriquer ou acheminer pour vous ?",
           heroText:
-            "Décrivez une pièce, une machine, une matière, une commodité ou un besoin logistique. Ajoutez une photo, une référence ou un plan : Exportunity organise le dossier pour une revue interne avant toute mise en relation.",
+            "Discutez avec Tassi ou joignez une photo, une reference ou un plan. Chaque besoin est prepare pour revue interne avant mise en relation.",
           searchPlaceholder:
             "Rechercher une usine, un produit, une machine, une matière première ou une pièce",
           search: "Rechercher",
@@ -4878,10 +4878,10 @@ export default function IndustrialHubPage() {
           quote: "Request a Quote",
           account: "Account",
           login: "Sign in",
-          heroEyebrow: "Exportunity AI",
-          heroTitle: "Talk to Exportunity AI about what you need to source, manufacture, or move.",
+          heroEyebrow: "Exportunity AI | Tassi",
+          heroTitle: "What do you need to source, manufacture, or move?",
           heroText:
-            "Describe a part, machine, material, commodity, or logistics need. Add a photo, reference, or drawing and Exportunity prepares the case for internal review before any supplier introduction.",
+            "Message Tassi or attach a photo, reference, or drawing. Each request is structured for internal review before an introduction.",
           searchPlaceholder:
             "Search a factory, product, machine, raw material, or part number",
           search: "Search",
@@ -5519,7 +5519,7 @@ export default function IndustrialHubPage() {
           {view === "home" ? (
             <>
               <section className="grid items-stretch gap-6 xl:grid-cols-[minmax(0,1.08fr)_minmax(440px,0.92fr)]">
-                <div className="relative min-h-[520px] overflow-hidden rounded-2xl border border-[#F5A623]/35 bg-[#07111F] px-5 py-6 shadow-[0_28px_64px_rgba(7,17,31,0.2)] sm:px-8 sm:py-9">
+                <div className="relative min-h-[520px] overflow-hidden rounded-2xl border border-[#F5A623]/35 bg-[#07111F] px-5 py-6 shadow-[0_28px_64px_rgba(7,17,31,0.2)] sm:px-8 sm:py-6">
                   <img
                     src="/tenants/exportunity/industrial/machinery-team.png"
                     alt=""
@@ -5531,10 +5531,10 @@ export default function IndustrialHubPage() {
                     <p className="text-sm font-semibold text-[#F5A623]">
                       {copy.heroEyebrow}
                     </p>
-                    <h1 className="mt-3 max-w-2xl text-[26px] font-semibold leading-tight text-white sm:mt-4 sm:text-4xl">
+                    <h1 className="mt-3 max-w-2xl text-[26px] font-semibold leading-tight text-white sm:text-3xl">
                       {copy.heroTitle}
                     </h1>
-                    <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-200 sm:mt-4 sm:text-base sm:leading-7">
+                    <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-200 sm:text-base sm:leading-6">
                       {copy.heroText}
                     </p>
                     <IndustrialAssistantChat language={locale} requester={user} />

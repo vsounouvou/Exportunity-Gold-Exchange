@@ -78,7 +78,7 @@ export function IndustrialAssistantChat({
           ready: "Tassi est prete",
           composerLabel: "Envoyer un message à Tassi",
           greeting:
-            "Bonjour, je suis Tassi, l'assistante Exportunity AI. Dites-moi ce que vous devez sourcer, fabriquer ou acheminer. Je prépare le bon dossier pour une revue interne avant toute mise en relation.",
+            "Bonjour, je suis Tassi. Dites-moi ce que vous devez sourcer, fabriquer ou acheminer.",
           placeholder:
             "Écrivez à Tassi au sujet d'une pièce, machine, matière, commodité ou expédition...",
           attach: "Joindre une photo ou un fichier",
@@ -117,7 +117,7 @@ export function IndustrialAssistantChat({
           ready: "Tassi is ready",
           composerLabel: "Message Tassi",
           greeting:
-            "Hello, I am Tassi, Exportunity AI's sourcing and operations assistant. Tell me what you need to source, manufacture, or move. I will prepare the right case for internal review before any introduction is made.",
+            "Hello, I am Tassi. Tell me what you need to source, manufacture, or move.",
           placeholder:
             "Message Tassi about a part, machine, material, commodity, or shipment...",
           attach: "Attach a photo or file",
@@ -381,11 +381,11 @@ export function IndustrialAssistantChat({
     <section
       aria-label={copy.name}
       data-testid="exportunity-ai-chat"
-      className="mt-5 overflow-hidden rounded-2xl border border-[#F5A623]/35 bg-[#02070e]/80 shadow-[0_22px_54px_rgba(0,0,0,0.32)] backdrop-blur-md sm:mt-7"
+      className="mt-4 overflow-hidden rounded-2xl border border-[#F5A623]/35 bg-[#02070e]/80 shadow-[0_22px_54px_rgba(0,0,0,0.32)] backdrop-blur-md sm:mt-5"
     >
-      <div className="flex items-center justify-between gap-3 border-b border-white/10 px-3 py-2 sm:px-4 sm:py-3">
+      <div className="flex items-center justify-between gap-3 border-b border-white/10 px-3 py-2 sm:px-4">
         <div className="flex min-w-0 items-center gap-3">
-          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-[#F5A623]/60 bg-[#07111F] p-1.5 shadow-[0_8px_20px_rgba(245,166,35,0.2)]">
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-[#F5A623]/60 bg-[#07111F] p-1.5 shadow-[0_8px_20px_rgba(245,166,35,0.2)]">
             <img
               src="/tenants/exportunity/machinery-logo.svg"
               alt=""
@@ -407,7 +407,7 @@ export function IndustrialAssistantChat({
       </div>
 
       <div
-        className="max-h-[230px] space-y-3 overflow-y-auto px-3 py-3 sm:max-h-[280px] sm:px-4 sm:py-4"
+        className="max-h-[150px] space-y-3 overflow-y-auto px-3 py-3 sm:max-h-[160px] sm:px-4"
         aria-live="polite"
         aria-label={copy.conversation}
         role="log"
@@ -438,7 +438,7 @@ export function IndustrialAssistantChat({
       </div>
 
       {!intake ? (
-        <div className="flex gap-2 overflow-x-auto border-t border-white/10 px-3 py-2 sm:flex-wrap sm:overflow-visible sm:px-4 sm:py-3">
+        <div className="flex gap-2 overflow-x-auto border-t border-white/10 px-3 py-2 sm:flex-nowrap sm:px-4">
           {copy.firstReplies.map((reply) => (
             <button
               key={reply}

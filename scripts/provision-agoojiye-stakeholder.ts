@@ -24,6 +24,7 @@ import {
   isMailserverSetupAvailable,
   mailserverDoveadmAuthTestWithRefresh,
   mailserverEmailAdd,
+  mailserverEmailUpdate,
   mailserverQuotaSet,
 } from "../server/lib/mail/mailserverSetup";
 
@@ -106,18 +107,25 @@ async function persistPrivateHandoff(input: {
   return target;
 }
 
-async function provisionMailbox(corporateEmail: string, password: string) {
-  const result = await mailserverEmailAdd(corporateEmail, password);
-  if (!result.ok && /exist|already/i.test(`${result.stdout}\n${result.stderr}`)) {
-    return "existing" as const;
-  }
-  if (!result.ok) throw new Error("MAILBOX_PROVISION_FAILED");
+async function verifyProvisionedMailbox(corporateEmail: string, password: string) {
   const verified = await mailserverDoveadmAuthTestWithRefresh(
     corporateEmail,
     password,
   );
   if (!verified.ok) throw new Error("MAILBOX_AUTH_VERIFICATION_FAILED");
   await mailserverQuotaSet(corporateEmail, "2G");
+}
+
+async function provisionMailbox(corporateEmail: string, password: string) {
+  const result = await mailserverEmailAdd(corporateEmail, password);
+  if (!result.ok && /exist|already/i.test(`${result.stdout}\n${result.stderr}`)) {
+    const reset = await mailserverEmailUpdate(corporateEmail, password);
+    if (!reset.ok) throw new Error("MAILBOX_PASSWORD_RESET_FAILED");
+    await verifyProvisionedMailbox(corporateEmail, password);
+    return "provisioned" as const;
+  }
+  if (!result.ok) throw new Error("MAILBOX_PROVISION_FAILED");
+  await verifyProvisionedMailbox(corporateEmail, password);
   return "provisioned" as const;
 }
 
@@ -185,6 +193,15 @@ async function main() {
       stakeholder.displayName.toLowerCase()
   ) {
     throw new Error("The corporate email is already assigned to another user.");
+  }
+  if (
+    APPLY &&
+    existingProfile &&
+    String(existingProfile.invitationState || "not_sent") !== "not_sent"
+  ) {
+    throw new Error(
+      "The stakeholder was already invited; provisioning cannot reset the mailbox.",
+    );
   }
 
   const preview = {

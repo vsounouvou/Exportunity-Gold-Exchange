@@ -58,7 +58,21 @@ export function hasAgoojiyeOsPermission(member: OsPermissionMember, permission: 
   const permissions = Array.isArray(member.permissions)
     ? member.permissions.map((entry) => String(entry || "").trim()).filter(Boolean)
     : [];
-  return Number(member.accessLevel || 0) >= 6 || permissions.includes("*") || permissions.includes(permission);
+  if (
+    Number(member.accessLevel || 0) >= 6 ||
+    permissions.includes("*") ||
+    permissions.includes(permission)
+  ) {
+    return true;
+  }
+  const [resource, action] = permission.split(":", 2);
+  if (!action) {
+    return (
+      permissions.includes(`${resource}:read`) ||
+      permissions.includes(`${resource}:write`)
+    );
+  }
+  return action === "read" && permissions.includes(`${resource}:write`);
 }
 
 export function canAccessAgoojiyeOsChannel(input: {

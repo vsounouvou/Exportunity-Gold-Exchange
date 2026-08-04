@@ -44,6 +44,17 @@ test("engineering access stays closed until a registered NDA is uploaded", () =>
       state: "required",
     },
   );
+  assert.deepEqual(
+    engineeringNdaDecision({
+      ndaStatus: "required",
+      ndaAccessState: "required",
+    }),
+    {
+      allowed: false,
+      code: "NDA_UPLOAD_REQUIRED",
+      state: "required",
+    },
+  );
   assert.equal(
     engineeringNdaDecision({
       ndaStatus: "signed",
@@ -76,6 +87,14 @@ test("invitations require a registered NDA and a personal email", () => {
     canInviteEngineeringProfile({
       ndaStatus: "signed",
       personalEmail: "person@example.com",
+      invitationState: "not_sent",
+    }),
+    true,
+  );
+  assert.equal(
+    canInviteEngineeringProfile({
+      ndaStatus: "required",
+      personalEmail: "shareholder@example.com",
       invitationState: "not_sent",
     }),
     true,
@@ -176,11 +195,16 @@ test("the French invitation is personal and explains the NDA gate", () => {
     displayName: "Awa DOE",
     setupLink: "https://agoojiye.com/setup-password?token=secret-test-token",
     expiresInHours: 72,
+    corporateEmail: "awa.doe@agoojiye.com",
+    role: "Actionnaire AGOOJIYE",
+    accessDescription: "CRM AGOOJIYE en consultation uniquement",
   });
   assert.match(invitation.subject, /accès personnel/i);
   assert.match(invitation.text, /Bonjour Awa/);
   assert.match(invitation.text, /NDA signé/);
   assert.match(invitation.text, /Aucun accès/);
   assert.match(invitation.text, /72 heures/);
+  assert.match(invitation.text, /awa\.doe@agoojiye\.com/);
+  assert.match(invitation.text, /consultation uniquement/);
   assert.match(invitation.html, /Activer mon compte/);
 });

@@ -48,8 +48,20 @@ test("AGOOJIYE OS invitation rejects expired and fully used links", () => {
 
 test("AGOOJIYE OS permissions recognize explicit and leadership access", () => {
   assert.equal(hasAgoojiyeOsPermission({ accessLevel: 3, permissions: ["crm"] }, "crm"), true);
+  assert.equal(hasAgoojiyeOsPermission({ accessLevel: 2, permissions: ["crm:read"] }, "crm"), true);
+  assert.equal(hasAgoojiyeOsPermission({ accessLevel: 2, permissions: ["crm:read"] }, "crm:write"), false);
+  assert.equal(hasAgoojiyeOsPermission({ accessLevel: 2, permissions: ["crm:write"] }, "crm:read"), true);
   assert.equal(hasAgoojiyeOsPermission({ accessLevel: 3, permissions: ["tasks"] }, "crm"), false);
   assert.equal(hasAgoojiyeOsPermission({ accessLevel: 6, permissions: [] }, "administration"), true);
+});
+
+test("AGOOJIYE CRM exposes read-only navigation and protects writes", () => {
+  const routeSource = fs.readFileSync(path.join(root, "server/routes/agoojye-os.ts"), "utf8");
+  const workspaceSource = fs.readFileSync(path.join(root, "client/src/pages/agoojye/AgoojiyeOsPages.tsx"), "utf8");
+  assert.match(routeSource, /crmWrite: memberCan\(member, "crm:write"\)/);
+  assert.match(routeSource, /memberApi\.post\("\/crm\/partners"[\s\S]*?memberCan\(member, "crm:write"\)/);
+  assert.match(workspaceSource, /Consultation uniquement/);
+  assert.match(workspaceSource, /open && data\.navigation\.crmWrite/);
 });
 
 test("AGOOJIYE OS channel visibility honors confidentiality and department", () => {

@@ -22,7 +22,10 @@ import {
   resolvePasswordSetupBaseUrl,
 } from "../lib/password-setup";
 import { resolveSetupPasswordRedirect } from "../lib/setup-password-redirect";
-import { engineeringNdaDecision } from "../lib/agoojye/ndaAccess";
+import {
+  engineeringNdaDecision,
+  isEngineeringNdaRegistered,
+} from "../lib/agoojye/ndaAccess";
 import { createEngineeringNdaSession } from "../lib/agoojye/ndaOnboarding";
 import {
   isMailserverSetupAvailable,
@@ -133,7 +136,7 @@ router.post("/api/auth/setup-password", async (req, res) => {
       }
       if (
         engineeringProfile &&
-        String(engineeringProfile.ndaStatus || "").trim().toLowerCase() !== "signed"
+        !isEngineeringNdaRegistered(engineeringProfile)
       ) {
         return res.status(403).json({
           message:

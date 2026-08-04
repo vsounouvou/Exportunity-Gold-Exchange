@@ -15,13 +15,20 @@ function normalize(value: unknown) {
   return String(value || "").trim().toLowerCase();
 }
 
+export function isEngineeringNdaRegistered(
+  profile: EngineeringNdaProfileState,
+) {
+  return ["signed", "registered", "required"].includes(
+    normalize(profile.ndaStatus),
+  );
+}
+
 export function engineeringNdaDecision(
   profile: EngineeringNdaProfileState,
 ): EngineeringNdaDecision {
-  const ndaStatus = normalize(profile.ndaStatus);
   const state = normalize(profile.ndaAccessState);
 
-  if (ndaStatus !== "signed") {
+  if (!isEngineeringNdaRegistered(profile)) {
     return { allowed: false, code: "NDA_NOT_REGISTERED", state: "blocked" };
   }
   if (state === "rejected") {
@@ -41,7 +48,7 @@ export function canInviteEngineeringProfile(
 ) {
   const invitationState = normalize(profile.invitationState);
   return (
-    normalize(profile.ndaStatus) === "signed" &&
+    isEngineeringNdaRegistered(profile) &&
     Boolean(normalize(profile.personalEmail)) &&
     ![
       "sending",

@@ -45,7 +45,7 @@ import { AssistantWorkspace } from "@/features/agoojye-chat/AssistantWorkspace";
 type OsBootstrap = {
   ok: boolean;
   member: any;
-  navigation: { crm: boolean; mobility: boolean; administration: boolean; ai: boolean };
+  navigation: { crm: boolean; crmWrite: boolean; mobility: boolean; administration: boolean; ai: boolean };
   attention: {
     dueToday: number;
     overdue: number;
@@ -923,8 +923,8 @@ function CrmSection({ data, refresh }: { data: OsBootstrap; refresh: () => void 
   });
   return (
     <div className="space-y-6">
-      <SectionHeader eyebrow="Relations externes" title="CRM AGOOJIYE" description="L'historique institutionnel des partenaires et prochaines actions reste centralisé." action={<Button variant="outline" onClick={() => setOpen((value) => !value)}><Plus className="mr-2 h-4 w-4" /> Nouveau contact</Button>} />
-      {open ? <form className="grid gap-3 border-l-4 border-[#d8ad3d] bg-white p-5 md:grid-cols-2 xl:grid-cols-4" onSubmit={(event) => { event.preventDefault(); mutation.mutate(); }}><Input value={name} onChange={(event) => setName(event.target.value)} required placeholder="Organisation" /><Input value={category} onChange={(event) => setCategory(event.target.value)} required placeholder="Catégorie" /><Input value={contactPerson} onChange={(event) => setContactPerson(event.target.value)} placeholder="Contact principal" /><Input value={contactEmail} onChange={(event) => setContactEmail(event.target.value)} type="email" placeholder="Email" /><Button type="submit" className="w-fit bg-[#171a18]">Enregistrer</Button></form> : null}
+      <SectionHeader eyebrow="Relations externes" title="CRM AGOOJIYE" description="L'historique institutionnel des partenaires et prochaines actions reste centralisé." action={data.navigation.crmWrite ? <Button variant="outline" onClick={() => setOpen((value) => !value)}><Plus className="mr-2 h-4 w-4" /> Nouveau contact</Button> : <span className="inline-flex min-h-10 items-center border border-[#b58a24]/35 bg-[#fbf7ea] px-4 text-sm font-semibold text-[#6f5316]">Consultation uniquement</span>} />
+      {open && data.navigation.crmWrite ? <form className="grid gap-3 border-l-4 border-[#d8ad3d] bg-white p-5 md:grid-cols-2 xl:grid-cols-4" onSubmit={(event) => { event.preventDefault(); mutation.mutate(); }}><Input value={name} onChange={(event) => setName(event.target.value)} required placeholder="Organisation" /><Input value={category} onChange={(event) => setCategory(event.target.value)} required placeholder="Catégorie" /><Input value={contactPerson} onChange={(event) => setContactPerson(event.target.value)} placeholder="Contact principal" /><Input value={contactEmail} onChange={(event) => setContactEmail(event.target.value)} type="email" placeholder="Email" /><Button type="submit" className="w-fit bg-[#171a18]">Enregistrer</Button></form> : null}
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
         {data.partners.map((partner) => (
           <article key={partner.id} className="border border-black/10 bg-white p-5">

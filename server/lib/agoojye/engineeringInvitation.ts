@@ -16,18 +16,36 @@ export function buildEngineeringInvitation(input: {
   setupLink: string;
   expiresInHours: number;
   webmailUrl?: string;
+  corporateEmail?: string;
+  role?: string;
+  accessDescription?: string;
 }) {
   const firstName = engineeringInvitationFirstName(input.displayName);
   const safeFirstName = escapeHtml(firstName);
   const safeLink = escapeHtml(input.setupLink);
   const webmailUrl =
     String(input.webmailUrl || "").trim() || "https://mail.agoojiye.com/";
+  const details = [
+    input.corporateEmail
+      ? `Adresse professionnelle : ${String(input.corporateEmail).trim()}`
+      : "",
+    input.role ? `Rôle : ${String(input.role).trim()}` : "",
+    input.accessDescription
+      ? `Accès : ${String(input.accessDescription).trim()}`
+      : "",
+  ].filter(Boolean);
+  const detailText = details.length ? ["", ...details, ""] : [""];
+  const detailHtml = details.length
+    ? `<div style="margin:0 0 22px;border:1px solid #dedbd1;background:#faf9f5;padding:16px 18px;color:#415047;line-height:1.65">${details
+        .map((detail) => escapeHtml(detail))
+        .join("<br>")}</div>`
+    : "";
   const subject = "Votre accès personnel à l'espace équipe AGOOJIYE";
   const text = [
     `Bonjour ${firstName},`,
     "",
     "Votre compte professionnel AGOOJIYE est prêt.",
-    "",
+    ...detailText,
     "Ouvrez votre lien personnel pour définir votre mot de passe. Ce même mot de passe servira ensuite pour la plateforme et le webmail AGOOJIYE.",
     "",
     input.setupLink,
@@ -52,6 +70,7 @@ export function buildEngineeringInvitation(input: {
           <tr><td style="padding:32px 28px">
             <p style="margin:0 0 18px;font-size:17px">Bonjour ${safeFirstName},</p>
             <h1 style="margin:0 0 14px;font-size:28px;line-height:1.2">Votre espace équipe est prêt.</h1>
+            ${detailHtml}
             <p style="margin:0 0 22px;color:#4f5752;line-height:1.65">Définissez votre mot de passe personnel. Il servira pour la plateforme et le webmail AGOOJIYE.</p>
             <p style="margin:0 0 26px"><a href="${safeLink}" style="display:inline-block;background:#d8ad3d;color:#17140c;text-decoration:none;font-weight:700;padding:14px 20px">Activer mon compte</a></p>
             <div style="border-left:4px solid #18563b;background:#eef7f2;padding:16px 18px">

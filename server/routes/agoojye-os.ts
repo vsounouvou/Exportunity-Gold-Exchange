@@ -576,6 +576,7 @@ memberApi.get("/bootstrap", async (req: any, res) => {
     },
     navigation: {
       crm: memberCan(member, "crm"),
+      crmWrite: memberCan(member, "crm:write"),
       mobility: memberCan(member, "mobility"),
       administration:
         Array.isArray(req.workosTenantRoles) &&
@@ -1109,7 +1110,7 @@ const partnerSchema = z.object({
 
 memberApi.post("/crm/partners", async (req: any, res) => {
   const member = req.osMember;
-  if (!memberCan(member, "crm")) return res.status(403).json({ message: "Accès CRM non autorisé." });
+  if (!memberCan(member, "crm:write")) return res.status(403).json({ message: "Accès CRM en modification non autorisé." });
   const parsed = partnerSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ message: "Les informations du partenaire sont invalides." });
   const tenantId = Number(req.osTenantId);

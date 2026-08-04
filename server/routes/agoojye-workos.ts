@@ -57,7 +57,10 @@ import {
   resolvePasswordSetupBaseUrl,
 } from "../lib/password-setup";
 import { isMailserverSetupAvailable, mailserverEmailAdd } from "../lib/mail/mailserverSetup";
-import { engineeringNdaDecision } from "../lib/agoojye/ndaAccess";
+import {
+  engineeringNdaDecision,
+  isEngineeringNdaRegistered,
+} from "../lib/agoojye/ndaAccess";
 import {
   createEngineeringNdaSession,
   hashEngineeringNdaSessionToken,
@@ -817,7 +820,7 @@ onboardingApi.get("/nda", async (req: any, res) => {
     ok: true,
     displayName: member.displayName,
     corporateEmail: member.email,
-    ndaRegistered: profile.ndaStatus === "signed",
+    ndaRegistered: isEngineeringNdaRegistered(profile),
     ndaAccessState: profile.ndaAccessState,
     accessAllowed: decision.allowed,
     document: document
@@ -859,7 +862,7 @@ onboardingApi.post(
     }
     const member = req.ndaMember;
     const profile = req.ndaEngineeringProfile;
-    if (profile.ndaStatus !== "signed") {
+    if (!isEngineeringNdaRegistered(profile)) {
       return res.status(403).json({
         message: "Votre NDA doit d'abord être enregistré par l'administration.",
         code: "NDA_NOT_REGISTERED",

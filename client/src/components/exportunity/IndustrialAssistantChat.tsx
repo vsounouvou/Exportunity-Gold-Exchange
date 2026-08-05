@@ -575,11 +575,11 @@ export function IndustrialAssistantChat({
         }}
         className="border-t border-white/10 bg-white px-2.5 py-2 shadow-[0_-10px_28px_rgba(0,0,0,0.16)] sm:px-3 sm:py-2.5"
       >
-        <div className="flex items-end gap-2 rounded-xl border border-slate-200 bg-slate-50 p-1.5 focus-within:border-[#F5A623] focus-within:bg-white focus-within:ring-2 focus-within:ring-[#F5A623]/20">
+        <div className="grid grid-cols-[auto_minmax(0,1fr)_auto_auto] items-end gap-1.5 rounded-xl border border-slate-200 bg-slate-50 p-1.5 focus-within:border-[#F5A623] focus-within:bg-white focus-within:ring-2 focus-within:ring-[#F5A623]/20 sm:gap-2">
           <button
             type="button"
             onClick={() => attachmentInputRef.current?.click()}
-            className="grid h-10 w-10 shrink-0 place-items-center rounded-lg text-[#8d5a00] transition hover:bg-[#F5A623]/15 hover:text-[#07111F]"
+            className="col-start-1 row-start-2 grid h-10 w-10 shrink-0 place-items-center rounded-lg text-[#8d5a00] transition hover:bg-[#F5A623]/15 hover:text-[#07111F] sm:row-start-1"
             aria-label={copy.attach}
             title={copy.attach}
           >
@@ -593,7 +593,7 @@ export function IndustrialAssistantChat({
             className="sr-only"
             onChange={onAttachmentSelect}
           />
-          <label className="min-w-0 flex-1">
+          <label className="col-span-4 col-start-1 row-start-1 min-w-0 sm:col-span-1 sm:col-start-2">
             <span className="sr-only">{copy.composerLabel}</span>
             <textarea
               value={draft}
@@ -611,27 +611,29 @@ export function IndustrialAssistantChat({
               aria-label={copy.composerLabel}
             />
           </label>
-          <VoiceToTextButton
-            draftText={draft}
-            setDraftText={setDraft}
-            appendDraftText={(text) =>
-              setDraft((current) => `${current} ${text}`.trim())
-            }
-            hideHelper
-            helperText={copy.name}
-            recordingText={
-              language === "fr"
-                ? "Touchez pour arreter l'enregistrement"
-                : "Tap again to stop recording"
-            }
-            unavailableText={
-              language === "fr" ? "Microphone indisponible" : "Microphone unavailable"
-            }
-          />
+          <div className="col-start-3 row-start-2 [&_button]:!h-10 [&_button]:!w-10 sm:row-start-1">
+            <VoiceToTextButton
+              draftText={draft}
+              setDraftText={setDraft}
+              appendDraftText={(text) =>
+                setDraft((current) => `${current} ${text}`.trim())
+              }
+              hideHelper
+              helperText={copy.name}
+              recordingText={
+                language === "fr"
+                  ? "Touchez pour arreter l'enregistrement"
+                  : "Tap again to stop recording"
+              }
+              unavailableText={
+                language === "fr" ? "Microphone indisponible" : "Microphone unavailable"
+              }
+            />
+          </div>
           <button
             type="submit"
             disabled={!draft.trim() || isPreviewing}
-            className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-[#F5A623] text-[#07111F] transition hover:bg-[#f9a800] disabled:cursor-not-allowed disabled:opacity-55"
+            className="col-start-4 row-start-2 grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-[#F5A623] text-[#07111F] transition hover:bg-[#f9a800] disabled:cursor-not-allowed disabled:opacity-55 sm:row-start-1"
             aria-label={copy.send}
             title={copy.send}
           >

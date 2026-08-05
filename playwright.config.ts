@@ -14,6 +14,7 @@ const seedAdminPassword =
 const shouldStartServer = !process.env.E2E_BASE_URL;
 const webServerCommand =
   process.env.E2E_WEB_SERVER_COMMAND || "npm run dev";
+const chromiumExecutablePath = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH;
 
 export default defineConfig({
   testDir: "tests/e2e",
@@ -23,7 +24,15 @@ export default defineConfig({
     timeout: 15000,
   },
   projects: [
-    { name: "chromium", use: { browserName: "chromium" } },
+    {
+      name: "chromium",
+      use: {
+        browserName: "chromium",
+        ...(chromiumExecutablePath
+          ? { launchOptions: { executablePath: chromiumExecutablePath } }
+          : {}),
+      },
+    },
     { name: "webkit", use: { browserName: "webkit" } },
   ],
   use: {

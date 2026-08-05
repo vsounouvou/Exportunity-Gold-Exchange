@@ -6,7 +6,7 @@ import {
   type FormEvent,
 } from "react";
 import { Link } from "wouter";
-import { MessageCircle, Paperclip, Send, Trash2 } from "lucide-react";
+import { Paperclip, Send, Trash2 } from "lucide-react";
 
 import { VoiceToTextButton } from "@/components/chat/VoiceToTextButton";
 import { cn } from "@/lib/utils";
@@ -79,8 +79,7 @@ export function IndustrialAssistantChat({
           composerLabel: "Envoyer un message à Tassi",
           greeting:
             "Bonjour, je suis Tassi. Dites-moi ce que vous devez sourcer, fabriquer ou acheminer.",
-          placeholder:
-            "Écrivez à Tassi au sujet d'une pièce, machine, matière, commodité ou expédition...",
+          placeholder: "Décrivez votre besoin ou joignez une photo...",
           attach: "Joindre une photo ou un fichier",
           send: "Envoyer a Tassi",
           preparing: "Tassi organise votre demande...",
@@ -118,8 +117,7 @@ export function IndustrialAssistantChat({
           composerLabel: "Message Tassi",
           greeting:
             "Hello, I am Tassi. Tell me what you need to source, manufacture, or move.",
-          placeholder:
-            "Message Tassi about a part, machine, material, commodity, or shipment...",
+          placeholder: "Describe your need or attach a photo...",
           attach: "Attach a photo or file",
           send: "Send to Tassi",
           preparing: "Tassi is organizing your request...",
@@ -438,14 +436,14 @@ export function IndustrialAssistantChat({
       </div>
 
       {!intake ? (
-        <div className="flex gap-2 overflow-x-auto border-t border-white/10 px-3 py-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:flex-nowrap sm:px-4">
+        <div className="scrollbar-hide flex snap-x snap-mandatory gap-2 overflow-x-auto border-t border-white/10 px-3 py-2 sm:flex-wrap sm:overflow-visible sm:px-4">
           {copy.firstReplies.map((reply) => (
             <button
               key={reply}
               type="button"
               onClick={() => void sendMessage(reply)}
               disabled={isPreviewing}
-              className="shrink-0 rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-medium text-white transition hover:border-[#F5A623]/80 hover:bg-[#F5A623]/15 disabled:cursor-not-allowed disabled:opacity-60"
+              className="shrink-0 snap-start rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-medium text-white transition hover:border-[#F5A623]/80 hover:bg-[#F5A623]/15 disabled:cursor-not-allowed disabled:opacity-60 sm:shrink"
             >
               {reply}
             </button>
@@ -595,7 +593,6 @@ export function IndustrialAssistantChat({
             className="sr-only"
             onChange={onAttachmentSelect}
           />
-          <MessageCircle className="mb-2 h-4 w-4 shrink-0 text-[#a96f0b]" aria-hidden="true" />
           <label className="min-w-0 flex-1">
             <span className="sr-only">{copy.composerLabel}</span>
             <textarea
@@ -607,9 +604,9 @@ export function IndustrialAssistantChat({
                   void sendMessage();
                 }
               }}
-              rows={2}
+              rows={1}
               maxLength={4000}
-              className="block min-h-10 w-full resize-none bg-transparent px-1 py-1.5 text-sm leading-5 text-slate-950 outline-none placeholder:text-slate-400"
+              className="block min-h-10 max-h-24 w-full resize-none bg-transparent px-1 py-2.5 text-sm leading-5 text-slate-950 outline-none placeholder:text-slate-400"
               placeholder={copy.placeholder}
               aria-label={copy.composerLabel}
             />

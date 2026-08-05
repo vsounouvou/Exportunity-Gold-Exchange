@@ -28,7 +28,9 @@ import {
   ChevronRight,
   ClipboardList,
   Factory,
+  FileCheck2,
   GraduationCap,
+  Handshake,
   Landmark,
   Languages,
   List,
@@ -39,6 +41,7 @@ import {
   Plus,
   Search,
   Settings2,
+  ShieldCheck,
   Sun,
   Trash2,
   Wheat,
@@ -4794,8 +4797,9 @@ export default function IndustrialHubPage() {
   const [search, setSearch] = useState(queryValue(location, "q"));
   const view = readView(location);
   const activeKey =
-    view === "home" ||
-    view === "register" ||
+    view === "home"
+      ? null
+      : view === "register" ||
     view === "factoryProfile" ||
     view === "claim" ||
     view === "factoryWorkspace"
@@ -5076,53 +5080,6 @@ export default function IndustrialHubPage() {
     );
   };
 
-  const heroNeedActions = [
-    {
-      title:
-        locale === "fr"
-          ? "Pièce ou composant urgent"
-          : "Urgent part or component",
-      detail:
-        locale === "fr"
-          ? "Référence, compatibilité ou panne."
-          : "Reference, compatibility, or fault.",
-      href: "/request-quote?type=spare_part&urgency=urgent",
-      icon: PackageSearch,
-    },
-    {
-      title:
-        locale === "fr" ? "Machine ou ligne" : "Machine or production line",
-      detail:
-        locale === "fr"
-          ? "Capacité, site et contrainte technique."
-          : "Capacity, site, and technical constraints.",
-      href: "/request-quote?type=machinery",
-      icon: Wrench,
-    },
-    {
-      title:
-        locale === "fr" ? "Matière ou intrant" : "Material or industrial input",
-      detail:
-        locale === "fr"
-          ? "Quantité, fréquence et spécification."
-          : "Quantity, frequency, and specification.",
-      href: "/request-quote?type=raw_material",
-      icon: Settings2,
-    },
-    {
-      title:
-        locale === "fr"
-          ? "Fabriquer ou refaire une pièce"
-          : "Make or reproduce a part",
-      detail:
-        locale === "fr"
-          ? "Photo, dessin, mesure ou fichier CAD."
-          : "Photo, drawing, measurement, or CAD file.",
-      href: "/request-quote?type=custom_manufacturing",
-      icon: ClipboardList,
-    },
-  ];
-
   const industrialNeedFlow = [
     {
       title: locale === "fr" ? "1. Décrire" : "1. Describe",
@@ -5401,6 +5358,29 @@ export default function IndustrialHubPage() {
   const publicFactoryId = factoryProfileId(location);
   const isDark = theme === "dark";
   const navLabel = (key: (typeof NAVIGATION)[number]["key"]) => copy[key];
+  const heroTrustSignals = [
+    {
+      icon: FileCheck2,
+      label:
+        locale === "fr"
+          ? "Photo, plan ou référence"
+          : "Photo, drawing, or reference",
+    },
+    {
+      icon: ShieldCheck,
+      label:
+        locale === "fr"
+          ? "Dossier technique privé"
+          : "Private technical case",
+    },
+    {
+      icon: Handshake,
+      label:
+        locale === "fr"
+          ? "Contact après validation"
+          : "Contact after approval",
+    },
+  ];
 
   return (
     <div className={cn("min-h-screen", isDark && "dark")}>
@@ -5436,6 +5416,7 @@ export default function IndustrialHubPage() {
                   <Link
                     key={item.key}
                     href={item.href}
+                    aria-current={active ? "page" : undefined}
                     className={cn(
                       "inline-flex items-center gap-1.5 rounded-lg px-2 py-2 text-xs font-medium transition 2xl:gap-2 2xl:px-3 2xl:text-sm",
                       active
@@ -5484,20 +5465,23 @@ export default function IndustrialHubPage() {
               </Link>
             </div>
           </div>
-          <div className="scrollbar-hide flex gap-1 overflow-x-auto border-t border-slate-900/5 px-3 py-2 xl:hidden dark:border-white/10">
+          <div className="scrollbar-hide flex snap-x snap-mandatory gap-1 overflow-x-auto border-t border-slate-900/5 px-3 py-2 xl:hidden dark:border-white/10">
             {NAVIGATION.map((item) => {
+              const Icon = item.icon;
               const active = activeKey === item.key;
               return (
                 <Link
                   key={item.key}
                   href={item.href}
+                  aria-current={active ? "page" : undefined}
                   className={cn(
-                    "shrink-0 rounded-lg px-3 py-1.5 text-sm font-medium",
+                    "inline-flex shrink-0 snap-start items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium",
                     active
                       ? "bg-[#F5A623]/15 text-slate-950 dark:text-white"
                       : "text-slate-600 dark:text-slate-300",
                   )}
                 >
+                  <Icon className="h-3.5 w-3.5" aria-hidden="true" />
                   {navLabel(item.key)}
                 </Link>
               );
@@ -5515,18 +5499,18 @@ export default function IndustrialHubPage() {
           </div>
         </header>
 
-        <main className="mx-auto max-w-[1560px] px-4 py-8 lg:px-7 lg:py-10">
+        <main className="mx-auto max-w-[1560px] px-4 py-4 sm:py-6 lg:px-7 lg:py-8">
           {view === "home" ? (
             <>
-              <section className="grid items-stretch gap-6 xl:grid-cols-[minmax(0,1.08fr)_minmax(440px,0.92fr)]">
-                <div className="relative min-h-[520px] overflow-hidden rounded-2xl border border-[#F5A623]/35 bg-[#07111F] px-5 py-6 shadow-[0_28px_64px_rgba(7,17,31,0.2)] sm:px-8 sm:py-6">
+              <section data-testid="industrial-home-primary" className="grid items-stretch gap-5 xl:grid-cols-[minmax(0,1.08fr)_minmax(440px,0.92fr)] xl:gap-6">
+                <div className="relative min-h-[500px] overflow-hidden rounded-2xl border border-[#F5A623]/35 bg-[#07111F] px-5 py-5 shadow-[0_28px_64px_rgba(7,17,31,0.2)] sm:min-h-[520px] sm:px-8 sm:py-6">
                   <img
                     src="/tenants/exportunity/industrial/machinery-team.png"
                     alt=""
                     aria-hidden="true"
-                    className="pointer-events-none absolute inset-0 h-full w-full object-cover object-[72%_center] opacity-45"
+                    className="pointer-events-none absolute inset-0 h-full w-full object-cover object-[70%_center] opacity-60"
                   />
-                  <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(7,17,31,0.98)_0%,rgba(7,17,31,0.9)_46%,rgba(7,17,31,0.48)_100%)]" />
+                  <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(7,17,31,0.98)_0%,rgba(7,17,31,0.88)_50%,rgba(7,17,31,0.3)_100%)]" />
                   <div className="relative z-10 flex h-full max-w-3xl flex-col">
                     <p className="text-sm font-semibold text-[#F5A623]">
                       {copy.heroEyebrow}
@@ -5538,35 +5522,19 @@ export default function IndustrialHubPage() {
                       {copy.heroText}
                     </p>
                     <IndustrialAssistantChat language={locale} requester={user} />
-                    <div className="mt-6 grid gap-x-5 sm:grid-cols-2">
-                      {heroNeedActions.map((action) => {
-                        const Icon = action.icon;
+                    <div className="mt-4 grid grid-cols-3 gap-2 border-t border-white/15 pt-4">
+                      {heroTrustSignals.map((signal) => {
+                        const Icon = signal.icon;
                         return (
-                          <Link
-                            key={action.title}
-                            href={action.href}
-                            className="group flex min-h-20 items-start gap-3 border-t border-white/20 py-4 text-left hover:border-[#F5A623]"
-                          >
-                            <Icon className="mt-0.5 h-5 w-5 shrink-0 text-[#F5A623]" />
-                            <span className="min-w-0">
-                              <span className="block text-sm font-semibold text-white">
-                                {action.title}
-                              </span>
-                              <span className="mt-1 block text-xs leading-5 text-slate-300">
-                                {action.detail}
-                              </span>
+                          <div key={signal.label} className="min-w-0 text-center sm:flex sm:items-center sm:gap-2 sm:text-left">
+                            <Icon className="mx-auto h-4 w-4 shrink-0 text-[#F5A623] sm:mx-0" />
+                            <span className="mt-1 block text-[10px] font-medium leading-4 text-slate-200 sm:mt-0 sm:text-xs">
+                              {signal.label}
                             </span>
-                            <ArrowRight className="mt-1 h-4 w-4 shrink-0 text-slate-400 transition group-hover:translate-x-0.5 group-hover:text-[#F5A623]" />
-                          </Link>
+                          </div>
                         );
                       })}
                     </div>
-                    <p className="mt-auto flex items-center gap-2 pt-5 text-sm text-slate-200">
-                      <Paperclip className="h-4 w-4 shrink-0 text-[#F5A623]" />
-                      {locale === "fr"
-                        ? "Vous pouvez joindre une photo, une référence, un dessin ou un fichier CAD."
-                        : "You can attach a photo, reference, drawing, or CAD file."}
-                    </p>
                   </div>
                 </div>
                 <div className="relative min-h-[520px]">
@@ -5583,7 +5551,7 @@ export default function IndustrialHubPage() {
                     language={locale}
                     className="absolute inset-0 min-h-[520px] shadow-[0_24px_64px_rgba(7,17,31,0.18)]"
                   />
-                  <div className="absolute left-4 top-4 z-[600] w-[calc(100%-2rem)] max-w-[294px] rounded-xl border border-white/70 bg-white/95 p-3.5 shadow-[0_16px_38px_rgba(7,17,31,0.18)] backdrop-blur-xl dark:border-white/15 dark:bg-[#07111F]/95">
+                  <div className="absolute left-3 top-3 z-[600] w-[calc(100%-1.5rem)] max-w-[270px] rounded-xl border border-white/70 bg-white/95 p-3 shadow-[0_16px_38px_rgba(7,17,31,0.18)] backdrop-blur-xl sm:left-4 sm:top-4 sm:w-[calc(100%-2rem)] sm:max-w-[294px] sm:p-3.5 dark:border-white/15 dark:bg-[#07111F]/95">
                     <div className="flex items-start gap-2.5">
                       <span className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#F5A623]/15 text-[#865400] dark:text-[#F5A623]">
                         <MapPinned className="h-4 w-4" />
@@ -5592,7 +5560,7 @@ export default function IndustrialHubPage() {
                         <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#a96f0b] dark:text-[#F5A623]">
                           {copy.verifiedMap}
                         </p>
-                        <p className="mt-1 text-xs leading-5 text-slate-600 dark:text-slate-300">
+                        <p className="mt-1 hidden text-xs leading-5 text-slate-600 sm:block dark:text-slate-300">
                           {copy.mapDetail}
                         </p>
                       </div>

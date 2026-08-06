@@ -3467,6 +3467,8 @@ export function AITeamHubPage() {
               size="sm"
               onClick={() => setMobileLeftSheet(true)}
               className="ops-pressable h-10 w-10 text-gray-400 hover:text-white p-0 flex-shrink-0"
+              aria-label="Open meetings"
+              title="Open meetings"
             >
               <Menu className="h-5 w-5" />
             </Button>
@@ -3515,16 +3517,35 @@ export function AITeamHubPage() {
             </div>
           </div>
           
-          {/* Mobile Agents Button */}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setMembersAuditOpen(true)}
-            className="ops-pressable text-gray-400 hover:text-white h-9 px-2"
-          >
-            <Users className="h-4 w-4" />
-            <span className="hidden md:inline ml-1 text-xs">Members ({activeAgents.length})</span>
-          </Button>
+          {isMobile ? (
+            <Button
+              size="sm"
+              onClick={() => createMeetingMutation.mutate({ title: `Meeting ${format(new Date(), "MMM d, h:mm a")}` })}
+              disabled={createMeetingMutation.isPending}
+              className="ops-pressable h-9 shrink-0 bg-[#F5A623] px-2 text-slate-950 hover:bg-[#e99a18]"
+              aria-label="Create new meeting"
+              title="Create new meeting"
+            >
+              {createMeetingMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Plus className="h-4 w-4" />
+              )}
+              <span className="ml-1 hidden sm:inline">New meeting</span>
+            </Button>
+          ) : (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setMembersAuditOpen(true)}
+              className="ops-pressable text-gray-400 hover:text-white h-9 px-2"
+              aria-label={`Review ${activeAgents.length} active members`}
+              title="Review members and agent scope"
+            >
+              <Users className="h-4 w-4" />
+              <span className="ml-1 text-xs">Members ({activeAgents.length})</span>
+            </Button>
+          )}
 
           {isMobile ? (
             <Button
@@ -3532,6 +3553,8 @@ export function AITeamHubPage() {
               size="sm"
               onClick={() => setMobileRightSheet(true)}
               className="ops-pressable h-10 w-10 text-gray-400 hover:text-white p-0 flex-shrink-0"
+              aria-label="Open agent roster"
+              title="Open agent roster"
             >
               <Users className="h-5 w-5" />
               {activeAgents.length > 0 && (

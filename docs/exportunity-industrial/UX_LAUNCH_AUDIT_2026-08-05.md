@@ -71,3 +71,28 @@ The industrial intake is technically real and the core request-classification fl
 3. Verify route, map, image, chat, and admin workflows against the deployed build.
 4. Complete the Operations Center meeting, hierarchy, and agent-action audit.
 5. Approve outreach identity, account access, message templates, suppression rules, and test recipients before any email or social outreach.
+
+## Product catalogue follow-up - 2026-08-06
+
+The public industrial experience now starts with products buyers can request, while preserving the controlled B2B review process.
+
+### Published product groups
+
+- Industrial spare parts: sprockets, bearings and housings, pulleys and belts, couplings, pump and conveyor parts, bushings, flanges, brackets, and bases.
+- Factory tools and equipment: motors, reducers, pumps, measurement tools, sensors, controls, and reverse-engineering services.
+- Documented Made-in-Benin output: cashew kernels, soybean oil and meal, corrugated boxes, metal cans, T-shirts, polos, knitted garments, cotton yarn, towels, bed linen, and woven cotton fabrics.
+
+### Evidence and transaction rules
+
+- GDIZ output is labelled as documented factory output and links to the relevant official GDIZ source.
+- Spare parts and factory tools are labelled as Exportunity sourcing or technical-review programmes, not as inventory already held.
+- Public cards do not claim stock, price, minimum order, capacity, or lead time before supplier confirmation.
+- A buyer action creates a real industrial requirement and preserves the selected catalogue item as evidence for review.
+- No supplier is contacted and no order is represented as completed automatically from the public catalogue.
+
+### Official product sources
+
+- GDIZ 2025 production review: `https://gdiz-benin.com/fr/2025-a-ete-une-annee-de-realisations-majeures-pour-la-gdiz/`
+- GDIZ industrial unit launch and outputs: `https://gdiz-benin.com/launch-event/`
+- GDIZ weaving plant: `https://gdiz-benin.com/fr/usine-de-tissage-de-gdiz/`
+- GDIZ knitting plant: `https://gdiz-benin.com/knitting-textile-plant/`

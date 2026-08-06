@@ -27,6 +27,7 @@ import {
   CheckCircle2,
   ChevronRight,
   ClipboardList,
+  ExternalLink,
   Factory,
   FileCheck2,
   GraduationCap,
@@ -116,6 +117,8 @@ type CatalogItem = {
   id: string;
   name: string;
   description?: string | null;
+  localizedName?: { fr?: string; en?: string } | null;
+  localizedDescription?: { fr?: string; en?: string } | null;
   categoryCode: string;
   classification: string;
   productCode?: string | null;
@@ -136,10 +139,22 @@ type CatalogItem = {
   leadTimeText?: string | null;
   certifications?: string[];
   media: string[];
-  factoryId: string;
+  factoryId?: string | null;
   factoryName: string;
   factoryCity?: string | null;
   factoryCountryCode: string;
+  listingKind?:
+    | "verified_factory_catalog"
+    | "documented_factory_output"
+    | "exportunity_sourcing_program";
+  sourceUrl?: string | null;
+  sourceLabel?: { fr?: string; en?: string } | null;
+  inventoryVerified?: boolean;
+  requestMode?:
+    | "availability_request"
+    | "parts_order_request"
+    | "technical_review";
+  displayPriority?: number;
 };
 
 type IndustrialSearchContext = {
@@ -290,16 +305,65 @@ const REQUIREMENT_TYPE_BY_CLASSIFICATION: Record<string, string> = {
   export_ready_factory_product: "export_quotation",
 };
 
-function catalogRequirementHref(item: CatalogItem) {
+function catalogRequirementHref(item: CatalogItem, language: "fr" | "en") {
   const params = new URLSearchParams({
     type:
       REQUIREMENT_TYPE_BY_CLASSIFICATION[item.classification] ||
       "industrial_service",
-    factory: item.factoryId,
-    product: item.name,
+    product: catalogItemName(item, language),
   });
+  if (item.factoryId) params.set("factory", item.factoryId);
   if (item.categoryCode) params.set("category", item.categoryCode);
+  params.set("catalogItem", item.id);
   return `/request-quote?${params.toString()}`;
+}
+
+function catalogItemName(item: CatalogItem, language: "fr" | "en") {
+  return item.localizedName?.[language] || item.name;
+}
+
+function catalogItemDescription(item: CatalogItem, language: "fr" | "en") {
+  return item.localizedDescription?.[language] || item.description || "";
+}
+
+function catalogClassificationLabel(
+  classification: string,
+  language: "fr" | "en",
+) {
+  const labels: Record<string, { fr: string; en: string }> = {
+    export_ready_factory_product: {
+      fr: "Produit d'usine",
+      en: "Factory output",
+    },
+    spare_part: { fr: "Piece detachee", en: "Spare part" },
+    machinery: { fr: "Equipement", en: "Equipment" },
+    industrial_input: { fr: "Outillage et intrant", en: "Tools and inputs" },
+    raw_material: { fr: "Matiere premiere", en: "Raw material" },
+    industrial_service: { fr: "Service technique", en: "Technical service" },
+  };
+  return labels[classification]?.[language] || classification.replace(/_/g, " ");
+}
+
+function catalogListingLabel(item: CatalogItem, language: "fr" | "en") {
+  if (item.listingKind === "documented_factory_output")
+    return language === "fr"
+      ? "Production documentee"
+      : "Documented factory output";
+  if (item.listingKind === "exportunity_sourcing_program")
+    return language === "fr"
+      ? "Sourcing Exportunity"
+      : "Exportunity sourcing";
+  return language === "fr" ? "Catalogue verifie" : "Verified catalog";
+}
+
+function catalogActionLabel(item: CatalogItem, language: "fr" | "en") {
+  if (item.requestMode === "technical_review")
+    return language === "fr" ? "Ouvrir l'etude" : "Open technical review";
+  if (item.requestMode === "parts_order_request")
+    return language === "fr" ? "Demarrer la commande" : "Start parts order";
+  return language === "fr"
+    ? "Demander disponibilite"
+    : "Request availability";
 }
 
 function queryValue(location: string, key: string) {
@@ -1253,88 +1317,218 @@ function CatalogList({
   if (!items.length)
     return <EmptyState title={emptyTitle} detail={emptyDetail} />;
   return (
-    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
       {items.map((item) => (
         <article
           key={item.id}
-          className="rounded-2xl border border-slate-200 bg-white p-5 dark:border-white/10 dark:bg-slate-900"
+          className="group flex min-w-0 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[0_12px_30px_rgba(15,23,42,0.07)] transition hover:-translate-y-0.5 hover:border-[#F5A623]/65 hover:shadow-[0_18px_38px_rgba(15,23,42,0.12)] dark:border-white/10 dark:bg-[#0A1628]"
         >
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.15em] text-[#a96f0b]">
-                {item.classification.replace(/_/g, " ")}
-              </p>
-              <h3 className="mt-2 text-base font-semibold text-slate-950 dark:text-white">
-                {item.name}
-              </h3>
-            </div>
-            <StatusPill>
-              {language === "fr" ? "Approuvé" : "Approved"}
-            </StatusPill>
+          <div className="relative aspect-[16/9] overflow-hidden bg-[#07111F]">
+            {item.media?.[0] ? (
+              <img
+                src={item.media[0]}
+                alt={catalogItemName(item, language)}
+                loading="lazy"
+                className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.025]"
+              />
+            ) : (
+              <div className="grid h-full place-items-center bg-[radial-gradient(circle_at_50%_30%,rgba(245,166,35,0.22),transparent_45%),#07111F]">
+                <PackageSearch className="h-12 w-12 text-[#F5A623]" />
+              </div>
+            )}
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#07111F]/75 via-transparent to-transparent" />
+            <span className="absolute bottom-3 left-3 rounded-md border border-white/20 bg-[#07111F]/88 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.11em] text-white backdrop-blur">
+              {catalogClassificationLabel(item.classification, language)}
+            </span>
           </div>
-          <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">
-            {item.description ||
-              (language === "fr"
-                ? "Description technique disponible après mise en relation qualifiée."
-                : "Technical description is available after qualified introduction.")}
-          </p>
-          <div className="mt-4 border-t border-slate-100 pt-4 text-sm text-slate-600 dark:border-white/10 dark:text-slate-300">
-            <Link
-              href={`/factories/${item.factoryId}`}
-              className="font-medium text-slate-900 hover:text-[#a96f0b] dark:text-white dark:hover:text-[#F5A623]"
-            >
-              {item.factoryName}
-            </Link>
-            <p className="mt-1">
-              {[item.factoryCity, item.factoryCountryCode]
-                .filter(Boolean)
-                .join(", ")}
-            </p>
-            <div className="mt-3 flex flex-wrap gap-1.5 text-xs">
-              {item.partNumber || item.productCode ? (
-                <span className="rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-slate-600 dark:border-white/10 dark:bg-white/5 dark:text-slate-300">
-                  {language === "fr" ? "Réf." : "Ref."}{" "}
-                  {item.partNumber || item.productCode}
-                </span>
-              ) : null}
-              {item.minimumOrderQuantity ? (
-                <span className="rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-slate-600 dark:border-white/10 dark:bg-white/5 dark:text-slate-300">
-                  MOQ: {item.minimumOrderQuantity}
-                </span>
-              ) : null}
-              {item.leadTimeText ? (
-                <span className="rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-slate-600 dark:border-white/10 dark:bg-white/5 dark:text-slate-300">
-                  {language === "fr" ? "Délai" : "Lead time"}:{" "}
-                  {item.leadTimeText}
-                </span>
-              ) : null}
-              {item.certifications?.slice(0, 2).map((certification) => (
-                <span
-                  key={certification}
-                  className="rounded-md border border-emerald-700/20 bg-emerald-50 px-2 py-1 text-emerald-800 dark:border-emerald-300/20 dark:bg-emerald-300/10 dark:text-emerald-200"
-                >
-                  {certification}
-                </span>
-              ))}
+          <div className="flex flex-1 flex-col p-4 sm:p-5">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#946000] dark:text-[#F5A623]">
+                  {catalogListingLabel(item, language)}
+                </p>
+                <h3 className="mt-1.5 text-base font-semibold leading-6 text-slate-950 dark:text-white">
+                  {catalogItemName(item, language)}
+                </h3>
+              </div>
+              <StatusPill>
+                {language === "fr" ? "Sur demande" : "On request"}
+              </StatusPill>
             </div>
-            <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">
-              {language === "fr"
-                ? "Disponibilité à confirmer • devis après revue technique"
-                : "Availability to confirm • quotation after technical review"}
+            <p className="mt-3 line-clamp-3 text-sm leading-6 text-slate-600 dark:text-slate-300">
+              {catalogItemDescription(item, language) ||
+                (language === "fr"
+                  ? "Les specifications et la disponibilite sont confirmees apres revue de votre besoin."
+                  : "Specifications and availability are confirmed after review of your requirement.")}
             </p>
-            <Link
-              href={catalogRequirementHref(item)}
-              className="mt-4 inline-flex min-h-10 items-center gap-1.5 rounded-lg border border-[#F5A623]/45 bg-[#F5A623]/10 px-3 py-2 text-sm font-semibold text-slate-900 transition hover:border-[#F5A623] hover:bg-[#F5A623]/20 dark:text-white"
-            >
+            <div className="mt-4 border-t border-slate-100 pt-3 dark:border-white/10">
+              {item.factoryId ? (
+                <Link
+                  href={`/factories/${item.factoryId}`}
+                  className="text-sm font-semibold text-slate-900 hover:text-[#946000] dark:text-white dark:hover:text-[#F5A623]"
+                >
+                  {item.factoryName}
+                </Link>
+              ) : (
+                <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                  {item.factoryName}
+                </p>
+              )}
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                {[item.factoryCity, item.factoryCountryCode]
+                  .filter(Boolean)
+                  .join(", ")}
+              </p>
+              <div className="mt-3 flex flex-wrap gap-1.5 text-xs">
+                {item.partNumber || item.productCode ? (
+                  <span className="rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-slate-600 dark:border-white/10 dark:bg-white/5 dark:text-slate-300">
+                    {language === "fr" ? "Ref." : "Ref."} {item.partNumber || item.productCode}
+                  </span>
+                ) : null}
+                {item.minimumOrderQuantity ? (
+                  <span className="rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-slate-600 dark:border-white/10 dark:bg-white/5 dark:text-slate-300">
+                    MOQ: {item.minimumOrderQuantity}
+                  </span>
+                ) : null}
+                {item.leadTimeText ? (
+                  <span className="rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-slate-600 dark:border-white/10 dark:bg-white/5 dark:text-slate-300">
+                    {language === "fr" ? "Delai" : "Lead time"}: {item.leadTimeText}
+                  </span>
+                ) : null}
+                {item.certifications?.slice(0, 2).map((certification) => (
+                  <span
+                    key={certification}
+                    className="rounded-md border border-emerald-700/20 bg-emerald-50 px-2 py-1 text-emerald-800 dark:border-emerald-300/20 dark:bg-emerald-300/10 dark:text-emerald-200"
+                  >
+                    {certification}
+                  </span>
+                ))}
+              </div>
+            </div>
+            <div className="mt-auto flex items-center gap-3 pt-4">
+              <Link
+                href={catalogRequirementHref(item, language)}
+                className="inline-flex min-h-10 flex-1 items-center justify-center gap-1.5 rounded-lg bg-[#F5A623] px-3 py-2 text-sm font-semibold text-[#07111F] transition hover:bg-[#f9a800]"
+              >
+                {catalogActionLabel(item, language)}
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+              {item.sourceUrl && item.sourceLabel ? (
+                <a
+                  href={item.sourceUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="grid h-10 w-10 shrink-0 place-items-center rounded-lg border border-slate-200 text-slate-600 transition hover:border-[#F5A623] hover:text-[#946000] dark:border-white/15 dark:text-slate-300 dark:hover:text-[#F5A623]"
+                  aria-label={item.sourceLabel[language] || "Source"}
+                  title={item.sourceLabel[language] || "Source"}
+                >
+                  <ExternalLink className="h-4 w-4" />
+                </a>
+              ) : null}
+            </div>
+            <p className="mt-3 text-[11px] leading-4 text-slate-500 dark:text-slate-400">
               {language === "fr"
-                ? "Demander une cotation"
-                : "Request a quotation"}
-              <ArrowRight className="h-4 w-4" />
-            </Link>
+                ? "Stock, prix et delai confirmes avant engagement."
+                : "Stock, price, and lead time are confirmed before commitment."}
+            </p>
           </div>
         </article>
       ))}
     </div>
+  );
+}
+
+function FeaturedCatalogSection({
+  items,
+  language,
+}: {
+  items: CatalogItem[];
+  language: "fr" | "en";
+}) {
+  if (!items.length) return null;
+  return (
+    <section
+      className="mt-8 border-y border-slate-200 py-7 dark:border-white/10"
+      aria-labelledby="industrial-featured-products"
+    >
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div className="max-w-3xl">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#946000] dark:text-[#F5A623]">
+            {language === "fr"
+              ? "Produits et pieces industrielles"
+              : "Industrial products and parts"}
+          </p>
+          <h2
+            id="industrial-featured-products"
+            className="mt-2 text-2xl font-semibold text-slate-950 dark:text-white"
+          >
+            {language === "fr"
+              ? "Commencez par ce que votre usine doit acheter"
+              : "Start with what your factory needs to buy"}
+          </h2>
+          <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
+            {language === "fr"
+              ? "Pieces de rechange, equipements et productions d'usines beninoises. Selectionnez un produit pour ouvrir une demande reelle, avec la reference ou la photo si vous l'avez."
+              : "Spare parts, equipment, and Benin factory output. Select a product to open a real request and add a reference or photo when available."}
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Link
+            href="/industrial-supply"
+            className="inline-flex min-h-10 items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-800 hover:border-[#F5A623] dark:border-white/15 dark:bg-transparent dark:text-white"
+          >
+            <Settings2 className="h-4 w-4" />
+            {language === "fr" ? "Toutes les pieces" : "All parts"}
+          </Link>
+          <Link
+            href="/export-products"
+            className="inline-flex min-h-10 items-center gap-1.5 rounded-lg bg-[#07111F] px-3 py-2 text-sm font-semibold text-white hover:bg-[#0A1628] dark:bg-[#F5A623] dark:text-[#07111F]"
+          >
+            <PackageSearch className="h-4 w-4" />
+            {language === "fr" ? "Produits du Benin" : "Products from Benin"}
+          </Link>
+        </div>
+      </div>
+      <div className="scrollbar-hide mt-5 flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2 lg:grid lg:grid-cols-4 lg:overflow-visible lg:pb-0">
+        {items.map((item) => (
+          <article
+            key={`featured-${item.id}`}
+            className="group flex w-[76vw] max-w-[310px] shrink-0 snap-start flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-[0_10px_26px_rgba(15,23,42,0.07)] transition hover:border-[#F5A623]/70 dark:border-white/10 dark:bg-[#0A1628] lg:w-auto lg:max-w-none"
+          >
+            <div className="relative aspect-[16/9] overflow-hidden bg-[#07111F]">
+              <img
+                src={item.media?.[0] || "/tenants/exportunity/industrial/machinery-team.png"}
+                alt={catalogItemName(item, language)}
+                loading="lazy"
+                className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.025]"
+              />
+              <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#07111F]/80 via-transparent to-transparent" />
+              <span className="absolute bottom-2.5 left-2.5 rounded-md bg-[#07111F]/90 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.1em] text-white">
+                {catalogClassificationLabel(item.classification, language)}
+              </span>
+            </div>
+            <div className="flex flex-1 flex-col p-3.5">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.11em] text-[#946000] dark:text-[#F5A623]">
+                {catalogListingLabel(item, language)}
+              </p>
+              <h3 className="mt-1.5 text-sm font-semibold leading-5 text-slate-950 dark:text-white">
+                {catalogItemName(item, language)}
+              </h3>
+              <p className="mt-1.5 line-clamp-1 text-xs text-slate-500 dark:text-slate-400">
+                {item.factoryName}
+              </p>
+              <Link
+                href={catalogRequirementHref(item, language)}
+                className="mt-3 inline-flex min-h-9 items-center justify-between gap-2 rounded-lg bg-[#F5A623]/14 px-3 py-2 text-xs font-semibold text-[#704600] transition hover:bg-[#F5A623] hover:text-[#07111F] dark:text-[#F5A623] dark:hover:text-[#07111F]"
+              >
+                {catalogActionLabel(item, language)}
+                <ArrowRight className="h-3.5 w-3.5" />
+              </Link>
+            </div>
+          </article>
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -2574,6 +2768,7 @@ function QuoteForm({
   initialUrgency,
   initialFactoryId,
   initialTitle,
+  initialCatalogItemId,
   initialFinancingInterest,
 }: {
   taxonomy: TaxonomyCategory[];
@@ -2583,6 +2778,7 @@ function QuoteForm({
   initialUrgency: string;
   initialFactoryId: string;
   initialTitle: string;
+  initialCatalogItemId: string;
   initialFinancingInterest: boolean;
 }) {
   const [status, setStatus] = useState<{
@@ -2711,7 +2907,13 @@ function QuoteForm({
             requesterEmail: form.get("email"),
             requesterPhone: form.get("phone"),
             factoryId: initialFactoryId || null,
-            technicalDetails: collectTechnicalDetails(form),
+            technicalDetails: {
+              ...collectTechnicalDetails(form),
+              ...(initialCatalogItemId
+                ? { catalogItemId: initialCatalogItemId }
+                : {}),
+              intakeSource: "public_industrial_catalog",
+            },
           }),
         });
         const payload = await response.json();
@@ -5036,6 +5238,27 @@ export default function IndustrialHubPage() {
     }),
     [catalogItems],
   );
+  const featuredCatalogItems = useMemo(() => {
+    const spareParts = categorizedItems.supply.filter(
+      (item) => item.classification === "spare_part",
+    );
+    const tools = categorizedItems.supply.filter(
+      (item) => item.classification === "industrial_input",
+    );
+    const candidates = [
+      spareParts[0],
+      categorizedItems.products[0],
+      spareParts[1],
+      categorizedItems.machinery[0],
+      categorizedItems.products[1],
+      spareParts[4],
+      tools[0],
+      categorizedItems.products[4],
+    ].filter((item): item is CatalogItem => Boolean(item));
+    return Array.from(
+      new Map(candidates.map((item) => [item.id, item])).values(),
+    ).slice(0, 8);
+  }, [categorizedItems]);
   const queryCategory = queryValue(location, "category");
   const selectedCategory = useMemo(
     () => taxonomy.find((category) => category.code === queryCategory) || null,
@@ -5354,6 +5577,7 @@ export default function IndustrialHubPage() {
   const queryFinancing = queryValue(location, "financing");
   const quoteFactoryId = queryValue(location, "factory");
   const quoteProduct = queryValue(location, "product");
+  const quoteCatalogItemId = queryValue(location, "catalogItem");
   const claimFactoryId = factoryClaimId(location);
   const publicFactoryId = factoryProfileId(location);
   const isDark = theme === "dark";
@@ -5668,6 +5892,10 @@ export default function IndustrialHubPage() {
                   ) : null}
                 </div>
               </section>
+              <FeaturedCatalogSection
+                items={featuredCatalogItems}
+                language={locale}
+              />
               <section className="mt-9 border-y border-slate-200 py-6 dark:border-white/10">
                 <p className="text-sm font-semibold text-slate-950 dark:text-white">
                   {locale === "fr"
@@ -6304,6 +6532,7 @@ export default function IndustrialHubPage() {
                     initialUrgency={queryUrgency}
                     initialFactoryId={quoteFactoryId}
                     initialTitle={quoteProduct}
+                    initialCatalogItemId={quoteCatalogItemId}
                     initialFinancingInterest={
                       queryFinancing === "discussion" ||
                       queryFinancing === "true" ||

@@ -96,7 +96,7 @@ const MIN_DOCK_WIDTH = 300;
 const MIN_DOCK_HEIGHT = 320;
 const DEFAULT_DOCK_WIDTH = 312;
 const DEFAULT_DOCK_HEIGHT = 360;
-const WORK_SURFACE_PATH_PATTERN = /^\/(admin|dashboard|meetings|m\/|operations|actions|agenda|goals|objectives|decisions|tasks)(\/|$)/i;
+const WORK_SURFACE_PATH_PATTERN = /^\/(admin|ai-team|dashboard|meetings|m\/|operations|actions|agenda|goals|objectives|decisions|tasks)(\/|$)/i;
 
 function getDefaultDockLayout(): DockLayout {
   if (typeof window === "undefined") {
@@ -182,10 +182,9 @@ function toPositiveInt(value: unknown): number | null {
   return Math.trunc(parsed);
 }
 
-function isTassiAssistant(name: string | null | undefined, role: string | null | undefined) {
+function isTassiAssistant(name: string | null | undefined) {
   const normalizedName = String(name || "").trim().toLowerCase();
-  const normalizedRole = String(role || "").trim().toLowerCase();
-  return normalizedName.includes("tassi") || normalizedRole.includes("chairman assistant");
+  return normalizedName.includes("tassi");
 }
 
 async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, timeoutMessage: string): Promise<T> {
@@ -619,7 +618,7 @@ export function ChairmanChatDock() {
       setComposerError(error?.message || "Unable to send message.");
       toast({
         title: "Message failed",
-        description: error?.message || "Unable to send message to Tassi.",
+        description: error?.message || "Unable to send message to the operations assistant.",
         variant: "destructive",
       });
     },
@@ -737,7 +736,7 @@ export function ChairmanChatDock() {
   const threads = historyQuery.data?.threads ?? [];
   const runs = actionsQuery.data?.runs ?? [];
   const readyForSend = !sendMutation.isPending && !uploadAttachmentMutation.isPending;
-  const assistantName = agent?.displayName || "Tassi";
+  const assistantName = agent?.displayName || (tenant?.key === "exportunity" ? "Fenou" : "Tassi");
   const threadStatusText = threadQuery.isLoading || isEnsuringThread
     ? "Connecting..."
     : threadQuery.isError
@@ -939,9 +938,9 @@ export function ChairmanChatDock() {
           height: dockLayout.height,
         };
   const assistantScopeLabel =
-    tenant?.key === "exportunity" && isTassiAssistant(assistantName, agent?.role)
-      ? "Exportunity workspace"
-      : isTassiAssistant(assistantName, agent?.role)
+    tenant?.key === "exportunity"
+      ? "Exportunity operations"
+      : isTassiAssistant(assistantName)
         ? "Tassi (Global)"
         : "Tenant-scoped";
 
@@ -950,10 +949,11 @@ export function ChairmanChatDock() {
       <button
         type="button"
         className="fixed bottom-5 right-5 z-40 rounded-full border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-950 shadow-lg hover:bg-slate-50"
-        title="Open Tassi. You can drag, resize, snap, minimize, or close the assistant."
+        title={`Open ${assistantName}. You can drag, resize, snap, minimize, or close the assistant.`}
+        aria-label={`Open ${assistantName} assistant`}
         onClick={openDock}
       >
-        Tassi assistant
+        {assistantName} assistant
       </button>
 
       {isOpen && (

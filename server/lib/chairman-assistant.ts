@@ -1,9 +1,8 @@
 import { db } from "@db";
-import { agents, companies } from "@db/schema";
+import { agents, companies, tenants } from "@db/schema";
 import { and, desc, eq, sql } from "drizzle-orm";
+import { getChairmanAssistantIdentity, type ChairmanAssistantIdentity } from "./chairman-assistant-identity";
 
-const DEFAULT_ASSISTANT_NAME = "Tassi Hangbé";
-const DEFAULT_ASSISTANT_ROLE = "CHAIRMAN_ASSISTANT";
 const LEGACY_ASSISTANT_NAME_ALIASES = new Set(["awa bamba", "chloe adjovi", "chloe"]);
 
 function normalizeLabel(value: unknown) {
@@ -27,11 +26,6 @@ function isChairmanAssistantRole(value: unknown) {
   return false;
 }
 
-function rows<T = any>(result: unknown): T[] {
-  const candidate = (result as any)?.rows;
-  return Array.isArray(candidate) ? (candidate as T[]) : [];
-}
-
 async function resolveDefaultCompanyId(tenantId: number) {
   const company = await db.query.companies.findFirst({
     where: eq(companies.tenantId, tenantId),
@@ -39,6 +33,28 @@ async function resolveDefaultCompanyId(tenantId: number) {
     columns: { id: true },
   });
   return company?.id ?? null;
+}
+
+async function resolveTenantIdentity(tenantId: number) {
+  const tenant = await db.query.tenants.findFirst({
+    where: eq(tenants.id, tenantId),
+    columns: { key: true },
+  });
+  return getChairmanAssistantIdentity(tenant?.key);
+}
+
+function agentMetadata(agent: any): Record<string, unknown> {
+  return agent?.metadata && typeof agent.metadata === "object" && !Array.isArray(agent.metadata)
+    ? agent.metadata
+    : {};
+}
+
+function isDedicatedChairmanAssistant(agent: any) {
+  return normalizeLabel(agentMetadata(agent).systemKey) === "chairman assistant";
+}
+
+function isPublicExportunityConcierge(agent: any) {
+  return normalizeLabel(agentMetadata(agent).organizationKey) === "tassi";
 }
 
 async function clearTerminalDefault(tenantId: number, keepId?: number | null) {
@@ -68,19 +84,36 @@ async function markTerminalDefault(tenantId: number, agentId: number) {
   return updated;
 }
 
-async function ensureAssistantIdentity(agent: any) {
+async function ensureAssistantIdentity(agent: any, identity: ChairmanAssistantIdentity) {
   const normalizedName = normalizeLabel(agent?.displayName || agent?.name);
-  const shouldRename = normalizedName && LEGACY_ASSISTANT_NAME_ALIASES.has(normalizedName);
+  const shouldRename =
+    isDedicatedChairmanAssistant(agent) ||
+    isChairmanAssistantRole(agent?.role) ||
+    (normalizedName && LEGACY_ASSISTANT_NAME_ALIASES.has(normalizedName));
   const alreadyTarget =
-    normalizeLabel(agent?.name) === normalizeLabel(DEFAULT_ASSISTANT_NAME) &&
-    normalizeLabel(agent?.displayName) === normalizeLabel(DEFAULT_ASSISTANT_NAME);
+    normalizeLabel(agent?.name) === normalizeLabel(identity.name) &&
+    normalizeLabel(agent?.displayName) === normalizeLabel(identity.name) &&
+    normalizeLabel(agent?.role) === normalizeLabel(identity.role) &&
+    isDedicatedChairmanAssistant(agent);
   if (!shouldRename || alreadyTarget) return agent;
+
+  const metadata = agentMetadata(agent);
 
   const [updated] = await db
     .update(agents)
     .set({
-      name: DEFAULT_ASSISTANT_NAME,
-      displayName: DEFAULT_ASSISTANT_NAME,
+      name: identity.name,
+      displayName: identity.name,
+      role: identity.role,
+      capabilities: identity.capabilities,
+      metadata: {
+        ...metadata,
+        systemKey: "chairman-assistant",
+        organizationKey: identity.organizationKey,
+        assistantScope: identity.organizationKey === "fenou" ? "operations" : "executive",
+        externalActions: "approval_required",
+        backgroundConversations: "disabled",
+      },
       updatedAt: new Date(),
     })
     .where(eq(agents.id, Number(agent.id)))
@@ -94,50 +127,62 @@ export async function resolveChairmanAssistant(tenantId: number) {
     throw new Error("tenantId is required to resolve chairman assistant");
   }
 
-  const existingDefault = await db.query.agents.findFirst({
-    where: and(eq(agents.tenantId, tenantId), eq(agents.isTerminalDefault, true)),
+  const identity = await resolveTenantIdentity(tenantId);
+  const tenantAgents = await db.query.agents.findMany({
+    where: eq(agents.tenantId, tenantId),
     orderBy: [desc(agents.updatedAt)],
   });
-  if (existingDefault) return ensureAssistantIdentity(existingDefault);
 
-  const fallback = await db.execute(sql`
-    select *
-    from agents
-    where tenant_id = ${tenantId}
-      and (
-        lower(role) = 'chairman_assistant'
-        or lower(role) = 'chairman assistant'
-        or lower(role) like '%chairman%assistant%'
-        or lower(role) like '%terminal%assistant%'
-      )
-    order by updated_at desc nulls last, id desc
-    limit 1
-  `);
-  const candidates = rows<any>(fallback);
-  if (candidates.length) {
-    const candidate = candidates[0];
-    const agentId = Number(candidate.id);
-    if (Number.isFinite(agentId) && agentId > 0) {
-      const defaultAgent = await markTerminalDefault(tenantId, agentId);
-      return ensureAssistantIdentity(defaultAgent);
-    }
+  const dedicated = tenantAgents.find(
+    (agent) =>
+      isDedicatedChairmanAssistant(agent) &&
+      !(identity.organizationKey === "fenou" && isPublicExportunityConcierge(agent)),
+  );
+  if (dedicated?.id) {
+    const defaultAgent = await markTerminalDefault(tenantId, Number(dedicated.id));
+    return ensureAssistantIdentity(defaultAgent, identity);
+  }
+
+  const existingDefault = tenantAgents.find((agent) => agent.isTerminalDefault);
+  const existingDefaultIsEligible =
+    existingDefault &&
+    !(identity.organizationKey === "fenou" && isPublicExportunityConcierge(existingDefault));
+  if (existingDefaultIsEligible) {
+    return ensureAssistantIdentity(existingDefault, identity);
+  }
+
+  const fallback = tenantAgents.find(
+    (agent) => isChairmanAssistantRole(agent.role) && !isPublicExportunityConcierge(agent),
+  );
+  if (fallback?.id) {
+    const defaultAgent = await markTerminalDefault(tenantId, Number(fallback.id));
+    return ensureAssistantIdentity(defaultAgent, identity);
   }
 
   const companyId = await resolveDefaultCompanyId(tenantId);
+  const executiveManager = tenantAgents.find((agent) => {
+    const metadata = agentMetadata(agent);
+    return normalizeLabel(metadata.organizationKey) === "ceo" || normalizeLabel(agent.role).includes("chief executive");
+  });
   await clearTerminalDefault(tenantId);
   const [created] = await db
     .insert(agents)
     .values({
       tenantId,
       companyId,
-      name: DEFAULT_ASSISTANT_NAME,
-      displayName: DEFAULT_ASSISTANT_NAME,
-      role: DEFAULT_ASSISTANT_ROLE,
+      managerId: executiveManager?.id ?? null,
+      name: identity.name,
+      displayName: identity.name,
+      role: identity.role,
       status: "active",
       isTerminalDefault: true,
-      capabilities: ["chairman_console", "assistant"],
+      capabilities: identity.capabilities,
       metadata: {
         systemKey: "chairman-assistant",
+        organizationKey: identity.organizationKey,
+        assistantScope: identity.organizationKey === "fenou" ? "operations" : "executive",
+        externalActions: "approval_required",
+        backgroundConversations: "disabled",
         seeded: true,
       },
       createdAt: new Date(),

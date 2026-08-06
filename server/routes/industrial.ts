@@ -54,6 +54,7 @@ import {
   isIndustrialCategoryCode,
   normalizeIndustrialText,
 } from "../lib/industrial/taxonomy";
+import { findPublicIndustrialCatalog } from "../lib/industrial/publicProductCatalog";
 import { generateIndustrialIntakeReply } from "../lib/industrial/intakeAssistant";
 import {
   industrialSearchRequirementContext,
@@ -6141,10 +6142,39 @@ router.get("/catalog", async (req: any, res) => {
       )
       .limit(limit);
 
+    const verifiedItems = rows.map((item) => ({
+      ...item,
+      listingKind: "verified_factory_catalog" as const,
+      sourceUrl: null,
+      sourceLabel: null,
+      inventoryVerified: false,
+      requestMode: "availability_request" as const,
+      displayPriority: 0,
+    }));
+    const verifiedKeys = new Set(
+      verifiedItems.map((item) =>
+        normalizeIndustrialText(`${item.factoryName} ${item.name}`),
+      ),
+    );
+    const curatedItems = findPublicIndustrialCatalog({
+      query,
+      category,
+      classification,
+      limit,
+    }).filter(
+      (item) =>
+        !verifiedKeys.has(
+          normalizeIndustrialText(`${item.factoryName} ${item.name}`),
+        ),
+    );
+    const items = [...verifiedItems, ...curatedItems].slice(0, limit);
+
     res.json({
       ok: true,
-      items: rows,
-      total: rows.length,
+      items,
+      total: items.length,
+      verifiedCatalogCount: verifiedItems.length,
+      documentedOrSourcingCount: curatedItems.length,
       searchContext: industrialSearchRequirementContext(query),
     });
   } catch {

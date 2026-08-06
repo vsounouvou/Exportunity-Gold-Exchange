@@ -1532,6 +1532,71 @@ function FeaturedCatalogSection({
   );
 }
 
+function CatalogQuickRail({
+  items,
+  language,
+}: {
+  items: CatalogItem[];
+  language: "fr" | "en";
+}) {
+  const visibleItems = items.slice(0, 6);
+  if (!visibleItems.length) return null;
+
+  return (
+    <section
+      className="mb-4 border-b border-slate-200 pb-4 dark:border-white/10"
+      aria-labelledby="industrial-quick-products"
+    >
+      <div className="mb-2.5 flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#946000] dark:text-[#F5A623]">
+            {language === "fr" ? "Acheter pour votre usine" : "Buy for your factory"}
+          </p>
+          <h2
+            id="industrial-quick-products"
+            className="truncate text-sm font-semibold text-slate-950 dark:text-white"
+          >
+            {language === "fr"
+              ? "Pieces, equipements et produits fabriques au Benin"
+              : "Parts, equipment, and products made in Benin"}
+          </h2>
+        </div>
+        <Link
+          href="/industrial-supply"
+          className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-[#7f5100] hover:text-[#5e3a00] dark:text-[#F5A623]"
+        >
+          {language === "fr" ? "Voir le catalogue" : "View catalogue"}
+          <ArrowRight className="h-3.5 w-3.5" />
+        </Link>
+      </div>
+      <div className="scrollbar-hide flex snap-x snap-mandatory gap-2.5 overflow-x-auto pb-1 xl:grid xl:grid-cols-6 xl:overflow-visible xl:pb-0">
+        {visibleItems.map((item) => (
+          <Link
+            key={`quick-${item.id}`}
+            href={catalogRequirementHref(item, language)}
+            className="group flex w-[230px] shrink-0 snap-start items-center gap-2.5 rounded-lg border border-slate-200 bg-white p-2 shadow-[0_5px_16px_rgba(15,23,42,0.05)] transition hover:border-[#F5A623]/75 hover:shadow-[0_8px_22px_rgba(15,23,42,0.09)] dark:border-white/10 dark:bg-[#0A1628] xl:w-auto"
+          >
+            <img
+              src={item.media?.[0] || "/tenants/exportunity/industrial/machinery-team.png"}
+              alt=""
+              aria-hidden="true"
+              className="h-12 w-14 shrink-0 rounded-md object-cover"
+            />
+            <span className="min-w-0">
+              <span className="block truncate text-[10px] font-semibold uppercase tracking-[0.08em] text-[#946000] dark:text-[#F5A623]">
+                {catalogClassificationLabel(item.classification, language)}
+              </span>
+              <span className="mt-0.5 block line-clamp-2 text-xs font-semibold leading-4 text-slate-900 group-hover:text-[#704600] dark:text-white dark:group-hover:text-[#F5A623]">
+                {catalogItemName(item, language)}
+              </span>
+            </span>
+          </Link>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function IndustrialSearchSummary({
   query,
   factoryCount,
@@ -5726,6 +5791,10 @@ export default function IndustrialHubPage() {
         <main className="mx-auto max-w-[1560px] px-4 py-4 sm:py-6 lg:px-7 lg:py-8">
           {view === "home" ? (
             <>
+              <CatalogQuickRail
+                items={featuredCatalogItems}
+                language={locale}
+              />
               <section data-testid="industrial-home-primary" className="grid items-stretch gap-5 xl:grid-cols-[minmax(0,1.08fr)_minmax(440px,0.92fr)] xl:gap-6">
                 <div className="relative min-h-[500px] overflow-hidden rounded-2xl border border-[#F5A623]/35 bg-[#07111F] px-5 py-5 shadow-[0_28px_64px_rgba(7,17,31,0.2)] sm:min-h-[520px] sm:px-8 sm:py-6">
                   <img

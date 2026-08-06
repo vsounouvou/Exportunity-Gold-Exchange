@@ -4334,6 +4334,8 @@ export function AITeamHubPage() {
                 </div>
                 <Button
                   type="submit"
+                  aria-label={currentMeeting ? "Send meeting message" : "Send team message"}
+                  title={currentMeeting ? "Send meeting message" : "Send team message"}
                   disabled={
                     (!messageInput.trim() && pendingAttachments.length === 0) ||
                     sendMessage.isPending ||

@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useTenant } from "@/lib/tenant";
 import { apiRequest } from "@/lib/queryClient";
+import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useChairmanContext } from "@/hooks/use-chairman-context";
 import { useToast } from "@/hooks/use-toast";
@@ -948,12 +949,17 @@ export function ChairmanChatDock() {
     <>
       <button
         type="button"
-        className="fixed bottom-5 right-5 z-40 rounded-full border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-950 shadow-lg hover:bg-slate-50"
+        className={cn(
+          "fixed z-40 rounded-full border border-slate-200 bg-white text-sm font-semibold text-slate-950 shadow-lg hover:bg-slate-50",
+          isMobile
+            ? "right-2 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center p-0"
+            : "bottom-5 right-5 px-4 py-3",
+        )}
         title={`Open ${assistantName}. You can drag, resize, snap, minimize, or close the assistant.`}
         aria-label={`Open ${assistantName} assistant`}
         onClick={openDock}
       >
-        {assistantName} assistant
+        {isMobile ? <Sparkles className="h-5 w-5 text-[#F5A623]" aria-hidden="true" /> : `${assistantName} assistant`}
       </button>
 
       {isOpen && (
@@ -1073,6 +1079,8 @@ export function ChairmanChatDock() {
                 size="icon"
                 className="h-8 w-8 text-slate-500 hover:bg-slate-100 hover:text-slate-900"
                 onClick={() => setIsOpen(false)}
+                aria-label={`Close ${assistantName} assistant`}
+                title={`Close ${assistantName} assistant`}
               >
                 <X className="h-5 w-5" />
               </Button>

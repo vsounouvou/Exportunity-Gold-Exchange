@@ -29,6 +29,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -41,6 +42,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import {
   Sheet,
   SheetContent,
+  SheetDescription,
   SheetHeader,
   SheetTitle,
   SheetTrigger,
@@ -3297,6 +3299,10 @@ export function AITeamHubPage() {
               useExportunityLightWorkspace ? "exportunity-operations-light bg-white border-slate-200" : "bg-gray-900 border-gray-800",
             )}
           >
+            <SheetHeader className="sr-only">
+              <SheetTitle>Meetings</SheetTitle>
+              <SheetDescription>Create, search, and reopen Operations Center meetings.</SheetDescription>
+            </SheetHeader>
             <MeetingsSidebar />
           </SheetContent>
         </Sheet>
@@ -3312,6 +3318,10 @@ export function AITeamHubPage() {
               useExportunityLightWorkspace ? "exportunity-operations-light bg-white border-slate-200" : "bg-gray-900 border-gray-800",
             )}
           >
+            <SheetHeader className="sr-only">
+              <SheetTitle>Agents</SheetTitle>
+              <SheetDescription>Review and manage the agents available to the current conversation.</SheetDescription>
+            </SheetHeader>
             <AgentsSidebar />
           </SheetContent>
         </Sheet>
@@ -4794,6 +4804,9 @@ export function AITeamHubPage() {
                       <DialogContent className="bg-gray-950 border-gray-800 text-white">
                         <DialogHeader>
                           <DialogTitle>Confirm background AI run</DialogTitle>
+                          <DialogDescription className="text-white/70">
+                            Review the visible scope, duration, and stop controls before starting background activity.
+                          </DialogDescription>
                         </DialogHeader>
                         <div className="space-y-3 text-sm text-white/85">
                           <div className="text-white/70">This starts time-bound background activity. No hidden processes.</div>

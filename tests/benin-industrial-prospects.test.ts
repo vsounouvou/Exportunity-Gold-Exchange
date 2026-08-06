@@ -11,12 +11,18 @@ test("Benin industrial prospect universe is sourced, unique and outreach blocked
   const summary = beninIndustrialProspectSummary();
   const ids = new Set(BENIN_INDUSTRIAL_PROSPECTS.map((item) => item.id));
 
-  assert.equal(BENIN_INDUSTRIAL_PROSPECTS.length, 52);
+  assert.equal(BENIN_INDUSTRIAL_PROSPECTS.length, 53);
   assert.equal(ids.size, BENIN_INDUSTRIAL_PROSPECTS.length);
   assert.equal(summary.gdizApproved, 20);
-  assert.equal(summary.importableFactoryLeads, 38);
+  assert.equal(summary.importableFactoryLeads, 39);
   assert.equal(summary.logisticsPartners, 11);
   assert.equal(summary.institutionalPartners, 3);
+  assert.equal(
+    BENIN_INDUSTRIAL_PROSPECTS.find(
+      (item) => item.id === "gdiz-unicarton-benin",
+    )?.sourceType,
+    "official_operator",
+  );
 
   for (const item of BENIN_INDUSTRIAL_PROSPECTS) {
     assert.match(item.sourceUrl, /^https:\/\//);

@@ -1,7 +1,7 @@
 import { normalizeIndustrialText } from "./taxonomy";
 import type { IndustrialFactoryLeadCandidate } from "./factoryLeadIntake";
 
-export const BENIN_INDUSTRIAL_PROSPECT_CHECKED_AT = "2026-08-05";
+export const BENIN_INDUSTRIAL_PROSPECT_CHECKED_AT = "2026-08-06";
 
 export type BeninIndustrialProspectRole =
   | "industrial_buyer"
@@ -26,7 +26,10 @@ export type BeninIndustrialProspect = {
   countryCode: "BJ";
   primaryIndustry: string;
   roles: BeninIndustrialProspectRole[];
-  sourceType: "official_registry" | "industry_directory";
+  sourceType:
+    | "official_registry"
+    | "official_operator"
+    | "industry_directory";
   sourceName: string;
   sourceTitle: string;
   sourceUrl: string;
@@ -270,6 +273,27 @@ export const BENIN_INDUSTRIAL_PROSPECTS: BeninIndustrialProspect[] = [
     primaryIndustry: "Garment manufacturing",
     approvedInvestmentFcfa: 1_563_000_000,
     evidenceSummary: "APIEx lists an export-oriented garment investment approved in GDIZ.",
+  }),
+
+  prospect({
+    id: "gdiz-unicarton-benin",
+    name: "Unicarton Benin",
+    city: "Abomey-Calavi",
+    district: "Glo-Djigbe Industrial Zone",
+    primaryIndustry: "Corrugated board and metal packaging",
+    roles: ["industrial_buyer", "manufacturer"],
+    sourceType: "official_operator",
+    sourceName: "GDIZ / SIPI-Benin",
+    sourceTitle: "Industrial units operating at GDIZ",
+    sourceUrl: GDIZ_LAUNCH,
+    evidenceStatus: "operational_source_confirmed",
+    evidenceSummary:
+      "GDIZ identifies an operating Unicarton unit manufacturing corrugated cardboard boxes and metal cans for industrial packaging.",
+    opportunityHypotheses: [
+      "Packaging-line maintenance and recurring spare-parts demand",
+      "Conveyors, motors, bearings and transmission components",
+      "Industrial packaging supply for local production and export",
+    ],
   }),
 
   directoryProspect({

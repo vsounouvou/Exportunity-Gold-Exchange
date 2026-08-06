@@ -147,6 +147,10 @@ import {
   mapGooglePlacesToIndustrialFactoryLeads,
 } from "../lib/industrial/factoryLeadIntake";
 import {
+  INDUSTRIAL_OUTREACH_BASES,
+  INDUSTRIAL_OUTREACH_CHANNELS,
+} from "../lib/industrial/factoryLeadOutreach";
+import {
   BENIN_INDUSTRIAL_PROSPECTS,
   beninIndustrialProspectSummary,
   findBeninIndustrialProspects,
@@ -902,16 +906,58 @@ const beninIndustrialProspectImportSchema = z.object({
     .max(100),
 });
 
-const industrialFactoryLeadReviewSchema = z.object({
-  leadStatus: z.enum([
-    "new",
-    "under_review",
-    "qualified",
-    "contact_ready",
-    "rejected",
-  ]),
-  screeningNotes: z.string().trim().max(4000).optional().nullable(),
+const industrialContactReadinessSchema = z.object({
+  contactName: z.string().trim().min(2).max(180),
+  contactRole: z.string().trim().min(2).max(180),
+  channel: z.enum(INDUSTRIAL_OUTREACH_CHANNELS),
+  contactPoint: z.string().trim().min(4).max(320),
+  contactSourceUrl: z
+    .string()
+    .trim()
+    .url()
+    .max(600)
+    .refine((value) => value.startsWith("https://"), {
+      message: "Use an HTTPS source for the public business contact.",
+    }),
+  businessReason: z.string().trim().min(20).max(1600),
+  complianceBasis: z.enum(INDUSTRIAL_OUTREACH_BASES),
+  senderIdentity: z.string().trim().min(3).max(240),
+  senderVerified: z.literal(true),
+  approvalOwner: z.string().trim().min(2).max(240),
+  language: z.enum(["fr", "en"]).default("fr"),
+  draftMessage: z.string().trim().min(40).max(6000),
+  suppressionChecked: z.literal(true),
+  quietHoursChecked: z.literal(true),
+  whatsappOptInEvidence: z
+    .string()
+    .trim()
+    .max(2000)
+    .optional()
+    .nullable(),
 });
+
+const industrialFactoryLeadReviewSchema = z
+  .object({
+    leadStatus: z.enum([
+      "new",
+      "under_review",
+      "qualified",
+      "contact_ready",
+      "rejected",
+    ]),
+    screeningNotes: z.string().trim().max(4000).optional().nullable(),
+    contactReadiness: industrialContactReadinessSchema.optional().nullable(),
+  })
+  .superRefine((value, context) => {
+    if (value.leadStatus === "contact_ready" && !value.contactReadiness) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["contactReadiness"],
+        message:
+          "A complete contact dossier is required before a lead can be marked contact ready.",
+      });
+    }
+  });
 
 const industrialFactoryLeadConversionSchema = z.object({
   legalName: z.string().trim().min(2).max(240).optional().nullable(),
@@ -7475,11 +7521,30 @@ router.patch(
           "Lead reviewed. It remains private until a separate factory verification and publication decision.",
       });
     } catch (error: any) {
-      if (String(error?.message || "") === "lead_converted") {
+      const errorCode = String(error?.message || "");
+      if (errorCode === "lead_converted") {
         return res.status(409).json({
           ok: false,
           message:
             "This lead has already been converted. Use the factory record for further verification work.",
+        });
+      }
+      if (errorCode === "lead_not_qualified_for_contact_plan") {
+        return res.status(409).json({
+          ok: false,
+          message:
+            "Qualify the industrial lead before preparing it for contact approval.",
+        });
+      }
+      if (errorCode.startsWith("contact_plan_incomplete:")) {
+        const missing = errorCode
+          .slice("contact_plan_incomplete:".length)
+          .split("|")
+          .filter(Boolean);
+        return res.status(400).json({
+          ok: false,
+          message: `The contact dossier is incomplete: ${missing.join(", ")}.`,
+          missing,
         });
       }
       return res.status(500).json({

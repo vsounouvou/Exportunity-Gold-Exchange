@@ -74,11 +74,13 @@ Primary conversation:
 8. Reply Router links the response to the correct lead, meeting, task and next action.
 9. Follow-up is created only when permitted; no uncontrolled sequence runs in the background.
 
+The Industrial Network now enforces the contact-ready gate in the application. A qualified lead needs a named recipient and role, cited public contact source, company-specific reason, sender identity, human approval owner, suppression check, quiet-hours check and reviewable draft. WhatsApp additionally requires explicit opt-in evidence. Saving creates a pending dossier only; outbound execution remains disabled.
+
 ## 90-Day Program
 
 ### Days 1-15: evidence and interviews
 
-- Verify the 38 importable prospects in the initial Benin cohort.
+- Verify the 39 importable prospects in the initial Benin cohort.
 - Obtain the current complete APIEx/GDIZ company list rather than inferring the 11 names not exposed on the public page.
 - Identify 20 high-fit plant, maintenance, procurement or operations contacts.
 - Prepare one-page buyer interview and inventory-partner interview scripts.
@@ -177,4 +179,3 @@ Paid promotion should begin only after a working conversion path exists. The fir
 - Gross margin by revenue engine
 
 Vanity impressions are secondary until the requirement-to-order path works.
-

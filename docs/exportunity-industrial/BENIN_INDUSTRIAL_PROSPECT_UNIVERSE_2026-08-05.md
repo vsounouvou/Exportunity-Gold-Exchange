@@ -1,6 +1,6 @@
 # Benin Industrial Prospect Universe
 
-Checked: 2026-08-05
+Checked: 2026-08-06
 
 ## Purpose
 
@@ -15,10 +15,11 @@ The executable dataset is in `server/lib/industrial/beninIndustrialProspects.ts`
 | Segment | Count | Treatment |
 | --- | ---: | --- |
 | APIEx/GDIZ approved companies | 20 | Eligible for the private factory-lead review queue |
+| Additional GDIZ operator confirmed by GDIZ | 1 | Eligible for the private factory-lead review queue; kept separate from the APIEx named cohort |
 | Other industrial buyers, manufacturers and supply partners | 18 | Eligible for the private factory-lead review queue |
 | Port and logistics operators | 11 | Relationship planning only; not convertible into factory profiles |
 | Institutional gateways | 3 | Relationship planning only; not convertible into factory profiles |
-| Total sourced actors | 52 | No automatic outreach and no automatic publication |
+| Total sourced actors | 53 | No automatic outreach and no automatic publication |
 
 ## GDIZ Approved Cohort
 
@@ -48,6 +49,24 @@ APIEx's public GDIZ company register is the controlling source for the following
 APIEx reports 31 approved GDIZ companies in total, while the public page used for this release exposes 20 named records. The remaining companies must not be invented or inferred; they require an official APIEx/GDIZ extract.
 
 Source: [APIEx - approved companies in GDIZ](https://investbenin.bj/invest/zes/gdiz/companies)
+
+## Additional GDIZ Operator Evidence
+
+GDIZ identifies Unicarton Benin as an operating packaging unit producing corrugated cardboard boxes and metal cans. It is represented separately as an official-operator record because it is not one of the 20 names exposed on the APIEx registry page used above.
+
+Source: [GDIZ - industrial unit launch and outputs](https://gdiz-benin.com/launch-event/)
+
+## 2026 Evidence Refresh
+
+- GDIZ reported in April 2026 that Benin Textile launched the SùSù home-textile brand, including sheets, towels and pillowcases.
+- GDIZ reported in March 2026 that Ehua Industries remained a plant construction site. Its record therefore represents an approved investment, not a claim that production is already operating.
+- GDIZ's 2025 review reports active production across cashew, soy, ceramics, textiles, garments and packaging. Product and capacity claims still require current confirmation before quotation or publication.
+
+Sources:
+
+- [GDIZ - SùSù launch by Benin Textile](https://gdiz-benin.com/official-launch-of-susu-a-collective-achievement-by-benin-textile-s-a-btex/)
+- [GDIZ - Ehua Industries construction-site visit](https://gdiz-benin.com/gdiz-ministers-shadiya-alimatou-assouman-and-gaston-dossouhoui-visit-ehua-industries-plant-construction-site/)
+- [GDIZ - 2025 achievements](https://gdiz-benin.com/2025-has-been-a-year-of-major-achievements-for-gdiz/)
 
 ## Other Industrial Prospects
 
@@ -128,4 +147,3 @@ Sources:
 ## Coverage Expansion
 
 To move toward a more complete national prospect universe, request current structured lists from APIEx, GDIZ/SIPI, CIPB, CCI Benin and relevant ministries. Then reconcile legal identifiers, phone numbers, websites, locations and operating status before adding records. Google Places can support discovery and location enrichment, but it cannot replace official verification.
-

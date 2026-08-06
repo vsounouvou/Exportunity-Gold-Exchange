@@ -13,6 +13,11 @@ import {
   type IndustrialFactoryLeadCandidate,
   type IndustrialFactoryLeadStatus,
 } from "./factoryLeadIntake";
+import {
+  markIndustrialContactPlanForReview,
+  storeIndustrialContactPlan,
+  type IndustrialContactReadinessInput,
+} from "./factoryLeadOutreach";
 
 export type IndustrialFactoryLeadFilters = {
   query?: string | null;
@@ -26,6 +31,7 @@ export type IndustrialFactoryLeadFilters = {
 export type IndustrialFactoryLeadReview = {
   leadStatus: Exclude<IndustrialFactoryLeadStatus, "converted">;
   screeningNotes?: string | null;
+  contactReadiness?: IndustrialContactReadinessInput | null;
 };
 
 export type IndustrialFactoryLeadConversion = {
@@ -56,6 +62,7 @@ function safeLimit(value: number | undefined, fallback = 100) {
 
 function leadSourceLabel(source: IndustrialFactoryLeadCandidate["source"]) {
   if (source === "official_registry") return "Official registry";
+  if (source === "official_operator") return "Official operator source";
   if (source === "industry_directory") return "Industry directory";
   return "Google Places";
 }
@@ -75,6 +82,7 @@ export function normalizeIndustrialFactoryLeadFilters(
 
 export function industrialFactoryLeadSummary(row: any) {
   const metadata = record(row.metadata);
+  const contactPlan = record(metadata.contactPlan);
   return {
     id: row.id,
     source: row.source,
@@ -122,6 +130,7 @@ export function industrialFactoryLeadSummary(row: any) {
       ? metadata.opportunityHypotheses
       : [],
     outreachAllowed: metadata.outreachAllowed === true,
+    contactPlan: Object.keys(contactPlan).length ? contactPlan : null,
     reviewedByUserId: row.reviewedByUserId,
     reviewedAt: row.reviewedAt,
     convertedFactoryId: row.convertedFactoryId,
@@ -381,12 +390,48 @@ export async function reviewIndustrialFactoryLead(input: {
       throw new Error("lead_converted");
     }
 
+    const currentMetadata = record(existing.metadata);
+    let nextMetadata: Record<string, unknown> = {
+      ...currentMetadata,
+      outreachAllowed: false,
+      outboundExecutionAllowed: false,
+    };
+    let nextContactStatus = existing.contactStatus;
+
+    if (input.review.leadStatus === "contact_ready") {
+      if (
+        existing.leadStatus !== "qualified" &&
+        existing.leadStatus !== "contact_ready"
+      ) {
+        throw new Error("lead_not_qualified_for_contact_plan");
+      }
+      const contactPlan = storeIndustrialContactPlan({
+        plan: input.review.contactReadiness as IndustrialContactReadinessInput,
+        actorUserId: input.actorUserId,
+      });
+      nextMetadata = {
+        ...nextMetadata,
+        contactPlan,
+      };
+      nextContactStatus = "plan_ready_for_approval";
+    } else if (currentMetadata.contactPlan) {
+      nextMetadata = {
+        ...nextMetadata,
+        contactPlan: markIndustrialContactPlanForReview(
+          currentMetadata.contactPlan,
+        ),
+      };
+      nextContactStatus = "not_contacted";
+    }
+
     const now = new Date();
     const [updated] = await tx
       .update(industrialFactoryLeads)
       .set({
         leadStatus: input.review.leadStatus,
         screeningNotes: input.review.screeningNotes || null,
+        contactStatus: nextContactStatus,
+        metadata: nextMetadata,
         reviewedByUserId: input.actorUserId,
         reviewedAt: now,
         updatedAt: now,
@@ -413,6 +458,12 @@ export async function reviewIndustrialFactoryLead(input: {
         publicListing: true,
         verificationRequired: true,
         publicProfileCreated: false,
+        outreachAllowed: false,
+        contactPlanReadiness:
+          input.review.leadStatus === "contact_ready"
+            ? "ready_for_human_approval"
+            : null,
+        outboundExecutionAllowed: false,
       },
     });
 

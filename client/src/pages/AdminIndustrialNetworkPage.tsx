@@ -4,9 +4,14 @@ import {
   AlertTriangle,
   Building2,
   CheckCircle2,
+  ClipboardCheck,
   ExternalLink,
   Factory,
+  Handshake,
+  Mail,
+  MessageCircle,
   Network,
+  Phone,
   RefreshCw,
   Search,
   ShieldCheck,
@@ -19,7 +24,17 @@ import { Link } from "wouter";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 
@@ -38,7 +53,10 @@ type Prospect = {
   district: string | null;
   primaryIndustry: string;
   roles: ProspectRole[];
-  sourceType: "official_registry" | "industry_directory";
+  sourceType:
+    | "official_registry"
+    | "official_operator"
+    | "industry_directory";
   sourceName: string;
   sourceTitle: string;
   sourceUrl: string;
@@ -82,7 +100,44 @@ type FactoryLead = {
   sourceStatus: string | null;
   evidenceSummary: string | null;
   roles: string[];
+  phone: string | null;
+  website: string | null;
+  publicEmail: string | null;
+  sourceTitle: string | null;
+  opportunityHypotheses: string[];
   outreachAllowed: boolean;
+  contactPlan: StoredContactPlan | null;
+};
+
+type ContactChannel = "email" | "phone" | "whatsapp" | "warm_introduction";
+type ContactBasis =
+  | "public_b2b_relevance"
+  | "existing_business_relationship"
+  | "explicit_opt_in"
+  | "institutional_introduction";
+
+type ContactPlanForm = {
+  contactName: string;
+  contactRole: string;
+  channel: ContactChannel;
+  contactPoint: string;
+  contactSourceUrl: string;
+  businessReason: string;
+  complianceBasis: ContactBasis;
+  senderIdentity: string;
+  senderVerified: boolean;
+  approvalOwner: string;
+  language: "fr" | "en";
+  draftMessage: string;
+  suppressionChecked: boolean;
+  quietHoursChecked: boolean;
+  whatsappOptInEvidence: string;
+};
+
+type StoredContactPlan = ContactPlanForm & {
+  readinessStatus: "ready_for_human_approval" | "needs_review";
+  approvalStatus: "pending";
+  outboundExecutionAllowed: false;
 };
 
 type FactoryLeadResponse = {
@@ -122,18 +177,124 @@ function readableStatus(value: string) {
 
 function SourceBadge({ prospect }: { prospect: Prospect }) {
   const official = prospect.sourceType === "official_registry";
+  const operator = prospect.sourceType === "official_operator";
   return (
     <Badge
       variant="outline"
       className={
-        official
+        official || operator
           ? "border-emerald-200 bg-emerald-50 text-emerald-800"
           : "border-slate-200 bg-slate-50 text-slate-700"
       }
     >
-      {official ? "Official registry" : "Industry source"}
+      {official
+        ? "Official registry"
+        : operator
+          ? "Official operator source"
+          : "Industry source"}
     </Badge>
   );
+}
+
+const CHANNEL_LABELS: Record<ContactChannel, string> = {
+  email: "Work email",
+  phone: "Business phone",
+  whatsapp: "WhatsApp (explicit opt-in required)",
+  warm_introduction: "Warm institutional introduction",
+};
+
+const BASIS_LABELS: Record<ContactBasis, string> = {
+  public_b2b_relevance: "Public B2B relevance",
+  existing_business_relationship: "Existing business relationship",
+  explicit_opt_in: "Explicit WhatsApp opt-in",
+  institutional_introduction: "Institutional introduction",
+};
+
+function ChannelIcon({ channel }: { channel: ContactChannel }) {
+  const Icon =
+    channel === "email"
+      ? Mail
+      : channel === "phone"
+        ? Phone
+        : channel === "whatsapp"
+          ? MessageCircle
+          : Handshake;
+  return <Icon className="h-4 w-4" />;
+}
+
+function initialContactPlan(lead: FactoryLead): ContactPlanForm {
+  if (lead.contactPlan) {
+    return {
+      ...lead.contactPlan,
+      whatsappOptInEvidence: lead.contactPlan.whatsappOptInEvidence || "",
+    };
+  }
+
+  const channel: ContactChannel = lead.publicEmail
+    ? "email"
+    : lead.phone
+      ? "phone"
+      : "warm_introduction";
+  const businessReason =
+    lead.opportunityHypotheses[0] ||
+    `Understand ${lead.name}'s recurring industrial requirements before proposing any service.`;
+
+  return {
+    contactName: "",
+    contactRole: "",
+    channel,
+    contactPoint:
+      lead.publicEmail ||
+      lead.phone ||
+      (lead.sourceName ? `Introduction through ${lead.sourceName}` : ""),
+    contactSourceUrl: lead.sourceUrl || lead.website || "",
+    businessReason,
+    complianceBasis:
+      channel === "warm_introduction"
+        ? "institutional_introduction"
+        : "public_b2b_relevance",
+    senderIdentity: "Exportunity Machinery",
+    senderVerified: false,
+    approvalOwner: "",
+    language: "fr",
+    draftMessage: `Bonjour {{contact_name}},\n\nJe vous contacte au nom d'Exportunity Machinery au sujet de ${lead.name}. Nous souhaitons comprendre vos besoins recurrents en pieces, maintenance ou approvisionnement industriel afin d'evaluer si notre reseau peut reduire les delais ou le cout total.\n\nSeriez-vous la bonne personne pour un court echange ?\n\nCordialement,\n{{approved_sender_name}}\nExportunity Machinery`,
+    suppressionChecked: false,
+    quietHoursChecked: false,
+    whatsappOptInEvidence: "",
+  };
+}
+
+function contactPlanMissing(form: ContactPlanForm) {
+  const missing: string[] = [];
+  if (form.contactName.trim().length < 2) missing.push("verified contact name");
+  if (form.contactRole.trim().length < 2) missing.push("verified contact role");
+  if (form.contactPoint.trim().length < 4) missing.push("contact route");
+  if (!/^https:\/\//i.test(form.contactSourceUrl.trim())) missing.push("HTTPS contact source");
+  if (form.businessReason.trim().length < 20) missing.push("specific business reason");
+  if (form.senderIdentity.trim().length < 3) missing.push("sender identity");
+  if (!form.senderVerified) missing.push("verified sender");
+  if (form.approvalOwner.trim().length < 2) missing.push("approval owner");
+  if (form.draftMessage.trim().length < 40) missing.push("reviewable draft");
+  if (!form.suppressionChecked) missing.push("suppression check");
+  if (!form.quietHoursChecked) missing.push("quiet-hours check");
+  if (form.channel === "email" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.contactPoint.trim())) {
+    missing.push("valid work email");
+  }
+  if ((form.channel === "phone" || form.channel === "whatsapp") && form.contactPoint.replace(/\D/g, "").length < 8) {
+    missing.push(`valid ${form.channel === "whatsapp" ? "WhatsApp" : "telephone"} number`);
+  }
+  if (form.channel === "whatsapp") {
+    if (form.complianceBasis !== "explicit_opt_in") missing.push("explicit WhatsApp opt-in basis");
+    if (form.whatsappOptInEvidence.trim().length < 12) missing.push("WhatsApp opt-in evidence");
+  }
+  if (
+    form.channel === "warm_introduction" &&
+    form.complianceBasis !== "institutional_introduction" &&
+    form.complianceBasis !== "existing_business_relationship"
+  ) {
+    missing.push("introduction relationship basis");
+  }
+  return Array.from(new Set(missing));
 }
 
 export default function AdminIndustrialNetworkPage() {
@@ -142,6 +303,8 @@ export default function AdminIndustrialNetworkPage() {
   const [query, setQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState<"all" | ProspectRole>("all");
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [planningLead, setPlanningLead] = useState<FactoryLead | null>(null);
+  const [contactPlan, setContactPlan] = useState<ContactPlanForm | null>(null);
 
   const previewQuery = useQuery<ProspectPreview>({
     queryKey: ["/api/industrial/admin/factory-leads/benin-official-preview"],
@@ -207,6 +370,55 @@ export default function AdminIndustrialNetworkPage() {
         variant: "destructive",
       }),
   });
+
+  const contactPlanMutation = useMutation({
+    mutationFn: async (input: {
+      leadId: string;
+      contactReadiness: ContactPlanForm;
+    }) =>
+      apiRequest(
+        `/api/industrial/admin/factory-leads/${input.leadId}/review`,
+        "PATCH",
+        {
+          leadStatus: "contact_ready",
+          screeningNotes:
+            "Qualified lead has a documented contact dossier awaiting separate human approval. No outbound execution is authorized.",
+          contactReadiness: input.contactReadiness,
+        },
+      ),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: ["/api/industrial/admin/factory-leads?limit=100&countryCode=BJ"],
+      });
+      setPlanningLead(null);
+      setContactPlan(null);
+      toast({
+        title: "Contact dossier saved for approval",
+        description:
+          "The lead remains private. No email, call or WhatsApp message was sent.",
+      });
+    },
+    onError: (error: any) =>
+      toast({
+        title: "Contact dossier could not be saved",
+        description: error?.message || "Review the required evidence and try again.",
+        variant: "destructive",
+      }),
+  });
+
+  const openContactPlan = (lead: FactoryLead) => {
+    setPlanningLead(lead);
+    setContactPlan(initialContactPlan(lead));
+  };
+
+  const updateContactPlan = <K extends keyof ContactPlanForm>(
+    key: K,
+    value: ContactPlanForm[K],
+  ) => {
+    setContactPlan((current) =>
+      current ? { ...current, [key]: value } : current,
+    );
+  };
 
   const prospects = previewQuery.data?.prospects || [];
   const filteredProspects = useMemo(() => {
@@ -510,7 +722,7 @@ export default function AdminIndustrialNetworkPage() {
           ) : leads.length ? (
             <div className="divide-y divide-slate-100">
               {leads.map((lead) => (
-                <div key={lead.id} className="grid gap-3 p-4 lg:grid-cols-[1.5fr_1fr_140px_220px] lg:items-center">
+                <div key={lead.id} className="grid gap-3 p-4 lg:grid-cols-[1.45fr_0.8fr_140px_190px_230px] lg:items-center">
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="font-black text-[#07121F]">{lead.name}</span>
@@ -534,7 +746,7 @@ export default function AdminIndustrialNetworkPage() {
                   <Badge
                     variant="outline"
                     className={
-                      lead.leadStatus === "qualified"
+                      lead.leadStatus === "qualified" || lead.leadStatus === "contact_ready"
                         ? "w-fit border-emerald-200 bg-emerald-50 text-emerald-800"
                         : "w-fit border-amber-200 bg-amber-50 text-amber-800"
                     }
@@ -553,9 +765,33 @@ export default function AdminIndustrialNetworkPage() {
                     <option value="new">New</option>
                     <option value="under_review">Under review</option>
                     <option value="qualified">Qualified</option>
-                    <option value="contact_ready">Contact ready</option>
+                    {lead.leadStatus === "contact_ready" ? (
+                      <option value="contact_ready">Contact dossier pending approval</option>
+                    ) : null}
                     <option value="rejected">Rejected</option>
                   </select>
+                  <div className="flex flex-col gap-1.5">
+                    {lead.leadStatus === "qualified" || lead.leadStatus === "contact_ready" ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => openContactPlan(lead)}
+                        className="h-10 justify-start border-[#E2A416] bg-[#FFF8E8] font-black text-[#704700] hover:bg-[#FFF1CC]"
+                      >
+                        <ClipboardCheck className="mr-2 h-4 w-4" />
+                        {lead.contactPlan ? "Review contact dossier" : "Prepare contact dossier"}
+                      </Button>
+                    ) : (
+                      <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-500">
+                        Qualify before planning contact
+                      </div>
+                    )}
+                    {lead.contactPlan ? (
+                      <span className="text-xs font-semibold text-amber-700">
+                        Human approval pending; sending blocked
+                      </span>
+                    ) : null}
+                  </div>
                 </div>
               ))}
             </div>
@@ -567,6 +803,333 @@ export default function AdminIndustrialNetworkPage() {
             </div>
           )}
         </section>
+
+        <Dialog
+          open={Boolean(planningLead && contactPlan)}
+          onOpenChange={(open) => {
+            if (!open) {
+              setPlanningLead(null);
+              setContactPlan(null);
+            }
+          }}
+        >
+          <DialogContent className="max-h-[92vh] overflow-y-auto border-slate-200 bg-white text-slate-950 shadow-2xl sm:max-w-3xl">
+            <DialogHeader>
+              <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-lg bg-[#FFF6E2] text-[#9A6700]">
+                <ClipboardCheck className="h-5 w-5" />
+              </div>
+              <DialogTitle className="text-xl font-black text-[#07121F]">
+                Contact dossier{planningLead ? `: ${planningLead.name}` : ""}
+              </DialogTitle>
+              <DialogDescription className="leading-6 text-slate-600">
+                Document the exact recipient, lawful channel, company-specific reason and
+                accountable sender. Saving moves this dossier to human approval only.
+              </DialogDescription>
+            </DialogHeader>
+
+            {contactPlan ? (
+              <div className="space-y-5">
+                <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm font-semibold leading-6 text-amber-950">
+                  No email, call or WhatsApp message is sent from this screen. Outbound
+                  execution remains blocked until a separate approval and send action.
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="contact-name" className="font-bold text-slate-800">
+                      Verified contact name
+                    </Label>
+                    <Input
+                      id="contact-name"
+                      value={contactPlan.contactName}
+                      onChange={(event) => updateContactPlan("contactName", event.target.value)}
+                      placeholder="Named business contact"
+                      className="border-slate-300 bg-white text-slate-950"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="contact-role" className="font-bold text-slate-800">
+                      Verified role
+                    </Label>
+                    <Input
+                      id="contact-role"
+                      value={contactPlan.contactRole}
+                      onChange={(event) => updateContactPlan("contactRole", event.target.value)}
+                      placeholder="Maintenance, procurement or operations"
+                      className="border-slate-300 bg-white text-slate-950"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="contact-channel" className="font-bold text-slate-800">
+                    Proposed channel
+                  </Label>
+                  <div className="relative">
+                    <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">
+                      <ChannelIcon channel={contactPlan.channel} />
+                    </span>
+                    <select
+                      id="contact-channel"
+                      value={contactPlan.channel}
+                      onChange={(event) => {
+                        const channel = event.target.value as ContactChannel;
+                        setContactPlan((current) =>
+                          current
+                            ? {
+                                ...current,
+                                channel,
+                                complianceBasis:
+                                  channel === "whatsapp"
+                                    ? "explicit_opt_in"
+                                    : channel === "warm_introduction"
+                                      ? "institutional_introduction"
+                                      : "public_b2b_relevance",
+                              }
+                            : current,
+                        );
+                      }}
+                      className="h-10 w-full rounded-md border border-slate-300 bg-white pl-10 pr-3 text-sm font-semibold text-slate-900 outline-none focus:border-[#E2A416] focus:ring-2 focus:ring-amber-100"
+                    >
+                      {(Object.keys(CHANNEL_LABELS) as ContactChannel[]).map((channel) => (
+                        <option key={channel} value={channel}>
+                          {CHANNEL_LABELS[channel]}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="contact-point" className="font-bold text-slate-800">
+                      Exact contact route
+                    </Label>
+                    <Input
+                      id="contact-point"
+                      value={contactPlan.contactPoint}
+                      onChange={(event) => updateContactPlan("contactPoint", event.target.value)}
+                      placeholder={
+                        contactPlan.channel === "email"
+                          ? "name@company.com"
+                          : contactPlan.channel === "warm_introduction"
+                            ? "Introduction through APIEx / GDIZ / CIPB"
+                            : "+229 ..."
+                      }
+                      className="border-slate-300 bg-white text-slate-950"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="contact-source" className="font-bold text-slate-800">
+                      Public source for contact
+                    </Label>
+                    <Input
+                      id="contact-source"
+                      type="url"
+                      value={contactPlan.contactSourceUrl}
+                      onChange={(event) => updateContactPlan("contactSourceUrl", event.target.value)}
+                      placeholder="https://official-source.example"
+                      className="border-slate-300 bg-white text-slate-950"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="business-reason" className="font-bold text-slate-800">
+                    Company-specific business reason
+                  </Label>
+                  <Textarea
+                    id="business-reason"
+                    value={contactPlan.businessReason}
+                    onChange={(event) => updateContactPlan("businessReason", event.target.value)}
+                    rows={3}
+                    className="border-slate-300 bg-white text-slate-950"
+                  />
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="contact-basis" className="font-bold text-slate-800">
+                      Contact basis
+                    </Label>
+                    <select
+                      id="contact-basis"
+                      value={contactPlan.complianceBasis}
+                      onChange={(event) =>
+                        updateContactPlan("complianceBasis", event.target.value as ContactBasis)
+                      }
+                      className="h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-900 outline-none focus:border-[#E2A416] focus:ring-2 focus:ring-amber-100"
+                    >
+                      {(Object.keys(BASIS_LABELS) as ContactBasis[]).map((basis) => (
+                        <option key={basis} value={basis}>
+                          {BASIS_LABELS[basis]}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="contact-language" className="font-bold text-slate-800">
+                      Message language
+                    </Label>
+                    <select
+                      id="contact-language"
+                      value={contactPlan.language}
+                      onChange={(event) => updateContactPlan("language", event.target.value as "fr" | "en")}
+                      className="h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-900 outline-none focus:border-[#E2A416] focus:ring-2 focus:ring-amber-100"
+                    >
+                      <option value="fr">French</option>
+                      <option value="en">English</option>
+                    </select>
+                  </div>
+                </div>
+
+                {contactPlan.channel === "whatsapp" ? (
+                  <div className="space-y-2 rounded-lg border border-rose-200 bg-rose-50 p-3">
+                    <Label htmlFor="whatsapp-consent" className="font-bold text-rose-900">
+                      Explicit WhatsApp opt-in evidence
+                    </Label>
+                    <Textarea
+                      id="whatsapp-consent"
+                      value={contactPlan.whatsappOptInEvidence}
+                      onChange={(event) => updateContactPlan("whatsappOptInEvidence", event.target.value)}
+                      placeholder="Record when, where and how this recipient opted in."
+                      rows={3}
+                      className="border-rose-300 bg-white text-slate-950"
+                    />
+                    <p className="text-xs leading-5 text-rose-800">
+                      A public telephone number is not WhatsApp consent. Without explicit
+                      evidence, choose email, phone or a warm introduction instead.
+                    </p>
+                  </div>
+                ) : null}
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="sender-identity" className="font-bold text-slate-800">
+                      Sender identity
+                    </Label>
+                    <Input
+                      id="sender-identity"
+                      value={contactPlan.senderIdentity}
+                      onChange={(event) => updateContactPlan("senderIdentity", event.target.value)}
+                      className="border-slate-300 bg-white text-slate-950"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="approval-owner" className="font-bold text-slate-800">
+                      Human approval owner
+                    </Label>
+                    <Input
+                      id="approval-owner"
+                      value={contactPlan.approvalOwner}
+                      onChange={(event) => updateContactPlan("approvalOwner", event.target.value)}
+                      placeholder="Accountable approver"
+                      className="border-slate-300 bg-white text-slate-950"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="draft-message" className="font-bold text-slate-800">
+                    Draft for human review
+                  </Label>
+                  <Textarea
+                    id="draft-message"
+                    value={contactPlan.draftMessage}
+                    onChange={(event) => updateContactPlan("draftMessage", event.target.value)}
+                    rows={8}
+                    className="border-slate-300 bg-white font-mono text-sm leading-6 text-slate-950"
+                  />
+                </div>
+
+                <fieldset className="space-y-3 rounded-lg border border-slate-200 bg-slate-50 p-4">
+                  <legend className="px-1 text-sm font-black text-[#07121F]">
+                    Required controls
+                  </legend>
+                  {[
+                    {
+                      key: "senderVerified" as const,
+                      label: "The sender identity and outbound account are verified.",
+                    },
+                    {
+                      key: "suppressionChecked" as const,
+                      label: "The recipient is not on the do-not-contact or suppression list.",
+                    },
+                    {
+                      key: "quietHoursChecked" as const,
+                      label: "The proposed timing respects local quiet hours and channel rules.",
+                    },
+                  ].map((control) => (
+                    <label key={control.key} className="flex cursor-pointer items-start gap-3 text-sm leading-6 text-slate-700">
+                      <input
+                        type="checkbox"
+                        checked={contactPlan[control.key]}
+                        onChange={(event) => updateContactPlan(control.key, event.target.checked)}
+                        className="mt-1 h-4 w-4 shrink-0 accent-[#E2A416]"
+                      />
+                      <span>{control.label}</span>
+                    </label>
+                  ))}
+                </fieldset>
+
+                {contactPlanMissing(contactPlan).length ? (
+                  <div className="rounded-lg border border-slate-200 bg-white p-3">
+                    <div className="text-xs font-black uppercase text-slate-500">
+                      Still required
+                    </div>
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {contactPlanMissing(contactPlan).map((item) => (
+                        <Badge key={item} variant="outline" className="border-amber-200 bg-amber-50 text-amber-800">
+                          {item}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-start gap-2 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm font-semibold leading-6 text-emerald-900">
+                    <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0" />
+                    The dossier is complete enough to enter human approval. Sending remains blocked.
+                  </div>
+                )}
+              </div>
+            ) : null}
+
+            <DialogFooter className="gap-2 border-t border-slate-200 pt-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setPlanningLead(null);
+                  setContactPlan(null);
+                }}
+                className="border-slate-300 bg-white text-slate-800"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                disabled={
+                  !planningLead ||
+                  !contactPlan ||
+                  contactPlanMissing(contactPlan).length > 0 ||
+                  contactPlanMutation.isPending
+                }
+                onClick={() => {
+                  if (planningLead && contactPlan) {
+                    contactPlanMutation.mutate({
+                      leadId: planningLead.id,
+                      contactReadiness: contactPlan,
+                    });
+                  }
+                }}
+                className="bg-[#E2A416] font-black text-[#07121F] hover:bg-[#C98F12]"
+              >
+                <ClipboardCheck className="mr-2 h-4 w-4" />
+                Save for human approval
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </main>
   );

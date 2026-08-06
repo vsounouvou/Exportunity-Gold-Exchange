@@ -15,6 +15,7 @@ export type IndustrialFactoryLeadStatus =
 export const INDUSTRIAL_FACTORY_LEAD_SOURCES = [
   "google_places",
   "official_registry",
+  "official_operator",
   "industry_directory",
 ] as const;
 

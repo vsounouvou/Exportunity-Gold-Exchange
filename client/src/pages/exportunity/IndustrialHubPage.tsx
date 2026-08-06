@@ -35,6 +35,7 @@ import {
   Landmark,
   Languages,
   List,
+  LoaderCircle,
   MapPinned,
   Moon,
   PackageSearch,
@@ -1308,12 +1309,27 @@ function CatalogList({
   language,
   emptyTitle,
   emptyDetail,
+  loading = false,
 }: {
   items: CatalogItem[];
   language: "fr" | "en";
   emptyTitle: string;
   emptyDetail: string;
+  loading?: boolean;
 }) {
+  if (loading)
+    return (
+      <div
+        role="status"
+        aria-live="polite"
+        className="flex min-h-32 items-center justify-center gap-3 rounded-xl border border-slate-200 bg-white px-5 py-8 text-sm font-medium text-slate-700 shadow-[0_10px_28px_rgba(15,23,42,0.05)] dark:border-white/10 dark:bg-[#0A1628] dark:text-slate-200"
+      >
+        <LoaderCircle className="h-5 w-5 animate-spin text-[#a96f0b] dark:text-[#F5A623]" />
+        {language === "fr"
+          ? "Chargement des offres industrielles documentees..."
+          : "Loading documented industrial offerings..."}
+      </div>
+    );
   if (!items.length)
     return <EmptyState title={emptyTitle} detail={emptyDetail} />;
   return (
@@ -5047,6 +5063,7 @@ export default function IndustrialHubPage() {
   );
   const [factories, setFactories] = useState<PublicFactory[]>([]);
   const [catalogItems, setCatalogItems] = useState<CatalogItem[]>([]);
+  const [catalogLoading, setCatalogLoading] = useState(true);
   const [searchContext, setSearchContext] =
     useState<IndustrialSearchContext | null>(null);
   const [taxonomy, setTaxonomy] = useState<TaxonomyCategory[]>([]);
@@ -5215,6 +5232,7 @@ export default function IndustrialHubPage() {
   const searchQuery = queryValue(location, "q");
   useEffect(() => {
     let active = true;
+    setCatalogLoading(true);
     setDirectoryError(null);
     setSearchContext(null);
     const query = searchQuery ? `?q=${encodeURIComponent(searchQuery)}` : "";
@@ -5246,6 +5264,9 @@ export default function IndustrialHubPage() {
             ? "La plateforme industrielle est momentanément indisponible."
             : "The industrial platform is temporarily unavailable.",
         );
+      })
+      .finally(() => {
+        if (active) setCatalogLoading(false);
       });
     return () => {
       active = false;
@@ -6291,6 +6312,7 @@ export default function IndustrialHubPage() {
                         <CatalogList
                           items={catalogItems}
                           language={locale}
+                          loading={catalogLoading}
                           emptyTitle={
                             locale === "fr"
                               ? "Aucun catalogue approuvé ne correspond à cette recherche"
@@ -6322,6 +6344,7 @@ export default function IndustrialHubPage() {
                   <CatalogList
                     items={visibleExportItems}
                     language={locale}
+                    loading={catalogLoading}
                     emptyTitle={copy.noCatalog}
                     emptyDetail={copy.noCatalogDetail}
                   />
@@ -6372,6 +6395,7 @@ export default function IndustrialHubPage() {
                     <CatalogList
                       items={visibleSupplyItems}
                       language={locale}
+                      loading={catalogLoading}
                       emptyTitle={copy.noCatalog}
                       emptyDetail={copy.noCatalogDetail}
                     />
@@ -6573,6 +6597,7 @@ export default function IndustrialHubPage() {
                   <CatalogList
                     items={visibleMachineryItems}
                     language={locale}
+                    loading={catalogLoading}
                     emptyTitle={copy.noCatalog}
                     emptyDetail={copy.noCatalogDetail}
                   />

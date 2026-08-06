@@ -146,6 +146,12 @@ import {
   mapGooglePlacesToIndustrialFactoryLeads,
 } from "../lib/industrial/factoryLeadIntake";
 import {
+  BENIN_INDUSTRIAL_PROSPECTS,
+  beninIndustrialProspectSummary,
+  findBeninIndustrialProspects,
+  mapBeninIndustrialProspectsToFactoryLeads,
+} from "../lib/industrial/beninIndustrialProspects";
+import {
   convertIndustrialFactoryLead,
   importIndustrialFactoryLeads,
   listIndustrialFactoryLeads,
@@ -887,6 +893,13 @@ const industrialFactoryLeadImportSchema =
       .min(1)
       .max(20),
   });
+
+const beninIndustrialProspectImportSchema = z.object({
+  selectedProspectIds: z
+    .array(z.string().trim().min(3).max(160))
+    .min(1)
+    .max(100),
+});
 
 const industrialFactoryLeadReviewSchema = z.object({
   leadStatus: z.enum([
@@ -7142,6 +7155,84 @@ router.get("/admin/factory-leads", ensureTenantStaff, async (req: any, res) => {
     });
   }
 });
+
+router.get(
+  "/admin/factory-leads/benin-official-preview",
+  ensureTenantStaff,
+  async (req: any, res) => {
+    const tenant = resolveExportunityTenant(req, res);
+    if (!tenant) return;
+
+    return res.json({
+      ok: true,
+      checkedAt: BENIN_INDUSTRIAL_PROSPECTS[0]?.checkedAt || null,
+      summary: beninIndustrialProspectSummary(),
+      prospects: BENIN_INDUSTRIAL_PROSPECTS,
+      message:
+        "Staff planning universe only. Records come from cited official or industry sources, remain private, and cannot be contacted or published without review.",
+    });
+  },
+);
+
+router.post(
+  "/admin/factory-leads/benin-official-import",
+  ensureTenantAdmin,
+  async (req: any, res) => {
+    const tenant = resolveExportunityTenant(req, res);
+    if (!tenant) return;
+
+    const parsed = beninIndustrialProspectImportSchema.safeParse(req.body || {});
+    if (!parsed.success) {
+      return res.status(400).json({
+        ok: false,
+        message: "Select at least one importable industrial prospect.",
+        issues: parsed.error.flatten(),
+      });
+    }
+
+    const selected = findBeninIndustrialProspects(
+      parsed.data.selectedProspectIds,
+    );
+    const candidates = mapBeninIndustrialProspectsToFactoryLeads(selected);
+    if (!candidates.length) {
+      return res.status(400).json({
+        ok: false,
+        message:
+          "The selection contains no factory, industrial buyer, manufacturer, inventory partner or technical supplier that can enter the factory review queue.",
+      });
+    }
+
+    const requested = new Set(parsed.data.selectedProspectIds);
+    const recognized = new Set(selected.map((item) => item.id));
+    const unknownIds = Array.from(requested).filter((id) => !recognized.has(id));
+
+    try {
+      const imported = await importIndustrialFactoryLeads({
+        tenantId: tenant.id,
+        actorUserId:
+          actorIdFor(req, "adminUser") || actorIdFor(req, "staffUser"),
+        candidates,
+        query: "Benin officially sourced industrial prospect universe",
+        countryCode: "BJ",
+      });
+
+      return res.status(201).json({
+        ok: true,
+        ...imported,
+        skippedNonFactoryActors: selected.length - candidates.length,
+        unknownIds,
+        message:
+          "Selected prospects were stored in the private review queue. No outreach, public profile, inventory claim or commercial engagement was created.",
+      });
+    } catch {
+      return res.status(500).json({
+        ok: false,
+        message:
+          "The selected industrial prospects could not be added to the private review queue.",
+      });
+    }
+  },
+);
 
 router.post(
   "/admin/factory-leads/google-preview",

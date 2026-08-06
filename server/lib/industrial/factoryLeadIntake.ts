@@ -12,6 +12,15 @@ export const INDUSTRIAL_FACTORY_LEAD_STATUSES = [
 export type IndustrialFactoryLeadStatus =
   (typeof INDUSTRIAL_FACTORY_LEAD_STATUSES)[number];
 
+export const INDUSTRIAL_FACTORY_LEAD_SOURCES = [
+  "google_places",
+  "official_registry",
+  "industry_directory",
+] as const;
+
+export type IndustrialFactoryLeadSource =
+  (typeof INDUSTRIAL_FACTORY_LEAD_SOURCES)[number];
+
 export function canConvertIndustrialFactoryLead(
   status: IndustrialFactoryLeadStatus,
 ) {
@@ -19,7 +28,7 @@ export function canConvertIndustrialFactoryLead(
 }
 
 export type IndustrialFactoryLeadCandidate = {
-  source: "google_places";
+  source: IndustrialFactoryLeadSource;
   googlePlaceId: string | null;
   name: string;
   normalizedName: string;

@@ -64,6 +64,7 @@ export const APP_ROUTE_PATHS = [
   "/admin/hoz/settings",
   "/admin/hoz/website",
   "/admin/inbox",
+  "/admin/industrial-network",
   "/admin/library",
   "/admin/login",
   "/admin/mail",

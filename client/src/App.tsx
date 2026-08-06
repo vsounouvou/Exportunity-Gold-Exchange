@@ -432,6 +432,7 @@ const AdminMediaDebugPage = lazyPage(() => import("@/pages/AdminMediaDebugPage")
 const AdminMarketplaceProductsPage = lazyPage(() => import("@/pages/AdminMarketplaceProductsPage"));
 const AdminMarketplacePaymentsPage = lazyPage(() => import("@/pages/AdminMarketplacePaymentsPage"));
 const AdminPmeExchangePage = lazyPage(() => import("@/pages/AdminPmeExchangePage"));
+const AdminIndustrialNetworkPage = lazyPage(() => import("@/pages/AdminIndustrialNetworkPage"));
 const AdminSystemUpdatePage = lazyPage(() => import("@/pages/AdminSystemUpdatePage"));
 const AdminMapIconsPage = lazyPage(() => import("@/pages/AdminMapIconsPage"));
 const AdminMapSettingsPage = lazyPage(() => import("@/pages/AdminMapSettingsPage"));
@@ -1967,6 +1968,12 @@ function App() {
         <Route path="/admin/marketplace/products">
           <ProtectedRoute>
             <AdminMarketplaceProductsPage />
+          </ProtectedRoute>
+        </Route>
+
+        <Route path="/admin/industrial-network">
+          <ProtectedRoute>
+            <AdminIndustrialNetworkPage />
           </ProtectedRoute>
         </Route>
 

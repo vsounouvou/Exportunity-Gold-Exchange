@@ -54,6 +54,12 @@ function safeLimit(value: number | undefined, fallback = 100) {
   return Math.min(100, Math.max(1, Math.trunc(parsed)));
 }
 
+function leadSourceLabel(source: IndustrialFactoryLeadCandidate["source"]) {
+  if (source === "official_registry") return "Official registry";
+  if (source === "industry_directory") return "Industry directory";
+  return "Google Places";
+}
+
 export function normalizeIndustrialFactoryLeadFilters(
   filters: IndustrialFactoryLeadFilters = {},
 ) {
@@ -68,6 +74,7 @@ export function normalizeIndustrialFactoryLeadFilters(
 }
 
 export function industrialFactoryLeadSummary(row: any) {
+  const metadata = record(row.metadata);
   return {
     id: row.id,
     source: row.source,
@@ -99,8 +106,22 @@ export function industrialFactoryLeadSummary(row: any) {
     qualificationScore: Number(row.qualificationScore || 0),
     screeningNotes: row.screeningNotes,
     contactStatus: row.contactStatus,
-    publicListing: Boolean(record(row.metadata).publicListing),
-    verificationRequired: Boolean(record(row.metadata).verificationRequired),
+    publicListing: Boolean(metadata.publicListing),
+    verificationRequired: Boolean(metadata.verificationRequired),
+    sourceProspectId: metadata.sourceProspectId || null,
+    sourceName: metadata.sourceName || null,
+    sourceTitle: metadata.sourceTitle || null,
+    sourceUrl: metadata.sourceUrl || null,
+    sourceCheckedAt: metadata.sourceCheckedAt || null,
+    sourceStatus: metadata.sourceStatus || null,
+    evidenceSummary: metadata.evidenceSummary || null,
+    roles: Array.isArray(metadata.roles) ? metadata.roles : [],
+    publicEmail: metadata.publicEmail || null,
+    approvedInvestmentFcfa: metadata.approvedInvestmentFcfa || null,
+    opportunityHypotheses: Array.isArray(metadata.opportunityHypotheses)
+      ? metadata.opportunityHypotheses
+      : [],
+    outreachAllowed: metadata.outreachAllowed === true,
     reviewedByUserId: row.reviewedByUserId,
     reviewedAt: row.reviewedAt,
     convertedFactoryId: row.convertedFactoryId,
@@ -209,6 +230,7 @@ export async function importIndustrialFactoryLeads(input: {
         lastImportCity: input.city || null,
         lastImportCountryCode: input.countryCode || null,
       };
+      const sourceLabel = leadSourceLabel(candidate.source);
 
       if (existing) {
         const [updated] = await tx
@@ -258,7 +280,7 @@ export async function importIndustrialFactoryLeads(input: {
           action: "industrial_factory_lead.refreshed",
           entityType: "industrial_factory_lead",
           entityId: existing.id,
-          reason: "Google Places lead intake refresh",
+          reason: `${sourceLabel} lead intake refresh`,
           previousValue: {
             leadStatus: existing.leadStatus,
             qualificationScore: Number(existing.qualificationScore || 0),
@@ -270,8 +292,9 @@ export async function importIndustrialFactoryLeads(input: {
           metadata: {
             source: candidate.source,
             googlePlaceId: candidate.googlePlaceId,
-            publicListing: true,
-            verificationRequired: true,
+            publicListing: candidate.metadata.publicListing === true,
+            verificationRequired:
+              candidate.metadata.verificationRequired !== false,
           },
         });
         continue;
@@ -316,7 +339,7 @@ export async function importIndustrialFactoryLeads(input: {
         action: "industrial_factory_lead.imported",
         entityType: "industrial_factory_lead",
         entityId: createdLead.id,
-        reason: "Google Places lead intake",
+        reason: `${sourceLabel} lead intake`,
         nextValue: {
           leadStatus: createdLead.leadStatus,
           qualificationScore: Number(createdLead.qualificationScore || 0),
@@ -324,8 +347,8 @@ export async function importIndustrialFactoryLeads(input: {
         metadata: {
           source: candidate.source,
           googlePlaceId: candidate.googlePlaceId,
-          publicListing: true,
-          verificationRequired: true,
+          publicListing: candidate.metadata.publicListing === true,
+          verificationRequired: candidate.metadata.verificationRequired !== false,
         },
       });
     }

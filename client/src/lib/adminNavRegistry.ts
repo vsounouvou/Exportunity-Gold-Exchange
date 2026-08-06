@@ -189,6 +189,21 @@ const GOOGLE_MAPS_NAV_ITEM: AdminNavRegistryItem = {
   visibleInNav: true,
 };
 
+const INDUSTRIAL_NETWORK_NAV_ITEM: AdminNavRegistryItem = {
+  route: "/admin/industrial-network",
+  pageTitle: "Industrial Network",
+  module: "Trade",
+  capabilityTag: "admin_industrial_network",
+  apiEndpointsCalled: [
+    "/api/industrial/admin/factory-leads/benin-official-preview",
+    "/api/industrial/admin/factory-leads/benin-official-import",
+    "/api/industrial/admin/factory-leads",
+  ],
+  navEntryName: "Industrial Network",
+  icon: "Building2",
+  visibleInNav: true,
+};
+
 const ROUTE_CATEGORY_OVERRIDES: Record<string, AdminNavCategory> = {
   // Agents OS is the canonical home for all agent functions.
   "/agents": "Agents OS",
@@ -220,6 +235,7 @@ const ROUTE_CATEGORY_OVERRIDES: Record<string, AdminNavCategory> = {
 
   // Trade and marketplace execution.
   "/admin/marketplace/products": "Trade",
+  "/admin/industrial-network": "Trade",
   "/marketplace/sellers": "Trade",
   "/seller-dashboard": "Trade",
   "/bureaus": "Trade",
@@ -290,6 +306,7 @@ const CATEGORY_ITEM_ORDER: Record<AdminNavCategory, Record<string, number>> = {
     "/expert-clones": 60,
   },
   Trade: {
+    "/admin/industrial-network": 0,
     "/admin/marketplace/products": 0,
     "/marketplace/sellers": 10,
     "/seller-dashboard": 20,
@@ -351,6 +368,9 @@ export function getAdminNavItems() {
   if (!hasInternalAgents) next.push(OPERATIONS_INTERNAL_AGENTS_NAV_ITEM);
   if (!hasMarketplaceAgents) next.push(COMMERCE_MARKETPLACE_AGENTS_NAV_ITEM);
   if (!hasActionForge) next.push(ACTION_FORGE_NAV_ITEM);
+  if (!next.some((entry) => entry.route === INDUSTRIAL_NETWORK_NAV_ITEM.route)) {
+    next.push(INDUSTRIAL_NETWORK_NAV_ITEM);
+  }
   for (const item of PME_EXCHANGE_NAV_ITEMS) {
     if (!next.some((entry) => entry.route === item.route)) next.push(item);
   }

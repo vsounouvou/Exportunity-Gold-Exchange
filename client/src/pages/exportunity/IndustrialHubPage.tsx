@@ -24,6 +24,7 @@ import {
   Anchor,
   ArrowRight,
   Building2,
+  BadgeCheck,
   CheckCircle2,
   ChevronRight,
   ClipboardList,
@@ -42,6 +43,7 @@ import {
   Paperclip,
   Plus,
   Search,
+  ShoppingCart,
   Settings2,
   ShieldCheck,
   Sun,
@@ -61,6 +63,7 @@ import {
   type IndustrialContextLocation,
 } from "@/components/exportunity/industrialContext";
 import { IndustrialAssistantChat } from "@/components/exportunity/IndustrialAssistantChat";
+import type { IndustrialAssistantContext } from "@/components/exportunity/IndustrialAssistantChat";
 import FactoryWorkspacePage from "@/pages/exportunity/FactoryWorkspacePage";
 
 type ThemeMode = "light" | "dark";
@@ -367,6 +370,237 @@ function catalogActionLabel(item: CatalogItem, language: "fr" | "en") {
     : "Request availability";
 }
 
+function contextCatalogItems(
+  context: IndustrialContextLocation | null,
+  items: CatalogItem[],
+) {
+  if (!context) {
+    return items.filter(
+      (item) =>
+        item.listingKind === "documented_factory_output" ||
+        item.listingKind === "verified_factory_catalog",
+    );
+  }
+
+  if (context.id === "gdiz") {
+    return items.filter(
+      (item) =>
+        item.listingKind === "documented_factory_output" &&
+        (String(item.factoryCity || "")
+          .toLocaleLowerCase("fr")
+          .includes("glo-djigbe") ||
+          String(item.sourceUrl || "").includes("gdiz-benin.com")),
+    );
+  }
+
+  if (context.id === "port-cotonou") {
+    return items.filter(
+      (item) => item.classification === "export_ready_factory_product",
+    );
+  }
+
+  if (context.id === "ketou-agro-processing") {
+    return items.filter((item) =>
+      ["machinery", "industrial_input", "industrial_service"].includes(
+        item.classification,
+      ),
+    );
+  }
+
+  return items.filter((item) =>
+    ["industrial_service", "machinery", "spare_part"].includes(
+      item.classification,
+    ),
+  );
+}
+
+function assistantContextForSelection({
+  factory,
+  context,
+  items,
+  language,
+}: {
+  factory: PublicFactory | null;
+  context: IndustrialContextLocation | null;
+  items: CatalogItem[];
+  language: "fr" | "en";
+}): IndustrialAssistantContext {
+  if (factory) {
+    const productCount = items.filter(
+      (item) => item.factoryId === factory.id,
+    ).length;
+    return {
+      id: `factory:${factory.id}`,
+      title: factory.name,
+      role:
+        language === "fr"
+          ? "Exportunity AI | Assistant de l'usine"
+          : "Exportunity AI | Factory assistant",
+      intro:
+        language === "fr"
+          ? productCount
+            ? `Vous explorez ${factory.name}. Je peux vous montrer ses ${productCount} produits approuves, verifier une reference et ouvrir une commande industrielle.`
+            : `Vous explorez ${factory.name}. Je peux verifier une reference et ouvrir une commande industrielle avec cette usine.`
+          : productCount
+            ? `You are exploring ${factory.name}. I can show its ${productCount} approved products, verify a reference, and open an industrial order.`
+            : `You are exploring ${factory.name}. I can verify a reference and open an industrial order with this factory.`,
+      quickReplies:
+        language === "fr"
+          ? [
+              `Que vend ${factory.name} ?`,
+              "Verifier la disponibilite",
+              "Demarrer une commande",
+              "Joindre une photo de piece",
+              "Organiser la livraison",
+            ]
+          : [
+              `What does ${factory.name} sell?`,
+              "Check availability",
+              "Start an order",
+              "Attach a part photo",
+              "Arrange delivery",
+            ],
+    };
+  }
+
+  if (context?.id === "gdiz") {
+    return {
+      id: "context:gdiz",
+      title: "GDIZ",
+      role:
+        language === "fr"
+          ? "Exportunity AI | Guide industriel"
+          : "Exportunity AI | Industrial guide",
+      intro:
+        language === "fr"
+          ? "Vous etes a la GDIZ avec Tassi. Je vous montre maintenant les producteurs et produits documentes, puis je peux verifier la disponibilite et ouvrir votre commande."
+          : "You are at GDIZ with Tassi. I can now show documented producers and products, verify availability, and open your order.",
+      quickReplies:
+        language === "fr"
+          ? [
+              "Voir les producteurs de la GDIZ",
+              "Commander des produits textiles",
+              "Sourcer de l'huile de soja",
+              "Trouver des emballages",
+              "Verifier une disponibilite",
+            ]
+          : [
+              "Show GDIZ producers",
+              "Order textile products",
+              "Source soybean oil",
+              "Find packaging",
+              "Check availability",
+            ],
+    };
+  }
+
+  if (context?.id === "port-cotonou") {
+    return {
+      id: "context:port-cotonou",
+      title: industrialContextText(context.name, language),
+      role:
+        language === "fr"
+          ? "Exportunity AI | Export et logistique"
+          : "Exportunity AI | Export and logistics",
+      intro:
+        language === "fr"
+          ? "Vous explorez la passerelle logistique de Cotonou. Je peux relier un produit documente a un besoin d'export, de transit ou de livraison."
+          : "You are exploring Cotonou's logistics gateway. I can connect a documented product to an export, transit, or delivery requirement.",
+      quickReplies:
+        language === "fr"
+          ? [
+              "Voir les produits prets a exporter",
+              "Estimer une livraison",
+              "Preparer un dossier export",
+              "Trouver un fournisseur",
+              "Demander un devis logistique",
+            ]
+          : [
+              "Show export-ready products",
+              "Estimate delivery",
+              "Prepare an export case",
+              "Find a supplier",
+              "Request a logistics quote",
+            ],
+    };
+  }
+
+  if (context?.id === "ketou-agro-processing") {
+    return {
+      id: "context:ketou",
+      title: industrialContextText(context.name, language),
+      role:
+        language === "fr"
+          ? "Exportunity AI | Agro-industrie"
+          : "Exportunity AI | Agro-industry",
+      intro:
+        language === "fr"
+          ? "Ketou est ici un repere public, pas une usine publiee. Dites-moi la production visee et je peux cadrer la machine, les intrants et les fournisseurs a verifier."
+          : "Ketou is a public reference here, not a published factory. Tell me the intended output and I can scope the machinery, inputs, and suppliers to verify.",
+      quickReplies:
+        language === "fr"
+          ? [
+              "Ligne de transformation du manioc",
+              "Equipement pour le riz",
+              "Machine pour le mais",
+              "Trouver des pieces de rechange",
+              "Ouvrir une etude technique",
+            ]
+          : [
+              "Cassava processing line",
+              "Rice processing equipment",
+              "Maize processing machinery",
+              "Find spare parts",
+              "Open a technical review",
+            ],
+    };
+  }
+
+  if (context) {
+    return {
+      id: `context:${context.id}`,
+      title: industrialContextText(context.name, language),
+      role:
+        language === "fr"
+          ? "Exportunity AI | Guide industriel"
+          : "Exportunity AI | Industrial guide",
+      intro:
+        language === "fr"
+          ? `Vous explorez ${industrialContextText(context.name, language)}. Dites-moi votre besoin et je vous orienterai vers les produits, capacites ou partenaires a verifier.`
+          : `You are exploring ${industrialContextText(context.name, language)}. Tell me your requirement and I will guide you to products, capabilities, or partners to verify.`,
+    };
+  }
+
+  return {
+    id: "industrial-discovery",
+    title: language === "fr" ? "Industrie du Benin" : "Benin industry",
+    role:
+      language === "fr"
+        ? "Exportunity AI | Guide industriel"
+        : "Exportunity AI | Industrial guide",
+    intro:
+      language === "fr"
+        ? "Bonjour, je suis Tassi. Choisissez un repere sur la carte ou dites-moi le produit, la piece ou la machine dont vous avez besoin."
+        : "Hello, I am Tassi. Select a map reference or tell me which product, part, or machine you need.",
+    quickReplies:
+      language === "fr"
+        ? [
+            "Voir les producteurs de la GDIZ",
+            "Trouver une piece detachee",
+            "Voir les produits exportables",
+            "Sourcer une machine",
+            "Demarrer une commande",
+          ]
+        : [
+            "Show GDIZ producers",
+            "Find a spare part",
+            "Show export-ready products",
+            "Source a machine",
+            "Start an order",
+          ],
+  };
+}
+
 function queryValue(location: string, key: string) {
   const query = location.includes("?")
     ? location.split("?")[1]
@@ -430,15 +664,17 @@ function industrialContextMarkerStyle(kind: IndustrialContextLocation["kind"]) {
 function mapIndustrialContextIcon(
   context: IndustrialContextLocation,
   active: boolean,
+  productCount = 0,
 ) {
   const style = industrialContextMarkerStyle(context.kind);
   const markerCode = INDUSTRIAL_CONTEXT_VISUALS[context.kind].markerCode;
-  const label = context.markerLabel;
+  const label = `${context.markerLabel}${productCount ? ` · ${productCount}` : ""}`;
+  const width = productCount ? (active ? 88 : 80) : active ? 66 : 58;
   return L.divIcon({
     className: "exportunity-industrial-context-marker",
-    html: `<span style="display:flex;align-items:center;justify-content:center;gap:6px;min-width:${active ? 66 : 58}px;height:${active ? 42 : 38}px;padding:0 9px;border-radius:12px;border:2px solid ${style.border};background:${style.background};box-shadow:0 10px 24px rgba(7,17,31,.38);color:${style.color};font-weight:900;font-size:11px;letter-spacing:.08em;transition:all .2s ease"><span style="display:flex;align-items:center;justify-content:center;width:17px;height:17px;border-radius:6px;background:${style.color};color:${style.background};font-size:9px;letter-spacing:0">${markerCode}</span><span>${label}</span></span>`,
-    iconSize: [active ? 66 : 58, active ? 42 : 38],
-    iconAnchor: [active ? 33 : 29, active ? 21 : 19],
+    html: `<span style="display:flex;align-items:center;justify-content:center;gap:6px;min-width:${width}px;height:${active ? 42 : 38}px;padding:0 9px;border-radius:12px;border:2px solid ${style.border};background:${style.background};box-shadow:0 10px 24px rgba(7,17,31,.38);color:${style.color};font-weight:900;font-size:11px;letter-spacing:.08em;transition:all .2s ease"><span style="display:flex;align-items:center;justify-content:center;width:17px;height:17px;border-radius:6px;background:${style.color};color:${style.background};font-size:9px;letter-spacing:0">${markerCode}</span><span>${label}</span></span>`,
+    iconSize: [width, active ? 42 : 38],
+    iconAnchor: [Math.round(width / 2), active ? 21 : 19],
   });
 }
 
@@ -472,6 +708,7 @@ function IndustrialMap({
   showEmptyState = true,
   selectedContext = null,
   onSelectContext,
+  contextProductCounts = {},
 }: {
   factories: PublicFactory[];
   selectedFactory: PublicFactory | null;
@@ -482,6 +719,7 @@ function IndustrialMap({
   showEmptyState?: boolean;
   selectedContext?: IndustrialContextLocation | null;
   onSelectContext?: (context: IndustrialContextLocation) => void;
+  contextProductCounts?: Record<string, number>;
 }) {
   const visibleFactories = factories.filter(
     (factory) => factory.latitude !== null && factory.longitude !== null,
@@ -565,7 +803,11 @@ function IndustrialMap({
               <Marker
                 key={context.id}
                 position={[context.latitude, context.longitude]}
-                icon={mapIndustrialContextIcon(context, active)}
+                icon={mapIndustrialContextIcon(
+                  context,
+                  active,
+                  contextProductCounts[context.id] || 0,
+                )}
                 eventHandlers={eventHandlers}
                 zIndexOffset={active ? 900 : 450}
               >
@@ -574,9 +816,13 @@ function IndustrialMap({
                     {industrialContextText(context.name, language)}
                   </span>
                   <span className="mt-0.5 block text-xs text-slate-600">
-                    {language === "fr"
-                      ? "Information publique - pas une usine verifiee"
-                      : "Public information - not a verified factory"}
+                    {contextProductCounts[context.id]
+                      ? language === "fr"
+                        ? `${contextProductCounts[context.id]} produits documentes a explorer`
+                        : `${contextProductCounts[context.id]} documented products to explore`
+                      : language === "fr"
+                        ? "Information publique - pas une usine verifiee"
+                        : "Public information - not a verified factory"}
                   </span>
                 </Tooltip>
               </Marker>
@@ -1301,6 +1547,210 @@ function FactoryMapContextPanel({
         ) : null}
       </div>
     </aside>
+  );
+}
+
+function IndustrialSelectionCommerce({
+  selectedFactory,
+  selectedContext,
+  items,
+  loading,
+  language,
+}: {
+  selectedFactory: PublicFactory | null;
+  selectedContext: IndustrialContextLocation | null;
+  items: CatalogItem[];
+  loading: boolean;
+  language: "fr" | "en";
+}) {
+  const producers = Array.from(
+    new Set(items.map((item) => item.factoryName).filter(Boolean)),
+  );
+  const title = selectedFactory
+    ? selectedFactory.name
+    : selectedContext
+      ? industrialContextText(selectedContext.name, language)
+      : language === "fr"
+        ? "Producteurs et produits documentes"
+        : "Documented producers and products";
+  const detail = selectedFactory
+    ? language === "fr"
+      ? "Les produits approuves de cette usine apparaissent ici. La commande confirme ensuite quantite, prix, delai et paiement."
+      : "This factory's approved products appear here. The order then confirms quantity, price, lead time, and payment."
+    : selectedContext?.id === "gdiz"
+      ? language === "fr"
+        ? "Productions citees par des sources officielles GDIZ. Exportunity confirme la disponibilite, le prix et l'usine responsable avant commande."
+        : "Production documented by official GDIZ sources. Exportunity confirms availability, price, and the responsible factory before an order."
+      : selectedContext
+        ? language === "fr"
+          ? "Ce repere donne le contexte industriel. Les offres ci-dessous sont des pistes documentees ou des services de sourcing a verifier avec Tassi."
+          : "This reference provides industrial context. The offerings below are documented leads or sourcing services to verify with Tassi."
+        : language === "fr"
+          ? "Selectionnez GDIZ ou une usine publiee pour voir directement ce qu'elle produit."
+          : "Select GDIZ or a published factory to see what it produces.";
+
+  return (
+    <section
+      data-testid="industrial-selection-commerce"
+      className="mt-5 border-t border-slate-200 pt-6 dark:border-white/10"
+    >
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="max-w-3xl">
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#946000] dark:text-[#F5A623]">
+            {selectedFactory
+              ? language === "fr"
+                ? "Entrer dans l'usine"
+                : "Enter the factory"
+              : language === "fr"
+                ? "Acheter et s'approvisionner"
+                : "Buy and source"}
+          </p>
+          <h2 className="mt-2 text-2xl font-semibold text-slate-950 dark:text-white">
+            {title}
+          </h2>
+          <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
+            {detail}
+          </p>
+        </div>
+        <div className="flex shrink-0 flex-wrap gap-2">
+          <span className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 dark:border-white/10 dark:bg-[#0A1628] dark:text-slate-200">
+            <Factory className="h-3.5 w-3.5 text-[#a96f0b]" />
+            {producers.length} {language === "fr" ? "producteurs" : "producers"}
+          </span>
+          <span className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 dark:border-white/10 dark:bg-[#0A1628] dark:text-slate-200">
+            <PackageSearch className="h-3.5 w-3.5 text-[#a96f0b]" />
+            {items.length} {language === "fr" ? "produits" : "products"}
+          </span>
+        </div>
+      </div>
+
+      {producers.length ? (
+        <div className="mt-4 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {producers.map((producer) => (
+            <span
+              key={producer}
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-[#F5A623]/30 bg-[#F5A623]/10 px-3 py-1.5 text-xs font-semibold text-slate-800 dark:text-[#f8d28a]"
+            >
+              <BadgeCheck className="h-3.5 w-3.5" />
+              {producer}
+            </span>
+          ))}
+        </div>
+      ) : null}
+
+      {loading ? (
+        <div className="mt-5 flex min-h-28 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white text-sm text-slate-600 dark:border-white/10 dark:bg-[#0A1628] dark:text-slate-300">
+          <LoaderCircle className="h-4 w-4 animate-spin text-[#a96f0b]" />
+          {language === "fr"
+            ? "Tassi charge les offres industrielles..."
+            : "Tassi is loading industrial offerings..."}
+        </div>
+      ) : items.length ? (
+        <div className="mt-5 grid gap-3 sm:grid-cols-2 2xl:grid-cols-3">
+          {items.slice(0, 9).map((item) => (
+            <article
+              key={item.id}
+              className="group flex min-w-0 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[0_10px_26px_rgba(15,23,42,0.07)] transition hover:border-[#F5A623]/70 hover:shadow-[0_16px_34px_rgba(15,23,42,0.11)] dark:border-white/10 dark:bg-[#0A1628]"
+            >
+              <div className="h-auto w-24 shrink-0 bg-[#07111F] sm:w-28">
+                {item.media?.[0] ? (
+                  <img
+                    src={item.media[0]}
+                    alt={catalogItemName(item, language)}
+                    loading="lazy"
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <div className="grid h-full min-h-32 place-items-center">
+                    <PackageSearch className="h-8 w-8 text-[#F5A623]" />
+                  </div>
+                )}
+              </div>
+              <div className="flex min-w-0 flex-1 flex-col p-3.5">
+                <p className="truncate text-[10px] font-semibold uppercase tracking-[0.11em] text-[#946000] dark:text-[#F5A623]">
+                  {item.factoryName}
+                </p>
+                <h3 className="mt-1 line-clamp-2 text-sm font-semibold leading-5 text-slate-950 dark:text-white">
+                  {catalogItemName(item, language)}
+                </h3>
+                <p className="mt-1.5 line-clamp-2 text-xs leading-5 text-slate-500 dark:text-slate-400">
+                  {catalogItemDescription(item, language)}
+                </p>
+                <div className="mt-auto flex items-center gap-2 pt-3">
+                  <Link
+                    href={catalogRequirementHref(item, language)}
+                    className="inline-flex min-h-9 flex-1 items-center justify-center gap-1 rounded-lg bg-[#F5A623] px-2.5 py-1.5 text-xs font-semibold text-[#07111F] hover:bg-[#f9a800]"
+                  >
+                    <ShoppingCart className="h-3.5 w-3.5" />
+                    {catalogActionLabel(item, language)}
+                  </Link>
+                  {item.sourceUrl ? (
+                    <a
+                      href={item.sourceUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      aria-label={
+                        language === "fr"
+                          ? `Source de ${catalogItemName(item, language)}`
+                          : `Source for ${catalogItemName(item, language)}`
+                      }
+                      className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-slate-200 text-slate-600 hover:border-[#F5A623]/60 hover:text-[#865400] dark:border-white/10 dark:text-slate-300"
+                    >
+                      <ExternalLink className="h-3.5 w-3.5" />
+                    </a>
+                  ) : null}
+                </div>
+              </div>
+            </article>
+          ))}
+        </div>
+      ) : (
+        <div className="mt-5 rounded-xl border border-dashed border-slate-300 bg-white p-5 dark:border-white/15 dark:bg-[#0A1628]">
+          <p className="text-sm font-semibold text-slate-950 dark:text-white">
+            {language === "fr"
+              ? "Aucun stock public n'est affirme ici"
+              : "No public stock is claimed here"}
+          </p>
+          <p className="mt-1.5 text-sm leading-6 text-slate-600 dark:text-slate-300">
+            {language === "fr"
+              ? "Tassi peut ouvrir un dossier de sourcing ou de fabrication a partir de votre produit, photo, plan ou reference."
+              : "Tassi can open a sourcing or manufacturing case from your product, photo, drawing, or reference."}
+          </p>
+          <Link
+            href="/request-quote"
+            className="mt-4 inline-flex min-h-10 items-center gap-2 rounded-lg bg-[#F5A623] px-3.5 py-2 text-sm font-semibold text-[#07111F]"
+          >
+            <ClipboardList className="h-4 w-4" />
+            {language === "fr" ? "Demarrer une commande" : "Start an order"}
+          </Link>
+        </div>
+      )}
+
+      <div className="mt-5 grid gap-2 border-t border-slate-200 pt-4 text-xs text-slate-600 sm:grid-cols-4 dark:border-white/10 dark:text-slate-300">
+        {(
+          language === "fr"
+            ? [
+                "1. Produit et quantite",
+                "2. Disponibilite et prix",
+                "3. Confirmation de commande",
+                "4. Paiement securise",
+              ]
+            : [
+                "1. Product and quantity",
+                "2. Availability and price",
+                "3. Order confirmation",
+                "4. Secure payment",
+              ]
+        ).map((step) => (
+          <span
+            key={step}
+            className="rounded-lg bg-slate-100 px-3 py-2 font-medium dark:bg-white/5"
+          >
+            {step}
+          </span>
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -5091,6 +5541,16 @@ export default function IndustrialHubPage() {
       : view;
   const isMachineryBrand = view === "machinery";
 
+  useEffect(() => {
+    if (
+      view === "factories" &&
+      !selectedFactory &&
+      !selectedIndustrialContext
+    ) {
+      setSelectedIndustrialContext(GDIZ_CONTEXT);
+    }
+  }, [selectedFactory, selectedIndustrialContext, view]);
+
   const copy =
     locale === "fr"
       ? {
@@ -5125,7 +5585,7 @@ export default function IndustrialHubPage() {
           customManufacturing: "Fabrication sur mesure",
           customManufacturingDetail:
             "Lancer un besoin de fabrication ou de reverse engineering.",
-          verifiedFactories: "Usines vérifiées",
+          verifiedFactories: "Usines, producteurs et produits industriels",
           exportProducts: "Produits prêts à l'export",
           industrialSupply: "Approvisionnement industriel",
           machineryTitle: "Exportunity Machinery",
@@ -5134,7 +5594,7 @@ export default function IndustrialHubPage() {
           mapDescription:
             "Explorez les infrastructures et filières publiques, puis les implantations de fabricants vérifiés lorsqu'elles sont autorisées à être publiées.",
           factoriesDescription:
-            "Trouvez des fabricants vérifiés par industrie, pays, région et zone industrielle.",
+            "Explorez les producteurs documentés, leurs produits et les profils d'usines vérifiés. Tassi confirme ensuite disponibilité, prix et commande.",
           productsDescription:
             "Produits B2B publiés après validation, sans prix, capacité ou délai inventé.",
           supplyDescription:
@@ -5188,7 +5648,7 @@ export default function IndustrialHubPage() {
           customManufacturing: "Custom manufacturing",
           customManufacturingDetail:
             "Open a manufacturing or reverse-engineering requirement.",
-          verifiedFactories: "Verified factories",
+          verifiedFactories: "Factories, producers, and industrial products",
           exportProducts: "Export-ready products",
           industrialSupply: "Industrial supply",
           machineryTitle: "Exportunity Machinery",
@@ -5197,7 +5657,7 @@ export default function IndustrialHubPage() {
           mapDescription:
             "Explore public infrastructure and sector context, then published locations of verified manufacturers when they are authorized for public display.",
           factoriesDescription:
-            "Find verified manufacturers by industry, country, region, and industrial zone.",
+            "Explore documented producers, their products, and verified factory profiles. Tassi then confirms availability, price, and the order.",
           productsDescription:
             "B2B products published after validation, without invented pricing, capacity, or lead times.",
           supplyDescription:
@@ -5345,6 +5805,30 @@ export default function IndustrialHubPage() {
       new Map(candidates.map((item) => [item.id, item])).values(),
     ).slice(0, 8);
   }, [categorizedItems]);
+  const selectionCatalogItems = useMemo(() => {
+    if (selectedFactory) {
+      return catalogItems.filter(
+        (item) => item.factoryId === selectedFactory.id,
+      );
+    }
+    return contextCatalogItems(selectedIndustrialContext, catalogItems);
+  }, [catalogItems, selectedFactory, selectedIndustrialContext]);
+  const contextProductCounts = useMemo(
+    () => ({
+      gdiz: contextCatalogItems(GDIZ_CONTEXT, catalogItems).length,
+    }),
+    [catalogItems],
+  );
+  const selectionAssistantContext = useMemo(
+    () =>
+      assistantContextForSelection({
+        factory: selectedFactory,
+        context: selectedIndustrialContext,
+        items: catalogItems,
+        language: locale,
+      }),
+    [catalogItems, locale, selectedFactory, selectedIndustrialContext],
+  );
   const queryCategory = queryValue(location, "category");
   const selectedCategory = useMemo(
     () => taxonomy.find((category) => category.code === queryCategory) || null,
@@ -5592,7 +6076,10 @@ export default function IndustrialHubPage() {
       detail: copy.heroText,
     },
     factories: {
-      eyebrow: copy.verifiedOnly,
+      eyebrow:
+        locale === "fr"
+          ? "Exportunity AI | Acheter et sourcer"
+          : "Exportunity AI | Buy and source",
       title: copy.verifiedFactories,
       detail: copy.factoriesDescription,
     },
@@ -5863,6 +6350,7 @@ export default function IndustrialHubPage() {
                     }}
                     isDark={isDark}
                     language={locale}
+                    contextProductCounts={contextProductCounts}
                     className="absolute inset-0 min-h-[520px] shadow-[0_24px_64px_rgba(7,17,31,0.18)]"
                   />
                   <div className="absolute left-3 right-3 top-3 z-[600] rounded-xl border border-white/70 bg-white/95 p-2 shadow-[0_16px_38px_rgba(7,17,31,0.18)] backdrop-blur-xl sm:left-4 sm:right-auto sm:top-4 sm:w-[calc(100%-2rem)] sm:max-w-[294px] sm:p-3.5 dark:border-white/15 dark:bg-[#07111F]/95">
@@ -6051,6 +6539,7 @@ export default function IndustrialHubPage() {
                 <SectionHeading {...titleByView[view]} />
               ) : null}
               {view !== "map" &&
+              view !== "factories" &&
               view !== "quote" &&
               view !== "register" &&
               view !== "claim" &&
@@ -6082,88 +6571,39 @@ export default function IndustrialHubPage() {
               ) : null}
               {view === "map" ? (
                 <section className="-mt-2">
-                  <div className="relative">
-                    <IndustrialMap
-                      factories={filteredFactories}
-                      selectedFactory={selectedFactory}
-                      onSelectFactory={setSelectedFactory}
-                      selectedContext={selectedIndustrialContext}
-                      onSelectContext={(context) => {
-                        setSelectedFactory(null);
-                        setSelectedIndustrialContext(context);
-                      }}
-                      isDark={isDark}
-                      language={locale}
-                      showEmptyState={false}
-                      className="h-[calc(100dvh-8rem)] min-h-[500px] lg:h-[calc(100dvh-7.5rem)]"
-                    />
-                    <div className="absolute left-4 top-4 z-[600] w-[calc(100%-2rem)] max-w-[420px]">
-                      <div className="rounded-2xl border border-white/70 bg-white/95 p-4 shadow-[0_18px_48px_rgba(7,17,31,0.18)] backdrop-blur-xl dark:border-white/15 dark:bg-[#07111F]/95">
-                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#a96f0b] dark:text-[#F5A623]">
-                          {copy.mapEyebrow}
-                        </p>
-                        <h1 className="mt-2 text-xl font-semibold text-slate-950 dark:text-white">
-                          {copy.mapTitle}
-                        </h1>
-                        <p className="mt-1.5 text-sm leading-6 text-slate-600 dark:text-slate-300">
-                          {copy.mapDescription}
-                        </p>
-                        <form
-                          onSubmit={goSearch}
-                          className="mt-4 flex rounded-xl border border-slate-300 bg-white p-1.5 shadow-sm dark:border-white/15 dark:bg-[#07111F]"
-                        >
-                          <Search className="my-2 ml-2 h-4 w-4 shrink-0 text-[#a96f0b]" />
-                          <input
-                            value={search}
-                            onChange={(event) => setSearch(event.target.value)}
-                            className="min-w-0 flex-1 bg-transparent px-2 py-2 text-sm text-slate-950 outline-none placeholder:text-slate-400 dark:text-white"
-                            placeholder={copy.searchPlaceholder}
-                            aria-label={copy.searchPlaceholder}
-                          />
-                          <button
-                            type="submit"
-                            className="rounded-lg bg-[#F5A623] px-3 py-2 text-sm font-semibold text-slate-950 hover:bg-[#f9a800]"
-                          >
-                            {copy.search}
-                          </button>
-                        </form>
-                      </div>
-                      {factories.length ? (
-                        <details className="mt-3 rounded-xl border border-white/70 bg-white/95 shadow-[0_14px_34px_rgba(7,17,31,0.14)] backdrop-blur-xl dark:border-white/15 dark:bg-[#07111F]/95">
-                        <summary className="cursor-pointer list-none px-4 py-3 text-sm font-semibold text-slate-800 marker:hidden dark:text-white">
-                          <span className="flex items-center justify-between gap-3">
-                            {locale === "fr"
-                              ? "Filtres de la carte"
-                              : "Map filters"}
-                            <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
-                              {locale === "fr"
-                                ? `${filteredFactories.length} visible${filteredFactories.length > 1 ? "s" : ""}`
-                                : `${filteredFactories.length} visible`}
-                            </span>
-                          </span>
-                        </summary>
-                        <div className="border-t border-slate-200 p-3 dark:border-white/10">
-                          <FactoryDirectoryFilters
-                            factories={factories}
-                            filters={factoryFilters}
-                            onChange={setFactoryFilters}
-                            language={locale}
-                          />
-                        </div>
-                        </details>
-                      ) : null}
+                  <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
+                    <div className="min-w-0">
+                      <IndustrialMap
+                        factories={filteredFactories}
+                        selectedFactory={selectedFactory}
+                        onSelectFactory={setSelectedFactory}
+                        selectedContext={selectedIndustrialContext}
+                        onSelectContext={(context) => {
+                          setSelectedFactory(null);
+                          setSelectedIndustrialContext(context);
+                        }}
+                        isDark={isDark}
+                        language={locale}
+                        contextProductCounts={contextProductCounts}
+                        showEmptyState={false}
+                        className="h-[58dvh] min-h-[440px] xl:h-[calc(100dvh-7.5rem)] xl:min-h-[620px]"
+                      />
                     </div>
-                    <FactoryMapContextPanel
-                      factories={filteredFactories}
-                      selectedFactory={selectedFactory}
-                      onSelect={setSelectedFactory}
-                      selectedContext={selectedIndustrialContext}
-                      onSelectContext={(context) => {
-                        setSelectedFactory(null);
-                        setSelectedIndustrialContext(context);
-                      }}
-                      language={locale}
-                    />
+                    <aside className="min-w-0 xl:max-h-[calc(100dvh-7.5rem)] xl:overflow-y-auto xl:pr-1">
+                      <IndustrialAssistantChat
+                        language={locale}
+                        requester={user}
+                        context={selectionAssistantContext}
+                        className="!mt-0 shadow-[0_22px_54px_rgba(7,17,31,0.22)]"
+                      />
+                      <IndustrialSelectionCommerce
+                        selectedFactory={selectedFactory}
+                        selectedContext={selectedIndustrialContext}
+                        items={selectionCatalogItems}
+                        loading={catalogLoading}
+                        language={locale}
+                      />
+                    </aside>
                   </div>
                 </section>
               ) : null}
@@ -6178,47 +6618,8 @@ export default function IndustrialHubPage() {
                       language={locale}
                     />
                   ) : null}
-                  <FactoryDirectoryFilters
-                    factories={factories}
-                    filters={factoryFilters}
-                    onChange={setFactoryFilters}
-                    language={locale}
-                  />
-                  {factories.length ? (
-                    <div className="mt-4 max-w-sm">
-                      <FactoryDirectoryModeToggle
-                        mode={factoryDirectoryMode}
-                        onChange={setFactoryDirectoryMode}
-                        language={locale}
-                      />
-                    </div>
-                  ) : null}
-                  {factoryDirectoryMode === "table" ? (
-                    <div className="mt-5">
-                      {factoryFiltersActive && !filteredFactories.length ? (
-                        <EmptyState
-                          title={
-                            locale === "fr"
-                              ? "Aucune usine vérifiée ne correspond aux filtres"
-                              : "No verified factory matches these filters"
-                          }
-                          detail={
-                            locale === "fr"
-                              ? "Modifiez ou réinitialisez les filtres pour retrouver les profils publics disponibles."
-                              : "Adjust or reset the filters to review available public profiles."
-                          }
-                        />
-                      ) : (
-                        <FactoryDirectoryTable
-                          factories={filteredFactories}
-                          selectedFactory={selectedFactory}
-                          onSelect={setSelectedFactory}
-                          language={locale}
-                        />
-                      )}
-                    </div>
-                  ) : (
-                    <div className="mt-5 grid gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(360px,0.9fr)]">
+                  <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
+                    <div className="order-2 min-w-0 xl:order-1">
                       <IndustrialMap
                         factories={filteredFactories}
                         selectedFactory={selectedFactory}
@@ -6230,102 +6631,91 @@ export default function IndustrialHubPage() {
                         }}
                         isDark={isDark}
                         language={locale}
-                        showEmptyState={!factoryFiltersActive}
-                        className="h-[500px]"
+                        contextProductCounts={contextProductCounts}
+                        showEmptyState={false}
+                        className="h-[420px] sm:h-[500px] xl:h-[540px]"
                       />
-                      <div className="min-w-0">
-                        {selectedFactory ? (
-                          <div className="mb-4 rounded-2xl border border-[#F5A623]/50 bg-[#F5A623]/10 p-5">
-                            <StatusPill>
-                              {locale === "fr"
-                                ? "Usine vérifiée"
-                                : "Verified factory"}
-                            </StatusPill>
-                            <h2 className="mt-3 text-xl font-semibold text-slate-950 dark:text-white">
-                              {selectedFactory.name}
-                            </h2>
-                            <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-                              {selectedFactory.industry} •{" "}
-                              {[
-                                selectedFactory.industrialZone,
-                                selectedFactory.city,
-                                selectedFactory.countryCode,
-                              ]
-                                .filter(Boolean)
-                                .join(", ")}
-                            </p>
-                            {selectedFactory.description ? (
-                              <p className="mt-3 text-sm leading-6 text-slate-700 dark:text-slate-200">
-                                {selectedFactory.description}
-                              </p>
-                            ) : null}
-                            {selectedFactory.website ? (
-                              <a
-                                className="mt-4 inline-flex text-sm font-semibold text-[#a96f0b]"
-                                href={selectedFactory.website}
-                                target="_blank"
-                                rel="noreferrer"
-                              >
-                                {locale === "fr" ? "Site web" : "Website"}
-                                <ArrowRight className="ml-1 h-4 w-4" />
-                              </a>
-                            ) : null}
-                          </div>
-                        ) : null}
-                        {factoryFiltersActive && !filteredFactories.length ? (
-                          <EmptyState
-                            title={
-                              locale === "fr"
-                                ? "Aucune usine vérifiée ne correspond aux filtres"
-                                : "No verified factory matches these filters"
-                            }
-                            detail={
-                              locale === "fr"
-                                ? "Modifiez ou réinitialisez les filtres pour retrouver les profils publics disponibles."
-                                : "Adjust or reset the filters to review available public profiles."
-                            }
-                          />
-                        ) : (
-                          <FactoryList
-                            factories={filteredFactories}
-                            selectedFactory={selectedFactory}
-                            onSelect={setSelectedFactory}
+                      <IndustrialSelectionCommerce
+                        selectedFactory={selectedFactory}
+                        selectedContext={selectedIndustrialContext}
+                        items={selectionCatalogItems}
+                        loading={catalogLoading}
+                        language={locale}
+                      />
+                    </div>
+                    <aside className="order-1 min-w-0 xl:order-2 xl:sticky xl:top-28">
+                      <IndustrialAssistantChat
+                        language={locale}
+                        requester={user}
+                        context={selectionAssistantContext}
+                        className="!mt-0 shadow-[0_22px_54px_rgba(7,17,31,0.22)]"
+                      />
+                      <p className="mt-3 px-1 text-xs leading-5 text-slate-500 dark:text-slate-400">
+                        {locale === "fr"
+                          ? "Tassi enregistre un vrai dossier industriel. La disponibilite, le prix et le fournisseur sont verifies avant toute commande ou mise en relation."
+                          : "Tassi records a real industrial case. Availability, price, and supplier are verified before any order or introduction."}
+                      </p>
+                    </aside>
+                  </div>
+
+                  {factories.length ? (
+                    <details className="mt-8 overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-white/10 dark:bg-[#0A1628]">
+                      <summary className="cursor-pointer list-none px-5 py-4 text-sm font-semibold text-slate-900 marker:hidden dark:text-white">
+                        <span className="flex items-center justify-between gap-3">
+                          {locale === "fr"
+                            ? "Repertoire des profils d'usines verifies"
+                            : "Verified factory profile directory"}
+                          <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                            {factories.length}
+                          </span>
+                        </span>
+                      </summary>
+                      <div className="border-t border-slate-200 p-4 dark:border-white/10">
+                        <FactoryDirectoryFilters
+                          factories={factories}
+                          filters={factoryFilters}
+                          onChange={setFactoryFilters}
+                          language={locale}
+                        />
+                        <div className="mt-4 max-w-sm">
+                          <FactoryDirectoryModeToggle
+                            mode={factoryDirectoryMode}
+                            onChange={setFactoryDirectoryMode}
                             language={locale}
                           />
-                        )}
+                        </div>
+                        <div className="mt-5">
+                          {factoryFiltersActive && !filteredFactories.length ? (
+                            <EmptyState
+                              title={
+                                locale === "fr"
+                                  ? "Aucune usine verifiee ne correspond aux filtres"
+                                  : "No verified factory matches these filters"
+                              }
+                              detail={
+                                locale === "fr"
+                                  ? "Modifiez ou reinitialisez les filtres pour retrouver les profils publics disponibles."
+                                  : "Adjust or reset the filters to review available public profiles."
+                              }
+                            />
+                          ) : factoryDirectoryMode === "table" ? (
+                            <FactoryDirectoryTable
+                              factories={filteredFactories}
+                              selectedFactory={selectedFactory}
+                              onSelect={setSelectedFactory}
+                              language={locale}
+                            />
+                          ) : (
+                            <FactoryList
+                              factories={filteredFactories}
+                              selectedFactory={selectedFactory}
+                              onSelect={setSelectedFactory}
+                              language={locale}
+                            />
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  )}
-                  {searchQuery ? (
-                    <section className="mt-8 border-t border-slate-200 pt-8 dark:border-white/10">
-                      <p className="text-xs font-semibold uppercase tracking-[0.15em] text-[#a96f0b]">
-                        {locale === "fr"
-                          ? "Résultats techniques"
-                          : "Technical results"}
-                      </p>
-                      <h2 className="mt-2 text-xl font-semibold text-slate-950 dark:text-white">
-                        {locale === "fr"
-                          ? `Produits, composants et machines liés à « ${searchQuery} »`
-                          : `Products, components, and machinery related to “${searchQuery}”`}
-                      </h2>
-                      <div className="mt-5">
-                        <CatalogList
-                          items={catalogItems}
-                          language={locale}
-                          loading={catalogLoading}
-                          emptyTitle={
-                            locale === "fr"
-                              ? "Aucun catalogue approuvé ne correspond à cette recherche"
-                              : "No approved catalog item matches this search"
-                          }
-                          emptyDetail={
-                            locale === "fr"
-                              ? "Essayez une référence, un modèle, une matière, une application ou un terme technique équivalent."
-                              : "Try a reference, model, material, application, or equivalent technical term."
-                          }
-                        />
-                      </div>
-                    </section>
+                    </details>
                   ) : null}
                 </section>
               ) : null}

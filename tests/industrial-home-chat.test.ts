@@ -47,3 +47,30 @@ test("Exportunity industrial home leads with the case-backed AI conversation", (
   assert.match(assistant, /Exportunity AI/);
   assert.match(assistant, /VoiceToTextButton/);
 });
+
+test("factory and map discovery keep Tassi, the map, and products in one flow", () => {
+  const hub = readRepoFile(
+    "client/src/pages/exportunity/IndustrialHubPage.tsx",
+  );
+  const mapStart = hub.indexOf('{view === "map" ? (');
+  const factoriesStart = hub.indexOf('{view === "factories" ? (');
+  const productsStart = hub.indexOf('{view === "products" ? (');
+
+  assert.ok(mapStart >= 0);
+  assert.ok(factoriesStart > mapStart);
+  assert.ok(productsStart > factoriesStart);
+
+  const mapMarkup = hub.slice(mapStart, factoriesStart);
+  const factoriesMarkup = hub.slice(factoriesStart, productsStart);
+
+  for (const markup of [mapMarkup, factoriesMarkup]) {
+    assert.match(markup, /<IndustrialMap/);
+    assert.match(markup, /<IndustrialAssistantChat/);
+    assert.match(markup, /context=\{selectionAssistantContext\}/);
+    assert.match(markup, /<IndustrialSelectionCommerce/);
+  }
+
+  assert.match(hub, /params\.set\("catalogItem", item\.id\)/);
+  assert.match(hub, /initialCatalogItemId=\{quoteCatalogItemId\}/);
+  assert.doesNotMatch(mapMarkup, /onSubmit=\{goSearch\}/);
+});

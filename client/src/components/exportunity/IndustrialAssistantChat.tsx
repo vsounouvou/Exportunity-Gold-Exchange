@@ -13,6 +13,14 @@ import { cn } from "@/lib/utils";
 
 type Language = "fr" | "en";
 
+export type IndustrialAssistantContext = {
+  id: string;
+  title: string;
+  intro: string;
+  role?: string;
+  quickReplies?: string[];
+};
+
 type AssistantMessage = {
   id: string;
   sender: "assistant" | "user";
@@ -65,9 +73,13 @@ async function uploadAttachments(session: AttachmentSession, files: File[]) {
 export function IndustrialAssistantChat({
   language,
   requester,
+  context,
+  className,
 }: {
   language: Language;
   requester?: { displayName?: string | null; email?: string | null } | null;
+  context?: IndustrialAssistantContext | null;
+  className?: string;
 }) {
   const copy =
     language === "fr"
@@ -147,8 +159,12 @@ export function IndustrialAssistantChat({
             "I need logistics or import support",
           ],
         };
+  const activeGreeting = context?.intro || copy.greeting;
+  const quickReplies = context?.quickReplies?.length
+    ? context.quickReplies
+    : copy.firstReplies;
   const [messages, setMessages] = useState<AssistantMessage[]>(() => [
-    { id: "welcome", sender: "assistant", text: copy.greeting },
+    { id: "welcome", sender: "assistant", text: activeGreeting },
   ]);
   const [draft, setDraft] = useState("");
   const [attachments, setAttachments] = useState<File[]>([]);
@@ -169,13 +185,13 @@ export function IndustrialAssistantChat({
   const attachmentInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
-    setMessages([{ id: "welcome", sender: "assistant", text: copy.greeting }]);
+    setMessages([{ id: "welcome", sender: "assistant", text: activeGreeting }]);
     setIntake(null);
     setCaseReference(null);
     setCaseAssignee(null);
     setAttachmentSession(null);
     setError(null);
-  }, [copy.greeting]);
+  }, [activeGreeting, context?.id]);
 
   useEffect(() => {
     if (requester?.displayName) setRequesterName(requester.displayName);
@@ -379,7 +395,10 @@ export function IndustrialAssistantChat({
     <section
       aria-label={copy.name}
       data-testid="exportunity-ai-chat"
-      className="mt-4 overflow-hidden rounded-2xl border border-[#F5A623]/35 bg-[#02070e]/80 shadow-[0_22px_54px_rgba(0,0,0,0.32)] backdrop-blur-md sm:mt-5"
+      className={cn(
+        "mt-4 overflow-hidden rounded-2xl border border-[#F5A623]/35 bg-[#02070e]/92 shadow-[0_22px_54px_rgba(0,0,0,0.32)] backdrop-blur-md sm:mt-5",
+        className,
+      )}
     >
       <div className="flex items-center justify-between gap-3 border-b border-white/10 px-3 py-2 sm:px-4">
         <div className="flex min-w-0 items-center gap-3">
@@ -395,7 +414,7 @@ export function IndustrialAssistantChat({
               {copy.name}
             </span>
             <span className="block truncate text-xs text-slate-300">
-              {copy.role}
+              {context?.role || copy.role}
             </span>
           </span>
         </div>
@@ -437,7 +456,7 @@ export function IndustrialAssistantChat({
 
       {!intake ? (
         <div className="scrollbar-hide flex snap-x snap-mandatory gap-2 overflow-x-auto border-t border-white/10 px-3 py-2 sm:flex-wrap sm:overflow-visible sm:px-4">
-          {copy.firstReplies.map((reply) => (
+          {quickReplies.map((reply) => (
             <button
               key={reply}
               type="button"

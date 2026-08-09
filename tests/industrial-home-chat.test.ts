@@ -46,6 +46,8 @@ test("Exportunity industrial home leads with the case-backed AI conversation", (
   assert.match(assistant, /Message Tassi/);
   assert.match(assistant, /Exportunity AI/);
   assert.match(assistant, /VoiceToTextButton/);
+  assert.doesNotMatch(assistant, /bg-\[#02070e\]\/92/);
+  assert.match(assistant, /dark:bg-\[#02070e\]\/\[0\.96\]/);
 });
 
 test("factory and map discovery keep Tassi, the map, and products in one flow", () => {

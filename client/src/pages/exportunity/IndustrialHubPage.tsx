@@ -6633,7 +6633,7 @@ export default function IndustrialHubPage() {
                         language={locale}
                         contextProductCounts={contextProductCounts}
                         showEmptyState={false}
-                        className="h-[420px] sm:h-[500px] xl:h-[540px]"
+                        className="h-[340px] sm:h-[360px] xl:h-[380px]"
                       />
                       <IndustrialSelectionCommerce
                         selectedFactory={selectedFactory}

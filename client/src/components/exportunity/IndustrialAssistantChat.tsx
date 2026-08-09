@@ -396,11 +396,11 @@ export function IndustrialAssistantChat({
       aria-label={copy.name}
       data-testid="exportunity-ai-chat"
       className={cn(
-        "mt-4 overflow-hidden rounded-2xl border border-[#F5A623]/35 bg-[#02070e]/92 shadow-[0_22px_54px_rgba(0,0,0,0.32)] backdrop-blur-md sm:mt-5",
+        "mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_22px_54px_rgba(15,23,42,0.14)] backdrop-blur-md sm:mt-5 dark:border-[#F5A623]/35 dark:bg-[#02070e]/[0.96] dark:shadow-[0_22px_54px_rgba(0,0,0,0.32)]",
         className,
       )}
     >
-      <div className="flex items-center justify-between gap-3 border-b border-white/10 px-3 py-2 sm:px-4">
+      <div className="flex items-center justify-between gap-3 border-b border-white/10 bg-[#07111F] px-3 py-2 sm:px-4">
         <div className="flex min-w-0 items-center gap-3">
           <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-[#F5A623]/60 bg-[#07111F] p-1.5 shadow-[0_8px_20px_rgba(245,166,35,0.2)]">
             <img
@@ -424,7 +424,7 @@ export function IndustrialAssistantChat({
       </div>
 
       <div
-        className="max-h-[150px] space-y-3 overflow-y-auto px-3 py-3 sm:max-h-[160px] sm:px-4"
+        className="max-h-[190px] space-y-3 overflow-y-auto bg-white px-3 py-3 sm:max-h-[210px] sm:px-4 dark:bg-transparent"
         aria-live="polite"
         aria-label={copy.conversation}
         role="log"
@@ -435,12 +435,12 @@ export function IndustrialAssistantChat({
             className={cn(
               "max-w-[92%] rounded-2xl px-3 py-2.5 text-sm leading-5 shadow-sm sm:px-3.5 sm:py-3 sm:leading-6",
               message.sender === "assistant"
-                ? "border border-white/10 bg-white/10 text-slate-100"
+                ? "border border-slate-200 bg-slate-50 text-slate-800 dark:border-white/10 dark:bg-white/10 dark:text-slate-100"
                 : "ml-auto bg-[#F5A623] text-[#07111F]",
             )}
           >
             {message.sender === "assistant" ? (
-              <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#f8c45b]">
+              <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#946000] dark:text-[#f8c45b]">
                 {copy.name}
               </p>
             ) : null}
@@ -448,21 +448,21 @@ export function IndustrialAssistantChat({
           </div>
         ))}
         {isPreviewing ? (
-          <div className="max-w-[86%] rounded-2xl border border-white/10 bg-white/10 px-3.5 py-3 text-sm text-slate-200">
+          <div className="max-w-[86%] rounded-2xl border border-slate-200 bg-slate-50 px-3.5 py-3 text-sm text-slate-700 dark:border-white/10 dark:bg-white/10 dark:text-slate-200">
             {copy.preparing}
           </div>
         ) : null}
       </div>
 
       {!intake ? (
-        <div className="scrollbar-hide flex snap-x snap-mandatory gap-2 overflow-x-auto border-t border-white/10 px-3 py-2 sm:flex-wrap sm:overflow-visible sm:px-4">
+        <div className="scrollbar-hide flex snap-x snap-mandatory gap-2 overflow-x-auto border-t border-slate-200 bg-white px-3 py-2 sm:flex-wrap sm:overflow-visible sm:px-4 dark:border-white/10 dark:bg-transparent">
           {quickReplies.map((reply) => (
             <button
               key={reply}
               type="button"
               onClick={() => void sendMessage(reply)}
               disabled={isPreviewing}
-              className="shrink-0 snap-start rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-medium text-white transition hover:border-[#F5A623]/80 hover:bg-[#F5A623]/15 disabled:cursor-not-allowed disabled:opacity-60 sm:shrink"
+              className="shrink-0 snap-start rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:border-[#F5A623]/80 hover:bg-[#F5A623]/15 hover:text-slate-950 disabled:cursor-not-allowed disabled:opacity-60 sm:shrink dark:border-white/20 dark:bg-white/10 dark:text-white"
             >
               {reply}
             </button>
@@ -471,12 +471,12 @@ export function IndustrialAssistantChat({
       ) : null}
 
       {attachments.length ? (
-        <div className="border-t border-white/10 px-4 py-3">
+        <div className="border-t border-slate-200 bg-white px-4 py-3 dark:border-white/10 dark:bg-transparent">
           <div className="flex flex-wrap gap-2">
             {attachments.map((file) => (
               <span
                 key={`${file.name}:${file.size}:${file.lastModified}`}
-                className="inline-flex max-w-full items-center gap-2 rounded-lg border border-white/15 bg-white/10 px-2.5 py-1.5 text-xs text-slate-100"
+                className="inline-flex max-w-full items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs text-slate-700 dark:border-white/15 dark:bg-white/10 dark:text-slate-100"
               >
                 <Paperclip className="h-3.5 w-3.5 shrink-0 text-[#F5A623]" />
                 <span className="max-w-[180px] truncate">{file.name}</span>
@@ -491,7 +491,7 @@ export function IndustrialAssistantChat({
                       ),
                     )
                   }
-                  className="grid h-5 w-5 shrink-0 place-items-center rounded text-slate-300 hover:bg-white/10 hover:text-white"
+                  className="grid h-5 w-5 shrink-0 place-items-center rounded text-slate-500 hover:bg-slate-200 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-white/10 dark:hover:text-white"
                   aria-label={`${language === "fr" ? "Retirer" : "Remove"} ${file.name}`}
                 >
                   <Trash2 className="h-3.5 w-3.5" />
@@ -503,11 +503,11 @@ export function IndustrialAssistantChat({
       ) : null}
 
       {intake && !caseReference ? (
-        <form onSubmit={createCase} className="border-t border-white/10 bg-black/10 p-4">
-          <p className="text-sm font-semibold text-white">{copy.contactTitle}</p>
-          <p className="mt-1 text-xs leading-5 text-slate-300">{copy.contactText}</p>
+        <form onSubmit={createCase} className="border-t border-slate-200 bg-slate-50 p-4 dark:border-white/10 dark:bg-black/10">
+          <p className="text-sm font-semibold text-slate-950 dark:text-white">{copy.contactTitle}</p>
+          <p className="mt-1 text-xs leading-5 text-slate-600 dark:text-slate-300">{copy.contactText}</p>
           <div className="mt-3 grid gap-2 sm:grid-cols-2">
-            <label className="grid gap-1 text-xs font-medium text-slate-200">
+            <label className="grid gap-1 text-xs font-medium text-slate-700 dark:text-slate-200">
               {copy.nameLabel}
               <input
                 value={requesterName}
@@ -517,7 +517,7 @@ export function IndustrialAssistantChat({
                 className="h-10 rounded-lg border border-white/20 bg-white px-3 text-sm text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-[#F5A623] focus:ring-2 focus:ring-[#F5A623]/30"
               />
             </label>
-            <label className="grid gap-1 text-xs font-medium text-slate-200">
+            <label className="grid gap-1 text-xs font-medium text-slate-700 dark:text-slate-200">
               {copy.emailLabel}
               <input
                 type="email"
@@ -528,7 +528,7 @@ export function IndustrialAssistantChat({
               />
             </label>
           </div>
-          <label className="mt-2 grid gap-1 text-xs font-medium text-slate-200">
+          <label className="mt-2 grid gap-1 text-xs font-medium text-slate-700 dark:text-slate-200">
             {copy.companyLabel}
             <input
               value={requesterCompany}
@@ -546,7 +546,7 @@ export function IndustrialAssistantChat({
             </button>
             <Link
               href={fullCaseHref}
-              className="text-sm font-semibold text-[#f8c45b] hover:text-[#ffe0a0]"
+              className="text-sm font-semibold text-[#946000] hover:text-[#6f4700] dark:text-[#f8c45b] dark:hover:text-[#ffe0a0]"
             >
               {copy.continue}
             </Link>
@@ -555,7 +555,7 @@ export function IndustrialAssistantChat({
       ) : null}
 
       {caseReference ? (
-        <div className="border-t border-emerald-300/20 bg-emerald-300/10 px-4 py-3 text-sm text-emerald-100">
+        <div className="border-t border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900 dark:border-emerald-300/20 dark:bg-emerald-300/10 dark:text-emerald-100">
           <span className="font-semibold">{caseReference}</span>
           <span className="ml-2">
             {language === "fr"
@@ -571,7 +571,7 @@ export function IndustrialAssistantChat({
               type="button"
               onClick={() => void retryAttachments()}
               disabled={isCreating}
-              className="mt-2 block text-xs font-semibold text-[#f8c45b] hover:text-[#ffe0a0] disabled:cursor-not-allowed disabled:opacity-60"
+              className="mt-2 block text-xs font-semibold text-[#946000] hover:text-[#6f4700] disabled:cursor-not-allowed disabled:opacity-60 dark:text-[#f8c45b] dark:hover:text-[#ffe0a0]"
             >
               {language === "fr"
                 ? "Renvoyer les fichiers joints"
@@ -582,7 +582,7 @@ export function IndustrialAssistantChat({
       ) : null}
 
       {error ? (
-        <p className="border-t border-rose-300/20 bg-rose-300/10 px-4 py-2.5 text-xs leading-5 text-rose-100">
+        <p className="border-t border-rose-200 bg-rose-50 px-4 py-2.5 text-xs leading-5 text-rose-800 dark:border-rose-300/20 dark:bg-rose-300/10 dark:text-rose-100">
           {error}
         </p>
       ) : null}

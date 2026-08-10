@@ -51,6 +51,7 @@ export async function generateAgentResponse(
     agentId?: number;
     companyId?: number | null;
     context: {
+      agentName?: string;
       recentMessages: Array<{
         content: string;
         fromAgent: { name: string; role: string };
@@ -116,17 +117,23 @@ export async function generateAgentResponse(
     .join('\n');
 
   const agentDirectory = options.context.agentDirectory || [];
-  const agentDirectoryBlock =
-    agentDirectory.length > 0
-      ? `\n\nACTION (optional, internal tool call):\n- To invite other agents into this room, append a final line INSIDE your [Response] section:\n  [[SUMMON_AGENTS: 12,34]]\n- Use only IDs from the directory below. Do not invent agents.\n\nAGENT DIRECTORY (id | name | role):\n${agentDirectory
-          .map((a) => `${a.id} | ${a.name} | ${a.role}`)
-          .join("\n")}`
-      : "";
+  const agentDirectoryBlock = agentDirectory.length > 0
+    ? `\n\nAGENT DIRECTORY (authoritative; id | name | role):\n${agentDirectory
+        .map((a) => `${a.id} | ${a.name} | ${a.role}`)
+        .join("\n")}\n- Use only these names and roles. Never invent, rename, or reassign an agent.\n- Conversation history is not authoritative for team identity.`
+    : "";
   const emailContextBlock = options.context.emailContext?.summary
     ? `\n\nEMAIL MEMORY (authoritative mailbox context):\n${options.context.emailContext.summary}`
     : "";
   const companyContext = String(options.context.companyContext || "").trim();
   const isExportunityContext = /Exportunity is a B2B/i.test(companyContext);
+  const agentSummonBlock = !isExportunityContext && agentDirectory.length > 0
+    ? `\n\nACTION (optional, internal tool call):\n- To invite another listed agent, append a final line inside [Response]:\n  [[SUMMON_AGENTS: 12,34]]`
+    : "";
+  const agentName = String(options.context.agentName || "").trim();
+  const agentIdentityBlock = agentName
+    ? `\n\nCURRENT SPEAKER (authoritative):\n- Name: ${agentName}\n- Role: ${options.role}\n- Reply only as ${agentName}. Do not answer on behalf of another agent.`
+    : `\n\nCURRENT SPEAKER ROLE (authoritative): ${options.role}`;
   const companyContextBlock = companyContext
     ? `\n\nCOMPANY CONTEXT (authoritative):\n${companyContext}`
     : `\n\n${BDO_POLICY_SNIPPET}`;
@@ -143,7 +150,7 @@ export async function generateAgentResponse(
       messages: [
         {
           role: "system",
-          content: `You are an AI agent with the role of ${options.role} in a high-performance business environment.${companyContextBlock}${agentProfileBlock}
+          content: `You are an AI agent in a high-performance business environment.${agentIdentityBlock}${companyContextBlock}${agentProfileBlock}${agentDirectoryBlock}${agentSummonBlock}
 
 Current Context:
 - Room: ${options.context.roomName || 'General Chat'} (${options.context.roomType || 'Discussion'})
@@ -169,7 +176,7 @@ ${actionRules}
 Response Format Required:
 [Analysis] One sentence only - what you'll contribute
 [Response] 2-3 sentences maximum - your actual message
-[Continue] Yes or No only${agentDirectoryBlock}`
+[Continue] Yes or No only`
         },
         {
           role: "user",

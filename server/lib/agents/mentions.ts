@@ -70,13 +70,18 @@ export function buildAgentMentionAliases(agentRows: any[]): MentionAlias[] {
 export function getMentionedAgentIdsFromText(
   rawText: unknown,
   aliases: MentionAlias[],
-  options?: { allowBareMentions?: boolean; allowLeadingBareMentions?: boolean },
+  options?: {
+    allowBareMentions?: boolean;
+    allowLeadingBareMentions?: boolean;
+    allowVocativeBareMentions?: boolean;
+  },
 ): number[] {
   const text = normalizeForMention(rawText);
   if (!text) return [];
 
   const allowBareMentions = Boolean(options?.allowBareMentions);
   const allowLeadingBareMentions = Boolean(options?.allowLeadingBareMentions);
+  const allowVocativeBareMentions = Boolean(options?.allowVocativeBareMentions);
   const mentioned = new Set<number>();
 
   for (const { alias, agentId } of aliases) {
@@ -91,6 +96,18 @@ export function getMentionedAgentIdsFromText(
     if (allowLeadingBareMentions) {
       const leadingBareMention = new RegExp(`^${escapedAlias}(?=$|[^\\w])`);
       if (leadingBareMention.test(text)) {
+        mentioned.add(agentId);
+        continue;
+      }
+    }
+
+    if (allowVocativeBareMentions) {
+      // Match a direct address after sentence punctuation or a short routing
+      // prefix, while avoiding incidental prose such as "the plan Awa shared".
+      const vocativeBareMention = new RegExp(
+        `(^|[.!?;:\\n]\\s*)${escapedAlias}\\s*[,;:\\-](?=\\s|$)`,
+      );
+      if (vocativeBareMention.test(text)) {
         mentioned.add(agentId);
         continue;
       }

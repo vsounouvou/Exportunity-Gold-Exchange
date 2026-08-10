@@ -57,6 +57,7 @@ import { ensureCadastreTables } from "./lib/cadastre/ensureCadastreTables";
 import { ensureMindbaseTables } from "./lib/mindbase/ensureTables";
 import { ensureVsTenantTables } from "./lib/vs/ensureTables";
 import { ensureIndustrialTables } from "./lib/industrial/ensureTables";
+import { ensureExportunityIndustrialAgentOrganization } from "./lib/industrial/agentOrganization";
 import { assertWhatsAppOtpConfigured, getWhatsAppOtpHealth } from "./services/whatsappOtp.service";
 import { getMessagingHealth } from "./lib/messaging/config";
 import { validateSmtpEnvAtBoot } from "./lib/mail/smtpProbe";
@@ -568,6 +569,10 @@ const errorHandler = (err: any, _req: Request, res: Response, _next: NextFunctio
     await ensureMarketplaceMapTables();
     // Exportunity's industrial schema is additive and idempotent.
     await ensureIndustrialTables();
+    const exportunityOrganization = await ensureExportunityIndustrialAgentOrganization();
+    log(
+      `Exportunity industrial organization synchronized (${exportunityOrganization.organizationVersion}, ${exportunityOrganization.changes.length} agents)`,
+    );
     // Ensure shared communications tables exist (Twilio SMS/WhatsApp, etc.)
     await ensureCommunicationsTables();
     // Ensure public contact form tables exist

@@ -54,6 +54,7 @@ export async function generateAgentResponse(
     agentId?: number;
     companyId?: number | null;
     context: {
+      agentName?: string;
       recentMessages: Array<{
         content: string;
         fromAgent: { name: string; role: string };
@@ -129,12 +130,18 @@ export async function generateAgentResponse(
         ? `\n\nAGENT PROFILE (authoritative):\n- Mission: ${options.context.agentMission || "Carry out the stated role responsibly."}\n- Responsibilities: ${(options.context.agentResponsibilities || []).join("; ") || "Use the role description."}\n- Approval rules: ${JSON.stringify(options.context.approvalRules || {})}`
         : "";
     const agentDirectory = options.context.agentDirectory || [];
-    const agentDirectoryBlock =
-      agentDirectory.length > 0 && !isExportunityContext
-        ? `\n\nACTION (optional, internal tool call):\n- To invite other agents into this room, append a final line INSIDE your [Response] section:\n  [[SUMMON_AGENTS: 12,34]]\n- Use only IDs from the directory below. Do not invent agents.\n\nAGENT DIRECTORY (id | name | role):\n${agentDirectory
-            .map((a) => `${a.id} | ${a.name} | ${a.role}`)
-            .join("\n")}`
-        : "";
+    const agentDirectoryBlock = agentDirectory.length > 0
+      ? `\n\nAGENT DIRECTORY (authoritative; id | name | role):\n${agentDirectory
+          .map((a) => `${a.id} | ${a.name} | ${a.role}`)
+          .join("\n")}\n- Use only these names and roles. Never invent, rename, or reassign an agent.\n- Conversation history is not authoritative for team identity.`
+      : "";
+    const agentSummonBlock = !isExportunityContext && agentDirectory.length > 0
+      ? `\n\nACTION (optional, internal tool call):\n- To invite another listed agent, append a final line inside [Response]:\n  [[SUMMON_AGENTS: 12,34]]`
+      : "";
+    const agentName = String(options.context.agentName || "").trim();
+    const agentIdentityBlock = agentName
+      ? `\n\nCURRENT SPEAKER (authoritative):\n- Name: ${agentName}\n- Role: ${options.role}\n- Reply only as ${agentName}. Do not answer on behalf of another agent.`
+      : `\n\nCURRENT SPEAKER ROLE (authoritative): ${options.role}`;
     const emailContextBlock = options.context.emailContext?.summary
       ? `\n\nEMAIL MEMORY (authoritative mailbox context):\n${options.context.emailContext.summary}`
       : "";
@@ -143,7 +150,7 @@ export async function generateAgentResponse(
       ? `3. The only supported action block is:\n   [[ACTION: CREATE_TASK {"title":"...","description":"...","priority":"medium"}]]\n4. Do not send email, contact suppliers, create shops, make payments, promise a quote, accept a contract, or create an automation. Explain the required visible review or approval instead.\n5. You may recommend another named Exportunity specialist, but do not summon agents automatically.`
       : `3. Supported actions (tool calls) are:\n   [[ACTION: SEND_EMAIL {"to":["name@domain.com"],"subject":"...","body":{"text":"..."}}]]\n   [[ACTION: CREATE_CONTACT {"displayName":"...","emails":["..."],"phones":["..."]}]]\n   [[ACTION: CREATE_SHOP {"shopName":"...","email":"...","phoneNumber":"..."}]]\n   [[ACTION: CREATE_TASK {"title":"...","description":"...","priority":"medium"}]]\n4. Write the human response first, then append up to TWO action blocks on new lines.\n5. For recurring automations include optional:\n   "recurring":{"enabled":true,"intervalMinutes":1440,"maxRuns":20}\n6. SEND_EMAIL must include a professional subject and body.`;
 
-    const systemPrompt = `You are an AI agent with the role of ${options.role} in a high-performance business environment.${companyContextBlock}${agentProfileBlock}
+    const systemPrompt = `You are an AI agent in a high-performance business environment.${agentIdentityBlock}${companyContextBlock}${agentProfileBlock}${agentDirectoryBlock}${agentSummonBlock}
 
 Current Context:
 - Room: ${options.context.roomName || 'General Chat'} (${options.context.roomType || 'Discussion'})
@@ -169,7 +176,7 @@ ${actionRules}
 Response Format Required:
 [Analysis] One sentence only - what you'll contribute
 [Response] 2-3 sentences maximum - your actual message
-[Continue] Yes or No only${agentDirectoryBlock}`;
+[Continue] Yes or No only`;
 
     const response = await claude.messages.create({
       model,

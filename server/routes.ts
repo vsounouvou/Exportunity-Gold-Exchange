@@ -4201,7 +4201,10 @@ ${governanceContext}`;
       const taskCreationProhibited = prohibitsTaskCreation(contentForStorage);
 
       const mentionedAgentIds = new Set<number>(
-        getMentionedAgentIdsFromText(contentForStorage, mentionAliases, { allowLeadingBareMentions: true }),
+        getMentionedAgentIdsFromText(contentForStorage, mentionAliases, {
+          allowLeadingBareMentions: true,
+          allowVocativeBareMentions: true,
+        }),
       );
       const mentionedAgents = companyAgents.filter((agent: any) => mentionedAgentIds.has(Number(agent?.id)));
 
@@ -4417,6 +4420,7 @@ ${governanceContext}`;
             agentId: responderAgent?.id,
             companyId,
             context: {
+              agentName: responderAgent?.name || undefined,
               recentMessages: recentContext,
               exchanges: channelMessages.length,
               roomName: `#${channelId}`,

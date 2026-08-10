@@ -28,6 +28,7 @@ type AiRoutingConfig = {
 };
 
 type AgentResponseContext = {
+  agentName?: string;
   recentMessages: Array<{
     content: string;
     fromAgent: { name: string; role: string };
@@ -150,6 +151,8 @@ async function hydrateAgentResponseOptions(options: AgentResponseOptions): Promi
     ? await db.query.agents.findFirst({
         where: eq(agents.id, options.agentId),
         columns: {
+          name: true,
+          role: true,
           companyId: true,
           metadata: true,
           mission: true,
@@ -174,6 +177,10 @@ async function hydrateAgentResponseOptions(options: AgentResponseOptions): Promi
     context.companyContext = metadataCompanyContext;
   }
 
+  if (!context.agentName && typeof agentRow?.name === "string") {
+    context.agentName = agentRow.name.trim();
+  }
+
   if (!context.agentMission && typeof agentRow?.mission === "string") {
     context.agentMission = agentRow.mission;
   }
@@ -186,6 +193,10 @@ async function hydrateAgentResponseOptions(options: AgentResponseOptions): Promi
 
   return {
     ...options,
+    role:
+      isExportunityCompanyName(company?.name) && typeof agentRow?.role === "string" && agentRow.role.trim()
+        ? agentRow.role.trim()
+        : options.role,
     companyId: effectiveCompanyId,
     context,
   };

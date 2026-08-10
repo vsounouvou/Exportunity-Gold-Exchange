@@ -8,6 +8,7 @@ const aliases = buildAgentMentionAliases([
   { id: 10, name: "Tassi Hangbe" },
   { id: 170, name: "Fenou" },
   { id: 161, name: "Kossi Mensah" },
+  { id: 171, name: "Awa Kouadio" },
 ]);
 
 test("a unique agent name at the start of a team message directly routes the reply", () => {
@@ -23,6 +24,26 @@ test("a later name reference does not hijack an all-team reply", () => {
   assert.deepEqual(
     getMentionedAgentIdsFromText("Please review the plan Fenou shared yesterday.", aliases, {
       allowLeadingBareMentions: true,
+    }),
+    [],
+  );
+});
+
+test("a vocative name after a routing prefix selects the addressed agent", () => {
+  assert.deepEqual(
+    getMentionedAgentIdsFromText(
+      "QA commercial: Awa, confirme ton role sans creer de tache.",
+      aliases,
+      { allowVocativeBareMentions: true },
+    ),
+    [171],
+  );
+});
+
+test("an incidental name in prose is not treated as a vocative address", () => {
+  assert.deepEqual(
+    getMentionedAgentIdsFromText("Review the commercial note Awa shared yesterday.", aliases, {
+      allowVocativeBareMentions: true,
     }),
     [],
   );

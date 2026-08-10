@@ -4,6 +4,7 @@ import { validateCreditEligibility } from "./cost-tracker";
 import { recordAgentTokenUsageEvent } from "./agent-economy-governance";
 
 type AgentContext = {
+  agentName?: string;
   recentMessages: Array<{
     content: string;
     fromAgent: { name: string; role: string };
@@ -110,6 +111,16 @@ export async function generateAgentResponse(
     : "";
   const companyContext = String(options.context.companyContext || "").trim();
   const isExportunityContext = /Exportunity is a B2B/i.test(companyContext);
+  const agentName = String(options.context.agentName || "").trim();
+  const agentIdentityBlock = agentName
+    ? `\n\nCURRENT SPEAKER (authoritative):\n- Name: ${agentName}\n- Role: ${options.role}\n- Reply only as ${agentName}. Do not answer on behalf of another agent.`
+    : `\n\nCURRENT SPEAKER ROLE (authoritative): ${options.role}`;
+  const agentDirectory = options.context.agentDirectory || [];
+  const agentDirectoryBlock = agentDirectory.length > 0
+    ? `\n\nAGENT DIRECTORY (authoritative; id | name | role):\n${agentDirectory
+        .map((agent) => `${agent.id} | ${agent.name} | ${agent.role}`)
+        .join("\n")}\n- Use only these names and roles. Never invent, rename, or reassign an agent.\n- Conversation history is not authoritative for team identity.`
+    : "";
   const companyContextBlock = companyContext
     ? `\n\nCOMPANY CONTEXT (authoritative):\n${companyContext}`
     : `\n\n${BDO_POLICY_SNIPPET}`;
@@ -121,7 +132,7 @@ export async function generateAgentResponse(
     ? `3. The only supported action block is:\n   [[ACTION: CREATE_TASK {"title":"...","description":"...","priority":"medium"}]]\n4. Do not send email, contact suppliers, create shops, make payments, promise a quote, accept a contract, or create an automation. Explain the required visible review or approval instead.\n5. You may recommend another named Exportunity specialist, but do not summon agents automatically.`
     : `3. Supported actions (tool calls) are:\n   [[ACTION: SEND_EMAIL {"to":["name@domain.com"],"subject":"...","body":{"text":"..."}}]]\n   [[ACTION: CREATE_CONTACT {"displayName":"...","emails":["..."],"phones":["..."]}]]\n   [[ACTION: CREATE_SHOP {"shopName":"...","email":"...","phoneNumber":"..."}]]\n   [[ACTION: CREATE_TASK {"title":"...","description":"...","priority":"medium"}]]\n4. Write the human response first, then append up to TWO action blocks on new lines.\n5. For recurring automations include optional:\n   "recurring":{"enabled":true,"intervalMinutes":1440,"maxRuns":20}\n6. SEND_EMAIL must include a professional subject and body.`;
 
-  const prompt = `You are an AI agent with the role of ${options.role} in a high-performance business environment.${companyContextBlock}${agentProfileBlock}
+  const prompt = `You are an AI agent in a high-performance business environment.${agentIdentityBlock}${companyContextBlock}${agentProfileBlock}${agentDirectoryBlock}
 
 Current Context:
 - Room: ${options.context.roomName || "General Chat"} (${options.context.roomType || "Discussion"})

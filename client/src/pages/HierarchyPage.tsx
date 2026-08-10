@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { AlertCircle, Users, DollarSign, ChevronRight, ChevronDown, Plus, Building2, Pencil, Trash2, GripVertical } from "lucide-react";
+import { AlertCircle, Users, DollarSign, ChevronRight, ChevronDown, Plus, Building2, Pencil, Trash2, Eye, EyeOff } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useState, useEffect, useMemo } from "react";
 import { useToast } from "@/hooks/use-toast";
@@ -91,6 +91,7 @@ function DepartmentCard({
     const budgetUsed = parseFloat(agent.budgetUsed || '0');
     const budgetBonus = parseFloat(agent.budgetBonus || '0');
     const totalBudget = baseBudget + budgetBonus;
+    const avatarSrc = agent.avatarUrl || agent.avatar || "";
     
     return (
       <div key={agent.id} className={level > 0 ? 'ml-6 mt-2' : 'mt-2'}>
@@ -99,9 +100,13 @@ function DepartmentCard({
           onClick={() => onAgentClick(agent)}
         >
           <div className="flex items-center gap-2 flex-1">
-            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-              <Users className="w-4 h-4 text-primary" />
-            </div>
+            {avatarSrc ? (
+              <img src={avatarSrc} alt="" className="h-9 w-9 flex-shrink-0 rounded-full object-cover" />
+            ) : (
+              <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-primary/10 font-semibold text-primary">
+                {agent.name.slice(0, 1).toUpperCase()}
+              </div>
+            )}
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
                 <p className="font-medium truncate">{agent.name}</p>
@@ -120,6 +125,20 @@ function DepartmentCard({
             <Badge variant={agent.status === 'active' ? 'default' : 'secondary'}>
               {agent.status}
             </Badge>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-8 gap-1.5"
+              onClick={(event) => {
+                event.stopPropagation();
+                onAgentClick(agent);
+              }}
+              aria-label={`Edit ${agent.name}`}
+            >
+              <Pencil className="h-3.5 w-3.5" />
+              Edit
+            </Button>
           </div>
         </div>
         {subordinates.length > 0 && (
@@ -169,6 +188,8 @@ function DepartmentCard({
                 size="sm"
                 className="h-9 w-9 p-0"
                 onClick={() => onEdit(department)}
+                aria-label={`Edit ${department.name}`}
+                title={`Edit ${department.name}`}
               >
                 <Pencil className="w-4 h-4" />
               </Button>
@@ -177,6 +198,8 @@ function DepartmentCard({
                 size="sm"
                 className="h-9 w-9 p-0"
                 onClick={() => onDelete(department.id)}
+                aria-label={`Delete ${department.name}`}
+                title={`Delete ${department.name}`}
               >
                 <Trash2 className="w-4 h-4" />
               </Button>
@@ -427,6 +450,7 @@ export default function HierarchyPage() {
   const { selectedCompanyId } = useCompany();
   const [, setLocation] = useLocation();
   const [viewMode, setViewMode] = useState<"departments" | "org">("org");
+  const [showEmptyDepartments, setShowEmptyDepartments] = useState(false);
   const [editingDepartment, setEditingDepartment] = useState<DepartmentWithAgents | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   
@@ -489,6 +513,9 @@ export default function HierarchyPage() {
     (agent) => agent.managerId != null && !companyAgentIds.has(agent.managerId),
   );
   const departmentUnassignedAgents = (allAgents || []).filter((agent) => !agent.departmentId);
+  const activeDepartments = (departments || []).filter((department) => department.agents.length > 0);
+  const emptyDepartments = (departments || []).filter((department) => department.agents.length === 0);
+  const visibleDepartments = showEmptyDepartments ? (departments || []) : activeDepartments;
   
   if (!selectedCompanyId || isLoadingCompany || isLoadingDepts) {
     return (
@@ -565,11 +592,11 @@ export default function HierarchyPage() {
           <CardContent>
             <div className="flex items-baseline gap-2">
               <Building2 className="w-5 h-5 text-muted-foreground" />
-              <span className="text-2xl font-bold">{departments?.length || 0}</span>
-              <span className="text-sm text-muted-foreground">departments</span>
+              <span className="text-2xl font-bold">{activeDepartments.length}</span>
+              <span className="text-sm text-muted-foreground">active departments</span>
             </div>
             <p className="text-xs text-muted-foreground mt-3">
-              {allAgents?.length || 0} total agents
+              {allAgents?.length || 0} total agents{emptyDepartments.length ? ` · ${emptyDepartments.length} empty hidden` : ""}
             </p>
           </CardContent>
         </Card>
@@ -598,8 +625,22 @@ export default function HierarchyPage() {
         </TabsContent>
 
         <TabsContent value="departments" className="space-y-4">
-          {departments && departments.length > 0 ? (
-            departments.map(dept => (
+          {emptyDepartments.length > 0 && (
+            <div className="flex justify-end">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="gap-2"
+                onClick={() => setShowEmptyDepartments((current) => !current)}
+              >
+                {showEmptyDepartments ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                {showEmptyDepartments ? "Hide empty departments" : `Show ${emptyDepartments.length} empty departments`}
+              </Button>
+            </div>
+          )}
+          {visibleDepartments.length > 0 ? (
+            visibleDepartments.map(dept => (
               <DepartmentCard
                 key={dept.id}
                 department={dept}

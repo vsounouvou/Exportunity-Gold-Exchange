@@ -1,7 +1,8 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { db } from "@db";
 import { agents, agentsProduction, companies, departments } from "@db/schema";
 import { ensureAgentsProductionTables } from "../agents/ensureProductionAgents";
+import { ensureAgentManagementV2Tables } from "../agents/ensureManagementV2Tables";
 import { ensureTenants, getTenantByKey } from "../tenants";
 import { EXPORTUNITY_COMPANY_CONTEXT } from "./companyContext";
 import { getExportunityAgentModelPolicy, type ExportunityAgentKey } from "./modelPolicy";
@@ -407,6 +408,7 @@ function safeMetadata(existing: unknown, spec: AgentSpec) {
 export async function ensureExportunityIndustrialAgentOrganization(input?: { dryRun?: boolean }) {
   await ensureTenants();
   await ensureAgentsProductionTables();
+  await ensureAgentManagementV2Tables();
 
   const tenant = await getTenantByKey("exportunity" as any);
   if (!tenant?.id) throw new Error("Exportunity tenant is unavailable");
@@ -428,6 +430,12 @@ export async function ensureExportunityIndustrialAgentOrganization(input?: { dry
   const byName = new Map(tenantAgents.map((agent) => [String(agent.name || "").toLowerCase(), agent]));
   const agentIds = new Map<string, number>();
   const changes: Array<{ key: string; action: "created" | "updated"; agentId?: number }> = [];
+  const fenou = tenantAgents.find((agent) => {
+    const metadata = agent.metadata && typeof agent.metadata === "object" && !Array.isArray(agent.metadata)
+      ? (agent.metadata as Record<string, unknown>)
+      : {};
+    return String(metadata.organizationKey || "").toLowerCase() === "fenou" || String(agent.name || "").toLowerCase() === "fenou";
+  });
 
   for (const spec of ORGANIZATION) {
     const existing =
@@ -506,12 +514,6 @@ export async function ensureExportunityIndustrialAgentOrganization(input?: { dry
       await db.update(agents).set({ managerId, updatedAt: new Date() }).where(and(eq(agents.id, agentId), eq(agents.tenantId, tenantId)));
     }
 
-    const fenou = tenantAgents.find((agent) => {
-      const metadata = agent.metadata && typeof agent.metadata === "object" && !Array.isArray(agent.metadata)
-        ? (agent.metadata as Record<string, unknown>)
-        : {};
-      return String(metadata.organizationKey || "").toLowerCase() === "fenou" || String(agent.name || "").toLowerCase() === "fenou";
-    });
     if (fenou?.id && companyId && !fenou.departmentId) {
       const metadata = fenou.metadata && typeof fenou.metadata === "object" && !Array.isArray(fenou.metadata)
         ? (fenou.metadata as Record<string, unknown>)
@@ -565,6 +567,62 @@ export async function ensureExportunityIndustrialAgentOrganization(input?: { dry
       } else {
         await db.insert(agentsProduction).values({ ...productionValues, createdAt: new Date() });
       }
+    }
+
+    if (fenou?.id) {
+      const modelPolicy = getExportunityAgentModelPolicy("tassi");
+      const existing = productionRows.find((row) => Number(row.agentId) === Number(fenou.id) || row.agentKey === "fenou");
+      const productionValues = {
+        tenantId,
+        agentId: Number(fenou.id),
+        agentKey: "fenou",
+        displayName: fenou.displayName || fenou.name || "Fenou",
+        isEnabled: true,
+        metadata: {
+          organizationVersion: ORGANIZATION_VERSION,
+          role: fenou.role || "Operations and Task Assistant",
+          externalActions: "approval_required",
+          backgroundConversations: "disabled",
+          modelPolicy: {
+            model: modelPolicy.model,
+            source: modelPolicy.source,
+            reasoningEffort: modelPolicy.reasoningEffort,
+            maxOutputTokens: modelPolicy.maxOutputTokens,
+            purpose: "Visible operations and task assistance",
+          },
+        },
+        updatedAt: new Date(),
+      };
+      if (existing?.id) {
+        await db.update(agentsProduction).set(productionValues).where(eq(agentsProduction.id, existing.id));
+      } else {
+        await db.insert(agentsProduction).values({ ...productionValues, createdAt: new Date() });
+      }
+      agentIds.set("fenou", Number(fenou.id));
+    }
+
+    const pageManagers: Array<[string, string]> = [
+      ["organization", "ceo"],
+      ["hr", "ceo"],
+      ["operations", "fenou"],
+      ["finance", "finance"],
+      ["compliance", "compliance"],
+      ["marketplace", "tassi"],
+      ["sellers", "commercial"],
+      ["products", "technical"],
+      ["logistics", "logistics"],
+      ["growth", "marketing"],
+      ["territories", "data"],
+    ];
+    for (const [pageKey, agentKey] of pageManagers) {
+      const managerAgentId = agentIds.get(agentKey);
+      if (!managerAgentId) continue;
+      await db.execute(sql`
+        insert into department_managers (tenant_id, page_key, manager_agent_id, created_at, updated_at)
+        values (${tenantId}, ${pageKey}, ${managerAgentId}, now(), now())
+        on conflict (tenant_id, page_key)
+        do update set manager_agent_id = excluded.manager_agent_id, updated_at = now()
+      `);
     }
   }
 

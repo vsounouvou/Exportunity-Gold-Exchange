@@ -4,6 +4,7 @@ export type DepartmentDefinition = {
 };
 
 export const DEPARTMENT_REGISTRY: DepartmentDefinition[] = [
+  { pageKey: "organization", label: "Organization" },
   { pageKey: "operations", label: "Operations" },
   { pageKey: "finance", label: "Finance" },
   { pageKey: "hr", label: "HR" },

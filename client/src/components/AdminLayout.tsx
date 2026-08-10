@@ -377,7 +377,7 @@ function resolveDepartmentPageKey(pathname: string) {
   if (path.startsWith("/delivery") || path.startsWith("/admin/equipment-ops")) return "logistics";
   if (path.startsWith("/marketing") || path.startsWith("/admin/website")) return "growth";
   if (path.startsWith("/territories")) return "territories";
-  if (path.startsWith("/admin/agents") || path.startsWith("/agents")) return "hr";
+  if (path.startsWith("/admin/agents") || path.startsWith("/agents")) return "organization";
   return null;
 }
 

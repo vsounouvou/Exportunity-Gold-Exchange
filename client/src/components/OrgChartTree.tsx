@@ -1,5 +1,6 @@
 import type { Agent } from "@db/schema";
 import { useMemo, useRef, useState } from "react";
+import { Pencil } from "lucide-react";
 
 type OrgChartTreeProps = {
   agents: Agent[];
@@ -58,6 +59,7 @@ export function OrgChartTree({ agents, onAgentClick }: OrgChartTreeProps) {
     visited.add(agent.id);
 
     const children = childrenMap.get(agent.id) ?? [];
+    const avatarSrc = agent.avatarUrl || agent.avatar || "";
 
     return (
       <li key={safeNodeKey(agent)}>
@@ -65,10 +67,20 @@ export function OrgChartTree({ agents, onAgentClick }: OrgChartTreeProps) {
           type="button"
           onClick={() => onAgentClick(agent)}
           title={`Open and edit ${agent.name}`}
-          className="inline-flex max-w-[260px] flex-col gap-1 rounded-md border border-border bg-background px-3 py-2 text-left text-foreground shadow-sm transition-colors hover:border-amber-400 hover:bg-amber-50 dark:hover:bg-amber-500/10"
+          className="inline-flex w-[250px] max-w-[250px] flex-col gap-2 rounded-md border border-border bg-background px-3 py-2 text-left text-foreground shadow-sm transition-colors hover:border-amber-400 hover:bg-amber-50 dark:hover:bg-amber-500/10"
         >
-          <div className="flex items-center justify-between gap-2">
-            <div className="truncate text-sm font-semibold text-foreground">{agent.name}</div>
+          <div className="flex min-w-0 items-center gap-2">
+            {avatarSrc ? (
+              <img src={avatarSrc} alt="" className="h-9 w-9 flex-none rounded-full object-cover" />
+            ) : (
+              <span className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-amber-100 text-sm font-semibold text-amber-900">
+                {agent.name.slice(0, 1).toUpperCase()}
+              </span>
+            )}
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-sm font-semibold text-foreground">{agent.name}</div>
+              <div className="truncate text-xs text-muted-foreground">{agent.role}</div>
+            </div>
             <span
               className={`rounded-full px-2 py-0.5 text-xs ${
                 agent.status === "active"
@@ -79,9 +91,11 @@ export function OrgChartTree({ agents, onAgentClick }: OrgChartTreeProps) {
               {agent.status}
             </span>
           </div>
-          <div className="truncate text-xs text-muted-foreground">{agent.role}</div>
-          <div className="text-[11px] text-muted-foreground">
-            {children.length} {children.length === 1 ? "report" : "reports"}
+          <div className="flex items-center justify-between gap-3 text-[11px] text-muted-foreground">
+            <span>{children.length} {children.length === 1 ? "report" : "reports"}</span>
+            <span className="inline-flex items-center gap-1 font-medium text-amber-700 dark:text-amber-300">
+              <Pencil className="h-3 w-3" /> Edit
+            </span>
           </div>
         </button>
         {children.length > 0 && (

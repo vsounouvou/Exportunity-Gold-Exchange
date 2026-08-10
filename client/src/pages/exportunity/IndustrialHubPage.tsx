@@ -6051,9 +6051,32 @@ export default function IndustrialHubPage() {
       (item) => item.categoryCode === selectedCategory.code,
     );
   }, [categorizedItems.machinery, selectedCategory]);
-  const selectedOrderItemId =
+  const orderItemIdFromLocation =
     queryValue(location, "order") ||
     (view === "quote" ? queryValue(location, "catalogItem") : "");
+  const [selectedOrderItemId, setSelectedOrderItemId] = useState(
+    orderItemIdFromLocation,
+  );
+
+  useEffect(() => {
+    setSelectedOrderItemId(orderItemIdFromLocation);
+  }, [orderItemIdFromLocation]);
+
+  useEffect(() => {
+    const syncOrderFromBrowserHistory = () => {
+      const browserLocation = `${window.location.pathname}${window.location.search}`;
+      setSelectedOrderItemId(
+        queryValue(browserLocation, "order") ||
+          (readView(browserLocation) === "quote"
+            ? queryValue(browserLocation, "catalogItem")
+            : ""),
+      );
+    };
+    window.addEventListener("popstate", syncOrderFromBrowserHistory);
+    return () =>
+      window.removeEventListener("popstate", syncOrderFromBrowserHistory);
+  }, []);
+
   const selectedOrderItem = useMemo(
     () => catalogItems.find((item) => item.id === selectedOrderItemId) || null,
     [catalogItems, selectedOrderItemId],
@@ -6067,11 +6090,12 @@ export default function IndustrialHubPage() {
   );
 
   const updateOrderConversation = (item: CatalogItem | null) => {
-    const [pathname, rawQuery = ""] = location.split("?");
-    const params = new URLSearchParams(rawQuery);
+    const pathname = window.location.pathname;
+    const params = new URLSearchParams(window.location.search);
     if (item) params.set("order", item.id);
     else params.delete("order");
     const query = params.toString();
+    setSelectedOrderItemId(item?.id || "");
     navigate(`${pathname}${query ? `?${query}` : ""}`);
     if (item) {
       window.setTimeout(() => {

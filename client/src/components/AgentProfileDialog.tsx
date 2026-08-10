@@ -43,6 +43,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
+import { useTenant } from "@/lib/tenant";
 import type { Agent, Department } from "@db/schema";
 import { AgentPhotoEditorCard } from "@/components/AgentPhotoEditorCard";
 import {
@@ -93,6 +94,7 @@ interface AgentProfileDialogProps {
 
 export function AgentProfileDialog({ agent, runtimeAgentId, open, onOpenChange }: AgentProfileDialogProps) {
   const { toast } = useToast();
+  const { tenant } = useTenant();
   const queryClient = useQueryClient();
   const [newSkill, setNewSkill] = useState("");
   const [newIndustry, setNewIndustry] = useState("");
@@ -565,7 +567,9 @@ export function AgentProfileDialog({ agent, runtimeAgentId, open, onOpenChange }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent
+        className={`${tenant.key === "exportunity" ? "exportunity-operations-light bg-white text-slate-900 border-slate-200" : ""} w-[calc(100vw-2rem)] max-w-5xl max-h-[92vh] overflow-y-auto`}
+      >
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <User className="h-5 w-5" />
@@ -577,7 +581,7 @@ export function AgentProfileDialog({ agent, runtimeAgentId, open, onOpenChange }
         </DialogHeader>
 
         <AlertDialog open={aiConfirmOpen} onOpenChange={setAiConfirmOpen}>
-          <AlertDialogContent>
+          <AlertDialogContent className={tenant.key === "exportunity" ? "exportunity-operations-light bg-white text-slate-900 border-slate-200" : ""}>
             <AlertDialogHeader>
               <AlertDialogTitle>Use AI to generate suggestions?</AlertDialogTitle>
               <AlertDialogDescription>
@@ -599,7 +603,7 @@ export function AgentProfileDialog({ agent, runtimeAgentId, open, onOpenChange }
         </AlertDialog>
 
         <AlertDialog open={aiConsentOpen} onOpenChange={setAiConsentOpen}>
-          <AlertDialogContent className="max-w-2xl">
+          <AlertDialogContent className={`${tenant.key === "exportunity" ? "exportunity-operations-light bg-white text-slate-900 border-slate-200" : ""} max-w-2xl`}>
             <AlertDialogHeader>
               <AlertDialogTitle>AI consent required</AlertDialogTitle>
               <AlertDialogDescription>
@@ -668,7 +672,7 @@ export function AgentProfileDialog({ agent, runtimeAgentId, open, onOpenChange }
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             <Tabs defaultValue="identity" className="w-full">
-              <TabsList className="grid w-full grid-cols-6">
+              <TabsList className="grid h-auto w-full grid-cols-3 gap-1 p-1 lg:grid-cols-6">
                 <TabsTrigger value="identity">
                   <User className="h-4 w-4 mr-1" /> Identity
                 </TabsTrigger>
@@ -690,8 +694,8 @@ export function AgentProfileDialog({ agent, runtimeAgentId, open, onOpenChange }
               </TabsList>
 
               <TabsContent value="identity" className="space-y-4">
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                  <div className="lg:col-span-1">
+                <div className="space-y-4">
+                  <div>
                     {effectiveAgentId ? (
                       <AgentPhotoEditorCard agentId={effectiveAgentId} />
                     ) : (
@@ -700,7 +704,7 @@ export function AgentProfileDialog({ agent, runtimeAgentId, open, onOpenChange }
                       </div>
                     )}
                   </div>
-                  <div className="lg:col-span-2 space-y-4">
+                  <div className="space-y-4">
                 <FormField
                   control={form.control}
                   name="name"
@@ -715,7 +719,7 @@ export function AgentProfileDialog({ agent, runtimeAgentId, open, onOpenChange }
                   )}
                 />
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <FormField
                     control={form.control}
                     name="role"
@@ -760,7 +764,7 @@ export function AgentProfileDialog({ agent, runtimeAgentId, open, onOpenChange }
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <FormField
                     control={form.control}
                     name="managerId"
@@ -811,7 +815,7 @@ export function AgentProfileDialog({ agent, runtimeAgentId, open, onOpenChange }
                   />
                 </div>
 
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                   <FormField
                     control={form.control}
                     name="country"

@@ -27,6 +27,7 @@ test("the industrial operating plan owns mission, objectives, and recurring exec
 
 test("agenda creation submits a real objective and hierarchy reads the same plan", () => {
   const agenda = readRepoFile("client/src/pages/AgendaPage.tsx");
+  const operationsCenter = readRepoFile("client/src/pages/AITeamHubPage.tsx");
   const hierarchy = readRepoFile("client/src/pages/HierarchyPage.tsx");
   const auth = readRepoFile("server/routes/utils/auth.ts");
 
@@ -35,6 +36,13 @@ test("agenda creation submits a real objective and hierarchy reads the same plan
   assert.match(agenda, /Select the objective this meeting advances/);
   assert.match(agenda, /\^fenou\$/i);
   assert.match(agenda, /"note_taker"/);
+  assert.match(agenda, /Start in Operations Center/);
+  assert.match(agenda, /selectedMeetingDetail\?\.participants/);
+  assert.match(agenda, /selectedObjective\?\.title/);
+  assert.match(agenda, /\/ai-team\?conversation=/);
+  assert.match(agenda, /exportunity-operations-light/);
+  assert.match(operationsCenter, /params\.get\("conversation"\)/);
+  assert.match(operationsCenter, /setCurrentMeeting\(requestedRoom\)/);
   assert.match(hierarchy, /companyData\.vision/);
   assert.match(hierarchy, /active objectives/);
   assert.match(hierarchy, /setLocation\("\/goals"\)/);

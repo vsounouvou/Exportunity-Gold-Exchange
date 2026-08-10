@@ -783,6 +783,12 @@ export function AITeamHubPage() {
   );
   const [meetingSearch, setMeetingSearch] = useState("");
   const [currentMeeting, setCurrentMeeting] = useState<ChatRoom | null>(null);
+  const [requestedMeetingConversationId] = useState(() => {
+    if (typeof window === "undefined") return "";
+    const params = new URLSearchParams(window.location.search);
+    return String(params.get("conversation") || params.get("conversationId") || "").trim();
+  });
+  const requestedMeetingHydratedRef = useRef(false);
   const [isThinking, setIsThinking] = useState(false);
   const [showDepartmentFilter, setShowDepartmentFilter] = useState(false);
   const [selectedDepartment, setSelectedDepartment] = useState<string | null>(null);
@@ -939,6 +945,24 @@ export function AITeamHubPage() {
     queryKey: ["/api/chatrooms"],
     refetchInterval: 5000,
   });
+
+  useEffect(() => {
+    if (!requestedMeetingConversationId || requestedMeetingHydratedRef.current || roomsLoading) return;
+    const requestedRoom = chatRooms.find(
+      (room) => String(room.conversationId || "") === requestedMeetingConversationId,
+    );
+    requestedMeetingHydratedRef.current = true;
+    if (requestedRoom) {
+      setCurrentMeeting(requestedRoom);
+      setOpsView("chat");
+      return;
+    }
+    toast({
+      title: "Meeting conversation not found",
+      description: "The scheduled meeting exists, but its Operations Center room is unavailable.",
+      variant: "destructive",
+    });
+  }, [chatRooms, requestedMeetingConversationId, roomsLoading, toast]);
 
   const channelConversationEndpoint = workspaceCompanyId
     ? `/api/companies/${workspaceCompanyId}/channels/all-team/conversation`

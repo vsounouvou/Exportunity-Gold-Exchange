@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format, parseISO, startOfDay, endOfDay, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isToday, isSameDay, addMonths, subMonths, addWeeks, subWeeks, addDays, subDays } from "date-fns";
-import { Calendar, ChevronLeft, ChevronRight, Download, Loader2, Plus, Clock, Users, FileText } from "lucide-react";
+import { ArrowRight, Calendar, ChevronLeft, ChevronRight, Download, Loader2, Plus, Clock, Users, FileText, MapPin, Target } from "lucide-react";
 
 import { useCompany } from "@/hooks/use-company";
+import { useTenant } from "@/lib/tenant";
 import { apiRequest } from "@/lib/queryClient";
 import { resolveApiUrl } from "@/lib/runtimeConfig";
 import { Button } from "@/components/ui/button";
@@ -84,6 +85,27 @@ type AgentOption = {
   role?: string | null;
 };
 
+type MeetingParticipant = {
+  id: number;
+  participantType: "agent" | "human";
+  userId?: number | null;
+  guestEmail?: string | null;
+  agentId?: number | null;
+  role?: string | null;
+  status?: string | null;
+  agent?: AgentOption | null;
+};
+
+type MeetingDetail = {
+  id: number;
+  title: string;
+  conversationId: string;
+  roomId?: number | null;
+  meetingType?: string | null;
+  metadata?: Record<string, any> | null;
+  participants?: MeetingParticipant[];
+};
+
 type ObjectiveOption = {
   id: number;
   title: string;
@@ -119,6 +141,8 @@ export default function AgendaPage() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { selectedCompanyId, selectedCompany, isLoading: companyLoading } = useCompany();
+  const { tenant } = useTenant();
+  const useExportunityLightWorkspace = tenant.key === "exportunity";
 
   const [viewMode, setViewMode] = useState<ViewMode>("month");
   const [cursorDate, setCursorDate] = useState(() => new Date());
@@ -381,6 +405,95 @@ export default function AgendaPage() {
     retry: false,
   });
 
+  const { data: selectedMeetingDetail, isLoading: meetingDetailLoading } = useQuery<MeetingDetail | null>({
+    queryKey: selectedEvent?.meetingId ? [`/api/meetings/${selectedEvent.meetingId}`, "agenda-detail"] : [""],
+    enabled: !!selectedEvent?.meetingId,
+    queryFn: async () => {
+      if (!selectedEvent?.meetingId) return null;
+      return apiRequest(`/api/meetings/${selectedEvent.meetingId}`, { method: "GET" });
+    },
+    staleTime: 10_000,
+  });
+
+  const selectedObjectiveId = useMemo(() => {
+    const raw =
+      selectedMeetingDetail?.metadata?.objectiveId ??
+      selectedMeetingDetail?.metadata?.goalId ??
+      selectedEvent?.metadata?.objectiveId ??
+      selectedEvent?.metadata?.goalId;
+    const parsed = Number(raw || 0);
+    return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+  }, [selectedEvent?.metadata, selectedMeetingDetail?.metadata]);
+
+  const selectedObjective = useMemo(
+    () => objectiveRows.find((objective) => objective.id === selectedObjectiveId) || null,
+    [objectiveRows, selectedObjectiveId],
+  );
+
+  const selectedRoom = useMemo(() => {
+    const roomId = Number(selectedMeetingDetail?.roomId ?? selectedEvent?.roomId ?? 0);
+    return rooms.find((room) => room.id === roomId) || null;
+  }, [rooms, selectedEvent?.roomId, selectedMeetingDetail?.roomId]);
+
+  const participantLabels = useMemo(() => {
+    const participants = Array.isArray(selectedMeetingDetail?.participants)
+      ? selectedMeetingDetail.participants
+      : [];
+    return participants.map((participant) => {
+      const activeUser = participant.userId
+        ? activeUsers.find((user) => user.id === participant.userId)
+        : null;
+      const name =
+        participant.agent?.name ||
+        activeUser?.displayName ||
+        activeUser?.email ||
+        participant.guestEmail ||
+        (participant.participantType === "agent" ? `Agent #${participant.agentId}` : `User #${participant.userId}`);
+      return {
+        id: participant.id,
+        name,
+        role: String(participant.role || "participant").replaceAll("_", " "),
+        type: participant.participantType,
+      };
+    });
+  }, [activeUsers, selectedMeetingDetail?.participants]);
+
+  const openMeetingConversation = (meeting: AgendaEvent) => {
+    if (!meeting.conversationId) {
+      toast({
+        title: "Conversation unavailable",
+        description: "This calendar entry is not linked to an Operations Center conversation.",
+        variant: "destructive",
+      });
+      return;
+    }
+    window.location.assign(`/ai-team?conversation=${encodeURIComponent(meeting.conversationId)}`);
+  };
+
+  const startMeetingMutation = useMutation({
+    mutationFn: async (meeting: AgendaEvent) => {
+      if (!meeting.meetingId || meeting.status !== "scheduled") return meeting;
+      await apiRequest(`/api/agenda-events/${meeting.meetingId}/meet`, {
+        method: "POST",
+        body: JSON.stringify({}),
+      });
+      return meeting;
+    },
+    onSuccess: (meeting) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/agenda-events"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/meetings"] });
+      setSelectedEvent(null);
+      openMeetingConversation(meeting);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Meeting could not start",
+        description: error.message || "Review the meeting objective and participants, then try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const downloadIcsMutation = useMutation({
     mutationFn: async (meeting: AgendaEvent) => {
       if (!meeting.meetingId) throw new Error("Calendar invite not available for legacy meeting rooms yet");
@@ -610,7 +723,12 @@ export default function AgendaPage() {
   };
 
   return (
-    <div className="container mx-auto p-6 max-w-7xl">
+    <div
+      className={cn(
+        "container mx-auto p-6 max-w-7xl",
+        useExportunityLightWorkspace && "exportunity-operations-light rounded-xl",
+      )}
+    >
       <div className="flex items-start justify-between gap-4 mb-6">
         <div>
           <h1 className="text-3xl font-bold text-white flex items-center gap-3">
@@ -630,7 +748,12 @@ export default function AgendaPage() {
               New Meeting
             </Button>
           </DialogTrigger>
-          <DialogContent className="bg-gray-950 border-gray-800 w-[min(96vw,1080px)] max-w-none p-0">
+          <DialogContent
+            className={cn(
+              "bg-gray-950 border-gray-800 w-[min(96vw,1080px)] max-w-none p-0",
+              useExportunityLightWorkspace && "exportunity-operations-light",
+            )}
+          >
             <DialogHeader>
               <DialogTitle className="text-white px-6 pt-6">Schedule meeting</DialogTitle>
             </DialogHeader>
@@ -981,7 +1104,12 @@ export default function AgendaPage() {
       )}
 
       <Dialog open={!!selectedEvent} onOpenChange={(open) => (!open ? setSelectedEvent(null) : null)}>
-        <DialogContent className="bg-gray-950 border-gray-800 max-w-4xl">
+        <DialogContent
+          className={cn(
+            "bg-gray-950 border-gray-800 max-w-4xl",
+            useExportunityLightWorkspace && "exportunity-operations-light",
+          )}
+        >
           <DialogHeader>
             <DialogTitle className="text-white flex items-center justify-between gap-3">
               <span className="min-w-0 truncate">{selectedEvent?.title || "Meeting"}</span>
@@ -1016,7 +1144,67 @@ export default function AgendaPage() {
                     </span>
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="grid gap-2 rounded-lg border border-gray-800 bg-gray-950/30 p-3">
+                    <div className="flex items-start gap-2">
+                      <Target className="mt-0.5 h-4 w-4 shrink-0 text-blue-400" />
+                      <div className="min-w-0">
+                        <div className="text-[11px] font-medium uppercase text-gray-500">Objective</div>
+                        <div className="text-sm text-gray-200">
+                          {selectedObjective?.title || (meetingDetailLoading ? "Loading objective..." : "No objective linked")}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-blue-400" />
+                      <div className="min-w-0">
+                        <div className="text-[11px] font-medium uppercase text-gray-500">Room</div>
+                        <div className="text-sm text-gray-200">
+                          {selectedRoom?.name || (meetingDetailLoading ? "Loading room..." : "Operations Center")}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <Users className="mt-0.5 h-4 w-4 shrink-0 text-blue-400" />
+                      <div className="min-w-0 flex-1">
+                        <div className="text-[11px] font-medium uppercase text-gray-500">Participants</div>
+                        {meetingDetailLoading ? (
+                          <div className="text-sm text-gray-500">Loading participants...</div>
+                        ) : participantLabels.length ? (
+                          <div className="mt-1 flex flex-wrap gap-1.5">
+                            {participantLabels.map((participant) => (
+                              <Badge
+                                key={participant.id}
+                                variant="outline"
+                                className="border-gray-800 bg-white text-gray-700"
+                              >
+                                {participant.name} · {participant.role}
+                              </Badge>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-sm text-gray-500">No participant roster available.</div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button
+                      className="bg-blue-600 hover:bg-blue-700 gap-2"
+                      onClick={() => startMeetingMutation.mutate(selectedEvent)}
+                      disabled={startMeetingMutation.isPending || !selectedEvent.conversationId}
+                    >
+                      {startMeetingMutation.isPending ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <ArrowRight className="h-4 w-4" />
+                      )}
+                      {selectedEvent.status === "scheduled"
+                        ? "Start in Operations Center"
+                        : selectedEvent.status === "completed"
+                          ? "Review in Operations Center"
+                          : "Open in Operations Center"}
+                    </Button>
                     <Button
                       variant="outline"
                       className="border-gray-800 bg-gray-950/30 gap-2"

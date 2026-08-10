@@ -499,8 +499,8 @@ function assistantContextForSelection({
           : "Exportunity AI | Industrial guide",
       intro:
         language === "fr"
-          ? "Vous etes a la GDIZ avec Tassi. Je vous montre maintenant les producteurs et produits documentes, puis je peux verifier la disponibilite et ouvrir votre commande."
-          : "You are at GDIZ with Tassi. I can now show documented producers and products, verify availability, and open your order.",
+          ? "Vous etes a la GDIZ avec Awa. Je vous montre maintenant les producteurs et produits documentes, puis je peux verifier la disponibilite et ouvrir votre commande."
+          : "You are at GDIZ with Awa. I can now show documented producers and products, verify availability, and open your order.",
       quickReplies:
         language === "fr"
           ? [
@@ -606,8 +606,8 @@ function assistantContextForSelection({
         : "Exportunity AI | Industrial guide",
     intro:
       language === "fr"
-        ? "Bonjour, je suis Tassi. Choisissez un repere sur la carte ou dites-moi le produit, la piece ou la machine dont vous avez besoin."
-        : "Hello, I am Tassi. Select a map reference or tell me which product, part, or machine you need.",
+        ? "Bonjour, je suis Awa Kouadio, votre interlocutrice commerciale. Choisissez un repere sur la carte ou dites-moi le produit, la piece ou la machine dont vous avez besoin."
+        : "Hello, I am Awa Kouadio, your commercial lead. Select a map reference or tell me which product, part, or machine you need.",
     quickReplies:
       language === "fr"
         ? [
@@ -1616,8 +1616,8 @@ function IndustrialSelectionCommerce({
         : "Production documented by official GDIZ sources. Exportunity confirms availability, price, and the responsible factory before an order."
       : selectedContext
         ? language === "fr"
-          ? "Ce repere donne le contexte industriel. Les offres ci-dessous sont des pistes documentees ou des services de sourcing a verifier avec Tassi."
-          : "This reference provides industrial context. The offerings below are documented leads or sourcing services to verify with Tassi."
+          ? "Ce repere donne le contexte industriel. Les offres ci-dessous sont des pistes documentees ou des services de sourcing a verifier avec Awa."
+          : "This reference provides industrial context. The offerings below are documented leads or sourcing services to verify with Awa."
         : language === "fr"
           ? "Selectionnez GDIZ ou une usine publiee pour voir directement ce qu'elle produit."
           : "Select GDIZ or a published factory to see what it produces.";
@@ -1675,8 +1675,8 @@ function IndustrialSelectionCommerce({
         <div className="mt-5 flex min-h-28 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white text-sm text-slate-600 dark:border-white/10 dark:bg-[#0A1628] dark:text-slate-300">
           <LoaderCircle className="h-4 w-4 animate-spin text-[#a96f0b]" />
           {language === "fr"
-            ? "Tassi charge les offres industrielles..."
-            : "Tassi is loading industrial offerings..."}
+            ? "Awa charge les offres industrielles..."
+            : "Awa is loading industrial offerings..."}
         </div>
       ) : items.length ? (
         <div className="mt-5 grid gap-3 sm:grid-cols-2 2xl:grid-cols-3">
@@ -1756,8 +1756,8 @@ function IndustrialSelectionCommerce({
           </p>
           <p className="mt-1.5 text-sm leading-6 text-slate-600 dark:text-slate-300">
             {language === "fr"
-              ? "Tassi peut ouvrir un dossier de sourcing ou de fabrication a partir de votre produit, photo, plan ou reference."
-              : "Tassi can open a sourcing or manufacturing case from your product, photo, drawing, or reference."}
+              ? "Awa peut ouvrir un dossier de sourcing ou de fabrication a partir de votre produit, photo, plan ou reference."
+              : "Awa can open a sourcing or manufacturing case from your product, photo, drawing, or reference."}
           </p>
           <Link
             href="/request-quote"
@@ -5725,11 +5725,11 @@ export default function IndustrialHubPage() {
           quote: "Demander un devis",
           account: "Compte",
           login: "Se connecter",
-          heroEyebrow: "Exportunity AI | Tassi",
+          heroEyebrow: "Exportunity AI | Awa Kouadio",
           heroTitle:
             "Que devons-nous sourcer, fabriquer ou acheminer pour vous ?",
           heroText:
-            "Discutez avec Tassi ou joignez une photo, une reference ou un plan. Chaque besoin est prepare pour revue interne avant mise en relation.",
+            "Discutez avec Awa ou joignez une photo, une reference ou un plan. Elle qualifie votre besoin et convient avec vous de la prochaine etape avant toute mise en relation.",
           searchPlaceholder:
             "Rechercher une usine, un produit, une machine, une matière première ou une pièce",
           search: "Rechercher",
@@ -5758,7 +5758,7 @@ export default function IndustrialHubPage() {
           mapDescription:
             "Explorez les infrastructures et filières publiques, puis les implantations de fabricants vérifiés lorsqu'elles sont autorisées à être publiées.",
           factoriesDescription:
-            "Explorez les producteurs documentés, leurs produits et les profils d'usines vérifiés. Tassi confirme ensuite disponibilité, prix et commande.",
+            "Explorez les producteurs documentés, leurs produits et les profils d'usines vérifiés. Awa confirme ensuite disponibilité, prix et commande.",
           productsDescription:
             "Produits B2B publiés après validation, sans prix, capacité ou délai inventé.",
           supplyDescription:
@@ -5790,10 +5790,10 @@ export default function IndustrialHubPage() {
           quote: "Request a Quote",
           account: "Account",
           login: "Sign in",
-          heroEyebrow: "Exportunity AI | Tassi",
+          heroEyebrow: "Exportunity AI | Awa Kouadio",
           heroTitle: "What do you need to source, manufacture, or move?",
           heroText:
-            "Message Tassi or attach a photo, reference, or drawing. Each request is structured for internal review before an introduction.",
+            "Message Awa or attach a photo, reference, or drawing. She qualifies the requirement and agrees the next step with you before any introduction.",
           searchPlaceholder:
             "Search a factory, product, machine, raw material, or part number",
           search: "Search",
@@ -5821,7 +5821,7 @@ export default function IndustrialHubPage() {
           mapDescription:
             "Explore public infrastructure and sector context, then published locations of verified manufacturers when they are authorized for public display.",
           factoriesDescription:
-            "Explore documented producers, their products, and verified factory profiles. Tassi then confirms availability, price, and the order.",
+            "Explore documented producers, their products, and verified factory profiles. Awa then confirms availability, price, and the order.",
           productsDescription:
             "B2B products published after validation, without invented pricing, capacity, or lead times.",
           supplyDescription:
@@ -6994,8 +6994,8 @@ export default function IndustrialHubPage() {
                       />
                       <p className="mt-3 px-1 text-xs leading-5 text-slate-500 dark:text-slate-400">
                         {locale === "fr"
-                          ? "Tassi enregistre un vrai dossier industriel. La disponibilite, le prix et le fournisseur sont verifies avant toute commande ou mise en relation."
-                          : "Tassi records a real industrial case. Availability, price, and supplier are verified before any order or introduction."}
+                          ? "Awa enregistre un vrai dossier industriel. La disponibilite, le prix et le fournisseur sont verifies avant toute commande ou mise en relation."
+                          : "Awa records a real industrial case. Availability, price, and supplier are verified before any order or introduction."}
                       </p>
                     </aside>
                   </div>

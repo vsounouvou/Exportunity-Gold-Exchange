@@ -171,7 +171,7 @@ export function IndustrialAssistantChat({
   requester,
   context,
   product,
-  mode = "concierge",
+  mode = "commercial",
   onCloseProduct,
   className,
 }: {
@@ -186,22 +186,22 @@ export function IndustrialAssistantChat({
   const copy =
     language === "fr"
       ? {
-          name: "Tassi",
-          role: "Exportunity AI | Sourcing et operations",
+          name: "Awa Kouadio",
+          role: "Exportunity AI | Directrice commerciale",
           productRole: "Commande industrielle accompagnee",
-          conversation: "Conversation avec Tassi",
-          ready: "Tassi est prete",
-          composerLabel: "Envoyer un message a Tassi",
+          conversation: "Conversation avec Awa",
+          ready: "Awa est prete",
+          composerLabel: "Envoyer un message a Awa",
           greeting:
-            "Bonjour, je suis Tassi. Dites-moi ce que vous devez sourcer, fabriquer ou acheminer.",
+            "Bonjour, je suis Awa Kouadio, votre interlocutrice commerciale Exportunity. Dites-moi ce que vous devez acheter, sourcer, fabriquer ou acheminer; je vais qualifier le besoin et convenir avec vous de la prochaine etape.",
           productGreeting: (name: string, factory: string) =>
             `Bonjour, je suis Awa, votre interlocutrice commerciale Exportunity. Vous consultez ${name}${factory ? `, propose par ${factory}` : ""}. Je vais preparer la commande avec vous, une question a la fois. Quelle quantite souhaitez-vous ?`,
-          placeholder: "Ecrivez votre reponse a Tassi...",
+          placeholder: "Ecrivez votre reponse a Awa...",
           completePlaceholder: "Votre dossier est enregistre",
           attach: "Joindre une photo ou un fichier",
-          send: "Envoyer a Tassi",
-          preparing: "Tassi organise votre demande...",
-          creating: "Tassi enregistre votre dossier...",
+          send: "Envoyer a Awa",
+          preparing: "Awa qualifie votre demande...",
+          creating: "Awa enregistre votre dossier commercial...",
           attachmentError: "Chaque fichier doit faire 15 Mo ou moins.",
           emptyMessage:
             "Ajoutez plus de details sur la piece, la machine, la quantite ou le probleme a resoudre.",
@@ -274,22 +274,22 @@ export function IndustrialAssistantChat({
           changeDestination: "Modifier la destination",
         }
       : {
-          name: "Tassi",
-          role: "Exportunity AI | Sourcing and operations",
+          name: "Awa Kouadio",
+          role: "Exportunity AI | Commercial Director",
           productRole: "Assisted industrial order",
-          conversation: "Conversation with Tassi",
-          ready: "Tassi is ready",
-          composerLabel: "Message Tassi",
+          conversation: "Conversation with Awa",
+          ready: "Awa is ready",
+          composerLabel: "Message Awa",
           greeting:
-            "Hello, I am Tassi. Tell me what you need to source, manufacture, or move.",
+            "Hello, I am Awa Kouadio, your Exportunity commercial lead. Tell me what you need to buy, source, manufacture, or move; I will qualify the requirement and agree the next step with you.",
           productGreeting: (name: string, factory: string) =>
             `Hello, I am Awa, your Exportunity commercial lead. You are viewing ${name}${factory ? `, offered by ${factory}` : ""}. I will prepare the order with you, one question at a time. What quantity do you need?`,
-          placeholder: "Type your answer to Tassi...",
+          placeholder: "Type your answer to Awa...",
           completePlaceholder: "Your case has been recorded",
           attach: "Attach a photo or file",
-          send: "Send to Tassi",
-          preparing: "Tassi is organizing your request...",
-          creating: "Tassi is recording your case...",
+          send: "Send to Awa",
+          preparing: "Awa is qualifying your request...",
+          creating: "Awa is recording your commercial case...",
           attachmentError: "Each file must be 15 MB or smaller.",
           emptyMessage:
             "Add more detail about the part, machine, quantity, or issue to solve.",

@@ -13,7 +13,7 @@ function readRepoFile(relativePath: string) {
   return fs.readFileSync(path.join(repoRoot, relativePath), "utf8");
 }
 
-test("Exportunity industrial home leads with the case-backed AI conversation", () => {
+test("Exportunity industrial home leads with Awa's case-backed commercial conversation", () => {
   const hub = readRepoFile(
     "client/src/pages/exportunity/IndustrialHubPage.tsx",
   );
@@ -59,7 +59,7 @@ test("Exportunity industrial home leads with the case-backed AI conversation", (
   assert.ok(firstGenericSearchIndex > homeAssistantIndex);
   assert.match(assistant, /\/api\/industrial\/assistant\/intake-preview/);
   assert.match(assistant, /\/api\/industrial\/requirements/);
-  assert.match(assistant, /Message Tassi/);
+  assert.match(assistant, /Message Awa/);
   assert.match(assistant, /Awa Kouadio/);
   assert.match(assistant, /commercialOwner/);
   assert.match(assistant, /consultative_discovery_summary_next_step/);
@@ -70,7 +70,7 @@ test("Exportunity industrial home leads with the case-backed AI conversation", (
   assert.match(assistant, /dark:bg-\[#02070e\]\/\[0\.96\]/);
 });
 
-test("factory and map discovery keep Tassi, the map, and products in one flow", () => {
+test("factory and map discovery keep Awa, the map, and products in one flow", () => {
   const hub = readRepoFile(
     "client/src/pages/exportunity/IndustrialHubPage.tsx",
   );

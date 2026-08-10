@@ -64,20 +64,23 @@ export function OrgChartTree({ agents, onAgentClick }: OrgChartTreeProps) {
         <button
           type="button"
           onClick={() => onAgentClick(agent)}
-          className="inline-flex max-w-[260px] flex-col gap-1 rounded-lg border border-gray-800 bg-gray-900 px-3 py-2 text-left shadow-sm hover:border-gray-700 hover:bg-gray-900/70"
+          title={`Open and edit ${agent.name}`}
+          className="inline-flex max-w-[260px] flex-col gap-1 rounded-md border border-border bg-background px-3 py-2 text-left text-foreground shadow-sm transition-colors hover:border-amber-400 hover:bg-amber-50 dark:hover:bg-amber-500/10"
         >
           <div className="flex items-center justify-between gap-2">
-            <div className="truncate text-sm font-semibold text-white">{agent.name}</div>
+            <div className="truncate text-sm font-semibold text-foreground">{agent.name}</div>
             <span
               className={`rounded-full px-2 py-0.5 text-xs ${
-                agent.status === "active" ? "bg-green-500/20 text-green-300" : "bg-gray-700/40 text-gray-300"
+                agent.status === "active"
+                  ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-300"
+                  : "bg-muted text-muted-foreground"
               }`}
             >
               {agent.status}
             </span>
           </div>
-          <div className="truncate text-xs text-gray-400">{agent.role}</div>
-          <div className="text-[11px] text-gray-500">
+          <div className="truncate text-xs text-muted-foreground">{agent.role}</div>
+          <div className="text-[11px] text-muted-foreground">
             {children.length} {children.length === 1 ? "report" : "reports"}
           </div>
         </button>
@@ -93,7 +96,7 @@ export function OrgChartTree({ agents, onAgentClick }: OrgChartTreeProps) {
   return (
     <div
       ref={containerRef}
-      className="org-tree max-h-[70vh] overflow-auto rounded-lg border border-gray-800 bg-gray-950 p-4"
+      className="org-tree max-h-[70vh] overflow-auto rounded-md border border-border bg-card p-4"
       style={{ cursor: isPanning ? "grabbing" : "grab", touchAction: "none" }}
       onPointerDown={(e) => {
         const target = e.target as HTMLElement | null;
@@ -171,14 +174,14 @@ export function OrgChartTree({ agents, onAgentClick }: OrgChartTreeProps) {
           top: 0;
           width: 50%;
           height: 20px;
-          border-top: 1px solid rgba(255,255,255,0.12);
+          border-top: 1px solid hsl(var(--border));
         }
         .org-tree li::before {
           right: 50%;
         }
         .org-tree li::after {
           left: 50%;
-          border-left: 1px solid rgba(255,255,255,0.12);
+          border-left: 1px solid hsl(var(--border));
         }
         .org-tree li:only-child::before,
         .org-tree li:only-child::after {
@@ -200,12 +203,12 @@ export function OrgChartTree({ agents, onAgentClick }: OrgChartTreeProps) {
           left: 50%;
           width: 0;
           height: 20px;
-          border-left: 1px solid rgba(255,255,255,0.12);
+          border-left: 1px solid hsl(var(--border));
         }
       `}</style>
 
       {roots.length === 0 ? (
-        <div className="text-sm text-gray-400">No top-level agents found.</div>
+        <div className="text-sm text-muted-foreground">No top-level agents found.</div>
       ) : (
         <div className="w-max min-w-full">
           <ul>{roots.map((root) => renderNode(root))}</ul>

@@ -208,7 +208,10 @@ export async function ensureExportunityIndustrialAgentOrganization(input?: { dry
   const tenant = await getTenantByKey("exportunity" as any);
   if (!tenant?.id) throw new Error("Exportunity tenant is unavailable");
   const tenantId = Number(tenant.id);
-  const companyRows = await db.select({ id: companies.id, name: companies.name }).from(companies);
+  const companyRows = await db
+    .select({ id: companies.id, name: companies.name })
+    .from(companies)
+    .where(eq(companies.tenantId, tenantId));
   const company = companyRows.find((item) => /exportunity|exportunity machinery/i.test(String(item.name || "")));
   const companyId = company?.id ? Number(company.id) : null;
 

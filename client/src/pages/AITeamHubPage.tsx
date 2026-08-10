@@ -2074,6 +2074,9 @@ export function AITeamHubPage() {
       queryClient.invalidateQueries({ 
         queryKey: [`/api/chatrooms/${currentMeeting?.conversationId}/members`] 
       });
+      queryClient.invalidateQueries({
+        queryKey: [`/api/chatrooms/${currentMeeting?.conversationId}/membership-audit`],
+      });
       toast({ title: "Agent Added", description: "The agent has joined the meeting" });
     },
   });
@@ -2091,6 +2094,9 @@ export function AITeamHubPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ 
         queryKey: [`/api/chatrooms/${currentMeeting?.conversationId}/members`] 
+      });
+      queryClient.invalidateQueries({
+        queryKey: [`/api/chatrooms/${currentMeeting?.conversationId}/membership-audit`],
       });
       toast({ title: "Agent Removed", description: "The agent has left the meeting" });
     },
@@ -6112,7 +6118,9 @@ export function AITeamHubPage() {
           )}
         >
           <SheetHeader>
-            <SheetTitle className="text-white">Members ({activeAgents.length})</SheetTitle>
+            <SheetTitle className={useExportunityLightWorkspace ? "text-slate-950" : "text-white"}>
+              {currentMeeting ? "Meeting team" : "Conversation team"} ({activeAgents.length})
+            </SheetTitle>
           </SheetHeader>
           <div className="mt-4 space-y-4">
             <div>
@@ -6122,14 +6130,119 @@ export function AITeamHubPage() {
                   <div className="text-sm text-gray-500">No active members.</div>
                 ) : (
                   activeAgents.map((agent) => (
-                    <div key={`member-${agent.id}`} className="rounded-md border border-gray-800 bg-gray-900/60 p-2">
-                      <div className="text-sm text-white">{agent.name}</div>
-                      <div className="text-xs text-gray-400">{agent.role || "Agent"}</div>
+                    <div
+                      key={`member-${agent.id}`}
+                      className={cn(
+                        "flex items-center gap-3 rounded-md border p-2",
+                        useExportunityLightWorkspace
+                          ? "border-slate-200 bg-slate-50"
+                          : "border-gray-800 bg-gray-900/60",
+                      )}
+                    >
+                      <Avatar className={cn("h-9 w-9", useExportunityLightWorkspace ? "bg-slate-200" : "bg-gray-700")}>
+                        <AvatarImage
+                          src={getAgentAvatarUrl({ id: agent.id, name: agent.name, size: 64 })}
+                          alt={agent.name || "Agent"}
+                        />
+                        <AvatarFallback className={useExportunityLightWorkspace ? "text-slate-700" : "text-white"}>
+                          {agent.name?.charAt(0)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="min-w-0 flex-1">
+                        <div className={cn("truncate text-sm font-medium", useExportunityLightWorkspace ? "text-slate-950" : "text-white")}>
+                          {agent.name}
+                        </div>
+                        <div className={cn("truncate text-xs", useExportunityLightWorkspace ? "text-slate-600" : "text-gray-400")}>
+                          {agent.role || "Agent"}
+                        </div>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        aria-label={`Remove ${agent.name} from ${currentMeeting ? "meeting" : "conversation"}`}
+                        title={activeAgents.length <= 1 ? "At least one agent must remain available" : `Remove ${agent.name}`}
+                        disabled={
+                          activeAgents.length <= 1 ||
+                          addAgentToMeeting.isPending ||
+                          removeAgentFromMeeting.isPending ||
+                          addAgentToChannel.isPending ||
+                          removeAgentFromChannel.isPending
+                        }
+                        onClick={() => removeAgent(agent)}
+                        className={cn(
+                          "h-8 w-8 shrink-0",
+                          useExportunityLightWorkspace
+                            ? "text-slate-500 hover:bg-red-50 hover:text-red-700"
+                            : "text-gray-400 hover:bg-red-950/40 hover:text-red-300",
+                        )}
+                      >
+                        <UserMinus className="h-4 w-4" />
+                      </Button>
                     </div>
                   ))
                 )}
               </div>
             </div>
+
+            {availableAgents.length > 0 ? (
+              <div>
+                <div className="mb-2 text-xs uppercase tracking-wide text-gray-500">Available specialists</div>
+                <div className="max-h-[30vh] space-y-2 overflow-y-auto pr-1">
+                  {availableAgents.map((agent) => (
+                    <div
+                      key={`available-member-${agent.id}`}
+                      className={cn(
+                        "flex items-center gap-3 rounded-md border p-2",
+                        useExportunityLightWorkspace
+                          ? "border-slate-200 bg-white"
+                          : "border-gray-800 bg-gray-900/40",
+                      )}
+                    >
+                      <Avatar className={cn("h-9 w-9", useExportunityLightWorkspace ? "bg-slate-200" : "bg-gray-700")}>
+                        <AvatarImage
+                          src={getAgentAvatarUrl({ id: agent.id, name: agent.name, size: 64 })}
+                          alt={agent.name || "Agent"}
+                        />
+                        <AvatarFallback className={useExportunityLightWorkspace ? "text-slate-700" : "text-white"}>
+                          {agent.name?.charAt(0)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="min-w-0 flex-1">
+                        <div className={cn("truncate text-sm font-medium", useExportunityLightWorkspace ? "text-slate-950" : "text-white")}>
+                          {agent.name}
+                        </div>
+                        <div className={cn("truncate text-xs", useExportunityLightWorkspace ? "text-slate-600" : "text-gray-400")}>
+                          {agent.role || "Agent"}
+                        </div>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        aria-label={`Add ${agent.name} to ${currentMeeting ? "meeting" : "conversation"}`}
+                        disabled={
+                          addAgentToMeeting.isPending ||
+                          removeAgentFromMeeting.isPending ||
+                          addAgentToChannel.isPending ||
+                          removeAgentFromChannel.isPending
+                        }
+                        onClick={() => addAgent(agent)}
+                        className={cn(
+                          "h-8 shrink-0",
+                          useExportunityLightWorkspace
+                            ? "border-amber-300 bg-amber-50 text-slate-900 hover:bg-amber-100"
+                            : "border-amber-500/40 text-amber-300 hover:bg-amber-500/10",
+                        )}
+                      >
+                        <UserPlus className="mr-1.5 h-4 w-4" />
+                        Add
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
 
             <div>
               <div className="text-xs uppercase tracking-wide text-gray-500 mb-2">Membership audit</div>
@@ -6141,15 +6254,27 @@ export function AITeamHubPage() {
               ) : membershipAuditQuery.data?.events?.length ? (
                 <div className="space-y-2 max-h-[52vh] overflow-y-auto pr-1">
                   {membershipAuditQuery.data.events.map((event) => (
-                    <div key={`event-${event.id}-${event.createdAt}`} className="rounded-md border border-gray-800 bg-gray-900/40 p-2">
-                      <div className="text-xs text-gray-300">
+                    <div
+                      key={`event-${event.id}-${event.createdAt}`}
+                      className={cn(
+                        "rounded-md border p-2",
+                        useExportunityLightWorkspace
+                          ? "border-slate-200 bg-slate-50"
+                          : "border-gray-800 bg-gray-900/40",
+                      )}
+                    >
+                      <div className={cn("text-xs", useExportunityLightWorkspace ? "text-slate-800" : "text-gray-300")}>
                         {event.eventType} • {membershipReasonLabel(event.reasonCode)}
                       </div>
-                      <div className="text-xs text-gray-400">
+                      <div className={cn("text-xs", useExportunityLightWorkspace ? "text-slate-600" : "text-gray-400")}>
                         {event.targetAgentName || `Agent #${event.targetAgentId || "?"}`} • Added by {event.actorName || "system"}
                       </div>
                       <div className="text-[11px] text-gray-500">{format(new Date(event.createdAt), "MMM d, HH:mm")}</div>
-                      {event.reasonText ? <div className="text-xs text-gray-300 mt-1">{event.reasonText}</div> : null}
+                      {event.reasonText ? (
+                        <div className={cn("mt-1 text-xs", useExportunityLightWorkspace ? "text-slate-700" : "text-gray-300")}>
+                          {event.reasonText}
+                        </div>
+                      ) : null}
                       {event.relatedTaskId ? (
                         <button
                           type="button"

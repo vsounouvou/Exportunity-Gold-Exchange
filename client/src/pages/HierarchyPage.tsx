@@ -481,10 +481,14 @@ export default function HierarchyPage() {
   };
   
   const handleAgentClick = (agent: Agent) => {
-    setLocation(`/agents/${agent.id}`);
+    setLocation(`/operations/agents/${agent.id}?edit=1`);
   };
   
-  const unassignedAgents = allAgents?.filter(a => !a.departmentId) || [];
+  const companyAgentIds = new Set((allAgents || []).map((agent) => agent.id));
+  const orphanedAgents = (allAgents || []).filter(
+    (agent) => agent.managerId != null && !companyAgentIds.has(agent.managerId),
+  );
+  const departmentUnassignedAgents = (allAgents || []).filter((agent) => !agent.departmentId);
   
   if (!selectedCompanyId || isLoadingCompany || isLoadingDepts) {
     return (
@@ -584,9 +588,9 @@ export default function HierarchyPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <OrgChartTree agents={allAgents || []} onAgentClick={handleAgentClick} />
-              {unassignedAgents.length > 0 && (
-                <div className="text-sm text-muted-foreground">
-                  {unassignedAgents.length} unassigned agents are not placed under a manager.
+              {orphanedAgents.length > 0 && (
+                <div className="text-sm text-amber-700">
+                  {orphanedAgents.length} {orphanedAgents.length === 1 ? "agent has" : "agents have"} an unavailable manager.
                 </div>
               )}
             </CardContent>
@@ -618,17 +622,17 @@ export default function HierarchyPage() {
             </Card>
           )}
           
-          {unassignedAgents.length > 0 && (
+          {departmentUnassignedAgents.length > 0 && (
             <Card className="border-dashed">
               <CardHeader>
                 <CardTitle className="text-lg flex items-center gap-2">
                   <Users className="w-5 h-5" />
-                  Unassigned Agents ({unassignedAgents.length})
+                  Unassigned Agents ({departmentUnassignedAgents.length})
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-2">
-                  {unassignedAgents.map(agent => (
+                  {departmentUnassignedAgents.map(agent => (
                     <div 
                       key={agent.id}
                       className="flex items-center gap-3 p-3 rounded-lg hover:bg-accent cursor-pointer transition-colors border border-border"

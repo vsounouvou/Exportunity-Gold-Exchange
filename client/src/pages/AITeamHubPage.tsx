@@ -661,9 +661,11 @@ function extractActionRuns(metadata: any): MessageActionRun[] {
   return Array.from(byId.values()).slice(0, 3);
 }
 
-function membershipReasonLabel(reasonCode: string) {
+function membershipReasonLabel(reasonCode: string, eventType?: string) {
   const normalized = String(reasonCode || "").toUpperCase();
-  if (normalized === "MANUAL_INVITE") return "Manual invite";
+  if (normalized === "MANUAL_INVITE") {
+    return String(eventType || "").toUpperCase() === "REMOVE_MEMBER" ? "Manual removal" : "Manual invite";
+  }
   if (normalized === "TASK_ASSIGNED") return "Task assigned";
   if (normalized === "ESCALATION") return "Escalation";
   if (normalized === "WATCHER") return "Watcher";
@@ -2174,6 +2176,9 @@ export function AITeamHubPage() {
       queryClient.invalidateQueries({
         queryKey: [channelConversationId ? `/api/chatrooms/${encodeURIComponent(channelConversationId)}/members` : ""],
       });
+      if (membershipAuditKey) {
+        queryClient.invalidateQueries({ queryKey: [membershipAuditKey] });
+      }
       toast({ title: "Agent Added", description: "The agent has joined the conversation" });
     },
     onError: (error) => {
@@ -2210,6 +2215,9 @@ export function AITeamHubPage() {
       queryClient.invalidateQueries({
         queryKey: [channelConversationId ? `/api/chatrooms/${encodeURIComponent(channelConversationId)}/members` : ""],
       });
+      if (membershipAuditKey) {
+        queryClient.invalidateQueries({ queryKey: [membershipAuditKey] });
+      }
       toast({ title: "Agent Removed", description: "The agent has left the conversation" });
     },
     onError: (error) => {
@@ -2256,6 +2264,9 @@ export function AITeamHubPage() {
         queryClient.invalidateQueries({
           queryKey: [`/api/chatrooms/${currentMeeting?.conversationId}/members`],
         });
+        queryClient.invalidateQueries({
+          queryKey: [`/api/chatrooms/${encodeURIComponent(currentMeeting.conversationId)}/membership-audit`],
+        });
         toast({ title: "All agents added", description: `${ids.length} agents joined the meeting` });
       } else {
         const companyId = resolveEffectiveCompanyId();
@@ -2274,6 +2285,9 @@ export function AITeamHubPage() {
         });
         queryClient.invalidateQueries({
           queryKey: [channelConversationId ? `/api/chatrooms/${encodeURIComponent(channelConversationId)}/members` : ""],
+        });
+        queryClient.invalidateQueries({
+          queryKey: [`/api/chatrooms/${encodeURIComponent(conversationId)}/membership-audit`],
         });
         toast({ title: "All agents added", description: `${ids.length} agents joined` });
       }
@@ -2302,6 +2316,9 @@ export function AITeamHubPage() {
         queryClient.invalidateQueries({
           queryKey: [`/api/chatrooms/${currentMeeting?.conversationId}/members`],
         });
+        queryClient.invalidateQueries({
+          queryKey: [`/api/chatrooms/${encodeURIComponent(currentMeeting.conversationId)}/membership-audit`],
+        });
         toast({ title: "All agents removed", description: "Meeting cleared" });
       } else {
         const companyId = resolveEffectiveCompanyId();
@@ -2324,6 +2341,9 @@ export function AITeamHubPage() {
         });
         queryClient.invalidateQueries({
           queryKey: [channelConversationId ? `/api/chatrooms/${encodeURIComponent(channelConversationId)}/members` : ""],
+        });
+        queryClient.invalidateQueries({
+          queryKey: [`/api/chatrooms/${encodeURIComponent(conversationId)}/membership-audit`],
         });
         toast({ title: "All agents removed", description: "Conversation cleared" });
       }
@@ -6273,10 +6293,16 @@ export function AITeamHubPage() {
                       )}
                     >
                       <div className={cn("text-xs", useExportunityLightWorkspace ? "text-slate-800" : "text-gray-300")}>
-                        {event.eventType} • {membershipReasonLabel(event.reasonCode)}
+                        {event.eventType} • {membershipReasonLabel(event.reasonCode, event.eventType)}
                       </div>
                       <div className={cn("text-xs", useExportunityLightWorkspace ? "text-slate-600" : "text-gray-400")}>
-                        {event.targetAgentName || `Agent #${event.targetAgentId || "?"}`} • Added by {event.actorName || "system"}
+                        {event.targetAgentName || `Agent #${event.targetAgentId || "?"}`} •{" "}
+                        {event.eventType === "REMOVE_MEMBER"
+                          ? "Removed by"
+                          : event.eventType === "ROLE_CHANGE"
+                            ? "Changed by"
+                            : "Added by"}{" "}
+                        {event.actorName || "system"}
                       </div>
                       <div className="text-[11px] text-gray-500">{format(new Date(event.createdAt), "MMM d, HH:mm")}</div>
                       {event.reasonText ? (

@@ -1,7 +1,10 @@
 import { db } from "@db";
-import { agentsProduction } from "@db/schema";
+import { agents, agentsProduction } from "@db/schema";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { normalizeAgentKey } from "../mail/agentSlugs";
+import { resolveAllowedProductionAgentIds } from "./productionAllowlistResolution";
+
+export { resolveAllowedProductionAgentIds } from "./productionAllowlistResolution";
 
 function truthyEnv(value: unknown) {
   return ["1", "true", "yes", "y", "on"].includes(String(value || "").trim().toLowerCase());
@@ -151,11 +154,25 @@ export async function filterProductionAgentIds(opts: { tenantId: number; agentId
     .filter((id) => Number.isInteger(id) && id > 0);
   if (!ids.length) return [];
 
-  const rows = await db
-    .select({ agentId: agentsProduction.agentId })
-    .from(agentsProduction)
-    .where(and(eq(agentsProduction.tenantId, tenantId), eq(agentsProduction.isEnabled, true), inArray(agentsProduction.agentId, ids)));
+  const [productionRows, candidateRows] = await Promise.all([
+    db
+      .select({ agentId: agentsProduction.agentId, agentKey: agentsProduction.agentKey })
+      .from(agentsProduction)
+      .where(and(eq(agentsProduction.tenantId, tenantId), eq(agentsProduction.isEnabled, true))),
+    db
+      .select({
+        id: agents.id,
+        name: agents.name,
+        displayName: agents.displayName,
+        metadata: agents.metadata,
+      })
+      .from(agents)
+      .where(and(eq(agents.tenantId, tenantId), inArray(agents.id, ids))),
+  ]);
 
-  const allowed = new Set(rows.map((r) => Number(r.agentId)).filter((id) => Number.isInteger(id) && id > 0));
-  return ids.filter((id) => allowed.has(id));
+  return resolveAllowedProductionAgentIds({
+    requestedIds: ids,
+    candidates: candidateRows,
+    enabledRows: productionRows,
+  });
 }

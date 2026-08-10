@@ -4254,7 +4254,7 @@ ${governanceContext}`;
       
       // Get company agents to find an appropriate responder
       const companyAgentsRaw = await db.query.agents.findMany({
-        where: eq(agents.companyId, companyId),
+        where: and(eq(agents.companyId, companyId), eq(agents.tenantId, scopedTenantId)),
         limit: 200
       });
 
@@ -4352,6 +4352,48 @@ ${governanceContext}`;
 
       const maxResponders = mentionedAgents.length || wantsMultiAgent ? 5 : 1;
       responderAgents = responderAgents.filter(Boolean).slice(0, maxResponders);
+
+      if (!responderAgents.length) {
+        console.warn(
+          `[Channel] No production-approved responder for tenant=${scopedTenantId} company=${companyId} channel=${channelId} requested=${activeAgentIds.join(",") || "none"}`,
+        );
+        const unavailableNow = new Date();
+        const [unavailableRow] = await db
+          .insert(messages)
+          .values({
+            content:
+              "L'equipe Exportunity n'a actuellement aucun agent de production disponible pour repondre. Votre message est bien enregistre. Activez un agent dans Agents OS, puis reessayez.",
+            fromAgentId: null,
+            toAgentId: null,
+            type: "system",
+            status: "sent",
+            deliveredAt: unavailableNow,
+            inReplyToClientMessageId: clientMessageId ?? null,
+            metadata: {
+              channelId,
+              companyId,
+              kind: "agent_unavailable",
+              code: "NO_PRODUCTION_APPROVED_RESPONDER",
+              requestedActiveAgentIds: activeAgentIds,
+              contextTags: ["system", "agent-availability"],
+              ...(clientMessageId ? { inReplyToClientMessageId: clientMessageId } : {}),
+            },
+            conversationId,
+            createdAt: unavailableNow,
+          })
+          .returning();
+        const unavailableMessage = formatChannelMessageRow(unavailableRow);
+
+        return res.json({
+          success: true,
+          userMessage,
+          aiResponse: unavailableMessage,
+          aiResponses: [unavailableMessage],
+          activeAgentIds,
+          summonedAgentIds: [],
+          responderUnavailable: true,
+        });
+      }
 
       let primaryTaskId: number | null = null;
       if (accountabilityEnabled && tenantId) {

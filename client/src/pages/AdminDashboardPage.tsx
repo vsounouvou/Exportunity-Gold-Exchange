@@ -12,6 +12,8 @@ import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useCompany } from "@/hooks/use-company";
+import { useTenant } from "@/lib/tenant";
+import ExportunityAdminDashboardPage from "@/pages/exportunity/ExportunityAdminDashboardPage";
 import {
   Activity,
   ArrowRight,
@@ -140,7 +142,7 @@ function formatXof(value: number) {
   return new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 }).format(value);
 }
 
-export default function AdminDashboardPage() {
+function LegacyAdminDashboardPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { selectedCompanyId, companies, isLoading: companiesLoading } = useCompany();
@@ -1170,6 +1172,16 @@ export default function AdminDashboardPage() {
       </Tabs>
     </div>
   );
+}
+
+export default function AdminDashboardPage() {
+  const { tenant } = useTenant();
+
+  if (tenant?.key === "exportunity") {
+    return <ExportunityAdminDashboardPage />;
+  }
+
+  return <LegacyAdminDashboardPage />;
 }
 
 function PickaxeIcon() {

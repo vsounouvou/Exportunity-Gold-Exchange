@@ -4,7 +4,6 @@ import { Link } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
 import { useTenant } from "@/lib/tenant";
 import { useToast } from "@/hooks/use-toast";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -66,6 +65,21 @@ type EventsResponse = { ok: boolean; items: Array<{ id: number; eventType: strin
 
 function allowed(channels: string[], key: string) {
   return Array.isArray(channels) && channels.includes(key);
+}
+
+function HealthPill({ ok, label, neutral = false }: { ok: boolean; label: string; neutral?: boolean }) {
+  const palette = neutral
+    ? "border-slate-300 bg-slate-100 text-slate-700"
+    : ok
+      ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+      : "border-amber-300 bg-amber-50 text-amber-900";
+
+  return (
+    <span className={`inline-flex min-h-8 items-center gap-2 rounded-full border px-3 py-1 text-xs font-bold ${palette}`}>
+      <span className={`h-2 w-2 rounded-full ${neutral ? "bg-slate-500" : ok ? "bg-emerald-600" : "bg-amber-600"}`} />
+      {label}
+    </span>
+  );
 }
 
 export function AdminTwilioControlCenterPage() {
@@ -228,12 +242,12 @@ export function AdminTwilioControlCenterPage() {
         <CardHeader><CardTitle className="text-slate-950">Runtime health</CardTitle></CardHeader>
         <CardContent className="space-y-3">
           <div className="flex flex-wrap gap-2">
-            <Badge variant={cfg?.accountSidPresent ? "default" : "destructive"}>Account SID</Badge>
-            <Badge variant={cfg?.authTokenPresent ? "default" : "destructive"}>Auth token</Badge>
-            <Badge variant={smsEnabled ? "default" : "secondary"}>SMS</Badge>
-            <Badge variant={whatsappEnabled ? "default" : "secondary"}>WhatsApp</Badge>
-            <Badge variant={profile?.verifyServiceSid || cfg?.verifyServiceSidPresent ? "default" : "secondary"}>Verify</Badge>
-            {profile?.useSandboxForDev ? <Badge variant="secondary">Sandbox fallback</Badge> : <Badge variant="default">Production-first</Badge>}
+            <HealthPill ok={Boolean(cfg?.accountSidPresent)} label="Account SID" />
+            <HealthPill ok={Boolean(cfg?.authTokenPresent)} label="Auth token" />
+            <HealthPill ok={smsEnabled} label="SMS" />
+            <HealthPill ok={whatsappEnabled} label="WhatsApp" />
+            <HealthPill ok={Boolean(profile?.verifyServiceSid || cfg?.verifyServiceSidPresent)} label="Verify" />
+            <HealthPill ok={!profile?.useSandboxForDev} neutral={Boolean(profile?.useSandboxForDev)} label={profile?.useSandboxForDev ? "Sandbox fallback" : "Production-first"} />
           </div>
           <div className="text-xs text-slate-500">
             Status callback: <span className="font-mono text-slate-800">{cfg?.webhookPath || "/api/webhooks/twilio/status"}</span>

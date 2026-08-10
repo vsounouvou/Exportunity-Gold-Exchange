@@ -534,11 +534,13 @@ export function AdminLayout({ children }: AdminLayoutProps) {
   const showInternalAgentsQuickAccess = isTenantRouteAllowed("/operations/agents", tenant.key);
   const standardAdminIa = useMemo(
     () =>
-      getTenantStandardAdminIa(tenant.key).filter(
-        (item) =>
-          isTenantRouteAllowed(item.canonicalPath, tenant.key) &&
-          isTenantRouteAllowed(item.destination, tenant.key),
-      ),
+      tenant.key === "exportunity"
+        ? []
+        : getTenantStandardAdminIa(tenant.key).filter(
+            (item) =>
+              isTenantRouteAllowed(item.canonicalPath, tenant.key) &&
+              isTenantRouteAllowed(item.destination, tenant.key),
+          ),
     [tenant.key],
   );
 

@@ -98,7 +98,26 @@ test("Exportunity admin navigation stays focused on industrial operations", () =
   assert.doesNotMatch(exportunityNavRoutes, /"\/admin\/met"/);
   assert.doesNotMatch(exportunityNavRoutes, /"\/admin\/vs"/);
   assert.match(adminLayout, /isTenantAdminNavVisible\(item\.path, tenant\.key\)/);
+  assert.match(adminLayout, /tenant\.key === "exportunity"\s*\? \[\]/);
   assert.match(routes, /title: "Video meetings"/);
+});
+
+test("Exportunity dashboard prioritizes live industrial operations and readable integration health", () => {
+  const dashboardRouter = readRepoFile("client/src/pages/AdminDashboardPage.tsx");
+  const dashboard = readRepoFile("client/src/pages/exportunity/ExportunityAdminDashboardPage.tsx");
+  const twilio = readRepoFile("client/src/pages/AdminTwilioControlCenterPage.tsx");
+
+  assert.match(dashboardRouter, /tenant\?\.key === "exportunity"/);
+  assert.match(dashboardRouter, /<ExportunityAdminDashboardPage \/>/);
+  assert.match(dashboard, /Operations priority center/);
+  assert.match(dashboard, /\/api\/task-lifecycle\/company/);
+  assert.match(dashboard, /\/api\/actions\/decisions\?limit=200/);
+  assert.match(dashboard, /\/api\/places\/config/);
+  assert.match(dashboard, /\/api\/admin\/twilio\/status/);
+  assert.match(dashboard, /What needs attention now/);
+  assert.match(twilio, /function HealthPill/);
+  assert.match(twilio, /bg-emerald-50 text-emerald-800/);
+  assert.match(twilio, /bg-amber-50 text-amber-900/);
 });
 
 test("People and Access is tenant scoped and exposes real account controls", () => {

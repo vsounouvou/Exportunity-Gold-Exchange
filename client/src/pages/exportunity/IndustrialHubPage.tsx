@@ -63,7 +63,10 @@ import {
   type IndustrialContextLocation,
 } from "@/components/exportunity/industrialContext";
 import { IndustrialAssistantChat } from "@/components/exportunity/IndustrialAssistantChat";
-import type { IndustrialAssistantContext } from "@/components/exportunity/IndustrialAssistantChat";
+import type {
+  IndustrialAssistantContext,
+  IndustrialAssistantProductContext,
+} from "@/components/exportunity/IndustrialAssistantChat";
 import FactoryWorkspacePage from "@/pages/exportunity/FactoryWorkspacePage";
 
 type ThemeMode = "light" | "dark";
@@ -155,9 +158,7 @@ type CatalogItem = {
   sourceLabel?: { fr?: string; en?: string } | null;
   inventoryVerified?: boolean;
   requestMode?:
-    | "availability_request"
-    | "parts_order_request"
-    | "technical_review";
+    "availability_request" | "parts_order_request" | "technical_review";
   displayPriority?: number;
 };
 
@@ -319,6 +320,7 @@ function catalogRequirementHref(item: CatalogItem, language: "fr" | "en") {
   if (item.factoryId) params.set("factory", item.factoryId);
   if (item.categoryCode) params.set("category", item.categoryCode);
   params.set("catalogItem", item.id);
+  params.set("order", item.id);
   return `/request-quote?${params.toString()}`;
 }
 
@@ -345,7 +347,9 @@ function catalogClassificationLabel(
     raw_material: { fr: "Matiere premiere", en: "Raw material" },
     industrial_service: { fr: "Service technique", en: "Technical service" },
   };
-  return labels[classification]?.[language] || classification.replace(/_/g, " ");
+  return (
+    labels[classification]?.[language] || classification.replace(/_/g, " ")
+  );
 }
 
 function catalogListingLabel(item: CatalogItem, language: "fr" | "en") {
@@ -354,9 +358,7 @@ function catalogListingLabel(item: CatalogItem, language: "fr" | "en") {
       ? "Production documentee"
       : "Documented factory output";
   if (item.listingKind === "exportunity_sourcing_program")
-    return language === "fr"
-      ? "Sourcing Exportunity"
-      : "Exportunity sourcing";
+    return language === "fr" ? "Sourcing Exportunity" : "Exportunity sourcing";
   return language === "fr" ? "Catalogue verifie" : "Verified catalog";
 }
 
@@ -364,10 +366,34 @@ function catalogActionLabel(item: CatalogItem, language: "fr" | "en") {
   if (item.requestMode === "technical_review")
     return language === "fr" ? "Ouvrir l'etude" : "Open technical review";
   if (item.requestMode === "parts_order_request")
-    return language === "fr" ? "Demarrer la commande" : "Start parts order";
-  return language === "fr"
-    ? "Demander disponibilite"
-    : "Request availability";
+    return language === "fr" ? "Commander la piece" : "Order this part";
+  return language === "fr" ? "Commander ce produit" : "Order this product";
+}
+
+function assistantProductContext(
+  item: CatalogItem,
+  language: "fr" | "en",
+): IndustrialAssistantProductContext {
+  return {
+    id: item.id,
+    name: catalogItemName(item, language),
+    description: catalogItemDescription(item, language),
+    imageUrl: item.media?.[0] || null,
+    factoryId: item.factoryId || null,
+    factoryName: item.factoryName || null,
+    factoryLocation: [item.factoryCity, item.factoryCountryCode]
+      .filter(Boolean)
+      .join(", "),
+    categoryCode: item.categoryCode,
+    classification: item.classification,
+    requirementType:
+      REQUIREMENT_TYPE_BY_CLASSIFICATION[item.classification] ||
+      "industrial_service",
+    unitOfMeasure: item.unitOfMeasure || null,
+    minimumOrderQuantity: item.minimumOrderQuantity || null,
+    leadTimeText: item.leadTimeText || null,
+    reference: item.partNumber || item.productCode || null,
+  };
 }
 
 function contextCatalogItems(
@@ -1559,12 +1585,16 @@ function IndustrialSelectionCommerce({
   items,
   loading,
   language,
+  activeItemId,
+  onStartConversation,
 }: {
   selectedFactory: PublicFactory | null;
   selectedContext: IndustrialContextLocation | null;
   items: CatalogItem[];
   loading: boolean;
   language: "fr" | "en";
+  activeItemId?: string | null;
+  onStartConversation?: (item: CatalogItem) => void;
 }) {
   const producers = Array.from(
     new Set(items.map((item) => item.factoryName).filter(Boolean)),
@@ -1653,7 +1683,12 @@ function IndustrialSelectionCommerce({
           {items.slice(0, 9).map((item) => (
             <article
               key={item.id}
-              className="group flex min-w-0 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[0_10px_26px_rgba(15,23,42,0.07)] transition hover:border-[#F5A623]/70 hover:shadow-[0_16px_34px_rgba(15,23,42,0.11)] dark:border-white/10 dark:bg-[#0A1628]"
+              className={cn(
+                "group flex min-w-0 overflow-hidden rounded-xl border bg-white shadow-[0_10px_26px_rgba(15,23,42,0.07)] transition hover:border-[#F5A623]/70 hover:shadow-[0_16px_34px_rgba(15,23,42,0.11)] dark:bg-[#0A1628]",
+                activeItemId === item.id
+                  ? "border-[#F5A623] ring-2 ring-[#F5A623]/20 dark:border-[#F5A623]"
+                  : "border-slate-200 dark:border-white/10",
+              )}
             >
               <div className="h-auto w-24 shrink-0 bg-[#07111F] sm:w-28">
                 {item.media?.[0] ? (
@@ -1680,13 +1715,18 @@ function IndustrialSelectionCommerce({
                   {catalogItemDescription(item, language)}
                 </p>
                 <div className="mt-auto flex items-center gap-2 pt-3">
-                  <Link
-                    href={catalogRequirementHref(item, language)}
+                  <button
+                    type="button"
+                    onClick={() =>
+                      onStartConversation
+                        ? onStartConversation(item)
+                        : undefined
+                    }
                     className="inline-flex min-h-9 flex-1 items-center justify-center gap-1 rounded-lg bg-[#F5A623] px-2.5 py-1.5 text-xs font-semibold text-[#07111F] hover:bg-[#f9a800]"
                   >
                     <ShoppingCart className="h-3.5 w-3.5" />
                     {catalogActionLabel(item, language)}
-                  </Link>
+                  </button>
                   {item.sourceUrl ? (
                     <a
                       href={item.sourceUrl}
@@ -1730,20 +1770,19 @@ function IndustrialSelectionCommerce({
       )}
 
       <div className="mt-5 grid gap-2 border-t border-slate-200 pt-4 text-xs text-slate-600 sm:grid-cols-4 dark:border-white/10 dark:text-slate-300">
-        {(
-          language === "fr"
-            ? [
-                "1. Produit et quantite",
-                "2. Disponibilite et prix",
-                "3. Confirmation de commande",
-                "4. Paiement securise",
-              ]
-            : [
-                "1. Product and quantity",
-                "2. Availability and price",
-                "3. Order confirmation",
-                "4. Secure payment",
-              ]
+        {(language === "fr"
+          ? [
+              "1. Produit et quantite",
+              "2. Disponibilite et prix",
+              "3. Confirmation de commande",
+              "4. Paiement securise",
+            ]
+          : [
+              "1. Product and quantity",
+              "2. Availability and price",
+              "3. Order confirmation",
+              "4. Secure payment",
+            ]
         ).map((step) => (
           <span
             key={step}
@@ -1763,12 +1802,18 @@ function CatalogList({
   emptyTitle,
   emptyDetail,
   loading = false,
+  activeItemId,
+  onStartConversation,
+  compact = false,
 }: {
   items: CatalogItem[];
   language: "fr" | "en";
   emptyTitle: string;
   emptyDetail: string;
   loading?: boolean;
+  activeItemId?: string | null;
+  onStartConversation?: (item: CatalogItem) => void;
+  compact?: boolean;
 }) {
   if (loading)
     return (
@@ -1786,11 +1831,21 @@ function CatalogList({
   if (!items.length)
     return <EmptyState title={emptyTitle} detail={emptyDetail} />;
   return (
-    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+    <div
+      className={cn(
+        "grid gap-4 md:grid-cols-2",
+        compact ? "xl:grid-cols-2" : "xl:grid-cols-3",
+      )}
+    >
       {items.map((item) => (
         <article
           key={item.id}
-          className="group flex min-w-0 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[0_12px_30px_rgba(15,23,42,0.07)] transition hover:-translate-y-0.5 hover:border-[#F5A623]/65 hover:shadow-[0_18px_38px_rgba(15,23,42,0.12)] dark:border-white/10 dark:bg-[#0A1628]"
+          className={cn(
+            "group flex min-w-0 flex-col overflow-hidden rounded-xl border bg-white shadow-[0_12px_30px_rgba(15,23,42,0.07)] transition hover:-translate-y-0.5 hover:border-[#F5A623]/65 hover:shadow-[0_18px_38px_rgba(15,23,42,0.12)] dark:bg-[#0A1628]",
+            activeItemId === item.id
+              ? "border-[#F5A623] ring-2 ring-[#F5A623]/20 dark:border-[#F5A623]"
+              : "border-slate-200 dark:border-white/10",
+          )}
         >
           <div className="relative aspect-[16/9] overflow-hidden bg-[#07111F]">
             {item.media?.[0] ? (
@@ -1851,7 +1906,8 @@ function CatalogList({
               <div className="mt-3 flex flex-wrap gap-1.5 text-xs">
                 {item.partNumber || item.productCode ? (
                   <span className="rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-slate-600 dark:border-white/10 dark:bg-white/5 dark:text-slate-300">
-                    {language === "fr" ? "Ref." : "Ref."} {item.partNumber || item.productCode}
+                    {language === "fr" ? "Ref." : "Ref."}{" "}
+                    {item.partNumber || item.productCode}
                   </span>
                 ) : null}
                 {item.minimumOrderQuantity ? (
@@ -1861,7 +1917,8 @@ function CatalogList({
                 ) : null}
                 {item.leadTimeText ? (
                   <span className="rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-slate-600 dark:border-white/10 dark:bg-white/5 dark:text-slate-300">
-                    {language === "fr" ? "Delai" : "Lead time"}: {item.leadTimeText}
+                    {language === "fr" ? "Delai" : "Lead time"}:{" "}
+                    {item.leadTimeText}
                   </span>
                 ) : null}
                 {item.certifications?.slice(0, 2).map((certification) => (
@@ -1875,13 +1932,24 @@ function CatalogList({
               </div>
             </div>
             <div className="mt-auto flex items-center gap-3 pt-4">
-              <Link
-                href={catalogRequirementHref(item, language)}
-                className="inline-flex min-h-10 flex-1 items-center justify-center gap-1.5 rounded-lg bg-[#F5A623] px-3 py-2 text-sm font-semibold text-[#07111F] transition hover:bg-[#f9a800]"
-              >
-                {catalogActionLabel(item, language)}
-                <ArrowRight className="h-4 w-4" />
-              </Link>
+              {onStartConversation ? (
+                <button
+                  type="button"
+                  onClick={() => onStartConversation(item)}
+                  className="inline-flex min-h-10 flex-1 items-center justify-center gap-1.5 rounded-lg bg-[#F5A623] px-3 py-2 text-sm font-semibold text-[#07111F] transition hover:bg-[#f9a800]"
+                >
+                  {catalogActionLabel(item, language)}
+                  <ArrowRight className="h-4 w-4" />
+                </button>
+              ) : (
+                <Link
+                  href={catalogRequirementHref(item, language)}
+                  className="inline-flex min-h-10 flex-1 items-center justify-center gap-1.5 rounded-lg bg-[#F5A623] px-3 py-2 text-sm font-semibold text-[#07111F] transition hover:bg-[#f9a800]"
+                >
+                  {catalogActionLabel(item, language)}
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              )}
               {item.sourceUrl && item.sourceLabel ? (
                 <a
                   href={item.sourceUrl}
@@ -1907,12 +1975,79 @@ function CatalogList({
   );
 }
 
-function FeaturedCatalogSection({
+function ConversationalCatalog({
   items,
   language,
+  loading,
+  emptyTitle,
+  emptyDetail,
+  requester,
+  selectedProduct,
+  onStartConversation,
+  onCloseConversation,
 }: {
   items: CatalogItem[];
   language: "fr" | "en";
+  loading: boolean;
+  emptyTitle: string;
+  emptyDetail: string;
+  requester?: { displayName?: string | null; email?: string | null } | null;
+  selectedProduct: IndustrialAssistantProductContext | null;
+  onStartConversation: (item: CatalogItem) => void;
+  onCloseConversation: () => void;
+}) {
+  return (
+    <div
+      className={cn(
+        "grid items-start gap-5",
+        selectedProduct && "xl:grid-cols-[minmax(0,1fr)_minmax(320px,360px)]",
+      )}
+    >
+      <div className="order-2 min-w-0 xl:order-1">
+        <CatalogList
+          items={items}
+          language={language}
+          loading={loading}
+          emptyTitle={emptyTitle}
+          emptyDetail={emptyDetail}
+          activeItemId={selectedProduct?.id || null}
+          onStartConversation={onStartConversation}
+          compact={Boolean(selectedProduct)}
+        />
+      </div>
+      {selectedProduct ? (
+        <aside
+          id="industrial-product-conversation"
+          className="order-1 min-w-0 scroll-mt-28 xl:order-2 xl:sticky xl:top-28"
+        >
+          <IndustrialAssistantChat
+            language={language}
+            requester={requester}
+            product={selectedProduct}
+            onCloseProduct={onCloseConversation}
+            className="!mt-0 shadow-[0_22px_54px_rgba(7,17,31,0.22)]"
+          />
+          <p className="mt-3 px-1 text-xs leading-5 text-slate-500 dark:text-slate-400">
+            {language === "fr"
+              ? "Awa rassemble la quantite, la destination et le delai dans la conversation. La demande devient ensuite un dossier reel suivi par l'equipe commerciale."
+              : "Awa gathers quantity, destination, and timing in the conversation. The request then becomes a real case tracked by the commercial team."}
+          </p>
+        </aside>
+      ) : null}
+    </div>
+  );
+}
+
+function FeaturedCatalogSection({
+  items,
+  language,
+  activeItemId,
+  onStartConversation,
+}: {
+  items: CatalogItem[];
+  language: "fr" | "en";
+  activeItemId?: string | null;
+  onStartConversation?: (item: CatalogItem) => void;
 }) {
   if (!items.length) return null;
   return (
@@ -1962,11 +2097,19 @@ function FeaturedCatalogSection({
         {items.map((item) => (
           <article
             key={`featured-${item.id}`}
-            className="group flex w-[76vw] max-w-[310px] shrink-0 snap-start flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-[0_10px_26px_rgba(15,23,42,0.07)] transition hover:border-[#F5A623]/70 dark:border-white/10 dark:bg-[#0A1628] lg:w-auto lg:max-w-none"
+            className={cn(
+              "group flex w-[76vw] max-w-[310px] shrink-0 snap-start flex-col overflow-hidden rounded-lg border bg-white shadow-[0_10px_26px_rgba(15,23,42,0.07)] transition hover:border-[#F5A623]/70 dark:bg-[#0A1628] lg:w-auto lg:max-w-none",
+              activeItemId === item.id
+                ? "border-[#F5A623] ring-2 ring-[#F5A623]/20 dark:border-[#F5A623]"
+                : "border-slate-200 dark:border-white/10",
+            )}
           >
             <div className="relative aspect-[16/9] overflow-hidden bg-[#07111F]">
               <img
-                src={item.media?.[0] || "/tenants/exportunity/industrial/machinery-team.png"}
+                src={
+                  item.media?.[0] ||
+                  "/tenants/exportunity/industrial/machinery-team.png"
+                }
                 alt={catalogItemName(item, language)}
                 loading="lazy"
                 className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.025]"
@@ -1986,13 +2129,14 @@ function FeaturedCatalogSection({
               <p className="mt-1.5 line-clamp-1 text-xs text-slate-500 dark:text-slate-400">
                 {item.factoryName}
               </p>
-              <Link
-                href={catalogRequirementHref(item, language)}
+              <button
+                type="button"
+                onClick={() => onStartConversation?.(item)}
                 className="mt-3 inline-flex min-h-9 items-center justify-between gap-2 rounded-lg bg-[#F5A623]/14 px-3 py-2 text-xs font-semibold text-[#704600] transition hover:bg-[#F5A623] hover:text-[#07111F] dark:text-[#F5A623] dark:hover:text-[#07111F]"
               >
                 {catalogActionLabel(item, language)}
                 <ArrowRight className="h-3.5 w-3.5" />
-              </Link>
+              </button>
             </div>
           </article>
         ))}
@@ -2004,9 +2148,13 @@ function FeaturedCatalogSection({
 function CatalogQuickRail({
   items,
   language,
+  activeItemId,
+  onStartConversation,
 }: {
   items: CatalogItem[];
   language: "fr" | "en";
+  activeItemId?: string | null;
+  onStartConversation?: (item: CatalogItem) => void;
 }) {
   const visibleItems = items.slice(0, 6);
   if (!visibleItems.length) return null;
@@ -2019,7 +2167,9 @@ function CatalogQuickRail({
       <div className="mb-2.5 flex items-center justify-between gap-3">
         <div className="min-w-0">
           <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#946000] dark:text-[#F5A623]">
-            {language === "fr" ? "Acheter pour votre usine" : "Buy for your factory"}
+            {language === "fr"
+              ? "Acheter pour votre usine"
+              : "Buy for your factory"}
           </p>
           <h2
             id="industrial-quick-products"
@@ -2040,13 +2190,22 @@ function CatalogQuickRail({
       </div>
       <div className="scrollbar-hide flex snap-x snap-mandatory gap-2.5 overflow-x-auto pb-1 xl:grid xl:grid-cols-6 xl:overflow-visible xl:pb-0">
         {visibleItems.map((item) => (
-          <Link
+          <button
+            type="button"
             key={`quick-${item.id}`}
-            href={catalogRequirementHref(item, language)}
-            className="group flex w-[230px] shrink-0 snap-start items-center gap-2.5 rounded-lg border border-slate-200 bg-white p-2 shadow-[0_5px_16px_rgba(15,23,42,0.05)] transition hover:border-[#F5A623]/75 hover:shadow-[0_8px_22px_rgba(15,23,42,0.09)] dark:border-white/10 dark:bg-[#0A1628] xl:w-auto"
+            onClick={() => onStartConversation?.(item)}
+            className={cn(
+              "group flex w-[230px] shrink-0 snap-start items-center gap-2.5 rounded-lg border bg-white p-2 text-left shadow-[0_5px_16px_rgba(15,23,42,0.05)] transition hover:border-[#F5A623]/75 hover:shadow-[0_8px_22px_rgba(15,23,42,0.09)] dark:bg-[#0A1628] xl:w-auto",
+              activeItemId === item.id
+                ? "border-[#F5A623] ring-2 ring-[#F5A623]/20 dark:border-[#F5A623]"
+                : "border-slate-200 dark:border-white/10",
+            )}
           >
             <img
-              src={item.media?.[0] || "/tenants/exportunity/industrial/machinery-team.png"}
+              src={
+                item.media?.[0] ||
+                "/tenants/exportunity/industrial/machinery-team.png"
+              }
               alt=""
               aria-hidden="true"
               className="h-12 w-14 shrink-0 rounded-md object-cover"
@@ -2059,7 +2218,7 @@ function CatalogQuickRail({
                 {catalogItemName(item, language)}
               </span>
             </span>
-          </Link>
+          </button>
         ))}
       </div>
     </section>
@@ -5538,11 +5697,11 @@ export default function IndustrialHubPage() {
     view === "home"
       ? null
       : view === "register" ||
-    view === "factoryProfile" ||
-    view === "claim" ||
-    view === "factoryWorkspace"
-      ? "factories"
-      : view;
+          view === "factoryProfile" ||
+          view === "claim" ||
+          view === "factoryWorkspace"
+        ? "factories"
+        : view;
   const isMachineryBrand = view === "machinery";
 
   useEffect(() => {
@@ -5567,7 +5726,8 @@ export default function IndustrialHubPage() {
           account: "Compte",
           login: "Se connecter",
           heroEyebrow: "Exportunity AI | Tassi",
-          heroTitle: "Que devons-nous sourcer, fabriquer ou acheminer pour vous ?",
+          heroTitle:
+            "Que devons-nous sourcer, fabriquer ou acheminer pour vous ?",
           heroText:
             "Discutez avec Tassi ou joignez une photo, une reference ou un plan. Chaque besoin est prepare pour revue interne avant mise en relation.",
           searchPlaceholder:
@@ -5891,6 +6051,36 @@ export default function IndustrialHubPage() {
       (item) => item.categoryCode === selectedCategory.code,
     );
   }, [categorizedItems.machinery, selectedCategory]);
+  const selectedOrderItemId =
+    queryValue(location, "order") ||
+    (view === "quote" ? queryValue(location, "catalogItem") : "");
+  const selectedOrderItem = useMemo(
+    () => catalogItems.find((item) => item.id === selectedOrderItemId) || null,
+    [catalogItems, selectedOrderItemId],
+  );
+  const selectedAssistantProduct = useMemo(
+    () =>
+      selectedOrderItem
+        ? assistantProductContext(selectedOrderItem, locale)
+        : null,
+    [locale, selectedOrderItem],
+  );
+
+  const updateOrderConversation = (item: CatalogItem | null) => {
+    const [pathname, rawQuery = ""] = location.split("?");
+    const params = new URLSearchParams(rawQuery);
+    if (item) params.set("order", item.id);
+    else params.delete("order");
+    const query = params.toString();
+    navigate(`${pathname}${query ? `?${query}` : ""}`);
+    if (item) {
+      window.setTimeout(() => {
+        document
+          .getElementById("industrial-product-conversation")
+          ?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 100);
+    }
+  };
 
   const goSearch = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -6173,12 +6363,44 @@ export default function IndustrialHubPage() {
     },
   };
 
-  const queryType = queryValue(location, "type");
-  const queryUrgency = queryValue(location, "urgency");
-  const queryFinancing = queryValue(location, "financing");
-  const quoteFactoryId = queryValue(location, "factory");
   const quoteProduct = queryValue(location, "product");
-  const quoteCatalogItemId = queryValue(location, "catalogItem");
+  const quoteAssistantContext: IndustrialAssistantContext = {
+    id: "commercial-quote-intake",
+    title:
+      locale === "fr"
+        ? "Commande et devis industriel"
+        : "Industrial order and quotation",
+    role:
+      locale === "fr"
+        ? "Directrice commerciale | Relation client"
+        : "Commercial Director | Client relationships",
+    intro:
+      locale === "fr"
+        ? `Bonjour, je suis Awa Kouadio, directrice commerciale chez Exportunity.${
+            quoteProduct ? ` Vous souhaitez avancer sur ${quoteProduct}.` : ""
+          } Je vais qualifier votre besoin, lever les points bloquants et convenir avec vous de la prochaine etape. Que souhaitez-vous acheter ou faire fabriquer ?`
+        : `Hello, I am Awa Kouadio, Exportunity's Commercial Director.${
+            quoteProduct
+              ? ` You would like to move forward with ${quoteProduct}.`
+              : ""
+          } I will qualify your requirement, resolve blockers, and agree the next step with you. What do you need to buy or manufacture?`,
+    quickReplies:
+      locale === "fr"
+        ? [
+            "Commander une piece detachee",
+            "Obtenir un devis machine",
+            "Faire fabriquer une piece",
+            "Sourcer un intrant industriel",
+            "Commander un produit d'usine",
+          ]
+        : [
+            "Order a spare part",
+            "Get a machinery quote",
+            "Manufacture a custom part",
+            "Source an industrial input",
+            "Order a factory product",
+          ],
+  };
   const claimFactoryId = factoryClaimId(location);
   const publicFactoryId = factoryProfileId(location);
   const isDark = theme === "dark";
@@ -6194,16 +6416,12 @@ export default function IndustrialHubPage() {
     {
       icon: ShieldCheck,
       label:
-        locale === "fr"
-          ? "Dossier technique privé"
-          : "Private technical case",
+        locale === "fr" ? "Dossier technique privé" : "Private technical case",
     },
     {
       icon: Handshake,
       label:
-        locale === "fr"
-          ? "Contact après validation"
-          : "Contact after approval",
+        locale === "fr" ? "Contact après validation" : "Contact after approval",
     },
   ];
 
@@ -6320,8 +6538,13 @@ export default function IndustrialHubPage() {
               <CatalogQuickRail
                 items={featuredCatalogItems}
                 language={locale}
+                activeItemId={selectedOrderItemId || null}
+                onStartConversation={updateOrderConversation}
               />
-              <section data-testid="industrial-home-primary" className="grid items-stretch gap-5 xl:grid-cols-[minmax(0,1.08fr)_minmax(440px,0.92fr)] xl:gap-6">
+              <section
+                data-testid="industrial-home-primary"
+                className="grid items-stretch gap-5 xl:grid-cols-[minmax(0,1.08fr)_minmax(440px,0.92fr)] xl:gap-6"
+              >
                 <div className="relative min-h-[500px] overflow-hidden rounded-2xl border border-[#F5A623]/35 bg-[#07111F] px-5 py-5 shadow-[0_28px_64px_rgba(7,17,31,0.2)] sm:min-h-[520px] sm:px-8 sm:py-6">
                   <img
                     src="/tenants/exportunity/industrial/machinery-team.png"
@@ -6332,24 +6555,46 @@ export default function IndustrialHubPage() {
                   <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(7,17,31,0.98)_0%,rgba(7,17,31,0.88)_50%,rgba(7,17,31,0.3)_100%)]" />
                   <div className="relative z-10 flex h-full max-w-3xl flex-col">
                     <p className="text-sm font-semibold text-[#F5A623]">
-                      {copy.heroEyebrow}
+                      {selectedAssistantProduct
+                        ? locale === "fr"
+                          ? "Exportunity | Awa Kouadio"
+                          : "Exportunity | Awa Kouadio"
+                        : copy.heroEyebrow}
                     </p>
                     <h1 className="mt-3 max-w-2xl text-[26px] font-semibold leading-tight text-white sm:text-3xl">
-                      {copy.heroTitle}
+                      {selectedAssistantProduct
+                        ? locale === "fr"
+                          ? `Commander ${selectedAssistantProduct.name}`
+                          : `Order ${selectedAssistantProduct.name}`
+                        : copy.heroTitle}
                     </h1>
                     <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-200 sm:text-base sm:leading-6">
-                      {copy.heroText}
+                      {selectedAssistantProduct
+                        ? locale === "fr"
+                          ? "Awa qualifie la quantite, la destination, le delai et vos criteres d'achat, puis cree un dossier commercial reel pour confirmation du prix et de la disponibilite."
+                          : "Awa qualifies quantity, destination, timing, and buying criteria, then creates a real commercial case for price and availability confirmation."
+                        : copy.heroText}
                     </p>
-                    <IndustrialAssistantChat
-                      language={locale}
-                      requester={user}
-                      context={selectionAssistantContext}
-                    />
+                    <div
+                      id="industrial-product-conversation"
+                      className="scroll-mt-28"
+                    >
+                      <IndustrialAssistantChat
+                        language={locale}
+                        requester={user}
+                        context={selectionAssistantContext}
+                        product={selectedAssistantProduct}
+                        onCloseProduct={() => updateOrderConversation(null)}
+                      />
+                    </div>
                     <div className="mt-4 grid grid-cols-3 gap-2 border-t border-white/15 pt-4">
                       {heroTrustSignals.map((signal) => {
                         const Icon = signal.icon;
                         return (
-                          <div key={signal.label} className="min-w-0 text-center sm:flex sm:items-center sm:gap-2 sm:text-left">
+                          <div
+                            key={signal.label}
+                            className="min-w-0 text-center sm:flex sm:items-center sm:gap-2 sm:text-left"
+                          >
                             <Icon className="mx-auto h-4 w-4 shrink-0 text-[#F5A623] sm:mx-0" />
                             <span className="mt-1 block text-[10px] font-medium leading-4 text-slate-200 sm:mt-0 sm:text-xs">
                               {signal.label}
@@ -6388,13 +6633,16 @@ export default function IndustrialHubPage() {
                     </div>
                     <div className="flex snap-x gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mt-3 sm:grid sm:grid-cols-2 sm:gap-2 sm:overflow-visible">
                       {BENIN_INDUSTRIAL_CONTEXT_LOCATIONS.map((context) => {
-                        const active = selectedIndustrialContext?.id === context.id;
+                        const active =
+                          selectedIndustrialContext?.id === context.id;
                         return (
                           <button
                             key={context.id}
                             type="button"
                             aria-pressed={active}
-                            onClick={() => selectIndustrialContextForCommerce(context)}
+                            onClick={() =>
+                              selectIndustrialContextForCommerce(context)
+                            }
                             className={cn(
                               "w-[88px] shrink-0 snap-start rounded-lg border px-2 py-1.5 text-left transition sm:w-auto sm:p-2",
                               active
@@ -6412,7 +6660,10 @@ export default function IndustrialHubPage() {
                               </span>
                             </span>
                             <span className="mt-1 hidden truncate text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-500 sm:block dark:text-slate-400">
-                              {industrialContextLayerLabel(context.kind, locale)}
+                              {industrialContextLayerLabel(
+                                context.kind,
+                                locale,
+                              )}
                             </span>
                           </button>
                         );
@@ -6499,7 +6750,9 @@ export default function IndustrialHubPage() {
                               : `Public source for ${industrialContextText(selectedIndustrialContext.name, locale)}`
                           }
                           title={
-                            locale === "fr" ? "Source publique" : "Public source"
+                            locale === "fr"
+                              ? "Source publique"
+                              : "Public source"
                           }
                           className="grid h-10 w-10 shrink-0 place-items-center rounded-lg border border-slate-300 bg-white text-[#865400] transition hover:border-[#F5A623] hover:bg-[#F5A623]/10 dark:border-white/15 dark:bg-white/5 dark:text-[#F5A623]"
                         >
@@ -6518,12 +6771,16 @@ export default function IndustrialHubPage() {
                     items={selectionCatalogItems}
                     loading={catalogLoading}
                     language={locale}
+                    activeItemId={selectedOrderItemId || null}
+                    onStartConversation={updateOrderConversation}
                   />
                 </div>
               ) : null}
               <FeaturedCatalogSection
                 items={featuredCatalogItems}
                 language={locale}
+                activeItemId={selectedOrderItemId || null}
+                onStartConversation={updateOrderConversation}
               />
               <section className="mt-9 border-y border-slate-200 py-6 dark:border-white/10">
                 <p className="text-sm font-semibold text-slate-950 dark:text-white">
@@ -6637,11 +6894,16 @@ export default function IndustrialHubPage() {
                         className="h-[58dvh] min-h-[440px] xl:h-[calc(100dvh-7.5rem)] xl:min-h-[620px]"
                       />
                     </div>
-                    <aside className="min-w-0 xl:max-h-[calc(100dvh-7.5rem)] xl:overflow-y-auto xl:pr-1">
+                    <aside
+                      id="industrial-product-conversation"
+                      className="min-w-0 scroll-mt-28 xl:max-h-[calc(100dvh-7.5rem)] xl:overflow-y-auto xl:pr-1"
+                    >
                       <IndustrialAssistantChat
                         language={locale}
                         requester={user}
                         context={selectionAssistantContext}
+                        product={selectedAssistantProduct}
+                        onCloseProduct={() => updateOrderConversation(null)}
                         className="!mt-0 shadow-[0_22px_54px_rgba(7,17,31,0.22)]"
                       />
                       <IndustrialSelectionCommerce
@@ -6650,6 +6912,8 @@ export default function IndustrialHubPage() {
                         items={selectionCatalogItems}
                         loading={catalogLoading}
                         language={locale}
+                        activeItemId={selectedOrderItemId || null}
+                        onStartConversation={updateOrderConversation}
                       />
                     </aside>
                   </div>
@@ -6687,14 +6951,21 @@ export default function IndustrialHubPage() {
                           items={selectionCatalogItems}
                           loading={catalogLoading}
                           language={locale}
+                          activeItemId={selectedOrderItemId || null}
+                          onStartConversation={updateOrderConversation}
                         />
                       </div>
                     </div>
-                    <aside className="order-1 min-w-0 xl:order-2 xl:sticky xl:top-28">
+                    <aside
+                      id="industrial-product-conversation"
+                      className="order-1 min-w-0 scroll-mt-28 xl:order-2 xl:sticky xl:top-28"
+                    >
                       <IndustrialAssistantChat
                         language={locale}
                         requester={user}
                         context={selectionAssistantContext}
+                        product={selectedAssistantProduct}
+                        onCloseProduct={() => updateOrderConversation(null)}
                         className="!mt-0 shadow-[0_22px_54px_rgba(7,17,31,0.22)]"
                       />
                       <p className="mt-3 px-1 text-xs leading-5 text-slate-500 dark:text-slate-400">
@@ -6778,12 +7049,18 @@ export default function IndustrialHubPage() {
                       />
                     </div>
                   ) : null}
-                  <CatalogList
+                  <ConversationalCatalog
                     items={visibleExportItems}
                     language={locale}
                     loading={catalogLoading}
                     emptyTitle={copy.noCatalog}
                     emptyDetail={copy.noCatalogDetail}
+                    requester={user}
+                    selectedProduct={selectedAssistantProduct}
+                    onStartConversation={(item) =>
+                      updateOrderConversation(item)
+                    }
+                    onCloseConversation={() => updateOrderConversation(null)}
                   />
                 </section>
               ) : null}
@@ -6829,12 +7106,18 @@ export default function IndustrialHubPage() {
                     ))}
                   </div>
                   <div className="mt-10">
-                    <CatalogList
+                    <ConversationalCatalog
                       items={visibleSupplyItems}
                       language={locale}
                       loading={catalogLoading}
                       emptyTitle={copy.noCatalog}
                       emptyDetail={copy.noCatalogDetail}
+                      requester={user}
+                      selectedProduct={selectedAssistantProduct}
+                      onStartConversation={(item) =>
+                        updateOrderConversation(item)
+                      }
+                      onCloseConversation={() => updateOrderConversation(null)}
                     />
                   </div>
                 </section>
@@ -7031,12 +7314,18 @@ export default function IndustrialHubPage() {
                       );
                     })}
                   </div>
-                  <CatalogList
+                  <ConversationalCatalog
                     items={visibleMachineryItems}
                     language={locale}
                     loading={catalogLoading}
                     emptyTitle={copy.noCatalog}
                     emptyDetail={copy.noCatalogDetail}
+                    requester={user}
+                    selectedProduct={selectedAssistantProduct}
+                    onStartConversation={(item) =>
+                      updateOrderConversation(item)
+                    }
+                    onCloseConversation={() => updateOrderConversation(null)}
                   />
                 </section>
               ) : null}
@@ -7054,22 +7343,62 @@ export default function IndustrialHubPage() {
                 </section>
               ) : null}
               {view === "quote" ? (
-                <section className="mt-7 max-w-4xl">
-                  <QuoteForm
-                    taxonomy={taxonomy}
-                    language={locale}
-                    initialType={queryType}
-                    initialCategoryCode={queryCategory}
-                    initialUrgency={queryUrgency}
-                    initialFactoryId={quoteFactoryId}
-                    initialTitle={quoteProduct}
-                    initialCatalogItemId={quoteCatalogItemId}
-                    initialFinancingInterest={
-                      queryFinancing === "discussion" ||
-                      queryFinancing === "true" ||
-                      queryFinancing === "1"
-                    }
-                  />
+                <section className="mt-7 max-w-5xl">
+                  <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_280px]">
+                    <IndustrialAssistantChat
+                      mode="commercial"
+                      language={locale}
+                      requester={user}
+                      context={quoteAssistantContext}
+                      product={selectedAssistantProduct}
+                      onCloseProduct={
+                        selectedAssistantProduct
+                          ? () => navigate("/request-quote")
+                          : undefined
+                      }
+                      className="!mt-0"
+                    />
+                    <aside className="rounded-xl border border-slate-200 bg-white p-4 shadow-[0_12px_30px_rgba(15,23,42,0.07)] dark:border-white/10 dark:bg-[#0A1628]">
+                      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#946000] dark:text-[#F5A623]">
+                        {locale === "fr"
+                          ? "Awa vous accompagne"
+                          : "Awa guides the deal"}
+                      </p>
+                      <h2 className="mt-2 text-base font-semibold text-slate-950 dark:text-white">
+                        {locale === "fr"
+                          ? "Une question a la fois"
+                          : "One question at a time"}
+                      </h2>
+                      <ol className="mt-4 space-y-3 text-sm leading-5 text-slate-600 dark:text-slate-300">
+                        {(locale === "fr"
+                          ? [
+                              "Produit, reference ou photo",
+                              "Quantite et destination",
+                              "Delai et priorite d'achat",
+                              "Recapitulatif et confirmation",
+                            ]
+                          : [
+                              "Product, reference, or photo",
+                              "Quantity and destination",
+                              "Timing and buying priority",
+                              "Summary and confirmation",
+                            ]
+                        ).map((step, index) => (
+                          <li key={step} className="flex gap-2.5">
+                            <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-[#F5A623]/15 text-xs font-bold text-[#704600] dark:text-[#F5A623]">
+                              {index + 1}
+                            </span>
+                            <span>{step}</span>
+                          </li>
+                        ))}
+                      </ol>
+                      <p className="mt-4 border-t border-slate-200 pt-4 text-xs leading-5 text-slate-500 dark:border-white/10 dark:text-slate-400">
+                        {locale === "fr"
+                          ? "Awa ne promet ni stock, ni prix, ni delai non verifies. Votre confirmation cree un vrai dossier commercial suivi dans le Centre des operations."
+                          : "Awa does not promise unverified stock, pricing, or lead times. Your confirmation creates a real commercial case tracked in the Operations Center."}
+                      </p>
+                    </aside>
+                  </div>
                 </section>
               ) : null}
               {view === "register" ? (

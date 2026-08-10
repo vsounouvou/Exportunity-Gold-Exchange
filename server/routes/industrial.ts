@@ -191,7 +191,10 @@ const PUBLIC_SUBMISSION_LIMIT = 8;
 const PUBLIC_SUBMISSION_WINDOW_MS = 60 * 60 * 1000;
 const submissionWindows = new Map<string, { count: number; resetAt: number }>();
 const PUBLIC_INTAKE_PREVIEW_LIMIT = 24;
-const intakePreviewWindows = new Map<string, { count: number; resetAt: number }>();
+const intakePreviewWindows = new Map<
+  string,
+  { count: number; resetAt: number }
+>();
 const PUBLIC_ATTACHMENT_UPLOAD_LIMIT = 24;
 const publicAttachmentUploadWindows = new Map<
   string,
@@ -691,6 +694,10 @@ const legacyProductReviewSchema = z
 const industrialAssistantIntakeSchema = z.object({
   message: z.string().trim().min(10).max(6000),
   language: z.enum(["fr", "en"]).optional().default("fr"),
+  agentMode: z
+    .enum(["concierge", "commercial"])
+    .optional()
+    .default("concierge"),
 });
 
 const requirementMatchSchema = z.object({
@@ -730,7 +737,14 @@ const industrialSupplierProfileSchema = z.object({
     .optional()
     .nullable()
     .or(z.literal("")),
-  email: z.string().trim().email().max(240).optional().nullable().or(z.literal("")),
+  email: z
+    .string()
+    .trim()
+    .email()
+    .max(240)
+    .optional()
+    .nullable()
+    .or(z.literal("")),
   phone: z.string().trim().max(80).optional().nullable(),
   industriesServed: z
     .array(z.string().trim().min(2).max(180))
@@ -928,12 +942,7 @@ const industrialContactReadinessSchema = z.object({
   draftMessage: z.string().trim().min(40).max(6000),
   suppressionChecked: z.literal(true),
   quietHoursChecked: z.literal(true),
-  whatsappOptInEvidence: z
-    .string()
-    .trim()
-    .max(2000)
-    .optional()
-    .nullable(),
+  whatsappOptInEvidence: z.string().trim().max(2000).optional().nullable(),
 });
 
 const industrialFactoryLeadReviewSchema = z
@@ -1580,7 +1589,8 @@ function requirementLifecycleFor(
   const commercialPhase =
     workflow.commercialPhase === "negotiation" ? "negotiation" : null;
   const closureOutcome =
-    workflow.closureOutcome === "completed" || workflow.closureOutcome === "lost"
+    workflow.closureOutcome === "completed" ||
+    workflow.closureOutcome === "lost"
       ? workflow.closureOutcome
       : null;
 
@@ -1611,7 +1621,10 @@ async function loadRequirementLifecycles(
   requirementIds: string[],
 ) {
   const uniqueIds = Array.from(new Set(requirementIds.filter(Boolean)));
-  const lifecycleByRequirementId = new Map<string, ReturnType<typeof requirementLifecycleFor>>();
+  const lifecycleByRequirementId = new Map<
+    string,
+    ReturnType<typeof requirementLifecycleFor>
+  >();
   if (!uniqueIds.length) return lifecycleByRequirementId;
 
   const [requirements, quotes, orders] = await Promise.all([
@@ -1785,11 +1798,7 @@ function factoryRequirementSummary(row: any) {
   };
 }
 
-function factoryQuoteSummary(
-  quote: any,
-  requirement?: any,
-  catalogItem?: any,
-) {
+function factoryQuoteSummary(quote: any, requirement?: any, catalogItem?: any) {
   return {
     id: quote.id,
     referenceCode: quote.referenceCode,
@@ -2142,7 +2151,8 @@ function legacyProductSnapshot(row: LegacyProductReviewRow) {
     hasImages: Array.isArray(row.product.images)
       ? row.product.images.some((item: unknown) => String(item || "").trim())
       : Boolean(String(row.product.images || "").trim()),
-    description: row.product.description || row.product.shortDescription || null,
+    description:
+      row.product.description || row.product.shortDescription || null,
   };
 }
 
@@ -2199,7 +2209,8 @@ function staffLegacyProductReviewSummary(
     sellerIsProducer: Boolean(row.seller?.isProducer),
     sourceStatus: row.product.status,
     name: row.product.name,
-    description: row.product.description || row.product.shortDescription || null,
+    description:
+      row.product.description || row.product.shortDescription || null,
     sku: row.product.sku || null,
     categoryId: row.product.categoryId,
     categorySlug: row.category?.slug || null,
@@ -2407,11 +2418,12 @@ router.post("/assistant/intake-preview", async (req: any, res) => {
     parsed.data.message,
     parsed.data.language,
     submissionKey(req, tenant.id),
+    parsed.data.agentMode,
   );
   return res.json({
     ok: true,
     assistant: {
-      name: "Tassi",
+      name: parsed.data.agentMode === "commercial" ? "Awa Kouadio" : "Tassi",
       response: intake.response,
       intake: {
         requirementType: intake.requirementType,
@@ -2985,7 +2997,10 @@ router.get(
             industrialRequirements,
             and(
               eq(industrialChallenges.requirementId, industrialRequirements.id),
-              eq(industrialChallenges.tenantId, industrialRequirements.tenantId),
+              eq(
+                industrialChallenges.tenantId,
+                industrialRequirements.tenantId,
+              ),
             ),
           )
           .where(
@@ -3135,7 +3150,8 @@ router.get(
         factoryChallengeSummary(
           row.challenge,
           row.requirement,
-          challengeAttachmentsByRequirement.get(row.challenge.requirementId) || [],
+          challengeAttachmentsByRequirement.get(row.challenge.requirementId) ||
+            [],
         ),
       );
       const documentSummaries = documents.map(factoryDocumentSummary);
@@ -3143,7 +3159,9 @@ router.get(
         verificationStatus: factory.verificationStatus,
         exportMarkets: factory.exportMarkets,
         publicCertifications: factory.publicCertifications,
-        documentTypes: documentSummaries.map((document) => document.documentType),
+        documentTypes: documentSummaries.map(
+          (document) => document.documentType,
+        ),
       });
       const dashboard = buildIndustrialFactoryDashboard({
         requirements,
@@ -3284,7 +3302,10 @@ router.post(
             isNull(industrialFactoryDocuments.archivedAt),
           ),
         );
-      if (Number(existingCount?.total || 0) >= INDUSTRIAL_FACTORY_DOCUMENT_MAX_FILES) {
+      if (
+        Number(existingCount?.total || 0) >=
+        INDUSTRIAL_FACTORY_DOCUMENT_MAX_FILES
+      ) {
         return res.status(409).json({
           ok: false,
           message: `This factory already has the maximum of ${INDUSTRIAL_FACTORY_DOCUMENT_MAX_FILES} active documents. Archive an obsolete document before adding another.`,
@@ -3309,7 +3330,10 @@ router.post(
                 isNull(industrialFactoryDocuments.archivedAt),
               ),
             );
-          if (Number(countRow?.total || 0) >= INDUSTRIAL_FACTORY_DOCUMENT_MAX_FILES) {
+          if (
+            Number(countRow?.total || 0) >=
+            INDUSTRIAL_FACTORY_DOCUMENT_MAX_FILES
+          ) {
             throw new Error("industrial_factory_document_limit_reached");
           }
           const [created] = await tx
@@ -3408,7 +3432,10 @@ router.get(
           industrialFactories,
           and(
             eq(industrialFactoryDocuments.factoryId, industrialFactories.id),
-            eq(industrialFactoryDocuments.tenantId, industrialFactories.tenantId),
+            eq(
+              industrialFactoryDocuments.tenantId,
+              industrialFactories.tenantId,
+            ),
           ),
         )
         .where(
@@ -3434,11 +3461,12 @@ router.get(
         entityId: row.document.id,
         metadata: { factoryId: row.factory.id },
       });
-      const file = await resolveIndustrialFactoryDocument(row.document.storageKey);
-      const safeFileName = String(row.document.fileName || "factory-document").replace(
-        /[\\\"\r\n]/g,
-        "_",
+      const file = await resolveIndustrialFactoryDocument(
+        row.document.storageKey,
       );
+      const safeFileName = String(
+        row.document.fileName || "factory-document",
+      ).replace(/[\\\"\r\n]/g, "_");
       res.setHeader("Cache-Control", "no-store");
       res.setHeader(
         "Content-Type",
@@ -3495,7 +3523,10 @@ router.delete(
           industrialFactories,
           and(
             eq(industrialFactoryDocuments.factoryId, industrialFactories.id),
-            eq(industrialFactoryDocuments.tenantId, industrialFactories.tenantId),
+            eq(
+              industrialFactoryDocuments.tenantId,
+              industrialFactories.tenantId,
+            ),
           ),
         )
         .where(
@@ -4534,7 +4565,10 @@ router.get(
             industrialRequirements,
             and(
               eq(industrialChallenges.requirementId, industrialRequirements.id),
-              eq(industrialChallenges.tenantId, industrialRequirements.tenantId),
+              eq(
+                industrialChallenges.tenantId,
+                industrialRequirements.tenantId,
+              ),
             ),
           )
           .where(
@@ -4809,7 +4843,10 @@ router.post(
 
       return res.status(201).json({
         ok: true,
-        challenge: factoryChallengeSummary(created.challenge, created.requirement),
+        challenge: factoryChallengeSummary(
+          created.challenge,
+          created.requirement,
+        ),
         message:
           "Industrial challenge submitted for controlled review. No supplier message, order, manufacturing job, or payment was created.",
       });
@@ -5101,7 +5138,8 @@ router.get(
       if (!row) {
         return res.status(404).json({
           ok: false,
-          message: "Technical evidence was not found for this factory challenge.",
+          message:
+            "Technical evidence was not found for this factory challenge.",
         });
       }
 
@@ -5309,7 +5347,7 @@ router.post(
         return res.status(400).json({
           ok: false,
           message:
-          "Add a named industrial contact and email to the factory profile before recording a part.",
+            "Add a named industrial contact and email to the factory profile before recording a part.",
         });
       }
       const requesterName = contact.contactName;
@@ -5540,7 +5578,8 @@ router.post(
     if (!documentFields.success) {
       return res.status(400).json({
         ok: false,
-        message: "Provide the evidence type and title for this technical document.",
+        message:
+          "Provide the evidence type and title for this technical document.",
         issues: documentFields.error.flatten(),
       });
     }
@@ -5581,7 +5620,8 @@ router.post(
       if (row.partRecord.status === "archived") {
         return res.status(409).json({
           ok: false,
-          message: "Archived technical part records cannot receive new evidence.",
+          message:
+            "Archived technical part records cannot receive new evidence.",
         });
       }
 
@@ -5761,7 +5801,8 @@ router.get(
       if (!row) {
         return res.status(404).json({
           ok: false,
-          message: "Technical evidence was not found for this factory part record.",
+          message:
+            "Technical evidence was not found for this factory part record.",
         });
       }
 
@@ -7257,7 +7298,9 @@ router.post(
     const tenant = resolveExportunityTenant(req, res);
     if (!tenant) return;
 
-    const parsed = beninIndustrialProspectImportSchema.safeParse(req.body || {});
+    const parsed = beninIndustrialProspectImportSchema.safeParse(
+      req.body || {},
+    );
     if (!parsed.success) {
       return res.status(400).json({
         ok: false,
@@ -7280,7 +7323,9 @@ router.post(
 
     const requested = new Set(parsed.data.selectedProspectIds);
     const recognized = new Set(selected.map((item) => item.id));
-    const unknownIds = Array.from(requested).filter((id) => !recognized.has(id));
+    const unknownIds = Array.from(requested).filter(
+      (id) => !recognized.has(id),
+    );
 
     try {
       const imported = await importIndustrialFactoryLeads({
@@ -7698,7 +7743,9 @@ router.get("/admin/suppliers", ensureTenantStaff, async (req: any, res) => {
           countryCode
             ? eq(industrialSupplierProfiles.countryCode, countryCode)
             : undefined,
-          city ? ilike(industrialSupplierProfiles.city, `%${city}%`) : undefined,
+          city
+            ? ilike(industrialSupplierProfiles.city, `%${city}%`)
+            : undefined,
           query
             ? or(
                 ilike(industrialSupplierProfiles.legalName, like),
@@ -7824,131 +7871,130 @@ router.get(
   },
 );
 
-router.post(
-  "/admin/suppliers",
-  ensureTenantAdmin,
-  async (req: any, res) => {
-    const tenant = resolveExportunityTenant(req, res);
-    if (!tenant) return;
+router.post("/admin/suppliers", ensureTenantAdmin, async (req: any, res) => {
+  const tenant = resolveExportunityTenant(req, res);
+  if (!tenant) return;
 
-    const parsed = industrialSupplierProfileSchema.safeParse(req.body || {});
-    if (!parsed.success) {
+  const parsed = industrialSupplierProfileSchema.safeParse(req.body || {});
+  if (!parsed.success) {
+    return res.status(400).json({
+      ok: false,
+      message:
+        "Complete the supplier identity, location, and capability details.",
+      issues: parsed.error.flatten(),
+    });
+  }
+
+  try {
+    const linkedFactory = parsed.data.linkedFactoryId
+      ? await db.query.industrialFactories.findFirst({
+          where: and(
+            eq(industrialFactories.id, parsed.data.linkedFactoryId),
+            eq(industrialFactories.tenantId, tenant.id),
+          ),
+        })
+      : null;
+    if (parsed.data.linkedFactoryId && !linkedFactory) {
       return res.status(400).json({
         ok: false,
-        message: "Complete the supplier identity, location, and capability details.",
-        issues: parsed.error.flatten(),
+        message: "The linked factory is not available in this tenant.",
       });
     }
 
-    try {
-      const linkedFactory = parsed.data.linkedFactoryId
-        ? await db.query.industrialFactories.findFirst({
-            where: and(
-              eq(industrialFactories.id, parsed.data.linkedFactoryId),
-              eq(industrialFactories.tenantId, tenant.id),
-            ),
-          })
-        : null;
-      if (parsed.data.linkedFactoryId && !linkedFactory) {
-        return res.status(400).json({
-          ok: false,
-          message: "The linked factory is not available in this tenant.",
-        });
-      }
-
-      const normalized = normalizeIndustrialSupplierProfileInput(parsed.data);
-      const actorUserId = actorIdFor(req, "adminUser");
-      const [supplier] = await db
-        .insert(industrialSupplierProfiles)
-        .values({
-          tenantId: tenant.id,
-          linkedFactoryId: parsed.data.linkedFactoryId || null,
-          legalName: parsed.data.legalName,
-          displayName: parsed.data.displayName || parsed.data.legalName,
-          normalizedName: normalizeIndustrialText(parsed.data.legalName),
-          supplierStatus: "draft",
-          verificationStatus: "unverified",
-          visibility: "exportunity_internal",
-          countryCode: normalized.countryCode,
-          region: optionalText(parsed.data.region),
-          city: optionalText(parsed.data.city),
-          industrialZone: optionalText(parsed.data.industrialZone),
-          address: optionalText(parsed.data.address),
-          website: optionalText(parsed.data.website),
-          email: optionalText(parsed.data.email),
-          phone: optionalText(parsed.data.phone),
-          industriesServed: normalized.industriesServed,
-          categoryCodes: normalized.categoryCodes,
-          capabilities: normalized.capabilities,
-          equipmentAvailable: normalized.equipmentAvailable,
-          materialsHandled: normalized.materialsHandled,
-          maximumDimensions: optionalText(parsed.data.maximumDimensions),
-          tolerances: optionalText(parsed.data.tolerances),
-          productionCapacityText: optionalText(parsed.data.productionCapacityText),
-          certifications: normalized.certifications,
-          qualityControlCapability: optionalText(
-            parsed.data.qualityControlCapability,
-          ),
-          leadTimeText: optionalText(parsed.data.leadTimeText),
-          previousPerformanceNotes: optionalText(
-            parsed.data.previousPerformanceNotes,
-          ),
-          onTimeDeliveryRate:
-            parsed.data.onTimeDeliveryRate === undefined ||
-            parsed.data.onTimeDeliveryRate === null
-              ? null
-              : String(parsed.data.onTimeDeliveryRate),
-          technicalDocumentReferences: normalized.technicalDocumentReferences,
-          mediaReferences: normalized.mediaReferences,
-          ndaStatus: parsed.data.ndaStatus,
-          adminNotes: optionalText(parsed.data.adminNotes),
-        })
-        .returning();
-
-      await db.insert(industrialAuditLogs).values({
+    const normalized = normalizeIndustrialSupplierProfileInput(parsed.data);
+    const actorUserId = actorIdFor(req, "adminUser");
+    const [supplier] = await db
+      .insert(industrialSupplierProfiles)
+      .values({
         tenantId: tenant.id,
-        actorUserId,
-        action: "industrial_supplier_profile.created",
-        entityType: "industrial_supplier_profile",
-        entityId: supplier.id,
-        nextValue: {
-          supplierStatus: supplier.supplierStatus,
-          verificationStatus: supplier.verificationStatus,
-          visibility: supplier.visibility,
-          linkedFactoryId: supplier.linkedFactoryId,
-        },
-        metadata: {
-          categoryCodes: supplierStringList(supplier.categoryCodes),
-          capabilities: supplierStringList(supplier.capabilities),
-          internalOnly: true,
-        },
-      });
+        linkedFactoryId: parsed.data.linkedFactoryId || null,
+        legalName: parsed.data.legalName,
+        displayName: parsed.data.displayName || parsed.data.legalName,
+        normalizedName: normalizeIndustrialText(parsed.data.legalName),
+        supplierStatus: "draft",
+        verificationStatus: "unverified",
+        visibility: "exportunity_internal",
+        countryCode: normalized.countryCode,
+        region: optionalText(parsed.data.region),
+        city: optionalText(parsed.data.city),
+        industrialZone: optionalText(parsed.data.industrialZone),
+        address: optionalText(parsed.data.address),
+        website: optionalText(parsed.data.website),
+        email: optionalText(parsed.data.email),
+        phone: optionalText(parsed.data.phone),
+        industriesServed: normalized.industriesServed,
+        categoryCodes: normalized.categoryCodes,
+        capabilities: normalized.capabilities,
+        equipmentAvailable: normalized.equipmentAvailable,
+        materialsHandled: normalized.materialsHandled,
+        maximumDimensions: optionalText(parsed.data.maximumDimensions),
+        tolerances: optionalText(parsed.data.tolerances),
+        productionCapacityText: optionalText(
+          parsed.data.productionCapacityText,
+        ),
+        certifications: normalized.certifications,
+        qualityControlCapability: optionalText(
+          parsed.data.qualityControlCapability,
+        ),
+        leadTimeText: optionalText(parsed.data.leadTimeText),
+        previousPerformanceNotes: optionalText(
+          parsed.data.previousPerformanceNotes,
+        ),
+        onTimeDeliveryRate:
+          parsed.data.onTimeDeliveryRate === undefined ||
+          parsed.data.onTimeDeliveryRate === null
+            ? null
+            : String(parsed.data.onTimeDeliveryRate),
+        technicalDocumentReferences: normalized.technicalDocumentReferences,
+        mediaReferences: normalized.mediaReferences,
+        ndaStatus: parsed.data.ndaStatus,
+        adminNotes: optionalText(parsed.data.adminNotes),
+      })
+      .returning();
 
-      return res.status(201).json({
-        ok: true,
-        supplier: staffSupplierSummary(supplier, linkedFactory),
-        message:
-          "The supplier capability profile was saved as an internal draft for review.",
-      });
-    } catch (error: any) {
-      if (
-        String(error?.message || "").includes(
-          "industrial_supplier_profiles_tenant_name_unique",
-        )
-      ) {
-        return res.status(409).json({
-          ok: false,
-          message:
-            "An internal supplier profile with this legal name already exists.",
-        });
-      }
-      return res.status(500).json({
+    await db.insert(industrialAuditLogs).values({
+      tenantId: tenant.id,
+      actorUserId,
+      action: "industrial_supplier_profile.created",
+      entityType: "industrial_supplier_profile",
+      entityId: supplier.id,
+      nextValue: {
+        supplierStatus: supplier.supplierStatus,
+        verificationStatus: supplier.verificationStatus,
+        visibility: supplier.visibility,
+        linkedFactoryId: supplier.linkedFactoryId,
+      },
+      metadata: {
+        categoryCodes: supplierStringList(supplier.categoryCodes),
+        capabilities: supplierStringList(supplier.capabilities),
+        internalOnly: true,
+      },
+    });
+
+    return res.status(201).json({
+      ok: true,
+      supplier: staffSupplierSummary(supplier, linkedFactory),
+      message:
+        "The supplier capability profile was saved as an internal draft for review.",
+    });
+  } catch (error: any) {
+    if (
+      String(error?.message || "").includes(
+        "industrial_supplier_profiles_tenant_name_unique",
+      )
+    ) {
+      return res.status(409).json({
         ok: false,
-        message: "The supplier capability profile could not be saved.",
+        message:
+          "An internal supplier profile with this legal name already exists.",
       });
     }
-  },
-);
+    return res.status(500).json({
+      ok: false,
+      message: "The supplier capability profile could not be saved.",
+    });
+  }
+});
 
 router.post(
   "/admin/suppliers/:supplierId/review",
@@ -8444,7 +8490,9 @@ router.get(
     const tenant = resolveExportunityTenant(req, res);
     if (!tenant) return;
 
-    const query = String(req.query?.q || "").trim().toLocaleLowerCase("fr");
+    const query = String(req.query?.q || "")
+      .trim()
+      .toLocaleLowerCase("fr");
     const category = String(req.query?.category || "")
       .trim()
       .toLocaleLowerCase("fr");
@@ -8496,12 +8544,11 @@ router.get(
           `${item.categorySlug || ""} ${item.categoryName || ""}`
             .toLocaleLowerCase("fr")
             .includes(category);
-        const statusMatch =
-          !requestedStatus
-            ? true
-            : requestedStatus === "unreviewed"
-              ? !item.reviewed
-              : item.reviewStatus === statusFilter?.data;
+        const statusMatch = !requestedStatus
+          ? true
+          : requestedStatus === "unreviewed"
+            ? !item.reviewed
+            : item.reviewStatus === statusFilter?.data;
         return queryMatch && categoryMatch && statusMatch;
       });
       const statusCounts = summaries.reduce<Record<string, number>>(
@@ -8527,7 +8574,8 @@ router.get(
           totalLegacyRecords: summaries.length,
           reviewedRecords: summaries.filter((item) => item.reviewed).length,
           unreviewedRecords: summaries.filter((item) => !item.reviewed).length,
-          demoSourceRecords: summaries.filter((item) => item.sellerIsDemo).length,
+          demoSourceRecords: summaries.filter((item) => item.sellerIsDemo)
+            .length,
           potentialDuplicateRecords: summaries.filter(
             (item) => item.potentialDuplicateIds.length > 0,
           ).length,
@@ -8614,10 +8662,7 @@ router.get(
 
       return res.json({
         ok: true,
-        product: staffLegacyProductReviewSummary(
-          row,
-          duplicateIds,
-        ),
+        product: staffLegacyProductReviewSummary(row, duplicateIds),
         potentialDuplicates: rows
           .filter((candidate) => duplicateIds.includes(candidate.product.id))
           .map((candidate) => ({
@@ -8714,10 +8759,7 @@ router.post(
       if (parsed.data.industrialCatalogItemId) {
         linkedCatalogItem = await db.query.industrialCatalogItems.findFirst({
           where: and(
-            eq(
-              industrialCatalogItems.id,
-              parsed.data.industrialCatalogItemId,
-            ),
+            eq(industrialCatalogItems.id, parsed.data.industrialCatalogItemId),
             eq(industrialCatalogItems.tenantId, tenant.id),
           ),
         });
@@ -8738,7 +8780,8 @@ router.post(
         if (parsed.data.duplicateOfLegacyProductId === row.product.id) {
           return res.status(400).json({
             ok: false,
-            message: "A legacy product cannot be marked as a duplicate of itself.",
+            message:
+              "A legacy product cannot be marked as a duplicate of itself.",
           });
         }
         const retainedRecord = rows.find(
@@ -8772,8 +8815,7 @@ router.post(
         reviewedByUserId:
           actorIdFor(req, "adminUser") || actorIdFor(req, "staffUser"),
         reviewedAt: now,
-        archivedAt:
-          parsed.data.reviewStatus === "ARCHIVED" ? now : null,
+        archivedAt: parsed.data.reviewStatus === "ARCHIVED" ? now : null,
         updatedAt: now,
       };
       const existing = row.review;
@@ -8904,7 +8946,10 @@ router.get("/admin/factories", ensureTenantStaff, async (req: any, res) => {
           )
       : [];
     const relationshipByFactoryId = new Map(
-      relationships.map((relationship) => [relationship.factoryId, relationship]),
+      relationships.map((relationship) => [
+        relationship.factoryId,
+        relationship,
+      ]),
     );
 
     return res.json({
@@ -8951,78 +8996,84 @@ router.get(
           .status(404)
           .json({ ok: false, message: "Factory not found." });
 
-      const [productionLines, machines, assemblies, components, relationship, audit] =
-        await Promise.all([
-          db
-            .select()
-            .from(industrialProductionLines)
-            .where(
-              and(
-                eq(industrialProductionLines.factoryId, factory.id),
-                eq(industrialProductionLines.tenantId, tenant.id),
-              ),
-            )
-            .orderBy(asc(industrialProductionLines.createdAt)),
-          db
-            .select()
-            .from(industrialMachines)
-            .where(
-              and(
-                eq(industrialMachines.factoryId, factory.id),
-                eq(industrialMachines.tenantId, tenant.id),
-              ),
-            )
-            .orderBy(asc(industrialMachines.createdAt)),
-          db
-            .select()
-            .from(industrialMachineAssemblies)
-            .where(
-              and(
-                eq(industrialMachineAssemblies.factoryId, factory.id),
-                eq(industrialMachineAssemblies.tenantId, tenant.id),
-              ),
-            )
-            .orderBy(asc(industrialMachineAssemblies.createdAt)),
-          db
-            .select()
-            .from(industrialMachineComponents)
-            .where(
-              and(
-                eq(industrialMachineComponents.factoryId, factory.id),
-                eq(industrialMachineComponents.tenantId, tenant.id),
-              ),
-            )
-            .orderBy(asc(industrialMachineComponents.createdAt)),
-          db.query.industrialFactoryRelationships.findFirst({
-            where: and(
-              eq(industrialFactoryRelationships.tenantId, tenant.id),
-              eq(industrialFactoryRelationships.factoryId, factory.id),
+      const [
+        productionLines,
+        machines,
+        assemblies,
+        components,
+        relationship,
+        audit,
+      ] = await Promise.all([
+        db
+          .select()
+          .from(industrialProductionLines)
+          .where(
+            and(
+              eq(industrialProductionLines.factoryId, factory.id),
+              eq(industrialProductionLines.tenantId, tenant.id),
             ),
-          }),
-          db
-            .select()
-            .from(industrialAuditLogs)
-            .where(
-              and(
-                eq(industrialAuditLogs.tenantId, tenant.id),
-                or(
-                  and(
-                    eq(industrialAuditLogs.entityType, "industrial_factory"),
-                    eq(industrialAuditLogs.entityId, factory.id),
+          )
+          .orderBy(asc(industrialProductionLines.createdAt)),
+        db
+          .select()
+          .from(industrialMachines)
+          .where(
+            and(
+              eq(industrialMachines.factoryId, factory.id),
+              eq(industrialMachines.tenantId, tenant.id),
+            ),
+          )
+          .orderBy(asc(industrialMachines.createdAt)),
+        db
+          .select()
+          .from(industrialMachineAssemblies)
+          .where(
+            and(
+              eq(industrialMachineAssemblies.factoryId, factory.id),
+              eq(industrialMachineAssemblies.tenantId, tenant.id),
+            ),
+          )
+          .orderBy(asc(industrialMachineAssemblies.createdAt)),
+        db
+          .select()
+          .from(industrialMachineComponents)
+          .where(
+            and(
+              eq(industrialMachineComponents.factoryId, factory.id),
+              eq(industrialMachineComponents.tenantId, tenant.id),
+            ),
+          )
+          .orderBy(asc(industrialMachineComponents.createdAt)),
+        db.query.industrialFactoryRelationships.findFirst({
+          where: and(
+            eq(industrialFactoryRelationships.tenantId, tenant.id),
+            eq(industrialFactoryRelationships.factoryId, factory.id),
+          ),
+        }),
+        db
+          .select()
+          .from(industrialAuditLogs)
+          .where(
+            and(
+              eq(industrialAuditLogs.tenantId, tenant.id),
+              or(
+                and(
+                  eq(industrialAuditLogs.entityType, "industrial_factory"),
+                  eq(industrialAuditLogs.entityId, factory.id),
+                ),
+                and(
+                  eq(
+                    industrialAuditLogs.entityType,
+                    "industrial_factory_relationship",
                   ),
-                  and(
-                    eq(
-                      industrialAuditLogs.entityType,
-                      "industrial_factory_relationship",
-                    ),
-                    eq(industrialAuditLogs.entityId, factory.id),
-                  ),
+                  eq(industrialAuditLogs.entityId, factory.id),
                 ),
               ),
-            )
-            .orderBy(desc(industrialAuditLogs.createdAt))
-            .limit(30),
-        ]);
+            ),
+          )
+          .orderBy(desc(industrialAuditLogs.createdAt))
+          .limit(30),
+      ]);
 
       return res.json({
         ok: true,
@@ -9143,9 +9194,9 @@ router.patch(
     const now = new Date();
     const accountManagerUserId = parsed.data.assignToSelf
       ? actorUserId
-      : existingRelationship?.accountManagerUserId ??
+      : (existingRelationship?.accountManagerUserId ??
         factory.accountManagerUserId ??
-        null;
+        null);
     const nextAction =
       parsed.data.nextAction === undefined
         ? existingRelationship?.nextAction || null
@@ -9318,10 +9369,7 @@ router.get("/admin/requirements", ensureTenantStaff, async (req: any, res) => {
     return res.json({
       ok: true,
       requirements: rows.map((row) =>
-        staffRequirementSummary(
-          row,
-          lifecycleByRequirementId.get(row.id),
-        ),
+        staffRequirementSummary(row, lifecycleByRequirementId.get(row.id)),
       ),
       total: rows.length,
     });
@@ -9515,7 +9563,10 @@ router.get(
     if (!z.string().uuid().safeParse(requirementId).success) {
       return res
         .status(400)
-        .json({ ok: false, message: "Invalid industrial requirement identifier." });
+        .json({
+          ok: false,
+          message: "Invalid industrial requirement identifier.",
+        });
     }
 
     try {
@@ -9645,7 +9696,10 @@ router.post(
     if (!z.string().uuid().safeParse(requirementId).success) {
       return res
         .status(400)
-        .json({ ok: false, message: "Invalid industrial requirement identifier." });
+        .json({
+          ok: false,
+          message: "Invalid industrial requirement identifier.",
+        });
     }
     const parsed = supplierCapabilityMatchSchema.safeParse(req.body || {});
     if (!parsed.success) {
@@ -10264,7 +10318,9 @@ router.patch(
         message: "Invalid industrial requirement or supplier-match identifier.",
       });
     }
-    const parsed = supplierCapabilityMatchUpdateSchema.safeParse(req.body || {});
+    const parsed = supplierCapabilityMatchUpdateSchema.safeParse(
+      req.body || {},
+    );
     if (!parsed.success) {
       return res.status(400).json({
         ok: false,
@@ -10301,7 +10357,8 @@ router.patch(
       if (!supplier) {
         return res.status(409).json({
           ok: false,
-          message: "The supplier profile attached to this match is unavailable.",
+          message:
+            "The supplier profile attached to this match is unavailable.",
         });
       }
       if (
@@ -11501,83 +11558,79 @@ router.get(
   },
 );
 
-router.get(
-  "/admin/challenges",
-  ensureTenantStaff,
-  async (req: any, res) => {
-    const tenant = resolveExportunityTenant(req, res);
-    if (!tenant) return;
+router.get("/admin/challenges", ensureTenantStaff, async (req: any, res) => {
+  const tenant = resolveExportunityTenant(req, res);
+  if (!tenant) return;
 
-    const query = String(req.query?.q || "").trim();
-    const statusFilter = z
-      .enum(INDUSTRIAL_CHALLENGE_STATUSES)
-      .safeParse(String(req.query?.status || "").trim());
-    const limit = safeLimit(req.query?.limit, 100);
-    const like = `%${query}%`;
+  const query = String(req.query?.q || "").trim();
+  const statusFilter = z
+    .enum(INDUSTRIAL_CHALLENGE_STATUSES)
+    .safeParse(String(req.query?.status || "").trim());
+  const limit = safeLimit(req.query?.limit, 100);
+  const like = `%${query}%`;
 
-    try {
-      const rows = await db
-        .select({
-          challenge: industrialChallenges,
-          factory: industrialFactories,
-          requirement: industrialRequirements,
-        })
-        .from(industrialChallenges)
-        .innerJoin(
-          industrialFactories,
-          and(
-            eq(industrialChallenges.factoryId, industrialFactories.id),
-            eq(industrialChallenges.tenantId, industrialFactories.tenantId),
-          ),
-        )
-        .innerJoin(
-          industrialRequirements,
-          and(
-            eq(industrialChallenges.requirementId, industrialRequirements.id),
-            eq(industrialChallenges.tenantId, industrialRequirements.tenantId),
-          ),
-        )
-        .where(
-          and(
-            eq(industrialChallenges.tenantId, tenant.id),
-            statusFilter.success
-              ? eq(industrialChallenges.status, statusFilter.data)
-              : undefined,
-            query
-              ? or(
-                  ilike(industrialChallenges.title, like),
-                  ilike(industrialChallenges.groupKey, like),
-                  ilike(industrialFactories.displayName, like),
-                  ilike(industrialRequirements.referenceCode, like),
-                )
-              : undefined,
-          ),
-        )
-        .orderBy(
-          desc(industrialChallenges.productionStopped),
-          desc(industrialChallenges.updatedAt),
-        )
-        .limit(limit);
-
-      return res.json({
-        ok: true,
-        challenges: rows.map((row) =>
-          staffIndustrialChallengeSummary(
-            row.challenge,
-            row.factory,
-            row.requirement,
-          ),
+  try {
+    const rows = await db
+      .select({
+        challenge: industrialChallenges,
+        factory: industrialFactories,
+        requirement: industrialRequirements,
+      })
+      .from(industrialChallenges)
+      .innerJoin(
+        industrialFactories,
+        and(
+          eq(industrialChallenges.factoryId, industrialFactories.id),
+          eq(industrialChallenges.tenantId, industrialFactories.tenantId),
         ),
-        total: rows.length,
-      });
-    } catch {
-      return res.status(503).json({
-        ok: false,
-        message: "The industrial challenge queue is temporarily unavailable.",
-      });
-    }
-  },
-);
+      )
+      .innerJoin(
+        industrialRequirements,
+        and(
+          eq(industrialChallenges.requirementId, industrialRequirements.id),
+          eq(industrialChallenges.tenantId, industrialRequirements.tenantId),
+        ),
+      )
+      .where(
+        and(
+          eq(industrialChallenges.tenantId, tenant.id),
+          statusFilter.success
+            ? eq(industrialChallenges.status, statusFilter.data)
+            : undefined,
+          query
+            ? or(
+                ilike(industrialChallenges.title, like),
+                ilike(industrialChallenges.groupKey, like),
+                ilike(industrialFactories.displayName, like),
+                ilike(industrialRequirements.referenceCode, like),
+              )
+            : undefined,
+        ),
+      )
+      .orderBy(
+        desc(industrialChallenges.productionStopped),
+        desc(industrialChallenges.updatedAt),
+      )
+      .limit(limit);
+
+    return res.json({
+      ok: true,
+      challenges: rows.map((row) =>
+        staffIndustrialChallengeSummary(
+          row.challenge,
+          row.factory,
+          row.requirement,
+        ),
+      ),
+      total: rows.length,
+    });
+  } catch {
+    return res.status(503).json({
+      ok: false,
+      message: "The industrial challenge queue is temporarily unavailable.",
+    });
+  }
+});
 
 router.get(
   "/admin/challenges/:challengeId",
@@ -11990,10 +12043,9 @@ router.get("/admin/intelligence", ensureTenantStaff, async (req: any, res) => {
         .where(
           and(
             eq(industrialRequirements.tenantId, tenant.id),
-            inArray(
-              industrialRequirements.status,
-              [...INDUSTRIAL_OPEN_REQUIREMENT_STATUSES],
-            ),
+            inArray(industrialRequirements.status, [
+              ...INDUSTRIAL_OPEN_REQUIREMENT_STATUSES,
+            ]),
           ),
         )
         .groupBy(industrialFactories.industrialZone),
@@ -12008,10 +12060,9 @@ router.get("/admin/intelligence", ensureTenantStaff, async (req: any, res) => {
         .where(
           and(
             eq(industrialRequirements.tenantId, tenant.id),
-            inArray(
-              industrialRequirements.status,
-              [...INDUSTRIAL_OPEN_REQUIREMENT_STATUSES],
-            ),
+            inArray(industrialRequirements.status, [
+              ...INDUSTRIAL_OPEN_REQUIREMENT_STATUSES,
+            ]),
           ),
         )
         .groupBy(
@@ -12080,10 +12131,9 @@ router.get("/admin/intelligence", ensureTenantStaff, async (req: any, res) => {
         .where(
           and(
             eq(industrialRequirements.tenantId, tenant.id),
-            inArray(
-              industrialRequirements.status,
-              [...INDUSTRIAL_OPEN_REQUIREMENT_STATUSES],
-            ),
+            inArray(industrialRequirements.status, [
+              ...INDUSTRIAL_OPEN_REQUIREMENT_STATUSES,
+            ]),
           ),
         )
         .groupBy(
@@ -12137,9 +12187,7 @@ router.get("/admin/intelligence", ensureTenantStaff, async (req: any, res) => {
           total: sql<number>`count(*)`,
         })
         .from(industrialRequirementSupplierMatches)
-        .where(
-          eq(industrialRequirementSupplierMatches.tenantId, tenant.id),
-        )
+        .where(eq(industrialRequirementSupplierMatches.tenantId, tenant.id))
         .groupBy(industrialRequirementSupplierMatches.status),
       db
         .select({
@@ -12164,10 +12212,7 @@ router.get("/admin/intelligence", ensureTenantStaff, async (req: any, res) => {
     ]);
 
     const categoryLabels = new Map(
-      INDUSTRIAL_TAXONOMY.map((category) => [
-        category.code,
-        category.label.fr,
-      ]),
+      INDUSTRIAL_TAXONOMY.map((category) => [category.code, category.label.fr]),
     );
     const demandSignals = buildIndustrialDemandSignals(
       requirementDemand,
@@ -12193,9 +12238,8 @@ router.get("/admin/intelligence", ensureTenantStaff, async (req: any, res) => {
     );
     const commercial = {
       quotationValues: summarizeIndustrialCommercialValues(quoteCommercialRows),
-      quoteDecision: calculateIndustrialQuoteDecisionMetrics(
-        quoteCommercialRows,
-      ),
+      quoteDecision:
+        calculateIndustrialQuoteDecisionMetrics(quoteCommercialRows),
       activeOrderValues: summarizeIndustrialCommercialValues(
         activeOrderCommercialRows,
       ),
@@ -12223,7 +12267,10 @@ router.get("/admin/intelligence", ensureTenantStaff, async (req: any, res) => {
         }))
         .slice(0, 8);
     const challengeOutcomeCounts = new Map(
-      sortTotal(challengeOutcomes).map((row) => [row.desiredOutcome, row.total]),
+      sortTotal(challengeOutcomes).map((row) => [
+        row.desiredOutcome,
+        row.total,
+      ]),
     );
 
     return res.json({
@@ -12304,47 +12351,47 @@ router.get("/admin/overview", ensureTenantStaff, async (req: any, res) => {
       challengeRows,
       orderRows,
     ] = await Promise.all([
-        db
-          .select({
-            status: industrialFactories.factoryStatus,
-            total: sql<number>`count(*)`,
-          })
-          .from(industrialFactories)
-          .where(eq(industrialFactories.tenantId, tenant.id))
-          .groupBy(industrialFactories.factoryStatus),
-        db
-          .select({
-            status: industrialRequirements.status,
-            total: sql<number>`count(*)`,
-          })
-          .from(industrialRequirements)
-          .where(eq(industrialRequirements.tenantId, tenant.id))
-          .groupBy(industrialRequirements.status),
-        db
-          .select({
-            status: industrialRecurringRequirements.status,
-            total: sql<number>`count(*)`,
-          })
-          .from(industrialRecurringRequirements)
-          .where(eq(industrialRecurringRequirements.tenantId, tenant.id))
-          .groupBy(industrialRecurringRequirements.status),
-        db
-          .select({
-            status: industrialChallenges.status,
-            total: sql<number>`count(*)`,
-          })
-          .from(industrialChallenges)
-          .where(eq(industrialChallenges.tenantId, tenant.id))
-          .groupBy(industrialChallenges.status),
-        db
-          .select({
-            status: industrialOrders.status,
-            total: sql<number>`count(*)`,
-          })
-          .from(industrialOrders)
-          .where(eq(industrialOrders.tenantId, tenant.id))
-          .groupBy(industrialOrders.status),
-      ]);
+      db
+        .select({
+          status: industrialFactories.factoryStatus,
+          total: sql<number>`count(*)`,
+        })
+        .from(industrialFactories)
+        .where(eq(industrialFactories.tenantId, tenant.id))
+        .groupBy(industrialFactories.factoryStatus),
+      db
+        .select({
+          status: industrialRequirements.status,
+          total: sql<number>`count(*)`,
+        })
+        .from(industrialRequirements)
+        .where(eq(industrialRequirements.tenantId, tenant.id))
+        .groupBy(industrialRequirements.status),
+      db
+        .select({
+          status: industrialRecurringRequirements.status,
+          total: sql<number>`count(*)`,
+        })
+        .from(industrialRecurringRequirements)
+        .where(eq(industrialRecurringRequirements.tenantId, tenant.id))
+        .groupBy(industrialRecurringRequirements.status),
+      db
+        .select({
+          status: industrialChallenges.status,
+          total: sql<number>`count(*)`,
+        })
+        .from(industrialChallenges)
+        .where(eq(industrialChallenges.tenantId, tenant.id))
+        .groupBy(industrialChallenges.status),
+      db
+        .select({
+          status: industrialOrders.status,
+          total: sql<number>`count(*)`,
+        })
+        .from(industrialOrders)
+        .where(eq(industrialOrders.tenantId, tenant.id))
+        .groupBy(industrialOrders.status),
+    ]);
 
     res.json({
       ok: true,
@@ -12680,100 +12727,96 @@ router.post(
   },
 );
 
-router.get(
-  "/admin/part-records",
-  ensureTenantStaff,
-  async (req: any, res) => {
-    const tenant = resolveExportunityTenant(req, res);
-    if (!tenant) return;
-    const query = String(req.query?.q || "").trim();
-    const statusFilter = z
-      .enum(INDUSTRIAL_PART_RECORD_STATUSES)
-      .safeParse(String(req.query?.status || "").trim());
-    const routeFilter = z
-      .enum(INDUSTRIAL_PART_ROUTE_DECISIONS)
-      .safeParse(String(req.query?.route || "").trim());
-    const factoryId = String(req.query?.factoryId || "").trim();
+router.get("/admin/part-records", ensureTenantStaff, async (req: any, res) => {
+  const tenant = resolveExportunityTenant(req, res);
+  if (!tenant) return;
+  const query = String(req.query?.q || "").trim();
+  const statusFilter = z
+    .enum(INDUSTRIAL_PART_RECORD_STATUSES)
+    .safeParse(String(req.query?.status || "").trim());
+  const routeFilter = z
+    .enum(INDUSTRIAL_PART_ROUTE_DECISIONS)
+    .safeParse(String(req.query?.route || "").trim());
+  const factoryId = String(req.query?.factoryId || "").trim();
 
-    try {
-      const like = `%${query}%`;
-      const rows = await db
-        .select({
-          partRecord: industrialPartRecords,
-          factory: industrialFactories,
-        })
-        .from(industrialPartRecords)
-        .innerJoin(
-          industrialFactories,
-          and(
-            eq(industrialPartRecords.factoryId, industrialFactories.id),
-            eq(industrialPartRecords.tenantId, industrialFactories.tenantId),
-          ),
-        )
-        .where(
-          and(
-            eq(industrialPartRecords.tenantId, tenant.id),
-            statusFilter.success
-              ? eq(industrialPartRecords.status, statusFilter.data)
-              : undefined,
-            routeFilter.success
-              ? eq(industrialPartRecords.routeDecision, routeFilter.data)
-              : undefined,
-            z.string().uuid().safeParse(factoryId).success
-              ? eq(industrialPartRecords.factoryId, factoryId)
-              : undefined,
-            query
-              ? or(
-                  ilike(industrialPartRecords.referenceCode, like),
-                  ilike(industrialPartRecords.title, like),
-                  ilike(industrialPartRecords.partNumber, like),
-                  ilike(industrialFactories.displayName, like),
-                  ilike(industrialFactories.legalName, like),
-                )
-              : undefined,
-          ),
-        )
-        .orderBy(desc(industrialPartRecords.updatedAt))
-        .limit(safeLimit(req.query?.limit, 100));
-      const recordIds = rows.map((row) => row.partRecord.id);
-      const documentRows = recordIds.length
-        ? await db
-            .select({ document: industrialPartRecordDocuments })
-            .from(industrialPartRecordDocuments)
-            .where(
-              and(
-                eq(industrialPartRecordDocuments.tenantId, tenant.id),
-                inArray(industrialPartRecordDocuments.partRecordId, recordIds),
-              ),
-            )
-            .orderBy(desc(industrialPartRecordDocuments.createdAt))
-        : [];
-      const documentsByPartRecord = new Map<string, any[]>();
-      for (const row of documentRows) {
-        const documents =
-          documentsByPartRecord.get(row.document.partRecordId) || [];
-        documents.push(row.document);
-        documentsByPartRecord.set(row.document.partRecordId, documents);
-      }
-      return res.json({
-        ok: true,
-        partRecords: rows.map((row) =>
-          staffIndustrialPartRecordSummary(
-            row.partRecord,
-            row.factory,
-            documentsByPartRecord.get(row.partRecord.id) || [],
-          ),
+  try {
+    const like = `%${query}%`;
+    const rows = await db
+      .select({
+        partRecord: industrialPartRecords,
+        factory: industrialFactories,
+      })
+      .from(industrialPartRecords)
+      .innerJoin(
+        industrialFactories,
+        and(
+          eq(industrialPartRecords.factoryId, industrialFactories.id),
+          eq(industrialPartRecords.tenantId, industrialFactories.tenantId),
         ),
-        total: rows.length,
-      });
-    } catch {
-      return res.status(503).json({
-        ok: false,
-        message: "The technical part-record queue is temporarily unavailable.",
-      });
+      )
+      .where(
+        and(
+          eq(industrialPartRecords.tenantId, tenant.id),
+          statusFilter.success
+            ? eq(industrialPartRecords.status, statusFilter.data)
+            : undefined,
+          routeFilter.success
+            ? eq(industrialPartRecords.routeDecision, routeFilter.data)
+            : undefined,
+          z.string().uuid().safeParse(factoryId).success
+            ? eq(industrialPartRecords.factoryId, factoryId)
+            : undefined,
+          query
+            ? or(
+                ilike(industrialPartRecords.referenceCode, like),
+                ilike(industrialPartRecords.title, like),
+                ilike(industrialPartRecords.partNumber, like),
+                ilike(industrialFactories.displayName, like),
+                ilike(industrialFactories.legalName, like),
+              )
+            : undefined,
+        ),
+      )
+      .orderBy(desc(industrialPartRecords.updatedAt))
+      .limit(safeLimit(req.query?.limit, 100));
+    const recordIds = rows.map((row) => row.partRecord.id);
+    const documentRows = recordIds.length
+      ? await db
+          .select({ document: industrialPartRecordDocuments })
+          .from(industrialPartRecordDocuments)
+          .where(
+            and(
+              eq(industrialPartRecordDocuments.tenantId, tenant.id),
+              inArray(industrialPartRecordDocuments.partRecordId, recordIds),
+            ),
+          )
+          .orderBy(desc(industrialPartRecordDocuments.createdAt))
+      : [];
+    const documentsByPartRecord = new Map<string, any[]>();
+    for (const row of documentRows) {
+      const documents =
+        documentsByPartRecord.get(row.document.partRecordId) || [];
+      documents.push(row.document);
+      documentsByPartRecord.set(row.document.partRecordId, documents);
     }
-  },
-);
+    return res.json({
+      ok: true,
+      partRecords: rows.map((row) =>
+        staffIndustrialPartRecordSummary(
+          row.partRecord,
+          row.factory,
+          documentsByPartRecord.get(row.partRecord.id) || [],
+        ),
+      ),
+      total: rows.length,
+    });
+  } catch {
+    return res.status(503).json({
+      ok: false,
+      message: "The technical part-record queue is temporarily unavailable.",
+    });
+  }
+});
 
 router.get(
   "/admin/part-records/:partRecordId",
@@ -12842,7 +12885,10 @@ router.get(
         row.partRecord.sourceRequirementId
           ? db.query.industrialRequirements.findFirst({
               where: and(
-                eq(industrialRequirements.id, row.partRecord.sourceRequirementId),
+                eq(
+                  industrialRequirements.id,
+                  row.partRecord.sourceRequirementId,
+                ),
                 eq(industrialRequirements.tenantId, tenant.id),
               ),
             })
@@ -12961,9 +13007,12 @@ router.patch(
         });
       }
       if (
-        ["route_selected", "prototype", "validated", "catalog_candidate"].includes(
-          nextStatus,
-        ) &&
+        [
+          "route_selected",
+          "prototype",
+          "validated",
+          "catalog_candidate",
+        ].includes(nextStatus) &&
         !canFinalizeIndustrialPartRoute(nextStatus, nextRouteDecision)
       ) {
         return res.status(409).json({
@@ -13029,7 +13078,10 @@ router.patch(
       });
       return res.json({
         ok: true,
-        partRecord: staffIndustrialPartRecordSummary(updated, existingRow.factory),
+        partRecord: staffIndustrialPartRecordSummary(
+          updated,
+          existingRow.factory,
+        ),
         message:
           "Technical route review saved. No supplier contact, quotation, order, production job, or payment was created.",
       });

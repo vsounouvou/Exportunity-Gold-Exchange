@@ -13,17 +13,10 @@ export type IndustrialRequirementHandoffType =
   | "export_quotation";
 
 export type IndustrialRequirementHandoffUrgency =
-  | "standard"
-  | "urgent"
-  | "planned";
+  "standard" | "urgent" | "planned";
 
 type HandoffAgentKey =
-  | "tassi"
-  | "commercial"
-  | "technical"
-  | "sourcing"
-  | "logistics"
-  | "quality";
+  "tassi" | "commercial" | "technical" | "sourcing" | "logistics" | "quality";
 
 export type IndustrialRequirementHandoffPlan = {
   primaryAgentKey: HandoffAgentKey;
@@ -64,13 +57,10 @@ export function resolveIndustrialRequirementHandoffPlan(input: {
   requirementType: IndustrialRequirementHandoffType;
   urgency: IndustrialRequirementHandoffUrgency;
 }): IndustrialRequirementHandoffPlan {
-  const primaryAgentKey: HandoffAgentKey =
-    input.requirementType === "raw_material" ||
-    input.requirementType === "industrial_input"
-      ? "sourcing"
-      : input.requirementType === "export_quotation"
-        ? "logistics"
-        : "technical";
+  // Awa owns the buyer relationship. Specialist agents join the same case for
+  // technical, sourcing, quality, and logistics work without fragmenting the
+  // client's commercial conversation.
+  const primaryAgentKey: HandoffAgentKey = "commercial";
 
   const participantKeys = new Set<HandoffAgentKey>([
     primaryAgentKey,
@@ -81,7 +71,14 @@ export function resolveIndustrialRequirementHandoffPlan(input: {
   if (
     input.requirementType === "machinery" ||
     input.requirementType === "spare_part" ||
-    input.requirementType === "custom_manufacturing" ||
+    input.requirementType === "custom_manufacturing"
+  ) {
+    participantKeys.add("technical");
+    participantKeys.add("sourcing");
+  }
+
+  if (
+    input.requirementType === "raw_material" ||
     input.requirementType === "industrial_input"
   ) {
     participantKeys.add("sourcing");
@@ -96,6 +93,12 @@ export function resolveIndustrialRequirementHandoffPlan(input: {
 
   if (input.requirementType === "export_quotation") {
     participantKeys.add("sourcing");
+    participantKeys.add("logistics");
+  }
+
+  if (input.requirementType === "industrial_service") {
+    participantKeys.add("technical");
+    participantKeys.add("logistics");
   }
 
   return {
@@ -123,7 +126,9 @@ function organizationKey(value: unknown): string {
   return typeof key === "string" ? key.trim() : "";
 }
 
-function buildTaskDescription(input: IndustrialRequirementOperationsHandoffInput) {
+function buildTaskDescription(
+  input: IndustrialRequirementOperationsHandoffInput,
+) {
   const delivery = [input.deliveryCity, input.deliveryCountryCode]
     .filter((value): value is string => Boolean(String(value || "").trim()))
     .join(", ");
@@ -150,7 +155,10 @@ export async function createIndustrialRequirementOperationsHandoff(
 ): Promise<IndustrialRequirementOperationsHandoffResult> {
   const plan = resolveIndustrialRequirementHandoffPlan(input);
   const tenantAgents = await db.query.agents.findMany({
-    where: and(eq(agents.tenantId, input.tenantId), eq(agents.status, "active")),
+    where: and(
+      eq(agents.tenantId, input.tenantId),
+      eq(agents.status, "active"),
+    ),
     columns: {
       id: true,
       companyId: true,
@@ -164,7 +172,11 @@ export async function createIndustrialRequirementOperationsHandoff(
       .filter(([key]) => key),
   );
   const primaryAgent = byKey.get(plan.primaryAgentKey);
-  const companyId = Number(primaryAgent?.companyId || tenantAgents.find((agent) => Number(agent.companyId) > 0)?.companyId || 0);
+  const companyId = Number(
+    primaryAgent?.companyId ||
+      tenantAgents.find((agent) => Number(agent.companyId) > 0)?.companyId ||
+      0,
+  );
 
   if (!primaryAgent || !companyId) {
     return {
@@ -174,14 +186,18 @@ export async function createIndustrialRequirementOperationsHandoff(
       assignedAgentId: primaryAgent?.id ? Number(primaryAgent.id) : null,
       assignedAgentName: primaryAgent?.name || null,
       participantAgentIds: [],
-      reason: "The Exportunity industrial agent organization is not available for task routing.",
+      reason:
+        "The Exportunity industrial agent organization is not available for task routing.",
     };
   }
 
   const participantAgentIds = plan.participantAgentKeys
     .map((key) => byKey.get(key)?.id)
     .filter((value): value is number => typeof value === "number" && value > 0);
-  const taskTitle = `Review ${input.referenceCode}: ${input.title}`.slice(0, 240);
+  const taskTitle = `Review ${input.referenceCode}: ${input.title}`.slice(
+    0,
+    240,
+  );
   const existingTask = await db.query.tasks.findFirst({
     where: and(eq(tasks.companyId, companyId), eq(tasks.title, taskTitle)),
     columns: { id: true, agentId: true },
@@ -221,7 +237,8 @@ export async function createIndustrialRequirementOperationsHandoff(
         priority: "high",
         metadata: {
           source: "exportunity_industrial_front_office",
-          companyContext: "B2B industrial sourcing, commodities, machinery, and trade facilitation.",
+          companyContext:
+            "B2B industrial sourcing, commodities, machinery, and trade facilitation.",
         } as any,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -238,7 +255,8 @@ export async function createIndustrialRequirementOperationsHandoff(
       assignedAgentId: primaryAgent.id,
       assignedAgentName: primaryAgent.name,
       participantAgentIds,
-      reason: "The Operations Center objective could not be prepared for this industrial requirement.",
+      reason:
+        "The Operations Center objective could not be prepared for this industrial requirement.",
     };
   }
 
@@ -275,7 +293,8 @@ export async function createIndustrialRequirementOperationsHandoff(
       assignedAgentId: primaryAgent.id,
       assignedAgentName: primaryAgent.name,
       participantAgentIds,
-      reason: "The Operations Center task could not be created for this industrial requirement.",
+      reason:
+        "The Operations Center task could not be created for this industrial requirement.",
     };
   }
 

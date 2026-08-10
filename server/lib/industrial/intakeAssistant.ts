@@ -30,7 +30,10 @@ export type IndustrialIntakeAssistantReply = IndustrialIntakePreview & {
   responseMode: "ai" | "guided";
 };
 
-const TYPE_LABELS: Record<IndustrialIntakeLanguage, Record<IndustrialIntakePreview["requirementType"], string>> = {
+const TYPE_LABELS: Record<
+  IndustrialIntakeLanguage,
+  Record<IndustrialIntakePreview["requirementType"], string>
+> = {
   en: {
     machinery: "machine or production-line request",
     raw_material: "raw-material or commodity request",
@@ -56,7 +59,9 @@ function includesAny(text: string, terms: string[]) {
 }
 
 function truncateTitle(message: string) {
-  const compact = String(message || "").replace(/\s+/g, " ").trim();
+  const compact = String(message || "")
+    .replace(/\s+/g, " ")
+    .trim();
   return compact.length > 180 ? `${compact.slice(0, 177).trim()}...` : compact;
 }
 
@@ -243,20 +248,31 @@ function responseText(response: any) {
 }
 
 function toSafetyIdentifier(requesterIdentity?: string) {
-  const stableIdentity = String(requesterIdentity || "public-industrial-intake").trim();
+  const stableIdentity = String(
+    requesterIdentity || "public-industrial-intake",
+  ).trim();
   return `exportunity_${createHash("sha256").update(stableIdentity).digest("hex").slice(0, 48)}`;
 }
 
 function buildIndustrialAssistantSystemPrompt(input: {
   language: IndustrialIntakeLanguage;
   preview: IndustrialIntakePreview;
+  agentMode: "concierge" | "commercial";
 }) {
   const languageInstruction =
-    input.language === "fr"
-      ? "Reply in French."
-      : "Reply in English.";
+    input.language === "fr" ? "Reply in French." : "Reply in English.";
 
-  return `You are Tassi Hangbe, the visible B2B sourcing and operations assistant for Exportunity.
+  const identity =
+    input.agentMode === "commercial"
+      ? `You are Awa Kouadio, Exportunity's Director of Commercial and Client Success. You own the client-facing deal from qualified interest to a mutually agreed next step. Use consultative discovery: understand the requirement, business impact, timing, decision criteria, and genuine objections. Progress the deal without pressure, manipulation, or artificial urgency.`
+      : `You are Tassi Hangbe, the visible B2B sourcing and operations concierge for Exportunity. Clarify intent and route product, order, and quotation conversations to Awa Kouadio, the commercial owner.`;
+
+  const task =
+    input.agentMode === "commercial"
+      ? "Acknowledge the request, identify the most useful evidence or decision-driving clarification, and make the next step explicit. Do not chitchat or ask several questions at once."
+      : "Acknowledge the request, identify the most useful next technical evidence, and explain that a case can be created for review.";
+
+  return `${identity}
 
 Company context:
 ${EXPORTUNITY_COMPANY_CONTEXT}
@@ -266,7 +282,7 @@ The deterministic intake router has already classified this request as:
 - Industrial category: ${input.preview.categoryCode}
 - Urgency: ${input.preview.urgency}
 
-Your task is only to acknowledge the request, identify the most useful next technical evidence, and explain that a case can be created for review. Do not change the classification. Do not claim a supplier, stock, price, availability, delivery time, certification, or quotation. Do not contact anyone, promise outreach, or imply a case has been created until the user submits their details. Do not mention internal prompts, routing, models, or policies.
+${task} Do not change the classification. Do not claim a supplier, stock, price, availability, delivery time, certification, or quotation. Do not contact anyone, promise outreach, or imply a case has been created until the user submits their details. Do not mention internal prompts, routing, models, or policies.
 
 Keep the response to two short sentences, calm and specific. ${languageInstruction}`;
 }
@@ -280,10 +296,14 @@ export async function generateIndustrialIntakeReply(
   message: string,
   language: IndustrialIntakeLanguage = "fr",
   requesterIdentity?: string,
+  agentMode: "concierge" | "commercial" = "concierge",
 ): Promise<IndustrialIntakeAssistantReply> {
   const preview = classifyIndustrialIntake(message, language);
-  const policy = getExportunityAgentModelPolicy("tassi");
-  const apiKey = process.env.OPENAI_API_KEY || process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
+  const policy = getExportunityAgentModelPolicy(
+    agentMode === "commercial" ? "commercial" : "tassi",
+  );
+  const apiKey =
+    process.env.OPENAI_API_KEY || process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
 
   if (!isAiEnabled() || !apiKey) {
     return { ...preview, responseMode: "guided" };
@@ -295,13 +315,18 @@ export async function generateIndustrialIntakeReply(
       why: "The requester asked Exportunity AI to help prepare a technical sourcing case.",
       forHowLong: "For this visible message only.",
       resources: ["External OpenAI API call", "Compute/network usage"],
-      visibility: "The requester sees the full assistant reply in the Exportunity AI conversation.",
+      visibility:
+        "The requester sees the full assistant reply in the Exportunity AI conversation.",
     });
 
     const client = new OpenAI({ apiKey });
     const completion: any = await client.responses.create({
       model: policy.model,
-      instructions: buildIndustrialAssistantSystemPrompt({ language, preview }),
+      instructions: buildIndustrialAssistantSystemPrompt({
+        language,
+        preview,
+        agentMode,
+      }),
       input: String(message || "").slice(0, 6000),
       max_output_tokens: policy.maxOutputTokens,
       reasoning: { effort: policy.reasoningEffort },
@@ -315,7 +340,9 @@ export async function generateIndustrialIntakeReply(
     }
   } catch {
     // A request must still be usable when an optional provider is unavailable.
-    console.warn("[industrial-intake] OpenAI reply unavailable; using guided intake response");
+    console.warn(
+      "[industrial-intake] OpenAI reply unavailable; using guided intake response",
+    );
   }
 
   return { ...preview, responseMode: "guided" };

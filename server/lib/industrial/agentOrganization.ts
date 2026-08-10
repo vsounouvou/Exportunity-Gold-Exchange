@@ -5,12 +5,15 @@ import { ensureAgentsProductionTables } from "../agents/ensureProductionAgents";
 import { ensureAgentManagementV2Tables } from "../agents/ensureManagementV2Tables";
 import { ensureTenants, getTenantByKey } from "../tenants";
 import { EXPORTUNITY_COMPANY_CONTEXT } from "./companyContext";
-import { getExportunityAgentModelPolicy, type ExportunityAgentKey } from "./modelPolicy";
+import {
+  getExportunityAgentModelPolicy,
+  type ExportunityAgentKey,
+} from "./modelPolicy";
 import { ensureExportunityIndustrialOperatingPlan } from "./operatingPlan";
 
 export { EXPORTUNITY_COMPANY_CONTEXT } from "./companyContext";
 
-const ORGANIZATION_VERSION = "exportunity-industrial-org-v4";
+const ORGANIZATION_VERSION = "exportunity-industrial-org-v5";
 
 type AgentHierarchy = "super" | "director" | "manager" | "executor";
 type IndustrialDepartmentKey =
@@ -56,7 +59,8 @@ const INDUSTRIAL_DEPARTMENTS: DepartmentSpec[] = [
     key: "executive",
     name: "Executive Office",
     aliases: ["Executive"],
-    description: "Strategy, priorities, executive coordination, and human approval gates.",
+    description:
+      "Strategy, priorities, executive coordination, and human approval gates.",
     color: "#F5A623",
     order: 10,
   },
@@ -64,7 +68,8 @@ const INDUSTRIAL_DEPARTMENTS: DepartmentSpec[] = [
     key: "operations",
     name: "Operations Center",
     aliases: ["Operations"],
-    description: "Meetings, tasks, decisions, action routing, and cross-functional execution.",
+    description:
+      "Meetings, tasks, decisions, action routing, and cross-functional execution.",
     color: "#0B1D33",
     order: 20,
   },
@@ -72,7 +77,8 @@ const INDUSTRIAL_DEPARTMENTS: DepartmentSpec[] = [
     key: "sourcing",
     name: "Sourcing & Supplier Network",
     aliases: [],
-    description: "Supplier discovery, qualification, RFQs, and industrial procurement.",
+    description:
+      "Supplier discovery, qualification, RFQs, and industrial procurement.",
     color: "#1D4ED8",
     order: 30,
   },
@@ -80,7 +86,8 @@ const INDUSTRIAL_DEPARTMENTS: DepartmentSpec[] = [
     key: "technical",
     name: "Technical & Industrial Operations",
     aliases: [],
-    description: "Technical intake, engineering review, reverse engineering, and production routing.",
+    description:
+      "Technical intake, engineering review, reverse engineering, and production routing.",
     color: "#0F766E",
     order: 40,
   },
@@ -88,7 +95,8 @@ const INDUSTRIAL_DEPARTMENTS: DepartmentSpec[] = [
     key: "commercial",
     name: "Commercial & Client Success",
     aliases: ["Sales"],
-    description: "Industrial buyer relationships, quotations, follow-up, and client success.",
+    description:
+      "Industrial buyer relationships, quotations, follow-up, and client success.",
     color: "#C2410C",
     order: 50,
   },
@@ -96,7 +104,8 @@ const INDUSTRIAL_DEPARTMENTS: DepartmentSpec[] = [
     key: "logistics",
     name: "Trade Facilitation & Logistics",
     aliases: [],
-    description: "Freight, delivery planning, trade documentation, and export readiness.",
+    description:
+      "Freight, delivery planning, trade documentation, and export readiness.",
     color: "#4338CA",
     order: 60,
   },
@@ -104,7 +113,8 @@ const INDUSTRIAL_DEPARTMENTS: DepartmentSpec[] = [
     key: "finance",
     name: "Finance & Controls",
     aliases: ["Finance"],
-    description: "Budgets, payment controls, financial analysis, and commercial risk.",
+    description:
+      "Budgets, payment controls, financial analysis, and commercial risk.",
     color: "#15803D",
     order: 70,
   },
@@ -112,7 +122,8 @@ const INDUSTRIAL_DEPARTMENTS: DepartmentSpec[] = [
     key: "quality",
     name: "Quality & GDIZ Operations",
     aliases: [],
-    description: "Quality evidence, assembly handoffs, and non-conformance escalation.",
+    description:
+      "Quality evidence, assembly handoffs, and non-conformance escalation.",
     color: "#B45309",
     order: 80,
   },
@@ -120,7 +131,8 @@ const INDUSTRIAL_DEPARTMENTS: DepartmentSpec[] = [
     key: "data",
     name: "Industrial Data & Intelligence",
     aliases: ["IT"],
-    description: "Industrial data quality, catalog governance, intelligence, and reporting.",
+    description:
+      "Industrial data quality, catalog governance, intelligence, and reporting.",
     color: "#0369A1",
     order: 90,
   },
@@ -128,7 +140,8 @@ const INDUSTRIAL_DEPARTMENTS: DepartmentSpec[] = [
     key: "compliance",
     name: "Compliance & Documentation",
     aliases: ["Legal"],
-    description: "Compliance review, documentation, consent, approvals, and audit controls.",
+    description:
+      "Compliance review, documentation, consent, approvals, and audit controls.",
     color: "#B91C1C",
     order: 100,
   },
@@ -136,7 +149,8 @@ const INDUSTRIAL_DEPARTMENTS: DepartmentSpec[] = [
     key: "marketing",
     name: "Marketing & Demand Generation",
     aliases: ["Marketing"],
-    description: "Industrial positioning, demand campaigns, content, and brand governance.",
+    description:
+      "Industrial positioning, demand campaigns, content, and brand governance.",
     color: "#7E22CE",
     order: 110,
   },
@@ -150,11 +164,25 @@ const ORGANIZATION: AgentSpec[] = [
     hierarchy: "manager",
     departmentKey: "executive",
     managerKey: "ceo",
-    mission: "Guide buyers and company teams to the right Exportunity workflow, preserve context, and surface the responsible specialist without making commercial commitments.",
-    responsibilities: ["Qualify B2B intent", "Route work to the right agent", "Keep operational context clear"],
+    mission:
+      "Welcome buyers, clarify intent, preserve context, and hand every product, quotation, or buying conversation to Awa Kouadio without making commercial commitments.",
+    responsibilities: [
+      "Qualify B2B intent",
+      "Route buying intent to the commercial owner",
+      "Keep operational context clear",
+    ],
     capabilities: ["intake", "routing", "meeting_support", "knowledge"],
-    skills: ["B2B discovery", "case triage", "multilingual customer assistance"],
-    industryFocus: ["industrial sourcing", "commodities", "machinery", "trade facilitation"],
+    skills: [
+      "B2B discovery",
+      "case triage",
+      "multilingual customer assistance",
+    ],
+    industryFocus: [
+      "industrial sourcing",
+      "commodities",
+      "machinery",
+      "trade facilitation",
+    ],
     decisionAuthority: "medium",
   },
   {
@@ -164,11 +192,29 @@ const ORGANIZATION: AgentSpec[] = [
     hierarchy: "super",
     departmentKey: "executive",
     departmentHead: true,
-    mission: "Maintain strategic alignment across demand capture, sourcing, technical operations, logistics, and accountable company execution.",
-    responsibilities: ["Set priorities", "Review cross-functional risks", "Escalate decisions requiring human approval"],
-    capabilities: ["strategy", "prioritization", "decision_review", "agent_coordination"],
-    skills: ["industrial strategy", "B2B operating models", "executive coordination"],
-    industryFocus: ["industrial trade", "local manufacturing", "regional supply chains"],
+    mission:
+      "Maintain strategic alignment across demand capture, sourcing, technical operations, logistics, and accountable company execution.",
+    responsibilities: [
+      "Set priorities",
+      "Review cross-functional risks",
+      "Escalate decisions requiring human approval",
+    ],
+    capabilities: [
+      "strategy",
+      "prioritization",
+      "decision_review",
+      "agent_coordination",
+    ],
+    skills: [
+      "industrial strategy",
+      "B2B operating models",
+      "executive coordination",
+    ],
+    industryFocus: [
+      "industrial trade",
+      "local manufacturing",
+      "regional supply chains",
+    ],
     decisionAuthority: "executive",
   },
   {
@@ -179,11 +225,30 @@ const ORGANIZATION: AgentSpec[] = [
     departmentKey: "sourcing",
     departmentHead: true,
     managerKey: "ceo",
-    mission: "Turn approved requirements into evidence-backed sourcing options while protecting technical specifications and avoiding unverified supplier claims.",
-    responsibilities: ["Review supplier capability", "Build shortlist briefs", "Prepare sourcing cases for human review"],
-    capabilities: ["supplier_matching", "rfq_preparation", "capability_review", "sourcing"],
-    skills: ["supplier qualification", "industrial procurement", "RFQ preparation"],
-    industryFocus: ["spare parts", "machinery", "industrial inputs", "commodities"],
+    mission:
+      "Turn approved requirements into evidence-backed sourcing options while protecting technical specifications and avoiding unverified supplier claims.",
+    responsibilities: [
+      "Review supplier capability",
+      "Build shortlist briefs",
+      "Prepare sourcing cases for human review",
+    ],
+    capabilities: [
+      "supplier_matching",
+      "rfq_preparation",
+      "capability_review",
+      "sourcing",
+    ],
+    skills: [
+      "supplier qualification",
+      "industrial procurement",
+      "RFQ preparation",
+    ],
+    industryFocus: [
+      "spare parts",
+      "machinery",
+      "industrial inputs",
+      "commodities",
+    ],
     decisionAuthority: "high",
   },
   {
@@ -194,11 +259,25 @@ const ORGANIZATION: AgentSpec[] = [
     departmentKey: "technical",
     departmentHead: true,
     managerKey: "ceo",
-    mission: "Translate buyer evidence into reviewable technical cases for make, buy, reverse-engineering, or repair routing.",
-    responsibilities: ["Technical case review", "Reverse-engineering intake", "Manufacturing and repair routing"],
-    capabilities: ["technical_intake", "part_identification", "reverse_engineering", "manufacturing_review"],
+    mission:
+      "Translate buyer evidence into reviewable technical cases for make, buy, reverse-engineering, or repair routing.",
+    responsibilities: [
+      "Technical case review",
+      "Reverse-engineering intake",
+      "Manufacturing and repair routing",
+    ],
+    capabilities: [
+      "technical_intake",
+      "part_identification",
+      "reverse_engineering",
+      "manufacturing_review",
+    ],
     skills: ["mechanical parts", "CAD evidence review", "production planning"],
-    industryFocus: ["spare parts", "production equipment", "local manufacturing"],
+    industryFocus: [
+      "spare parts",
+      "production equipment",
+      "local manufacturing",
+    ],
     decisionAuthority: "high",
   },
   {
@@ -209,11 +288,35 @@ const ORGANIZATION: AgentSpec[] = [
     departmentKey: "commercial",
     departmentHead: true,
     managerKey: "ceo",
-    mission: "Keep buyer and supplier communication clear, controlled, and tied to actual cases, quotations, and service commitments.",
-    responsibilities: ["Account coordination", "Case follow-up", "Prepare approved commercial communications"],
-    capabilities: ["crm", "client_success", "case_follow_up", "commercial_drafting"],
-    skills: ["B2B account management", "sales operations", "French and English communication"],
-    industryFocus: ["industrial buyers", "export customers", "supplier onboarding"],
+    mission:
+      "Own the client-facing commercial relationship from qualified interest to an agreed next step, using consultative discovery, evidence-based objection handling, and clear summaries tied to real cases, quotations, and service commitments.",
+    responsibilities: [
+      "Qualify need, impact, timing, buying criteria, and decision path",
+      "Handle objections without pressure or invented urgency",
+      "Summarize the agreed scope and secure a mutually agreed next step",
+      "Coordinate quotations and case follow-up",
+    ],
+    capabilities: [
+      "crm",
+      "client_success",
+      "deal_qualification",
+      "objection_handling",
+      "proposal_alignment",
+      "commercial_close",
+      "case_follow_up",
+      "commercial_drafting",
+    ],
+    skills: [
+      "Consultative B2B discovery",
+      "Industrial deal qualification",
+      "Summary and next-step closing",
+      "French and English communication",
+    ],
+    industryFocus: [
+      "industrial buyers",
+      "export customers",
+      "supplier onboarding",
+    ],
     decisionAuthority: "high",
   },
   {
@@ -224,11 +327,30 @@ const ORGANIZATION: AgentSpec[] = [
     departmentKey: "logistics",
     departmentHead: true,
     managerKey: "ceo",
-    mission: "Coordinate evidence-based logistics and trade-facilitation planning without promising routes, customs outcomes, or delivery dates before validation.",
-    responsibilities: ["Logistics planning", "Trade-document routing", "Delivery-risk review"],
-    capabilities: ["logistics_planning", "trade_facilitation", "documentation", "delivery_review"],
-    skills: ["West African trade flows", "industrial logistics", "import and export documentation"],
-    industryFocus: ["freight", "customs", "cross-border trade", "export readiness"],
+    mission:
+      "Coordinate evidence-based logistics and trade-facilitation planning without promising routes, customs outcomes, or delivery dates before validation.",
+    responsibilities: [
+      "Logistics planning",
+      "Trade-document routing",
+      "Delivery-risk review",
+    ],
+    capabilities: [
+      "logistics_planning",
+      "trade_facilitation",
+      "documentation",
+      "delivery_review",
+    ],
+    skills: [
+      "West African trade flows",
+      "industrial logistics",
+      "import and export documentation",
+    ],
+    industryFocus: [
+      "freight",
+      "customs",
+      "cross-border trade",
+      "export readiness",
+    ],
     decisionAuthority: "high",
   },
   {
@@ -239,11 +361,25 @@ const ORGANIZATION: AgentSpec[] = [
     departmentKey: "finance",
     departmentHead: true,
     managerKey: "ceo",
-    mission: "Provide disciplined financial analysis, payment controls, and commercial-risk visibility without initiating transfers or approving transactions independently.",
-    responsibilities: ["Budget review", "Payment-control preparation", "Commercial risk analysis"],
-    capabilities: ["financial_analysis", "payment_controls", "risk_review", "receipts"],
+    mission:
+      "Provide disciplined financial analysis, payment controls, and commercial-risk visibility without initiating transfers or approving transactions independently.",
+    responsibilities: [
+      "Budget review",
+      "Payment-control preparation",
+      "Commercial risk analysis",
+    ],
+    capabilities: [
+      "financial_analysis",
+      "payment_controls",
+      "risk_review",
+      "receipts",
+    ],
     skills: ["working capital", "commercial controls", "financial operations"],
-    industryFocus: ["B2B trade", "industrial procurement", "supply chain finance"],
+    industryFocus: [
+      "B2B trade",
+      "industrial procurement",
+      "supply chain finance",
+    ],
     decisionAuthority: "high",
   },
   {
@@ -254,11 +390,29 @@ const ORGANIZATION: AgentSpec[] = [
     departmentKey: "quality",
     departmentHead: true,
     managerKey: "technical",
-    mission: "Prepare quality-control, assembly, and evidence-check workflows for production or supplier cases that have entered operational review.",
-    responsibilities: ["Quality evidence checklist", "Assembly handoff preparation", "Non-conformance escalation"],
-    capabilities: ["quality_review", "assembly_handoff", "evidence_check", "risk_escalation"],
-    skills: ["quality assurance", "industrial assembly", "technical documentation"],
-    industryFocus: ["GDIZ operations", "manufacturing", "industrial components"],
+    mission:
+      "Prepare quality-control, assembly, and evidence-check workflows for production or supplier cases that have entered operational review.",
+    responsibilities: [
+      "Quality evidence checklist",
+      "Assembly handoff preparation",
+      "Non-conformance escalation",
+    ],
+    capabilities: [
+      "quality_review",
+      "assembly_handoff",
+      "evidence_check",
+      "risk_escalation",
+    ],
+    skills: [
+      "quality assurance",
+      "industrial assembly",
+      "technical documentation",
+    ],
+    industryFocus: [
+      "GDIZ operations",
+      "manufacturing",
+      "industrial components",
+    ],
     decisionAuthority: "medium",
   },
   {
@@ -269,11 +423,29 @@ const ORGANIZATION: AgentSpec[] = [
     departmentKey: "data",
     departmentHead: true,
     managerKey: "ceo",
-    mission: "Maintain reliable industrial demand, catalog, supplier, and performance intelligence while separating verified records from unverified signals.",
-    responsibilities: ["Data-quality review", "Demand intelligence", "Industrial catalog governance"],
-    capabilities: ["data_quality", "industrial_intelligence", "catalog_governance", "reporting"],
-    skills: ["data governance", "industrial market analysis", "operational reporting"],
-    industryFocus: ["industrial data", "supplier intelligence", "market demand"],
+    mission:
+      "Maintain reliable industrial demand, catalog, supplier, and performance intelligence while separating verified records from unverified signals.",
+    responsibilities: [
+      "Data-quality review",
+      "Demand intelligence",
+      "Industrial catalog governance",
+    ],
+    capabilities: [
+      "data_quality",
+      "industrial_intelligence",
+      "catalog_governance",
+      "reporting",
+    ],
+    skills: [
+      "data governance",
+      "industrial market analysis",
+      "operational reporting",
+    ],
+    industryFocus: [
+      "industrial data",
+      "supplier intelligence",
+      "market demand",
+    ],
     decisionAuthority: "high",
   },
   {
@@ -284,11 +456,24 @@ const ORGANIZATION: AgentSpec[] = [
     departmentKey: "compliance",
     departmentHead: true,
     managerKey: "ceo",
-    mission: "Protect Exportunity, its clients, and suppliers by reviewing documentation, consent, claims, and approval gates before controlled external actions.",
-    responsibilities: ["Compliance review", "Document controls", "Approval and audit guidance"],
+    mission:
+      "Protect Exportunity, its clients, and suppliers by reviewing documentation, consent, claims, and approval gates before controlled external actions.",
+    responsibilities: [
+      "Compliance review",
+      "Document controls",
+      "Approval and audit guidance",
+    ],
     capabilities: ["compliance", "document_review", "approval_gates", "audit"],
-    skills: ["commercial compliance", "document governance", "privacy and consent"],
-    industryFocus: ["trade documentation", "supplier onboarding", "B2B governance"],
+    skills: [
+      "commercial compliance",
+      "document governance",
+      "privacy and consent",
+    ],
+    industryFocus: [
+      "trade documentation",
+      "supplier onboarding",
+      "B2B governance",
+    ],
     decisionAuthority: "high",
   },
   {
@@ -299,23 +484,52 @@ const ORGANIZATION: AgentSpec[] = [
     departmentKey: "marketing",
     departmentHead: true,
     managerKey: "ceo",
-    mission: "Translate verified Exportunity capabilities into accurate B2B demand-generation material without making unsupported commercial claims.",
+    mission:
+      "Translate verified Exportunity capabilities into accurate B2B demand-generation material without making unsupported commercial claims.",
     responsibilities: ["B2B messaging", "Demand campaigns", "Content review"],
-    capabilities: ["marketing", "demand_generation", "content_drafting", "brand_governance"],
+    capabilities: [
+      "marketing",
+      "demand_generation",
+      "content_drafting",
+      "brand_governance",
+    ],
     skills: ["B2B marketing", "industrial storytelling", "brand operations"],
-    industryFocus: ["industrial sourcing", "commodities", "machinery", "export"],
+    industryFocus: [
+      "industrial sourcing",
+      "commodities",
+      "machinery",
+      "export",
+    ],
     decisionAuthority: "high",
   },
 ];
 
 function profileFor(hierarchy: AgentHierarchy) {
   if (hierarchy === "super") {
-    return { intelligenceCap: "UNLIMITED" as const, maxContextTokens: 128000, maxDailyTokens: 120000, roleLevel: 5, autonomyLevel: "partial" as const };
+    return {
+      intelligenceCap: "UNLIMITED" as const,
+      maxContextTokens: 128000,
+      maxDailyTokens: 120000,
+      roleLevel: 5,
+      autonomyLevel: "partial" as const,
+    };
   }
   if (hierarchy === "director") {
-    return { intelligenceCap: "HIGH" as const, maxContextTokens: 64000, maxDailyTokens: 60000, roleLevel: 4, autonomyLevel: "partial" as const };
+    return {
+      intelligenceCap: "HIGH" as const,
+      maxContextTokens: 64000,
+      maxDailyTokens: 60000,
+      roleLevel: 4,
+      autonomyLevel: "partial" as const,
+    };
   }
-  return { intelligenceCap: "MEDIUM" as const, maxContextTokens: 32000, maxDailyTokens: 30000, roleLevel: 3, autonomyLevel: "partial" as const };
+  return {
+    intelligenceCap: "MEDIUM" as const,
+    maxContextTokens: 32000,
+    maxDailyTokens: 30000,
+    roleLevel: 3,
+    autonomyLevel: "partial" as const,
+  };
 }
 
 function normalizeDepartmentLabel(value: unknown) {
@@ -328,7 +542,10 @@ function normalizeDepartmentLabel(value: unknown) {
 }
 
 function departmentMetadata(existing: unknown, spec: DepartmentSpec) {
-  const base = existing && typeof existing === "object" && !Array.isArray(existing) ? (existing as Record<string, unknown>) : {};
+  const base =
+    existing && typeof existing === "object" && !Array.isArray(existing)
+      ? (existing as Record<string, unknown>)
+      : {};
   return {
     ...base,
     organizationKey: spec.key,
@@ -338,7 +555,9 @@ function departmentMetadata(existing: unknown, spec: DepartmentSpec) {
 }
 
 async function ensureIndustrialDepartments(companyId: number, dryRun: boolean) {
-  const rows = await db.query.departments.findMany({ where: eq(departments.companyId, companyId) });
+  const rows = await db.query.departments.findMany({
+    where: eq(departments.companyId, companyId),
+  });
   const byLabel = new Map<string, (typeof rows)[number]>();
   for (const row of rows) byLabel.set(normalizeDepartmentLabel(row.name), row);
 
@@ -346,7 +565,9 @@ async function ensureIndustrialDepartments(companyId: number, dryRun: boolean) {
   for (const spec of INDUSTRIAL_DEPARTMENTS) {
     const existing =
       byLabel.get(normalizeDepartmentLabel(spec.name)) ||
-      spec.aliases.map((alias) => byLabel.get(normalizeDepartmentLabel(alias))).find(Boolean);
+      spec.aliases
+        .map((alias) => byLabel.get(normalizeDepartmentLabel(alias)))
+        .find(Boolean);
 
     if (existing?.id) {
       ids.set(spec.key, Number(existing.id));
@@ -386,7 +607,10 @@ async function ensureIndustrialDepartments(companyId: number, dryRun: boolean) {
 }
 
 function safeMetadata(existing: unknown, spec: AgentSpec) {
-  const base = existing && typeof existing === "object" && !Array.isArray(existing) ? (existing as Record<string, unknown>) : {};
+  const base =
+    existing && typeof existing === "object" && !Array.isArray(existing)
+      ? (existing as Record<string, unknown>)
+      : {};
   const modelPolicy = getExportunityAgentModelPolicy(spec.key);
   return {
     ...base,
@@ -406,7 +630,9 @@ function safeMetadata(existing: unknown, spec: AgentSpec) {
   };
 }
 
-export async function ensureExportunityIndustrialAgentOrganization(input?: { dryRun?: boolean }) {
+export async function ensureExportunityIndustrialAgentOrganization(input?: {
+  dryRun?: boolean;
+}) {
   await ensureTenants();
   await ensureAgentsProductionTables();
   await ensureAgentManagementV2Tables();
@@ -423,36 +649,69 @@ export async function ensureExportunityIndustrialAgentOrganization(input?: { dry
     })
     .from(companies)
     .where(eq(companies.tenantId, tenantId));
-  const company = companyRows.find((item) => /exportunity|exportunity machinery/i.test(String(item.name || "")));
+  const company = companyRows.find((item) =>
+    /exportunity|exportunity machinery/i.test(String(item.name || "")),
+  );
   const companyId = company?.id ? Number(company.id) : null;
-  const departmentIds = companyId ? await ensureIndustrialDepartments(companyId, Boolean(input?.dryRun)) : new Map<IndustrialDepartmentKey, number>();
+  const departmentIds = companyId
+    ? await ensureIndustrialDepartments(companyId, Boolean(input?.dryRun))
+    : new Map<IndustrialDepartmentKey, number>();
 
-  const tenantAgents = await db.query.agents.findMany({ where: eq(agents.tenantId, tenantId) });
+  const tenantAgents = await db.query.agents.findMany({
+    where: eq(agents.tenantId, tenantId),
+  });
   const byKey = new Map(
     tenantAgents
-      .map((agent) => [String((agent.metadata as Record<string, unknown> | null)?.organizationKey || ""), agent] as const)
+      .map(
+        (agent) =>
+          [
+            String(
+              (agent.metadata as Record<string, unknown> | null)
+                ?.organizationKey || "",
+            ),
+            agent,
+          ] as const,
+      )
       .filter(([key]) => key),
   );
-  const byName = new Map(tenantAgents.map((agent) => [String(agent.name || "").toLowerCase(), agent]));
+  const byName = new Map(
+    tenantAgents.map((agent) => [
+      String(agent.name || "").toLowerCase(),
+      agent,
+    ]),
+  );
   const agentIds = new Map<string, number>();
-  const changes: Array<{ key: string; action: "created" | "updated"; agentId?: number }> = [];
+  const changes: Array<{
+    key: string;
+    action: "created" | "updated";
+    agentId?: number;
+  }> = [];
   const fenou = tenantAgents.find((agent) => {
-    const metadata = agent.metadata && typeof agent.metadata === "object" && !Array.isArray(agent.metadata)
-      ? (agent.metadata as Record<string, unknown>)
-      : {};
-    return String(metadata.organizationKey || "").toLowerCase() === "fenou" || String(agent.name || "").toLowerCase() === "fenou";
+    const metadata =
+      agent.metadata &&
+      typeof agent.metadata === "object" &&
+      !Array.isArray(agent.metadata)
+        ? (agent.metadata as Record<string, unknown>)
+        : {};
+    return (
+      String(metadata.organizationKey || "").toLowerCase() === "fenou" ||
+      String(agent.name || "").toLowerCase() === "fenou"
+    );
   });
 
   for (const spec of ORGANIZATION) {
     const existing =
       byKey.get(spec.key) ||
       byName.get(spec.name.toLowerCase()) ||
-      (spec.key === "tassi" ? tenantAgents.find((agent) => /tassi/i.test(String(agent.name || ""))) : undefined);
+      (spec.key === "tassi"
+        ? tenantAgents.find((agent) => /tassi/i.test(String(agent.name || "")))
+        : undefined);
     const profile = profileFor(spec.hierarchy);
     const values = {
       tenantId,
       companyId: companyId ?? existing?.companyId ?? null,
-      departmentId: existing?.departmentId ?? departmentIds.get(spec.departmentKey) ?? null,
+      departmentId:
+        existing?.departmentId ?? departmentIds.get(spec.departmentKey) ?? null,
       env: "prod" as const,
       isTest: false,
       isVisible: true,
@@ -464,7 +723,12 @@ export async function ensureExportunityIndustrialAgentOrganization(input?: { dry
       maxContextTokens: profile.maxContextTokens,
       maxDailyTokens: profile.maxDailyTokens,
       isSuperAgent: spec.hierarchy === "super",
-      tokenMultiplier: spec.hierarchy === "super" ? "3.00" : spec.hierarchy === "director" ? "2.00" : "1.25",
+      tokenMultiplier:
+        spec.hierarchy === "super"
+          ? "3.00"
+          : spec.hierarchy === "director"
+            ? "2.00"
+            : "1.25",
       isDepartmentHead: spec.departmentHead ?? false,
       status: "active" as const,
       country: "Benin",
@@ -472,10 +736,22 @@ export async function ensureExportunityIndustrialAgentOrganization(input?: { dry
       languages: ["fr", "en"],
       skills: spec.skills,
       industryFocus: spec.industryFocus,
-      personality: { tone: "friendly" as const, riskTolerance: "conservative" as const, speed: "deliberate" as const, detailLevel: "moderate" as const },
+      personality: {
+        tone: "friendly" as const,
+        riskTolerance: "conservative" as const,
+        speed: "deliberate" as const,
+        detailLevel: "moderate" as const,
+      },
       mission: spec.mission,
       responsibilities: spec.responsibilities,
-      permissions: { email: false, calendar: false, crm: true, knowledge: true, payments: false, webResearch: false },
+      permissions: {
+        email: false,
+        calendar: false,
+        crm: true,
+        knowledge: true,
+        payments: false,
+        webResearch: false,
+      },
       autonomyLevel: profile.autonomyLevel,
       approvalRules: {
         externalCommunication: "human_approval_required",
@@ -488,14 +764,22 @@ export async function ensureExportunityIndustrialAgentOrganization(input?: { dry
       contextWindowTokens: profile.maxContextTokens,
       decisionAuthority: spec.decisionAuthority,
       canApproveBelow: spec.hierarchy === "super",
-      communicationStyle: { tone: "direct" as const, verbosity: "concise" as const, emoji: false },
+      communicationStyle: {
+        tone: "direct" as const,
+        verbosity: "concise" as const,
+        emoji: false,
+      },
       capabilities: spec.capabilities,
       metadata: safeMetadata(existing?.metadata, spec),
       updatedAt: new Date(),
     };
 
     if (input?.dryRun) {
-      changes.push({ key: spec.key, action: existing ? "updated" : "created", agentId: existing?.id });
+      changes.push({
+        key: spec.key,
+        action: existing ? "updated" : "created",
+        agentId: existing?.id,
+      });
       if (existing?.id) agentIds.set(spec.key, Number(existing.id));
       continue;
     }
@@ -503,29 +787,50 @@ export async function ensureExportunityIndustrialAgentOrganization(input?: { dry
     if (existing?.id) {
       await db.update(agents).set(values).where(eq(agents.id, existing.id));
       agentIds.set(spec.key, Number(existing.id));
-      changes.push({ key: spec.key, action: "updated", agentId: Number(existing.id) });
+      changes.push({
+        key: spec.key,
+        action: "updated",
+        agentId: Number(existing.id),
+      });
     } else {
-      const [created] = await db.insert(agents).values({ ...values, createdAt: new Date() }).returning({ id: agents.id });
+      const [created] = await db
+        .insert(agents)
+        .values({ ...values, createdAt: new Date() })
+        .returning({ id: agents.id });
       if (!created?.id) throw new Error(`Unable to create agent ${spec.key}`);
       agentIds.set(spec.key, Number(created.id));
-      changes.push({ key: spec.key, action: "created", agentId: Number(created.id) });
+      changes.push({
+        key: spec.key,
+        action: "created",
+        agentId: Number(created.id),
+      });
     }
   }
 
-  let operatingPlan: Awaited<ReturnType<typeof ensureExportunityIndustrialOperatingPlan>> | null = null;
+  let operatingPlan: Awaited<
+    ReturnType<typeof ensureExportunityIndustrialOperatingPlan>
+  > | null = null;
 
   if (!input?.dryRun) {
     for (const spec of ORGANIZATION) {
       const agentId = agentIds.get(spec.key);
-      const managerId = spec.managerKey ? agentIds.get(spec.managerKey) || null : null;
+      const managerId = spec.managerKey
+        ? agentIds.get(spec.managerKey) || null
+        : null;
       if (!agentId) continue;
-      await db.update(agents).set({ managerId, updatedAt: new Date() }).where(and(eq(agents.id, agentId), eq(agents.tenantId, tenantId)));
+      await db
+        .update(agents)
+        .set({ managerId, updatedAt: new Date() })
+        .where(and(eq(agents.id, agentId), eq(agents.tenantId, tenantId)));
     }
 
     if (fenou?.id && companyId && !fenou.departmentId) {
-      const metadata = fenou.metadata && typeof fenou.metadata === "object" && !Array.isArray(fenou.metadata)
-        ? (fenou.metadata as Record<string, unknown>)
-        : {};
+      const metadata =
+        fenou.metadata &&
+        typeof fenou.metadata === "object" &&
+        !Array.isArray(fenou.metadata)
+          ? (fenou.metadata as Record<string, unknown>)
+          : {};
       await db
         .update(agents)
         .set({
@@ -540,15 +845,23 @@ export async function ensureExportunityIndustrialAgentOrganization(input?: { dry
           updatedAt: new Date(),
         })
         .where(and(eq(agents.id, fenou.id), eq(agents.tenantId, tenantId)));
-      changes.push({ key: "fenou", action: "updated", agentId: Number(fenou.id) });
+      changes.push({
+        key: "fenou",
+        action: "updated",
+        agentId: Number(fenou.id),
+      });
     }
 
-    const productionRows = await db.query.agentsProduction.findMany({ where: eq(agentsProduction.tenantId, tenantId) });
+    const productionRows = await db.query.agentsProduction.findMany({
+      where: eq(agentsProduction.tenantId, tenantId),
+    });
     for (const spec of ORGANIZATION) {
       const agentId = agentIds.get(spec.key);
       if (!agentId) continue;
       const modelPolicy = getExportunityAgentModelPolicy(spec.key);
-      const existing = productionRows.find((row) => Number(row.agentId) === agentId || row.agentKey === spec.key);
+      const existing = productionRows.find(
+        (row) => Number(row.agentId) === agentId || row.agentKey === spec.key,
+      );
       const productionValues = {
         tenantId,
         agentId,
@@ -571,15 +884,23 @@ export async function ensureExportunityIndustrialAgentOrganization(input?: { dry
         updatedAt: new Date(),
       };
       if (existing?.id) {
-        await db.update(agentsProduction).set(productionValues).where(eq(agentsProduction.id, existing.id));
+        await db
+          .update(agentsProduction)
+          .set(productionValues)
+          .where(eq(agentsProduction.id, existing.id));
       } else {
-        await db.insert(agentsProduction).values({ ...productionValues, createdAt: new Date() });
+        await db
+          .insert(agentsProduction)
+          .values({ ...productionValues, createdAt: new Date() });
       }
     }
 
     if (fenou?.id) {
       const modelPolicy = getExportunityAgentModelPolicy("tassi");
-      const existing = productionRows.find((row) => Number(row.agentId) === Number(fenou.id) || row.agentKey === "fenou");
+      const existing = productionRows.find(
+        (row) =>
+          Number(row.agentId) === Number(fenou.id) || row.agentKey === "fenou",
+      );
       const productionValues = {
         tenantId,
         agentId: Number(fenou.id),
@@ -602,9 +923,14 @@ export async function ensureExportunityIndustrialAgentOrganization(input?: { dry
         updatedAt: new Date(),
       };
       if (existing?.id) {
-        await db.update(agentsProduction).set(productionValues).where(eq(agentsProduction.id, existing.id));
+        await db
+          .update(agentsProduction)
+          .set(productionValues)
+          .where(eq(agentsProduction.id, existing.id));
       } else {
-        await db.insert(agentsProduction).values({ ...productionValues, createdAt: new Date() });
+        await db
+          .insert(agentsProduction)
+          .values({ ...productionValues, createdAt: new Date() });
       }
       agentIds.set("fenou", Number(fenou.id));
     }

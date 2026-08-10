@@ -48,7 +48,7 @@ function defaultPromptTemplate(agent: any) {
   const role = String(agent?.role || "").trim() || "Operations";
   const country = String(agent?.country || "").trim();
   const countryClause = country ? ` from ${country}` : "";
-  return `Professional headshot of an African corporate team member named ${name}${countryClause}, role ${role} at a gold trading platform. Clean studio lighting, modern Afro-business aesthetic, confident and friendly, neutral background, high detail, photorealistic, 1:1.`;
+  return `Professional headshot of an African industrial company team member named ${name}${countryClause}, role ${role} at Exportunity, an AI-managed industrial supply, sourcing, export, and manufacturing platform. Clean studio lighting, modern Afro-industrial business aesthetic, confident and approachable, deep navy workwear or professional attire with restrained gold accents, neutral background, high detail, photorealistic, 1:1. Do not add text, third-party logos, or financial-trading imagery.`;
 }
 
 function safeObject(input: unknown): Record<string, any> {

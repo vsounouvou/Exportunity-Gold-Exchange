@@ -74,6 +74,16 @@ test("working agents expose a direct identity and face editor", () => {
   assert.match(registryApi, /as runtime_agent_id/);
 });
 
+test("Fenou joins Operations meetings and explicit user invitations bypass autonomous join policy", () => {
+  const operationsCenter = readRepoFile("client/src/pages/AITeamHubPage.tsx");
+  const routes = readRepoFile("server/routes.ts");
+
+  assert.match(operationsCenter, /EXPORTUNITY_CORE_AGENT_KEYS = \["fenou", "ceo", "technical", "sourcing", "commercial"\]/);
+  assert.match(routes, /source === "agent" && conversationGovernanceEnabled && !accountabilitySettings\.allowAutoJoin/);
+  assert.match(routes, /Joined by explicit user invitation/);
+  assert.match(routes, /text: response,\s+allowHeuristics: false,/);
+});
+
 test("agent lists resolve the department selected in the identity editor", () => {
   const routes = readRepoFile("server/routes/agents-v2.ts");
   const team = readRepoFile("client/src/pages/OperationsAgentsPage.tsx");

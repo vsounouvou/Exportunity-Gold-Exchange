@@ -42,6 +42,7 @@ export type DispatchAgentActionsResult = {
 
 export type DispatchAgentActionsInput = {
   text: string;
+  allowHeuristics?: boolean;
   tenantId: number | null | undefined;
   conversationId: string;
   source: string;
@@ -885,7 +886,10 @@ function dedupeIntents(intents: ParsedAgentActionIntent[]) {
   });
 }
 
-export function extractAgentActionIntents(text: string): ParsedAgentActionIntent[] {
+export function extractAgentActionIntents(
+  text: string,
+  options?: { allowHeuristics?: boolean },
+): ParsedAgentActionIntent[] {
   const raw = String(text || "");
   if (!raw.trim()) return [];
 
@@ -893,6 +897,8 @@ export function extractAgentActionIntents(text: string): ParsedAgentActionIntent
     ...parseStructuredActionBlocks(raw),
     ...parseSingleBracketStructuredActionBlocks(raw),
   ];
+  if (options?.allowHeuristics === false) return dedupeIntents(intents);
+
   const heuristicText = stripAgentActionMarkers(raw);
   if (!heuristicText) return dedupeIntents(intents);
 
@@ -1385,7 +1391,9 @@ export async function dispatchAgentActionIntents(
   input: DispatchAgentActionsInput,
   deps?: { createActionRequest?: CreateActionRequestFn },
 ): Promise<DispatchAgentActionsResult> {
-  const intents = extractAgentActionIntents(input.text);
+  const intents = extractAgentActionIntents(input.text, {
+    allowHeuristics: input.allowHeuristics !== false,
+  });
   const created: DispatchCreatedAction[] = [];
   const blocked: string[] = [];
   const createActionRequest = deps?.createActionRequest || defaultCreateActionRequest;

@@ -4655,6 +4655,7 @@ ${governanceContext}`;
 
         const actionDispatch = await dispatchAgentActionIntents({
           text: aiResult.response,
+          allowHeuristics: false,
           tenantId: tenant?.id ?? null,
           conversationId,
           source: "operations-center.channels.all-team",
@@ -4942,6 +4943,7 @@ ${governanceContext}`;
 
         const actionDispatch = await dispatchAgentActionIntents({
           text: aiResult.response,
+          allowHeuristics: false,
           tenantId: tenant?.id ?? null,
           conversationId,
           source: "operations-center.channels.all-team.summoned",
@@ -7405,7 +7407,7 @@ Respond helpfully with your full platform awareness.`,
           const toInsert = candidates.filter((a: any) => !existingIds.has(a.id));
           if (!toInsert.length) return [];
 
-          if (conversationGovernanceEnabled && !accountabilitySettings.allowAutoJoin) {
+          if (source === "agent" && conversationGovernanceEnabled && !accountabilitySettings.allowAutoJoin) {
             console.warn(
               `[ConversationGovernance] auto-join blocked conversation=${conversationId} source=${source} requested=${toInsert
                 .map((a: any) => a.id)
@@ -7460,7 +7462,7 @@ Respond helpfully with your full platform awareness.`,
                   reasonText:
                     source === "agent"
                       ? "Auto-join triggered by agent summon"
-                      : "Auto-join triggered by user summon",
+                      : "Joined by explicit user invitation",
                 });
               } catch (eventError) {
                 console.error("[API] Failed to record auto-join membership event:", eventError);
@@ -7894,6 +7896,7 @@ Respond helpfully with your full platform awareness.`,
 
               const actionDispatch = await dispatchAgentActionIntents({
                 text: response,
+                allowHeuristics: false,
                 tenantId: tenant?.id ?? null,
                 conversationId,
                 source: "operations-center.meeting.message",
@@ -14871,6 +14874,7 @@ const handleNewMessage = async (params: MessageHandlerParams): Promise<void> => 
 
       const actionDispatch = await dispatchAgentActionIntents({
         text: response,
+        allowHeuristics: false,
         tenantId: tenantId ?? null,
         conversationId,
         source: "operations-center.meeting.followup",

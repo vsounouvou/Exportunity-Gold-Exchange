@@ -741,7 +741,7 @@ function useCompactOperationsWorkspace() {
   return isCompact;
 }
 
-const EXPORTUNITY_CORE_AGENT_KEYS = ["ceo", "tassi", "technical", "sourcing", "commercial"];
+const EXPORTUNITY_CORE_AGENT_KEYS = ["fenou", "ceo", "technical", "sourcing", "commercial"];
 
 function getAgentOrganizationKey(agent: Agent) {
   const metadata =

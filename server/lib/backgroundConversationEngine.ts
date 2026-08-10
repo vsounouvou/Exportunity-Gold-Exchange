@@ -614,6 +614,7 @@ async function executeConversation(
       if (tenantId && tenantId > 0) {
         const actionDispatch = await dispatchAgentActionIntents({
           text: visibleMessageContentRaw,
+          allowHeuristics: false,
           tenantId,
           conversationId: String(room.conversationId || ""),
           source: "operations-center.background.engine",

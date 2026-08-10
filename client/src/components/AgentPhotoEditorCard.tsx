@@ -172,6 +172,9 @@ export function AgentPhotoEditorCard({ agentId, className }: { agentId: number; 
 
   const previewUrl = activeUrl || fallbackUrl;
   const locked = Boolean(agent?.photoLocked);
+  const variants = data?.variants || [];
+  const failedVariantCount = variants.filter((image) => image.status === "failed").length;
+  const visibleVariants = variants.filter((image) => image.status !== "failed").slice(0, 8);
 
   return (
     <Card className={cn("border-border bg-card text-card-foreground", className)}>
@@ -232,12 +235,13 @@ export function AgentPhotoEditorCard({ agentId, className }: { agentId: number; 
                 disabled={busy}
                 onClick={() => fileInputRef.current?.click()}
               >
-                Upload
+                Upload photo
               </Button>
               <Button
                 type="button"
                 className="bg-amber-500 text-slate-950 hover:bg-amber-400"
                 disabled={busy || locked}
+                title={locked ? "Unlock this photo before generating a replacement" : "Generate photo variants"}
                 onClick={() => generateMutation.mutate()}
               >
                 Generate
@@ -331,9 +335,10 @@ export function AgentPhotoEditorCard({ agentId, className }: { agentId: number; 
         <div className="space-y-2">
           <div className="text-xs text-muted-foreground">Recent variants</div>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            {(data?.variants || []).slice(0, 8).map((img) => {
+            {visibleVariants.map((img) => {
               const url = resolveImageUrl(img.storedUrl || null);
               const isActive = Boolean(data?.activeImage?.id && img.id === data.activeImage.id);
+              const canSelect = Boolean(url) && !["pending", "processing", "queued"].includes(img.status);
               return (
                 <div
                   key={img.id}
@@ -356,10 +361,10 @@ export function AgentPhotoEditorCard({ agentId, className }: { agentId: number; 
                       type="button"
                       size="sm"
                       className="h-7 bg-amber-500 px-2 text-xs text-slate-950 hover:bg-amber-400"
-                      disabled={busy}
+                      disabled={busy || !canSelect}
                       onClick={() => selectMutation.mutate(img.id)}
                     >
-                      {isActive ? "Active" : "Set"}
+                      {isActive ? "Active" : canSelect ? "Set" : "Processing"}
                     </Button>
                     <Button
                       type="button"
@@ -376,12 +381,17 @@ export function AgentPhotoEditorCard({ agentId, className }: { agentId: number; 
                 </div>
               );
             })}
-            {!data?.variants?.length ? (
+            {!visibleVariants.length ? (
               <div className="col-span-2 text-[11px] text-muted-foreground sm:col-span-4">
-                No generated images yet. Click Generate to create variants.
+                No usable generated photos yet. Upload a headshot or generate new variants.
               </div>
             ) : null}
           </div>
+          {failedVariantCount > 0 ? (
+            <div className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-800 dark:text-amber-200">
+              {failedVariantCount} previous generation attempt{failedVariantCount === 1 ? "" : "s"} did not complete. Uploading a photo still works; unlock this profile before trying generation again.
+            </div>
+          ) : null}
         </div>
       </CardContent>
     </Card>

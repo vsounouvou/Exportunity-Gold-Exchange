@@ -481,16 +481,10 @@ router.post("/message", async (req, res) => {
 
     const createdRunIds: number[] = [];
     const createdRunLabelsById = new Map<number, string>();
-    const userRequestedBulkAgents =
-      /\b(create|add|hire|onboard|recruit|setup|set up)\b/i.test(effectiveContent) &&
-      /\b(?:\d{1,3}|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred)(?:[\s-]+(?:one|two|three|four|five|six|seven|eight|nine))?(?:\s+[a-z][a-z0-9_-]{1,30}){0,3}\s+(?:agents?|assistants?)\b/i.test(
-        effectiveContent,
-      );
-    const dispatchText = userRequestedBulkAgents ? `${aiResult.response}\n${effectiveContent}` : aiResult.response;
-
     const assistantDispatch = await dispatchAgentActionIntents(
       {
-        text: dispatchText,
+        text: aiResult.response,
+        allowHeuristics: false,
         tenantId,
         conversationId: `assistant-thread:${thread.id}`,
         source: "assistant.message",

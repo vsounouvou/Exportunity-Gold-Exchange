@@ -522,6 +522,7 @@ async function runBrainstormSession(sessionId: string) {
       if (settings.allow_actions) {
         const dispatch = await dispatchAgentActionIntents({
           text: responseText,
+          allowHeuristics: false,
           tenantId: Number(session.tenant_id),
           conversationId,
           source: "brainstorm.session",

@@ -25,6 +25,23 @@ test("extractAgentActionIntents parses structured action blocks", () => {
   assert.equal(intents[0]?.payload?.toE164, "+15551234567");
 });
 
+test("extractAgentActionIntents ignores action-like prose when heuristics are disabled", () => {
+  const intents = extractAgentActionIntents(
+    "Capture and qualify client needs, then list the decisions and owners required.",
+    { allowHeuristics: false },
+  );
+  assert.deepEqual(intents, []);
+});
+
+test("extractAgentActionIntents still accepts explicit action blocks when heuristics are disabled", () => {
+  const intents = extractAgentActionIntents(
+    `[[ACTION:CREATE_TASK {"title":"Review industrial outreach readiness"}]]`,
+    { allowHeuristics: false },
+  );
+  assert.equal(intents.length, 1);
+  assert.equal(intents[0]?.actionType, "CREATE_TASK");
+});
+
 test("extractAgentActionIntents parses CREATE_CONTACT and CREATE_SHOP action blocks", () => {
   const intents = extractAgentActionIntents(
     [

@@ -97,6 +97,8 @@ const MIN_DOCK_WIDTH = 300;
 const MIN_DOCK_HEIGHT = 320;
 const DEFAULT_DOCK_WIDTH = 312;
 const DEFAULT_DOCK_HEIGHT = 360;
+const COLLAPSED_DOCK_WIDTH = 260;
+const COLLAPSED_DOCK_HEIGHT = 68;
 const WORK_SURFACE_PATH_PATTERN = /^\/(admin|ai-team|dashboard|meetings|m\/|operations|actions|agenda|goals|objectives|decisions|tasks)(\/|$)/i;
 
 function getDefaultDockLayout(): DockLayout {
@@ -129,12 +131,14 @@ function clampDockLayout(next: DockLayout): DockLayout {
   if (typeof window === "undefined") return next;
   const width = Math.min(Math.max(next.width, MIN_DOCK_WIDTH), Math.max(MIN_DOCK_WIDTH, window.innerWidth - 24));
   const height = Math.min(Math.max(next.height, MIN_DOCK_HEIGHT), Math.max(MIN_DOCK_HEIGHT, window.innerHeight - 32));
+  const visibleWidth = next.collapsed ? Math.min(COLLAPSED_DOCK_WIDTH, window.innerWidth - 24) : width;
+  const visibleHeight = next.collapsed ? COLLAPSED_DOCK_HEIGHT : height;
   return {
     ...next,
     width,
     height,
-    x: Math.min(Math.max(12, next.x), Math.max(12, window.innerWidth - width - 12)),
-    y: Math.min(Math.max(12, next.y), Math.max(12, window.innerHeight - height - 12)),
+    x: Math.min(Math.max(12, next.x), Math.max(12, window.innerWidth - visibleWidth - 12)),
+    y: Math.min(Math.max(12, next.y), Math.max(12, window.innerHeight - visibleHeight - 12)),
   };
 }
 
@@ -340,12 +344,17 @@ export function ChairmanChatDock() {
   const headers = useMemo(() => ({ "x-chairman-admin-override": "1" }), []);
 
   const openDock = useCallback(() => {
-    setDockLayout((current) => ({
-      ...clampDockLayout(current),
-      collapsed: false,
-    }));
+    setDockLayout((current) => {
+      if (!isMobile && isWorkSurface && current.collapsed) {
+        return getWorkSurfaceDockLayout();
+      }
+      return {
+        ...clampDockLayout(current),
+        collapsed: false,
+      };
+    });
     setIsOpen(true);
-  }, []);
+  }, [isMobile, isWorkSurface]);
 
   useEffect(() => {
     if (isMobile || typeof window === "undefined") return;
@@ -849,15 +858,15 @@ export function ChairmanChatDock() {
 
   const snapDockToBottom = () => {
     if (typeof window === "undefined") return;
-    const width = Math.min(620, Math.max(MIN_DOCK_WIDTH, window.innerWidth - 32));
-    const height = Math.min(340, Math.max(MIN_DOCK_HEIGHT, window.innerHeight - 112));
+    const width = Math.min(420, Math.max(MIN_DOCK_WIDTH, window.innerWidth - 32));
+    const height = MIN_DOCK_HEIGHT;
     setDockLayout(
       clampDockLayout({
-        x: Math.max(16, (window.innerWidth - width) / 2),
-        y: Math.max(16, window.innerHeight - height - 16),
+        x: Math.max(16, (window.innerWidth - COLLAPSED_DOCK_WIDTH) / 2),
+        y: Math.max(16, window.innerHeight - COLLAPSED_DOCK_HEIGHT - 12),
         width,
         height,
-        collapsed: false,
+        collapsed: true,
       }),
     );
   };
@@ -930,7 +939,7 @@ export function ChairmanChatDock() {
       ? {
           left: dockLayout.x,
           top: dockLayout.y,
-          width: 260,
+          width: COLLAPSED_DOCK_WIDTH,
         }
       : {
           left: dockLayout.x,
@@ -1069,7 +1078,8 @@ export function ChairmanChatDock() {
                         size="sm"
                         className="h-8 px-2 text-[11px] font-semibold text-slate-500 hover:bg-slate-100 hover:text-slate-900"
                         onClick={snapDockToBottom}
-                        title="Snap assistant to the bottom"
+                        title="Minimize assistant at the bottom"
+                        aria-label="Minimize assistant at the bottom"
                       >
                         Bottom
                       </Button>

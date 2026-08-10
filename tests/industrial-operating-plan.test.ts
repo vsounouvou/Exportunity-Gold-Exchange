@@ -81,6 +81,8 @@ test("Fenou joins Operations meetings and explicit user invitations bypass auton
   assert.match(operationsCenter, /EXPORTUNITY_CORE_AGENT_KEYS = \["fenou", "ceo", "technical", "sourcing", "commercial"\]/);
   assert.match(routes, /source === "agent" && conversationGovernanceEnabled && !accountabilitySettings\.allowAutoJoin/);
   assert.match(routes, /Joined by explicit user invitation/);
+  assert.match(routes, /allowLeadingBareMentions: true/);
+  assert.match(routes, /Joined by direct user address/);
   assert.match(routes, /text: response,\s+allowHeuristics: false,/);
 });
 

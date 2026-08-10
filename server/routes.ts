@@ -154,6 +154,11 @@ import { readBuildMeta } from "./lib/platform/buildMeta";
 import { readAdminNavRegistry, summarizeAdminNav } from "./lib/platform/adminNav";
 import { createActionRequest } from "./lib/actions/ActionRouter";
 import { assertProductionAgentIdAllowed, filterProductionAgentIds } from "./lib/agents/productionAllowlist";
+import {
+  buildAgentMentionAliases,
+  getMentionedAgentIdsFromText,
+  normalizeForMention,
+} from "./lib/agents/mentions";
 import { persistChatAttachment } from "./lib/uploads/chatAttachments";
 import { ensureDefaultCompany } from "./lib/default-company";
 import {
@@ -161,6 +166,7 @@ import {
   renderActionDispatchFeedback,
   stripAgentActionMarkers,
 } from "./lib/actions/agentActionIntents";
+import { prohibitsTaskCreation } from "./lib/actions/instructionGuards";
 import { getSettingsByPrefix } from "./lib/settings";
 import { deriveAgentMemoryAccessPolicy, isTassiGlobalAgent } from "./lib/memory/scoping";
 import { getTenantConfigByKey } from "../tenants/index";
@@ -180,105 +186,6 @@ import { ensureTenantAdmin, ensureTenantStaff, isChairmanAssistantUser, resolveT
 // Add debug logging
 const logAgentAction = (agentId: number | null, action: string, data?: any) => {
   console.log(`[Agent ${agentId}] ${action}:`, data ? JSON.stringify(data) : '');
-};
-
-type MentionAlias = { alias: string; agentId: number };
-
-const RESERVED_MENTION_ALIASES = new Set(["all", "everyone", "team"]);
-
-const normalizeForMention = (value: unknown) =>
-  String(value ?? "")
-    .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/\s+/g, " ")
-    .trim();
-
-const escapeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-
-const buildAgentMentionAliases = (agentRows: any[]): MentionAlias[] => {
-  const full: MentionAlias[] = [];
-  const firstCounts = new Map<string, number>();
-  const lastCounts = new Map<string, number>();
-
-  for (const agent of agentRows) {
-    const agentId = Number(agent?.id);
-    if (!Number.isInteger(agentId) || agentId <= 0) continue;
-    const normalizedName = normalizeForMention(agent?.name);
-    if (!normalizedName) continue;
-
-    full.push({ alias: normalizedName, agentId });
-
-    const parts = normalizedName.split(" ").filter(Boolean);
-    if (!parts.length) continue;
-
-    const first = parts[0];
-    const last = parts[parts.length - 1];
-
-    if (first.length >= 3 && !RESERVED_MENTION_ALIASES.has(first)) {
-      firstCounts.set(first, (firstCounts.get(first) ?? 0) + 1);
-    }
-
-    if (last.length >= 3 && !RESERVED_MENTION_ALIASES.has(last)) {
-      lastCounts.set(last, (lastCounts.get(last) ?? 0) + 1);
-    }
-  }
-
-  const aliases: MentionAlias[] = [...full];
-
-  for (const entry of full) {
-    const parts = entry.alias.split(" ").filter(Boolean);
-    if (!parts.length) continue;
-
-    const first = parts[0];
-    const last = parts[parts.length - 1];
-
-    if (firstCounts.get(first) === 1) {
-      aliases.push({ alias: first, agentId: entry.agentId });
-    }
-
-    if (lastCounts.get(last) === 1 && last !== first) {
-      aliases.push({ alias: last, agentId: entry.agentId });
-    }
-  }
-
-  const seen = new Set<string>();
-  return aliases.filter(({ alias, agentId }) => {
-    const key = `${agentId}:${alias}`;
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
-};
-
-const getMentionedAgentIdsFromText = (
-  rawText: unknown,
-  aliases: MentionAlias[],
-  options?: { allowBareMentions?: boolean },
-): number[] => {
-  const text = normalizeForMention(rawText);
-  if (!text) return [];
-
-  const allowBareMentions = Boolean(options?.allowBareMentions);
-  const mentioned = new Set<number>();
-  for (const { alias, agentId } of aliases) {
-    if (!alias) continue;
-    const escapedAlias = escapeRegex(alias);
-    const explicitMention = new RegExp(`(^|[^\\w])@${escapedAlias}(?=$|[^\\w])`);
-    if (explicitMention.test(text)) {
-      mentioned.add(agentId);
-      continue;
-    }
-
-    if (!allowBareMentions) continue;
-
-    // Meeting-friendly: allow "Sira," / "Sira please ..." / "Sira Kouassi ..." without requiring "@"
-    const bareMention = new RegExp(`(^|[^\\w@])${escapedAlias}(?=$|[^\\w])`);
-    if (bareMention.test(text)) {
-      mentioned.add(agentId);
-    }
-  }
-  return Array.from(mentioned);
 };
 
 const resolveAgentRouteId = async (req: any): Promise<number | null> => {
@@ -4275,6 +4182,7 @@ ${governanceContext}`;
       const responderPool = requestedAgents.length ? requestedAgents : companyAgents;
       const conversationAgentIds = new Set<number>(requestedAgents.map((a: any) => a.id));
       const summonedAgentIds = new Set<number>();
+      const userInvitedAgentIds = new Set<number>();
       const mentionAliases = buildAgentMentionAliases(companyAgents);
 
       const agentDirectory = companyAgents
@@ -4290,14 +4198,18 @@ ${governanceContext}`;
 
       const channelLower = channelId.toLowerCase();
       const contentLower = contentForAi.toLowerCase();
+      const taskCreationProhibited = prohibitsTaskCreation(contentForStorage);
 
-      const mentionedAgentIds = new Set<number>(getMentionedAgentIdsFromText(contentForStorage, mentionAliases));
+      const mentionedAgentIds = new Set<number>(
+        getMentionedAgentIdsFromText(contentForStorage, mentionAliases, { allowLeadingBareMentions: true }),
+      );
       const mentionedAgents = companyAgents.filter((agent: any) => mentionedAgentIds.has(Number(agent?.id)));
 
       for (const agent of mentionedAgents) {
         if (!agent?.id) continue;
-        if (conversationGovernanceEnabled && !accountabilitySettings.allowAutoJoin) continue;
         conversationAgentIds.add(agent.id);
+        summonedAgentIds.add(agent.id);
+        userInvitedAgentIds.add(agent.id);
       }
 
       const wantsMultiAgent =
@@ -4396,7 +4308,7 @@ ${governanceContext}`;
       }
 
       let primaryTaskId: number | null = null;
-      if (accountabilityEnabled && tenantId) {
+      if (accountabilityEnabled && tenantId && !taskCreationProhibited) {
         try {
           primaryTaskId = await ensurePrimaryConversationTask({
             companyId,
@@ -5062,14 +4974,17 @@ ${governanceContext}`;
           if (tenantId) {
             for (const id of newlySummonedIds) {
               try {
+                const wasUserInvitation = userInvitedAgentIds.has(id);
                 await recordConversationMembershipEvent({
                   tenantId,
                   conversationId,
                   actorUserId: requestedByUserId,
                   eventType: "ADD_MEMBER",
                   targetAgentId: id,
-                  reasonCode: "SYSTEM_DEFAULT",
-                  reasonText: "Auto-join triggered by summon",
+                  reasonCode: wasUserInvitation ? "MANUAL_INVITE" : "SYSTEM_DEFAULT",
+                  reasonText: wasUserInvitation
+                    ? "Joined by direct user address"
+                    : "Auto-join triggered by agent summon",
                 });
               } catch (eventError) {
                 console.error("[Channel] Failed to record summoned membership event:", eventError);
@@ -7615,7 +7530,8 @@ Respond helpfully with your full platform awareness.`,
         });
 
         let primaryTaskId: number | null = null;
-        if (accountabilityEnabled && tenantId) {
+        const taskCreationProhibited = prohibitsTaskCreation(content);
+        if (accountabilityEnabled && tenantId && !taskCreationProhibited) {
           try {
             const ownerAgentId =
               parsePositiveInt((responderMembers[0] as any)?.agent?.id) ??

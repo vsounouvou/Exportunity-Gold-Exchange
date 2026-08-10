@@ -763,6 +763,11 @@ function isExportunityOrganizationAgent(agent: Agent) {
   );
 }
 
+function isArchivedTestMeeting(room: ChatRoom) {
+  const name = String(room.name || "").trim();
+  return /\bsmoke\b|safe to archive/i.test(name);
+}
+
 export function AITeamHubPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -1629,7 +1634,7 @@ export function AITeamHubPage() {
   const filteredMeetings = chatRooms.filter((room) => {
     const matchesSearch = room.name.toLowerCase().includes(meetingSearch.toLowerCase());
     const isMeeting = room.type === "meeting";
-    return matchesSearch && isMeeting;
+    return matchesSearch && isMeeting && !isArchivedTestMeeting(room);
   });
 
   const agendaSnapshotItems = useMemo<AgendaSnapshotItem[]>(() => {

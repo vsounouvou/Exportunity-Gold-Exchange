@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Eye, Pencil, Plus, RefreshCw } from "lucide-react";
+import { BrainCircuit, Eye, Pencil, Plus, RefreshCw } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -267,13 +267,19 @@ export default function OperationsAgentsPage() {
                 <Link href={`/operations/agents/${item.id}`}>
                   <Button type="button" size="sm" variant="outline" className="h-8">
                     <Eye className="mr-2 h-3.5 w-3.5" />
-                    Open
+                    Full profile
                   </Button>
                 </Link>
                 <Link href={`/operations/agents/${item.id}?edit=1`}>
                   <Button type="button" size="sm" className="h-8 bg-amber-500 text-slate-950 hover:bg-amber-400">
                     <Pencil className="mr-2 h-3.5 w-3.5" />
                     Edit identity &amp; face
+                  </Button>
+                </Link>
+                <Link href={`/operations/agents/${item.id}?tab=memory`}>
+                  <Button type="button" size="sm" variant="outline" className="h-8">
+                    <BrainCircuit className="mr-2 h-3.5 w-3.5" />
+                    Memory &amp; context
                   </Button>
                 </Link>
               </div>

@@ -43,6 +43,8 @@ test("agenda creation submits a real objective and hierarchy reads the same plan
   assert.match(agenda, /exportunity-operations-light/);
   assert.match(operationsCenter, /params\.get\("conversation"\)/);
   assert.match(operationsCenter, /setCurrentMeeting\(requestedRoom\)/);
+  assert.match(operationsCenter, /isArchivedTestMeeting/);
+  assert.match(operationsCenter, /\\bsmoke\\b\|safe to archive/);
   assert.match(hierarchy, /companyData\.vision/);
   assert.match(hierarchy, /active objectives/);
   assert.match(hierarchy, /setLocation\("\/goals"\)/);
@@ -60,7 +62,12 @@ test("working agents expose a direct identity and face editor", () => {
   assert.match(team, /Create and edit/);
   assert.match(team, /Edit identity &amp; face/);
   assert.match(team, /\/operations\/agents\/\$\{item\.id\}\?edit=1/);
+  assert.match(team, /\/operations\/agents\/\$\{item\.id\}\?tab=memory/);
+  assert.match(team, /Memory &amp; context/);
   assert.match(profile, /Edit identity &amp; face/);
+  assert.match(profile, /new URLSearchParams\(window\.location\.search\)\.get\("tab"\)/);
+  assert.match(profile, /setActiveTab\("memory"\)/);
+  assert.match(profile, /<Tabs value=\{activeTab\} onValueChange=\{setActiveTab\}>/);
   assert.doesNotMatch(profile, /\{location\}<\/div>/);
   assert.match(registry, /runtime_agent_id/);
   assert.match(registry, /\/operations\/agents\/\$\{Number\(item\.runtime_agent_id\)\}\?edit=1/);

@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ArrowLeft, Pencil, RefreshCw } from "lucide-react";
+import { ArrowLeft, BrainCircuit, Pencil, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useTenant } from "@/lib/tenant";
 import { getAgentAvatarUrl } from "@/lib/agentAvatar";
@@ -122,6 +122,10 @@ export default function AgentProfileV2Page() {
   const [editOpen, setEditOpen] = useState(() => {
     if (typeof window === "undefined") return false;
     return new URLSearchParams(window.location.search).get("edit") === "1";
+  });
+  const [activeTab, setActiveTab] = useState(() => {
+    if (typeof window === "undefined") return "activity";
+    return new URLSearchParams(window.location.search).get("tab") || "activity";
   });
 
   const profileQuery = useQuery<AgentProfilePayload>({
@@ -330,6 +334,10 @@ export default function AgentProfileV2Page() {
 
   useEffect(() => {
     if (location.includes("edit=1")) setEditOpen(true);
+    const requestedTab = typeof window !== "undefined"
+      ? new URLSearchParams(window.location.search).get("tab")
+      : null;
+    if (requestedTab) setActiveTab(requestedTab);
   }, [location]);
 
   useEffect(() => {
@@ -575,15 +583,25 @@ export default function AgentProfileV2Page() {
                   <div className="mt-1 text-[11px] text-gray-500">{overview.department_name || overview.department_key || "Unassigned department"}</div>
                 </div>
               </div>
-              <Button
-                type="button"
-                className="shrink-0 bg-amber-500 text-slate-950 hover:bg-amber-400"
-                disabled={!editableAgent}
-                onClick={() => setEditOpen(true)}
-              >
-                <Pencil className="mr-2 h-4 w-4" />
-                Edit identity &amp; face
-              </Button>
+              <div className="flex shrink-0 flex-wrap justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setActiveTab("memory")}
+                >
+                  <BrainCircuit className="mr-2 h-4 w-4" />
+                  Memory &amp; context
+                </Button>
+                <Button
+                  type="button"
+                  className="bg-amber-500 text-slate-950 hover:bg-amber-400"
+                  disabled={!editableAgent}
+                  onClick={() => setEditOpen(true)}
+                >
+                  <Pencil className="mr-2 h-4 w-4" />
+                  Edit identity &amp; face
+                </Button>
+              </div>
             </CardHeader>
             <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
               <div className="rounded-lg border border-gray-800 p-3 bg-gray-950/60"><div className="text-gray-500">Actions</div><div className="text-white text-lg font-semibold">{performance.total}</div></div>
@@ -593,7 +611,7 @@ export default function AgentProfileV2Page() {
             </CardContent>
           </Card>
 
-          <Tabs defaultValue="activity">
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="bg-gray-900 border border-gray-800 w-full md:w-auto">
               <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="activity">Activity</TabsTrigger>

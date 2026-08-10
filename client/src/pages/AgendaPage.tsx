@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format, parseISO, startOfDay, endOfDay, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isToday, isSameDay, addMonths, subMonths, addWeeks, subWeeks, addDays, subDays } from "date-fns";
 import { Calendar, ChevronLeft, ChevronRight, Download, Loader2, Plus, Clock, Users, FileText } from "lucide-react";
@@ -17,6 +17,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
 
 type AgendaEvent = {
   id: string;
@@ -83,6 +84,13 @@ type AgentOption = {
   role?: string | null;
 };
 
+type ObjectiveOption = {
+  id: number;
+  title: string;
+  status?: string | null;
+  priority?: string | null;
+};
+
 function buildAuthHeaders() {
   const token = typeof window !== "undefined" ? localStorage.getItem("ece_session") : null;
   const headers = new Headers();
@@ -109,6 +117,7 @@ function parseEmailList(raw: string) {
 
 export default function AgendaPage() {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   const { selectedCompanyId, selectedCompany, isLoading: companyLoading } = useCompany();
 
   const [viewMode, setViewMode] = useState<ViewMode>("month");
@@ -116,9 +125,11 @@ export default function AgendaPage() {
   const [selectedEvent, setSelectedEvent] = useState<AgendaEvent | null>(null);
 
   const [newMeetingOpen, setNewMeetingOpen] = useState(false);
+  const [meetingDefaultsInitialized, setMeetingDefaultsInitialized] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [newDescription, setNewDescription] = useState("");
   const [newMeetingType, setNewMeetingType] = useState("weekly_ops_sync");
+  const [newObjectiveId, setNewObjectiveId] = useState<number | null>(null);
   const [newStartLocal, setNewStartLocal] = useState(() => format(new Date(), "yyyy-MM-dd'T'HH:mm"));
   const [newDuration, setNewDuration] = useState(30);
   const [newRoomId, setNewRoomId] = useState<number | null>(null);
@@ -193,6 +204,40 @@ export default function AgendaPage() {
     staleTime: 30_000,
   });
 
+  const { data: objectiveRows = [] } = useQuery<ObjectiveOption[]>({
+    queryKey: [`/api/goals/company/${selectedCompanyId}`],
+    enabled: !companyLoading && !!selectedCompanyId,
+    staleTime: 15_000,
+  });
+
+  const activeObjectives = useMemo(
+    () => objectiveRows.filter((objective) => objective.status === "planned" || objective.status === "in_progress"),
+    [objectiveRows],
+  );
+
+  useEffect(() => {
+    if (newObjectiveId && activeObjectives.some((objective) => objective.id === newObjectiveId)) return;
+    setNewObjectiveId(activeObjectives[0]?.id ?? null);
+  }, [activeObjectives, newObjectiveId]);
+
+  useEffect(() => {
+    if (!newMeetingOpen) {
+      setMeetingDefaultsInitialized(false);
+      return;
+    }
+    if (meetingDefaultsInitialized || !rooms.length || !activeObjectives.length || !agentRows.length) return;
+
+    const operationsRoom = rooms.find((room) => /operations/i.test(room.name)) || rooms[0];
+    const fenou = agentRows.find((agent) => /^fenou$/i.test(agent.name.trim()));
+    setNewRoomId((current) => current ?? operationsRoom?.id ?? null);
+    setNewObjectiveId((current) => current ?? activeObjectives[0]?.id ?? null);
+    if (fenou && selectedAgentIds.length === 0) {
+      setSelectedAgentIds([fenou.id]);
+      setSelectedAgentRoles({ [fenou.id]: "note_taker" });
+    }
+    setMeetingDefaultsInitialized(true);
+  }, [activeObjectives, agentRows, meetingDefaultsInitialized, newMeetingOpen, rooms, selectedAgentIds.length]);
+
   const { data: usersResponse } = useQuery<StaffUsersResponse>({
     queryKey: ["/api/admin/users", "agenda-attendance"],
     enabled: !companyLoading && !!selectedCompanyId,
@@ -233,6 +278,7 @@ export default function AgendaPage() {
       const duration = Number(newDuration || 0);
       if (!Number.isFinite(duration) || duration <= 0) throw new Error("Invalid duration");
       if (!newRoomId) throw new Error("Room is required");
+      if (!newObjectiveId) throw new Error("Objective is required");
 
       const externalGuests = parseEmailList(externalGuestsRaw);
       const attendees: Array<Record<string, unknown>> = [];
@@ -275,6 +321,7 @@ export default function AgendaPage() {
           title: newTitle.trim() || "Meeting",
           description: newDescription.trim() || null,
           meeting_type: newMeetingType,
+          objective_id: newObjectiveId,
           room_id: newRoomId,
           start_at: start.toISOString(),
           duration_minutes: duration,
@@ -300,6 +347,13 @@ export default function AgendaPage() {
       setTranscriptPolicy("off");
       queryClient.invalidateQueries({ queryKey: ["/api/agenda-events"] });
       queryClient.invalidateQueries({ queryKey: ["/api/meetings"] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Meeting not created",
+        description: error.message || "Review the required fields and try again.",
+        variant: "destructive",
+      });
     },
   });
 
@@ -622,6 +676,27 @@ export default function AgendaPage() {
                   </Select>
                 </div>
                 <div className="space-y-2">
+                  <Label className="text-gray-300">Objective</Label>
+                  <Select
+                    value={newObjectiveId ? String(newObjectiveId) : ""}
+                    onValueChange={(value) => setNewObjectiveId(Number(value))}
+                  >
+                    <SelectTrigger className="bg-gray-900 border-gray-800 text-white">
+                      <SelectValue placeholder="Select the objective this meeting advances" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-gray-950 border-gray-800 text-white z-[140]">
+                      {activeObjectives.map((objective) => (
+                        <SelectItem key={objective.id} value={String(objective.id)}>
+                          {objective.title}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {activeObjectives.length === 0 ? (
+                    <p className="text-xs text-amber-400">Create an active objective before scheduling a meeting.</p>
+                  ) : null}
+                </div>
+                <div className="space-y-2">
                   <Label className="text-gray-300">Room</Label>
                   <Select
                     value={newRoomId ? String(newRoomId) : ""}
@@ -842,6 +917,7 @@ export default function AgendaPage() {
                     createMeetingMutation.isPending ||
                     !newTitle.trim() ||
                     !newRoomId ||
+                    !newObjectiveId ||
                     selectedAgentIds.length + selectedHumanIds.length + parseEmailList(externalGuestsRaw).length === 0
                   }
                   className="bg-blue-600 hover:bg-blue-700"

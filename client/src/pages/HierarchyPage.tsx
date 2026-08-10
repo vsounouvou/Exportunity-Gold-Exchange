@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { AlertCircle, Users, DollarSign, ChevronRight, ChevronDown, Plus, Building2, Pencil, Trash2, Eye, EyeOff } from "lucide-react";
+import { AlertCircle, Users, DollarSign, ChevronRight, ChevronDown, Plus, Building2, Pencil, Trash2, Eye, EyeOff, Target } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useState, useEffect, useMemo } from "react";
 import { useToast } from "@/hooks/use-toast";
@@ -39,10 +39,18 @@ interface Company {
   id: number;
   name: string;
   description: string | null;
-  goal: string | null;
+  vision: string | null;
+  currentGoals: string[] | null;
   monthlyBudget: string;
   budgetUsed: string;
   status: string;
+}
+
+interface StrategicGoal {
+  id: number;
+  title: string;
+  status: string | null;
+  priority: string | null;
 }
 
 function DepartmentCard({ 
@@ -468,6 +476,11 @@ export default function HierarchyPage() {
     queryKey: [`/api/companies/${selectedCompanyId}/agents`],
     enabled: !!selectedCompanyId,
   });
+
+  const { data: strategicGoals = [] } = useQuery<StrategicGoal[]>({
+    queryKey: [`/api/goals/company/${selectedCompanyId}`],
+    enabled: !!selectedCompanyId,
+  });
   
   const deleteDepartmentMutation = useMutation({
     mutationFn: async (deptId: number) => {
@@ -541,6 +554,8 @@ export default function HierarchyPage() {
   }
   
   const companyBudgetPercent = (parseFloat(companyData.budgetUsed) / parseFloat(companyData.monthlyBudget)) * 100;
+  const activeStrategicGoals = strategicGoals.filter((goal) => goal.status === "planned" || goal.status === "in_progress");
+  const companyMission = companyData.vision || activeStrategicGoals[0]?.title || companyData.currentGoals?.[0] || "Set the industrial mission";
   
   return (
     <div className="container mx-auto p-4 md:p-6 space-y-4 md:space-y-6">
@@ -557,10 +572,17 @@ export default function HierarchyPage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium">Company Goal</CardTitle>
+            <CardTitle className="flex items-center gap-2 text-sm font-medium">
+              <Target className="h-4 w-4 text-primary" />
+              Industrial Mission
+            </CardTitle>
           </CardHeader>
-          <CardContent>
-            <p className="text-lg font-semibold">{companyData.goal || 'Not set'}</p>
+          <CardContent className="space-y-3">
+            <p className="line-clamp-3 text-sm font-semibold leading-6">{companyMission}</p>
+            <Button type="button" variant="ghost" size="sm" className="h-8 px-0 text-primary" onClick={() => setLocation("/objectives")}>
+              {activeStrategicGoals.length} active objectives
+              <ChevronRight className="ml-1 h-4 w-4" />
+            </Button>
           </CardContent>
         </Card>
         

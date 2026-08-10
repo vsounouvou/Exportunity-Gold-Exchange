@@ -6,6 +6,7 @@ import { ensureAgentManagementV2Tables } from "../agents/ensureManagementV2Table
 import { ensureTenants, getTenantByKey } from "../tenants";
 import { EXPORTUNITY_COMPANY_CONTEXT } from "./companyContext";
 import { getExportunityAgentModelPolicy, type ExportunityAgentKey } from "./modelPolicy";
+import { ensureExportunityIndustrialOperatingPlan } from "./operatingPlan";
 
 export { EXPORTUNITY_COMPANY_CONTEXT } from "./companyContext";
 
@@ -414,7 +415,12 @@ export async function ensureExportunityIndustrialAgentOrganization(input?: { dry
   if (!tenant?.id) throw new Error("Exportunity tenant is unavailable");
   const tenantId = Number(tenant.id);
   const companyRows = await db
-    .select({ id: companies.id, name: companies.name })
+    .select({
+      id: companies.id,
+      name: companies.name,
+      userId: companies.userId,
+      metadata: companies.metadata,
+    })
     .from(companies)
     .where(eq(companies.tenantId, tenantId));
   const company = companyRows.find((item) => /exportunity|exportunity machinery/i.test(String(item.name || "")));
@@ -505,6 +511,8 @@ export async function ensureExportunityIndustrialAgentOrganization(input?: { dry
       changes.push({ key: spec.key, action: "created", agentId: Number(created.id) });
     }
   }
+
+  let operatingPlan: Awaited<ReturnType<typeof ensureExportunityIndustrialOperatingPlan>> | null = null;
 
   if (!input?.dryRun) {
     for (const spec of ORGANIZATION) {
@@ -626,11 +634,23 @@ export async function ensureExportunityIndustrialAgentOrganization(input?: { dry
     }
   }
 
+  if (companyId) {
+    operatingPlan = await ensureExportunityIndustrialOperatingPlan({
+      tenantId,
+      companyId,
+      companyUserId: company?.userId ? Number(company.userId) : null,
+      companyMetadata: company?.metadata,
+      agentIds,
+      dryRun: Boolean(input?.dryRun),
+    });
+  }
+
   return {
     tenantId,
     companyId,
     organizationVersion: ORGANIZATION_VERSION,
     changes,
+    operatingPlan,
     backgroundConversationsStarted: false,
     externalOutreachStarted: false,
   };

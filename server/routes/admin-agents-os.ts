@@ -837,6 +837,11 @@ router.get("/admin/agents", async (req: any, res) => {
         coalesce(t.autonomy_level, 2) as autonomy_level,
         coalesce(t.status::text, 'draft') as status,
         coalesce(t.avatar_url, '') as avatar_url,
+        case
+          when coalesce(t.approval_policy->>'runtimeAgentId', t.approval_policy->>'runtime_agent_id', '') ~ '^[0-9]+$'
+            then coalesce(t.approval_policy->>'runtimeAgentId', t.approval_policy->>'runtime_agent_id')::int
+          else null
+        end as runtime_agent_id,
         coalesce(mp.is_visible, false) as marketplace_visible,
         coalesce(mp.price_monthly, t.base_salary_monthly, 0) as price_monthly,
         coalesce(mp.currency, 'USD') as currency,

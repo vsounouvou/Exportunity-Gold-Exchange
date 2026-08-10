@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { BarChart3, Bot, CopyPlus, Globe, Library, Network, Plus, RefreshCw, Settings2, ShieldCheck, Sparkles } from "lucide-react";
+import { BarChart3, Bot, CopyPlus, Globe, Library, Network, Pencil, Plus, RefreshCw, Settings2, ShieldCheck, Sparkles, UsersRound } from "lucide-react";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -42,6 +42,8 @@ type AgentRow = {
   is_featured?: boolean;
   sort_rank?: number;
   availability?: string;
+  avatar_url?: string | null;
+  runtime_agent_id?: number | null;
 };
 
 type ListResponse = { ok: boolean; total: number; page: number; pageSize: number; items: AgentRow[] };
@@ -377,9 +379,17 @@ export default function AdminAgentsOsPage() {
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
           <h1 className="text-2xl font-semibold text-white">Agents OS</h1>
-          <p className="text-xs text-gray-400">Single control center for registry, studio, marketplace, analytics, and governance.</p>
+          <p className="text-xs text-gray-400">Advanced registry, versions, marketplace controls, analytics, and governance.</p>
         </div>
         <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            className="border-gray-700 text-gray-100"
+            onClick={() => setLocation("/operations/agents")}
+          >
+            <UsersRound className="h-4 w-4 mr-2" />
+            Team &amp; identity
+          </Button>
           <Button
             variant="outline"
             className="border-gray-700 text-gray-100"
@@ -459,13 +469,22 @@ export default function AdminAgentsOsPage() {
                       {item.short_pitch ? <div className="text-xs text-gray-500 mt-1 line-clamp-2">{item.short_pitch}</div> : null}
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
+                      {Number(item.runtime_agent_id || 0) > 0 ? (
+                        <Button
+                          size="sm"
+                          className="bg-amber-500 text-slate-950 hover:bg-amber-400"
+                          onClick={() => setLocation(`/operations/agents/${Number(item.runtime_agent_id)}?edit=1`)}
+                        >
+                          <Pencil className="h-3.5 w-3.5 mr-1" />Edit identity &amp; face
+                        </Button>
+                      ) : null}
                       <Button
                         size="sm"
                         variant="outline"
                         className="border-gray-700 text-gray-200"
                         onClick={() => setLocation(`/admin/agents-os/agents/${item.id}`)}
                       >
-                        Open
+                        {Number(item.runtime_agent_id || 0) > 0 ? "Workspace" : "Edit listing"}
                       </Button>
                       <Button size="sm" variant="outline" className="border-gray-700 text-gray-200" onClick={() => snapshotAgent.mutate(item.id)}>
                         <Settings2 className="h-3.5 w-3.5 mr-1" />Snapshot

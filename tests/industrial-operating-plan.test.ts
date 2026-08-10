@@ -41,3 +41,20 @@ test("agenda creation submits a real objective and hierarchy reads the same plan
   assert.doesNotMatch(hierarchy, /companyData\.goal \|\| ['"]Not set['"]/);
   assert.match(auth, /\(req as any\)\.adminUser = user;[\s\S]*\(req as any\)\.staffUser = user;/);
 });
+
+test("working agents expose a direct identity and face editor", () => {
+  const team = readRepoFile("client/src/pages/OperationsAgentsPage.tsx");
+  const profile = readRepoFile("client/src/pages/AgentProfileV2Page.tsx");
+  const registry = readRepoFile("client/src/pages/AdminAgentsOsPage.tsx");
+  const registryApi = readRepoFile("server/routes/admin-agents-os.ts");
+
+  assert.match(team, /Team &amp; Agents/);
+  assert.match(team, /Create and edit/);
+  assert.match(team, /Edit identity &amp; face/);
+  assert.match(team, /\/operations\/agents\/\$\{item\.id\}\?edit=1/);
+  assert.match(profile, /Edit identity &amp; face/);
+  assert.doesNotMatch(profile, /\{location\}<\/div>/);
+  assert.match(registry, /runtime_agent_id/);
+  assert.match(registry, /\/operations\/agents\/\$\{Number\(item\.runtime_agent_id\)\}\?edit=1/);
+  assert.match(registryApi, /as runtime_agent_id/);
+});

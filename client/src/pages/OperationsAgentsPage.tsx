@@ -6,6 +6,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -26,6 +27,7 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useTenant } from "@/lib/tenant";
+import { getAgentAvatarUrl } from "@/lib/agentAvatar";
 
 type AgentListItem = {
   id: number;
@@ -37,6 +39,8 @@ type AgentListItem = {
   open_tasks_count?: number;
   last_action_at?: string | null;
   last_workstation_started_at?: string | null;
+  avatar?: string | null;
+  avatar_url?: string | null;
 };
 
 type AgentListResponse = {
@@ -114,39 +118,45 @@ export default function OperationsAgentsPage() {
     <div className={tenant.key === "exportunity" ? "exportunity-operations-light min-h-screen bg-[#f7f8fa] p-4 md:p-6 space-y-4" : "p-4 md:p-6 space-y-4"}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold text-white">Internal Agents</h1>
-          <p className="text-xs text-gray-400">Operations / HR ownership view (domain: INTERNAL)</p>
+          <h1 className="text-xl font-semibold text-white">Team &amp; Agents</h1>
+          <p className="text-xs text-gray-400">Create, edit, test, and assign Exportunity's working agents.</p>
         </div>
         <Dialog open={createOpen} onOpenChange={setCreateOpen}>
           <DialogTrigger asChild>
             <Button className="bg-amber-500 text-black hover:bg-amber-400">
               <Plus className="h-4 w-4 mr-2" />
-              Create Internal Agent
+              Create agent
             </Button>
           </DialogTrigger>
-          <DialogContent className="bg-gray-900 border-gray-800 text-white">
+          <DialogContent
+            className={
+              tenant.key === "exportunity"
+                ? "border-slate-200 bg-white text-slate-950"
+                : "bg-gray-900 border-gray-800 text-white"
+            }
+          >
             <DialogHeader>
-              <DialogTitle>Create Internal Agent</DialogTitle>
-              <DialogDescription className="text-gray-400">
-                This inserts a real row in the agents table (not contacts).
+              <DialogTitle>Create a working agent</DialogTitle>
+              <DialogDescription className={tenant.key === "exportunity" ? "text-slate-600" : "text-gray-400"}>
+                After creation, the identity and face editor opens automatically.
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-3">
               <div>
                 <Label>Name</Label>
-                <Input value={newName} onChange={(e) => setNewName(e.target.value)} className="bg-gray-800 border-gray-700" />
+                <Input value={newName} onChange={(e) => setNewName(e.target.value)} className={tenant.key === "exportunity" ? "border-slate-300 bg-white text-slate-950" : "bg-gray-800 border-gray-700"} />
               </div>
               <div>
                 <Label>Role</Label>
-                <Input value={newRole} onChange={(e) => setNewRole(e.target.value)} className="bg-gray-800 border-gray-700" />
+                <Input value={newRole} onChange={(e) => setNewRole(e.target.value)} className={tenant.key === "exportunity" ? "border-slate-300 bg-white text-slate-950" : "bg-gray-800 border-gray-700"} />
               </div>
               <div>
                 <Label>Department</Label>
-                <Input value={newDepartment} onChange={(e) => setNewDepartment(e.target.value)} className="bg-gray-800 border-gray-700" />
+                <Input value={newDepartment} onChange={(e) => setNewDepartment(e.target.value)} className={tenant.key === "exportunity" ? "border-slate-300 bg-white text-slate-950" : "bg-gray-800 border-gray-700"} />
               </div>
               <div>
                 <Label>Runtime Model (optional)</Label>
-                <Input value={newModel} onChange={(e) => setNewModel(e.target.value)} className="bg-gray-800 border-gray-700" />
+                <Input value={newModel} onChange={(e) => setNewModel(e.target.value)} className={tenant.key === "exportunity" ? "border-slate-300 bg-white text-slate-950" : "bg-gray-800 border-gray-700"} />
               </div>
             </div>
             <DialogFooter>
@@ -156,7 +166,7 @@ export default function OperationsAgentsPage() {
                 onClick={() => createMutation.mutate()}
               >
                 {createMutation.isPending ? <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> : null}
-                Create
+                Create and edit
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -190,7 +200,7 @@ export default function OperationsAgentsPage() {
                 <SelectItem value="ARCHIVED">Archived</SelectItem>
               </SelectContent>
             </Select>
-            <div className="text-xs text-gray-400 flex items-center">{filtered.length} agent(s)</div>
+            <div className="text-xs text-gray-400 flex items-center">{filtered.length} working agent(s)</div>
           </div>
         </CardContent>
       </Card>
@@ -224,11 +234,26 @@ export default function OperationsAgentsPage() {
         {filtered.map((item) => (
           <Card key={item.id} className="bg-gray-900 border-gray-800 hover:border-amber-500/40 transition-colors">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm text-white flex items-center justify-between gap-2">
-                <span className="truncate">{item.name}</span>
-                <Badge variant="outline" className="text-[10px]">{item.statusV2}</Badge>
-              </CardTitle>
-              <div className="text-xs text-gray-400">{item.role}</div>
+              <div className="flex items-start gap-3">
+                <Avatar className="h-12 w-12 shrink-0 border border-amber-500/30 bg-slate-950">
+                  <AvatarImage
+                    src={
+                      String(item.avatar_url || item.avatar || "") ||
+                      getAgentAvatarUrl({ id: item.id, name: item.name, label: item.name, size: 96 })
+                    }
+                    alt={item.name}
+                    className="object-cover"
+                  />
+                  <AvatarFallback>{item.name.slice(0, 2).toUpperCase()}</AvatarFallback>
+                </Avatar>
+                <div className="min-w-0 flex-1">
+                  <CardTitle className="text-sm text-white flex items-center justify-between gap-2">
+                    <span className="truncate">{item.name}</span>
+                    <Badge variant="outline" className="text-[10px]">{item.statusV2}</Badge>
+                  </CardTitle>
+                  <div className="mt-1 text-xs text-gray-400">{item.role}</div>
+                </div>
+              </div>
             </CardHeader>
             <CardContent className="text-xs text-gray-300 space-y-3">
               <div className="space-y-1">
@@ -247,7 +272,7 @@ export default function OperationsAgentsPage() {
                 <Link href={`/operations/agents/${item.id}?edit=1`}>
                   <Button type="button" size="sm" className="h-8 bg-amber-500 text-slate-950 hover:bg-amber-400">
                     <Pencil className="mr-2 h-3.5 w-3.5" />
-                    Edit
+                    Edit identity &amp; face
                   </Button>
                 </Link>
               </div>

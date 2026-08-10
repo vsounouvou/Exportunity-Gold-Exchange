@@ -547,10 +547,9 @@ export default function AgentProfileV2Page() {
       <div className="flex items-center justify-between gap-3">
         <Link href={backHref}>
           <a className="inline-flex items-center text-xs text-gray-300 hover:text-white">
-            <ArrowLeft className="h-4 w-4 mr-1" /> Back
+            <ArrowLeft className="h-4 w-4 mr-1" /> Back to team
           </a>
         </Link>
-        <div className="text-xs text-gray-500">{location}</div>
       </div>
 
       {profileQuery.isLoading ? (
@@ -573,7 +572,7 @@ export default function AgentProfileV2Page() {
                     <Badge variant="outline">{overview.statusV2 || "ACTIVE"}</Badge>
                   </CardTitle>
                   <div className="mt-1 text-xs text-gray-400">{overview.role || "-"}</div>
-                  <div className="mt-1 text-[11px] text-gray-500">Identity, face, role, manager, permissions, and autonomy are editable.</div>
+                  <div className="mt-1 text-[11px] text-gray-500">{overview.department_key || "Unassigned department"}</div>
                 </div>
               </div>
               <Button
@@ -583,7 +582,7 @@ export default function AgentProfileV2Page() {
                 onClick={() => setEditOpen(true)}
               >
                 <Pencil className="mr-2 h-4 w-4" />
-                Edit agent
+                Edit identity &amp; face
               </Button>
             </CardHeader>
             <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">

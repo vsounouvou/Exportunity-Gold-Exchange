@@ -52,10 +52,12 @@ type MeetingsResponse = MeetingItem[] | { meetings?: MeetingItem[]; items?: Meet
 
 type PlacesConfig = {
   provider?: "google" | "leaflet";
+  mapRenderer?: "google_maps" | "leaflet_openstreetmap";
   placesImportEnabled?: boolean;
   businessDataProvider?: "google_places" | "curated_city_data";
   google?: {
     browserMapKeyPresent?: boolean;
+    browserApiKeyPresent?: boolean;
     placesApiKeyPresent?: boolean;
     mapIdPresent?: boolean;
   };
@@ -89,6 +91,13 @@ const closedTaskStates = new Set(["done", "completed", "cancelled", "canceled", 
 
 function statusText(value?: string | null) {
   return String(value || "pending").replaceAll("_", " ");
+}
+
+function taskDisplayTitle(title?: string | null) {
+  const value = String(title || "").trim();
+  if (value.startsWith("Conversation meeting:")) return "Operations meeting follow-up";
+  if (value.startsWith("Conversation channel:")) return "Team conversation follow-up";
+  return value || "Untitled task";
 }
 
 function Stat({ label, value, note, icon: Icon }: { label: string; value: number; note: string; icon: typeof Bot }) {
@@ -155,7 +164,15 @@ export default function ExportunityAdminDashboardPage() {
   const activeAgents = Number(agentsQuery.data?.summary?.activeAgents || 0);
   const totalAgents = Number(agentsQuery.data?.summary?.totalAgents || 0);
 
-  const mapsReady = Boolean(placesQuery.data?.google?.browserMapKeyPresent || placesQuery.data?.provider === "leaflet");
+  const mapRenderer = placesQuery.data?.mapRenderer;
+  const mapsReady = Boolean(
+    placesQuery.data?.google?.browserMapKeyPresent
+      || placesQuery.data?.google?.browserApiKeyPresent
+      || mapRenderer === "google_maps"
+      || mapRenderer === "leaflet_openstreetmap"
+      || placesQuery.data?.provider === "leaflet",
+  );
+  const mapRendererLabel = mapRenderer === "google_maps" ? "Google Maps" : mapRenderer === "leaflet_openstreetmap" ? "OpenStreetMap" : placesQuery.data?.provider || "configured";
   const placesReady = Boolean(placesQuery.data?.google?.placesApiKeyPresent && placesQuery.data?.placesImportEnabled);
   const twilioReady = Boolean(twilioQuery.data?.twilio?.accountSidPresent && twilioQuery.data?.twilio?.authTokenPresent);
   const whatsappReady = Boolean(twilioReady && twilioQuery.data?.twilio?.whatsappFromPresent);
@@ -335,7 +352,7 @@ export default function ExportunityAdminDashboardPage() {
                 <Link key={task.id} href="/tasks">
                   <a className="grid gap-2 px-5 py-4 transition-colors hover:bg-slate-50 sm:grid-cols-[1fr_auto] sm:items-center">
                     <div>
-                      <div className="font-bold text-slate-950">{task.title}</div>
+                      <div className="font-bold text-slate-950">{taskDisplayTitle(task.title)}</div>
                       <div className="mt-1 text-xs text-slate-500">{task.agent?.name || "Unassigned"}{task.dueDate ? ` · due ${new Date(task.dueDate).toLocaleDateString()}` : ""}</div>
                     </div>
                     <div className="flex flex-wrap gap-2">
@@ -359,7 +376,7 @@ export default function ExportunityAdminDashboardPage() {
               <Activity className="h-5 w-5 text-[#D78C00]" />
             </div>
             <div className="mt-4 space-y-3">
-              <SystemState ok={mapsReady} title="Industrial map" detail={mapsReady ? `Renderer ready (${placesQuery.data?.provider || "configured"})` : "Map renderer needs configuration"} href="/admin/settings/integrations/google-maps" />
+              <SystemState ok={mapsReady} title="Industrial map" detail={mapsReady ? `Renderer ready (${mapRendererLabel})` : "Map renderer needs configuration"} href="/admin/settings/integrations/google-maps" />
               <SystemState ok={placesReady} title="Factory and supplier discovery" detail={placesReady ? "Official Google Places import enabled" : "Curated data active; Google Places import not enabled"} href="/admin/settings/integrations/google-maps" />
               <SystemState ok={whatsappReady} title="Approved WhatsApp outreach" detail={whatsappReady ? "Twilio account and sender ready" : "Sender configuration or credentials required"} href="/admin/settings/communications/twilio" />
               <SystemState ok={actionsReady} title="Agent action runner" detail={actionsReady ? `${actionItems.length} action records available` : "Runtime is not reporting healthy execution"} href="/actions" />

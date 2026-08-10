@@ -67,6 +67,12 @@ function allowed(channels: string[], key: string) {
   return Array.isArray(channels) && channels.includes(key);
 }
 
+function choiceButtonClass(active: boolean) {
+  return active
+    ? "bg-slate-950 text-white hover:bg-slate-800"
+    : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50";
+}
+
 function HealthPill({ ok, label, neutral = false }: { ok: boolean; label: string; neutral?: boolean }) {
   const palette = neutral
     ? "border-slate-300 bg-slate-100 text-slate-700"
@@ -265,7 +271,7 @@ export function AdminTwilioControlCenterPage() {
             </div>
             <div className="flex flex-wrap gap-2">
               {(["sms", "whatsapp", "verify_sms", "verify_whatsapp"] as const).map((entry) => (
-                <Button key={entry} type="button" variant={profileDefaultChannel === entry ? "default" : "secondary"} onClick={() => setProfileDefaultChannel(entry)}>{entry}</Button>
+                <Button key={entry} type="button" variant={profileDefaultChannel === entry ? "default" : "outline"} className={choiceButtonClass(profileDefaultChannel === entry)} onClick={() => setProfileDefaultChannel(entry)}>{entry}</Button>
               ))}
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -312,13 +318,13 @@ export function AdminTwilioControlCenterPage() {
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <div><Label className="text-slate-700">Recipient</Label><Input value={testTo} onChange={(e) => setTestTo(e.target.value)} placeholder="+2250100000229" className="border-slate-200 bg-white text-slate-950" /></div>
-            <div><Label className="text-slate-700">Channel / mode</Label><div className="flex flex-wrap gap-2 mt-2"><Button type="button" variant={testChannel === "whatsapp" ? "default" : "secondary"} onClick={() => setTestChannel("whatsapp")}>WhatsApp</Button><Button type="button" variant={testChannel === "sms" ? "default" : "secondary"} onClick={() => { setTestChannel("sms"); setTestMode("text"); }} disabled={!canSendSms}>SMS</Button><Button type="button" variant={testMode === "text" ? "default" : "secondary"} onClick={() => setTestMode("text")}>Text</Button><Button type="button" variant={testMode === "template" ? "default" : "secondary"} onClick={() => setTestMode("template")} disabled={testChannel !== "whatsapp"}>Template</Button></div></div>
+            <div><Label className="text-slate-700">Channel / mode</Label><div className="flex flex-wrap gap-2 mt-2"><Button type="button" variant={testChannel === "whatsapp" ? "default" : "outline"} className={choiceButtonClass(testChannel === "whatsapp")} onClick={() => setTestChannel("whatsapp")}>WhatsApp</Button><Button type="button" variant={testChannel === "sms" ? "default" : "outline"} className={choiceButtonClass(testChannel === "sms")} onClick={() => { setTestChannel("sms"); setTestMode("text"); }} disabled={!canSendSms}>SMS</Button><Button type="button" variant={testMode === "text" ? "default" : "outline"} className={choiceButtonClass(testMode === "text")} onClick={() => setTestMode("text")}>Text</Button><Button type="button" variant={testMode === "template" ? "default" : "outline"} className={choiceButtonClass(testMode === "template")} onClick={() => setTestMode("template")} disabled={testChannel !== "whatsapp"}>Template</Button></div></div>
             <div className="flex items-end"><Button onClick={() => sendTestMutation.mutate()} disabled={sendTestMutation.isPending || !testTo.trim() || (testChannel === "sms" ? !canSendSms : !canSendWhatsApp) || (testMode === "template" && !testContentSid.trim())}>{sendTestMutation.isPending ? "Sending..." : "Send test"}</Button></div>
           </div>
           <div><Label className="text-slate-700">Message</Label><Input value={testMessage} onChange={(e) => setTestMessage(e.target.value)} placeholder={defaultMessage} className="border-slate-200 bg-white text-slate-950" /></div>
           {testMode === "template" ? <div className="grid grid-cols-1 md:grid-cols-2 gap-3"><div><Label className="text-slate-700">Content SID</Label><Input value={testContentSid} onChange={(e) => setTestContentSid(e.target.value)} className="border-slate-200 bg-white text-slate-950" /></div><div><Label className="text-slate-700">Content variables JSON</Label><Textarea value={testContentVariables} onChange={(e) => setTestContentVariables(e.target.value)} className="min-h-[88px] border-slate-200 bg-white text-slate-950" /></div></div> : null}
           {lastSendResult ? <pre className="overflow-auto rounded-lg border border-slate-200 bg-slate-50 p-3 text-[11px] text-slate-700">{JSON.stringify(lastSendResult, null, 2)}</pre> : null}
-          <div className="flex items-center gap-2"><Link href="/admin/communications/twilio/logs"><Button type="button" variant="secondary">View logs</Button></Link><span className="text-xs text-slate-500">Inbound: /api/webhooks/twilio/sms/inbound and /api/webhooks/twilio/whatsapp/inbound</span></div>
+          <div className="flex items-center gap-2"><Link href="/admin/communications/twilio/logs"><Button type="button" variant="outline" className="border-slate-300 bg-white text-slate-700 hover:bg-slate-50">View logs</Button></Link><span className="text-xs text-slate-500">Inbound: /api/webhooks/twilio/sms/inbound and /api/webhooks/twilio/whatsapp/inbound</span></div>
         </CardContent>
       </Card>
 

@@ -106,6 +106,7 @@ test("Exportunity dashboard prioritizes live industrial operations and readable 
   const dashboardRouter = readRepoFile("client/src/pages/AdminDashboardPage.tsx");
   const dashboard = readRepoFile("client/src/pages/exportunity/ExportunityAdminDashboardPage.tsx");
   const twilio = readRepoFile("client/src/pages/AdminTwilioControlCenterPage.tsx");
+  const chairmanDock = readRepoFile("client/src/components/ChairmanChatDock.tsx");
 
   assert.match(dashboardRouter, /tenant\?\.key === "exportunity"/);
   assert.match(dashboardRouter, /<ExportunityAdminDashboardPage \/>/);
@@ -115,9 +116,14 @@ test("Exportunity dashboard prioritizes live industrial operations and readable 
   assert.match(dashboard, /\/api\/places\/config/);
   assert.match(dashboard, /\/api\/admin\/twilio\/status/);
   assert.match(dashboard, /What needs attention now/);
+  assert.match(dashboard, /browserApiKeyPresent/);
+  assert.match(dashboard, /mapRenderer === "google_maps"/);
+  assert.match(dashboard, /Operations meeting follow-up/);
   assert.match(twilio, /function HealthPill/);
+  assert.match(twilio, /function choiceButtonClass/);
   assert.match(twilio, /bg-emerald-50 text-emerald-800/);
   assert.match(twilio, /bg-amber-50 text-amber-900/);
+  assert.match(chairmanDock, /bottom-32 right-5/);
 });
 
 test("People and Access is tenant scoped and exposes real account controls", () => {

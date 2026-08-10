@@ -955,7 +955,7 @@ export function ChairmanChatDock() {
             isMobile
               ? "right-2 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center p-0"
               : isWorkSurface
-                ? "bottom-20 right-5 px-4 py-3"
+                ? "bottom-32 right-5 px-4 py-3"
                 : "bottom-5 right-5 px-4 py-3",
           )}
           title={`Open ${assistantName}. You can drag, resize, snap, minimize, or close the assistant.`}

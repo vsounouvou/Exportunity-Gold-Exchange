@@ -215,7 +215,8 @@
     border-color: rgba(245, 166, 35, 0.45);
   }
 
-  .exportunity-operations-light [data-state="active"] {
+  .exportunity-operations-light [role="tab"][data-state="active"],
+  .exportunity-operations-light button[data-state="active"] {
     background: rgba(245, 166, 35, 0.16) !important;
     color: #7a4b00 !important;
     box-shadow: inset 0 0 0 1px rgba(245, 166, 35, 0.32);

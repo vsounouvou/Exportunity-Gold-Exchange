@@ -36,6 +36,16 @@ test("documented factory output always carries official evidence", () => {
     assert.ok(item.sourceLabel?.en);
     assert.equal(item.requestMode, "availability_request");
   }
+
+  const productSpecificMedia = factoryItems
+    .filter((item) => item.id !== "curated-factory-gdiz-2025-production")
+    .map((item) => item.media[0]);
+  assert.ok(new Set(productSpecificMedia).size >= 10);
+  assert.ok(
+    factoryItems
+      .find((item) => item.id === "curated-factory-cashew-kernels")
+      ?.media[0]?.endsWith("processed-cashew-kernels.webp"),
+  );
 });
 
 test("catalog search works across French and English industrial terms", () => {

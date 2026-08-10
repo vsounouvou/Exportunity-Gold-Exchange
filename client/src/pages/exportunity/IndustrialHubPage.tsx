@@ -5522,6 +5522,7 @@ export default function IndustrialHubPage() {
   );
   const [selectedIndustrialContext, setSelectedIndustrialContext] =
     useState<IndustrialContextLocation | null>(null);
+  const selectionCommerceRef = useRef<HTMLDivElement | null>(null);
   const [factoryFilters, setFactoryFilters] = useState<FactoryDirectoryFilters>(
     EMPTY_FACTORY_DIRECTORY_FILTERS,
   );
@@ -5829,6 +5830,27 @@ export default function IndustrialHubPage() {
       }),
     [catalogItems, locale, selectedFactory, selectedIndustrialContext],
   );
+  const revealFactorySelection = () => {
+    if (view !== "factories") return;
+    window.setTimeout(() => {
+      const section = selectionCommerceRef.current;
+      if (!section) return;
+      const top = section.getBoundingClientRect().top + window.scrollY - 92;
+      window.scrollTo({ top: Math.max(0, top), behavior: "smooth" });
+    }, 80);
+  };
+  const selectFactoryForCommerce = (factory: PublicFactory) => {
+    setSelectedIndustrialContext(null);
+    setSelectedFactory(factory);
+    revealFactorySelection();
+  };
+  const selectIndustrialContextForCommerce = (
+    context: IndustrialContextLocation,
+  ) => {
+    setSelectedFactory(null);
+    setSelectedIndustrialContext(context);
+    revealFactorySelection();
+  };
   const queryCategory = queryValue(location, "category");
   const selectedCategory = useMemo(
     () => taxonomy.find((category) => category.code === queryCategory) || null,
@@ -6186,23 +6208,13 @@ export default function IndustrialHubPage() {
           <div className="mx-auto flex min-h-16 max-w-[1560px] items-center gap-4 px-4 lg:px-7">
             <Link
               href={isMachineryBrand ? "/machinery" : "/industrial"}
-              className={cn(
-                "flex h-11 shrink-0 items-center overflow-hidden rounded-lg shadow-[0_8px_20px_rgba(7,17,31,0.16)]",
-                isMachineryBrand ? "bg-[#07111F] px-2.5" : "bg-[#07121F]",
-              )}
-              aria-label={isMachineryBrand ? "Exportunity Machinery" : "Exportunity"}
+              className="flex h-11 shrink-0 items-center overflow-hidden rounded-lg bg-[#07111F] px-2.5 shadow-[0_8px_20px_rgba(7,17,31,0.16)]"
+              aria-label="Exportunity Machinery"
             >
               <img
-                src={
-                  isMachineryBrand
-                    ? "/tenants/exportunity/machinery-logo.svg"
-                    : "/tenants/exportunity/logo.svg?v=20260731-company"
-                }
-                alt={isMachineryBrand ? "Exportunity Machinery" : "Exportunity"}
-                className={cn(
-                  "h-full w-auto object-contain",
-                  isMachineryBrand ? "max-w-[178px]" : "max-w-[198px]",
-                )}
+                src="/tenants/exportunity/machinery-logo.svg"
+                alt="Exportunity Machinery"
+                className="h-full w-auto max-w-[178px] object-contain"
               />
             </Link>
             <nav className="hidden flex-1 items-center justify-center gap-1 xl:flex">
@@ -6342,12 +6354,9 @@ export default function IndustrialHubPage() {
                   <IndustrialMap
                     factories={factories}
                     selectedFactory={selectedFactory}
-                    onSelectFactory={setSelectedFactory}
+                    onSelectFactory={selectFactoryForCommerce}
                     selectedContext={selectedIndustrialContext}
-                    onSelectContext={(context) => {
-                      setSelectedFactory(null);
-                      setSelectedIndustrialContext(context);
-                    }}
+                    onSelectContext={selectIndustrialContextForCommerce}
                     isDark={isDark}
                     language={locale}
                     contextProductCounts={contextProductCounts}
@@ -6375,10 +6384,7 @@ export default function IndustrialHubPage() {
                             key={context.id}
                             type="button"
                             aria-pressed={active}
-                            onClick={() => {
-                              setSelectedFactory(null);
-                              setSelectedIndustrialContext(context);
-                            }}
+                            onClick={() => selectIndustrialContextForCommerce(context)}
                             className={cn(
                               "w-[88px] shrink-0 snap-start rounded-lg border px-2 py-1.5 text-left transition sm:w-auto sm:p-2",
                               active
@@ -6571,17 +6577,14 @@ export default function IndustrialHubPage() {
               ) : null}
               {view === "map" ? (
                 <section className="-mt-2">
-                  <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
+                  <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
                     <div className="min-w-0">
                       <IndustrialMap
                         factories={filteredFactories}
                         selectedFactory={selectedFactory}
-                        onSelectFactory={setSelectedFactory}
+                        onSelectFactory={selectFactoryForCommerce}
                         selectedContext={selectedIndustrialContext}
-                        onSelectContext={(context) => {
-                          setSelectedFactory(null);
-                          setSelectedIndustrialContext(context);
-                        }}
+                        onSelectContext={selectIndustrialContextForCommerce}
                         isDark={isDark}
                         language={locale}
                         contextProductCounts={contextProductCounts}
@@ -6618,30 +6621,29 @@ export default function IndustrialHubPage() {
                       language={locale}
                     />
                   ) : null}
-                  <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
+                  <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
                     <div className="order-2 min-w-0 xl:order-1">
                       <IndustrialMap
                         factories={filteredFactories}
                         selectedFactory={selectedFactory}
-                        onSelectFactory={setSelectedFactory}
+                        onSelectFactory={selectFactoryForCommerce}
                         selectedContext={selectedIndustrialContext}
-                        onSelectContext={(context) => {
-                          setSelectedFactory(null);
-                          setSelectedIndustrialContext(context);
-                        }}
+                        onSelectContext={selectIndustrialContextForCommerce}
                         isDark={isDark}
                         language={locale}
                         contextProductCounts={contextProductCounts}
                         showEmptyState={false}
                         className="h-[340px] sm:h-[360px] xl:h-[380px]"
                       />
-                      <IndustrialSelectionCommerce
-                        selectedFactory={selectedFactory}
-                        selectedContext={selectedIndustrialContext}
-                        items={selectionCatalogItems}
-                        loading={catalogLoading}
-                        language={locale}
-                      />
+                      <div ref={selectionCommerceRef}>
+                        <IndustrialSelectionCommerce
+                          selectedFactory={selectedFactory}
+                          selectedContext={selectedIndustrialContext}
+                          items={selectionCatalogItems}
+                          loading={catalogLoading}
+                          language={locale}
+                        />
+                      </div>
                     </div>
                     <aside className="order-1 min-w-0 xl:order-2 xl:sticky xl:top-28">
                       <IndustrialAssistantChat
@@ -6702,14 +6704,14 @@ export default function IndustrialHubPage() {
                             <FactoryDirectoryTable
                               factories={filteredFactories}
                               selectedFactory={selectedFactory}
-                              onSelect={setSelectedFactory}
+                              onSelect={selectFactoryForCommerce}
                               language={locale}
                             />
                           ) : (
                             <FactoryList
                               factories={filteredFactories}
                               selectedFactory={selectedFactory}
-                              onSelect={setSelectedFactory}
+                              onSelect={selectFactoryForCommerce}
                               language={locale}
                             />
                           )}

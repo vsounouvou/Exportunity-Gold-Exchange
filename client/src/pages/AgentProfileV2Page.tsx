@@ -113,7 +113,7 @@ function normalizeOverviewAgent(record: any): Agent | null {
 export default function AgentProfileV2Page() {
   const { toast } = useToast();
   const { tenant } = useTenant();
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
   const [, operationsParams] = useRoute("/operations/agents/:agentId");
   const [, marketplaceParams] = useRoute("/commerce/ai-marketplace/agents/:agentId");
   const isMarketplace = Boolean((marketplaceParams as any)?.agentId);
@@ -127,6 +127,26 @@ export default function AgentProfileV2Page() {
     if (typeof window === "undefined") return "activity";
     return new URLSearchParams(window.location.search).get("tab") || "activity";
   });
+
+  const updateProfileLocation = (updates: { tab?: string; edit?: boolean }) => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    if (updates.tab) params.set("tab", updates.tab);
+    if (updates.edit === true) params.set("edit", "1");
+    if (updates.edit === false) params.delete("edit");
+    const search = params.toString();
+    setLocation(`${window.location.pathname}${search ? `?${search}` : ""}`);
+  };
+
+  const selectProfileTab = (tab: string) => {
+    setActiveTab(tab);
+    updateProfileLocation({ tab, edit: false });
+  };
+
+  const setProfileEditorOpen = (open: boolean) => {
+    setEditOpen(open);
+    updateProfileLocation({ edit: open });
+  };
 
   const profileQuery = useQuery<AgentProfilePayload>({
     queryKey: agentId ? [`/api/v2/agents/${agentId}/profile`] : ["__no_agent_profile_v2__"],
@@ -333,10 +353,11 @@ export default function AgentProfileV2Page() {
   }, [overview?.id]);
 
   useEffect(() => {
-    if (location.includes("edit=1")) setEditOpen(true);
-    const requestedTab = typeof window !== "undefined"
-      ? new URLSearchParams(window.location.search).get("tab")
-      : null;
+    const searchParams = typeof window !== "undefined"
+      ? new URLSearchParams(window.location.search)
+      : new URLSearchParams();
+    setEditOpen(searchParams.get("edit") === "1");
+    const requestedTab = searchParams.get("tab");
     if (requestedTab) setActiveTab(requestedTab);
   }, [location]);
 
@@ -587,7 +608,7 @@ export default function AgentProfileV2Page() {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => setActiveTab("memory")}
+                  onClick={() => selectProfileTab("memory")}
                 >
                   <BrainCircuit className="mr-2 h-4 w-4" />
                   Memory &amp; context
@@ -596,7 +617,7 @@ export default function AgentProfileV2Page() {
                   type="button"
                   className="bg-amber-500 text-slate-950 hover:bg-amber-400"
                   disabled={!editableAgent}
-                  onClick={() => setEditOpen(true)}
+                  onClick={() => setProfileEditorOpen(true)}
                 >
                   <Pencil className="mr-2 h-4 w-4" />
                   Edit identity &amp; face
@@ -611,7 +632,7 @@ export default function AgentProfileV2Page() {
             </CardContent>
           </Card>
 
-          <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <Tabs value={activeTab} onValueChange={selectProfileTab}>
             <TabsList className="bg-gray-900 border border-gray-800 w-full md:w-auto">
               <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="activity">Activity</TabsTrigger>
@@ -1146,7 +1167,7 @@ export default function AgentProfileV2Page() {
         runtimeAgentId={agentId}
         open={editOpen}
         onOpenChange={(open) => {
-          setEditOpen(open);
+          setProfileEditorOpen(open);
           if (!open) {
             void queryClient.invalidateQueries({ queryKey: [`/api/v2/agents/${agentId}/profile`] });
           }

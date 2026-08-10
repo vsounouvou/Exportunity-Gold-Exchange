@@ -66,8 +66,10 @@ test("working agents expose a direct identity and face editor", () => {
   assert.match(team, /Memory &amp; context/);
   assert.match(profile, /Edit identity &amp; face/);
   assert.match(profile, /new URLSearchParams\(window\.location\.search\)\.get\("tab"\)/);
-  assert.match(profile, /setActiveTab\("memory"\)/);
-  assert.match(profile, /<Tabs value=\{activeTab\} onValueChange=\{setActiveTab\}>/);
+  assert.match(profile, /selectProfileTab\("memory"\)/);
+  assert.match(profile, /<Tabs value=\{activeTab\} onValueChange=\{selectProfileTab\}>/);
+  assert.match(profile, /params\.delete\("edit"\)/);
+  assert.match(profile, /setProfileEditorOpen\(open\)/);
   assert.doesNotMatch(profile, /\{location\}<\/div>/);
   assert.match(registry, /runtime_agent_id/);
   assert.match(registry, /getAgentAvatarUrl/);

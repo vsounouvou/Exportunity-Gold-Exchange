@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { BarChart3, Bot, CopyPlus, Globe, Library, Network, Pencil, Plus, RefreshCw, Settings2, ShieldCheck, Sparkles, UsersRound } from "lucide-react";
+import { BarChart3, Bot, BrainCircuit, CopyPlus, Globe, Library, MoreHorizontal, Network, Pencil, Plus, RefreshCw, Settings2, ShieldCheck, Sparkles, UsersRound } from "lucide-react";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -12,8 +12,16 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { getAgentAvatarUrl } from "@/lib/agentAvatar";
 
 type AgentsOsTab = "registry" | "studio" | "knowledge" | "marketplace" | "analytics" | "governance";
 
@@ -375,6 +383,16 @@ export default function AdminAgentsOsPage() {
         .agents-os-light .bg-emerald-600\\/20 {
           background: rgba(22, 163, 74, 0.12) !important;
         }
+        .agents-os-light .agents-os-secondary-action {
+          background: #ffffff !important;
+          border-color: rgba(15, 23, 42, 0.14) !important;
+          color: #334155 !important;
+          box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+        }
+        .agents-os-light .agents-os-secondary-action:hover {
+          background: #f8fafc !important;
+          color: #07111f !important;
+        }
       `}</style>
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
@@ -384,7 +402,7 @@ export default function AdminAgentsOsPage() {
         <div className="flex items-center gap-2">
           <Button
             variant="outline"
-            className="border-gray-700 text-gray-100"
+            className="agents-os-secondary-action"
             onClick={() => setLocation("/operations/agents")}
           >
             <UsersRound className="h-4 w-4 mr-2" />
@@ -392,7 +410,7 @@ export default function AdminAgentsOsPage() {
           </Button>
           <Button
             variant="outline"
-            className="border-gray-700 text-gray-100"
+            className="agents-os-secondary-action"
             disabled={importRuntimeAgents.isPending}
             onClick={() => importRuntimeAgents.mutate()}
           >
@@ -457,23 +475,40 @@ export default function AdminAgentsOsPage() {
                 {agentsQuery.isLoading ? (
                   <div className="text-sm text-gray-400 border border-gray-800 rounded-lg p-4">Loading agents...</div>
                 ) : null}
-                {(agentsQuery.data?.items || []).map((item) => (
-                  <div key={item.id} className="border border-gray-800 rounded-lg p-3 bg-gray-950/50 flex flex-col lg:flex-row lg:items-center gap-3 lg:justify-between">
-                    <div className="min-w-0">
+                {(agentsQuery.data?.items || []).map((item) => {
+                  const runtimeAgentId = Number(item.runtime_agent_id || 0);
+                  const avatarUrl = String(item.avatar_url || "").trim() || getAgentAvatarUrl({
+                    id: runtimeAgentId || item.id,
+                    name: item.display_name,
+                    label: item.display_name,
+                    size: 96,
+                  });
+
+                  return (
+                  <div key={item.id} className="border border-slate-200 rounded-lg p-3 bg-white flex flex-col lg:flex-row lg:items-center gap-3 lg:justify-between shadow-sm">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <img
+                        src={avatarUrl}
+                        alt={`${item.display_name} profile`}
+                        loading="lazy"
+                        className="h-12 w-12 shrink-0 rounded-full border border-slate-200 bg-slate-100 object-cover"
+                      />
+                      <div className="min-w-0">
                       <div className="flex items-center gap-2">
-                        <div className="font-medium text-white truncate">{item.display_name}</div>
-                        <Badge variant="secondary" className="bg-gray-800 text-gray-200">{item.status}</Badge>
-                        {item.marketplace_visible ? <Badge className="bg-emerald-600/20 text-emerald-300 border border-emerald-500/40">visible</Badge> : null}
+                        <div className="font-medium text-slate-950 truncate">{item.display_name}</div>
+                        <Badge variant="secondary" className="bg-slate-100 text-slate-700">{item.status}</Badge>
+                        {item.marketplace_visible ? <Badge className="bg-emerald-50 text-emerald-700 border border-emerald-200">visible</Badge> : null}
                       </div>
-                      <div className="text-xs text-gray-400 truncate">{item.role_title} • {item.category}</div>
-                      {item.short_pitch ? <div className="text-xs text-gray-500 mt-1 line-clamp-2">{item.short_pitch}</div> : null}
+                      <div className="text-xs text-slate-600 truncate">{item.role_title} | {item.category}</div>
+                      {item.short_pitch ? <div className="text-xs text-slate-500 mt-1 line-clamp-2">{item.short_pitch}</div> : null}
+                      </div>
                     </div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      {Number(item.runtime_agent_id || 0) > 0 ? (
+                    <div className="flex flex-wrap items-center gap-2 lg:justify-end">
+                      {runtimeAgentId > 0 ? (
                         <Button
                           size="sm"
                           className="bg-amber-500 text-slate-950 hover:bg-amber-400"
-                          onClick={() => setLocation(`/operations/agents/${Number(item.runtime_agent_id)}?edit=1`)}
+                          onClick={() => setLocation(`/operations/agents/${runtimeAgentId}?edit=1`)}
                         >
                           <Pencil className="h-3.5 w-3.5 mr-1" />Edit identity &amp; face
                         </Button>
@@ -481,29 +516,52 @@ export default function AdminAgentsOsPage() {
                       <Button
                         size="sm"
                         variant="outline"
-                        className="border-gray-700 text-gray-200"
-                        onClick={() => setLocation(`/admin/agents-os/agents/${item.id}`)}
+                        className="agents-os-secondary-action"
+                        onClick={() => setLocation(runtimeAgentId > 0 ? `/operations/agents/${runtimeAgentId}` : `/admin/agents-os/agents/${item.id}`)}
                       >
-                        {Number(item.runtime_agent_id || 0) > 0 ? "Workspace" : "Edit listing"}
+                        <Bot className="h-3.5 w-3.5 mr-1" />
+                        {runtimeAgentId > 0 ? "Open workspace" : "Edit listing"}
                       </Button>
-                      <Button size="sm" variant="outline" className="border-gray-700 text-gray-200" onClick={() => snapshotAgent.mutate(item.id)}>
-                        <Settings2 className="h-3.5 w-3.5 mr-1" />Snapshot
-                      </Button>
-                      <Button size="sm" variant="outline" className="border-gray-700 text-gray-200" onClick={() => cloneAgent.mutate(item.id)}>
-                        <CopyPlus className="h-3.5 w-3.5 mr-1" />Clone
-                      </Button>
-                      {item.status === "active" ? (
-                        <Button size="sm" variant="outline" className="border-amber-600 text-amber-300" onClick={() => setAgentStatus.mutate({ id: item.id, action: "retire" })}>
-                          Retire
-                        </Button>
-                      ) : (
-                        <Button size="sm" variant="outline" className="border-emerald-600 text-emerald-300" onClick={() => setAgentStatus.mutate({ id: item.id, action: "activate" })}>
-                          Activate
-                        </Button>
-                      )}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="agents-os-secondary-action h-9 w-9 px-0"
+                            aria-label={`More actions for ${item.display_name}`}
+                            title={`More actions for ${item.display_name}`}
+                          >
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="min-w-52 border-slate-200 bg-white text-slate-800 shadow-lg">
+                          {runtimeAgentId > 0 ? (
+                            <DropdownMenuItem onSelect={() => setLocation(`/operations/agents/${runtimeAgentId}?tab=memory`)}>
+                              <BrainCircuit className="h-4 w-4 mr-2" />Memory &amp; context
+                            </DropdownMenuItem>
+                          ) : null}
+                          <DropdownMenuItem onSelect={() => snapshotAgent.mutate(item.id)}>
+                            <Settings2 className="h-4 w-4 mr-2" />Save configuration snapshot
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onSelect={() => cloneAgent.mutate(item.id)}>
+                            <CopyPlus className="h-4 w-4 mr-2" />Clone agent
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          {item.status === "active" ? (
+                            <DropdownMenuItem className="text-amber-800 focus:text-amber-900" onSelect={() => setAgentStatus.mutate({ id: item.id, action: "retire" })}>
+                              Retire agent
+                            </DropdownMenuItem>
+                          ) : (
+                            <DropdownMenuItem className="text-emerald-700 focus:text-emerald-800" onSelect={() => setAgentStatus.mutate({ id: item.id, action: "activate" })}>
+                              Activate agent
+                            </DropdownMenuItem>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
                 {!agentsQuery.data?.items?.length ? (
                   <div className="text-sm text-gray-400 border border-gray-800 rounded-lg p-4 space-y-3">
                     <div>No agents found for this tenant.</div>
@@ -511,7 +569,7 @@ export default function AdminAgentsOsPage() {
                       <Button
                         size="sm"
                         variant="outline"
-                        className="border-gray-700 text-gray-100"
+                        className="agents-os-secondary-action"
                         disabled={importRuntimeAgents.isPending}
                         onClick={() => importRuntimeAgents.mutate()}
                       >
@@ -580,7 +638,7 @@ export default function AdminAgentsOsPage() {
                     <div className="text-white truncate">{item.display_name}</div>
                     <div className="text-xs text-gray-400 truncate">{item.role_title}</div>
                   </div>
-                  <Button size="sm" variant="outline" className="border-gray-700 text-gray-200" onClick={() => snapshotAgent.mutate(item.id)}>
+                  <Button size="sm" variant="outline" className="agents-os-secondary-action" onClick={() => snapshotAgent.mutate(item.id)}>
                     Snapshot config
                   </Button>
                 </div>
@@ -713,11 +771,11 @@ export default function AdminAgentsOsPage() {
                 <div className="text-sm text-gray-400 border border-gray-800 rounded-lg p-3">No hierarchy data found.</div>
               )}
               <div className="flex items-center gap-2">
-                <Button variant="outline" className="border-gray-700 text-gray-100" onClick={() => importRuntimeAgents.mutate()} disabled={importRuntimeAgents.isPending}>
+                <Button variant="outline" className="agents-os-secondary-action" onClick={() => importRuntimeAgents.mutate()} disabled={importRuntimeAgents.isPending}>
                   <RefreshCw className="h-4 w-4 mr-1.5" />
                   Refresh from runtime agents
                 </Button>
-                <Button variant="outline" className="border-gray-700 text-gray-100" onClick={() => setLocation("/admin/agents/governance")}>
+                <Button variant="outline" className="agents-os-secondary-action" onClick={() => setLocation("/admin/agents/governance")}>
                   Open Governance Workspace
                 </Button>
               </div>

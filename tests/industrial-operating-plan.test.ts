@@ -70,7 +70,12 @@ test("working agents expose a direct identity and face editor", () => {
   assert.match(profile, /<Tabs value=\{activeTab\} onValueChange=\{setActiveTab\}>/);
   assert.doesNotMatch(profile, /\{location\}<\/div>/);
   assert.match(registry, /runtime_agent_id/);
-  assert.match(registry, /\/operations\/agents\/\$\{Number\(item\.runtime_agent_id\)\}\?edit=1/);
+  assert.match(registry, /getAgentAvatarUrl/);
+  assert.match(registry, /Edit identity &amp; face/);
+  assert.match(registry, /\/operations\/agents\/\$\{runtimeAgentId\}\?edit=1/);
+  assert.match(registry, /\/operations\/agents\/\$\{runtimeAgentId\}\?tab=memory/);
+  assert.match(registry, /More actions for \$\{item\.display_name\}/);
+  assert.match(registry, /agents-os-secondary-action/);
   assert.match(registryApi, /as runtime_agent_id/);
 });
 

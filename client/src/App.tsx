@@ -1,4 +1,4 @@
-import { Component, Suspense, lazy, useEffect, type ComponentType, type ErrorInfo } from "react";
+import { Component, Suspense, lazy, useEffect, useRef, type ComponentType, type ErrorInfo } from "react";
 import { Switch, Route, Redirect, useLocation } from "wouter";
 import { useSession } from "@/lib/session";
 import { useTenant } from "@/lib/tenant";
@@ -780,10 +780,19 @@ function ProLandingRedirect() {
 
 function App() {
   const [location] = useLocation();
+  const previousPathRef = useRef(location.split("?")[0] || "/");
 
   useEffect(() => {
     syncDemoModeFromUrl();
     telemetry().pageView(location);
+
+    const nextPath = location.split("?")[0] || "/";
+    if (previousPathRef.current !== nextPath) {
+      previousPathRef.current = nextPath;
+      window.requestAnimationFrame(() => {
+        window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+      });
+    }
   }, [location]);
 
   return (

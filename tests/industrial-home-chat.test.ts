@@ -86,3 +86,18 @@ test("factory and map discovery keep Tassi, the map, and products in one flow", 
   assert.match(hub, /initialCatalogItemId=\{quoteCatalogItemId\}/);
   assert.doesNotMatch(mapMarkup, /onSubmit=\{goSearch\}/);
 });
+
+test("pathname navigation starts each industrial journey at the top", () => {
+  const app = readRepoFile("client/src/App.tsx");
+
+  assert.ok(
+    app.includes(
+      'const previousPathRef = useRef(location.split("?")[0] || "/");',
+    ),
+  );
+  assert.match(app, /if \(previousPathRef\.current !== nextPath\)/);
+  assert.match(
+    app,
+    /window\.scrollTo\(\{ top: 0, left: 0, behavior: "auto" \}\)/,
+  );
+});

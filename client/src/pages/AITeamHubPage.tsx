@@ -2055,20 +2055,15 @@ export function AITeamHubPage() {
   const addAgentToMeeting = useMutation({
     mutationFn: async (agentId: number) => {
       if (!currentMeeting) throw new Error("No active meeting");
-      const response = await fetch(
-        resolveApiUrl(`/api/chatrooms/${currentMeeting.conversationId}/members`),
+      return apiRequest(
+        `/api/chatrooms/${encodeURIComponent(currentMeeting.conversationId)}/members`,
+        "POST",
         {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
           agentId,
           reasonCode: "MANUAL_INVITE",
           reasonText: "Manual invite from Operations Center UI",
-        }),
         },
       );
-      if (!response.ok) throw new Error("Failed to add agent");
-      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ 
@@ -2079,17 +2074,28 @@ export function AITeamHubPage() {
       });
       toast({ title: "Agent Added", description: "The agent has joined the meeting" });
     },
+    onError: (error) => {
+      toast({
+        title: "Agent could not be added",
+        description: error instanceof Error ? error.message : "Failed to add agent",
+        variant: "destructive",
+      });
+    },
   });
 
   const removeAgentFromMeeting = useMutation({
     mutationFn: async (agentId: number) => {
       if (!currentMeeting) throw new Error("No active meeting");
-      const response = await fetch(
-        resolveApiUrl(`/api/chatrooms/${currentMeeting.conversationId}/members/${agentId}`),
-        { method: "DELETE" }
+      return apiRequest(
+        `/api/chatrooms/${encodeURIComponent(currentMeeting.conversationId)}/members/${agentId}`,
+        {
+          method: "DELETE",
+          body: JSON.stringify({
+            reasonCode: "MANUAL_INVITE",
+            reasonText: "Manual removal from Operations Center UI",
+          }),
+        },
       );
-      if (!response.ok) throw new Error("Failed to remove agent");
-      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ 
@@ -2099,6 +2105,13 @@ export function AITeamHubPage() {
         queryKey: [`/api/chatrooms/${currentMeeting?.conversationId}/membership-audit`],
       });
       toast({ title: "Agent Removed", description: "The agent has left the meeting" });
+    },
+    onError: (error) => {
+      toast({
+        title: "Agent could not be removed",
+        description: error instanceof Error ? error.message : "Failed to remove agent",
+        variant: "destructive",
+      });
     },
   });
 
@@ -2146,17 +2159,11 @@ export function AITeamHubPage() {
       const companyId = resolveEffectiveCompanyId();
       if (!companyId) throw new Error(companiesLoading ? "Loading company..." : "No company found");
       const conversationId = `channel:${companyId}:all-team`;
-      const response = await fetch(resolveApiUrl(`/api/chatrooms/${encodeURIComponent(conversationId)}/members`), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      return apiRequest(`/api/chatrooms/${encodeURIComponent(conversationId)}/members`, "POST", {
           agentId,
           reasonCode: "MANUAL_INVITE",
           reasonText: "Manual invite from Operations Center channel UI",
-        }),
       });
-      if (!response.ok) throw new Error("Failed to add agent");
-      return response.json();
     },
     onSuccess: (_data, agentId) => {
       setActiveAgentIds((prev) => Array.from(new Set([...prev, agentId])));
@@ -2183,12 +2190,16 @@ export function AITeamHubPage() {
       const companyId = resolveEffectiveCompanyId();
       if (!companyId) throw new Error(companiesLoading ? "Loading company..." : "No company found");
       const conversationId = `channel:${companyId}:all-team`;
-      const response = await fetch(
-        resolveApiUrl(`/api/chatrooms/${encodeURIComponent(conversationId)}/members/${agentId}`),
-        { method: "DELETE" },
+      return apiRequest(
+        `/api/chatrooms/${encodeURIComponent(conversationId)}/members/${agentId}`,
+        {
+          method: "DELETE",
+          body: JSON.stringify({
+            reasonCode: "MANUAL_INVITE",
+            reasonText: "Manual removal from Operations Center channel UI",
+          }),
+        },
       );
-      if (!response.ok) throw new Error("Failed to remove agent");
-      return response.json();
     },
     onSuccess: (_data, agentId) => {
       setActiveAgentIds((prev) => prev.filter((id) => id !== agentId));
@@ -2232,17 +2243,16 @@ export function AITeamHubPage() {
 
     try {
       if (currentMeeting) {
-        const response = await fetch(resolveApiUrl(`/api/chatrooms/${currentMeeting.conversationId}/members/batch`), {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
+        await apiRequest(
+          `/api/chatrooms/${encodeURIComponent(currentMeeting.conversationId)}/members/batch`,
+          "POST",
+          {
             agentIds: ids,
             groupName: currentMeeting.name,
             reasonCode: "MANUAL_INVITE",
             reasonText: "Bulk manual invite from Operations Center UI",
-          }),
-        });
-        if (!response.ok) throw new Error("Failed to add agents");
+          },
+        );
         queryClient.invalidateQueries({
           queryKey: [`/api/chatrooms/${currentMeeting?.conversationId}/members`],
         });
@@ -2251,17 +2261,12 @@ export function AITeamHubPage() {
         const companyId = resolveEffectiveCompanyId();
         if (!companyId) throw new Error(companiesLoading ? "Loading company..." : "No company found");
         const conversationId = `channel:${companyId}:all-team`;
-        const response = await fetch(resolveApiUrl(`/api/chatrooms/${encodeURIComponent(conversationId)}/members/batch`), {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
+        await apiRequest(`/api/chatrooms/${encodeURIComponent(conversationId)}/members/batch`, "POST", {
             agentIds: ids,
             groupName: "All Team",
             reasonCode: "MANUAL_INVITE",
             reasonText: "Bulk manual invite from channel UI",
-          }),
         });
-        if (!response.ok) throw new Error("Failed to add agents");
         setActiveAgentIds((prev) => Array.from(new Set([...prev, ...ids])));
         didHydrateChannelMembers.current = true;
         queryClient.invalidateQueries({
@@ -2286,12 +2291,14 @@ export function AITeamHubPage() {
       if (currentMeeting) {
         const ids = meetingAgents.map((a) => a.id).filter((id) => typeof id === "number" && id > 0);
         if (!ids.length) return;
-        const response = await fetch(resolveApiUrl(`/api/chatrooms/${currentMeeting.conversationId}/members/batch`), {
+        await apiRequest(`/api/chatrooms/${encodeURIComponent(currentMeeting.conversationId)}/members/batch`, {
           method: "DELETE",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ agentIds: ids }),
+          body: JSON.stringify({
+            agentIds: ids,
+            reasonCode: "MANUAL_INVITE",
+            reasonText: "Bulk manual removal from Operations Center UI",
+          }),
         });
-        if (!response.ok) throw new Error("Failed to remove agents");
         queryClient.invalidateQueries({
           queryKey: [`/api/chatrooms/${currentMeeting?.conversationId}/members`],
         });
@@ -2302,12 +2309,14 @@ export function AITeamHubPage() {
         const conversationId = `channel:${companyId}:all-team`;
         const ids = activeAgentIds.slice();
         if (!ids.length) return;
-        const response = await fetch(resolveApiUrl(`/api/chatrooms/${encodeURIComponent(conversationId)}/members/batch`), {
+        await apiRequest(`/api/chatrooms/${encodeURIComponent(conversationId)}/members/batch`, {
           method: "DELETE",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ agentIds: ids }),
+          body: JSON.stringify({
+            agentIds: ids,
+            reasonCode: "MANUAL_INVITE",
+            reasonText: "Bulk manual removal from Operations Center channel UI",
+          }),
         });
-        if (!response.ok) throw new Error("Failed to remove agents");
         setActiveAgentIds([]);
         didHydrateChannelMembers.current = true;
         queryClient.invalidateQueries({

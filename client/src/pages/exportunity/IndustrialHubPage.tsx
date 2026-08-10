@@ -6920,7 +6920,7 @@ export default function IndustrialHubPage() {
                     </div>
                     <aside
                       id="industrial-product-conversation"
-                      className="min-w-0 scroll-mt-28 xl:max-h-[calc(100dvh-7.5rem)] xl:overflow-y-auto xl:pr-1"
+                      className="min-w-0 overflow-x-hidden scroll-mt-28 xl:max-h-[calc(100dvh-7.5rem)] xl:overflow-y-auto xl:pr-1"
                     >
                       <IndustrialAssistantChat
                         language={locale}

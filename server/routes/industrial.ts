@@ -2430,6 +2430,7 @@ router.post("/assistant/intake-preview", async (req: any, res) => {
         categoryCode: intake.categoryCode,
         title: intake.title,
         urgency: intake.urgency,
+        facts: intake.facts,
       },
     },
   });

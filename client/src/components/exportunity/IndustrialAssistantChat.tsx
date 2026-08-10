@@ -49,6 +49,12 @@ type IntakePreview = {
   categoryCode: string;
   title: string;
   urgency: "standard" | "urgent" | "planned";
+  facts?: {
+    quantityText?: string;
+    deliveryDestination?: string;
+    requiredBy?: string;
+    purchasePriority?: string;
+  };
 };
 
 type ConversationStep =
@@ -243,6 +249,7 @@ export function IndustrialAssistantChat({
           destination: "Livraison",
           timing: "Delai souhaite",
           priority: "Priorite",
+          captured: "J'ai deja note",
           contact: "Contact",
           company: "Entreprise",
           producer: "Producteur",
@@ -327,6 +334,7 @@ export function IndustrialAssistantChat({
           destination: "Delivery",
           timing: "Needed by",
           priority: "Priority",
+          captured: "I already captured",
           contact: "Contact",
           company: "Company",
           producer: "Producer",
@@ -366,8 +374,8 @@ export function IndustrialAssistantChat({
   const visibleAgentName = commercialMode ? "Awa Kouadio" : copy.name;
   const visibleAgentRole = commercialMode
     ? language === "fr"
-      ? "Directrice commerciale | Relation client"
-      : "Commercial Director | Client relationships"
+      ? "Directrice commerciale | Commandes & devis"
+      : "Commercial Director | Orders & quotations"
     : context?.role || copy.role;
   const activeConversationLabel =
     language === "fr"
@@ -537,6 +545,12 @@ export function IndustrialAssistantChat({
         salesMethod: commercialMode
           ? "consultative_discovery_summary_next_step"
           : "",
+        objectionMethod: commercialMode
+          ? "listen_acknowledge_explore_respond"
+          : "",
+        closePolicy: commercialMode
+          ? "mutually_agreed_specific_next_step_no_pressure"
+          : "",
       };
       if (purchasePriority)
         technicalDetails.purchasePriority = purchasePriority;
@@ -654,10 +668,71 @@ export function IndustrialAssistantChat({
           throw new Error(payload?.message || copy.emptyMessage);
         }
 
-        setIntake(payload.assistant.intake as IntakePreview);
-        setStep("quantity");
+        const nextIntake = payload.assistant.intake as IntakePreview;
+        const facts = nextIntake.facts || {};
+        const nextQuantity = facts.quantityText || "";
+        const nextDestination = facts.deliveryDestination || "";
+        const nextRequiredBy = facts.requiredBy || "";
+        const nextPriority = facts.purchasePriority || "";
+        setIntake(nextIntake);
+        if (nextQuantity) setQuantityText(nextQuantity);
+        if (nextDestination) setDestination(nextDestination);
+        if (nextRequiredBy) setRequiredBy(nextRequiredBy);
+        if (nextPriority) setPurchasePriority(nextPriority);
+
+        const capturedFacts = [
+          nextQuantity
+            ? `${language === "fr" ? "la quantite" : "quantity"} ${nextQuantity}`
+            : "",
+          nextDestination
+            ? `${language === "fr" ? "la livraison a" : "delivery to"} ${nextDestination}`
+            : "",
+          nextRequiredBy
+            ? `${language === "fr" ? "le delai" : "timing"} ${nextRequiredBy}`
+            : "",
+          nextPriority
+            ? `${language === "fr" ? "la priorite" : "priority"} ${nextPriority}`
+            : "",
+        ].filter(Boolean);
+        const capturedText = capturedFacts.length
+          ? `${copy.captured} ${capturedFacts.join(language === "fr" ? ", " : ", ")}.`
+          : "";
+
+        let nextStep: ConversationStep;
+        let nextQuestion: string;
+        if (!nextQuantity) {
+          nextStep = "quantity";
+          nextQuestion = copy.quantityQuestion;
+        } else if (!nextDestination) {
+          nextStep = "destination";
+          nextQuestion = copy.destinationQuestion;
+        } else if (!nextRequiredBy) {
+          nextStep = "timing";
+          nextQuestion = copy.timingQuestion;
+        } else if (!nextPriority) {
+          nextStep = "priority";
+          nextQuestion = copy.priorityQuestion;
+        } else {
+          nextStep = requesterName.trim()
+            ? requesterEmail.trim()
+              ? "company"
+              : "email"
+            : "name";
+          nextQuestion = requesterName.trim()
+            ? requesterEmail.trim()
+              ? copy.companyQuestion
+              : copy.emailQuestion
+            : copy.nameQuestion;
+        }
+        setStep(nextStep);
         appendAssistant(
-          `${String(payload.assistant.response || copy.emptyMessage)}\n\n${copy.quantityQuestion}`,
+          [
+            String(payload.assistant.response || copy.emptyMessage),
+            capturedText,
+            nextQuestion,
+          ]
+            .filter(Boolean)
+            .join("\n\n"),
         );
       } catch (nextError: any) {
         const messageText = nextError?.message || copy.emptyMessage;
@@ -671,19 +746,25 @@ export function IndustrialAssistantChat({
 
     if (step === "quantity") {
       setQuantityText(message);
-      ask("destination", copy.destinationQuestion);
+      if (!destination) ask("destination", copy.destinationQuestion);
+      else if (!requiredBy) ask("timing", copy.timingQuestion);
+      else if (!purchasePriority) ask("priority", copy.priorityQuestion);
+      else continueToContact();
       return;
     }
 
     if (step === "destination") {
       setDestination(message);
-      ask("timing", copy.timingQuestion);
+      if (!requiredBy) ask("timing", copy.timingQuestion);
+      else if (!purchasePriority) ask("priority", copy.priorityQuestion);
+      else continueToContact();
       return;
     }
 
     if (step === "timing") {
       setRequiredBy(message);
-      ask("priority", copy.priorityQuestion);
+      if (!purchasePriority) ask("priority", copy.priorityQuestion);
+      else continueToContact();
       return;
     }
 

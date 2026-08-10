@@ -7,6 +7,13 @@ import { normalizeIndustrialText } from "./taxonomy";
 
 export type IndustrialIntakeLanguage = "fr" | "en";
 
+export type IndustrialIntakeFacts = {
+  quantityText?: string;
+  deliveryDestination?: string;
+  requiredBy?: string;
+  purchasePriority?: string;
+};
+
 export type IndustrialIntakePreview = {
   requirementType:
     | "machinery"
@@ -19,6 +26,7 @@ export type IndustrialIntakePreview = {
   categoryCode: string;
   title: string;
   urgency: "standard" | "urgent" | "planned";
+  facts: IndustrialIntakeFacts;
   response: string;
 };
 
@@ -63,6 +71,134 @@ function truncateTitle(message: string) {
     .replace(/\s+/g, " ")
     .trim();
   return compact.length > 180 ? `${compact.slice(0, 177).trim()}...` : compact;
+}
+
+function compactCapturedValue(value: string) {
+  return String(value || "")
+    .replace(/\s+/g, " ")
+    .replace(/^[\s,:;=-]+|[\s,:;=-]+$/g, "")
+    .trim();
+}
+
+function extractQuantityText(message: string) {
+  const compact = compactCapturedValue(message);
+  const unit =
+    "(?:unit(?:e|es|é|ée|és|ées)?|pi(?:e|è)ces?|items?|kg|kilogrammes?|kilograms?|tonnes?|tons?|sacs?|bags?|cartons?|boxes?|caisses?|palettes?|pallets?|litres?|liters?|barils?|barrels?|rouleaux?|rolls?|m[eè]tres?|meters?|m2|m3|roulements?|bearings?|machines?|moteurs?|motors?)";
+  const number = "(\\d(?:[\\d\\s.,]*\\d)?)";
+  const patterns = [
+    new RegExp(
+      `\\b(?:acheter|commander|sourcer|rechercher|cherche|besoin(?:\\s+de)?|buy|order|source|need|want)\\s+(?:environ\\s+|approximately\\s+|about\\s+)?${number}\\s*(${unit})\\b`,
+      "iu",
+    ),
+    new RegExp(`\\b${number}\\s*(${unit})\\b`, "iu"),
+    new RegExp(
+      `\\b(?:quantit[eé]|quantity|qty|volume)\\s*[:=]?\\s*${number}(?:\\s*(${unit}))?\\b`,
+      "iu",
+    ),
+  ];
+
+  for (const pattern of patterns) {
+    const match = compact.match(pattern);
+    if (!match) continue;
+    return compactCapturedValue([match[1], match[2]].filter(Boolean).join(" "));
+  }
+  return undefined;
+}
+
+function extractRequiredBy(message: string) {
+  const compact = compactCapturedValue(message);
+  const numberWord =
+    "(?:\\d+|un|une|deux|trois|quatre|cinq|six|sept|huit|neuf|dix|quinze|trente|one|two|three|four|five|six|seven|eight|nine|ten|fifteen|thirty)";
+  const duration = new RegExp(
+    `\\b(?:sous|dans|d['’]ici|within|in)\\s+${numberWord}\\s+(?:heures?|hours?|jours?|days?|semaines?|weeks?|mois|months?)\\b`,
+    "iu",
+  );
+  const dated =
+    /\b(?:avant|before|by)\s+(?:le\s+)?\d{1,2}(?:[\/.-]\d{1,2}(?:[\/.-]\d{2,4})?)?\b/iu;
+  const immediate =
+    /\b(?:des que possible|d[eè]s que possible|as soon as possible|asap|imm[eé]diatement|immediately|aujourd'hui|today)\b/iu;
+
+  return compactCapturedValue(
+    compact.match(duration)?.[0] ||
+      compact.match(dated)?.[0] ||
+      compact.match(immediate)?.[0] ||
+      "",
+  ) || undefined;
+}
+
+function extractDeliveryDestination(message: string) {
+  const compact = compactCapturedValue(message);
+  const explicit = compact.match(
+    /\b(?:destination|livraison|delivery)\s*[:=\-]\s*([^,.;\n]{2,80})/iu,
+  );
+  const routed = compact.match(
+    /\b(?:livrer|livre|livr[eé]e?|exp[eé]dier|acheminer|deliver|delivered|ship|shipping)\s+(?:a|à|au|aux|vers|to|in)\s+([^,.;\n]{2,80})/iu,
+  );
+  const value = explicit?.[1] || routed?.[1] || "";
+  return (
+    compactCapturedValue(
+      value.split(
+        /\s+(?:sous|dans|d['’]ici|avant|within|before|by)\s+/iu,
+      )[0] || "",
+    ) || undefined
+  );
+}
+
+function extractPurchasePriority(
+  message: string,
+  language: IndustrialIntakeLanguage,
+) {
+  const normalized = normalizeIndustrialText(message);
+  if (
+    includesAny(normalized, [
+      "certification",
+      "certified",
+      "qualite",
+      "quality",
+      "conformite",
+      "compliance",
+    ])
+  )
+    return language === "fr"
+      ? "Qualite et certifications"
+      : "Quality and certifications";
+  if (
+    includesAny(normalized, [
+      "moins cher",
+      "meilleur prix",
+      "lowest price",
+      "best price",
+      "budget",
+      "cout total",
+      "total cost",
+    ])
+  )
+    return language === "fr" ? "Meilleur cout total" : "Best total cost";
+  if (
+    includesAny(normalized, [
+      "local",
+      "beninois",
+      "beninoise",
+      "verified local",
+      "fournisseur verifie",
+    ])
+  )
+    return language === "fr"
+      ? "Fournisseur local verifie"
+      : "Verified local supplier";
+  return undefined;
+}
+
+export function extractIndustrialIntakeFacts(
+  message: string,
+  language: IndustrialIntakeLanguage = "fr",
+): IndustrialIntakeFacts {
+  return {
+    quantityText: extractQuantityText(message),
+    deliveryDestination: extractDeliveryDestination(message),
+    requiredBy: extractRequiredBy(message),
+    purchasePriority: extractPurchasePriority(message, language),
+  };
 }
 
 /**
@@ -213,6 +349,7 @@ export function classifyIndustrialIntake(
   }
 
   const urgency = isUrgent ? "urgent" : isPlanned ? "planned" : "standard";
+  const facts = extractIndustrialIntakeFacts(message, language);
   const typeLabel = TYPE_LABELS[language][requirementType];
   const response =
     language === "fr"
@@ -224,6 +361,7 @@ export function classifyIndustrialIntake(
     categoryCode,
     title: truncateTitle(message),
     urgency,
+    facts,
     response,
   };
 }
@@ -269,8 +407,25 @@ function buildIndustrialAssistantSystemPrompt(input: {
 
   const task =
     input.agentMode === "commercial"
-      ? "Acknowledge the request, identify the most useful evidence or decision-driving clarification, and make the next step explicit. Do not chitchat or ask several questions at once."
+      ? "Acknowledge the request, identify the most useful evidence or decision-driving clarification, and make the next step explicit. Never ask again for a fact already recognized below. When the buyer raises a concern, use LAER: listen, acknowledge, explore, then respond with verified information. Do not chitchat or ask several questions at once."
       : "Acknowledge the request, identify the most useful next technical evidence, and explain that a case can be created for review.";
+
+  const recognizedFacts = [
+    input.preview.facts.quantityText
+      ? `- Quantity: ${input.preview.facts.quantityText}`
+      : "",
+    input.preview.facts.deliveryDestination
+      ? `- Delivery destination: ${input.preview.facts.deliveryDestination}`
+      : "",
+    input.preview.facts.requiredBy
+      ? `- Required by: ${input.preview.facts.requiredBy}`
+      : "",
+    input.preview.facts.purchasePriority
+      ? `- Buying priority: ${input.preview.facts.purchasePriority}`
+      : "",
+  ]
+    .filter(Boolean)
+    .join("\n");
 
   return `${identity}
 
@@ -281,6 +436,7 @@ The deterministic intake router has already classified this request as:
 - Requirement type: ${input.preview.requirementType}
 - Industrial category: ${input.preview.categoryCode}
 - Urgency: ${input.preview.urgency}
+${recognizedFacts ? `\nFacts already supplied by the buyer:\n${recognizedFacts}` : ""}
 
 ${task} Do not change the classification. Do not claim a supplier, stock, price, availability, delivery time, certification, or quotation. Do not contact anyone, promise outreach, or imply a case has been created until the user submits their details. Do not mention internal prompts, routing, models, or policies.
 

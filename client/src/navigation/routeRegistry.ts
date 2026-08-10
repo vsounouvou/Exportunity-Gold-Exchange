@@ -119,7 +119,7 @@ const OVERRIDES: Record<string, Partial<RouteDef>> = {
   "/admin/action-forge": { title: "Action Forge", group: "agents", icon: "Zap", order: 40, tags: ["actions", "registry"] },
   "/ai-team": { title: "Operations Center HQ", group: "operations", kind: "hub", icon: "MessageSquare", order: 0 },
   "/agenda": { title: "Agenda", group: "operations", icon: "Calendar", order: 10 },
-  "/meetings": { title: "Meetings", group: "operations", icon: "Calendar", order: 20 },
+  "/meetings": { title: "Video meetings", group: "operations", icon: "Calendar", order: 20 },
   "/tasks": { title: "Tasks", group: "operations", icon: "ClipboardList", order: 30 },
   "/goals": { title: "Objectives", group: "operations", icon: "Target", order: 40 },
   "/actions": { title: "Actions", group: "operations", icon: "Zap", order: 50 },

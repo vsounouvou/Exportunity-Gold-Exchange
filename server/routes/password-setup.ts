@@ -2,10 +2,10 @@ import { randomBytes } from "crypto";
 
 import bcrypt from "bcryptjs";
 import { Router } from "express";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 
 import { db } from "@db";
-import { eceSessions, eceUsers } from "@db/schema";
+import { eceSessions, eceUsers, userTenantRoles } from "@db/schema";
 
 import { ensureTenantAdmin } from "./utils/auth";
 import {
@@ -145,9 +145,19 @@ router.post("/api/auth/setup-password", async (req, res) => {
 router.post("/api/admin/users/:id/regenerate-setup-link", ensureTenantAdmin, async (req, res) => {
   try {
     const userId = Number(req.params?.id || 0);
+    const tenantId = Number((req as any)?.tenant?.id || 0);
     if (!Number.isFinite(userId) || userId <= 0) {
       return res.status(400).json({ message: "Valid user id is required" });
     }
+    if (!Number.isFinite(tenantId) || tenantId <= 0) {
+      return res.status(400).json({ message: "Tenant required" });
+    }
+
+    const membership = await db.query.userTenantRoles.findFirst({
+      where: and(eq(userTenantRoles.tenantId, tenantId), eq(userTenantRoles.userId, userId)),
+      columns: { id: true },
+    });
+    if (!membership) return res.status(404).json({ message: "User not found for this tenant" });
 
     const user = await db.query.eceUsers.findFirst({
       where: eq(eceUsers.id, userId),

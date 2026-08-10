@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { AlertCircle, Users, DollarSign, ChevronRight, ChevronDown, Plus, Building2, Pencil, Trash2, Eye, EyeOff, Target } from "lucide-react";
+import { AlertCircle, Users, UserRoundCog, ChevronRight, ChevronDown, Plus, Building2, Pencil, Trash2, Eye, EyeOff, Target } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useState, useEffect, useMemo } from "react";
 import { useToast } from "@/hooks/use-toast";
@@ -553,61 +553,63 @@ export default function HierarchyPage() {
     );
   }
   
-  const companyBudgetPercent = (parseFloat(companyData.budgetUsed) / parseFloat(companyData.monthlyBudget)) * 100;
   const activeStrategicGoals = strategicGoals.filter((goal) => goal.status === "planned" || goal.status === "in_progress");
   const companyMission = companyData.vision || activeStrategicGoals[0]?.title || companyData.currentGoals?.[0] || "Set the industrial mission";
   
   return (
-    <div className="container mx-auto p-4 md:p-6 space-y-4 md:space-y-6">
+    <div className="exportunity-operations-light min-h-full bg-[#f7f8fa] p-4 text-slate-950 md:p-6">
+      <div className="mx-auto max-w-7xl space-y-4 md:space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h1 className="text-xl md:text-3xl font-bold tracking-tight">{companyData.name}</h1>
-          <p className="text-muted-foreground text-sm md:text-base mt-1">
-            Organization Structure & Departments
+          <p className="mt-1 text-sm text-slate-600 md:text-base">
+            AI operating team, departments, reporting lines, and human oversight.
           </p>
         </div>
-        {selectedCompanyId && <CreateDepartmentDialog companyId={selectedCompanyId} />}
+        <div className="flex flex-wrap gap-2">
+          <Button type="button" variant="outline" className="border-slate-300 bg-white text-slate-800" onClick={() => setLocation("/admin-users")}>
+            <UserRoundCog className="mr-2 h-4 w-4" /> People & access
+          </Button>
+          {selectedCompanyId && <CreateDepartmentDialog companyId={selectedCompanyId} />}
+        </div>
       </div>
       
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
-        <Card>
+        <Card className="border-slate-200 bg-white shadow-sm">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-sm font-medium">
-              <Target className="h-4 w-4 text-primary" />
+              <Target className="h-4 w-4 text-amber-600" />
               Industrial Mission
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             <p className="line-clamp-3 text-sm font-semibold leading-6">{companyMission}</p>
-            <Button type="button" variant="ghost" size="sm" className="h-8 px-0 text-primary" onClick={() => setLocation("/goals")}>
+            <Button type="button" variant="ghost" size="sm" className="h-8 px-0 text-amber-700" onClick={() => setLocation("/goals")}>
               {activeStrategicGoals.length} active objectives
               <ChevronRight className="ml-1 h-4 w-4" />
             </Button>
           </CardContent>
         </Card>
         
-        <Card>
+        <Card className="border-slate-200 bg-white shadow-sm">
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium">Monthly Budget</CardTitle>
+            <CardTitle className="flex items-center gap-2 text-sm font-medium">
+              <UserRoundCog className="h-4 w-4 text-amber-600" />
+              Human oversight
+            </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="flex items-baseline gap-2">
-              <DollarSign className="w-5 h-5 text-muted-foreground" />
-              <span className="text-2xl font-bold">${companyData.monthlyBudget}</span>
-            </div>
-            <div className="mt-3 h-2 bg-secondary rounded-full overflow-hidden">
-              <div 
-                className={`h-full ${companyBudgetPercent > 80 ? 'bg-red-500' : companyBudgetPercent > 50 ? 'bg-yellow-500' : 'bg-green-500'}`}
-                style={{ width: `${Math.min(companyBudgetPercent, 100)}%` }}
-              />
-            </div>
-            <p className="text-xs text-muted-foreground mt-2">
-              ${companyData.budgetUsed} used ({companyBudgetPercent.toFixed(1)}%)
+          <CardContent className="space-y-3">
+            <p className="text-sm leading-6 text-slate-600">
+              People approve external messages, payments, legal commitments, and sensitive agent actions.
             </p>
+            <Button type="button" variant="ghost" size="sm" className="h-8 px-0 text-amber-700" onClick={() => setLocation("/admin-users")}>
+              Manage people & access
+              <ChevronRight className="ml-1 h-4 w-4" />
+            </Button>
           </CardContent>
         </Card>
         
-        <Card>
+        <Card className="border-slate-200 bg-white shadow-sm">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium">Departments</CardTitle>
           </CardHeader>
@@ -618,7 +620,7 @@ export default function HierarchyPage() {
               <span className="text-sm text-muted-foreground">active departments</span>
             </div>
             <p className="text-xs text-muted-foreground mt-3">
-              {allAgents?.length || 0} total agents{emptyDepartments.length ? ` · ${emptyDepartments.length} empty hidden` : ""}
+              {allAgents?.length || 0} AI agents{emptyDepartments.length ? ` - ${emptyDepartments.length} empty hidden` : ""}
             </p>
           </CardContent>
         </Card>
@@ -626,16 +628,19 @@ export default function HierarchyPage() {
       
       <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as any)} className="space-y-4">
         <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="org">Org Chart</TabsTrigger>
+          <TabsTrigger value="org">AI org chart</TabsTrigger>
           <TabsTrigger value="departments">Departments</TabsTrigger>
         </TabsList>
 
         <TabsContent value="org" className="space-y-4">
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium">Company Org Chart</CardTitle>
+              <CardTitle className="text-sm font-medium">AI operating team</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              <p className="text-sm text-slate-600">
+                Select any agent to edit its identity, face, instructions, model, permissions, and memory.
+              </p>
               <OrgChartTree agents={allAgents || []} onAgentClick={handleAgentClick} />
               {orphanedAgents.length > 0 && (
                 <div className="text-sm text-amber-700">
@@ -723,6 +728,7 @@ export default function HierarchyPage() {
         open={isEditDialogOpen}
         onOpenChange={setIsEditDialogOpen}
       />
+      </div>
     </div>
   );
 }

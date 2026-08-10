@@ -85,3 +85,35 @@ test("agent lists resolve the department selected in the identity editor", () =>
   assert.match(team, /item\.department_name \|\| item\.department_key/);
   assert.match(profile, /overview\.department_name \|\| overview\.department_key/);
 });
+
+test("Exportunity admin navigation stays focused on industrial operations", () => {
+  const tenantPolicy = readRepoFile("client/src/lib/tenantPolicy.ts");
+  const adminLayout = readRepoFile("client/src/components/AdminLayout.tsx");
+  const routes = readRepoFile("client/src/navigation/routeRegistry.ts");
+
+  assert.match(tenantPolicy, /EXPORTUNITY_ADMIN_NAV_PREFIXES/);
+  assert.match(tenantPolicy, /export function isTenantAdminNavVisible/);
+  assert.match(tenantPolicy, /tenantKey !== "exportunity"/);
+  assert.match(adminLayout, /isTenantAdminNavVisible\(item\.path, tenant\.key\)/);
+  assert.match(routes, /title: "Video meetings"/);
+});
+
+test("People and Access is tenant scoped and exposes real account controls", () => {
+  const management = readRepoFile("server/routes/admin-management.ts");
+  const passwordSetup = readRepoFile("server/routes/password-setup.ts");
+  const people = readRepoFile("client/src/pages/AdminUserManagementPage.tsx");
+  const hierarchy = readRepoFile("client/src/pages/HierarchyPage.tsx");
+
+  assert.match(management, /eq\(userTenantRoles\.tenantId, tenantId\)/);
+  assert.match(management, /\.from\(userTenantRoles\)[\s\S]*\.innerJoin\(eceUsers/);
+  assert.doesNotMatch(management, /router\.get\("\/users"[\s\S]*db\.query\.eceUsers\.findMany/);
+  assert.match(passwordSetup, /User not found for this tenant/);
+  assert.match(passwordSetup, /eq\(userTenantRoles\.userId, userId\)/);
+  assert.match(people, /People & access/);
+  assert.match(people, /method: "PATCH"/);
+  assert.match(people, /regenerate-setup-link/);
+  assert.match(people, /Only users assigned to this tenant are shown/);
+  assert.match(hierarchy, /Human oversight/);
+  assert.match(hierarchy, /Manage people & access/);
+  assert.match(hierarchy, /identity, face, instructions, model, permissions, and memory/);
+});

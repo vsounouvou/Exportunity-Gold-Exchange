@@ -56,7 +56,7 @@ import { cn } from "@/lib/utils";
 import { ChairmanChatDock } from "./ChairmanChatDock";
 import { BrandMark } from "@/components/branding/index.ts";
 import { useTenant } from "@/lib/tenant";
-import { getTenantAdminHomeRoute, isTenantRouteAllowed } from "@/lib/tenantPolicy";
+import { getTenantAdminHomeRoute, isTenantAdminNavVisible, isTenantRouteAllowed } from "@/lib/tenantPolicy";
 import { getTenantStandardAdminIa, resolveTenantAdminAliasDestination } from "@/lib/adminIa";
 import { TenantSwitcher } from "@/components/TenantSwitcher";
 import { LocaleSwitcher } from "@/components/LocaleSwitcher";
@@ -179,7 +179,7 @@ const adminNavLabelCopy: Record<AdminLanguage, Record<string, string>> = {
     "Action Forge": "Forge actions",
     "Operations Center HQ": "Centre des operations",
     Agenda: "Agenda",
-    Meetings: "Reunions",
+    "Video meetings": "Reunions video",
     Tasks: "Taches",
     Objectives: "Objectifs",
     Actions: "Actions",
@@ -487,7 +487,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
     const query = sidebarQuery.trim().toLowerCase();
     return NAV_GROUPS.map((group) => {
       const includeItem = (item: { label: string; path: string; subgroup?: string }) => {
-        if (!isTenantRouteAllowed(item.path, tenant.key)) return false;
+        if (!isTenantAdminNavVisible(item.path, tenant.key)) return false;
         if (!query) return true;
         return (
           item.label.toLowerCase().includes(query) ||

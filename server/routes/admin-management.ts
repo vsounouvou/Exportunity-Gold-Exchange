@@ -1070,8 +1070,12 @@ router.get("/users", async (req, res) => {
   try {
     const { page = 1, limit = 20, role, status, search } = req.query;
     const offset = (Number(page) - 1) * Number(limit);
+    const tenantId = Number((req as any)?.tenant?.id || 0);
+    if (!Number.isInteger(tenantId) || tenantId <= 0) {
+      return res.status(400).json({ error: "Tenant required" });
+    }
 
-    const conditions: any[] = [];
+    const conditions: any[] = [eq(userTenantRoles.tenantId, tenantId)];
 
     if (search && typeof search === 'string' && search.trim()) {
       const searchTerm = `%${search.trim()}%`;
@@ -1098,16 +1102,31 @@ router.get("/users", async (req, res) => {
 
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
-    const allUsers = await db.query.eceUsers.findMany({
-      where: whereClause,
-      orderBy: desc(eceUsers.createdAt),
-      limit: Number(limit),
-      offset
-    });
+    const allUsers = await db
+      .select({
+        id: eceUsers.id,
+        displayName: eceUsers.displayName,
+        email: eceUsers.email,
+        phone: eceUsers.phone,
+        roles: eceUsers.roles,
+        currentMode: eceUsers.currentMode,
+        isActive: eceUsers.isActive,
+        emailVerified: eceUsers.emailVerified,
+        createdAt: eceUsers.createdAt,
+        updatedAt: eceUsers.updatedAt,
+      })
+      .from(userTenantRoles)
+      .innerJoin(eceUsers, eq(userTenantRoles.userId, eceUsers.id))
+      .where(whereClause)
+      .orderBy(desc(eceUsers.createdAt))
+      .limit(Math.max(1, Math.min(Number(limit) || 20, 200)))
+      .offset(Math.max(0, offset));
 
-    const countResult = whereClause
-      ? await db.select({ count: count() }).from(eceUsers).where(whereClause)
-      : await db.select({ count: count() }).from(eceUsers);
+    const countResult = await db
+      .select({ count: count() })
+      .from(userTenantRoles)
+      .innerJoin(eceUsers, eq(userTenantRoles.userId, eceUsers.id))
+      .where(whereClause);
 
     const totalCount = countResult[0]?.count || 0;
 
@@ -1129,10 +1148,30 @@ router.get("/users", async (req, res) => {
 router.get("/users/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    
-    const user = await db.query.eceUsers.findFirst({
-      where: eq(eceUsers.id, Number(id))
-    });
+    const tenantId = Number((req as any)?.tenant?.id || 0);
+    if (!Number.isInteger(tenantId) || tenantId <= 0) {
+      return res.status(400).json({ error: "Tenant required" });
+    }
+
+    const user = (
+      await db
+        .select({
+          id: eceUsers.id,
+          displayName: eceUsers.displayName,
+          email: eceUsers.email,
+          phone: eceUsers.phone,
+          roles: eceUsers.roles,
+          currentMode: eceUsers.currentMode,
+          isActive: eceUsers.isActive,
+          emailVerified: eceUsers.emailVerified,
+          createdAt: eceUsers.createdAt,
+          updatedAt: eceUsers.updatedAt,
+        })
+        .from(userTenantRoles)
+        .innerJoin(eceUsers, eq(userTenantRoles.userId, eceUsers.id))
+        .where(and(eq(userTenantRoles.tenantId, tenantId), eq(eceUsers.id, Number(id))))
+        .limit(1)
+    )[0];
 
     if (!user) {
       return res.status(404).json({ error: "User not found" });
@@ -1149,18 +1188,67 @@ router.patch("/users/:id", async (req, res) => {
   try {
     const { id } = req.params;
     const { roles, isActive, displayName, email, phone } = req.body;
+    const userId = Number(id);
+    const tenantId = Number((req as any)?.tenant?.id || 0);
+    if (!Number.isInteger(tenantId) || tenantId <= 0 || !Number.isInteger(userId) || userId <= 0) {
+      return res.status(400).json({ error: "Valid tenant and user are required" });
+    }
+
+    const membership = await db.query.userTenantRoles.findFirst({
+      where: and(eq(userTenantRoles.tenantId, tenantId), eq(userTenantRoles.userId, userId)),
+      columns: { id: true },
+    });
+    if (!membership) return res.status(404).json({ error: "User not found for this tenant" });
 
     const updateData: Record<string, any> = { updatedAt: new Date() };
-    if (roles !== undefined) updateData.roles = roles;
-    if (isActive !== undefined) updateData.isActive = isActive;
-    if (displayName !== undefined) updateData.displayName = displayName;
-    if (email !== undefined) updateData.email = email;
-    if (phone !== undefined) updateData.phone = phone;
+    if (roles !== undefined) {
+      const normalizedRoles = Array.from(
+        new Set((Array.isArray(roles) ? roles : []).map((item) => String(item || "").trim()).filter(Boolean)),
+      );
+      if (normalizedRoles.length === 0) return res.status(400).json({ error: "At least one role is required" });
+      if (Number((req as any)?.adminUser?.id || 0) === userId) {
+        const keepsAdminAccess = normalizedRoles.some((item) =>
+          ["admin", "super_admin", "platform_admin", "chairman"].includes(item.toLowerCase()),
+        );
+        if (!keepsAdminAccess) {
+          return res.status(400).json({ error: "You cannot remove your own administrator access" });
+        }
+      }
+      updateData.roles = normalizedRoles;
+    }
+    if (isActive !== undefined) {
+      if (Number((req as any)?.adminUser?.id || 0) === userId && !Boolean(isActive)) {
+        return res.status(400).json({ error: "You cannot deactivate your own account" });
+      }
+      updateData.isActive = Boolean(isActive);
+    }
+    if (displayName !== undefined) {
+      const nextName = String(displayName || "").trim();
+      if (!nextName) return res.status(400).json({ error: "Display name is required" });
+      updateData.displayName = nextName;
+    }
+    if (email !== undefined) {
+      const nextEmail = normalizeEmail(email);
+      if (!nextEmail || !nextEmail.includes("@")) return res.status(400).json({ error: "Valid email is required" });
+      updateData.email = nextEmail;
+    }
+    if (phone !== undefined) updateData.phone = normalizePhone(phone);
 
     const [updated] = await db.update(eceUsers)
       .set(updateData)
-      .where(eq(eceUsers.id, Number(id)))
-      .returning();
+      .where(eq(eceUsers.id, userId))
+      .returning({
+        id: eceUsers.id,
+        displayName: eceUsers.displayName,
+        email: eceUsers.email,
+        phone: eceUsers.phone,
+        roles: eceUsers.roles,
+        currentMode: eceUsers.currentMode,
+        isActive: eceUsers.isActive,
+        emailVerified: eceUsers.emailVerified,
+        createdAt: eceUsers.createdAt,
+        updatedAt: eceUsers.updatedAt,
+      });
 
     res.json(updated);
   } catch (error: any) {
@@ -2363,7 +2451,14 @@ router.post("/campaigns", async (req, res) => {
 
 router.get("/stats", async (req, res) => {
   try {
-    const [userCount] = await db.select({ count: count() }).from(users);
+    const tenantId = Number((req as any)?.tenant?.id || 0);
+    if (!Number.isInteger(tenantId) || tenantId <= 0) {
+      return res.status(400).json({ error: "Tenant required" });
+    }
+    const [userCount] = await db
+      .select({ count: count() })
+      .from(userTenantRoles)
+      .where(eq(userTenantRoles.tenantId, tenantId));
     const [shopAppCount] = await db.select({ count: count() }).from(shopApplications);
     const [deliveryAppCount] = await db.select({ count: count() }).from(deliveryApplications);
     const [leadCount] = await db.select({ count: count() }).from(leads);

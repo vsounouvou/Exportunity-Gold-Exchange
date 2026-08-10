@@ -1,532 +1,411 @@
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useEffect, useMemo, useState } from "react";
+import { Link } from "wouter";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { CheckCircle2, Copy, KeyRound, Mail, Network, Phone, Search, ShieldCheck, UserRound, Users } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { 
-  Users, Search, Filter, Plus, Edit2, Trash2, 
-  UserPlus, Shield, Store, Truck, Target, MessageSquare,
-  CheckCircle2, XCircle, Clock, TrendingUp, ChevronRight,
-  Mail, Phone, MapPin, Calendar, MoreVertical, Eye
-} from "lucide-react";
 
-interface User {
+type TenantUser = {
   id: number;
   displayName: string;
   email: string;
-  role: string;
+  phone: string | null;
+  roles: string[];
+  currentMode: string | null;
+  isActive: boolean;
+  emailVerified: boolean;
   createdAt: string;
-  phoneNumber?: string;
+  updatedAt: string;
+};
+
+type UserDraft = {
+  displayName: string;
+  email: string;
+  phone: string;
+  roles: string[];
+  isActive: boolean;
+};
+
+function draftFromUser(user: TenantUser): UserDraft {
+  return {
+    displayName: user.displayName || "",
+    email: user.email || "",
+    phone: user.phone || "",
+    roles: Array.isArray(user.roles) && user.roles.length ? user.roles : [user.currentMode || "user"],
+    isActive: user.isActive !== false,
+  };
 }
 
-interface ShopApplication {
-  id: number;
-  userId: number;
-  status: string;
-  aiScore?: number;
-  aiDecision?: string;
-  createdAt: string;
-  user?: User;
-  applicationData?: Record<string, any>;
-}
-
-interface DeliveryApplication {
-  id: number;
-  userId: number;
-  status: string;
-  aiScore?: number;
-  aiDecision?: string;
-  createdAt: string;
-  user?: User;
-  applicationData?: Record<string, any>;
-}
-
-interface Lead {
-  id: number;
-  companyName?: string;
-  contactName?: string;
-  contactEmail?: string;
-  source: string;
-  status: string;
-  score: number;
-  createdAt: string;
+function isApprovalRole(role: string) {
+  return ["admin", "super_admin", "platform_admin", "chairman", "owner"].includes(role.toLowerCase());
 }
 
 export default function AdminUserManagementPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [userDetailsOpen, setUserDetailsOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<TenantUser | null>(null);
+  const [draft, setDraft] = useState<UserDraft | null>(null);
+  const [setupLink, setSetupLink] = useState("");
 
-  const { data: stats } = useQuery<{
-    totalUsers: number;
-    shopApplications: number;
-    deliveryApplications: number;
-    totalLeads: number;
-  }>({
-    queryKey: ['/api/admin/stats']
-  });
-
-  const { data: usersData, isLoading: usersLoading } = useQuery<{
-    users: User[];
+  const usersQuery = useQuery<{
+    users: TenantUser[];
     pagination: { total: number; page: number; pages: number };
   }>({
-    queryKey: ['/api/admin/users']
+    queryKey: ["/api/admin/users?limit=200"],
   });
 
-  const { data: shopAppsData } = useQuery<{
-    applications: ShopApplication[];
-    pagination: { total: number };
-  }>({
-    queryKey: ['/api/admin/applications/shop']
+  const rolesQuery = useQuery<Array<{ id: number; name: string; description?: string }>>({
+    queryKey: ["/api/admin/roles"],
   });
 
-  const { data: deliveryAppsData } = useQuery<{
-    applications: DeliveryApplication[];
-    pagination: { total: number };
-  }>({
-    queryKey: ['/api/admin/applications/delivery']
-  });
+  const users = usersQuery.data?.users || [];
+  const roleOptions = useMemo(
+    () =>
+      Array.from(
+        new Set([
+          ...(rolesQuery.data || []).map((role) => role.name),
+          ...users.flatMap((user) => (Array.isArray(user.roles) ? user.roles : [])),
+        ]),
+      )
+        .filter(Boolean)
+        .sort((a, b) => a.localeCompare(b)),
+    [rolesQuery.data, users],
+  );
 
-  const { data: leadsData } = useQuery<{
-    leads: Lead[];
-    pagination: { total: number };
-  }>({
-    queryKey: ['/api/admin/leads']
-  });
+  const filteredUsers = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) return users;
+    return users.filter((user) =>
+      [user.displayName, user.email, user.phone || "", ...(user.roles || [])]
+        .join(" ")
+        .toLowerCase()
+        .includes(query),
+    );
+  }, [searchQuery, users]);
 
-  const { data: roles } = useQuery<Array<{ id: number; name: string; description: string }>>({
-    queryKey: ['/api/admin/roles']
-  });
+  useEffect(() => {
+    if (!selectedUser) {
+      setDraft(null);
+      setSetupLink("");
+      return;
+    }
+    setDraft(draftFromUser(selectedUser));
+    setSetupLink("");
+  }, [selectedUser]);
 
-  const { data: plans } = useQuery<Array<{ id: number; name: string; pricePerMonth: string }>>({
-    queryKey: ['/api/admin/subscription-plans']
-  });
-
-  const approveApplicationMutation = useMutation({
-    mutationFn: async ({ type, id, decision }: { type: 'shop' | 'delivery'; id: number; decision: string }) => {
-      return await apiRequest(`/api/admin/applications/${type}/${id}`, {
-        method: 'PATCH',
+  const updateUserMutation = useMutation({
+    mutationFn: async ({ userId, payload }: { userId: number; payload: UserDraft }) =>
+      apiRequest(`/api/admin/users/${userId}`, {
+        method: "PATCH",
         body: JSON.stringify({
-          status: decision === 'approved' ? 'approved' : 'rejected',
-          manualDecision: decision,
-          decidedAt: new Date().toISOString()
-        })
+          displayName: payload.displayName.trim(),
+          email: payload.email.trim(),
+          phone: payload.phone.trim() || null,
+          roles: payload.roles,
+          isActive: payload.isActive,
+        }),
+      }),
+    onSuccess: async (updated: TenantUser) => {
+      await queryClient.invalidateQueries({ queryKey: ["/api/admin/users?limit=200"] });
+      setSelectedUser(updated);
+      toast({ title: "Access updated", description: `${updated.displayName}'s identity and roles are saved.` });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Update failed",
+        description: error?.message || "The user could not be updated.",
+        variant: "destructive",
       });
     },
-    onSuccess: (_, { type }) => {
-      toast({ title: "Application updated", description: "The decision has been recorded." });
-      queryClient.invalidateQueries({ queryKey: [`/api/admin/applications/${type}`] });
-    }
   });
 
-  const filteredUsers = usersData?.users?.filter(user =>
-    user.displayName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    user.email?.toLowerCase().includes(searchQuery.toLowerCase())
-  ) || [];
+  const setupLinkMutation = useMutation({
+    mutationFn: async (userId: number) =>
+      apiRequest(`/api/admin/users/${userId}/regenerate-setup-link`, { method: "POST" }),
+    onSuccess: (result: { setupLink: string }) => {
+      setSetupLink(result.setupLink || "");
+      toast({ title: "Secure setup link created", description: "The link expires in 24 hours." });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Link creation failed",
+        description: error?.message || "A setup link could not be created.",
+        variant: "destructive",
+      });
+    },
+  });
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'approved': return 'bg-green-500/20 text-green-400 border-green-500/30';
-      case 'rejected': return 'bg-red-500/20 text-red-400 border-red-500/30';
-      case 'submitted':
-      case 'under_review': return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30';
-      case 'in_progress': return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
-      default: return 'bg-gray-500/20 text-gray-400 border-gray-500/30';
-    }
-  };
+  const activeCount = users.filter((user) => user.isActive).length;
+  const approvalOwners = users.filter((user) => (user.roles || []).some(isApprovalRole)).length;
+  const verifiedCount = users.filter((user) => user.emailVerified).length;
+  const overviewCards: Array<{ label: string; value: number; icon: LucideIcon }> = [
+    { label: "Tenant users", value: usersQuery.data?.pagination.total || users.length, icon: Users },
+    { label: "Active access", value: activeCount, icon: CheckCircle2 },
+    { label: "Approval owners", value: approvalOwners, icon: ShieldCheck },
+    { label: "Verified email", value: verifiedCount, icon: Mail },
+  ];
 
-  const getLeadStatusColor = (status: string) => {
-    switch (status) {
-      case 'converted': return 'bg-green-500/20 text-green-400';
-      case 'responded': return 'bg-blue-500/20 text-blue-400';
-      case 'contacted': return 'bg-yellow-500/20 text-yellow-400';
-      case 'disqualified': return 'bg-red-500/20 text-red-400';
-      default: return 'bg-gray-500/20 text-gray-400';
-    }
+  const toggleRole = (role: string, enabled: boolean) => {
+    setDraft((current) => {
+      if (!current) return current;
+      const nextRoles = enabled
+        ? Array.from(new Set([...current.roles, role]))
+        : current.roles.filter((item) => item !== role);
+      return { ...current, roles: nextRoles };
+    });
   };
 
   return (
-    <div className="min-h-screen bg-gray-950 p-4 md:p-6 pb-20">
-      <div className="max-w-7xl mx-auto">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+    <div className="exportunity-operations-light min-h-full bg-[#f7f8fa] p-4 text-slate-950 md:p-6">
+      <div className="mx-auto max-w-6xl space-y-5">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <h1 className="text-xl md:text-2xl font-bold text-white flex items-center gap-2">
-              <Users className="h-6 w-6 text-amber-500" />
-              User Management
-            </h1>
-            <p className="text-sm text-gray-400">Manage users, applications, and leads</p>
+            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] text-amber-700">
+              <ShieldCheck className="h-4 w-4" /> Human oversight
+            </div>
+            <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-950">People & access</h1>
+            <p className="mt-1 max-w-2xl text-sm text-slate-600">
+              Manage the real people who can approve decisions, supervise agents, and operate Exportunity.
+            </p>
           </div>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" className="h-10">
-              <Filter className="h-4 w-4 mr-2" />
-              Filter
-            </Button>
-            <Button size="sm" className="h-10 bg-amber-500 hover:bg-amber-600">
-              <UserPlus className="h-4 w-4 mr-2" />
-              Add User
-            </Button>
-          </div>
+          <Button asChild variant="outline" className="border-slate-300 bg-white text-slate-800">
+            <Link href="/agents">
+              <Network className="mr-2 h-4 w-4" /> View organization
+            </Link>
+          </Button>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6">
-          <Card className="bg-gray-900 border-gray-800">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          {overviewCards.map(({ label, value, icon: Icon }) => (
+            <Card key={label} className="border-slate-200 bg-white shadow-sm">
+              <CardContent className="flex items-center justify-between p-4">
                 <div>
-                  <p className="text-xs text-gray-400">Total Users</p>
-                  <p className="text-xl md:text-2xl font-bold text-white">{stats?.totalUsers || 0}</p>
+                  <p className="text-xs font-medium text-slate-500">{label}</p>
+                  <p className="mt-1 text-2xl font-bold text-slate-950">{value}</p>
                 </div>
-                <Users className="h-8 w-8 text-blue-500 opacity-50" />
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="bg-gray-900 border-gray-800">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs text-gray-400">Shop Apps</p>
-                  <p className="text-xl md:text-2xl font-bold text-white">{stats?.shopApplications || 0}</p>
-                </div>
-                <Store className="h-8 w-8 text-green-500 opacity-50" />
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="bg-gray-900 border-gray-800">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs text-gray-400">Delivery Apps</p>
-                  <p className="text-xl md:text-2xl font-bold text-white">{stats?.deliveryApplications || 0}</p>
-                </div>
-                <Truck className="h-8 w-8 text-purple-500 opacity-50" />
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="bg-gray-900 border-gray-800">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs text-gray-400">Total Leads</p>
-                  <p className="text-xl md:text-2xl font-bold text-white">{stats?.totalLeads || 0}</p>
-                </div>
-                <Target className="h-8 w-8 text-amber-500 opacity-50" />
-              </div>
-            </CardContent>
-          </Card>
+                <Icon className="h-6 w-6 text-amber-600" />
+              </CardContent>
+            </Card>
+          ))}
         </div>
 
-        <Tabs defaultValue="users" className="w-full">
-          <TabsList className="grid w-full grid-cols-4 bg-gray-800 h-11 mb-4">
-            <TabsTrigger value="users" className="text-xs sm:text-sm h-10">Users</TabsTrigger>
-            <TabsTrigger value="shop" className="text-xs sm:text-sm h-10">Shops</TabsTrigger>
-            <TabsTrigger value="delivery" className="text-xs sm:text-sm h-10">Delivery</TabsTrigger>
-            <TabsTrigger value="leads" className="text-xs sm:text-sm h-10">Leads</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="users" className="space-y-4">
-            <div className="flex gap-2 mb-4">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+        <Card className="border-slate-200 bg-white shadow-sm">
+          <CardHeader className="border-b border-slate-100 pb-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <CardTitle className="text-base text-slate-950">Authorized people</CardTitle>
+                <p className="mt-1 text-sm text-slate-500">Only users assigned to this tenant are shown.</p>
+              </div>
+              <div className="relative w-full sm:w-80">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                 <Input
-                  placeholder="Search users..."
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 bg-gray-800 border-gray-700 text-white h-11"
+                  onChange={(event) => setSearchQuery(event.target.value)}
+                  placeholder="Search people or roles"
+                  className="border-slate-300 bg-white pl-9 text-slate-950 placeholder:text-slate-400"
                 />
               </div>
             </div>
-
-            <Card className="bg-gray-900 border-gray-800">
-              <CardContent className="p-0">
-                <ScrollArea className="h-[400px] md:h-[500px]">
-                  <div className="divide-y divide-gray-800">
-                    {usersLoading ? (
-                      <div className="p-8 text-center text-gray-400">Loading users...</div>
-                    ) : filteredUsers.length === 0 ? (
-                      <div className="p-8 text-center text-gray-400">No users found</div>
-                    ) : (
-                      filteredUsers.map((user) => (
-                        <div
-                          key={user.id}
-                          className="flex items-center justify-between p-4 hover:bg-gray-800/50 cursor-pointer transition-colors"
-                          onClick={() => {
-                            setSelectedUser(user);
-                            setUserDetailsOpen(true);
-                          }}
-                        >
-                          <div className="flex items-center gap-3">
-                            <Avatar className="h-10 w-10">
-                              <AvatarFallback className="bg-blue-500/20 text-blue-400">
-                                {user.displayName?.charAt(0)?.toUpperCase() || 'U'}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div>
-                              <p className="text-sm font-medium text-white">{user.displayName}</p>
-                              <p className="text-xs text-gray-400">{user.email}</p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Badge variant="outline" className="text-xs">
-                              {user.role}
-                            </Badge>
-                            <ChevronRight className="h-4 w-4 text-gray-500" />
-                          </div>
+          </CardHeader>
+          <CardContent className="p-0">
+            <ScrollArea className="h-[min(560px,65vh)]">
+              {usersQuery.isLoading ? (
+                <div className="p-8 text-center text-sm text-slate-500">Loading authorized people...</div>
+              ) : filteredUsers.length === 0 ? (
+                <div className="p-8 text-center text-sm text-slate-500">No authorized people match this search.</div>
+              ) : (
+                <div className="divide-y divide-slate-100">
+                  {filteredUsers.map((user) => (
+                    <button
+                      key={user.id}
+                      type="button"
+                      className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-amber-50/60"
+                      onClick={() => setSelectedUser(user)}
+                    >
+                      <Avatar className="h-10 w-10 border border-slate-200">
+                        <AvatarFallback className="bg-slate-100 font-semibold text-slate-700">
+                          {(user.displayName || user.email).slice(0, 1).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="truncate text-sm font-semibold text-slate-950">{user.displayName}</span>
+                          <Badge className={user.isActive ? "bg-emerald-100 text-emerald-800" : "bg-slate-200 text-slate-600"}>
+                            {user.isActive ? "Active" : "Inactive"}
+                          </Badge>
                         </div>
-                      ))
-                    )}
-                  </div>
-                </ScrollArea>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="shop" className="space-y-4">
-            <Card className="bg-gray-900 border-gray-800">
-              <CardHeader className="p-4">
-                <CardTitle className="text-base text-white">Shop Owner Applications</CardTitle>
-                <CardDescription>Review and approve shop owner requests</CardDescription>
-              </CardHeader>
-              <CardContent className="p-0">
-                <ScrollArea className="h-[400px]">
-                  <div className="divide-y divide-gray-800">
-                    {shopAppsData?.applications?.length === 0 ? (
-                      <div className="p-8 text-center text-gray-400">No applications yet</div>
-                    ) : (
-                      shopAppsData?.applications?.map((app) => (
-                        <div key={app.id} className="p-4 hover:bg-gray-800/50">
-                          <div className="flex items-center justify-between mb-2">
-                            <div className="flex items-center gap-2">
-                              <Store className="h-4 w-4 text-green-500" />
-                              <span className="text-sm font-medium text-white">
-                                {app.user?.displayName || `User #${app.userId}`}
-                              </span>
-                            </div>
-                            <Badge className={getStatusColor(app.status)}>
-                              {app.status}
-                            </Badge>
-                          </div>
-                          <div className="flex items-center justify-between text-xs text-gray-400">
-                            <span>AI Score: {app.aiScore || 'N/A'}</span>
-                            <span>{new Date(app.createdAt).toLocaleDateString()}</span>
-                          </div>
-                          {app.status === 'submitted' && (
-                            <div className="flex gap-2 mt-3">
-                              <Button
-                                size="sm"
-                                className="h-9 bg-green-600 hover:bg-green-700"
-                                onClick={() => approveApplicationMutation.mutate({ type: 'shop', id: app.id, decision: 'approved' })}
-                              >
-                                <CheckCircle2 className="h-4 w-4 mr-1" />
-                                Approve
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="h-9 text-red-400 border-red-500/30"
-                                onClick={() => approveApplicationMutation.mutate({ type: 'shop', id: app.id, decision: 'rejected' })}
-                              >
-                                <XCircle className="h-4 w-4 mr-1" />
-                                Reject
-                              </Button>
-                            </div>
-                          )}
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </ScrollArea>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="delivery" className="space-y-4">
-            <Card className="bg-gray-900 border-gray-800">
-              <CardHeader className="p-4">
-                <CardTitle className="text-base text-white">Delivery Agent Applications</CardTitle>
-                <CardDescription>Review delivery agent requests</CardDescription>
-              </CardHeader>
-              <CardContent className="p-0">
-                <ScrollArea className="h-[400px]">
-                  <div className="divide-y divide-gray-800">
-                    {deliveryAppsData?.applications?.length === 0 ? (
-                      <div className="p-8 text-center text-gray-400">No applications yet</div>
-                    ) : (
-                      deliveryAppsData?.applications?.map((app) => (
-                        <div key={app.id} className="p-4 hover:bg-gray-800/50">
-                          <div className="flex items-center justify-between mb-2">
-                            <div className="flex items-center gap-2">
-                              <Truck className="h-4 w-4 text-purple-500" />
-                              <span className="text-sm font-medium text-white">
-                                {app.user?.displayName || `User #${app.userId}`}
-                              </span>
-                            </div>
-                            <Badge className={getStatusColor(app.status)}>
-                              {app.status}
-                            </Badge>
-                          </div>
-                          <div className="flex items-center justify-between text-xs text-gray-400">
-                            <span>AI Score: {app.aiScore || 'N/A'}</span>
-                            <span>{new Date(app.createdAt).toLocaleDateString()}</span>
-                          </div>
-                          {app.status === 'submitted' && (
-                            <div className="flex gap-2 mt-3">
-                              <Button
-                                size="sm"
-                                className="h-9 bg-green-600 hover:bg-green-700"
-                                onClick={() => approveApplicationMutation.mutate({ type: 'delivery', id: app.id, decision: 'approved' })}
-                              >
-                                <CheckCircle2 className="h-4 w-4 mr-1" />
-                                Approve
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="h-9 text-red-400 border-red-500/30"
-                                onClick={() => approveApplicationMutation.mutate({ type: 'delivery', id: app.id, decision: 'rejected' })}
-                              >
-                                <XCircle className="h-4 w-4 mr-1" />
-                                Reject
-                              </Button>
-                            </div>
-                          )}
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </ScrollArea>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="leads" className="space-y-4">
-            <div className="flex justify-between items-center mb-4">
-              <Button size="sm" className="h-10 bg-amber-500 hover:bg-amber-600">
-                <Plus className="h-4 w-4 mr-2" />
-                Add Lead
-              </Button>
-            </div>
-            <Card className="bg-gray-900 border-gray-800">
-              <CardHeader className="p-4">
-                <CardTitle className="text-base text-white">Lead Pipeline</CardTitle>
-                <CardDescription>Manage and track potential clients</CardDescription>
-              </CardHeader>
-              <CardContent className="p-0">
-                <ScrollArea className="h-[400px]">
-                  <div className="divide-y divide-gray-800">
-                    {leadsData?.leads?.length === 0 ? (
-                      <div className="p-8 text-center text-gray-400">No leads yet. Start a campaign to generate leads.</div>
-                    ) : (
-                      leadsData?.leads?.map((lead) => (
-                        <div key={lead.id} className="p-4 hover:bg-gray-800/50">
-                          <div className="flex items-center justify-between mb-2">
-                            <div>
-                              <p className="text-sm font-medium text-white">{lead.companyName || lead.contactName || 'Unknown'}</p>
-                              <p className="text-xs text-gray-400">{lead.contactEmail}</p>
-                            </div>
-                            <Badge className={getLeadStatusColor(lead.status)}>
-                              {lead.status}
-                            </Badge>
-                          </div>
-                          <div className="flex items-center justify-between text-xs text-gray-400">
-                            <div className="flex items-center gap-2">
-                              <Badge variant="outline" className="text-xs">{lead.source}</Badge>
-                              <span>Score: {lead.score}</span>
-                            </div>
-                            <Button size="sm" variant="ghost" className="h-8">
-                              <MessageSquare className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </ScrollArea>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
-
-        <Sheet open={userDetailsOpen} onOpenChange={setUserDetailsOpen}>
-          <SheetContent className="bg-gray-900 border-gray-800 w-full sm:max-w-md">
-            <SheetHeader>
-              <SheetTitle className="text-white">User Details</SheetTitle>
-              <SheetDescription>View and manage user information</SheetDescription>
-            </SheetHeader>
-            {selectedUser && (
-              <div className="mt-6 space-y-6">
-                <div className="flex items-center gap-4">
-                  <Avatar className="h-16 w-16">
-                    <AvatarFallback className="bg-blue-500/20 text-blue-400 text-xl">
-                      {selectedUser.displayName?.charAt(0)?.toUpperCase() || 'U'}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <p className="text-lg font-medium text-white">{selectedUser.displayName}</p>
-                    <Badge variant="outline">{selectedUser.role}</Badge>
-                  </div>
+                        <p className="truncate text-xs text-slate-500">{user.email}</p>
+                      </div>
+                      <div className="hidden max-w-[45%] flex-wrap justify-end gap-1 sm:flex">
+                        {(user.roles || []).slice(0, 3).map((role) => (
+                          <Badge key={role} variant="outline" className="border-slate-300 bg-white text-slate-600">
+                            {role}
+                          </Badge>
+                        ))}
+                      </div>
+                    </button>
+                  ))}
                 </div>
-                
-                <div className="space-y-4">
-                  <div className="flex items-center gap-3 text-sm">
-                    <Mail className="h-4 w-4 text-gray-400" />
-                    <span className="text-gray-300">{selectedUser.email}</span>
-                  </div>
-                  {selectedUser.phoneNumber && (
-                    <div className="flex items-center gap-3 text-sm">
-                      <Phone className="h-4 w-4 text-gray-400" />
-                      <span className="text-gray-300">{selectedUser.phoneNumber}</span>
-                    </div>
-                  )}
-                  <div className="flex items-center gap-3 text-sm">
-                    <Calendar className="h-4 w-4 text-gray-400" />
-                    <span className="text-gray-300">
-                      Joined {new Date(selectedUser.createdAt).toLocaleDateString()}
-                    </span>
-                  </div>
-                </div>
+              )}
+            </ScrollArea>
+          </CardContent>
+        </Card>
+      </div>
 
-                <div className="space-y-3">
-                  <p className="text-sm font-medium text-gray-400">Assign Role</p>
-                  <Select>
-                    <SelectTrigger className="bg-gray-800 border-gray-700 h-11">
-                      <SelectValue placeholder="Select role" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-gray-800 border-gray-700">
-                      {roles?.map((role) => (
-                        <SelectItem key={role.id} value={String(role.id)}>
-                          {role.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+      <Sheet open={Boolean(selectedUser)} onOpenChange={(open) => !open && setSelectedUser(null)}>
+        <SheetContent className="w-full overflow-y-auto border-slate-200 bg-white text-slate-950 sm:max-w-lg">
+          <SheetHeader>
+            <SheetTitle className="text-slate-950">Edit person & access</SheetTitle>
+            <SheetDescription className="text-slate-500">
+              Identity, status, roles, and secure account setup for this tenant.
+            </SheetDescription>
+          </SheetHeader>
 
-                <div className="flex gap-2">
-                  <Button className="flex-1 h-11" variant="outline">
-                    <Edit2 className="h-4 w-4 mr-2" />
-                    Edit
-                  </Button>
-                  <Button className="flex-1 h-11 bg-red-600 hover:bg-red-700">
-                    <Shield className="h-4 w-4 mr-2" />
-                    Suspend
-                  </Button>
+          {selectedUser && draft ? (
+            <div className="mt-6 space-y-6">
+              <div className="flex items-center gap-3 rounded-md border border-slate-200 bg-slate-50 p-3">
+                <Avatar className="h-12 w-12 border border-slate-200">
+                  <AvatarFallback className="bg-white font-semibold text-slate-700">
+                    {(draft.displayName || draft.email).slice(0, 1).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="min-w-0">
+                  <p className="truncate font-semibold text-slate-950">{draft.displayName || "Unnamed user"}</p>
+                  <p className="truncate text-sm text-slate-500">{draft.email}</p>
                 </div>
               </div>
-            )}
-          </SheetContent>
-        </Sheet>
-      </div>
+
+              <div className="grid gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="person-name" className="text-slate-700">Name</Label>
+                  <Input
+                    id="person-name"
+                    value={draft.displayName}
+                    onChange={(event) => setDraft({ ...draft, displayName: event.target.value })}
+                    className="border-slate-300 bg-white text-slate-950"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="person-email" className="text-slate-700">Professional email</Label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    <Input
+                      id="person-email"
+                      type="email"
+                      value={draft.email}
+                      onChange={(event) => setDraft({ ...draft, email: event.target.value })}
+                      className="border-slate-300 bg-white pl-9 text-slate-950"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="person-phone" className="text-slate-700">Phone</Label>
+                  <div className="relative">
+                    <Phone className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    <Input
+                      id="person-phone"
+                      value={draft.phone}
+                      onChange={(event) => setDraft({ ...draft, phone: event.target.value })}
+                      className="border-slate-300 bg-white pl-9 text-slate-950"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <div>
+                  <p className="text-sm font-semibold text-slate-950">Roles</p>
+                  <p className="text-xs text-slate-500">Roles determine what this person can see and approve.</p>
+                </div>
+                <div className="grid gap-2 rounded-md border border-slate-200 p-3 sm:grid-cols-2">
+                  {roleOptions.map((role) => {
+                    const checked = draft.roles.includes(role);
+                    return (
+                      <label key={role} className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-2 hover:bg-slate-50">
+                        <Checkbox checked={checked} onCheckedChange={(value) => toggleRole(role, value === true)} />
+                        <span className="text-sm text-slate-700">{role}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <label className="flex cursor-pointer items-center justify-between rounded-md border border-slate-200 p-3">
+                <div>
+                  <p className="text-sm font-semibold text-slate-950">Account active</p>
+                  <p className="text-xs text-slate-500">Inactive users cannot sign in.</p>
+                </div>
+                <Checkbox checked={draft.isActive} onCheckedChange={(value) => setDraft({ ...draft, isActive: value === true })} />
+              </label>
+
+              <div className="space-y-3 rounded-md border border-slate-200 bg-slate-50 p-3">
+                <div className="flex items-center gap-2">
+                  <KeyRound className="h-4 w-4 text-amber-700" />
+                  <p className="text-sm font-semibold text-slate-950">Secure account setup</p>
+                </div>
+                <p className="text-xs leading-5 text-slate-500">
+                  Generate a one-time setup link after confirming the recipient. The link expires in 24 hours.
+                </p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="border-slate-300 bg-white text-slate-800"
+                  disabled={!draft.isActive || setupLinkMutation.isPending}
+                  onClick={() => setupLinkMutation.mutate(selectedUser.id)}
+                >
+                  <KeyRound className="mr-2 h-4 w-4" /> Generate setup link
+                </Button>
+                {setupLink ? (
+                  <div className="space-y-2">
+                    <Input readOnly value={setupLink} className="border-slate-300 bg-white text-xs text-slate-700" />
+                    <Button
+                      type="button"
+                      size="sm"
+                      className="bg-amber-500 text-slate-950 hover:bg-amber-400"
+                      onClick={async () => {
+                        await navigator.clipboard.writeText(setupLink);
+                        toast({ title: "Setup link copied" });
+                      }}
+                    >
+                      <Copy className="mr-2 h-4 w-4" /> Copy link
+                    </Button>
+                  </div>
+                ) : null}
+              </div>
+
+              <div className="flex justify-end gap-2 border-t border-slate-200 pt-4">
+                <Button variant="outline" className="border-slate-300 bg-white text-slate-800" onClick={() => setSelectedUser(null)}>
+                  Cancel
+                </Button>
+                <Button
+                  className="bg-amber-500 text-slate-950 hover:bg-amber-400"
+                  disabled={
+                    updateUserMutation.isPending ||
+                    !draft.displayName.trim() ||
+                    !draft.email.includes("@") ||
+                    draft.roles.length === 0
+                  }
+                  onClick={() => updateUserMutation.mutate({ userId: selectedUser.id, payload: draft })}
+                >
+                  <UserRound className="mr-2 h-4 w-4" /> Save access
+                </Button>
+              </div>
+            </div>
+          ) : null}
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

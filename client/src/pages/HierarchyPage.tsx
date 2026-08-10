@@ -579,7 +579,7 @@ export default function HierarchyPage() {
           </CardHeader>
           <CardContent className="space-y-3">
             <p className="line-clamp-3 text-sm font-semibold leading-6">{companyMission}</p>
-            <Button type="button" variant="ghost" size="sm" className="h-8 px-0 text-primary" onClick={() => setLocation("/objectives")}>
+            <Button type="button" variant="ghost" size="sm" className="h-8 px-0 text-primary" onClick={() => setLocation("/goals")}>
               {activeStrategicGoals.length} active objectives
               <ChevronRight className="ml-1 h-4 w-4" />
             </Button>

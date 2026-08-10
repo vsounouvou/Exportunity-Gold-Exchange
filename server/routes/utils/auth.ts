@@ -96,6 +96,10 @@ export async function ensureTenantAdmin(req: Request, res: Response, next: NextF
       isChairmanAssistantUser(user);
     if (!isAdmin) return res.status(403).json({ message: "Admin access required" });
     (req as any).adminUser = user;
+    // An authenticated tenant administrator is also a tenant staff member.
+    // Meeting and operations handlers consistently consume `staffUser` for
+    // ownership and audit attribution, even when the route requires admin.
+    (req as any).staffUser = user;
     next();
   } catch (err) {
     next(err);

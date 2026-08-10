@@ -849,7 +849,10 @@ function IndustrialMap({
       </MapContainer>
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_18%,rgba(245,166,35,0.18),transparent_26%),radial-gradient(circle_at_83%_70%,rgba(7,17,31,0.2),transparent_32%),linear-gradient(180deg,rgba(255,255,255,0.02),rgba(7,17,31,0.1))]" />
       <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-[#07111F]/45 to-transparent" />
-      {showEmptyState && visibleFactories.length === 0 ? (
+      {showEmptyState &&
+      visibleFactories.length === 0 &&
+      !selectedFactory &&
+      !selectedContext ? (
         <div className="absolute bottom-4 left-4 z-[500] hidden max-w-[326px] rounded-xl border border-white/70 bg-white/95 p-4 shadow-lg backdrop-blur sm:block dark:border-white/15 dark:bg-[#07111F]/95">
           <MapPinned className="h-5 w-5 text-[#a96f0b]" />
           <p className="mt-3 text-sm font-semibold text-slate-950 dark:text-white">
@@ -6424,7 +6427,7 @@ export default function IndustrialHubPage() {
                     </Link>
                   </div>
                   {selectedFactory ? (
-                    <div className="absolute bottom-4 left-4 right-4 rounded-xl border border-white/70 bg-white/95 p-4 shadow-xl backdrop-blur dark:border-white/15 dark:bg-[#07111F]/95">
+                    <div className="absolute bottom-4 left-4 right-4 z-[650] rounded-xl border border-white/70 bg-white/95 p-4 shadow-xl backdrop-blur dark:border-white/15 dark:bg-[#07111F]/95">
                       <div className="flex items-start justify-between gap-4">
                         <div>
                           <p className="font-semibold text-slate-950 dark:text-white">
@@ -6449,7 +6452,7 @@ export default function IndustrialHubPage() {
                   ) : selectedIndustrialContext ? (
                     <div
                       data-testid="industrial-home-context-card"
-                      className="absolute bottom-3 left-3 right-3 rounded-xl border border-[#F5A623]/40 bg-white/95 p-3 shadow-xl backdrop-blur sm:bottom-4 sm:left-4 sm:right-4 sm:p-4 dark:border-[#F5A623]/35 dark:bg-[#07111F]/95"
+                      className="absolute bottom-3 left-3 right-3 z-[650] rounded-xl border border-[#F5A623]/40 bg-white/95 p-3 shadow-xl backdrop-blur sm:bottom-4 sm:left-4 sm:right-4 sm:p-4 dark:border-[#F5A623]/35 dark:bg-[#07111F]/95"
                     >
                       <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#865400] dark:text-[#F5A623]">
                         {industrialContextText(

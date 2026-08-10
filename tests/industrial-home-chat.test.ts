@@ -42,6 +42,14 @@ test("Exportunity industrial home leads with the case-backed AI conversation", (
     /<IndustrialAssistantChat[\s\S]*?context=\{selectionAssistantContext\}/,
   );
   assert.match(homeMarkup, /data-testid="industrial-home-context-card"/);
+  assert.match(
+    hub,
+    /showEmptyState &&[\s\S]*?visibleFactories\.length === 0 &&[\s\S]*?!selectedFactory &&[\s\S]*?!selectedContext/,
+  );
+  assert.match(
+    homeMarkup,
+    /data-testid="industrial-home-context-card"[\s\S]*?z-\[650\]/,
+  );
   assert.match(homeMarkup, /onClick=\{scrollToSelectionCommerce\}/);
   assert.match(
     homeMarkup,

@@ -21,7 +21,7 @@ test("Exportunity industrial home leads with the case-backed AI conversation", (
     "client/src/components/exportunity/IndustrialAssistantChat.tsx",
   );
   const homeAssistantIndex = hub.indexOf(
-    "<IndustrialAssistantChat language={locale} requester={user} />",
+    "<IndustrialAssistantChat\n                      language={locale}",
   );
   const homeStart = hub.indexOf('{view === "home" ? (');
   const publicDirectoryStart = hub.indexOf('{view !== "map"', homeStart);
@@ -37,7 +37,17 @@ test("Exportunity industrial home leads with the case-backed AI conversation", (
   assert.ok(homeAssistantIndex >= 0);
   assert.ok(homeStart >= 0);
   assert.ok(publicDirectoryStart > homeStart);
-  assert.match(homeMarkup, /<IndustrialAssistantChat language=\{locale\} requester=\{user\} \/>/);
+  assert.match(
+    homeMarkup,
+    /<IndustrialAssistantChat[\s\S]*?context=\{selectionAssistantContext\}/,
+  );
+  assert.match(homeMarkup, /data-testid="industrial-home-context-card"/);
+  assert.match(homeMarkup, /onClick=\{scrollToSelectionCommerce\}/);
+  assert.match(
+    homeMarkup,
+    /View \$\{selectionCatalogItems\.length\} GDIZ products/,
+  );
+  assert.match(homeMarkup, /<IndustrialSelectionCommerce/);
   assert.doesNotMatch(homeMarkup, /onSubmit=\{goSearch\}/);
   assert.doesNotMatch(homeMarkup, /placeholder=\{copy\.searchPlaceholder\}/);
   assert.ok(firstGenericSearchIndex > homeAssistantIndex);

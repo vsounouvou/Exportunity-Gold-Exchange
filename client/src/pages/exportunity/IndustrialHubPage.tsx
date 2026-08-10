@@ -5830,14 +5830,17 @@ export default function IndustrialHubPage() {
       }),
     [catalogItems, locale, selectedFactory, selectedIndustrialContext],
   );
-  const revealFactorySelection = () => {
-    if (view !== "factories") return;
+  const scrollToSelectionCommerce = () => {
     window.setTimeout(() => {
       const section = selectionCommerceRef.current;
       if (!section) return;
       const top = section.getBoundingClientRect().top + window.scrollY - 92;
       window.scrollTo({ top: Math.max(0, top), behavior: "smooth" });
     }, 80);
+  };
+  const revealFactorySelection = () => {
+    if (view !== "factories") return;
+    scrollToSelectionCommerce();
   };
   const selectFactoryForCommerce = (factory: PublicFactory) => {
     setSelectedIndustrialContext(null);
@@ -6334,7 +6337,11 @@ export default function IndustrialHubPage() {
                     <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-200 sm:text-base sm:leading-6">
                       {copy.heroText}
                     </p>
-                    <IndustrialAssistantChat language={locale} requester={user} />
+                    <IndustrialAssistantChat
+                      language={locale}
+                      requester={user}
+                      context={selectionAssistantContext}
+                    />
                     <div className="mt-4 grid grid-cols-3 gap-2 border-t border-white/15 pt-4">
                       {heroTrustSignals.map((signal) => {
                         const Icon = signal.icon;
@@ -6440,42 +6447,77 @@ export default function IndustrialHubPage() {
                       </div>
                     </div>
                   ) : selectedIndustrialContext ? (
-                    <div className="absolute bottom-4 left-4 right-4 rounded-xl border border-[#F5A623]/40 bg-white/95 p-4 shadow-xl backdrop-blur dark:border-[#F5A623]/35 dark:bg-[#07111F]/95">
+                    <div
+                      data-testid="industrial-home-context-card"
+                      className="absolute bottom-3 left-3 right-3 rounded-xl border border-[#F5A623]/40 bg-white/95 p-3 shadow-xl backdrop-blur sm:bottom-4 sm:left-4 sm:right-4 sm:p-4 dark:border-[#F5A623]/35 dark:bg-[#07111F]/95"
+                    >
                       <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#865400] dark:text-[#F5A623]">
                         {industrialContextText(
                           selectedIndustrialContext.eyebrow,
                           locale,
                         )}
                       </p>
-                      <div className="mt-2 flex items-start justify-between gap-4">
-                        <div>
-                          <p className="font-semibold text-slate-950 dark:text-white">
-                            {industrialContextText(
-                              selectedIndustrialContext.name,
-                              locale,
-                            )}
-                          </p>
-                          <p className="mt-1 text-sm leading-5 text-slate-600 dark:text-slate-300">
-                            {industrialContextText(
-                              selectedIndustrialContext.summary,
-                              locale,
-                            )}
-                          </p>
-                        </div>
+                      <p className="mt-2 font-semibold text-slate-950 dark:text-white">
+                        {industrialContextText(
+                          selectedIndustrialContext.name,
+                          locale,
+                        )}
+                      </p>
+                      <p className="mt-1 line-clamp-3 text-sm leading-5 text-slate-600 sm:line-clamp-none dark:text-slate-300">
+                        {industrialContextText(
+                          selectedIndustrialContext.summary,
+                          locale,
+                        )}
+                      </p>
+                      <div className="mt-3 flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={scrollToSelectionCommerce}
+                          className="inline-flex min-h-10 min-w-0 flex-1 items-center justify-center gap-2 rounded-lg bg-[#F5A623] px-3 py-2 text-sm font-semibold text-[#07111F] transition hover:bg-[#f9a800]"
+                        >
+                          <PackageSearch className="h-4 w-4 shrink-0" />
+                          <span className="truncate">
+                            {selectedIndustrialContext.id === "gdiz"
+                              ? locale === "fr"
+                                ? `Voir ${selectionCatalogItems.length} produits GDIZ`
+                                : `View ${selectionCatalogItems.length} GDIZ products`
+                              : locale === "fr"
+                                ? "Voir les offres liees"
+                                : "View related offerings"}
+                          </span>
+                        </button>
                         <a
                           href={selectedIndustrialContext.sourceUrl}
                           target="_blank"
                           rel="noreferrer"
-                          className="inline-flex shrink-0 items-center gap-1 text-sm font-semibold text-[#865400] dark:text-[#F5A623]"
+                          aria-label={
+                            locale === "fr"
+                              ? `Source publique pour ${industrialContextText(selectedIndustrialContext.name, locale)}`
+                              : `Public source for ${industrialContextText(selectedIndustrialContext.name, locale)}`
+                          }
+                          title={
+                            locale === "fr" ? "Source publique" : "Public source"
+                          }
+                          className="grid h-10 w-10 shrink-0 place-items-center rounded-lg border border-slate-300 bg-white text-[#865400] transition hover:border-[#F5A623] hover:bg-[#F5A623]/10 dark:border-white/15 dark:bg-white/5 dark:text-[#F5A623]"
                         >
-                          {locale === "fr" ? "Source" : "Source"}
-                          <ArrowRight className="h-4 w-4" />
+                          <ExternalLink className="h-4 w-4" />
                         </a>
                       </div>
                     </div>
                   ) : null}
                 </div>
               </section>
+              {selectedFactory || selectedIndustrialContext ? (
+                <div ref={selectionCommerceRef}>
+                  <IndustrialSelectionCommerce
+                    selectedFactory={selectedFactory}
+                    selectedContext={selectedIndustrialContext}
+                    items={selectionCatalogItems}
+                    loading={catalogLoading}
+                    language={locale}
+                  />
+                </div>
+              ) : null}
               <FeaturedCatalogSection
                 items={featuredCatalogItems}
                 language={locale}

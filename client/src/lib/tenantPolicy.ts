@@ -10,7 +10,7 @@ import { tenantFromHost } from "@/lib/tenantResolution";
 const CORE_BACKOFFICE_TENANTS: TenantKey[] = ["agoojye", "bdo", "exportunity", "zone", "zogueland", "madd", "rayon1km", "xportcard"];
 const TENANTS_EXPORTUNITY_ZONE: TenantKey[] = ["exportunity", "zone", "rayon1km"];
 const SHARED_MARKETPLACE_CATALOG_TENANTS: TenantKey[] = ["exportunity", "zone"];
-const EXPORTUNITY_ADMIN_NAV_PREFIXES = [
+const EXPORTUNITY_ADMIN_NAV_ROUTES = new Set([
   "/dashboard",
   "/companies",
   "/agents",
@@ -25,44 +25,33 @@ const EXPORTUNITY_ADMIN_NAV_PREFIXES = [
   "/actions",
   "/knowledge",
   "/admin/inbox",
-  "/mail",
-  "/admin/workstations",
   "/admin/evidence",
-  "/admin/notifications",
   "/admin/industrial-network",
   "/contracts",
   "/delivery/admin",
   "/admin/equipment-ops",
+  "/admin/equipment-ops/listings",
+  "/admin/equipment-ops/fleet-map",
+  "/admin/equipment-ops/maintenance",
   "/marketplace/sellers",
-  "/seller-dashboard",
-  "/admin/marketplace",
-  "/marketing",
+  "/admin/marketplace/products",
+  "/admin/marketplace/payments",
   "/sales",
   "/client-hunter",
   "/machinery",
   "/admin/media",
-  "/admin/assets",
   "/territories",
+  "/finance",
   "/admin/wallet",
-  "/admin/wallets",
   "/admin/contacts",
   "/admin-users",
   "/admin/email",
-  "/admin/settings",
-  "/admin/communications",
+  "/admin/settings/communications/twilio",
+  "/admin/settings/integrations/google-maps",
+  "/admin/communications/whatsapp",
   "/admin/system/update",
-  "/admin/dashboard",
-  "/admin/orders",
-  "/admin/products",
-  "/admin/collections",
-  "/admin/users",
-  "/admin/agents",
-  "/admin/analytics",
-  "/admin/map",
   "/admin/brand",
-  "/admin/modules",
-  "/admin/exportunity",
-] as const;
+]);
 const ALL_TENANTS: TenantKey[] = [
   "agoojye",
   "bdo",
@@ -431,7 +420,7 @@ export function isTenantAdminNavVisible(path: string, tenantKey: TenantKey) {
   if (tenantKey !== "exportunity") return isTenantRouteAllowed(normalized, tenantKey);
   return (
     isTenantRouteAllowed(normalized, tenantKey) &&
-    EXPORTUNITY_ADMIN_NAV_PREFIXES.some((prefix) => matchesPrefix(normalized, prefix))
+    EXPORTUNITY_ADMIN_NAV_ROUTES.has(normalized)
   );
 }
 

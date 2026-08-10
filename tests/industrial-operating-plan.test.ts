@@ -90,10 +90,13 @@ test("Exportunity admin navigation stays focused on industrial operations", () =
   const tenantPolicy = readRepoFile("client/src/lib/tenantPolicy.ts");
   const adminLayout = readRepoFile("client/src/components/AdminLayout.tsx");
   const routes = readRepoFile("client/src/navigation/routeRegistry.ts");
+  const exportunityNavRoutes = tenantPolicy.match(/const EXPORTUNITY_ADMIN_NAV_ROUTES = new Set\(\[([\s\S]*?)\]\);/)?.[1] || "";
 
-  assert.match(tenantPolicy, /EXPORTUNITY_ADMIN_NAV_PREFIXES/);
+  assert.match(tenantPolicy, /EXPORTUNITY_ADMIN_NAV_ROUTES/);
   assert.match(tenantPolicy, /export function isTenantAdminNavVisible/);
   assert.match(tenantPolicy, /tenantKey !== "exportunity"/);
+  assert.doesNotMatch(exportunityNavRoutes, /"\/admin\/met"/);
+  assert.doesNotMatch(exportunityNavRoutes, /"\/admin\/vs"/);
   assert.match(adminLayout, /isTenantAdminNavVisible\(item\.path, tenant\.key\)/);
   assert.match(routes, /title: "Video meetings"/);
 });

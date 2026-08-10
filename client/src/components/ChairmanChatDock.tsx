@@ -947,20 +947,24 @@ export function ChairmanChatDock() {
 
   return (
     <>
-      <button
-        type="button"
-        className={cn(
-          "fixed z-40 rounded-full border border-slate-200 bg-white text-sm font-semibold text-slate-950 shadow-lg hover:bg-slate-50",
-          isMobile
-            ? "right-2 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center p-0"
-            : "bottom-5 right-5 px-4 py-3",
-        )}
-        title={`Open ${assistantName}. You can drag, resize, snap, minimize, or close the assistant.`}
-        aria-label={`Open ${assistantName} assistant`}
-        onClick={openDock}
-      >
-        {isMobile ? <Sparkles className="h-5 w-5 text-[#F5A623]" aria-hidden="true" /> : `${assistantName} assistant`}
-      </button>
+      {!isOpen ? (
+        <button
+          type="button"
+          className={cn(
+            "fixed z-40 rounded-full border border-slate-200 bg-white text-sm font-semibold text-slate-950 shadow-lg hover:bg-slate-50",
+            isMobile
+              ? "right-2 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center p-0"
+              : isWorkSurface
+                ? "bottom-20 right-5 px-4 py-3"
+                : "bottom-5 right-5 px-4 py-3",
+          )}
+          title={`Open ${assistantName}. You can drag, resize, snap, minimize, or close the assistant.`}
+          aria-label={`Open ${assistantName} assistant`}
+          onClick={openDock}
+        >
+          {isMobile ? <Sparkles className="h-5 w-5 text-[#F5A623]" aria-hidden="true" /> : `${assistantName} assistant`}
+        </button>
+      ) : null}
 
       {isOpen && (
         <div

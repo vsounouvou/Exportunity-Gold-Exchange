@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Plus, RefreshCw } from "lucide-react";
+import { Eye, Pencil, Plus, RefreshCw } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -25,6 +25,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { useTenant } from "@/lib/tenant";
 
 type AgentListItem = {
   id: number;
@@ -45,6 +46,8 @@ type AgentListResponse = {
 
 export default function OperationsAgentsPage() {
   const { toast } = useToast();
+  const { tenant } = useTenant();
+  const [, navigate] = useLocation();
   const [departmentKey, setDepartmentKey] = useState<string>("all");
   const [status, setStatus] = useState<string>("all");
   const [search, setSearch] = useState("");
@@ -74,14 +77,16 @@ export default function OperationsAgentsPage() {
         departmentKey: newDepartment,
         runtimeModel: newModel || undefined,
       }),
-    onSuccess: () => {
-      toast({ title: "Agent created", description: "Internal agent record created successfully." });
+    onSuccess: (payload: any) => {
+      const createdAgentId = Number(payload?.agent?.id || 0);
+      toast({ title: "Agent created", description: "Complete the identity, face, reporting line, and permissions now." });
       setCreateOpen(false);
       setNewName("");
       setNewRole("Operations Agent");
       setNewDepartment("operations");
       setNewModel("");
       queryClient.invalidateQueries({ queryKey: ["/api/v2/agents"] });
+      if (createdAgentId > 0) navigate(`/operations/agents/${createdAgentId}?edit=1`);
     },
     onError: (error: any) => {
       toast({ title: "Creation failed", description: error?.message || "Unable to create agent", variant: "destructive" });
@@ -106,7 +111,7 @@ export default function OperationsAgentsPage() {
   }, [items]);
 
   return (
-    <div className="p-4 md:p-6 space-y-4">
+    <div className={tenant.key === "exportunity" ? "exportunity-operations-light min-h-screen bg-[#f7f8fa] p-4 md:p-6 space-y-4" : "p-4 md:p-6 space-y-4"}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold text-white">Internal Agents</h1>
@@ -217,25 +222,37 @@ export default function OperationsAgentsPage() {
           <Card className="bg-gray-900 border-gray-800"><CardContent className="pt-6 text-gray-400">No internal agents found.</CardContent></Card>
         ) : null}
         {filtered.map((item) => (
-          <Link key={item.id} href={`/operations/agents/${item.id}`}>
-            <a className="block">
-              <Card className="bg-gray-900 border-gray-800 hover:border-amber-500/40 transition-colors">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm text-white flex items-center justify-between gap-2">
-                    <span className="truncate">{item.name}</span>
-                    <Badge variant="outline" className="text-[10px]">{item.statusV2}</Badge>
-                  </CardTitle>
-                  <div className="text-xs text-gray-400">{item.role}</div>
-                </CardHeader>
-                <CardContent className="text-xs text-gray-300 space-y-1">
-                  <div>Department: <span className="text-gray-100">{item.department_key || "-"}</span></div>
-                  <div>Open tasks: <span className="text-gray-100">{Number(item.open_tasks_count || 0)}</span></div>
-                  <div>Last action: <span className="text-gray-100">{item.last_action_at ? new Date(item.last_action_at).toLocaleString() : "n/a"}</span></div>
-                  <div>Last workstation: <span className="text-gray-100">{item.last_workstation_started_at ? new Date(item.last_workstation_started_at).toLocaleString() : "n/a"}</span></div>
-                </CardContent>
-              </Card>
-            </a>
-          </Link>
+          <Card key={item.id} className="bg-gray-900 border-gray-800 hover:border-amber-500/40 transition-colors">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm text-white flex items-center justify-between gap-2">
+                <span className="truncate">{item.name}</span>
+                <Badge variant="outline" className="text-[10px]">{item.statusV2}</Badge>
+              </CardTitle>
+              <div className="text-xs text-gray-400">{item.role}</div>
+            </CardHeader>
+            <CardContent className="text-xs text-gray-300 space-y-3">
+              <div className="space-y-1">
+                <div>Department: <span className="text-gray-100">{item.department_key || "-"}</span></div>
+                <div>Open tasks: <span className="text-gray-100">{Number(item.open_tasks_count || 0)}</span></div>
+                <div>Last action: <span className="text-gray-100">{item.last_action_at ? new Date(item.last_action_at).toLocaleString() : "n/a"}</span></div>
+                <div>Last workstation: <span className="text-gray-100">{item.last_workstation_started_at ? new Date(item.last_workstation_started_at).toLocaleString() : "n/a"}</span></div>
+              </div>
+              <div className="flex flex-wrap gap-2 border-t border-gray-800 pt-3">
+                <Link href={`/operations/agents/${item.id}`}>
+                  <Button type="button" size="sm" variant="outline" className="h-8">
+                    <Eye className="mr-2 h-3.5 w-3.5" />
+                    Open
+                  </Button>
+                </Link>
+                <Link href={`/operations/agents/${item.id}?edit=1`}>
+                  <Button type="button" size="sm" className="h-8 bg-amber-500 text-slate-950 hover:bg-amber-400">
+                    <Pencil className="mr-2 h-3.5 w-3.5" />
+                    Edit
+                  </Button>
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
         ))}
       </div>
     </div>

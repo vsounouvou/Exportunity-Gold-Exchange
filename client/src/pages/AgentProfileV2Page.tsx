@@ -10,8 +10,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, RefreshCw } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { ArrowLeft, Pencil, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useTenant } from "@/lib/tenant";
+import { getAgentAvatarUrl } from "@/lib/agentAvatar";
+import { AgentProfileDialog } from "@/components/AgentProfileDialog";
+import type { Agent } from "@db/schema";
 
 type AgentProfilePayload = {
   ok: boolean;
@@ -72,14 +77,52 @@ function parseCsv(value: string) {
     .filter(Boolean);
 }
 
+function normalizeOverviewAgent(record: any): Agent | null {
+  if (!record || typeof record !== "object") return null;
+  const id = Number(record.id || 0);
+  if (!Number.isInteger(id) || id <= 0) return null;
+
+  const status = String(record.status || record.statusV2 || "active").toLowerCase();
+  return {
+    ...record,
+    id,
+    tenantId: record.tenantId ?? record.tenant_id ?? null,
+    companyId: record.companyId ?? record.company_id ?? null,
+    departmentId: record.departmentId ?? record.department_id ?? null,
+    managerId: record.managerId ?? record.manager_id ?? null,
+    isDepartmentHead: Boolean(record.isDepartmentHead ?? record.is_department_head),
+    displayName: record.displayName ?? record.display_name ?? null,
+    avatarUrl: record.avatarUrl ?? record.avatar_url ?? null,
+    photoAssetId: record.photoAssetId ?? record.photo_asset_id ?? null,
+    photoPrompt: record.photoPrompt ?? record.photo_prompt ?? null,
+    photoLocked: Boolean(record.photoLocked ?? record.photo_locked),
+    industryFocus: Array.isArray(record.industryFocus)
+      ? record.industryFocus
+      : Array.isArray(record.industry_focus)
+        ? record.industry_focus
+        : [],
+    autonomyLevel: record.autonomyLevel ?? record.autonomy_level ?? "partial",
+    hiredDate: record.hiredDate ?? record.hired_date ?? null,
+    promotedDate: record.promotedDate ?? record.promoted_date ?? null,
+    status: ["active", "inactive", "paused", "archived"].includes(status) ? status : "active",
+    name: String(record.name || "Agent"),
+    role: String(record.role || "Operations Agent"),
+  } as Agent;
+}
+
 export default function AgentProfileV2Page() {
   const { toast } = useToast();
+  const { tenant } = useTenant();
   const [location] = useLocation();
   const [, operationsParams] = useRoute("/operations/agents/:agentId");
   const [, marketplaceParams] = useRoute("/commerce/ai-marketplace/agents/:agentId");
   const isMarketplace = Boolean((marketplaceParams as any)?.agentId);
   const agentId = Number((operationsParams as any)?.agentId || (marketplaceParams as any)?.agentId || 0);
   const backHref = isMarketplace ? "/commerce/ai-marketplace/agents" : "/operations/agents";
+  const [editOpen, setEditOpen] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return new URLSearchParams(window.location.search).get("edit") === "1";
+  });
 
   const profileQuery = useQuery<AgentProfilePayload>({
     queryKey: agentId ? [`/api/v2/agents/${agentId}/profile`] : ["__no_agent_profile_v2__"],
@@ -89,6 +132,11 @@ export default function AgentProfileV2Page() {
   });
 
   const overview = profileQuery.data?.overview || null;
+  const editableAgent = useMemo(() => normalizeOverviewAgent(overview), [overview]);
+  const avatarUrl = editableAgent
+    ? String(editableAgent.avatarUrl || editableAgent.avatar || "") ||
+      getAgentAvatarUrl({ id: editableAgent.id, name: editableAgent.name, label: editableAgent.name, size: 192 })
+    : "";
   const performance = profileQuery.data?.performance || { total: 0, successCount: 0, failedCount: 0, noEffectCount: 0 };
   const activity = profileQuery.data?.activity || { actionRuns: [], meetings: [], tasks: [], workstations: [] };
 
@@ -279,6 +327,10 @@ export default function AgentProfileV2Page() {
     setMemoryType("operations");
     setSelectedMemoryTemplate("");
   }, [overview?.id]);
+
+  useEffect(() => {
+    if (location.includes("edit=1")) setEditOpen(true);
+  }, [location]);
 
   useEffect(() => {
     if (!selectedSkillCategory && skillCategories.length > 0) {
@@ -491,7 +543,7 @@ export default function AgentProfileV2Page() {
   }
 
   return (
-    <div className="p-4 md:p-6 space-y-4">
+    <div className={tenant.key === "exportunity" ? "exportunity-operations-light min-h-screen bg-[#f7f8fa] p-4 md:p-6 space-y-4" : "p-4 md:p-6 space-y-4"}>
       <div className="flex items-center justify-between gap-3">
         <Link href={backHref}>
           <a className="inline-flex items-center text-xs text-gray-300 hover:text-white">
@@ -508,13 +560,31 @@ export default function AgentProfileV2Page() {
       {overview ? (
         <>
           <Card className="bg-gray-900 border-gray-800">
-            <CardHeader>
-              <CardTitle className="text-white text-lg flex flex-wrap items-center gap-2">
-                {overview.name}
-                <Badge variant="outline">{overview.domain || "INTERNAL"}</Badge>
-                <Badge variant="outline">{overview.statusV2 || "ACTIVE"}</Badge>
-              </CardTitle>
-              <div className="text-xs text-gray-400">{overview.role || "-"}</div>
+            <CardHeader className="flex flex-row items-start justify-between gap-4 space-y-0">
+              <div className="flex min-w-0 items-center gap-3">
+                <Avatar className="h-14 w-14 border border-amber-500/30 bg-slate-950">
+                  <AvatarImage src={avatarUrl} alt={overview.name || "Agent"} className="object-cover" />
+                  <AvatarFallback>{String(overview.name || "A").slice(0, 2).toUpperCase()}</AvatarFallback>
+                </Avatar>
+                <div className="min-w-0">
+                  <CardTitle className="text-white text-lg flex flex-wrap items-center gap-2">
+                    <span className="truncate">{overview.name}</span>
+                    <Badge variant="outline">{overview.domain || "INTERNAL"}</Badge>
+                    <Badge variant="outline">{overview.statusV2 || "ACTIVE"}</Badge>
+                  </CardTitle>
+                  <div className="mt-1 text-xs text-gray-400">{overview.role || "-"}</div>
+                  <div className="mt-1 text-[11px] text-gray-500">Identity, face, role, manager, permissions, and autonomy are editable.</div>
+                </div>
+              </div>
+              <Button
+                type="button"
+                className="shrink-0 bg-amber-500 text-slate-950 hover:bg-amber-400"
+                disabled={!editableAgent}
+                onClick={() => setEditOpen(true)}
+              >
+                <Pencil className="mr-2 h-4 w-4" />
+                Edit agent
+              </Button>
             </CardHeader>
             <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
               <div className="rounded-lg border border-gray-800 p-3 bg-gray-950/60"><div className="text-gray-500">Actions</div><div className="text-white text-lg font-semibold">{performance.total}</div></div>
@@ -1054,6 +1124,17 @@ export default function AgentProfileV2Page() {
           </Tabs>
         </>
       ) : null}
+      <AgentProfileDialog
+        agent={editableAgent}
+        runtimeAgentId={agentId}
+        open={editOpen}
+        onOpenChange={(open) => {
+          setEditOpen(open);
+          if (!open) {
+            void queryClient.invalidateQueries({ queryKey: [`/api/v2/agents/${agentId}/profile`] });
+          }
+        }}
+      />
     </div>
   );
 }

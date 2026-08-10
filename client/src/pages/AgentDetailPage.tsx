@@ -263,9 +263,10 @@ export function AgentDetailPage() {
 
   const [, legacyParams] = useRoute("/agents/:agentId");
   const [, adminParams] = useRoute("/admin/agents-os/agents/:id");
-  const adminPath = Boolean((adminParams as any)?.id);
-  const agentId = Number((adminParams as any)?.id || (legacyParams as any)?.agentId || 0);
-  const backHref = adminPath ? "/admin/agents-os?tab=registry" : "/agents";
+  const [, canonicalParams] = useRoute("/agents-os/agents/:id");
+  const adminPath = Boolean((adminParams as any)?.id || (canonicalParams as any)?.id);
+  const agentId = Number((adminParams as any)?.id || (canonicalParams as any)?.id || (legacyParams as any)?.agentId || 0);
+  const backHref = adminPath ? "/agents-os?tab=registry" : "/agents";
   const tenantId = tenant.id ?? null;
 
   const [activeTab, setActiveTab] = useState<"overview" | "inbox" | "comms" | "chats" | "tasks" | "logs" | "settings">(

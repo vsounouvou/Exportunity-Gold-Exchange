@@ -35,6 +35,7 @@ type AgentListItem = {
   role: string;
   domain: "INTERNAL" | "MARKETPLACE";
   department_key: string | null;
+  department_name?: string | null;
   statusV2: "ACTIVE" | "PAUSED" | "ARCHIVED";
   open_tasks_count?: number;
   last_action_at?: string | null;
@@ -257,7 +258,7 @@ export default function OperationsAgentsPage() {
             </CardHeader>
             <CardContent className="text-xs text-gray-300 space-y-3">
               <div className="space-y-1">
-                <div>Department: <span className="text-gray-100">{item.department_key || "-"}</span></div>
+                <div>Department: <span className="text-gray-100">{item.department_name || item.department_key || "Unassigned"}</span></div>
                 <div>Open tasks: <span className="text-gray-100">{Number(item.open_tasks_count || 0)}</span></div>
                 <div>Last action: <span className="text-gray-100">{item.last_action_at ? new Date(item.last_action_at).toLocaleString() : "n/a"}</span></div>
                 <div>Last workstation: <span className="text-gray-100">{item.last_workstation_started_at ? new Date(item.last_workstation_started_at).toLocaleString() : "n/a"}</span></div>

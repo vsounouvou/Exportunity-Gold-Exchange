@@ -235,7 +235,13 @@ router.get("/agents", async (req: any, res, next) => {
       domain === "MARKETPLACE" || domain === "INTERNAL"
         ? sql`upper(trim(coalesce(a.domain, 'INTERNAL'))) = ${domain}`
         : sql`true`;
-    const whereDepartment = departmentKey ? sql`lower(coalesce(a.department_key, '')) = ${departmentKey}` : sql`true`;
+    const whereDepartment = departmentKey
+      ? sql`lower(coalesce(
+          nullif(a.department_key, ''),
+          nullif(d.metadata->>'key', ''),
+          regexp_replace(lower(coalesce(d.name, '')), '[^a-z0-9]+', '_', 'g')
+        )) = ${departmentKey}`
+      : sql`true`;
     const whereStatus = !statusRaw
       ? sql`true`
       : status === "PAUSED"
@@ -247,6 +253,12 @@ router.get("/agents", async (req: any, res, next) => {
     const result = await db.execute(sql`
       select
         a.*,
+        d.name as department_name,
+        coalesce(
+          nullif(a.department_key, ''),
+          nullif(d.metadata->>'key', ''),
+          regexp_replace(lower(coalesce(d.name, '')), '[^a-z0-9]+', '_', 'g')
+        ) as department_key,
         coalesce((
           select count(*)
           from tasks t
@@ -256,6 +268,7 @@ router.get("/agents", async (req: any, res, next) => {
         null::timestamptz as last_workstation_started_at,
         null::timestamptz as last_action_at
       from agents a
+      left join departments d on d.id = a.department_id
       where ${tenantAgentScopePredicate(tenantId)}
         and ${whereDomain}
         and ${whereDepartment}
@@ -285,8 +298,16 @@ router.get("/agents/:id/profile", async (req: any, res, next) => {
     if (!agentId) return res.status(400).json({ message: "Invalid agent id" });
 
     const agentRows = await db.execute(sql`
-      select a.*
+      select
+        a.*,
+        d.name as department_name,
+        coalesce(
+          nullif(a.department_key, ''),
+          nullif(d.metadata->>'key', ''),
+          regexp_replace(lower(coalesce(d.name, '')), '[^a-z0-9]+', '_', 'g')
+        ) as department_key
       from agents a
+      left join departments d on d.id = a.department_id
       where a.id = ${agentId}
         and ${tenantAgentScopePredicate(tenantId)}
       limit 1

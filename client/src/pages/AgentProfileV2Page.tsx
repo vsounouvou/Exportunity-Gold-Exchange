@@ -572,7 +572,7 @@ export default function AgentProfileV2Page() {
                     <Badge variant="outline">{overview.statusV2 || "ACTIVE"}</Badge>
                   </CardTitle>
                   <div className="mt-1 text-xs text-gray-400">{overview.role || "-"}</div>
-                  <div className="mt-1 text-[11px] text-gray-500">{overview.department_key || "Unassigned department"}</div>
+                  <div className="mt-1 text-[11px] text-gray-500">{overview.department_name || overview.department_key || "Unassigned department"}</div>
                 </div>
               </div>
               <Button

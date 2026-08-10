@@ -58,3 +58,15 @@ test("working agents expose a direct identity and face editor", () => {
   assert.match(registry, /\/operations\/agents\/\$\{Number\(item\.runtime_agent_id\)\}\?edit=1/);
   assert.match(registryApi, /as runtime_agent_id/);
 });
+
+test("agent lists resolve the department selected in the identity editor", () => {
+  const routes = readRepoFile("server/routes/agents-v2.ts");
+  const team = readRepoFile("client/src/pages/OperationsAgentsPage.tsx");
+  const profile = readRepoFile("client/src/pages/AgentProfileV2Page.tsx");
+
+  assert.match(routes, /left join departments d on d\.id = a\.department_id/);
+  assert.match(routes, /d\.name as department_name/);
+  assert.match(routes, /as department_key/);
+  assert.match(team, /item\.department_name \|\| item\.department_key/);
+  assert.match(profile, /overview\.department_name \|\| overview\.department_key/);
+});

@@ -704,6 +704,10 @@ export function AdminLayout({ children }: AdminLayoutProps) {
               <div className="mb-6">
                 <h2 className="text-lg font-semibold text-amber-500">{brand.name}</h2>
                 <p className="admin-shell-muted text-xs">{adminCopy(language, "allPages")}</p>
+                <div className="mt-3 flex flex-col gap-2 sm:hidden">
+                  <LocaleSwitcher compact />
+                  <TenantSwitcher />
+                </div>
                 <div className="relative mt-3">
                   <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
                   <input
@@ -816,7 +820,9 @@ export function AdminLayout({ children }: AdminLayoutProps) {
             {adminCopy(language, "adminInterface")}
           </div>
 
-          <LocaleSwitcher compact />
+          <div className="hidden sm:block">
+            <LocaleSwitcher compact />
+          </div>
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -888,7 +894,9 @@ export function AdminLayout({ children }: AdminLayoutProps) {
             </DropdownMenuContent>
           </DropdownMenu>
 
-          <TenantSwitcher />
+          <div className="hidden sm:block">
+            <TenantSwitcher />
+          </div>
 
           {/* User Menu */}
           <DropdownMenu>

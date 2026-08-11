@@ -130,6 +130,9 @@ test("Exportunity admin navigation stays focused on industrial operations", () =
   assert.doesNotMatch(exportunityNavRoutes, /"\/admin\/vs"/);
   assert.match(adminLayout, /isTenantAdminNavVisible\(item\.path, tenant\.key\)/);
   assert.match(adminLayout, /tenant\.key === "exportunity"\s*\? \[\]/);
+  assert.match(adminLayout, /mt-3 flex flex-col gap-2 sm:hidden/);
+  assert.match(adminLayout, /hidden sm:block[\s\S]*<LocaleSwitcher compact \/>/);
+  assert.match(adminLayout, /hidden sm:block[\s\S]*<TenantSwitcher \/>/);
   assert.match(routes, /title: "Video meetings"/);
 });
 

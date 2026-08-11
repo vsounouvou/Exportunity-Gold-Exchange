@@ -116,6 +116,18 @@ test("factory and map discovery keep Awa, the map, and products in one flow", ()
   assert.match(hub, /params\.set\("order", item\.id\)/);
   assert.match(mapMarkup, /product=\{selectedAssistantProduct\}/);
   assert.match(factoriesMarkup, /product=\{selectedAssistantProduct\}/);
+  assert.match(
+    factoriesMarkup,
+    /className="order-1 min-w-0 xl:col-start-1 xl:row-start-1"[\s\S]*?<IndustrialMap/,
+  );
+  assert.match(
+    factoriesMarkup,
+    /id="industrial-product-conversation"[\s\S]*?className="order-2[^\"]*xl:col-start-2[^\"]*xl:row-span-2/,
+  );
+  assert.match(
+    factoriesMarkup,
+    /ref=\{selectionCommerceRef\}[\s\S]*?className="order-3 min-w-0 xl:col-start-1 xl:row-start-2"/,
+  );
   assert.doesNotMatch(mapMarkup, /onSubmit=\{goSearch\}/);
   assert.match(hub, /title=\{contextMarkerTitle\}/);
   assert.match(hub, /alt=\{contextMarkerTitle\}/);

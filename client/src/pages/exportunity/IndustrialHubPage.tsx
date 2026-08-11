@@ -8471,7 +8471,7 @@ export default function IndustrialHubPage() {
                     />
                   </div>
                   <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
-                    <div className="order-2 min-w-0 xl:order-1">
+                    <div className="order-1 min-w-0 xl:col-start-1 xl:row-start-1">
                       <IndustrialMap
                         territory={selectedTerritory}
                         contexts={territoryContexts}
@@ -8486,24 +8486,10 @@ export default function IndustrialHubPage() {
                         showEmptyState={false}
                         className="h-[340px] sm:h-[360px] xl:h-[380px]"
                       />
-                      <div ref={selectionCommerceRef}>
-                        <IndustrialSelectionCommerce
-                          selectedFactory={selectedFactory}
-                          selectedContext={selectedIndustrialContext}
-                          territory={selectedTerritory}
-                          factories={factories}
-                          items={selectionCatalogItems}
-                          loading={catalogLoading}
-                          language={locale}
-                          activeItemId={selectedOrderItemId || null}
-                          onSelectFactory={selectFactoryForCommerce}
-                          onStartConversation={updateOrderConversation}
-                        />
-                      </div>
                     </div>
                     <aside
                       id="industrial-product-conversation"
-                      className="order-1 min-w-0 scroll-mt-28 xl:order-2 xl:sticky xl:top-28"
+                      className="order-2 min-w-0 scroll-mt-28 xl:col-start-2 xl:row-span-2 xl:row-start-1 xl:sticky xl:top-28"
                     >
                       <IndustrialAssistantChat
                         language={locale}
@@ -8520,6 +8506,23 @@ export default function IndustrialHubPage() {
                           : "Awa records a real industrial case. Availability, price, and supplier are verified before any order or introduction."}
                       </p>
                     </aside>
+                    <div
+                      ref={selectionCommerceRef}
+                      className="order-3 min-w-0 xl:col-start-1 xl:row-start-2"
+                    >
+                      <IndustrialSelectionCommerce
+                        selectedFactory={selectedFactory}
+                        selectedContext={selectedIndustrialContext}
+                        territory={selectedTerritory}
+                        factories={factories}
+                        items={selectionCatalogItems}
+                        loading={catalogLoading}
+                        language={locale}
+                        activeItemId={selectedOrderItemId || null}
+                        onSelectFactory={selectFactoryForCommerce}
+                        onStartConversation={updateOrderConversation}
+                      />
+                    </div>
                   </div>
 
                   {factories.length ? (

@@ -62,6 +62,28 @@ test("public industrial discovery covers Cote d'Ivoire, Benin, and the UAE", () 
   assert.match(hub, /exportunity-industrial-territory/);
 });
 
+test("the homepage presents current corridors as one expanding industrial network", () => {
+  const context = readRepoFile(
+    "client/src/components/exportunity/industrialContext.ts",
+  );
+  const hub = readRepoFile(
+    "client/src/pages/exportunity/IndustrialHubPage.tsx",
+  );
+
+  assert.match(context, /corridorName: IndustrialContextCopy/);
+  assert.match(context, /Zones industrielles d'Abidjan/);
+  assert.match(context, /Axe GDIZ - Cotonou/);
+  assert.match(context, /Corridor industriel de Dubai/);
+  assert.match(hub, /Corridors industriels actifs/);
+  assert.match(hub, /Reseau en expansion/);
+  assert.match(hub, /Autre marche/);
+  assert.match(
+    hub,
+    /industrialContextsForTerritory\(territoryCode\)[\s\S]*?\.map\(\(context\) => context\.markerLabel\)/,
+  );
+  assert.match(hub, /max-w-\[152px\]/);
+});
+
 test("territory selection preserves one real commercial conversation", () => {
   const hub = readRepoFile(
     "client/src/pages/exportunity/IndustrialHubPage.tsx",

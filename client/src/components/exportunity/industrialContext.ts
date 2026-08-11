@@ -44,6 +44,7 @@ export type IndustrialTerritory = {
   countryCode: IndustrialTerritoryCode;
   name: IndustrialContextCopy;
   shortName: IndustrialContextCopy;
+  corridorName: IndustrialContextCopy;
   mapCenter: [number, number];
   mapZoom: number;
   routeContextIds: [string, string] | null;
@@ -68,6 +69,10 @@ export const INDUSTRIAL_TERRITORIES: Record<
     countryCode: "CI",
     name: { fr: "Cote d'Ivoire", en: "Cote d'Ivoire" },
     shortName: { fr: "Abidjan", en: "Abidjan" },
+    corridorName: {
+      fr: "Zones industrielles d'Abidjan",
+      en: "Abidjan industrial zones",
+    },
     mapCenter: [5.35, -4.08],
     mapZoom: 10,
     routeContextIds: ["abidjan-pk24", "port-abidjan"],
@@ -85,6 +90,10 @@ export const INDUSTRIAL_TERRITORIES: Record<
     countryCode: "BJ",
     name: { fr: "Benin", en: "Benin" },
     shortName: { fr: "Cotonou / GDIZ", en: "Cotonou / GDIZ" },
+    corridorName: {
+      fr: "Axe GDIZ - Cotonou",
+      en: "GDIZ - Cotonou corridor",
+    },
     mapCenter: [6.82, 2.42],
     mapZoom: 9,
     routeContextIds: ["gdiz", "port-cotonou"],
@@ -102,6 +111,10 @@ export const INDUSTRIAL_TERRITORIES: Record<
     countryCode: "AE",
     name: { fr: "Emirats arabes unis", en: "United Arab Emirates" },
     shortName: { fr: "Dubai", en: "Dubai" },
+    corridorName: {
+      fr: "Corridor industriel de Dubai",
+      en: "Dubai industrial corridor",
+    },
     mapCenter: [24.96, 55.09],
     mapZoom: 10,
     routeContextIds: ["dubai-industrial-city", "jebel-ali-port"],

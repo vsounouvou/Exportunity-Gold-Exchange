@@ -1121,42 +1121,78 @@ function IndustrialTerritorySwitcher({
     <div
       role="group"
       aria-label={
-        language === "fr" ? "Choisir un marche" : "Choose a market"
+        language === "fr"
+          ? "Choisir un corridor industriel"
+          : "Choose an industrial corridor"
       }
       className={cn(
-        "flex min-w-0 items-center gap-1 rounded-lg border border-slate-200 bg-white/95 p-1 shadow-sm dark:border-white/15 dark:bg-[#07111F]/95",
+        "min-w-0 rounded-xl border border-slate-200 bg-white/95 p-2 shadow-sm dark:border-white/15 dark:bg-[#07111F]/95",
         className,
       )}
     >
-      <span
-        className="hidden h-8 w-8 shrink-0 items-center justify-center text-[#865400] sm:inline-flex dark:text-[#F5A623]"
-        title={language === "fr" ? "Marches Exportunity" : "Exportunity markets"}
-      >
-        <Globe2 className="h-4 w-4" aria-hidden="true" />
-      </span>
-      {INDUSTRIAL_TERRITORY_ORDER.map((territoryCode) => {
-        const territory = INDUSTRIAL_TERRITORIES[territoryCode];
-        const active = territoryCode === value;
-        return (
-          <button
-            key={territoryCode}
-            type="button"
-            aria-pressed={active}
-            title={industrialContextText(territory.name, language)}
-            onClick={() => onChange(territoryCode)}
-            className={cn(
-              "min-h-8 min-w-0 flex-1 rounded-md px-2 py-1 text-xs font-semibold transition sm:flex-none sm:px-3",
-              active
-                ? "bg-[#F5A623] text-[#07111F] shadow-sm"
-                : "text-slate-600 hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-white/10 dark:hover:text-white",
-            )}
-          >
-            <span className="block truncate">
-              {industrialContextText(territory.shortName, language)}
-            </span>
-          </button>
-        );
-      })}
+      <div className="mb-1.5 flex min-w-0 items-center justify-between gap-2 px-0.5">
+        <span className="flex min-w-0 items-center gap-1.5 text-[#865400] dark:text-[#F5A623]">
+          <Globe2 className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+          <span className="truncate text-[10px] font-bold uppercase tracking-[0.11em]">
+            {language === "fr"
+              ? "Corridors industriels actifs"
+              : "Active industrial corridors"}
+          </span>
+          <span className="hidden text-[10px] font-semibold text-slate-500 sm:inline dark:text-slate-400">
+            {language === "fr" ? "Reseau en expansion" : "Expanding network"}
+          </span>
+        </span>
+        <Link
+          href={`/request-quote?type=industrial_service&topic=new-market&market=${value}`}
+          className="inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-1 text-[10px] font-bold text-slate-600 transition hover:bg-[#F5A623]/12 hover:text-slate-950 dark:text-slate-300 dark:hover:text-white"
+          title={language === "fr" ? "Explorer un autre marche" : "Explore another market"}
+        >
+          <Plus className="h-3 w-3" aria-hidden="true" />
+          <span className="hidden sm:inline">
+            {language === "fr" ? "Autre marche" : "Another market"}
+          </span>
+        </Link>
+      </div>
+      <div className="grid grid-cols-3 gap-1.5">
+        {INDUSTRIAL_TERRITORY_ORDER.map((territoryCode) => {
+          const territory = INDUSTRIAL_TERRITORIES[territoryCode];
+          const active = territoryCode === value;
+          const corridorSites = industrialContextsForTerritory(territoryCode)
+            .slice(0, 3)
+            .map((context) => context.markerLabel)
+            .join(" · ");
+          return (
+            <button
+              key={territoryCode}
+              type="button"
+              aria-pressed={active}
+              aria-label={`${industrialContextText(territory.corridorName, language)}: ${corridorSites}`}
+              title={`${industrialContextText(territory.corridorName, language)}: ${corridorSites}`}
+              onClick={() => onChange(territoryCode)}
+              className={cn(
+                "min-h-[50px] min-w-0 rounded-lg border px-2 py-1.5 text-left transition",
+                active
+                  ? "border-[#F5A623] bg-[#F5A623] text-[#07111F] shadow-sm"
+                  : "border-slate-200/90 bg-white text-slate-700 hover:border-[#F5A623]/70 hover:bg-[#F5A623]/10 hover:text-slate-950 dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-200 dark:hover:bg-white/10 dark:hover:text-white",
+              )}
+            >
+              <span className="block truncate text-[11px] font-bold sm:text-xs">
+                {industrialContextText(territory.shortName, language)}
+              </span>
+              <span
+                className={cn(
+                  "mt-0.5 block truncate text-[9px] font-semibold tracking-[0.02em] sm:text-[10px]",
+                  active
+                    ? "text-[#07111F]/70"
+                    : "text-slate-500 dark:text-slate-400",
+                )}
+              >
+                {corridorSites}
+              </span>
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -7982,16 +8018,16 @@ export default function IndustrialHubPage() {
     <div className={cn("min-h-screen", isDark && "dark")}>
       <div className="min-h-screen bg-[#F7F8FA] text-slate-950 transition-colors dark:bg-[#05070B] dark:text-white">
         <header className="sticky top-0 z-40 border-b border-slate-900/10 bg-white/90 backdrop-blur-xl dark:border-white/10 dark:bg-[#07111F]/90">
-          <div className="mx-auto flex min-h-16 max-w-[1560px] items-center gap-4 px-4 lg:px-7">
+          <div className="mx-auto flex min-h-14 max-w-[1560px] items-center gap-4 px-4 lg:px-7">
             <Link
               href="/industrial"
-              className="flex h-11 shrink-0 items-center overflow-hidden rounded-lg bg-[#07111F] px-2.5 shadow-[0_8px_20px_rgba(7,17,31,0.16)]"
+              className="flex h-9 shrink-0 items-center overflow-hidden rounded-md bg-[#07111F] px-2 shadow-[0_6px_16px_rgba(7,17,31,0.14)]"
               aria-label="Exportunity AI"
             >
               <img
                 src="/tenants/exportunity/logo.svg"
                 alt="Exportunity AI"
-                className="h-full w-auto max-w-[194px] object-contain"
+                className="h-full w-auto max-w-[152px] object-contain"
               />
             </Link>
             <nav className="hidden flex-1 items-center justify-center gap-1 xl:flex">

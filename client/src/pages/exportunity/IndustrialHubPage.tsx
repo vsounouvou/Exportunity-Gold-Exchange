@@ -7645,8 +7645,8 @@ export default function IndustrialHubPage() {
             : "Commercial Director | Export products",
         intro:
           locale === "fr"
-            ? `Bonjour, je suis Awa Kouadio. Je peux vous aider a commander un produit documente depuis ${territoryName}. Dites-moi le produit, le volume et la destination; je confirmerai ensuite l'usine, le prix et le delai avec vous.`
-            : `Hello, I am Awa Kouadio. I can help you order a documented product from ${territoryName}. Tell me the product, volume, and destination; I will then confirm the factory, price, and lead time with you.`,
+            ? `Bonjour, je suis Awa Kouadio. Je peux vous aider a commander un produit documente pour votre besoin en ${territoryName}, quelle que soit son origine verifiee. Dites-moi le produit, le volume et la destination; je confirmerai ensuite l'usine, le prix et le delai avec vous.`
+            : `Hello, I am Awa Kouadio. I can help you order a documented product for your requirement in ${territoryName}, regardless of its verified origin. Tell me the product, volume, and destination; I will then confirm the factory, price, and lead time with you.`,
         quickReplies:
           locale === "fr"
             ? [

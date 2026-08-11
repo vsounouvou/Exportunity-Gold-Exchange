@@ -2137,24 +2137,40 @@ function IndustrialSelectionCommerce({
   selectedFactory,
   selectedContext,
   territory,
+  factories,
   items,
   loading,
   language,
   activeItemId,
+  onSelectFactory,
   onStartConversation,
 }: {
   selectedFactory: PublicFactory | null;
   selectedContext: IndustrialContextLocation | null;
   territory: IndustrialTerritory;
+  factories: PublicFactory[];
   items: CatalogItem[];
   loading: boolean;
   language: "fr" | "en";
   activeItemId?: string | null;
+  onSelectFactory: (factory: PublicFactory) => void;
   onStartConversation?: (item: CatalogItem) => void;
 }) {
   const producers = Array.from(
     new Set(items.map((item) => catalogDisplayProvider(item)).filter(Boolean)),
   );
+  const producerEntries = producers.map((producer) => {
+    const factoryId = items.find(
+      (item) =>
+        item.factoryId && catalogDisplayProvider(item) === producer,
+    )?.factoryId;
+    return {
+      producer,
+      factory: factoryId
+        ? factories.find((factory) => factory.id === factoryId) || null
+        : null,
+    };
+  });
   const title = selectedFactory
     ? selectedFactory.name
     : selectedContext
@@ -2215,15 +2231,33 @@ function IndustrialSelectionCommerce({
 
       {producers.length ? (
         <div className="mt-4 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {producers.map((producer) => (
-            <span
-              key={producer}
-              className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-[#F5A623]/30 bg-[#F5A623]/10 px-3 py-1.5 text-xs font-semibold text-slate-800 dark:text-[#f8d28a]"
-            >
-              <BadgeCheck className="h-3.5 w-3.5" />
-              {producer}
-            </span>
-          ))}
+          {producerEntries.map(({ producer, factory }) =>
+            factory ? (
+              <button
+                key={producer}
+                type="button"
+                onClick={() => onSelectFactory(factory)}
+                aria-label={
+                  language === "fr"
+                    ? `Ouvrir l'usine ${producer}`
+                    : `Open ${producer} factory`
+                }
+                className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-[#F5A623]/45 bg-[#F5A623]/10 px-3 py-1.5 text-xs font-semibold text-slate-800 transition hover:border-[#F5A623] hover:bg-[#F5A623]/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F5A623] focus-visible:ring-offset-2 dark:text-[#f8d28a] dark:focus-visible:ring-offset-[#07111F]"
+              >
+                <BadgeCheck className="h-3.5 w-3.5" />
+                {producer}
+                <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
+              </button>
+            ) : (
+              <span
+                key={producer}
+                className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 dark:border-white/10 dark:bg-white/5 dark:text-slate-300"
+              >
+                <BadgeCheck className="h-3.5 w-3.5 text-[#a96f0b] dark:text-[#F5A623]" />
+                {producer}
+              </span>
+            ),
+          )}
         </div>
       ) : null}
 
@@ -8139,10 +8173,12 @@ export default function IndustrialHubPage() {
                     selectedFactory={selectedFactory}
                     selectedContext={selectedIndustrialContext}
                     territory={selectedTerritory}
+                    factories={factories}
                     items={selectionCatalogItems}
                     loading={catalogLoading}
                     language={locale}
                     activeItemId={selectedOrderItemId || null}
+                    onSelectFactory={selectFactoryForCommerce}
                     onStartConversation={updateOrderConversation}
                   />
                 </div>
@@ -8274,10 +8310,12 @@ export default function IndustrialHubPage() {
                         selectedFactory={selectedFactory}
                         selectedContext={selectedIndustrialContext}
                         territory={selectedTerritory}
+                        factories={factories}
                         items={selectionCatalogItems}
                         loading={catalogLoading}
                         language={locale}
                         activeItemId={selectedOrderItemId || null}
+                        onSelectFactory={selectFactoryForCommerce}
                         onStartConversation={updateOrderConversation}
                       />
                     </aside>
@@ -8334,10 +8372,12 @@ export default function IndustrialHubPage() {
                           selectedFactory={selectedFactory}
                           selectedContext={selectedIndustrialContext}
                           territory={selectedTerritory}
+                          factories={factories}
                           items={selectionCatalogItems}
                           loading={catalogLoading}
                           language={locale}
                           activeItemId={selectedOrderItemId || null}
+                          onSelectFactory={selectFactoryForCommerce}
                           onStartConversation={updateOrderConversation}
                         />
                       </div>

@@ -108,6 +108,12 @@ test("factory and map discovery keep Awa, the map, and products in one flow", ()
     hub,
     /title=\{`\$\{factory\.name\} - \$\{factory\.industry\}`\}/,
   );
+  assert.match(hub, /onClick=\{\(\) => onSelectFactory\(factory\)\}/);
+  assert.match(hub, /`Ouvrir l'usine \$\{producer\}`/);
+  assert.match(
+    hub,
+    /onSelectFactory=\{selectFactoryForCommerce\}/,
+  );
 });
 
 test("product and quote journeys use Awa's progressive commercial conversation", () => {

@@ -2646,11 +2646,46 @@ function ConversationalCatalog({
   onStartConversation: (item: CatalogItem) => void;
   onCloseConversation: () => void;
 }) {
+  const destinationName = industrialContextText(territory.name, language);
+  const orderedItems = [...items].sort((left, right) => {
+    const leftIsLocal = left.factoryCountryCode === territory.countryCode;
+    const rightIsLocal = right.factoryCountryCode === territory.countryCode;
+    return Number(rightIsLocal) - Number(leftIsLocal);
+  });
+  const localItemCount = orderedItems.filter(
+    (item) => item.factoryCountryCode === territory.countryCode,
+  ).length;
+
   return (
     <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(320px,360px)]">
       <div className="order-2 min-w-0 xl:order-1">
+        {orderedItems.length ? (
+          <div className="mb-4 flex items-start gap-3 rounded-xl border border-[#F5A623]/35 bg-[#F5A623]/10 px-4 py-3 text-slate-800 dark:border-[#F5A623]/25 dark:bg-[#F5A623]/[0.08] dark:text-slate-100">
+            <Globe2 className="mt-0.5 h-4 w-4 shrink-0 text-[#946000] dark:text-[#F5A623]" />
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.11em] text-[#805100] dark:text-[#F5A623]">
+                {localItemCount
+                  ? language === "fr"
+                    ? `Offres locales en premier | ${destinationName}`
+                    : `Local offers first | ${destinationName}`
+                  : language === "fr"
+                    ? `Approvisionnement regional vers ${destinationName}`
+                    : `Regional sourcing to ${destinationName}`}
+              </p>
+              <p className="mt-1 text-xs leading-5 text-slate-600 dark:text-slate-300">
+                {localItemCount
+                  ? language === "fr"
+                    ? `${localItemCount} offre${localItemCount > 1 ? "s" : ""} du marche selectionne ${localItemCount > 1 ? "apparaissent" : "apparait"} en premier. Les autres sources documentees indiquent clairement leur origine.`
+                    : `${localItemCount} offer${localItemCount > 1 ? "s" : ""} from the selected market appear first. Other documented sources clearly show their origin.`
+                  : language === "fr"
+                    ? "Les offres ci-dessous indiquent leur origine de production ou d'approvisionnement. Awa confirme ensuite la livraison, le prix et le delai vers votre marche."
+                    : "The offers below show their production or supply origin. Awa then confirms delivery, price, and lead time to your market."}
+              </p>
+            </div>
+          </div>
+        ) : null}
         <CatalogList
-          items={items}
+          items={orderedItems}
           language={language}
           territory={territory}
           loading={loading}

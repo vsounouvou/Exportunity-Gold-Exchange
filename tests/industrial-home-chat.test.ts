@@ -283,6 +283,17 @@ test("global sourcing offers inherit the selected market without claiming local 
     hub,
     /<ConversationalCatalog[\s\S]*?territory=\{selectedTerritory\}/,
   );
+  assert.match(
+    hub,
+    /const orderedItems = \[\.\.\.items\]\.sort[\s\S]*?factoryCountryCode === territory\.countryCode/,
+  );
+  assert.match(hub, /Approvisionnement regional vers/);
+  assert.match(hub, /Regional sourcing to/);
+  assert.match(
+    hub,
+    /Awa confirme ensuite la livraison, le prix et le delai vers votre marche/,
+  );
+  assert.match(hub, /items=\{orderedItems\}/);
 });
 
 test("factory onboarding is a private one-question Awa conversation", () => {

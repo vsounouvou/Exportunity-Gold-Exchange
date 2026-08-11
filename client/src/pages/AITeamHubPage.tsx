@@ -130,12 +130,17 @@ interface ChannelMessage {
 
 interface ChannelAttachment {
   id: string;
+  evidenceId?: string;
+  sha256?: string;
   name: string;
   type?: string;
   size?: number;
   textPreview?: string;
   version?: number;
   url?: string;
+  extractionStatus?: string;
+  extractionMethod?: string;
+  extractionWarning?: string;
 }
 
 interface ChatRoom {
@@ -163,6 +168,7 @@ interface Message {
   createdAt: string;
   fromAgent?: Agent;
   metadata?: any;
+  attachments?: ChannelAttachment[];
 }
 
 type MembershipAuditEvent = {
@@ -2423,18 +2429,23 @@ export function AITeamHubPage() {
   };
 
   const handleSendMeetingMessage = async () => {
-    if (!messageInput.trim() || !currentMeeting) return;
+    if (!currentMeeting) return;
+    const attachments = pendingAttachments;
+    const content = messageInput.trim() || (attachments.length ? `Please review ${attachments.length} attachment(s).` : "");
+    if (!content) return;
     try {
       setIsThinking(true);
       await apiRequest("/api/messages", "POST", {
-        content: messageInput,
+        content,
         type: "chat",
         fromAgentId: null,
         toAgentId: null,
         conversationId: currentMeeting.conversationId,
+        attachments,
         metadata: { requestType: "user_message", requiresResponse: true },
       });
       setMessageInput("");
+      setPendingAttachments([]);
       await queryClient.invalidateQueries({
         queryKey: [`/api/messages/${currentMeeting.conversationId}`],
       });
@@ -2483,7 +2494,12 @@ export function AITeamHubPage() {
 
     setIsUploadingAttachments(true);
 
-    const existingByName = conversationMessages.reduce<Record<string, number>>((acc, message) => {
+    const attachmentHistory = currentMeeting
+      ? meetingMessages.map((message) => ({
+          attachments: Array.isArray(message.metadata?.attachments) ? message.metadata.attachments : [],
+        }))
+      : conversationMessages;
+    const existingByName = attachmentHistory.reduce<Record<string, number>>((acc, message) => {
       const attachments = Array.isArray(message.attachments) ? message.attachments : [];
       for (const attachment of attachments) {
         const key = String(attachment?.name || "").toLowerCase();
@@ -2532,7 +2548,10 @@ export function AITeamHubPage() {
         formData.append("id", id);
         formData.append("version", String(version));
 
-        const response = await apiRequest(`/api/companies/${companyId}/channels/all-team/attachments`, {
+        const uploadEndpoint = currentMeeting?.conversationId
+          ? `/api/chatrooms/${encodeURIComponent(currentMeeting.conversationId)}/attachments`
+          : `/api/companies/${companyId}/channels/all-team/attachments`;
+        const response = await apiRequest(uploadEndpoint, {
           method: "POST",
           body: formData,
         });
@@ -2549,7 +2568,12 @@ export function AITeamHubPage() {
           size: Number(attachment.size ?? file.size),
           version: Number(attachment.version ?? version),
           url: String(attachment.url),
-          ...(textPreview ? { textPreview } : {}),
+          ...(attachment.evidenceId ? { evidenceId: String(attachment.evidenceId) } : {}),
+          ...(attachment.sha256 ? { sha256: String(attachment.sha256) } : {}),
+          ...(attachment.textPreview || textPreview ? { textPreview: String(attachment.textPreview || textPreview) } : {}),
+          ...(attachment.extractionStatus ? { extractionStatus: String(attachment.extractionStatus) } : {}),
+          ...(attachment.extractionMethod ? { extractionMethod: String(attachment.extractionMethod) } : {}),
+          ...(attachment.extractionWarning ? { extractionWarning: String(attachment.extractionWarning) } : {}),
         });
       } catch (error) {
         failedCount += 1;
@@ -2559,7 +2583,16 @@ export function AITeamHubPage() {
 
     setIsUploadingAttachments(false);
 
-    if (!nextAttachments.length) return;
+    if (!nextAttachments.length) {
+      if (failedCount > 0) {
+        toast({
+          title: "Upload failed",
+          description: firstError || `${failedCount} attachment(s) failed to upload.`,
+          variant: "destructive",
+        });
+      }
+      return;
+    }
     setPendingAttachments((prev) => [...prev, ...nextAttachments]);
 
     if (failedCount > 0) {
@@ -3835,6 +3868,11 @@ export function AITeamHubPage() {
                 {sortedMeetingMessages.map((msg) => {
                   const isUser = msg.fromAgentId === null;
                   const agent = msg.fromAgent;
+                  const meetingAttachments = Array.isArray(msg.metadata?.attachments)
+                    ? (msg.metadata.attachments as ChannelAttachment[])
+                    : Array.isArray(msg.attachments)
+                      ? msg.attachments
+                      : [];
                   const actionRuns = extractActionRuns(msg.metadata);
                   const completionClaim = Boolean(msg.metadata?.completionClaim) || hasCompletionClaimText(msg.content);
                   const unverifiedClaim = Boolean(msg.metadata?.unverifiedClaim) || (completionClaim && actionRuns.length === 0);
@@ -3874,6 +3912,44 @@ export function AITeamHubPage() {
                         <div className="text-sm leading-relaxed">
                           <OperationsMessageContent content={msg.content} />
                         </div>
+                        {meetingAttachments.length > 0 ? (
+                          <div className="mt-3 space-y-1.5 text-left text-xs">
+                            {meetingAttachments.map((attachment) => (
+                              <div
+                                key={attachment.id}
+                                className={cn(
+                                  "flex items-start gap-2 rounded-lg border px-2.5 py-1.5",
+                                  isUser ? "border-blue-300/40 bg-blue-500/20 text-blue-50" : "border-gray-600 bg-gray-900/40 text-gray-300",
+                                )}
+                              >
+                                <FileText className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" />
+                                <div className="min-w-0 flex-1">
+                                  <div className="truncate font-medium">
+                                    {attachment.url ? (
+                                      <a
+                                        href={attachment.url}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="underline decoration-white/30 underline-offset-2 hover:decoration-white/80"
+                                      >
+                                        {attachment.name}
+                                        {attachment.version && attachment.version > 1 ? ` (v${attachment.version})` : ""}
+                                      </a>
+                                    ) : attachment.name}
+                                  </div>
+                                  <div className="opacity-80">
+                                    {[attachment.type || "file", formatAttachmentSize(attachment.size)].filter(Boolean).join(" | ")}
+                                  </div>
+                                  {attachment.extractionStatus && attachment.extractionStatus !== "extracted" ? (
+                                    <div className="mt-1 text-[11px] opacity-90">
+                                      {attachment.extractionWarning || `Evidence status: ${attachment.extractionStatus}`}
+                                    </div>
+                                  ) : null}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : null}
                         {!isUser && actionRuns.length > 0 ? (
                           <div className="mt-2 flex flex-wrap gap-1.5">
                             {actionRuns.map((run) => (
@@ -4411,18 +4487,18 @@ export function AITeamHubPage() {
               className="space-y-2"
             >
               <div className="flex gap-2 md:gap-3">
-                {!currentMeeting && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon"
-                    className="ops-pressable h-11 w-11 md:h-12 md:w-12 rounded-xl border-gray-700 bg-gray-800 text-gray-200 hover:bg-gray-700"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={sendMessage.isPending || isThinking || isUploadingAttachments || pendingAttachments.length >= MAX_CHAT_ATTACHMENTS}
-                  >
-                    <Paperclip className="h-4 w-4 md:h-5 md:w-5" />
-                  </Button>
-                )}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  aria-label={currentMeeting ? "Attach evidence to meeting" : "Attach evidence"}
+                  title={currentMeeting ? "Attach evidence to meeting" : "Attach evidence"}
+                  className="ops-pressable h-11 w-11 md:h-12 md:w-12 rounded-xl border-gray-700 bg-gray-800 text-gray-200 hover:bg-gray-700"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={sendMessage.isPending || isThinking || isUploadingAttachments || pendingAttachments.length >= MAX_CHAT_ATTACHMENTS}
+                >
+                  {isUploadingAttachments ? <Loader2 className="h-4 w-4 animate-spin md:h-5 md:w-5" /> : <Paperclip className="h-4 w-4 md:h-5 md:w-5" />}
+                </Button>
 
                 <VoiceToTextButton
                   disabled={sendMessage.isPending || isThinking || isUploadingAttachments || (activeAgents.length === 0 && !currentMeeting)}
@@ -4462,7 +4538,7 @@ export function AITeamHubPage() {
                 </Button>
               </div>
 
-              {!currentMeeting && pendingAttachments.length > 0 && (
+              {pendingAttachments.length > 0 && (
                 <div className="flex flex-wrap gap-2">
                   {pendingAttachments.map((attachment) => (
                     <div
@@ -4489,6 +4565,11 @@ export function AITeamHubPage() {
                         )}
                       </span>
                       <span className="text-gray-400">{formatAttachmentSize(attachment.size)}</span>
+                      {attachment.extractionStatus && attachment.extractionStatus !== "extracted" ? (
+                        <span className="max-w-[220px] truncate text-amber-300" title={attachment.extractionWarning || attachment.extractionStatus}>
+                          {attachment.extractionStatus.replace(/_/g, " ")}
+                        </span>
+                      ) : null}
                       <button
                         type="button"
                         className="text-gray-400 hover:text-white"
@@ -4501,15 +4582,14 @@ export function AITeamHubPage() {
                 </div>
               )}
 
-              {!currentMeeting && (
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  className="hidden"
-                  onChange={onAttachmentSelect}
-                  multiple
-                />
-              )}
+              <input
+                ref={fileInputRef}
+                type="file"
+                className="hidden"
+                accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.md,.csv,.tsv,.json,.xml,.yaml,.yml,image/*"
+                onChange={onAttachmentSelect}
+                multiple
+              />
             </form>
           </div>
         </div>

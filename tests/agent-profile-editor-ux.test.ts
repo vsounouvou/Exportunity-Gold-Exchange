@@ -35,5 +35,6 @@ test("agent profile editor remains usable on compact screens", () => {
   assert.match(profile, /w-\[calc\(100vw-2rem\)\]/);
   assert.match(profile, /grid-cols-1 gap-4 sm:grid-cols-2/);
   assert.match(profile, /sticky bottom-0 z-10/);
+  assert.match(profile, /bg-amber-500 text-slate-950 hover:bg-amber-400/);
   assert.doesNotMatch(profile, /â€”|Â·/);
 });

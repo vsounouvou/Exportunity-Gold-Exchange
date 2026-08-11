@@ -1588,7 +1588,11 @@ export function AgentProfileDialog({ agent, runtimeAgentId, open, onOpenChange }
               >
                 {tr("Annuler", "Cancel")}
               </Button>
-              <Button type="submit" disabled={updateAgentMutation.isPending}>
+              <Button
+                type="submit"
+                className="bg-amber-500 text-slate-950 hover:bg-amber-400"
+                disabled={updateAgentMutation.isPending}
+              >
                 <Save className="h-4 w-4 mr-2" />
                 {updateAgentMutation.isPending ? tr("Enregistrement...", "Saving...") : tr("Enregistrer les modifications", "Save Changes")}
               </Button>

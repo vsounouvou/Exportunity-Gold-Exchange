@@ -6441,8 +6441,8 @@ export default function IndustrialHubPage() {
       window.scrollTo({ top: Math.max(0, top), behavior: "smooth" });
     }, 80);
   };
-  const revealFactorySelection = () => {
-    if (view !== "factories") return;
+  const revealCommerceSelection = () => {
+    if (view !== "home" && view !== "factories") return;
     scrollToSelectionCommerce();
   };
   const changeIndustrialTerritory = (
@@ -6464,7 +6464,7 @@ export default function IndustrialHubPage() {
     }
     setSelectedIndustrialContext(null);
     setSelectedFactory(factory);
-    revealFactorySelection();
+    revealCommerceSelection();
   };
   const selectIndustrialContextForCommerce = (
     context: IndustrialContextLocation,
@@ -6472,7 +6472,7 @@ export default function IndustrialHubPage() {
     setSelectedTerritoryCode(context.territoryCode);
     setSelectedFactory(null);
     setSelectedIndustrialContext(context);
-    revealFactorySelection();
+    revealCommerceSelection();
   };
   const queryCategory = queryValue(location, "category");
   const selectedCategory = useMemo(

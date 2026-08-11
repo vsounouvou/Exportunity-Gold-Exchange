@@ -50,6 +50,10 @@ test("Exportunity industrial home leads with Awa's case-backed commercial conver
   );
   assert.match(homeMarkup, /onClick=\{scrollToSelectionCommerce\}/);
   assert.match(
+    hub,
+    /const revealCommerceSelection = \(\) => \{[\s\S]*?view !== "home"[\s\S]*?view !== "factories"[\s\S]*?scrollToSelectionCommerce\(\)/,
+  );
+  assert.match(
     homeMarkup,
     /View \$\{selectionCatalogItems\.length\} GDIZ products/,
   );

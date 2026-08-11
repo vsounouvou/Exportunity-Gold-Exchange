@@ -24,9 +24,6 @@ test("Exportunity industrial home leads with Awa's case-backed commercial conver
   const homeAssistantIndex = hub.indexOf("<IndustrialAssistantChat", homeStart);
   const publicDirectoryStart = hub.indexOf('{view !== "map"', homeStart);
   const homeMarkup = hub.slice(homeStart, publicDirectoryStart);
-  const firstGenericSearchIndex = hub.indexOf(
-    "placeholder={copy.searchPlaceholder}",
-  );
 
   assert.match(
     hub,
@@ -60,7 +57,7 @@ test("Exportunity industrial home leads with Awa's case-backed commercial conver
   assert.match(homeMarkup, /<IndustrialSelectionCommerce/);
   assert.doesNotMatch(homeMarkup, /onSubmit=\{goSearch\}/);
   assert.doesNotMatch(homeMarkup, /placeholder=\{copy\.searchPlaceholder\}/);
-  assert.ok(firstGenericSearchIndex > homeAssistantIndex);
+  assert.doesNotMatch(hub, /placeholder=\{copy\.searchPlaceholder\}/);
   assert.match(assistant, /\/api\/industrial\/assistant\/intake-preview/);
   assert.match(assistant, /\/api\/industrial\/requirements/);
   assert.match(assistant, /Message Awa/);
@@ -186,6 +183,46 @@ test("product and quote journeys use Awa's progressive commercial conversation",
     hub,
     /href=\{withSelectedMarket\([\s\S]*?\/request-quote\?type=machinery/,
   );
+});
+
+test("every public industrial catalog opens with one real Awa conversation", () => {
+  const hub = readRepoFile(
+    "client/src/pages/exportunity/IndustrialHubPage.tsx",
+  );
+  const productsStart = hub.indexOf('{view === "products" ? (');
+  const supplyStart = hub.indexOf('{view === "supply" ? (', productsStart);
+  const machineryStart = hub.indexOf(
+    '{view === "machinery" ? (',
+    supplyStart,
+  );
+  const profileStart = hub.indexOf(
+    '{view === "factoryProfile" ? (',
+    machineryStart,
+  );
+
+  assert.ok(productsStart >= 0);
+  assert.ok(supplyStart > productsStart);
+  assert.ok(machineryStart > supplyStart);
+  assert.ok(profileStart > machineryStart);
+
+  for (const markup of [
+    hub.slice(productsStart, supplyStart),
+    hub.slice(supplyStart, machineryStart),
+    hub.slice(machineryStart, profileStart),
+  ]) {
+    assert.match(markup, /<ConversationalCatalog/);
+    assert.match(markup, /assistantContext=\{catalogAssistantContext\}/);
+  }
+
+  assert.match(
+    hub,
+    /function ConversationalCatalog\([\s\S]*?<IndustrialAssistantChat[\s\S]*?mode="commercial"[\s\S]*?context=\{assistantContext\}/,
+  );
+  assert.doesNotMatch(hub, /placeholder=\{copy\.searchPlaceholder\}/);
+  assert.doesNotMatch(hub, /onSubmit=\{goSearch\}/);
+  assert.match(hub, /catalog:export-products/);
+  assert.match(hub, /catalog:industrial-supply/);
+  assert.match(hub, /catalog:machinery/);
 });
 
 test("global sourcing offers inherit the selected market without claiming local stock", () => {

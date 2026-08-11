@@ -2533,6 +2533,7 @@ function ConversationalCatalog({
   items,
   language,
   territory,
+  assistantContext,
   loading,
   emptyTitle,
   emptyDetail,
@@ -2544,6 +2545,7 @@ function ConversationalCatalog({
   items: CatalogItem[];
   language: "fr" | "en";
   territory: IndustrialTerritory;
+  assistantContext: IndustrialAssistantContext;
   loading: boolean;
   emptyTitle: string;
   emptyDetail: string;
@@ -2553,12 +2555,7 @@ function ConversationalCatalog({
   onCloseConversation: () => void;
 }) {
   return (
-    <div
-      className={cn(
-        "grid items-start gap-5",
-        selectedProduct && "xl:grid-cols-[minmax(0,1fr)_minmax(320px,360px)]",
-      )}
-    >
+    <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(320px,360px)]">
       <div className="order-2 min-w-0 xl:order-1">
         <CatalogList
           items={items}
@@ -2569,28 +2566,32 @@ function ConversationalCatalog({
           emptyDetail={emptyDetail}
           activeItemId={selectedProduct?.id || null}
           onStartConversation={onStartConversation}
-          compact={Boolean(selectedProduct)}
+          compact
         />
       </div>
-      {selectedProduct ? (
-        <aside
-          id="industrial-product-conversation"
-          className="order-1 min-w-0 scroll-mt-28 xl:order-2 xl:sticky xl:top-28"
-        >
-          <IndustrialAssistantChat
-            language={language}
-            requester={requester}
-            product={selectedProduct}
-            onCloseProduct={onCloseConversation}
-            className="!mt-0 shadow-[0_22px_54px_rgba(7,17,31,0.22)]"
-          />
-          <p className="mt-3 px-1 text-xs leading-5 text-slate-500 dark:text-slate-400">
-            {language === "fr"
+      <aside
+        id="industrial-product-conversation"
+        className="order-1 min-w-0 scroll-mt-28 xl:order-2 xl:sticky xl:top-28"
+      >
+        <IndustrialAssistantChat
+          mode="commercial"
+          language={language}
+          requester={requester}
+          context={assistantContext}
+          product={selectedProduct}
+          onCloseProduct={selectedProduct ? onCloseConversation : undefined}
+          className="!mt-0 shadow-[0_22px_54px_rgba(7,17,31,0.22)]"
+        />
+        <p className="mt-3 px-1 text-xs leading-5 text-slate-500 dark:text-slate-400">
+          {selectedProduct
+            ? language === "fr"
               ? "Awa rassemble la quantite, la destination et le delai dans la conversation. La demande devient ensuite un dossier reel suivi par l'equipe commerciale."
-              : "Awa gathers quantity, destination, and timing in the conversation. The request then becomes a real case tracked by the commercial team."}
-          </p>
-        </aside>
-      ) : null}
+              : "Awa gathers quantity, destination, and timing in the conversation. The request then becomes a real case tracked by the commercial team."
+            : language === "fr"
+              ? "Decrivez votre besoin ou choisissez une offre. Awa conserve le contexte, qualifie la demande et cree un vrai dossier commercial apres votre confirmation."
+              : "Describe your requirement or choose an offering. Awa keeps the context, qualifies the request, and creates a real commercial case after your confirmation."}
+        </p>
+      </aside>
     </div>
   );
 }
@@ -6832,7 +6833,6 @@ export default function IndustrialHubPage() {
   const [factoryDirectoryMode, setFactoryDirectoryMode] =
     useState<FactoryDirectoryMode>("map");
   const [directoryError, setDirectoryError] = useState<string | null>(null);
-  const [search, setSearch] = useState(queryValue(location, "q"));
   const view = readView(location);
   const activeKey =
     view === "home"
@@ -7012,10 +7012,6 @@ export default function IndustrialHubPage() {
       setSelectedIndustrialContext(null);
     }
   }, [selectedFactory, selectedIndustrialContext, selectedTerritoryCode]);
-
-  useEffect(() => {
-    setSearch(queryValue(location, "q"));
-  }, [location]);
 
   const searchQuery = queryValue(location, "q");
   useEffect(() => {
@@ -7345,15 +7341,6 @@ export default function IndustrialHubPage() {
     }
   };
 
-  const goSearch = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const trimmed = search.trim();
-    const destination = view === "map" ? "/map" : "/factories";
-    navigate(
-      trimmed ? `${destination}?q=${encodeURIComponent(trimmed)}` : destination,
-    );
-  };
-
   const industrialNeedFlow = [
     {
       title: locale === "fr" ? "1. Décrire" : "1. Describe",
@@ -7642,6 +7629,112 @@ export default function IndustrialHubPage() {
   };
 
   const quoteIntent = quoteIntentForLocation(location, locale);
+  const catalogAssistantContext: IndustrialAssistantContext = (() => {
+    const territoryName = industrialContextText(selectedTerritory.name, locale);
+    const categoryName = selectedCategory?.label[locale];
+
+    if (view === "products") {
+      return {
+        id: `catalog:export-products:${selectedTerritory.code}:${selectedCategory?.code || "all"}`,
+        title:
+          categoryName ||
+          (locale === "fr" ? "Produits industriels export" : "Industrial export products"),
+        role:
+          locale === "fr"
+            ? "Directrice commerciale | Produits export"
+            : "Commercial Director | Export products",
+        intro:
+          locale === "fr"
+            ? `Bonjour, je suis Awa Kouadio. Je peux vous aider a commander un produit documente depuis ${territoryName}. Dites-moi le produit, le volume et la destination; je confirmerai ensuite l'usine, le prix et le delai avec vous.`
+            : `Hello, I am Awa Kouadio. I can help you order a documented product from ${territoryName}. Tell me the product, volume, and destination; I will then confirm the factory, price, and lead time with you.`,
+        quickReplies:
+          locale === "fr"
+            ? [
+                "Je cherche un produit agroalimentaire exportable",
+                "Je cherche des textiles ou vetements",
+                "Je veux commander un lot test",
+                "Je veux preparer un conteneur complet",
+                "J'ai deja une reference produit",
+              ]
+            : [
+                "I need an export-ready food product",
+                "I need textiles or garments",
+                "I want to order a trial lot",
+                "I want to prepare a full container",
+                "I already have a product reference",
+              ],
+        requirementType: "export_quotation",
+        territoryCode: selectedTerritory.code,
+      };
+    }
+
+    if (view === "machinery") {
+      return {
+        id: `catalog:machinery:${selectedTerritory.code}:${selectedCategory?.code || "all"}`,
+        title:
+          categoryName ||
+          (locale === "fr" ? "Machines et lignes industrielles" : "Machinery and production lines"),
+        role:
+          locale === "fr"
+            ? "Directrice commerciale | Machines"
+            : "Commercial Director | Machinery",
+        intro:
+          locale === "fr"
+            ? `Bonjour, je suis Awa Kouadio. Pour sourcer une machine pour ${territoryName}, indiquez-moi le produit a fabriquer, la capacite visee et votre site. Je vous accompagne jusqu'au cahier des charges et au devis.`
+            : `Hello, I am Awa Kouadio. To source machinery for ${territoryName}, tell me the product to manufacture, target capacity, and your site. I will guide you through specification and quotation.`,
+        quickReplies:
+          locale === "fr"
+            ? [
+                "Je cherche une machine de production",
+                "Je veux une ligne complete",
+                "Je dois remplacer un equipement",
+                "Je cherche une machine en location",
+                "J'ai deja un cahier des charges",
+              ]
+            : [
+                "I need a production machine",
+                "I need a complete production line",
+                "I must replace equipment",
+                "I need rental machinery",
+                "I already have a specification",
+              ],
+        requirementType: "machinery",
+        territoryCode: selectedTerritory.code,
+      };
+    }
+
+    return {
+      id: `catalog:industrial-supply:${selectedTerritory.code}:${selectedCategory?.code || "all"}`,
+      title:
+        categoryName ||
+        (locale === "fr" ? "Approvisionnement industriel" : "Industrial supply"),
+      role:
+        locale === "fr"
+          ? "Directrice commerciale | Sourcing industriel"
+          : "Commercial Director | Industrial sourcing",
+      intro:
+        locale === "fr"
+          ? `Bonjour, je suis Awa Kouadio. Dites-moi ce que votre usine doit acheter pour ${territoryName}: piece, intrant, matiere premiere ou service. Je vais qualifier la reference, la quantite, la destination et l'urgence.`
+          : `Hello, I am Awa Kouadio. Tell me what your factory needs to buy for ${territoryName}: a part, input, raw material, or service. I will qualify the reference, quantity, destination, and urgency.`,
+      quickReplies:
+        locale === "fr"
+          ? [
+              "Je cherche une piece detachee",
+              "Je dois sourcer un intrant industriel",
+              "Je cherche une matiere premiere",
+              "Je veux refaire une piece localement",
+              "J'ai besoin de logistique ou import",
+            ]
+          : [
+              "I need a spare part",
+              "I need an industrial input",
+              "I need a raw material",
+              "I want to reproduce a part locally",
+              "I need logistics or import support",
+            ],
+      territoryCode: selectedTerritory.code,
+    };
+  })();
   const quoteAssistantContext: IndustrialAssistantContext = {
     id: "commercial-quote-intake",
     title:
@@ -8125,32 +8218,6 @@ export default function IndustrialHubPage() {
               view !== "factoryWorkspace" ? (
                 <SectionHeading {...titleByView[view]} />
               ) : null}
-              {view !== "map" &&
-              view !== "factories" &&
-              view !== "quote" &&
-              view !== "register" &&
-              view !== "claim" &&
-              view !== "factoryProfile" &&
-              view !== "factoryWorkspace" ? (
-                <form
-                  onSubmit={goSearch}
-                  className="mt-6 flex max-w-3xl rounded-xl border border-slate-300 bg-white p-1.5 dark:border-white/15 dark:bg-slate-900"
-                >
-                  <Search className="my-2 ml-2 h-5 w-5 text-[#a96f0b]" />
-                  <input
-                    value={search}
-                    onChange={(event) => setSearch(event.target.value)}
-                    className="min-w-0 flex-1 bg-transparent px-3 py-2 text-sm outline-none placeholder:text-slate-400 dark:text-white"
-                    placeholder={copy.searchPlaceholder}
-                  />
-                  <button
-                    type="submit"
-                    className="rounded-lg bg-[#F5A623] px-4 py-2 text-sm font-semibold text-slate-950"
-                  >
-                    {copy.search}
-                  </button>
-                </form>
-              ) : null}
               {directoryError ? (
                 <div className="mt-6 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950 dark:border-amber-300/30 dark:bg-amber-300/10 dark:text-amber-100">
                   {directoryError}
@@ -8372,6 +8439,7 @@ export default function IndustrialHubPage() {
                     items={visibleExportItems}
                     language={locale}
                     territory={selectedTerritory}
+                    assistantContext={catalogAssistantContext}
                     loading={catalogLoading}
                     emptyTitle={copy.noCatalog}
                     emptyDetail={copy.noCatalogDetail}
@@ -8401,6 +8469,27 @@ export default function IndustrialHubPage() {
                       />
                     </div>
                   ) : null}
+                  <ConversationalCatalog
+                    items={visibleSupplyItems}
+                    language={locale}
+                    territory={selectedTerritory}
+                    assistantContext={catalogAssistantContext}
+                    loading={catalogLoading}
+                    emptyTitle={copy.noCatalog}
+                    emptyDetail={copy.noCatalogDetail}
+                    requester={user}
+                    selectedProduct={selectedAssistantProduct}
+                    onStartConversation={(item) =>
+                      updateOrderConversation(item)
+                    }
+                    onCloseConversation={() => updateOrderConversation(null)}
+                  />
+                  <div className="mt-10 border-t border-slate-200 pt-7 dark:border-white/10">
+                    <p className="mb-4 text-sm font-semibold text-slate-950 dark:text-white">
+                      {locale === "fr"
+                        ? "Affiner par famille d'approvisionnement"
+                        : "Refine by supply family"}
+                    </p>
                   <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                     {taxonomy.map((category) => (
                       <Link
@@ -8425,21 +8514,6 @@ export default function IndustrialHubPage() {
                       </Link>
                     ))}
                   </div>
-                  <div className="mt-10">
-                    <ConversationalCatalog
-                      items={visibleSupplyItems}
-                      language={locale}
-                      territory={selectedTerritory}
-                      loading={catalogLoading}
-                      emptyTitle={copy.noCatalog}
-                      emptyDetail={copy.noCatalogDetail}
-                      requester={user}
-                      selectedProduct={selectedAssistantProduct}
-                      onStartConversation={(item) =>
-                        updateOrderConversation(item)
-                      }
-                      onCloseConversation={() => updateOrderConversation(null)}
-                    />
                   </div>
                 </section>
               ) : null}
@@ -8452,6 +8526,21 @@ export default function IndustrialHubPage() {
                       clearHref="/machinery"
                     />
                   ) : null}
+                  <ConversationalCatalog
+                    items={visibleMachineryItems}
+                    language={locale}
+                    territory={selectedTerritory}
+                    assistantContext={catalogAssistantContext}
+                    loading={catalogLoading}
+                    emptyTitle={copy.noCatalog}
+                    emptyDetail={copy.noCatalogDetail}
+                    requester={user}
+                    selectedProduct={selectedAssistantProduct}
+                    onStartConversation={(item) =>
+                      updateOrderConversation(item)
+                    }
+                    onCloseConversation={() => updateOrderConversation(null)}
+                  />
                   <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_20px_54px_rgba(15,23,42,0.08)] dark:border-white/10 dark:bg-[#07111F]">
                     <div className="grid xl:grid-cols-[minmax(0,1.05fr)_minmax(360px,0.95fr)]">
                       <div className="relative overflow-hidden px-6 py-7 sm:px-8 sm:py-9">
@@ -8639,20 +8728,6 @@ export default function IndustrialHubPage() {
                       );
                     })}
                   </div>
-                  <ConversationalCatalog
-                    items={visibleMachineryItems}
-                    language={locale}
-                    territory={selectedTerritory}
-                    loading={catalogLoading}
-                    emptyTitle={copy.noCatalog}
-                    emptyDetail={copy.noCatalogDetail}
-                    requester={user}
-                    selectedProduct={selectedAssistantProduct}
-                    onStartConversation={(item) =>
-                      updateOrderConversation(item)
-                    }
-                    onCloseConversation={() => updateOrderConversation(null)}
-                  />
                 </section>
               ) : null}
               {view === "factoryProfile" ? (

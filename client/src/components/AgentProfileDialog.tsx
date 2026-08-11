@@ -685,7 +685,7 @@ export function AgentProfileDialog({ agent, runtimeAgentId, open, onOpenChange }
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             <Tabs defaultValue="identity" className="w-full">
-              <TabsList className="grid h-auto w-full grid-cols-3 gap-1 p-1 lg:grid-cols-6">
+              <TabsList className="grid h-auto w-full grid-cols-2 gap-1 p-1 sm:grid-cols-3 lg:grid-cols-6">
                 <TabsTrigger value="identity">
                   <User className="h-4 w-4 mr-1" /> {tr("Identité", "Identity")}
                 </TabsTrigger>
@@ -1580,17 +1580,18 @@ export function AgentProfileDialog({ agent, runtimeAgentId, open, onOpenChange }
               </TabsContent>
             </Tabs>
 
-            <div className="sticky bottom-0 z-10 flex justify-end gap-2 border-t bg-background/95 py-3 backdrop-blur">
+            <div className="sticky bottom-0 z-10 flex flex-col-reverse gap-2 border-t bg-background/95 py-3 backdrop-blur sm:flex-row sm:justify-end">
               <Button
                 type="button"
                 variant="outline"
+                className="w-full sm:w-auto"
                 onClick={() => onOpenChange(false)}
               >
                 {tr("Annuler", "Cancel")}
               </Button>
               <Button
                 type="submit"
-                className="bg-amber-500 text-slate-950 hover:bg-amber-400"
+                className="w-full bg-amber-500 text-slate-950 hover:bg-amber-400 sm:w-auto"
                 disabled={updateAgentMutation.isPending}
               >
                 <Save className="h-4 w-4 mr-2" />

@@ -48,6 +48,23 @@ test("documented factory output always carries official evidence", () => {
   );
 });
 
+test("curated sourcing offers use product-specific industrial imagery", () => {
+  const sourcingItems = PUBLIC_INDUSTRIAL_CATALOG.filter(
+    (item) => item.listingKind === "exportunity_sourcing_program",
+  );
+  const sourcingMedia = sourcingItems.map((item) => item.media[0]);
+
+  assert.ok(sourcingItems.length >= 13);
+  assert.equal(new Set(sourcingMedia).size, sourcingItems.length);
+  assert.ok(
+    sourcingMedia.every((media) =>
+      media?.startsWith(
+        "/tenants/exportunity/industrial/catalog/sourcing/",
+      ),
+    ),
+  );
+});
+
 test("catalog search works across French and English industrial terms", () => {
   assert.ok(
     findPublicIndustrialCatalog({ query: "roulements" }).some((item) =>

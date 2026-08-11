@@ -52,8 +52,8 @@ const FACTORY_PRODUCTS_IMAGE =
   "/tenants/exportunity/industrial/catalog/made-in-benin-products.png";
 const SPARE_PARTS_IMAGE =
   "/tenants/exportunity/industrial/catalog/spare-parts.png";
-const FACTORY_TOOLS_IMAGE =
-  "/tenants/exportunity/industrial/catalog/factory-tools.png";
+const SOURCING_IMAGE_BASE =
+  "/tenants/exportunity/industrial/catalog/sourcing";
 
 const GDIZ_2025_SOURCE =
   "https://gdiz-benin.com/fr/2025-a-ete-une-annee-de-realisations-majeures-pour-la-gdiz/";
@@ -198,6 +198,7 @@ export const PUBLIC_INDUSTRIAL_CATALOG: PublicIndustrialCatalogItem[] = [
       en: "Transmission components sourced or made from a reference, drawing, or physical sample.",
     },
     application: "Conveyors, transmissions, and rotating equipment",
+    image: `${SOURCING_IMAGE_BASE}/sprockets-chain-wheels.png`,
     priority: 10,
     compatibleMachinery: ["Conveyors", "Packaging lines", "Process equipment"],
   }),
@@ -209,6 +210,7 @@ export const PUBLIC_INDUSTRIAL_CATALOG: PublicIndustrialCatalogItem[] = [
       en: "Bearings, mounted units, and housings matched to dimensions, load, speed, and plant conditions.",
     },
     application: "Rotating shafts, conveyors, pumps, and production lines",
+    image: `${SOURCING_IMAGE_BASE}/bearings-housings.png`,
     priority: 20,
     compatibleMachinery: ["Pumps", "Conveyors", "Electric motors"],
   }),
@@ -220,6 +222,7 @@ export const PUBLIC_INDUSTRIAL_CATALOG: PublicIndustrialCatalogItem[] = [
       en: "Pulleys, belts, and drive profiles selected from a part reference or machine measurements.",
     },
     application: "Belt-driven production equipment and material handling",
+    image: `${SOURCING_IMAGE_BASE}/pulleys-belts.png`,
     priority: 30,
     compatibleMachinery: ["Fans", "Compressors", "Conveyors"],
   }),
@@ -231,6 +234,7 @@ export const PUBLIC_INDUSTRIAL_CATALOG: PublicIndustrialCatalogItem[] = [
       en: "Flexible or rigid couplings and hubs for motors, pumps, gearboxes, and driven shafts.",
     },
     application: "Power transmission and shaft connection",
+    image: `${SOURCING_IMAGE_BASE}/couplings-hubs.png`,
     priority: 40,
     compatibleMachinery: ["Pumps", "Gearboxes", "Mixers"],
   }),
@@ -242,6 +246,7 @@ export const PUBLIC_INDUSTRIAL_CATALOG: PublicIndustrialCatalogItem[] = [
       en: "Impellers, covers, casings, and wear parts qualified against fluid, dimensions, and service conditions.",
     },
     application: "Water, food processing, utilities, and industrial fluids",
+    image: `${SOURCING_IMAGE_BASE}/pump-parts.png`,
     priority: 50,
     compatibleMachinery: ["Centrifugal pumps", "Process pumps", "Utility systems"],
   }),
@@ -253,6 +258,7 @@ export const PUBLIC_INDUSTRIAL_CATALOG: PublicIndustrialCatalogItem[] = [
       en: "Rollers, shafts, brackets, drums, chains, and components made or sourced for material handling.",
     },
     application: "Bulk handling, packaging, warehousing, and process lines",
+    image: `${SOURCING_IMAGE_BASE}/conveyor-parts.png`,
     priority: 60,
     compatibleMachinery: ["Belt conveyors", "Roller conveyors", "Bucket elevators"],
   }),
@@ -264,6 +270,7 @@ export const PUBLIC_INDUSTRIAL_CATALOG: PublicIndustrialCatalogItem[] = [
       en: "Custom bushings, sleeves, and wear inserts for rotating assemblies and repair work.",
     },
     application: "Rotating assemblies, pivots, and maintenance repair",
+    image: `${SOURCING_IMAGE_BASE}/bushings-sleeves.png`,
     priority: 70,
   }),
   sourcingProduct({
@@ -274,6 +281,7 @@ export const PUBLIC_INDUSTRIAL_CATALOG: PublicIndustrialCatalogItem[] = [
       en: "Structural and interface parts made to drawing, dimensions, material, and operating environment.",
     },
     application: "Machine integration, pipework, mounting, and retrofits",
+    image: `${SOURCING_IMAGE_BASE}/flanges-brackets-bases.png`,
     priority: 80,
   }),
   sourcingProduct({
@@ -285,7 +293,7 @@ export const PUBLIC_INDUSTRIAL_CATALOG: PublicIndustrialCatalogItem[] = [
     },
     application: "Production machinery, conveyors, pumps, and mixers",
     classification: "machinery",
-    image: FACTORY_TOOLS_IMAGE,
+    image: `${SOURCING_IMAGE_BASE}/motors-reducers.png`,
     priority: 90,
   }),
   sourcingProduct({
@@ -297,7 +305,7 @@ export const PUBLIC_INDUSTRIAL_CATALOG: PublicIndustrialCatalogItem[] = [
     },
     application: "Industrial utilities and process systems",
     classification: "machinery",
-    image: FACTORY_TOOLS_IMAGE,
+    image: `${SOURCING_IMAGE_BASE}/pumps-drive-equipment.png`,
     priority: 100,
   }),
   sourcingProduct({
@@ -309,7 +317,7 @@ export const PUBLIC_INDUSTRIAL_CATALOG: PublicIndustrialCatalogItem[] = [
     },
     application: "Inspection, maintenance, assembly, and quality control",
     classification: "industrial_input",
-    image: FACTORY_TOOLS_IMAGE,
+    image: `${SOURCING_IMAGE_BASE}/measurement-maintenance-tools.png`,
     priority: 110,
   }),
   sourcingProduct({
@@ -321,7 +329,7 @@ export const PUBLIC_INDUSTRIAL_CATALOG: PublicIndustrialCatalogItem[] = [
     },
     application: "Industrial automation, motor control, and machine safety",
     classification: "industrial_input",
-    image: FACTORY_TOOLS_IMAGE,
+    image: `${SOURCING_IMAGE_BASE}/sensors-electrical-controls.png`,
     priority: 120,
   }),
   sourcingProduct({
@@ -333,7 +341,7 @@ export const PUBLIC_INDUSTRIAL_CATALOG: PublicIndustrialCatalogItem[] = [
     },
     application: "Obsolete, imported, damaged, or undocumented industrial parts",
     classification: "industrial_service",
-    image: SPARE_PARTS_IMAGE,
+    image: `${SOURCING_IMAGE_BASE}/reverse-engineering.png`,
     priority: 130,
   }),
   factoryProduct({

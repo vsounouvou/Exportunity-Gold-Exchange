@@ -105,6 +105,10 @@ test("factory and map discovery keep Awa, the map, and products in one flow", ()
   assert.match(hub, /alt=\{contextMarkerTitle\}/);
   assert.match(
     hub,
+    /setAttribute\("aria-label", contextMarkerTitle\)/,
+  );
+  assert.match(
+    hub,
     /title=\{`\$\{factory\.name\} - \$\{factory\.industry\}`\}/,
   );
 });

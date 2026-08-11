@@ -1299,15 +1299,10 @@ function IndustrialMap({
         {contexts.map((context) => {
           const active = selectedContext?.id === context.id;
           const style = industrialContextMarkerStyle(context.kind);
-          const contextMarkerTitle = `${industrialContextText(context.name, language)} - ${
-            contextProductCounts[context.id]
-              ? language === "fr"
-                ? `${contextProductCounts[context.id]} produits documentes`
-                : `${contextProductCounts[context.id]} documented products`
-              : language === "fr"
-                ? "information publique"
-                : "public information"
-          }`;
+          const contextMarkerTitle =
+            language === "fr"
+              ? `Ouvrir ${industrialContextText(context.name, language)}`
+              : `Open ${industrialContextText(context.name, language)}`;
           const eventHandlers = onSelectContext
             ? { click: () => onSelectContext(context) }
             : undefined;
@@ -1336,6 +1331,11 @@ function IndustrialMap({
                 )}
                 title={contextMarkerTitle}
                 alt={contextMarkerTitle}
+                ref={(marker) => {
+                  marker
+                    ?.getElement()
+                    ?.setAttribute("aria-label", contextMarkerTitle);
+                }}
                 eventHandlers={eventHandlers}
                 zIndexOffset={active ? 900 : 450}
               >
@@ -1364,6 +1364,16 @@ function IndustrialMap({
             icon={mapFactoryIcon(selectedFactory?.id === factory.id)}
             title={`${factory.name} - ${factory.industry}`}
             alt={`${factory.name} - ${factory.industry}`}
+            ref={(marker) => {
+              marker
+                ?.getElement()
+                ?.setAttribute(
+                  "aria-label",
+                  language === "fr"
+                    ? `Ouvrir ${factory.name} - ${factory.industry}`
+                    : `Open ${factory.name} - ${factory.industry}`,
+                );
+            }}
             eventHandlers={{ click: () => onSelectFactory(factory) }}
           >
             <Tooltip direction="top" offset={[0, -14]} opacity={1}>

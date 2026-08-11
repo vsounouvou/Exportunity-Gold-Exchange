@@ -767,8 +767,8 @@ function assistantContextForSelection({
         : "Exportunity AI | Industrial guide",
     intro:
       language === "fr"
-        ? `Bonjour, je suis Awa Kouadio, votre interlocutrice commerciale. Vous explorez ${industrialContextText(territory.name, language)}. Dites-moi le produit, la piece, la machine, la matiere premiere ou la route export dont vous avez besoin.`
-        : `Hello, I am Awa Kouadio, your commercial lead. You are exploring ${industrialContextText(territory.name, language)}. Tell me which product, part, machine, commodity, or export route you need.`,
+        ? `Bonjour, je suis Awa Kouadio, votre directrice commerciale. Que voulez-vous acheter, sourcer ou faire fabriquer pour ${industrialContextText(territory.name, language)} ?`
+        : `Hello, I am Awa Kouadio, your Commercial Director. What do you need to buy, source, or manufacture for ${industrialContextText(territory.name, language)}?`,
     quickReplies:
       territory.code === "AE"
         ? language === "fr"
@@ -7241,7 +7241,7 @@ export default function IndustrialHubPage() {
                 data-testid="industrial-home-primary"
                 className="grid items-stretch gap-5 xl:grid-cols-[minmax(0,1.08fr)_minmax(440px,0.92fr)] xl:gap-6"
               >
-                <div className="relative min-h-[500px] overflow-hidden rounded-2xl border border-[#F5A623]/35 bg-[#07111F] px-5 py-5 shadow-[0_28px_64px_rgba(7,17,31,0.2)] sm:min-h-[520px] sm:px-8 sm:py-6">
+                <div className="relative min-h-[500px] overflow-hidden rounded-2xl border border-[#F5A623]/35 bg-[#07111F] px-5 py-4 shadow-[0_28px_64px_rgba(7,17,31,0.2)] sm:min-h-[520px] sm:px-8 sm:py-6">
                   <img
                     src="/tenants/exportunity/industrial/machinery-team.png"
                     alt=""
@@ -7257,14 +7257,14 @@ export default function IndustrialHubPage() {
                           : "Exportunity | Awa Kouadio"
                         : copy.heroEyebrow}
                     </p>
-                    <h1 className="mt-3 max-w-2xl text-[26px] font-semibold leading-tight text-white sm:text-3xl">
+                    <h1 className="mt-2 max-w-2xl text-2xl font-semibold leading-tight text-white sm:mt-3 sm:text-3xl">
                       {selectedAssistantProduct
                         ? locale === "fr"
                           ? `Commander ${selectedAssistantProduct.name}`
                           : `Order ${selectedAssistantProduct.name}`
                         : copy.heroTitle}
                     </h1>
-                    <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-200 sm:text-base sm:leading-6">
+                    <p className="mt-2 line-clamp-3 max-w-2xl text-sm leading-[1.4rem] text-slate-200 sm:mt-3 sm:line-clamp-none sm:text-base sm:leading-6">
                       {selectedAssistantProduct
                         ? locale === "fr"
                           ? "Awa qualifie la quantite, la destination, le delai et vos criteres d'achat, puis cree un dossier commercial reel pour confirmation du prix et de la disponibilite."

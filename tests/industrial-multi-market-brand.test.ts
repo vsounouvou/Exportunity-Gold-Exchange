@@ -108,6 +108,14 @@ test("market switching updates the shareable route instead of being reset", () =
   assert.match(hub, /if \(nextLocation !== location\) navigate\(nextLocation\)/);
   assert.match(
     hub,
+    /const changeIndustrialTerritory =[\s\S]*?setSelectedFactory\(null\);[\s\S]*?setSelectedIndustrialContext\(null\);/,
+  );
+  assert.doesNotMatch(
+    hub,
+    /const changeIndustrialTerritory =[\s\S]*?setSelectedIndustrialContext\([\s\S]*?industrialContextsForTerritory\(territoryCode\)\[0\]/,
+  );
+  assert.match(
+    hub,
     /const requestedTerritory = queryValue\(location, "market"\)[\s\S]*?\}, \[location\]\);/,
   );
   assert.doesNotMatch(

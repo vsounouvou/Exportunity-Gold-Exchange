@@ -6460,9 +6460,7 @@ export default function IndustrialHubPage() {
   ) => {
     setSelectedTerritoryCode(territoryCode);
     setSelectedFactory(null);
-    setSelectedIndustrialContext(
-      industrialContextsForTerritory(territoryCode)[0] || null,
-    );
+    setSelectedIndustrialContext(null);
     const [pathname, rawQuery = ""] = location.split("?");
     const params = new URLSearchParams(rawQuery);
     params.set("market", territoryCode);

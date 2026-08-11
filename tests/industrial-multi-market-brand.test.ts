@@ -98,3 +98,20 @@ test("unselected map catalog stays scoped to the active territory", () => {
     /<IndustrialSelectionCommerce[\s\S]*?territory=\{selectedTerritory\}/,
   );
 });
+
+test("market switching updates the shareable route instead of being reset", () => {
+  const hub = readRepoFile(
+    "client/src/pages/exportunity/IndustrialHubPage.tsx",
+  );
+
+  assert.match(hub, /params\.set\("market", territoryCode\)/);
+  assert.match(hub, /if \(nextLocation !== location\) navigate\(nextLocation\)/);
+  assert.match(
+    hub,
+    /const requestedTerritory = queryValue\(location, "market"\)[\s\S]*?\}, \[location\]\);/,
+  );
+  assert.doesNotMatch(
+    hub,
+    /const requestedTerritory = queryValue\(location, "market"\)[\s\S]*?\}, \[location, selectedTerritoryCode\]\);/,
+  );
+});

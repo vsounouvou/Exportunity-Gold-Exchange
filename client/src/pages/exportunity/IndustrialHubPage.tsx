@@ -6211,15 +6211,20 @@ export default function IndustrialHubPage() {
 
   useEffect(() => {
     const requestedTerritory = queryValue(location, "market").toUpperCase();
-    if (
-      isIndustrialTerritoryCode(requestedTerritory) &&
-      requestedTerritory !== selectedTerritoryCode
-    ) {
+    if (isIndustrialTerritoryCode(requestedTerritory)) {
       setSelectedTerritoryCode(requestedTerritory);
-      setSelectedFactory(null);
-      setSelectedIndustrialContext(null);
+      setSelectedFactory((current) =>
+        current && current.countryCode.toUpperCase() !== requestedTerritory
+          ? null
+          : current,
+      );
+      setSelectedIndustrialContext((current) =>
+        current && current.territoryCode !== requestedTerritory
+          ? null
+          : current,
+      );
     }
-  }, [location, selectedTerritoryCode]);
+  }, [location]);
 
   useEffect(() => {
     if (
@@ -6458,6 +6463,11 @@ export default function IndustrialHubPage() {
     setSelectedIndustrialContext(
       industrialContextsForTerritory(territoryCode)[0] || null,
     );
+    const [pathname, rawQuery = ""] = location.split("?");
+    const params = new URLSearchParams(rawQuery);
+    params.set("market", territoryCode);
+    const nextLocation = `${pathname || "/industrial"}?${params.toString()}`;
+    if (nextLocation !== location) navigate(nextLocation);
   };
   const selectFactoryForCommerce = (factory: PublicFactory) => {
     const factoryTerritoryCode = factory.countryCode.toUpperCase();

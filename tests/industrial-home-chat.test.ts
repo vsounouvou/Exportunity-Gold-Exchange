@@ -145,6 +145,25 @@ test("product and quote journeys use Awa's progressive commercial conversation",
   assert.match(assistant, /exportunity_ai_product_order/);
 });
 
+test("factory onboarding is a private one-question Awa conversation", () => {
+  const hub = readRepoFile(
+    "client/src/pages/exportunity/IndustrialHubPage.tsx",
+  );
+  const registerStart = hub.indexOf('{view === "register" ? (');
+  const claimStart = hub.indexOf('{view === "claim" ? (', registerStart);
+  const registerMarkup = hub.slice(registerStart, claimStart);
+
+  assert.ok(registerStart >= 0);
+  assert.ok(claimStart > registerStart);
+  assert.match(registerMarkup, /<FactoryRegistrationConversation/);
+  assert.doesNotMatch(registerMarkup, /<FactoryRegistrationForm/);
+  assert.match(hub, /data-testid="factory-registration-conversation"/);
+  assert.match(hub, /Question[^\n]*\{currentIndex \+ 1\}/);
+  assert.match(hub, /\/api\/industrial\/factories\/register/);
+  assert.match(hub, /Nothing is published before verification/);
+  assert.match(hub, /Submit for verification/);
+});
+
 test("Awa owns the real commercial handoff while specialists join the case", () => {
   const organization = readRepoFile(
     "server/lib/industrial/agentOrganization.ts",

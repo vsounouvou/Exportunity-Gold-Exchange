@@ -4708,6 +4708,537 @@ function commaSeparatedValues(value: string) {
     .filter(Boolean);
 }
 
+type FactoryRegistrationConversationStep =
+  | "legalName"
+  | "primaryIndustry"
+  | "countryCode"
+  | "city"
+  | "productsManufactured"
+  | "exportMarkets"
+  | "industrialInputs"
+  | "contactName"
+  | "contactEmail"
+  | "contactPhone"
+  | "confirm"
+  | "complete";
+
+type FactoryRegistrationConversationMessage = {
+  id: string;
+  sender: "assistant" | "user";
+  text: string;
+};
+
+const FACTORY_REGISTRATION_CONVERSATION_STEPS: Array<
+  Exclude<FactoryRegistrationConversationStep, "confirm" | "complete">
+> = [
+  "legalName",
+  "primaryIndustry",
+  "countryCode",
+  "city",
+  "productsManufactured",
+  "exportMarkets",
+  "industrialInputs",
+  "contactName",
+  "contactEmail",
+  "contactPhone",
+];
+
+function FactoryRegistrationConversation({
+  language,
+}: {
+  language: "fr" | "en";
+}) {
+  const copy =
+    language === "fr"
+      ? {
+          title: "Awa vous accompagne",
+          role: "Directrice commerciale | Onboarding d'usine",
+          available: "Conversation privee",
+          opening:
+            "Bonjour, je suis Awa Kouadio. Je vais creer votre profil d'usine prive, une question a la fois. Rien ne sera publie avant verification. Quel est le nom legal de votre entreprise ?",
+          prompts: {
+            legalName: "Quel est le nom legal de votre entreprise ?",
+            primaryIndustry:
+              "Quelle est votre activite industrielle principale ?",
+            countryCode: "Dans quel pays l'usine opere-t-elle ?",
+            city: "Dans quelle ville ou zone industrielle se trouve-t-elle ?",
+            productsManufactured:
+              "Quels produits fabriquez-vous ? Separez plusieurs produits par des virgules.",
+            exportMarkets:
+              "Quels marches servez-vous ou souhaitez-vous exporter ?",
+            industrialInputs:
+              "Qu'achetez-vous regulierement pour produire : intrants, pieces, machines ou matieres premieres ?",
+            contactName:
+              "Quel est le nom de la personne responsable de ce dossier ?",
+            contactEmail:
+              "Quelle adresse e-mail professionnelle devons-nous utiliser ?",
+            contactPhone:
+              "Quel numero de telephone ou WhatsApp pouvons-nous utiliser ? Vous pouvez passer cette question.",
+          },
+          placeholder: "Ecrivez votre reponse...",
+          send: "Envoyer la reponse",
+          skip: "Passer",
+          reviewTitle: "Verifier le profil prive",
+          reviewText:
+            "Awa va enregistrer ces informations pour revue interne. Aucun profil, produit ou contact ne sera publie automatiquement.",
+          submit: "Soumettre pour verification",
+          restart: "Recommencer",
+          submitting: "Awa enregistre le profil...",
+          invalidCountry: "Utilisez un code pays de 2 ou 3 lettres, par exemple CI, BJ ou AE.",
+          invalidEmail: "Saisissez une adresse e-mail professionnelle valide.",
+          required: "Ajoutez au moins deux caracteres pour continuer.",
+          successFallback:
+            "Votre profil prive est enregistre. L'equipe Exportunity le verifiera avant toute publication.",
+          errorFallback:
+            "Le profil n'a pas pu etre enregistre. Verifiez les informations et reessayez.",
+          signIn: "Ouvrir Mon usine",
+          labels: {
+            legalName: "Entreprise",
+            primaryIndustry: "Industrie",
+            countryCode: "Pays",
+            city: "Ville / zone",
+            productsManufactured: "Produits",
+            exportMarkets: "Marches export",
+            industrialInputs: "Besoins d'achat",
+            contactName: "Responsable",
+            contactEmail: "E-mail",
+            contactPhone: "Telephone / WhatsApp",
+          },
+        }
+      : {
+          title: "Awa guides your onboarding",
+          role: "Commercial Director | Factory onboarding",
+          available: "Private conversation",
+          opening:
+            "Hello, I am Awa Kouadio. I will create your private factory profile one question at a time. Nothing is published before verification. What is your company's legal name?",
+          prompts: {
+            legalName: "What is your company's legal name?",
+            primaryIndustry: "What is your main industrial activity?",
+            countryCode: "In which country does the factory operate?",
+            city: "In which city or industrial zone is it located?",
+            productsManufactured:
+              "Which products do you manufacture? Separate multiple products with commas.",
+            exportMarkets: "Which markets do you serve or plan to export to?",
+            industrialInputs:
+              "What do you buy regularly to produce: inputs, parts, machinery, or raw materials?",
+            contactName: "Who is responsible for this registration?",
+            contactEmail: "Which professional email address should we use?",
+            contactPhone:
+              "Which phone or WhatsApp number may we use? You can skip this question.",
+          },
+          placeholder: "Type your answer...",
+          send: "Send answer",
+          skip: "Skip",
+          reviewTitle: "Review the private profile",
+          reviewText:
+            "Awa will record this information for internal review. No profile, product, or contact is published automatically.",
+          submit: "Submit for verification",
+          restart: "Start again",
+          submitting: "Awa is recording the profile...",
+          invalidCountry: "Use a 2 or 3 letter country code, such as CI, BJ, or AE.",
+          invalidEmail: "Enter a valid professional email address.",
+          required: "Add at least two characters to continue.",
+          successFallback:
+            "Your private profile has been recorded. Exportunity will verify it before publication.",
+          errorFallback:
+            "The profile could not be recorded. Check the information and try again.",
+          signIn: "Open My factory",
+          labels: {
+            legalName: "Company",
+            primaryIndustry: "Industry",
+            countryCode: "Country",
+            city: "City / zone",
+            productsManufactured: "Products",
+            exportMarkets: "Export markets",
+            industrialInputs: "Procurement needs",
+            contactName: "Contact",
+            contactEmail: "Email",
+            contactPhone: "Phone / WhatsApp",
+          },
+        };
+  const [step, setStep] = useState<FactoryRegistrationConversationStep>(
+    "legalName",
+  );
+  const [draft, setDraft] = useState<FactoryRegistrationDraft>({
+    ...EMPTY_FACTORY_REGISTRATION_DRAFT,
+  });
+  const [answer, setAnswer] = useState("");
+  const [messages, setMessages] = useState<
+    FactoryRegistrationConversationMessage[]
+  >([{ id: "opening", sender: "assistant", text: copy.opening }]);
+  const [status, setStatus] = useState<{
+    kind: "idle" | "loading" | "success" | "error";
+    text?: string;
+  }>({ kind: "idle" });
+  const messageLogRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    messageLogRef.current?.scrollTo({
+      top: messageLogRef.current.scrollHeight,
+      behavior: "smooth",
+    });
+  }, [messages, status.kind]);
+
+  const currentIndex = FACTORY_REGISTRATION_CONVERSATION_STEPS.indexOf(
+    step as (typeof FACTORY_REGISTRATION_CONVERSATION_STEPS)[number],
+  );
+  const quickReplies =
+    step === "primaryIndustry"
+      ? language === "fr"
+        ? [
+            "Agro-transformation",
+            "Textile",
+            "Metallurgie",
+            "Emballage",
+            "Logistique",
+          ]
+        : [
+            "Agro-processing",
+            "Textiles",
+            "Metalworking",
+            "Packaging",
+            "Logistics",
+          ]
+      : step === "countryCode"
+        ? ["CI - Cote d'Ivoire", "BJ - Benin", "AE - UAE"]
+        : step === "exportMarkets"
+          ? language === "fr"
+            ? ["Afrique de l'Ouest", "Europe", "Moyen-Orient", copy.skip]
+            : ["West Africa", "Europe", "Middle East", copy.skip]
+          : step === "industrialInputs"
+            ? language === "fr"
+              ? [
+                  "Pieces de rechange",
+                  "Matieres premieres",
+                  "Machines",
+                  copy.skip,
+                ]
+              : ["Spare parts", "Raw materials", "Machinery", copy.skip]
+            : step === "contactPhone"
+              ? [copy.skip]
+              : [];
+
+  const appendMessage = (
+    sender: FactoryRegistrationConversationMessage["sender"],
+    text: string,
+  ) => {
+    setMessages((current) => [
+      ...current,
+      { id: `${Date.now()}-${current.length}`, sender, text },
+    ]);
+  };
+
+  const submitAnswer = (providedAnswer?: string) => {
+    if (step === "confirm" || step === "complete") return;
+    const rawValue = (providedAnswer ?? answer).trim();
+    const canSkip =
+      step === "exportMarkets" ||
+      step === "industrialInputs" ||
+      step === "contactPhone";
+    const isSkipped = canSkip && rawValue === copy.skip;
+    const normalizedValue = isSkipped
+      ? ""
+      : step === "countryCode"
+        ? rawValue.split(/\s+-\s+/)[0].toUpperCase()
+        : rawValue;
+
+    if (!isSkipped && normalizedValue.length < 2) {
+      setStatus({ kind: "error", text: copy.required });
+      return;
+    }
+    if (
+      step === "countryCode" &&
+      !/^[A-Z]{2,3}$/.test(normalizedValue)
+    ) {
+      setStatus({ kind: "error", text: copy.invalidCountry });
+      return;
+    }
+    if (
+      step === "contactEmail" &&
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedValue)
+    ) {
+      setStatus({ kind: "error", text: copy.invalidEmail });
+      return;
+    }
+
+    setStatus({ kind: "idle" });
+    setDraft((current) => ({ ...current, [step]: normalizedValue }));
+    appendMessage("user", rawValue || copy.skip);
+    setAnswer("");
+    const nextIndex = currentIndex + 1;
+    if (nextIndex >= FACTORY_REGISTRATION_CONVERSATION_STEPS.length) {
+      setStep("confirm");
+      appendMessage("assistant", copy.reviewText);
+      return;
+    }
+    const nextStep = FACTORY_REGISTRATION_CONVERSATION_STEPS[nextIndex];
+    setStep(nextStep);
+    appendMessage("assistant", copy.prompts[nextStep]);
+  };
+
+  const restart = () => {
+    setDraft({ ...EMPTY_FACTORY_REGISTRATION_DRAFT });
+    setAnswer("");
+    setStep("legalName");
+    setStatus({ kind: "idle" });
+    setMessages([{ id: `opening-${Date.now()}`, sender: "assistant", text: copy.opening }]);
+  };
+
+  const submitRegistration = async () => {
+    setStatus({ kind: "loading" });
+    try {
+      const response = await fetch("/api/industrial/factories/register", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          legalName: draft.legalName,
+          displayName: draft.legalName,
+          registrationNumber: "",
+          countryCode: draft.countryCode,
+          city: draft.city,
+          region: "",
+          industrialZone: "",
+          publicAddress: "",
+          primaryIndustry: draft.primaryIndustry,
+          website: "",
+          publicDescription: draft.productsManufactured
+            ? `${draft.legalName}: ${draft.productsManufactured}`
+            : "",
+          foundingYear: "",
+          employeeRange: "",
+          factorySize: "",
+          productionCapacity: "",
+          productsManufactured: commaSeparatedValues(
+            draft.productsManufactured,
+          ),
+          exportMarkets: commaSeparatedValues(draft.exportMarkets),
+          certifications: [],
+          rawMaterials: [],
+          industrialInputs: commaSeparatedValues(draft.industrialInputs),
+          recurringSpareParts: [],
+          procurementFrequency: "",
+          productionLines: [],
+          principalMachines: [],
+          assemblies: [],
+          components: [],
+          contactName: draft.contactName,
+          contactEmail: draft.contactEmail,
+          contactPhone: draft.contactPhone,
+        }),
+      });
+      const payload = await response.json();
+      if (!response.ok || !payload?.ok) {
+        throw new Error(payload?.message || copy.errorFallback);
+      }
+      const successText = payload.message || copy.successFallback;
+      setStatus({ kind: "success", text: successText });
+      setStep("complete");
+      appendMessage("assistant", successText);
+    } catch (error: any) {
+      setStatus({
+        kind: "error",
+        text: error?.message || copy.errorFallback,
+      });
+    }
+  };
+
+  const summaryRows = FACTORY_REGISTRATION_CONVERSATION_STEPS.map(
+    (field) => ({
+      field,
+      label: copy.labels[field],
+      value: draft[field],
+    }),
+  ).filter((row) => row.value);
+
+  return (
+    <section
+      data-testid="factory-registration-conversation"
+      aria-label={copy.title}
+      className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_22px_54px_rgba(15,23,42,0.12)] dark:border-[#F5A623]/30 dark:bg-[#07111F]"
+    >
+      <header className="flex items-center justify-between gap-3 bg-[#07111F] px-4 py-3 text-white">
+        <div className="flex min-w-0 items-center gap-3">
+          <img
+            src="/tenants/exportunity/industrial/awa-kouadio.webp"
+            alt=""
+            className="h-10 w-10 shrink-0 rounded-lg border border-[#F5A623]/55 object-cover"
+          />
+          <div className="min-w-0">
+            <h2 className="truncate text-sm font-semibold">{copy.title}</h2>
+            <p className="truncate text-xs text-slate-300">{copy.role}</p>
+          </div>
+        </div>
+        <span className="shrink-0 rounded-full border border-[#F5A623]/35 bg-[#F5A623]/10 px-2.5 py-1 text-[11px] font-semibold text-[#f8c45b]">
+          {copy.available}
+        </span>
+      </header>
+
+      {step !== "confirm" && step !== "complete" ? (
+        <div className="border-b border-slate-200 bg-slate-50 px-4 py-2 dark:border-white/10 dark:bg-white/[0.04]">
+          <div className="flex items-center justify-between text-xs font-medium text-slate-600 dark:text-slate-300">
+            <span>
+              {language === "fr" ? "Question" : "Question"} {currentIndex + 1}
+              {" / "}
+              {FACTORY_REGISTRATION_CONVERSATION_STEPS.length}
+            </span>
+            <span>{Math.round(((currentIndex + 1) / FACTORY_REGISTRATION_CONVERSATION_STEPS.length) * 100)}%</span>
+          </div>
+          <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-slate-200 dark:bg-white/10">
+            <div
+              className="h-full rounded-full bg-[#F5A623] transition-[width] duration-300"
+              style={{
+                width: `${((currentIndex + 1) / FACTORY_REGISTRATION_CONVERSATION_STEPS.length) * 100}%`,
+              }}
+            />
+          </div>
+        </div>
+      ) : null}
+
+      <div
+        ref={messageLogRef}
+        role="log"
+        aria-live="polite"
+        aria-label={
+          language === "fr"
+            ? "Conversation d'onboarding avec Awa"
+            : "Onboarding conversation with Awa"
+        }
+        className="max-h-[360px] space-y-3 overflow-y-auto bg-white px-4 py-4 dark:bg-[#07111F]"
+      >
+        {messages.map((message) => (
+          <div
+            key={message.id}
+            className={cn(
+              "max-w-[92%] rounded-2xl px-3.5 py-3 text-sm leading-6 shadow-sm",
+              message.sender === "assistant"
+                ? "border border-slate-200 bg-slate-50 text-slate-800 dark:border-white/10 dark:bg-white/10 dark:text-slate-100"
+                : "ml-auto bg-[#F5A623] text-[#07111F]",
+            )}
+          >
+            {message.sender === "assistant" ? (
+              <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#946000] dark:text-[#f8c45b]">
+                Awa Kouadio
+              </p>
+            ) : null}
+            <p className="whitespace-pre-wrap">{message.text}</p>
+          </div>
+        ))}
+      </div>
+
+      {step === "confirm" || step === "complete" ? (
+        <div className="border-t border-slate-200 bg-slate-50 px-4 py-4 dark:border-white/10 dark:bg-white/[0.04]">
+          <h3 className="text-sm font-semibold text-slate-950 dark:text-white">
+            {copy.reviewTitle}
+          </h3>
+          <dl className="mt-3 grid gap-2 sm:grid-cols-2">
+            {summaryRows.map((row) => (
+              <div key={row.field} className="min-w-0 rounded-lg bg-white px-3 py-2 dark:bg-white/[0.05]">
+                <dt className="text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-500 dark:text-slate-400">
+                  {row.label}
+                </dt>
+                <dd className="mt-1 break-words text-sm font-medium text-slate-900 dark:text-white">
+                  {row.value}
+                </dd>
+              </div>
+            ))}
+          </dl>
+          {step === "confirm" ? (
+            <div className="mt-4 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => void submitRegistration()}
+                disabled={status.kind === "loading"}
+                className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-[#F5A623] px-4 py-2 text-sm font-semibold text-[#07111F] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {status.kind === "loading" ? (
+                  <LoaderCircle className="h-4 w-4 animate-spin" />
+                ) : (
+                  <CheckCircle2 className="h-4 w-4" />
+                )}
+                {status.kind === "loading" ? copy.submitting : copy.submit}
+              </button>
+              <button
+                type="button"
+                onClick={restart}
+                className="inline-flex min-h-10 items-center rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-800 dark:border-white/15 dark:bg-white/[0.04] dark:text-white"
+              >
+                {copy.restart}
+              </button>
+            </div>
+          ) : (
+            <Link
+              href="/my-factory"
+              className="mt-4 inline-flex min-h-10 items-center gap-2 rounded-lg bg-[#F5A623] px-4 py-2 text-sm font-semibold text-[#07111F]"
+            >
+              <Factory className="h-4 w-4" />
+              {copy.signIn}
+            </Link>
+          )}
+        </div>
+      ) : null}
+
+      {quickReplies.length > 0 && step !== "complete" ? (
+        <div className="scrollbar-hide flex gap-2 overflow-x-auto border-t border-slate-200 bg-white px-4 py-2 dark:border-white/10 dark:bg-[#07111F]">
+          {quickReplies.map((reply) => (
+            <button
+              key={reply}
+              type="button"
+              onClick={() => submitAnswer(reply)}
+              className="shrink-0 rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:border-[#F5A623] hover:bg-[#F5A623]/10 dark:border-white/20 dark:bg-white/10 dark:text-white"
+            >
+              {reply}
+            </button>
+          ))}
+        </div>
+      ) : null}
+
+      {status.kind === "error" ? (
+        <p className="border-t border-rose-200 bg-rose-50 px-4 py-2.5 text-xs leading-5 text-rose-800 dark:border-rose-300/20 dark:bg-rose-300/10 dark:text-rose-100">
+          {status.text}
+        </p>
+      ) : null}
+
+      {step !== "confirm" && step !== "complete" ? (
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            submitAnswer();
+          }}
+          className="border-t border-slate-200 bg-white p-3 dark:border-white/10 dark:bg-[#07111F]"
+        >
+          <label className="flex items-end gap-2 rounded-xl border border-slate-300 bg-slate-50 p-1.5 focus-within:border-[#F5A623] focus-within:bg-white focus-within:ring-2 focus-within:ring-[#F5A623]/20 dark:border-white/15 dark:bg-white/[0.06]">
+            <span className="sr-only">{copy.prompts[step]}</span>
+            <textarea
+              value={answer}
+              onChange={(event) => setAnswer(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && !event.shiftKey) {
+                  event.preventDefault();
+                  submitAnswer();
+                }
+              }}
+              rows={1}
+              maxLength={3000}
+              aria-label={copy.prompts[step]}
+              placeholder={copy.placeholder}
+              className="min-h-10 max-h-28 min-w-0 flex-1 resize-none bg-transparent px-2 py-2.5 text-sm leading-5 text-slate-950 outline-none placeholder:text-slate-400 dark:text-white"
+            />
+            <button
+              type="submit"
+              disabled={!answer.trim()}
+              aria-label={copy.send}
+              title={copy.send}
+              className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-[#F5A623] text-[#07111F] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <ArrowRight className="h-4 w-4" />
+            </button>
+          </label>
+        </form>
+      ) : null}
+    </section>
+  );
+}
+
 function FactoryRegistrationForm({ language }: { language: "fr" | "en" }) {
   const steps =
     language === "fr"
@@ -8141,7 +8672,7 @@ export default function IndustrialHubPage() {
               ) : null}
               {view === "register" ? (
                 <section className="mt-7 max-w-4xl">
-                  <FactoryRegistrationForm language={locale} />
+                  <FactoryRegistrationConversation language={locale} />
                 </section>
               ) : null}
               {view === "claim" ? (

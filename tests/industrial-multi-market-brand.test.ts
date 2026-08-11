@@ -79,3 +79,22 @@ test("territory selection preserves one real commercial conversation", () => {
   assert.match(hub, /sourcing pour la Cote d'Ivoire/);
   assert.match(hub, /sourcing international depuis Dubai/);
 });
+
+test("unselected map catalog stays scoped to the active territory", () => {
+  const hub = readRepoFile(
+    "client/src/pages/exportunity/IndustrialHubPage.tsx",
+  );
+
+  assert.match(
+    hub,
+    /if \(selectedIndustrialContext\) \{[\s\S]*?return contextCatalogItems\(selectedIndustrialContext, catalogItems\);[\s\S]*?\}[\s\S]*?return territoryCatalogItems;/,
+  );
+  assert.match(
+    hub,
+    /Industrial offerings - \$\{industrialContextText\(territory\.shortName, language\)\}/,
+  );
+  assert.match(
+    hub,
+    /<IndustrialSelectionCommerce[\s\S]*?territory=\{selectedTerritory\}/,
+  );
+});

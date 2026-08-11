@@ -1886,6 +1886,7 @@ function FactoryMapContextPanel({
 function IndustrialSelectionCommerce({
   selectedFactory,
   selectedContext,
+  territory,
   items,
   loading,
   language,
@@ -1894,6 +1895,7 @@ function IndustrialSelectionCommerce({
 }: {
   selectedFactory: PublicFactory | null;
   selectedContext: IndustrialContextLocation | null;
+  territory: IndustrialTerritory;
   items: CatalogItem[];
   loading: boolean;
   language: "fr" | "en";
@@ -1908,8 +1910,8 @@ function IndustrialSelectionCommerce({
     : selectedContext
       ? industrialContextText(selectedContext.name, language)
       : language === "fr"
-        ? "Producteurs et produits documentes"
-        : "Documented producers and products";
+        ? `Offres industrielles - ${industrialContextText(territory.shortName, language)}`
+        : `Industrial offerings - ${industrialContextText(territory.shortName, language)}`;
   const detail = selectedFactory
     ? language === "fr"
       ? "Les produits approuves de cette usine apparaissent ici. La commande confirme ensuite quantite, prix, delai et paiement."
@@ -1923,8 +1925,8 @@ function IndustrialSelectionCommerce({
           ? "Ce repere donne le contexte industriel. Les offres ci-dessous sont des pistes documentees ou des services de sourcing a verifier avec Awa."
           : "This reference provides industrial context. The offerings below are documented leads or sourcing services to verify with Awa."
         : language === "fr"
-          ? "Selectionnez GDIZ ou une usine publiee pour voir directement ce qu'elle produit."
-          : "Select GDIZ or a published factory to see what it produces.";
+          ? `Explorez les offres publiees et les programmes de sourcing disponibles pour ${industrialContextText(territory.name, language)}. Selectionnez une zone ou une usine pour affiner les resultats.`
+          : `Explore published offerings and sourcing programs available for ${industrialContextText(territory.name, language)}. Select a zone or factory to refine the results.`;
 
   return (
     <section
@@ -6399,8 +6401,16 @@ export default function IndustrialHubPage() {
         (item) => item.factoryId === selectedFactory.id,
       );
     }
-    return contextCatalogItems(selectedIndustrialContext, catalogItems);
-  }, [catalogItems, selectedFactory, selectedIndustrialContext]);
+    if (selectedIndustrialContext) {
+      return contextCatalogItems(selectedIndustrialContext, catalogItems);
+    }
+    return territoryCatalogItems;
+  }, [
+    catalogItems,
+    selectedFactory,
+    selectedIndustrialContext,
+    territoryCatalogItems,
+  ]);
   const contextProductCounts = useMemo(
     () =>
       Object.fromEntries(
@@ -7254,6 +7264,7 @@ export default function IndustrialHubPage() {
                   <IndustrialSelectionCommerce
                     selectedFactory={selectedFactory}
                     selectedContext={selectedIndustrialContext}
+                    territory={selectedTerritory}
                     items={selectionCatalogItems}
                     loading={catalogLoading}
                     language={locale}
@@ -7414,6 +7425,7 @@ export default function IndustrialHubPage() {
                       <IndustrialSelectionCommerce
                         selectedFactory={selectedFactory}
                         selectedContext={selectedIndustrialContext}
+                        territory={selectedTerritory}
                         items={selectionCatalogItems}
                         loading={catalogLoading}
                         language={locale}
@@ -7473,6 +7485,7 @@ export default function IndustrialHubPage() {
                         <IndustrialSelectionCommerce
                           selectedFactory={selectedFactory}
                           selectedContext={selectedIndustrialContext}
+                          territory={selectedTerritory}
                           items={selectionCatalogItems}
                           loading={catalogLoading}
                           language={locale}

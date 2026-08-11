@@ -36,6 +36,10 @@ test("Exportunity industrial home leads with Awa's case-backed commercial conver
     homeMarkup,
     /<IndustrialAssistantChat[\s\S]*?context=\{selectionAssistantContext\}[\s\S]*?product=\{selectedAssistantProduct\}/,
   );
+  assert.match(
+    homeMarkup,
+    /onDiscoveryRequest=\{handleAssistantDiscoveryRequest\}/,
+  );
   assert.match(homeMarkup, /data-testid="industrial-home-context-card"/);
   assert.match(
     hub,
@@ -67,6 +71,17 @@ test("Exportunity industrial home leads with Awa's case-backed commercial conver
   assert.match(assistant, /priorityQuestion/);
   assert.match(assistant, /Exportunity AI/);
   assert.match(assistant, /VoiceToTextButton/);
+  assert.match(assistant, /discoveryReplies\?: string\[\]/);
+  assert.match(assistant, /onDiscoveryRequest\?:/);
+  assert.match(
+    assistant,
+    /const isDiscoveryRequest =[\s\S]*?onDiscoveryRequest\(message\)[\s\S]*?return;[\s\S]*?\/api\/industrial\/assistant\/intake-preview/,
+  );
+  assert.match(hub, /const handleAssistantDiscoveryRequest =/);
+  assert.match(
+    hub,
+    /discoveryReplies:[\s\S]*?Voir les producteurs de la GDIZ/,
+  );
   assert.doesNotMatch(assistant, /bg-\[#02070e\]\/92/);
   assert.match(assistant, /dark:bg-\[#02070e\]\/\[0\.96\]/);
 });
@@ -90,6 +105,10 @@ test("factory and map discovery keep Awa, the map, and products in one flow", ()
     assert.match(markup, /<IndustrialMap/);
     assert.match(markup, /<IndustrialAssistantChat/);
     assert.match(markup, /context=\{selectionAssistantContext\}/);
+    assert.match(
+      markup,
+      /onDiscoveryRequest=\{handleAssistantDiscoveryRequest\}/,
+    );
     assert.match(markup, /<IndustrialSelectionCommerce/);
   }
 

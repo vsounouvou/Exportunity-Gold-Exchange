@@ -551,6 +551,10 @@ function assistantContextForSelection({
               "Attach a part photo",
               "Arrange delivery",
             ],
+      discoveryReplies:
+        language === "fr"
+          ? [`Que vend ${factory.name} ?`]
+          : [`What does ${factory.name} sell?`],
     };
   }
 
@@ -582,6 +586,10 @@ function assistantContextForSelection({
               "Find packaging",
               "Check availability",
             ],
+      discoveryReplies:
+        language === "fr"
+          ? ["Voir les producteurs de la GDIZ"]
+          : ["Show GDIZ producers"],
     };
   }
 
@@ -613,6 +621,10 @@ function assistantContextForSelection({
               "Find a supplier",
               "Request a logistics quote",
             ],
+      discoveryReplies:
+        language === "fr"
+          ? ["Voir les produits prets a exporter"]
+          : ["Show export-ready products"],
     };
   }
 
@@ -707,6 +719,10 @@ function assistantContextForSelection({
               "Source an industrial input",
               "Open an order",
             ],
+      discoveryReplies:
+        language === "fr"
+          ? ["Trouver un fabricant", "Voir les produits exportables"]
+          : ["Find a manufacturer", "Show export-ready products"],
     };
   }
 
@@ -849,6 +865,16 @@ function assistantContextForSelection({
                 "Source a machine",
                 "Start an order",
               ],
+    discoveryReplies:
+      territory.code === "CI"
+        ? language === "fr"
+          ? ["Trouver un fabricant a Abidjan", "Voir les produits exportables"]
+          : ["Find a manufacturer in Abidjan", "Show export-ready products"]
+        : territory.code === "BJ"
+          ? language === "fr"
+            ? ["Voir les producteurs de la GDIZ", "Voir les produits exportables"]
+            : ["Show GDIZ producers", "Show export-ready products"]
+          : [],
   };
 }
 
@@ -7281,12 +7307,16 @@ export default function IndustrialHubPage() {
     window.setTimeout(() => {
       const section = selectionCommerceRef.current;
       if (!section) return;
+      if (view === "map") {
+        section.scrollIntoView({ behavior: "smooth", block: "start" });
+        return;
+      }
       const top = section.getBoundingClientRect().top + window.scrollY - 92;
       window.scrollTo({ top: Math.max(0, top), behavior: "smooth" });
     }, 80);
   };
   const revealCommerceSelection = () => {
-    if (view !== "home" && view !== "factories") return;
+    if (view !== "home" && view !== "factories" && view !== "map") return;
     scrollToSelectionCommerce();
   };
   const changeIndustrialTerritory = (
@@ -7317,6 +7347,55 @@ export default function IndustrialHubPage() {
     setSelectedFactory(null);
     setSelectedIndustrialContext(context);
     revealCommerceSelection();
+  };
+  const handleAssistantDiscoveryRequest = (message: string) => {
+    const normalizedMessage = message
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLocaleLowerCase();
+    let targetContext = selectedIndustrialContext;
+
+    if (normalizedMessage.includes("gdiz")) {
+      targetContext =
+        territoryContexts.find((context) => context.id === "gdiz") || null;
+    } else if (!selectedFactory && !targetContext) {
+      const wantsExportProducts =
+        normalizedMessage.includes("export") ||
+        normalizedMessage.includes("produits exportables");
+      targetContext = wantsExportProducts
+        ? territoryContexts.find(
+            (context) => context.id === "port-cotonou",
+          ) || null
+        : null;
+      targetContext ||= [...territoryContexts].sort(
+        (left, right) =>
+          contextCatalogItems(right, catalogItems).length -
+          contextCatalogItems(left, catalogItems).length,
+      )[0] || null;
+    }
+
+    if (
+      targetContext &&
+      selectedIndustrialContext?.id !== targetContext.id
+    ) {
+      selectIndustrialContextForCommerce(targetContext);
+    } else {
+      scrollToSelectionCommerce();
+    }
+
+    if (selectedFactory) {
+      return locale === "fr"
+        ? `Je vous montre maintenant les produits approuves de ${selectedFactory.name}.`
+        : `I am now showing the approved products from ${selectedFactory.name}.`;
+    }
+    if (targetContext?.id === "gdiz") {
+      return locale === "fr"
+        ? "Je vous montre maintenant les producteurs et produits documentes de la GDIZ ci-dessous."
+        : "I am now showing the documented GDIZ producers and products below.";
+    }
+    return locale === "fr"
+      ? "Je vous montre maintenant les offres industrielles documentees ci-dessous."
+      : "I am now showing the documented industrial offerings below.";
   };
   const queryCategory = queryValue(location, "category");
   const selectedCategory = useMemo(
@@ -8021,6 +8100,7 @@ export default function IndustrialHubPage() {
                         context={selectionAssistantContext}
                         product={selectedAssistantProduct}
                         onCloseProduct={() => updateOrderConversation(null)}
+                        onDiscoveryRequest={handleAssistantDiscoveryRequest}
                       />
                     </div>
                     <div className="mt-4 grid grid-cols-3 gap-2 border-t border-white/15 pt-4">
@@ -8336,20 +8416,23 @@ export default function IndustrialHubPage() {
                         context={selectionAssistantContext}
                         product={selectedAssistantProduct}
                         onCloseProduct={() => updateOrderConversation(null)}
+                        onDiscoveryRequest={handleAssistantDiscoveryRequest}
                         className="!mt-0 shadow-[0_22px_54px_rgba(7,17,31,0.22)]"
                       />
-                      <IndustrialSelectionCommerce
-                        selectedFactory={selectedFactory}
-                        selectedContext={selectedIndustrialContext}
-                        territory={selectedTerritory}
-                        factories={factories}
-                        items={selectionCatalogItems}
-                        loading={catalogLoading}
-                        language={locale}
-                        activeItemId={selectedOrderItemId || null}
-                        onSelectFactory={selectFactoryForCommerce}
-                        onStartConversation={updateOrderConversation}
-                      />
+                      <div ref={selectionCommerceRef} className="scroll-mt-4">
+                        <IndustrialSelectionCommerce
+                          selectedFactory={selectedFactory}
+                          selectedContext={selectedIndustrialContext}
+                          territory={selectedTerritory}
+                          factories={factories}
+                          items={selectionCatalogItems}
+                          loading={catalogLoading}
+                          language={locale}
+                          activeItemId={selectedOrderItemId || null}
+                          onSelectFactory={selectFactoryForCommerce}
+                          onStartConversation={updateOrderConversation}
+                        />
+                      </div>
                     </aside>
                   </div>
                 </section>
@@ -8424,6 +8507,7 @@ export default function IndustrialHubPage() {
                         context={selectionAssistantContext}
                         product={selectedAssistantProduct}
                         onCloseProduct={() => updateOrderConversation(null)}
+                        onDiscoveryRequest={handleAssistantDiscoveryRequest}
                         className="!mt-0 shadow-[0_22px_54px_rgba(7,17,31,0.22)]"
                       />
                       <p className="mt-3 px-1 text-xs leading-5 text-slate-500 dark:text-slate-400">

@@ -19,6 +19,7 @@ export type IndustrialAssistantContext = {
   intro: string;
   role?: string;
   quickReplies?: string[];
+  discoveryReplies?: string[];
   requirementType?: string | null;
   destinationReplies?: string[];
   territoryCode?: string | null;
@@ -396,6 +397,7 @@ export function IndustrialAssistantChat({
   product,
   mode = "commercial",
   onCloseProduct,
+  onDiscoveryRequest,
   className,
 }: {
   language: Language;
@@ -404,6 +406,7 @@ export function IndustrialAssistantChat({
   product?: IndustrialAssistantProductContext | null;
   mode?: "concierge" | "commercial";
   onCloseProduct?: (() => void) | null;
+  onDiscoveryRequest?: ((message: string) => string | null | void) | null;
   className?: string;
 }) {
   const copy =
@@ -887,6 +890,17 @@ export function IndustrialAssistantChat({
     setError(null);
     setDraft("");
     appendUser(message);
+
+    const isDiscoveryRequest = context?.discoveryReplies?.some(
+      (reply) =>
+        reply.trim().toLocaleLowerCase() ===
+        message.trim().toLocaleLowerCase(),
+    );
+    if (step === "need" && isDiscoveryRequest && onDiscoveryRequest) {
+      const response = onDiscoveryRequest(message);
+      if (response) appendAssistant(response);
+      return;
+    }
 
     if (step === "need") {
       setInitialNeed(message);

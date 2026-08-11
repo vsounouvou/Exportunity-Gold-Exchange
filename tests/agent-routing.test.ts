@@ -70,5 +70,9 @@ test("explicit no-task instructions suppress automatic accountability task creat
     true,
   );
   assert.equal(prohibitsTaskCreation("Ne creer pas de taches pour cette question."), true);
+  assert.equal(prohibitsTaskCreation("Ne cree aucune tache et ne contacte personne."), true);
+  assert.equal(prohibitsTaskCreation("Confirme que tu n'as cree aucune tache."), true);
+  assert.equal(prohibitsTaskCreation("Confirme que tu n’as créé aucune tâche."), true);
+  assert.equal(prohibitsTaskCreation("Resume ce document sans creer de tache."), true);
   assert.equal(prohibitsTaskCreation("Create three tasks from this plan."), false);
 });

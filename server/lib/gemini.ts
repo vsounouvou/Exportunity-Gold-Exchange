@@ -67,7 +67,7 @@ async function geminiGenerateText(prompt: string) {
       contents: [{ role: "user", parts: [{ text: prompt }] }],
       generationConfig: {
         temperature: 0.7,
-        maxOutputTokens: 512,
+        maxOutputTokens: 768,
       },
     }),
   });
@@ -96,7 +96,7 @@ export async function generateAgentResponse(
     const eligibility = await validateCreditEligibility({
       agentId: options.agentId,
       model: getGeminiModel(),
-      estimatedTokens: 500,
+      estimatedTokens: 900,
     });
     if (!eligibility.eligible) {
       throw new Error(`Agent ${options.agentId} cannot make Gemini call: ${eligibility.reason || "Token policy denied"}`);
@@ -143,7 +143,7 @@ ${conversationHistory}
 ${emailContextBlock}
 
 CRITICAL EFFICIENCY RULES:
-1. Keep responses EXTREMELY SHORT (2-3 sentences maximum)
+1. Default to 2-3 sentences. When the user requests multiple points, sections, risks, or document analysis, complete every requested item concisely.
 2. Be sharp, professional, and direct
 3. NO fluff, pleasantries, or unnecessary words
 4. Get straight to the point
@@ -156,7 +156,7 @@ ${actionRules}
 
 Response Format Required:
 [Analysis] One sentence only - what you'll contribute
-[Response] 2-3 sentences maximum - your actual message
+[Response] Concise but complete - include every explicitly requested point or section
 [Continue] Yes or No only
 
 User message:

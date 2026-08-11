@@ -168,6 +168,11 @@ import {
   stripAgentActionMarkers,
 } from "./lib/actions/agentActionIntents";
 import { prohibitsTaskCreation } from "./lib/actions/instructionGuards";
+import {
+  canonicalizeEvidenceReferences,
+  requestsActionReceipt,
+  selectEvidenceCitationsForResponse,
+} from "./lib/agent-response-evidence";
 import { getSettingsByPrefix } from "./lib/settings";
 import { deriveAgentMemoryAccessPolicy, isTassiGlobalAgent } from "./lib/memory/scoping";
 import { getTenantConfigByKey } from "../tenants/index";
@@ -822,7 +827,7 @@ async function ensurePrimaryConversationTask(input: {
     orderBy: [desc(tasks.id)],
     columns: { id: true },
   });
-  if (existing?.id) return existing.id;
+  if (existing?.id) return { id: existing.id, created: false };
 
   const title = conversationTaskTitle;
   const description = String(input.description || "").trim() || String(input.titleSource || "").trim() || title;
@@ -841,7 +846,7 @@ async function ensurePrimaryConversationTask(input: {
     } as any)
     .returning({ id: tasks.id });
 
-  return created?.id ?? null;
+  return created?.id ? { id: created.id, created: true } : null;
 }
 
 async function recordTaskProgressEvent(input: {
@@ -4425,15 +4430,18 @@ ${governanceContext}`;
       }
 
       let primaryTaskId: number | null = null;
+      let primaryTaskCreated = false;
       if (accountabilityEnabled && tenantId && !taskCreationProhibited) {
         try {
-          primaryTaskId = await ensurePrimaryConversationTask({
+          const primaryTask = await ensurePrimaryConversationTask({
             companyId,
             conversationId,
             titleSource: contentForStorage,
             description: contentForStorage,
             ownerAgentId: parsePositiveInt(responderAgents[0]?.id),
           });
+          primaryTaskId = primaryTask?.id ?? null;
+          primaryTaskCreated = Boolean(primaryTask?.created);
           if (primaryTaskId) {
             await recordTaskProgressEvent({
               tenantId,
@@ -7660,6 +7668,7 @@ Respond helpfully with your full platform awareness.`,
         });
 
         let primaryTaskId: number | null = null;
+        let primaryTaskCreated = false;
         const taskCreationProhibited = prohibitsTaskCreation(content);
         if (accountabilityEnabled && tenantId && !taskCreationProhibited) {
           try {
@@ -7667,13 +7676,15 @@ Respond helpfully with your full platform awareness.`,
               parsePositiveInt((responderMembers[0] as any)?.agent?.id) ??
               parsePositiveInt((activeMembers[0] as any)?.agent?.id) ??
               null;
-            primaryTaskId = await ensurePrimaryConversationTask({
+            const primaryTask = await ensurePrimaryConversationTask({
               companyId: effectiveCompanyId ? Number(effectiveCompanyId) : null,
               conversationId,
               titleSource: content,
               description: content,
               ownerAgentId,
             });
+            primaryTaskId = primaryTask?.id ?? null;
+            primaryTaskCreated = Boolean(primaryTask?.created);
             if (primaryTaskId) {
               await recordTaskProgressEvent({
                 tenantId,
@@ -7764,6 +7775,12 @@ Respond helpfully with your full platform awareness.`,
 
               const agentName = member.agent?.name || "AI Agent";
               const agentRole = member.agent?.role || "assistant";
+              const evidenceCitations = selectEvidenceCitationsForResponse({
+                userText: content,
+                currentAttachments: attachments,
+                recentMessages: latestMessages,
+              });
+              const actionReceiptRequested = requestsActionReceipt(content) || taskCreationProhibited;
               let emailContext: Awaited<ReturnType<typeof resolveAgentEmailContext>> | null = null;
               try {
                 emailContext = await resolveAgentEmailContext({
@@ -7856,7 +7873,11 @@ Respond helpfully with your full platform awareness.`,
                 shouldContinue
               });
 
-              const visibleAgentResponse = stripAgentActionMarkers(response) || response;
+              const strippedAgentResponse = stripAgentActionMarkers(response) || response;
+              const visibleAgentResponse = canonicalizeEvidenceReferences(
+                strippedAgentResponse,
+                evidenceCitations,
+              );
               const completionClaim = hasCompletionClaim(visibleAgentResponse);
 
               if (noiseSuppressionEnabled && isNoiseMessage(visibleAgentResponse, null)) {
@@ -7894,6 +7915,9 @@ Respond helpfully with your full platform awareness.`,
                 completionClaim,
                 requiresReceiptForCompletion: accountabilitySettings.requireReceiptsForCompletion,
                 unverifiedClaim: Boolean(completionClaim && accountabilitySettings.requireReceiptsForCompletion),
+                ...(evidenceCitations.length ? { evidenceCitations } : {}),
+                actionReceiptRequested,
+                automaticTaskCreationSuppressed: taskCreationProhibited,
                 emailContext: emailContext
                   ? {
                       attached: emailContext.attached,
@@ -7980,6 +8004,20 @@ Respond helpfully with your full platform awareness.`,
                 ...baseAgentMetadata,
                 actionDispatch: actionDispatchSummary,
                 actionRunIds: createdActionIds,
+                executionReceipt: {
+                  requested: actionReceiptRequested,
+                  automaticTaskCreationSuppressed: taskCreationProhibited,
+                  primaryTaskId: taskCreationProhibited ? null : primaryTaskId,
+                  primaryTaskCreated,
+                  createdActionIds,
+                  blockedCount: actionDispatch.blocked.length,
+                  outcome:
+                    createdActionIds.length > 0
+                      ? "created"
+                      : actionDispatch.blocked.length > 0
+                        ? "blocked"
+                        : "none",
+                },
                 unverifiedClaim: Boolean(
                   completionClaim &&
                     accountabilitySettings.requireReceiptsForCompletion &&

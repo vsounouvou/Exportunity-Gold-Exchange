@@ -102,7 +102,7 @@ export async function generateAgentResponse(
       const eligibility = await validateCreditEligibility({
         agentId: options.agentId,
         model,
-        estimatedTokens: 500 // Estimate for agent responses
+        estimatedTokens: 900 // Structured document responses can exceed a short chat reply.
       });
 
       if (!eligibility.eligible) {
@@ -161,7 +161,7 @@ ${conversationHistory}
 ${emailContextBlock}
 
 CRITICAL EFFICIENCY RULES:
-1. Keep responses EXTREMELY SHORT (2-3 sentences maximum)
+1. Default to 2-3 sentences. When the user requests multiple points, sections, risks, or document analysis, complete every requested item concisely.
 2. Be sharp, professional, and direct
 3. NO fluff, pleasantries, or unnecessary words
 4. Get straight to the point
@@ -175,12 +175,12 @@ ${actionRules}
 
 Response Format Required:
 [Analysis] One sentence only - what you'll contribute
-[Response] 2-3 sentences maximum - your actual message
+[Response] Concise but complete - include every explicitly requested point or section
 [Continue] Yes or No only`;
 
     const response = await claude.messages.create({
       model,
-      max_tokens: 300,
+      max_tokens: 700,
       temperature: 0.7,
       system: systemPrompt,
       messages: [

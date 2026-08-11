@@ -668,6 +668,83 @@ function extractActionRuns(metadata: any): MessageActionRun[] {
   return Array.from(byId.values()).slice(0, 3);
 }
 
+function extractEvidenceCitations(metadata: any): ChannelAttachment[] {
+  const raw = Array.isArray(metadata?.evidenceCitations) ? metadata.evidenceCitations : [];
+  const byEvidenceId = new Map<string, ChannelAttachment>();
+  for (const entry of raw) {
+    const evidenceId = String(entry?.evidenceId || "").trim();
+    const name = String(entry?.name || "").trim();
+    if (!evidenceId || !name) continue;
+    byEvidenceId.set(evidenceId.toLowerCase(), {
+      id: String(entry?.id || evidenceId),
+      evidenceId,
+      name,
+      ...(entry?.url ? { url: String(entry.url) } : {}),
+      ...(entry?.extractionStatus ? { extractionStatus: String(entry.extractionStatus) } : {}),
+    });
+  }
+  return Array.from(byEvidenceId.values()).slice(0, 4);
+}
+
+function MessageAuditTrail({ metadata }: { metadata: any }) {
+  const citations = extractEvidenceCitations(metadata);
+  const receipt = metadata?.executionReceipt;
+  const receiptRequested = Boolean(receipt?.requested || metadata?.actionReceiptRequested);
+  const createdActionIds = Array.isArray(receipt?.createdActionIds) ? receipt.createdActionIds : [];
+  const blockedCount = Number(receipt?.blockedCount || 0);
+  const primaryTaskCreated = Boolean(receipt?.primaryTaskCreated);
+  const noExecution =
+    receiptRequested && !primaryTaskCreated && createdActionIds.length === 0 && blockedCount === 0;
+  const executionSummary = [
+    primaryTaskCreated ? "1 accountability task created" : "",
+    createdActionIds.length > 0 ? `${createdActionIds.length} platform action(s) created` : "",
+    blockedCount > 0 ? `${blockedCount} action(s) blocked` : "",
+  ].filter(Boolean).join("; ");
+
+  if (citations.length === 0 && !receiptRequested) return null;
+
+  return (
+    <div className="mt-3 space-y-2 border-t border-white/10 pt-2 text-left">
+      {citations.map((citation) => (
+        <div key={citation.evidenceId} className="rounded-lg border border-blue-400/25 bg-blue-400/10 px-2.5 py-2">
+          <div className="flex items-center gap-1.5 text-[11px] font-medium text-blue-200">
+            <FileText className="h-3.5 w-3.5" />
+            Evidence linked
+          </div>
+          <div className="mt-1 truncate text-[11px] text-gray-200">
+            {citation.url ? (
+              <a href={citation.url} target="_blank" rel="noreferrer" className="underline underline-offset-2">
+                {citation.name}
+              </a>
+            ) : citation.name}
+          </div>
+          <code className="mt-1 block break-all font-mono text-[10px] text-blue-100">
+            {citation.evidenceId}
+          </code>
+        </div>
+      ))}
+
+      {receiptRequested ? (
+        <div
+          className={cn(
+            "flex items-start gap-2 rounded-lg border px-2.5 py-2 text-[11px]",
+            noExecution
+              ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-100"
+              : "border-amber-400/30 bg-amber-400/10 text-amber-100",
+          )}
+        >
+          <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+          <span>
+            {noExecution
+              ? "Execution receipt: this reply created no new task, decision, action, or contact."
+              : `Execution receipt: ${executionSummary || "execution status unavailable"}.`}
+          </span>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function membershipReasonLabel(reasonCode: string, eventType?: string) {
   const normalized = String(reasonCode || "").toUpperCase();
   if (normalized === "MANUAL_INVITE") {
@@ -3982,6 +4059,7 @@ export function AITeamHubPage() {
                             </Badge>
                           </div>
                         ) : null}
+                        {!isUser ? <MessageAuditTrail metadata={msg.metadata} /> : null}
                         {msg.metadata?.analysis ? (
                           <details className="mt-2 rounded-md border border-white/10 bg-black/20 px-2 py-1 text-left">
                             <summary className="cursor-pointer text-[11px] text-gray-300">Thinking process</summary>
@@ -4120,6 +4198,8 @@ export function AITeamHubPage() {
                               </Badge>
                             </div>
                           ) : null}
+
+                          {!isUserMessage ? <MessageAuditTrail metadata={message.metadata} /> : null}
 
                           {!isUserMessage && message.metadata?.analysis ? (
                             <details className="mt-2 rounded-md border border-white/10 bg-black/20 px-2 py-1 text-left">

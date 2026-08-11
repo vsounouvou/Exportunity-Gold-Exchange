@@ -62,6 +62,29 @@ const TYPE_LABELS: Record<
   },
 };
 
+const CATEGORY_BY_REQUIREMENT_TYPE: Record<
+  IndustrialIntakePreview["requirementType"],
+  string
+> = {
+  machinery: "machinery_and_production_equipment",
+  raw_material: "raw_materials",
+  industrial_input: "industrial_inputs_and_consumables",
+  spare_part: "spare_parts_and_components",
+  custom_manufacturing: "spare_parts_and_components",
+  industrial_service: "industrial_services",
+  export_quotation: "export_ready_factory_products",
+};
+
+function guidedResponseForRequirement(
+  requirementType: IndustrialIntakePreview["requirementType"],
+  language: IndustrialIntakeLanguage,
+) {
+  const typeLabel = TYPE_LABELS[language][requirementType];
+  return language === "fr"
+    ? `J'ai prepare une ${typeLabel}. Ajoutez une photo, une reference, un plan ou un fichier CAD si vous en avez un. Rien ne sera envoye a un fournisseur avant la revue de votre dossier.`
+    : `I have prepared a ${typeLabel}. Add a photo, reference, drawing, or CAD file if available. Nothing is sent to a supplier before your case is reviewed.`;
+}
+
 function includesAny(text: string, terms: string[]) {
   return terms.some((term) => text.includes(term));
 }
@@ -350,11 +373,7 @@ export function classifyIndustrialIntake(
 
   const urgency = isUrgent ? "urgent" : isPlanned ? "planned" : "standard";
   const facts = extractIndustrialIntakeFacts(message, language);
-  const typeLabel = TYPE_LABELS[language][requirementType];
-  const response =
-    language === "fr"
-      ? `J'ai prepare une ${typeLabel}. Ajoutez une photo, une reference, un plan ou un fichier CAD si vous en avez un. Rien ne sera envoye a un fournisseur avant la revue de votre dossier.`
-      : `I have prepared a ${typeLabel}. Add a photo, reference, drawing, or CAD file if available. Nothing is sent to a supplier before your case is reviewed.`;
+  const response = guidedResponseForRequirement(requirementType, language);
 
   return {
     requirementType,
@@ -453,8 +472,17 @@ export async function generateIndustrialIntakeReply(
   language: IndustrialIntakeLanguage = "fr",
   requesterIdentity?: string,
   agentMode: "concierge" | "commercial" = "concierge",
+  requirementTypeHint?: IndustrialIntakePreview["requirementType"],
 ): Promise<IndustrialIntakeAssistantReply> {
-  const preview = classifyIndustrialIntake(message, language);
+  const classifiedPreview = classifyIndustrialIntake(message, language);
+  const preview = requirementTypeHint
+    ? {
+        ...classifiedPreview,
+        requirementType: requirementTypeHint,
+        categoryCode: CATEGORY_BY_REQUIREMENT_TYPE[requirementTypeHint],
+        response: guidedResponseForRequirement(requirementTypeHint, language),
+      }
+    : classifiedPreview;
   const policy = getExportunityAgentModelPolicy(
     agentMode === "commercial" ? "commercial" : "tassi",
   );

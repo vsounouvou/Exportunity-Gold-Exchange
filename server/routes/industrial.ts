@@ -694,6 +694,7 @@ const legacyProductReviewSchema = z
 const industrialAssistantIntakeSchema = z.object({
   message: z.string().trim().min(10).max(6000),
   language: z.enum(["fr", "en"]).optional().default("fr"),
+  requirementType: z.enum(INDUSTRIAL_REQUIREMENT_TYPES).optional(),
   agentMode: z
     .enum(["concierge", "commercial"])
     .optional()
@@ -2419,6 +2420,7 @@ router.post("/assistant/intake-preview", async (req: any, res) => {
     parsed.data.language,
     submissionKey(req, tenant.id),
     parsed.data.agentMode,
+    parsed.data.requirementType,
   );
   return res.json({
     ok: true,

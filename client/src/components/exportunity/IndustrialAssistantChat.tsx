@@ -674,7 +674,7 @@ export function IndustrialAssistantChat({
   const attachmentInputRef = useRef<HTMLInputElement | null>(null);
   const messageLogRef = useRef<HTMLDivElement | null>(null);
   const activeRequirementType =
-    intake?.requirementType || initialRequirementType || null;
+    initialRequirementType || intake?.requirementType || null;
   const activeQuantityQuestion = quantityQuestionForRequirement(
     activeRequirementType,
     language,
@@ -900,6 +900,7 @@ export function IndustrialAssistantChat({
             body: JSON.stringify({
               message,
               language,
+              requirementType: initialRequirementType || undefined,
               agentMode: commercialMode ? "commercial" : "concierge",
             }),
           },

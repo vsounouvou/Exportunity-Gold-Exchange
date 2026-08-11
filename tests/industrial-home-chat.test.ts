@@ -120,6 +120,10 @@ test("product and quote journeys use Awa's progressive commercial conversation",
   const assistant = readRepoFile(
     "client/src/components/exportunity/IndustrialAssistantChat.tsx",
   );
+  const industrialRoutes = readRepoFile("server/routes/industrial.ts");
+  const intakeAssistant = readRepoFile(
+    "server/lib/industrial/intakeAssistant.ts",
+  );
   const quoteStart = hub.indexOf('{view === "quote" ? (');
   const registerStart = hub.indexOf('{view === "register" ? (', quoteStart);
   const quoteMarkup = hub.slice(quoteStart, registerStart);
@@ -151,6 +155,30 @@ test("product and quote journeys use Awa's progressive commercial conversation",
     /function destinationRepliesForTerritory[\s\S]*?territoryCode === "CI"[\s\S]*?territoryCode === "AE"[\s\S]*?territoryCode === "BJ"/,
   );
   assert.match(assistant, /value\.includes\("jebel ali"\)/);
+  assert.match(
+    assistant,
+    /requirementType: initialRequirementType \|\| undefined/,
+  );
+  assert.match(
+    assistant,
+    /initialRequirementType \|\| intake\?\.requirementType/,
+  );
+  assert.match(
+    industrialRoutes,
+    /requirementType: z\.enum\(INDUSTRIAL_REQUIREMENT_TYPES\)\.optional\(\)/,
+  );
+  assert.match(
+    industrialRoutes,
+    /parsed\.data\.agentMode,[\s\S]*?parsed\.data\.requirementType/,
+  );
+  assert.match(
+    intakeAssistant,
+    /const CATEGORY_BY_REQUIREMENT_TYPE[\s\S]*?spare_part: "spare_parts_and_components"/,
+  );
+  assert.match(
+    intakeAssistant,
+    /requirementTypeHint[\s\S]*?requirementType: requirementTypeHint/,
+  );
   assert.match(assistant, /data-conversation-mode=/);
   assert.match(assistant, /exportunity_ai_product_order/);
   assert.match(hub, /const withSelectedMarket = \(href: string\)/);

@@ -47,6 +47,10 @@ test("agenda creation submits a real objective and hierarchy reads the same plan
   assert.match(operationsCenter, /setCurrentMeeting\(requestedRoom\)/);
   assert.match(operationsCenter, /isArchivedTestMeeting/);
   assert.match(operationsCenter, /\\bsmoke\\b\|safe to archive/);
+  assert.match(operationsCenter, /import ReactMarkdown from "react-markdown"/);
+  assert.match(operationsCenter, /function OperationsMessageContent/);
+  assert.match(operationsCenter, /<OperationsMessageContent content=\{msg\.content\}/);
+  assert.match(operationsCenter, /<OperationsMessageContent content=\{message\.content\}/);
   assert.match(hierarchy, /companyData\.vision/);
   assert.match(hierarchy, /active objectives/);
   assert.match(hierarchy, /setLocation\("\/goals"\)/);

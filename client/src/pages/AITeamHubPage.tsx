@@ -84,6 +84,7 @@ import {
 } from "lucide-react";
 import type { Agent } from "@db/schema";
 import { format, formatDistanceToNowStrict } from "date-fns";
+import ReactMarkdown from "react-markdown";
 
 type BackgroundConsentPlan = {
   what: string;
@@ -766,6 +767,42 @@ function isExportunityOrganizationAgent(agent: Agent) {
 function isArchivedTestMeeting(room: ChatRoom) {
   const name = String(room.name || "").trim();
   return /\bsmoke\b|safe to archive/i.test(name);
+}
+
+function OperationsMessageContent({ content }: { content: string }) {
+  return (
+    <div className="ops-message-markdown whitespace-pre-wrap break-words">
+      <ReactMarkdown
+        components={{
+          p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+          ul: ({ children }) => <ul className="mb-2 list-disc space-y-1 pl-5 last:mb-0">{children}</ul>,
+          ol: ({ children }) => <ol className="mb-2 list-decimal space-y-1 pl-5 last:mb-0">{children}</ol>,
+          li: ({ children }) => <li className="pl-0.5">{children}</li>,
+          strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+          a: ({ href, children }) => {
+            const external = Boolean(href && /^https?:\/\//i.test(href));
+            return (
+              <a
+                href={href}
+                target={external ? "_blank" : undefined}
+                rel={external ? "noreferrer noopener" : undefined}
+                className="font-medium underline decoration-current/50 underline-offset-2 hover:decoration-current"
+              >
+                {children}
+              </a>
+            );
+          },
+          code: ({ children }) => (
+            <code className="rounded bg-black/10 px-1 py-0.5 font-mono text-[0.92em] dark:bg-white/10">
+              {children}
+            </code>
+          ),
+        }}
+      >
+        {content}
+      </ReactMarkdown>
+    </div>
+  );
 }
 
 export function AITeamHubPage() {
@@ -3834,7 +3871,9 @@ export function AITeamHubPage() {
                             </Button>
                           )}
                         </div>
-                        <div className="text-sm leading-relaxed whitespace-pre-wrap break-words">{msg.content}</div>
+                        <div className="text-sm leading-relaxed">
+                          <OperationsMessageContent content={msg.content} />
+                        </div>
                         {!isUser && actionRuns.length > 0 ? (
                           <div className="mt-2 flex flex-wrap gap-1.5">
                             {actionRuns.map((run) => (
@@ -3970,7 +4009,7 @@ export function AITeamHubPage() {
                             isUserMessage ? "bg-blue-600 text-white text-left" : "bg-gray-800 text-gray-200",
                           )}
                         >
-                          {message.content?.trim() ? <div className="whitespace-pre-wrap break-words">{message.content}</div> : null}
+                          {message.content?.trim() ? <OperationsMessageContent content={message.content} /> : null}
 
                           {!isUserMessage && actionRuns.length > 0 ? (
                             <div className="mt-2 flex flex-wrap gap-1.5">
@@ -5024,7 +5063,9 @@ export function AITeamHubPage() {
                                             <span className="text-[10px] text-gray-500">{formatTime(String(msg.createdAt))}</span>
                                           </div>
                                         </div>
-                                        <div className="whitespace-pre-wrap text-sm text-gray-200">{msg.content}</div>
+                                        <div className="text-sm text-gray-200">
+                                          <OperationsMessageContent content={msg.content} />
+                                        </div>
                                       </div>
                                     );
                                   })

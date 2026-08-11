@@ -108,7 +108,9 @@ test("factory and map discovery keep Awa, the map, and products in one flow", ()
     hub,
     /title=\{`\$\{factory\.name\} - \$\{factory\.industry\}`\}/,
   );
-  assert.match(hub, /onClick=\{\(\) => onSelectFactory\(factory\)\}/);
+  assert.match(hub, /if \(factory\) onSelectFactory\(factory\)/);
+  assert.match(hub, /else setActiveProducer\(producer\)/);
+  assert.match(hub, /`Voir les offres de \$\{producer\}`/);
   assert.match(hub, /`Ouvrir l'usine \$\{producer\}`/);
   assert.match(
     hub,

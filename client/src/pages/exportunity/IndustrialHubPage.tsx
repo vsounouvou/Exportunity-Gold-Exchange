@@ -2156,9 +2156,16 @@ function IndustrialSelectionCommerce({
   onSelectFactory: (factory: PublicFactory) => void;
   onStartConversation?: (item: CatalogItem) => void;
 }) {
+  const [activeProducer, setActiveProducer] = useState<string | null>(null);
   const producers = Array.from(
     new Set(items.map((item) => catalogDisplayProvider(item)).filter(Boolean)),
   );
+  const producerKey = producers.join("|");
+  useEffect(() => {
+    setActiveProducer((current) =>
+      current && !producers.includes(current) ? null : current,
+    );
+  }, [producerKey]);
   const producerEntries = producers.map((producer) => {
     const factoryId = items.find(
       (item) =>
@@ -2171,8 +2178,15 @@ function IndustrialSelectionCommerce({
         : null,
     };
   });
+  const visibleItems = activeProducer
+    ? items.filter(
+        (item) => catalogDisplayProvider(item) === activeProducer,
+      )
+    : items;
   const title = selectedFactory
     ? selectedFactory.name
+    : activeProducer
+      ? activeProducer
     : selectedContext
       ? industrialContextText(selectedContext.name, language)
       : language === "fr"
@@ -2182,6 +2196,10 @@ function IndustrialSelectionCommerce({
     ? language === "fr"
       ? "Les produits approuves de cette usine apparaissent ici. La commande confirme ensuite quantite, prix, delai et paiement."
       : "This factory's approved products appear here. The order then confirms quantity, price, lead time, and payment."
+    : activeProducer
+      ? language === "fr"
+        ? `Voici les offres documentees associees a ${activeProducer}. Awa confirme l'origine, la disponibilite et le prix avant tout engagement.`
+        : `These are the documented offerings associated with ${activeProducer}. Awa confirms origin, availability, and price before any commitment.`
     : selectedContext?.id === "gdiz"
       ? language === "fr"
         ? "Productions citees par des sources officielles GDIZ. Exportunity confirme la disponibilite, le prix et l'usine responsable avant commande."
@@ -2220,44 +2238,58 @@ function IndustrialSelectionCommerce({
         <div className="flex shrink-0 flex-wrap gap-2">
           <span className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 dark:border-white/10 dark:bg-[#0A1628] dark:text-slate-200">
             <Factory className="h-3.5 w-3.5 text-[#a96f0b]" />
-            {producers.length} {language === "fr" ? "producteurs" : "producers"}
+            {producers.length} {language === "fr" ? "sources" : "sources"}
           </span>
           <span className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 dark:border-white/10 dark:bg-[#0A1628] dark:text-slate-200">
             <PackageSearch className="h-3.5 w-3.5 text-[#a96f0b]" />
-            {items.length} {language === "fr" ? "produits" : "products"}
+            {visibleItems.length} {language === "fr" ? "produits" : "products"}
           </span>
         </div>
       </div>
 
       {producers.length ? (
         <div className="mt-4 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {producerEntries.map(({ producer, factory }) =>
-            factory ? (
-              <button
-                key={producer}
-                type="button"
-                onClick={() => onSelectFactory(factory)}
-                aria-label={
-                  language === "fr"
+          {activeProducer ? (
+            <button
+              type="button"
+              onClick={() => setActiveProducer(null)}
+              className="inline-flex shrink-0 items-center rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:border-[#F5A623] dark:border-white/15 dark:bg-white/5 dark:text-slate-200"
+            >
+              {language === "fr" ? "Toutes les sources" : "All sources"}
+            </button>
+          ) : null}
+          {producerEntries.map(({ producer, factory }) => (
+            <button
+              key={producer}
+              type="button"
+              onClick={() => {
+                if (factory) onSelectFactory(factory);
+                else setActiveProducer(producer);
+              }}
+              aria-pressed={!factory && activeProducer === producer}
+              aria-label={
+                factory
+                  ? language === "fr"
                     ? `Ouvrir l'usine ${producer}`
                     : `Open ${producer} factory`
-                }
-                className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-[#F5A623]/45 bg-[#F5A623]/10 px-3 py-1.5 text-xs font-semibold text-slate-800 transition hover:border-[#F5A623] hover:bg-[#F5A623]/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F5A623] focus-visible:ring-offset-2 dark:text-[#f8d28a] dark:focus-visible:ring-offset-[#07111F]"
-              >
-                <BadgeCheck className="h-3.5 w-3.5" />
-                {producer}
+                  : language === "fr"
+                    ? `Voir les offres de ${producer}`
+                    : `View offerings from ${producer}`
+              }
+              className={cn(
+                "inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F5A623] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#07111F]",
+                activeProducer === producer
+                  ? "border-[#F5A623] bg-[#F5A623] text-slate-950"
+                  : "border-[#F5A623]/45 bg-[#F5A623]/10 text-slate-800 hover:border-[#F5A623] hover:bg-[#F5A623]/20 dark:text-[#f8d28a]",
+              )}
+            >
+              <BadgeCheck className="h-3.5 w-3.5" />
+              {producer}
+              {factory ? (
                 <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
-              </button>
-            ) : (
-              <span
-                key={producer}
-                className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 dark:border-white/10 dark:bg-white/5 dark:text-slate-300"
-              >
-                <BadgeCheck className="h-3.5 w-3.5 text-[#a96f0b] dark:text-[#F5A623]" />
-                {producer}
-              </span>
-            ),
-          )}
+              ) : null}
+            </button>
+          ))}
         </div>
       ) : null}
 
@@ -2268,9 +2300,9 @@ function IndustrialSelectionCommerce({
             ? "Awa charge les offres industrielles..."
             : "Awa is loading industrial offerings..."}
         </div>
-      ) : items.length ? (
+      ) : visibleItems.length ? (
         <div className="mt-5 grid gap-3 sm:grid-cols-2 2xl:grid-cols-3">
-          {items.slice(0, 9).map((item) => (
+          {visibleItems.slice(0, 9).map((item) => (
             <article
               key={item.id}
               className={cn(

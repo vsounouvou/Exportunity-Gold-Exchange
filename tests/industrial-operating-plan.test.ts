@@ -51,6 +51,12 @@ test("agenda creation submits a real objective and hierarchy reads the same plan
   assert.match(operationsCenter, /function OperationsMessageContent/);
   assert.match(operationsCenter, /<OperationsMessageContent content=\{msg\.content\}/);
   assert.match(operationsCenter, /<OperationsMessageContent content=\{message\.content\}/);
+  assert.match(operationsCenter, /<MessageAuditTrail metadata=\{msg\.metadata\} lightMode=\{useExportunityLightWorkspace\}/);
+  assert.match(operationsCenter, /border-emerald-200 bg-emerald-50 text-emerald-800/);
+  assert.match(operationsCenter, /border-amber-200 bg-amber-50 text-amber-900/);
+  assert.match(operationsCenter, /data-testid="operations-center-workspace"/);
+  assert.match(operationsCenter, /h-\[calc\(100dvh-var\(--admin-header-height\)-6\.125rem\)\]/);
+  assert.match(operationsCenter, /md:h-\[calc\(100dvh-var\(--admin-header-height\)-2\.625rem\)\]/);
   assert.match(hierarchy, /companyData\.vision/);
   assert.match(hierarchy, /active objectives/);
   assert.match(hierarchy, /setLocation\("\/goals"\)/);
@@ -64,12 +70,12 @@ test("working agents expose a direct identity and face editor", () => {
   const registry = readRepoFile("client/src/pages/AdminAgentsOsPage.tsx");
   const registryApi = readRepoFile("server/routes/admin-agents-os.ts");
 
-  assert.match(team, /Team &amp; Agents/);
+  assert.match(team, /Team & Agents/);
   assert.match(team, /Create and edit/);
-  assert.match(team, /Edit identity &amp; face/);
+  assert.match(team, /Edit identity & face/);
   assert.match(team, /\/operations\/agents\/\$\{item\.id\}\?edit=1/);
   assert.match(team, /\/operations\/agents\/\$\{item\.id\}\?tab=memory/);
-  assert.match(team, /Memory &amp; context/);
+  assert.match(team, /Memory & context/);
   assert.match(profile, /Edit identity &amp; face/);
   assert.match(profile, /new URLSearchParams\(window\.location\.search\)\.get\("tab"\)/);
   assert.match(profile, /selectProfileTab\("memory"\)/);

@@ -686,7 +686,7 @@ function extractEvidenceCitations(metadata: any): ChannelAttachment[] {
   return Array.from(byEvidenceId.values()).slice(0, 4);
 }
 
-function MessageAuditTrail({ metadata }: { metadata: any }) {
+function MessageAuditTrail({ metadata, lightMode = false }: { metadata: any; lightMode?: boolean }) {
   const citations = extractEvidenceCitations(metadata);
   const receipt = metadata?.executionReceipt;
   const receiptRequested = Boolean(receipt?.requested || metadata?.actionReceiptRequested);
@@ -729,8 +729,12 @@ function MessageAuditTrail({ metadata }: { metadata: any }) {
           className={cn(
             "flex items-start gap-2 rounded-lg border px-2.5 py-2 text-[11px]",
             noExecution
-              ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-100"
-              : "border-amber-400/30 bg-amber-400/10 text-amber-100",
+              ? lightMode
+                ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                : "border-emerald-400/30 bg-emerald-400/10 text-emerald-100"
+              : lightMode
+                ? "border-amber-200 bg-amber-50 text-amber-900"
+                : "border-amber-400/30 bg-amber-400/10 text-amber-100",
           )}
         >
           <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0" />
@@ -3521,8 +3525,9 @@ export function AITeamHubPage() {
 
   return (
     <div
+      data-testid="operations-center-workspace"
       className={cn(
-        "h-[calc(100dvh-var(--admin-header-height))] md:h-[calc(100dvh-9rem)] min-h-0 flex overflow-hidden",
+        "h-[calc(100dvh-var(--admin-header-height)-6.125rem)] md:h-[calc(100dvh-var(--admin-header-height)-2.625rem)] min-h-0 flex overflow-hidden",
         useExportunityLightWorkspace
           ? "exportunity-operations-light"
           : "bg-gradient-to-b from-gray-950 to-[#020817]",
@@ -4087,7 +4092,7 @@ export function AITeamHubPage() {
                             </Badge>
                           </div>
                         ) : null}
-                        {!isUser ? <MessageAuditTrail metadata={msg.metadata} /> : null}
+                        {!isUser ? <MessageAuditTrail metadata={msg.metadata} lightMode={useExportunityLightWorkspace} /> : null}
                         {msg.metadata?.analysis ? (
                           <details className="mt-2 rounded-md border border-white/10 bg-black/20 px-2 py-1 text-left">
                             <summary className="cursor-pointer text-[11px] text-gray-300">Thinking process</summary>
@@ -4227,7 +4232,7 @@ export function AITeamHubPage() {
                             </div>
                           ) : null}
 
-                          {!isUserMessage ? <MessageAuditTrail metadata={message.metadata} /> : null}
+                          {!isUserMessage ? <MessageAuditTrail metadata={message.metadata} lightMode={useExportunityLightWorkspace} /> : null}
 
                           {!isUserMessage && message.metadata?.analysis ? (
                             <details className="mt-2 rounded-md border border-white/10 bg-black/20 px-2 py-1 text-left">

@@ -74,5 +74,15 @@ test("explicit no-task instructions suppress automatic accountability task creat
   assert.equal(prohibitsTaskCreation("Confirme que tu n'as cree aucune tache."), true);
   assert.equal(prohibitsTaskCreation("Confirme que tu n’as créé aucune tâche."), true);
   assert.equal(prohibitsTaskCreation("Resume ce document sans creer de tache."), true);
+  assert.equal(prohibitsTaskCreation("N'effectue aucune action et ne contacte personne."), true);
+  assert.equal(prohibitsTaskCreation("Ne contactez personne pour cette question."), true);
+  assert.equal(prohibitsTaskCreation("Do not perform any action or contact anyone."), true);
+  assert.equal(prohibitsTaskCreation("Take no action and only answer the question."), true);
   assert.equal(prohibitsTaskCreation("Create three tasks from this plan."), false);
+});
+
+test("no-side-effect instructions suppress both accountability and action dispatch", () => {
+  assert.equal(prohibitsTaskCreation("Analyse la situation et reponds sans effectuer aucune action."), true);
+  assert.equal(prohibitsTaskCreation("Prepare the recommended actions, but do not execute any action."), true);
+  assert.equal(prohibitsTaskCreation("Create a task and assign it to Fenou."), false);
 });

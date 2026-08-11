@@ -19,11 +19,26 @@ export function prohibitsTaskCreation(value: unknown): boolean {
     /\bn\s+(?:as|avez)\s+(?:cree|ajoute|ouvert)\s+(?:pas|aucun|aucune)\b[^.!?\n]{0,120}\btaches?\b/i;
   const frenchWithout =
     /\bsans\s+(?:creer|ajouter|ouvrir)\b[^.!?\n]{0,120}\btaches?\b/i;
+  const englishNoAction =
+    /\b(?:do not|dont|without)\s+(?:perform|performing|take|taking|execute|executing|trigger|triggering)\b[^.!?\n]{0,80}\b(?:any\s+)?actions?\b/i;
+  const englishNoSideEffect =
+    /\b(?:take|perform|execute|trigger)\s+no\b[^.!?\n]{0,40}\bactions?\b/i;
+  const frenchNoAction =
+    /\bn\s+(?:effectue|effectuer|execute|executer|declenche|declencher)\s+(?:pas|aucun|aucune)\b[^.!?\n]{0,80}\bactions?\b/i;
+  const frenchNoContact =
+    /\bne\s+(?:contacte|contacter|contactez)\s+(?:pas|personne|aucun|aucune)\b/i;
+  const frenchWithoutAction =
+    /\bsans\s+(?:effectuer|executer|declencher)\b[^.!?\n]{0,80}\bactions?\b/i;
   return (
     english.test(text) ||
     englishNoTask.test(text) ||
     french.test(text) ||
     frenchPast.test(text) ||
-    frenchWithout.test(text)
+    frenchWithout.test(text) ||
+    englishNoAction.test(text) ||
+    englishNoSideEffect.test(text) ||
+    frenchNoAction.test(text) ||
+    frenchNoContact.test(text) ||
+    frenchWithoutAction.test(text)
   );
 }

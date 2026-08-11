@@ -4710,23 +4710,25 @@ ${governanceContext}`;
           continue;
         }
 
-        const actionDispatch = await dispatchAgentActionIntents({
-          text: aiResult.response,
-          allowHeuristics: false,
-          tenantId: tenant?.id ?? null,
-          conversationId,
-          source: "operations-center.channels.all-team",
-          companyId,
-          channelId,
-          requestedByUserId,
-          isAdmin: false,
-          agent: {
-            id: responderAgent?.id ?? null,
-            name: responderAgent?.name ?? null,
-            role: responderAgent?.role ?? null,
-          },
-          fallbackRecipientEmails: requestedByUserEmail ? [requestedByUserEmail] : null,
-        });
+        const actionDispatch = taskCreationProhibited
+          ? { created: [], blocked: [], intentsDetected: 0 }
+          : await dispatchAgentActionIntents({
+              text: aiResult.response,
+              allowHeuristics: false,
+              tenantId: tenant?.id ?? null,
+              conversationId,
+              source: "operations-center.channels.all-team",
+              companyId,
+              channelId,
+              requestedByUserId,
+              isAdmin: false,
+              agent: {
+                id: responderAgent?.id ?? null,
+                name: responderAgent?.name ?? null,
+                role: responderAgent?.role ?? null,
+              },
+              fallbackRecipientEmails: requestedByUserEmail ? [requestedByUserEmail] : null,
+            });
 
         const createdActionIds = actionDispatch.created
           .map((entry) => parsePositiveInt(entry?.id))
@@ -4998,23 +5000,25 @@ ${governanceContext}`;
           continue;
         }
 
-        const actionDispatch = await dispatchAgentActionIntents({
-          text: aiResult.response,
-          allowHeuristics: false,
-          tenantId: tenant?.id ?? null,
-          conversationId,
-          source: "operations-center.channels.all-team.summoned",
-          companyId,
-          channelId,
-          requestedByUserId,
-          isAdmin: false,
-          agent: {
-            id: responderAgent?.id ?? null,
-            name: responderAgent?.name ?? null,
-            role: responderAgent?.role ?? null,
-          },
-          fallbackRecipientEmails: requestedByUserEmail ? [requestedByUserEmail] : null,
-        });
+        const actionDispatch = taskCreationProhibited
+          ? { created: [], blocked: [], intentsDetected: 0 }
+          : await dispatchAgentActionIntents({
+              text: aiResult.response,
+              allowHeuristics: false,
+              tenantId: tenant?.id ?? null,
+              conversationId,
+              source: "operations-center.channels.all-team.summoned",
+              companyId,
+              channelId,
+              requestedByUserId,
+              isAdmin: false,
+              agent: {
+                id: responderAgent?.id ?? null,
+                name: responderAgent?.name ?? null,
+                role: responderAgent?.role ?? null,
+              },
+              fallbackRecipientEmails: requestedByUserEmail ? [requestedByUserEmail] : null,
+            });
 
         const createdActionIds = actionDispatch.created
           .map((entry) => parsePositiveInt(entry?.id))
@@ -7991,23 +7995,25 @@ Respond helpfully with your full platform awareness.`,
                 }]
               });
 
-              const actionDispatch = await dispatchAgentActionIntents({
-                text: response,
-                allowHeuristics: false,
-                tenantId: tenant?.id ?? null,
-                conversationId,
-                source: "operations-center.meeting.message",
-                companyId: member.agent?.companyId ?? null,
-                channelId: room.type,
-                requestedByUserId,
-                isAdmin: false,
-                agent: {
-                  id: member.agent?.id ?? null,
-                  name: member.agent?.name ?? null,
-                  role: member.agent?.role ?? null,
-                },
-                fallbackRecipientEmails: requestedByUserEmail ? [requestedByUserEmail] : null,
-              });
+              const actionDispatch = taskCreationProhibited
+                ? { created: [], blocked: [], intentsDetected: 0 }
+                : await dispatchAgentActionIntents({
+                    text: response,
+                    allowHeuristics: false,
+                    tenantId: tenant?.id ?? null,
+                    conversationId,
+                    source: "operations-center.meeting.message",
+                    companyId: member.agent?.companyId ?? null,
+                    channelId: room.type,
+                    requestedByUserId,
+                    isAdmin: false,
+                    agent: {
+                      id: member.agent?.id ?? null,
+                      name: member.agent?.name ?? null,
+                      role: member.agent?.role ?? null,
+                    },
+                    fallbackRecipientEmails: requestedByUserEmail ? [requestedByUserEmail] : null,
+                  });
 
               const createdActionIds = actionDispatch.created
                 .map((entry) => parsePositiveInt(entry?.id))

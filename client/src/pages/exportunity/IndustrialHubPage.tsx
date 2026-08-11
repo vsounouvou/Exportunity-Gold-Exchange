@@ -829,6 +829,193 @@ function queryValue(location: string, key: string) {
   return new URLSearchParams(query || "").get(key) || "";
 }
 
+function quoteIntentForLocation(location: string, language: "fr" | "en") {
+  const type = queryValue(location, "type");
+  const product = queryValue(location, "product");
+  const urgent = queryValue(location, "urgency") === "urgent";
+  const financing = Boolean(queryValue(location, "financing"));
+
+  if (type === "machinery") {
+    return language === "fr"
+      ? {
+          intro: `Bonjour, je suis Awa Kouadio, directrice commerciale chez Exportunity. ${
+            product
+              ? `Vous souhaitez avancer sur ${product}.`
+              : "Vous souhaitez sourcer une machine ou une ligne de production."
+          } Indiquez la capacite recherchee, le produit final ou la contrainte du site; je vais cadrer le dossier avec vous.`,
+          quickReplies: [
+            "Machine de production",
+            "Ligne de production complete",
+            "Equipement de conditionnement",
+            "Machine sur mesure",
+            financing
+              ? "Inclure une discussion de financement"
+              : "Comparer plusieurs fournisseurs",
+          ],
+        }
+      : {
+          intro: `Hello, I am Awa Kouadio, Exportunity's Commercial Director. ${
+            product
+              ? `You want to move forward with ${product}.`
+              : "You want to source a machine or production line."
+          } Tell me the required capacity, final product, or site constraint and I will structure the case with you.`,
+          quickReplies: [
+            "Production machine",
+            "Complete production line",
+            "Packaging equipment",
+            "Custom machine",
+            financing
+              ? "Include a financing discussion"
+              : "Compare several suppliers",
+          ],
+        };
+  }
+
+  if (type === "spare_part") {
+    return language === "fr"
+      ? {
+          intro:
+            "Bonjour, je suis Awa Kouadio, directrice commerciale chez Exportunity. Donnez-moi la reference de la piece, la machine concernee ou joignez une photo; je vais qualifier la compatibilite et l'urgence avec vous.",
+          quickReplies: [
+            "J'ai une reference",
+            "J'ai une photo de la piece",
+            "La ligne est arretee",
+            "Je connais la marque de la machine",
+            "Je dois refaire la piece localement",
+          ],
+        }
+      : {
+          intro:
+            "Hello, I am Awa Kouadio, Exportunity's Commercial Director. Share the part reference, affected machine, or attach a photo; I will qualify compatibility and urgency with you.",
+          quickReplies: [
+            "I have a part reference",
+            "I have a photo of the part",
+            "The line is stopped",
+            "I know the machine brand",
+            "I need the part reproduced locally",
+          ],
+        };
+  }
+
+  if (type === "custom_manufacturing") {
+    return language === "fr"
+      ? {
+          intro:
+            "Bonjour, je suis Awa Kouadio, directrice commerciale chez Exportunity. Decrivez la piece ou l'assemblage a fabriquer, puis ajoutez si possible une photo, un plan, des dimensions ou la matiere souhaitee.",
+          quickReplies: [
+            "J'ai un plan technique",
+            "J'ai une piece modele",
+            "J'ai seulement une photo",
+            "Je connais les dimensions",
+            "J'ai besoin de retro-ingenierie",
+          ],
+        }
+      : {
+          intro:
+            "Hello, I am Awa Kouadio, Exportunity's Commercial Director. Describe the part or assembly to manufacture, then add a photo, drawing, dimensions, or required material if available.",
+          quickReplies: [
+            "I have a technical drawing",
+            "I have a sample part",
+            "I only have a photo",
+            "I know the dimensions",
+            "I need reverse engineering",
+          ],
+        };
+  }
+
+  if (type === "industrial_service") {
+    return language === "fr"
+      ? {
+          intro: `Bonjour, je suis Awa Kouadio, directrice commerciale chez Exportunity. ${
+            urgent
+              ? "Je traite votre arret de ligne en priorite."
+              : "Je vais cadrer le service industriel avec vous."
+          } Indiquez l'equipement, le site, le symptome et l'impact sur la production.`,
+          quickReplies: [
+            "La ligne est arretee",
+            "Maintenance preventive",
+            "Diagnostic sur site",
+            "Installation ou mise en service",
+            "Besoin de pieces et de techniciens",
+          ],
+        }
+      : {
+          intro: `Hello, I am Awa Kouadio, Exportunity's Commercial Director. ${
+            urgent
+              ? "I am treating your production stoppage as a priority."
+              : "I will scope the industrial service with you."
+          } Tell me the equipment, site, symptom, and production impact.`,
+          quickReplies: [
+            "The line is stopped",
+            "Preventive maintenance",
+            "On-site diagnosis",
+            "Installation or commissioning",
+            "I need parts and technicians",
+          ],
+        };
+  }
+
+  if (type === "raw_material" || type === "industrial_input") {
+    return language === "fr"
+      ? {
+          intro:
+            "Bonjour, je suis Awa Kouadio, directrice commerciale chez Exportunity. Precisez l'intrant, la specification, le volume et la destination; je vais identifier la bonne route d'approvisionnement avec vous.",
+          quickReplies: [
+            "Matiere premiere",
+            "Consommable de production",
+            "Outillage industriel",
+            "Composant electrique",
+            "Comparer prix et delais",
+          ],
+        }
+      : {
+          intro:
+            "Hello, I am Awa Kouadio, Exportunity's Commercial Director. Specify the input, technical requirement, volume, and destination; I will identify the right supply route with you.",
+          quickReplies: [
+            "Raw material",
+            "Production consumable",
+            "Industrial tooling",
+            "Electrical component",
+            "Compare price and lead time",
+          ],
+        };
+  }
+
+  if (type === "export_quotation") {
+    return language === "fr"
+      ? {
+          intro: `Bonjour, je suis Awa Kouadio, directrice commerciale chez Exportunity. ${
+            product
+              ? `Vous souhaitez commander ${product}.`
+              : "Vous souhaitez acheter un produit d'usine pret a l'export."
+          } Indiquez le volume et la destination pour que je prepare la verification commerciale.`,
+          quickReplies: [
+            "Palette ou lot d'essai",
+            "Conteneur complet",
+            "Prix rendu au port",
+            "Certifications requises",
+            "Comparer plusieurs producteurs",
+          ],
+        }
+      : {
+          intro: `Hello, I am Awa Kouadio, Exportunity's Commercial Director. ${
+            product
+              ? `You want to order ${product}.`
+              : "You want to buy an export-ready factory product."
+          } Tell me the volume and destination so I can prepare the commercial verification.`,
+          quickReplies: [
+            "Trial pallet or lot",
+            "Full container",
+            "Delivered-to-port price",
+            "Required certifications",
+            "Compare several producers",
+          ],
+        };
+  }
+
+  return null;
+}
+
 function isIndustrialTerritoryCode(
   value: string | null | undefined,
 ): value is IndustrialTerritoryCode {
@@ -1112,6 +1299,15 @@ function IndustrialMap({
         {contexts.map((context) => {
           const active = selectedContext?.id === context.id;
           const style = industrialContextMarkerStyle(context.kind);
+          const contextMarkerTitle = `${industrialContextText(context.name, language)} - ${
+            contextProductCounts[context.id]
+              ? language === "fr"
+                ? `${contextProductCounts[context.id]} produits documentes`
+                : `${contextProductCounts[context.id]} documented products`
+              : language === "fr"
+                ? "information publique"
+                : "public information"
+          }`;
           const eventHandlers = onSelectContext
             ? { click: () => onSelectContext(context) }
             : undefined;
@@ -1138,6 +1334,8 @@ function IndustrialMap({
                   active,
                   contextProductCounts[context.id] || 0,
                 )}
+                title={contextMarkerTitle}
+                alt={contextMarkerTitle}
                 eventHandlers={eventHandlers}
                 zIndexOffset={active ? 900 : 450}
               >
@@ -1164,6 +1362,8 @@ function IndustrialMap({
             key={factory.id}
             position={[factory.latitude as number, factory.longitude as number]}
             icon={mapFactoryIcon(selectedFactory?.id === factory.id)}
+            title={`${factory.name} - ${factory.industry}`}
+            alt={`${factory.name} - ${factory.industry}`}
             eventHandlers={{ click: () => onSelectFactory(factory) }}
           >
             <Tooltip direction="top" offset={[0, -14]} opacity={1}>
@@ -6844,7 +7044,7 @@ export default function IndustrialHubPage() {
     },
   };
 
-  const quoteProduct = queryValue(location, "product");
+  const quoteIntent = quoteIntentForLocation(location, locale);
   const quoteAssistantContext: IndustrialAssistantContext = {
     id: "commercial-quote-intake",
     title:
@@ -6856,17 +7056,13 @@ export default function IndustrialHubPage() {
         ? "Directrice commerciale | Relation client"
         : "Commercial Director | Client relationships",
     intro:
-      locale === "fr"
-        ? `Bonjour, je suis Awa Kouadio, directrice commerciale chez Exportunity.${
-            quoteProduct ? ` Vous souhaitez avancer sur ${quoteProduct}.` : ""
-          } Je vais qualifier votre besoin, lever les points bloquants et convenir avec vous de la prochaine etape. Que souhaitez-vous acheter ou faire fabriquer ?`
-        : `Hello, I am Awa Kouadio, Exportunity's Commercial Director.${
-            quoteProduct
-              ? ` You would like to move forward with ${quoteProduct}.`
-              : ""
-          } I will qualify your requirement, resolve blockers, and agree the next step with you. What do you need to buy or manufacture?`,
+      quoteIntent?.intro ||
+      (locale === "fr"
+        ? "Bonjour, je suis Awa Kouadio, directrice commerciale chez Exportunity. Je vais qualifier votre besoin, lever les points bloquants et convenir avec vous de la prochaine etape. Que souhaitez-vous acheter ou faire fabriquer ?"
+        : "Hello, I am Awa Kouadio, Exportunity's Commercial Director. I will qualify your requirement, resolve blockers, and agree the next step with you. What do you need to buy or manufacture?"),
     quickReplies:
-      locale === "fr"
+      quoteIntent?.quickReplies ||
+      (locale === "fr"
         ? [
             "Commander une piece detachee",
             "Obtenir un devis machine",
@@ -6880,7 +7076,7 @@ export default function IndustrialHubPage() {
             "Manufacture a custom part",
             "Source an industrial input",
             "Order a factory product",
-          ],
+          ]),
   };
   const claimFactoryId = factoryClaimId(location);
   const publicFactoryId = factoryProfileId(location);

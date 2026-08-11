@@ -101,6 +101,12 @@ test("factory and map discovery keep Awa, the map, and products in one flow", ()
   assert.match(mapMarkup, /product=\{selectedAssistantProduct\}/);
   assert.match(factoriesMarkup, /product=\{selectedAssistantProduct\}/);
   assert.doesNotMatch(mapMarkup, /onSubmit=\{goSearch\}/);
+  assert.match(hub, /title=\{contextMarkerTitle\}/);
+  assert.match(hub, /alt=\{contextMarkerTitle\}/);
+  assert.match(
+    hub,
+    /title=\{`\$\{factory\.name\} - \$\{factory\.industry\}`\}/,
+  );
 });
 
 test("product and quote journeys use Awa's progressive commercial conversation", () => {
@@ -122,6 +128,11 @@ test("product and quote journeys use Awa's progressive commercial conversation",
   assert.doesNotMatch(quoteMarkup, /<QuoteForm/);
   assert.match(hub, /function ConversationalCatalog/);
   assert.match(hub, /onStartConversation=\{updateOrderConversation\}/);
+  assert.match(hub, /function quoteIntentForLocation/);
+  assert.match(hub, /if \(type === "machinery"\)/);
+  assert.match(hub, /if \(type === "spare_part"\)/);
+  assert.match(hub, /if \(type === "export_quotation"\)/);
+  assert.match(hub, /quoteIntent\?\.intro/);
   assert.match(
     assistant,
     /type ConversationStep =[\s\S]*?"quantity"[\s\S]*?"destination"[\s\S]*?"timing"[\s\S]*?"priority"[\s\S]*?"confirm"/,

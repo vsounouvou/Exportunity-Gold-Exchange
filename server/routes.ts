@@ -11307,13 +11307,19 @@ Agent context:
       }
       
       const { approveTask } = await import("./lib/taskExtractionService");
-      const success = await approveTask(taskId, approverAgentId);
+      const result = await approveTask(taskId, approverAgentId, {
+        tenantId: Number((req as any)?.tenant?.id || 0) || null,
+        requestedByUserId: Number((req as any)?.staffUser?.id || (req as any)?.user?.id || 0) || null,
+      });
       
-      if (!success) {
+      if (!result.success) {
         return res.status(403).json({ message: "Not authorized to approve this task or task not found" });
       }
       
-      res.json({ message: "Task approved successfully" });
+      res.json({
+        message: "Task approved successfully",
+        actionRequestId: result.actionRequestId ?? null,
+      });
     } catch (error: any) {
       console.error("[API] Error approving task:", error);
       res.status(500).json({ message: "Failed to approve task", error: error.message });

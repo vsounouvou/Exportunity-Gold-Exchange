@@ -1,7 +1,9 @@
 import { db } from "@db";
-import { tasks, activityLog, agents, messages, chatRooms } from "@db/schema";
+import { tasks, activityLog, agents, messages, chatRooms, companies, actionRequests } from "@db/schema";
 import { eq, desc, and, isNull } from "drizzle-orm";
 import { generateAgentResponse } from "./ai-provider";
+import { createActionRequest } from "./actions/ActionRouter";
+import { buildApprovedTaskActionLink } from "./task-action-link";
 
 interface ExtractedTask {
   title: string;
@@ -161,13 +163,14 @@ export async function createTasksFromExtraction(
 
 export async function approveTask(
   taskId: number,
-  approverAgentId: number
-): Promise<boolean> {
+  approverAgentId: number,
+  context?: { tenantId?: number | null; requestedByUserId?: number | null },
+): Promise<{ success: boolean; actionRequestId?: number }> {
   const task = await db.query.tasks.findFirst({
     where: eq(tasks.id, taskId),
   });
 
-  if (!task) return false;
+  if (!task) return { success: false };
 
   const assignedAgent = task.agentId
     ? await db.query.agents.findFirst({ where: eq(agents.id, task.agentId) })
@@ -177,7 +180,7 @@ export async function approveTask(
     where: eq(agents.id, approverAgentId),
   });
 
-  if (!approver) return false;
+  if (!approver) return { success: false };
 
   const canApprove =
     assignedAgent?.managerId === approverAgentId ||
@@ -186,7 +189,22 @@ export async function approveTask(
     approver.role?.toLowerCase().includes("ceo") ||
     approver.role?.toLowerCase().includes("chief");
 
-  if (!canApprove) return false;
+  if (!canApprove) return { success: false };
+
+  const company = task.companyId
+    ? await db.query.companies.findFirst({
+        where: eq(companies.id, task.companyId),
+        columns: { id: true, tenantId: true },
+      })
+    : null;
+  const requestedTenantId = Number(context?.tenantId || 0) || null;
+  if (!company?.tenantId || (requestedTenantId && Number(company.tenantId) !== requestedTenantId)) {
+    return { success: false };
+  }
+  const tenantId = Number(company.tenantId);
+  if (!Number.isInteger(tenantId) || tenantId <= 0) {
+    throw new Error("Cannot create an execution record without a tenant");
+  }
 
   await db.update(tasks)
     .set({
@@ -196,6 +214,37 @@ export async function approveTask(
       status: "pending",
     })
     .where(eq(tasks.id, taskId));
+
+  const actionLink = buildApprovedTaskActionLink(task, approverAgentId);
+  let actionRequest = await db.query.actionRequests.findFirst({
+    where: and(
+      eq(actionRequests.tenantId, tenantId),
+      eq(actionRequests.idempotencyKey, actionLink.idempotencyKey),
+    ),
+  });
+
+  if (!actionRequest) {
+    try {
+      actionRequest = await createActionRequest({
+        tenantId,
+        requestedByUserId: context?.requestedByUserId ?? null,
+        actionType: actionLink.actionType,
+        payload: actionLink.payload,
+        idempotencyKey: actionLink.idempotencyKey,
+        correlationId: actionLink.correlationId,
+        relatedThreadId: actionLink.relatedThreadId,
+        isAdmin: true,
+      });
+    } catch (error) {
+      actionRequest = await db.query.actionRequests.findFirst({
+        where: and(
+          eq(actionRequests.tenantId, tenantId),
+          eq(actionRequests.idempotencyKey, actionLink.idempotencyKey),
+        ),
+      });
+      if (!actionRequest) throw error;
+    }
+  }
 
   await db.insert(activityLog).values({
     companyId: task.companyId ?? 0,
@@ -210,7 +259,7 @@ export async function approveTask(
     },
   });
 
-  return true;
+  return { success: true, actionRequestId: Number(actionRequest?.id || 0) || undefined };
 }
 
 export async function rejectTask(

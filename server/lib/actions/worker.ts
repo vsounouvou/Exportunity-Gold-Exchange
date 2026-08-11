@@ -7,6 +7,7 @@ import {
   agents,
   auditLogs,
   chatRooms,
+  companies,
   eceUsers,
   meetings,
   messages,
@@ -3139,31 +3140,77 @@ export async function runActionWorkerOnce() {
       if (!title) throw new Error("task title is required");
 
       const description = String(payload.description ?? payload.body ?? "").trim() || title;
+      const existingTaskId = parseOptionalNumber(payload.existingTaskId ?? payload.existing_task_id);
       const taskAgentId = parseOptionalNumber(payload.agentId ?? payload.assigneeId ?? payload.agent_id);
       const companyIdRaw = parseOptionalNumber(payload.companyId ?? payload.company_id ?? meta.companyId);
       const goalId = parseOptionalNumber(payload.goalId ?? payload.goal_id);
+      const objectiveId = parseOptionalNumber(payload.objectiveId ?? payload.objective_id ?? goalId);
       const priority = String(payload.priority ?? "medium").trim().toLowerCase();
       const status = String(payload.status ?? "backlog").trim().toLowerCase();
       const dueDateRaw = firstNonEmptyString(payload.dueDate, payload.due_date);
       const isAutomated = Boolean(payload.isAutomated ?? payload.is_automated ?? true);
       const sourceMeetingId = parseOptionalNumber(payload.sourceMeetingId ?? payload.source_meeting_id ?? meta.meetingId);
       const sourceMessageId = parseOptionalNumber(payload.sourceMessageId ?? payload.source_message_id ?? meta.messageId);
+      const normalizedPriority = ["low", "medium", "high", "urgent"].includes(priority) ? priority : "medium";
+      const normalizedStatus = ["backlog", "ready", "in_progress", "blocked", "completed", "cancelled"].includes(status)
+        ? status
+        : "backlog";
 
-      const [createdTask] = await db.insert(tasks).values({
-        agentId: taskAgentId,
-        companyId: companyIdRaw,
-        goalId,
-        title,
-        description,
-        priority: ["low", "medium", "high", "urgent"].includes(priority) ? priority : "medium",
-        status: ["backlog", "ready", "in_progress", "blocked", "completed", "cancelled"].includes(status) ? status : "backlog",
-        dueDate: dueDateRaw ? new Date(dueDateRaw) : null,
-        isAutomated,
-        sourceMeetingId,
-        sourceMessageId,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      }).returning();
+      let createdTask: any;
+      if (companyIdRaw) {
+        const taskCompany = await db.query.companies.findFirst({
+          where: eq(companies.id, companyIdRaw),
+          columns: { id: true, tenantId: true },
+        });
+        if (!taskCompany || Number(taskCompany.tenantId || 0) !== tenantId) {
+          throw new Error(`company ${companyIdRaw} is outside the action tenant`);
+        }
+      }
+      if (existingTaskId) {
+        const existingTask = await db.query.tasks.findFirst({ where: eq(tasks.id, existingTaskId) });
+        if (!existingTask) throw new Error(`task ${existingTaskId} not found`);
+        if (companyIdRaw && existingTask.companyId && Number(existingTask.companyId) !== companyIdRaw) {
+          throw new Error(`task ${existingTaskId} does not belong to company ${companyIdRaw}`);
+        }
+
+        [createdTask] = await db
+          .update(tasks)
+          .set({
+            agentId: taskAgentId ?? existingTask.agentId,
+            companyId: companyIdRaw ?? existingTask.companyId,
+            goalId: goalId ?? existingTask.goalId,
+            objectiveId: objectiveId ?? existingTask.objectiveId,
+            title,
+            description,
+            priority: normalizedPriority,
+            status: normalizedStatus,
+            dueDate: dueDateRaw ? new Date(dueDateRaw) : existingTask.dueDate,
+            approvalStatus: "approved",
+            isAutomated,
+            sourceMeetingId: sourceMeetingId ?? existingTask.sourceMeetingId,
+            sourceMessageId: sourceMessageId ?? existingTask.sourceMessageId,
+            updatedAt: new Date(),
+          })
+          .where(eq(tasks.id, existingTaskId))
+          .returning();
+      } else {
+        [createdTask] = await db.insert(tasks).values({
+          agentId: taskAgentId,
+          companyId: companyIdRaw,
+          goalId,
+          objectiveId,
+          title,
+          description,
+          priority: normalizedPriority,
+          status: normalizedStatus,
+          dueDate: dueDateRaw ? new Date(dueDateRaw) : null,
+          isAutomated,
+          sourceMeetingId,
+          sourceMessageId,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        }).returning();
+      }
 
       const recurringNextActionId = await queueRecurringFollowup({
         action: next,
@@ -3190,6 +3237,7 @@ export async function runActionWorkerOnce() {
           taskId: createdTask.id,
           title: createdTask.title,
           assignedTo: taskAgentId,
+          existingTask: Boolean(existingTaskId),
           recurringNextActionId,
           recurringMeetingActionIds,
         },

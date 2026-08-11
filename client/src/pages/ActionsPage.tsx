@@ -1,165 +1,141 @@
-import { useState } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useMemo, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { format } from "date-fns";
+import {
+  Activity,
+  AlertCircle,
+  Check,
+  CheckCircle2,
+  Clock3,
+  FileCheck2,
+  History,
+  Loader2,
+  Search,
+  ShieldCheck,
+  Sparkles,
+  X,
+  Zap,
+} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Building2,
-  MessageSquare,
-  Globe,
-  FileText,
-  DollarSign,
-  CheckSquare,
-  Settings,
-  TrendingUp,
-  Activity,
-  Calendar,
-  Mail,
-  Upload,
-  Search,
-  Users,
-  Clock,
-  CheckCircle2,
-  XCircle,
-  AlertCircle,
-  Filter,
-  Wand2,
-} from "lucide-react";
-import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { resolveApiUrl } from "@/lib/runtimeConfig";
 
-const ACTION_CATEGORIES = [
-  {
-    id: "platform",
-    label: "Platform Actions",
-    icon: Settings,
-    color: "text-blue-400",
-    actions: [
-      { code: "create_company", name: "Create Company", description: "Create a new company in the system" },
-      { code: "create_agent", name: "Create Agent", description: "Add a new AI agent to a company" },
-      { code: "update_agent", name: "Update Agent", description: "Modify agent profile and settings" },
-      { code: "delete_agent", name: "Delete Agent", description: "Remove an agent from the system" },
-      { code: "update_budget", name: "Update Budget", description: "Change agent or company budget allocation" },
-      { code: "create_meeting", name: "Create Meeting", description: "Schedule a new meeting or conversation" },
-      { code: "end_meeting", name: "End Meeting", description: "Complete and summarize a meeting" },
-      { code: "add_participant", name: "Add Participant", description: "Add agent to meeting or conversation" },
-      { code: "remove_participant", name: "Remove Participant", description: "Remove agent from conversation" },
-      { code: "grant_permission", name: "Grant Permission", description: "Give an agent access to specific actions" },
-      { code: "revoke_permission", name: "Revoke Permission", description: "Remove agent's action permissions" },
-    ]
-  },
-  {
-    id: "communication",
-    label: "Communication",
-    icon: MessageSquare,
-    color: "text-green-400",
-    actions: [
-      { code: "send_email", name: "Send Email", description: "Send email to internal or external contacts" },
-      { code: "send_slack_message", name: "Send Slack Message", description: "Post message to Slack channel" },
-      { code: "create_notification", name: "Create Notification", description: "Send in-platform notification" },
-      { code: "send_sms", name: "Send SMS", description: "Send text message via Twilio" },
-      { code: "create_announcement", name: "Create Announcement", description: "Broadcast message to team" },
-    ]
-  },
-  {
-    id: "external",
-    label: "External Services",
-    icon: Globe,
-    color: "text-purple-400",
-    actions: [
-      { code: "google_search", name: "Google Search", description: "Search the web via Google" },
-      { code: "google_calendar_create_event", name: "Create Calendar Event", description: "Add event to Google Calendar" },
-      { code: "google_calendar_update_event", name: "Update Calendar Event", description: "Modify Google Calendar event" },
-      { code: "google_drive_upload_file", name: "Upload to Drive", description: "Upload file to Google Drive" },
-      { code: "google_drive_list_files", name: "List Drive Files", description: "Browse Google Drive contents" },
-      { code: "google_sheets_read_range", name: "Read Spreadsheet", description: "Read data from Google Sheets" },
-      { code: "google_sheets_write_range", name: "Write Spreadsheet", description: "Write data to Google Sheets" },
-      { code: "gmail_send_email", name: "Send via Gmail", description: "Send email through Gmail API" },
-    ]
-  },
-  {
-    id: "documents",
-    label: "Documents",
-    icon: FileText,
-    color: "text-yellow-400",
-    actions: [
-      { code: "upload_document", name: "Upload Document", description: "Upload file to knowledge base" },
-      { code: "tag_document", name: "Tag Document", description: "Add metadata tags to document" },
-      { code: "search_documents", name: "Search Documents", description: "Find documents in knowledge base" },
-      { code: "delete_document", name: "Delete Document", description: "Remove document from system" },
-      { code: "share_document", name: "Share Document", description: "Grant access to document" },
-    ]
-  },
-  {
-    id: "financial",
-    label: "Financial",
-    icon: DollarSign,
-    color: "text-emerald-400",
-    actions: [
-      { code: "log_transaction", name: "Log Transaction", description: "Record financial transaction" },
-      { code: "update_budget", name: "Update Budget", description: "Adjust budget allocation" },
-      { code: "generate_invoice", name: "Generate Invoice", description: "Create invoice for client" },
-      { code: "process_payment", name: "Process Payment", description: "Execute payment transaction" },
-      { code: "generate_financial_report", name: "Generate Report", description: "Create financial analysis report" },
-    ]
-  },
-  {
-    id: "tasks",
-    label: "Task Management",
-    icon: CheckSquare,
-    color: "text-orange-400",
-    actions: [
-      { code: "create_task", name: "Create Task", description: "Add new task to system" },
-      { code: "assign_task", name: "Assign Task", description: "Assign task to agent" },
-      { code: "update_task", name: "Update Task", description: "Modify task details or status" },
-      { code: "complete_task", name: "Complete Task", description: "Mark task as completed" },
-      { code: "delete_task", name: "Delete Task", description: "Remove task from system" },
-    ]
-  },
-];
+type ActionReceipt = {
+  id?: number | null;
+  receiptType?: string | null;
+  entityType?: string | null;
+  entityIds?: Array<string | number>;
+  affectedRows?: number | null;
+  createdAt?: string | null;
+};
 
-interface ExecutedAction {
-  id: string;
-  actionCode: string;
-  actionName: string;
-  category: string;
-  executedBy: string;
-  executedByType: "chairman" | "agent" | "system";
-  companyId?: number;
-  companyName?: string;
-  timestamp: string;
-  status: "success" | "failed" | "pending";
-  metadata?: {
-    revenue?: number;
-    cost?: number;
-    participants?: string[];
-    details?: string;
+type ActionItem = {
+  id: number;
+  publicActionId?: string;
+  actionType?: string;
+  status?: string;
+  state?: string;
+  mode?: string;
+  payload?: Record<string, any>;
+  requestedByAgentKey?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+  trace?: {
+    conversationId?: string | null;
+    source?: string | null;
+    correlationId?: string | null;
   };
+  evidence?: {
+    outcome?: string | null;
+    receipt_count?: number;
+    receipts?: ActionReceipt[];
+  };
+  diagnostics?: {
+    failureReason?: string | null;
+    deliveryStatus?: string | null;
+  };
+};
+
+type QueueResponse = { ok: boolean; items: ActionItem[] };
+type RunnerResponse = {
+  ok: boolean;
+  runner?: { running?: boolean; healthy?: boolean; lastRunAt?: string | null; lastError?: string | null };
+};
+type ForgeRequest = {
+  id: string | number;
+  desired_action_key?: string;
+  desired_description?: string | null;
+  desired_entity?: string | null;
+  status?: string;
+  created_at?: string;
+};
+type ForgeResponse = { ok: boolean; items: ForgeRequest[] };
+
+const ACTIVE_STATES = new Set(["CREATED", "QUEUED", "RUNNING", "PENDING"]);
+
+function normalize(value: unknown) {
+  return String(value || "").trim().toUpperCase();
 }
 
-type AutomationManagerResponse = {
-  ok: boolean;
-  manager: {
-    id: number;
-    name: string;
-    role: string;
-    company_id?: number | null;
-  } | null;
-};
+function actionState(item: ActionItem) {
+  return normalize(item.state || item.status || "CREATED");
+}
+
+function actionTitle(item: ActionItem) {
+  const payload = item.payload || {};
+  return String(
+    payload.title ||
+      payload.subject ||
+      payload.shopName ||
+      payload.displayName ||
+      item.actionType ||
+      "Operational action",
+  ).trim();
+}
+
+function actionTypeLabel(value: unknown) {
+  return String(value || "ACTION")
+    .trim()
+    .toLowerCase()
+    .split("_")
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+function actionDetail(item: ActionItem) {
+  const payload = item.payload || {};
+  if (payload.description && payload.description !== payload.title) return String(payload.description);
+  if (Array.isArray(payload.to) && payload.to.length) return `Recipient: ${payload.to.join(", ")}`;
+  if (payload.sourceMeetingId) return `Created from meeting #${payload.sourceMeetingId}`;
+  if (item.trace?.conversationId) return `Conversation: ${item.trace.conversationId}`;
+  if (item.diagnostics?.failureReason) return item.diagnostics.failureReason;
+  return "Recorded in the Exportunity action ledger.";
+}
+
+function statusClasses(state: string) {
+  if (state === "SUCCEEDED" || state === "DONE") return "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200";
+  if (state === "FAILED") return "border-red-200 bg-red-50 text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200";
+  if (state === "REQUIRES_APPROVAL") return "border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-100";
+  if (state === "RUNNING") return "border-blue-200 bg-blue-50 text-blue-800 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-200";
+  return "border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200";
+}
+
+function dateLabel(value?: string) {
+  if (!value) return "Time unavailable";
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return "Time unavailable";
+  return format(parsed, "MMM d, yyyy, HH:mm");
+}
 
 function buildActionKeyFromPrompt(input: string) {
   const normalized = String(input || "")
@@ -167,509 +143,312 @@ function buildActionKeyFromPrompt(input: string) {
     .toUpperCase()
     .replace(/[^A-Z0-9]+/g, "_")
     .replace(/^_+|_+$/g, "");
-  return (normalized || "AUTOMATION_TASK").slice(0, 64);
+  return (normalized || "AUTOMATION_REQUEST").slice(0, 64);
+}
+
+function ActionRecord({
+  item,
+  onApprove,
+  onDeny,
+  busy,
+}: {
+  item: ActionItem;
+  onApprove: (id: number) => void;
+  onDeny: (id: number) => void;
+  busy: boolean;
+}) {
+  const state = actionState(item);
+  const receipts = Array.isArray(item.evidence?.receipts) ? item.evidence!.receipts! : [];
+  const needsApproval = state === "REQUIRES_APPROVAL" || normalize(item.status) === "REQUIRES_APPROVAL";
+
+  return (
+    <article className="border-b border-slate-200 px-4 py-4 last:border-b-0 dark:border-slate-800 sm:px-5">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0 space-y-1.5">
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant="outline" className={statusClasses(state)}>{state.replace(/_/g, " ")}</Badge>
+            <span className="text-xs font-semibold uppercase text-[#a76700] dark:text-[#f5a623]">
+              {actionTypeLabel(item.actionType)}
+            </span>
+            {item.mode === "SIMULATED" ? <Badge variant="secondary">Dry run</Badge> : null}
+          </div>
+          <h3 className="break-words text-sm font-semibold text-slate-950 dark:text-white sm:text-base">{actionTitle(item)}</h3>
+          <p className="max-w-3xl text-sm leading-6 text-slate-600 dark:text-slate-300">{actionDetail(item)}</p>
+        </div>
+        {needsApproval ? (
+          <div className="flex shrink-0 gap-2">
+            <Button
+              size="sm"
+              className="bg-[#f5a623] text-[#07121f] hover:bg-[#e59a18]"
+              disabled={busy}
+              onClick={() => onApprove(item.id)}
+            >
+              <Check className="mr-1.5 h-4 w-4" /> Approve
+            </Button>
+            <Button size="sm" variant="outline" disabled={busy} onClick={() => onDeny(item.id)}>
+              <X className="mr-1.5 h-4 w-4" /> Deny
+            </Button>
+          </div>
+        ) : null}
+      </div>
+
+      <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-slate-500 dark:text-slate-400">
+        <span className="font-mono">{item.publicActionId || `ACT-${item.id}`}</span>
+        <span>{dateLabel(item.createdAt)}</span>
+        {item.requestedByAgentKey ? <span>Agent: {item.requestedByAgentKey}</span> : null}
+        {item.trace?.source ? <span>Source: {item.trace.source}</span> : null}
+        <span>{item.evidence?.receipt_count || receipts.length} receipt(s)</span>
+        <a
+          className="font-medium text-[#9a6200] underline-offset-4 hover:underline dark:text-[#f5a623]"
+          href={resolveApiUrl(`/api/admin/actions/${item.id}/events`)}
+          target="_blank"
+          rel="noreferrer"
+        >
+          Audit trail
+        </a>
+      </div>
+
+      {item.diagnostics?.failureReason ? (
+        <div className="mt-3 flex gap-2 border-l-2 border-red-500 bg-red-50 px-3 py-2 text-sm text-red-800 dark:bg-red-950/30 dark:text-red-200">
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+          <span>{item.diagnostics.failureReason}</span>
+        </div>
+      ) : null}
+    </article>
+  );
 }
 
 export function ActionsPage() {
   const { toast } = useToast();
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
-  const [filterCompany, setFilterCompany] = useState<string>("all");
-  const [filterExecutor, setFilterExecutor] = useState<string>("all");
-  const [filterStatus, setFilterStatus] = useState<string>("all");
-  const [generateOpen, setGenerateOpen] = useState(false);
-  const [generatePrompt, setGeneratePrompt] = useState("");
-  const [desiredEntity, setDesiredEntity] = useState("automation");
-  const [ownerAgentId, setOwnerAgentId] = useState<string>("none");
-  const [testBeforeActivate, setTestBeforeActivate] = useState(true);
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [automationOpen, setAutomationOpen] = useState(false);
+  const [automationPrompt, setAutomationPrompt] = useState("");
+  const [automationEntity, setAutomationEntity] = useState("operations");
 
-  const automationManagerQuery = useQuery<AutomationManagerResponse>({
-    queryKey: ["/api/actions/automation-manager?ensure=1"],
-    queryFn: async () => apiRequest("/api/actions/automation-manager?ensure=1", "GET"),
+  const queueQuery = useQuery<QueueResponse>({
+    queryKey: ["/api/actions/queue?limit=200"],
+    queryFn: () => apiRequest("/api/actions/queue?limit=200", "GET"),
+    refetchInterval: 5_000,
+  });
+  const decisionsQuery = useQuery<QueueResponse>({
+    queryKey: ["/api/actions/decisions?limit=200"],
+    queryFn: () => apiRequest("/api/actions/decisions?limit=200", "GET"),
+    refetchInterval: 5_000,
+  });
+  const runnerQuery = useQuery<RunnerResponse>({
+    queryKey: ["/api/actions/status"],
+    queryFn: () => apiRequest("/api/actions/status", "GET"),
+    refetchInterval: 10_000,
+  });
+  const forgeQuery = useQuery<ForgeResponse>({
+    queryKey: ["/api/action-forge/requests"],
+    queryFn: () => apiRequest("/api/action-forge/requests", "GET"),
   });
 
-  const { data: agents = [] } = useQuery<any[]>({
-    queryKey: ["/api/agents"],
-    queryFn: async () => apiRequest("/api/agents", "GET"),
-  });
-
-  const generateAutomationMutation = useMutation({
-    mutationFn: async () => {
-      const desiredActionKey = buildActionKeyFromPrompt(generatePrompt);
-      const forgeRequest = await apiRequest("/api/action-forge/requests", "POST", {
-        desiredActionKey,
-        desiredDescription: generatePrompt,
-        desiredEntity,
-        metadata: {
-          ownerAgentId: ownerAgentId !== "none" ? Number(ownerAgentId) : null,
-          source: "automations.generate_button",
-        },
-      });
-
-      let dryRunResult: any = null;
-      if (testBeforeActivate) {
-        dryRunResult = await apiRequest("/api/actions/request", "POST", {
-          actionType: "GOOGLE_SEARCH",
-          payload: { query: generatePrompt.slice(0, 120) || "automation draft test" },
-          dryRun: true,
-          mode: "SIMULATED",
-        });
-      }
-
-      return { forgeRequest, dryRunResult };
-    },
-    onSuccess: (result: any) => {
-      const forgeId = result?.forgeRequest?.request?.id ?? result?.forgeRequest?.id ?? "pending";
-      const actionRunId = result?.dryRunResult?.action_run_id ?? null;
-      toast({
-        title: "Automation request created",
-        description: actionRunId
-          ? `Forge request #${forgeId} created. Dry-run action #${actionRunId} completed.`
-          : `Forge request #${forgeId} created.`,
-      });
-      setGenerateOpen(false);
-      setGeneratePrompt("");
-      setDesiredEntity("automation");
-      setOwnerAgentId("none");
-      setTestBeforeActivate(true);
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Failed to generate automation",
-        description: error?.message || "Could not create automation request",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const executedActions: ExecutedAction[] = [
-    {
-      id: "1",
-      actionCode: "create_meeting",
-      actionName: "Create Meeting",
-      category: "platform",
-      executedBy: "Sales Agent",
-      executedByType: "agent",
-      companyName: "Exportunity CI",
-      timestamp: new Date().toISOString(),
-      status: "success",
-      metadata: { participants: ["Platform Admin", "Sales Agent", "Finance Agent"], details: "Weekly Sales Review" }
-    },
-    {
-      id: "2",
-      actionCode: "log_transaction",
-      actionName: "Log Transaction",
-      category: "financial",
-      executedBy: "Finance Agent",
-      executedByType: "agent",
-      companyName: "Gold Trading UAE",
-      timestamp: new Date(Date.now() - 3600000).toISOString(),
-      status: "success",
-      metadata: { revenue: 25000, details: "Client payment received" }
-    },
-    {
-      id: "3",
-      actionCode: "send_email",
-      actionName: "Send Email",
-      category: "communication",
-      executedBy: "Chairman Assistant",
-      executedByType: "agent",
-      companyName: "Exportunity CI",
-      timestamp: new Date(Date.now() - 7200000).toISOString(),
-      status: "success",
-      metadata: { details: "Follow-up to lead prospects" }
-    },
-    {
-      id: "4",
-      actionCode: "google_calendar_create_event",
-      actionName: "Create Calendar Event",
-      category: "external",
-      executedBy: "Platform Admin",
-      executedByType: "chairman",
-      companyName: "Flying Cars Lab",
-      timestamp: new Date(Date.now() - 10800000).toISOString(),
-      status: "success",
-      metadata: { details: "Q4 Strategy Meeting scheduled" }
-    },
-    {
-      id: "5",
-      actionCode: "create_agent",
-      actionName: "Create Agent",
-      category: "platform",
-      executedBy: "Platform Admin",
-      executedByType: "chairman",
-      companyName: "Exportunity CI",
-      timestamp: new Date(Date.now() - 86400000).toISOString(),
-      status: "success",
-      metadata: { details: "Marketing Agent for Ghana region" }
-    },
-  ];
-
-  const totalActions = executedActions.length;
-  const successRate = Math.round((executedActions.filter(a => a.status === "success").length / totalActions) * 100);
-  const totalRevenue = executedActions.reduce((sum, a) => sum + (a.metadata?.revenue || 0), 0);
-
-  const filteredCategories = ACTION_CATEGORIES.filter(category => {
-    if (selectedCategory && category.id !== selectedCategory) return false;
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      return category.label.toLowerCase().includes(query) ||
-        category.actions.some(a => 
-          a.name.toLowerCase().includes(query) || 
-          a.description.toLowerCase().includes(query)
-        );
-    }
-    return true;
-  });
-
-  const filteredExecutions = executedActions.filter(action => {
-    if (filterCompany !== "all" && action.companyName !== filterCompany) return false;
-    if (filterExecutor !== "all" && action.executedBy !== filterExecutor) return false;
-    if (filterStatus !== "all" && action.status !== filterStatus) return false;
-    return true;
-  });
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case "success": return <CheckCircle2 className="h-4 w-4 text-green-400" />;
-      case "failed": return <XCircle className="h-4 w-4 text-red-400" />;
-      case "pending": return <AlertCircle className="h-4 w-4 text-yellow-400" />;
-      default: return null;
-    }
+  const refreshActionQueries = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["/api/actions/queue?limit=200"] }),
+      queryClient.invalidateQueries({ queryKey: ["/api/actions/decisions?limit=200"] }),
+      queryClient.invalidateQueries({ queryKey: ["/api/actions/status"] }),
+    ]);
   };
 
-	return (
-	    <div className="min-h-screen bg-gray-950 pb-24">
-	      <div className="container mx-auto px-4 md:px-6 py-4 md:py-8 space-y-4 md:space-y-6">
-	        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-            <div>
-	            <h1 className="text-xl md:text-3xl font-bold text-white">Automations</h1>
-	            <p className="text-gray-400 text-sm mt-1">Automation catalog and execution history</p>
-              <p className="text-xs text-gray-500 mt-2">
-                Automation Manager:{" "}
-                <span className="text-emerald-300">
-                  {automationManagerQuery.data?.manager?.name || "Not assigned"}
-                </span>
-              </p>
+  const approveMutation = useMutation({
+    mutationFn: (id: number) => apiRequest(`/api/actions/${id}/approve`, "POST", {}),
+    onSuccess: async () => {
+      toast({ title: "Action approved", description: "The action is queued with its audit trail." });
+      await refreshActionQueries();
+    },
+    onError: (error: any) => toast({ title: "Approval failed", description: error?.message || "The action was not approved.", variant: "destructive" }),
+  });
+
+  const denyMutation = useMutation({
+    mutationFn: (id: number) => apiRequest(`/api/actions/${id}/deny`, "POST", {}),
+    onSuccess: async () => {
+      toast({ title: "Action denied", description: "No execution will occur." });
+      await refreshActionQueries();
+    },
+    onError: (error: any) => toast({ title: "Denial failed", description: error?.message || "The action was not denied.", variant: "destructive" }),
+  });
+
+  const automationMutation = useMutation({
+    mutationFn: () => apiRequest("/api/action-forge/requests", "POST", {
+      desiredActionKey: buildActionKeyFromPrompt(automationPrompt),
+      desiredDescription: automationPrompt.trim(),
+      desiredEntity: automationEntity,
+    }),
+    onSuccess: async () => {
+      setAutomationOpen(false);
+      setAutomationPrompt("");
+      toast({ title: "Automation proposed", description: "The request is visible for technical review; it is not active yet." });
+      await queryClient.invalidateQueries({ queryKey: ["/api/action-forge/requests"] });
+    },
+    onError: (error: any) => toast({ title: "Request failed", description: error?.message || "The automation request could not be created.", variant: "destructive" }),
+  });
+
+  const queue = Array.isArray(queueQuery.data?.items) ? queueQuery.data!.items : [];
+  const decisions = Array.isArray(decisionsQuery.data?.items) ? decisionsQuery.data!.items : [];
+  const forgeRequests = Array.isArray(forgeQuery.data?.items) ? forgeQuery.data!.items : [];
+
+  const stats = useMemo(() => ({
+    active: queue.filter((item) => ACTIVE_STATES.has(actionState(item))).length,
+    review: decisions.length,
+    completed: queue.filter((item) => ["DONE", "SUCCEEDED"].includes(actionState(item))).length,
+    failed: queue.filter((item) => actionState(item) === "FAILED").length,
+  }), [queue, decisions.length]);
+
+  const filteredQueue = useMemo(() => {
+    const term = searchQuery.trim().toLowerCase();
+    return queue.filter((item) => {
+      const state = actionState(item);
+      const matchesStatus =
+        statusFilter === "all" ||
+        (statusFilter === "active" && ACTIVE_STATES.has(state)) ||
+        (statusFilter === "review" && state === "REQUIRES_APPROVAL") ||
+        (statusFilter === "completed" && ["DONE", "SUCCEEDED"].includes(state)) ||
+        (statusFilter === "failed" && state === "FAILED");
+      if (!matchesStatus) return false;
+      if (!term) return true;
+      return `${item.publicActionId || ""} ${item.actionType || ""} ${actionTitle(item)} ${actionDetail(item)}`
+        .toLowerCase()
+        .includes(term);
+    });
+  }, [queue, searchQuery, statusFilter]);
+
+  const runnerHealthy = Boolean(runnerQuery.data?.runner?.healthy || runnerQuery.data?.runner?.running);
+  const mutationBusy = approveMutation.isPending || denyMutation.isPending;
+  const statCards: Array<{ label: string; value: number; Icon: LucideIcon }> = [
+    { label: "Active", value: stats.active, Icon: Clock3 },
+    { label: "Needs review", value: stats.review, Icon: ShieldCheck },
+    { label: "Completed", value: stats.completed, Icon: CheckCircle2 },
+    { label: "Failed", value: stats.failed, Icon: AlertCircle },
+  ];
+
+  return (
+    <div className="min-h-full bg-[#f7f8fa] text-slate-950 dark:bg-[#07121f] dark:text-white">
+      <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+        <header className="flex flex-col gap-4 border-b border-slate-200 pb-5 dark:border-slate-800 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase text-[#9a6200] dark:text-[#f5a623]">
+              <Zap className="h-4 w-4" /> Operations
             </div>
-            <Button className="bg-blue-600 hover:bg-blue-700 gap-2 h-11" onClick={() => setGenerateOpen(true)}>
-              <Wand2 className="h-4 w-4" />
-              Generate Automation
+            <h1 className="text-2xl font-semibold tracking-normal sm:text-3xl">Action ledger</h1>
+            <p className="mt-1 max-w-2xl text-sm text-slate-600 dark:text-slate-300">
+              Real agent requests, approvals, execution states, receipts, and failures. Nothing shown here is simulated history.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant="outline" className={runnerHealthy ? statusClasses("SUCCEEDED") : statusClasses("FAILED")}>
+              <Activity className="mr-1.5 h-3.5 w-3.5" /> {runnerHealthy ? "Runner healthy" : "Runner needs attention"}
+            </Badge>
+            <Button className="bg-[#f5a623] text-[#07121f] hover:bg-[#e59a18]" onClick={() => setAutomationOpen(true)}>
+              <Sparkles className="mr-2 h-4 w-4" /> Propose automation
             </Button>
-	        </div>
+          </div>
+        </header>
 
-        {/* Stats - horizontal scroll on mobile */}
-        <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 md:mx-0 md:px-0 md:grid md:grid-cols-4">
-          <Card className="bg-gray-900 border-gray-800 min-w-[140px] flex-shrink-0 md:min-w-0">
-            <CardHeader className="pb-2 p-3 md:p-4">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-xs md:text-sm font-medium text-gray-400">Executions</CardTitle>
-                <Activity className="h-4 w-4 text-blue-400" />
+        <section className="grid grid-cols-2 gap-px overflow-hidden border border-slate-200 bg-slate-200 dark:border-slate-800 dark:bg-slate-800 sm:grid-cols-4">
+          {statCards.map(({ label, value, Icon }) => (
+            <div key={label} className="bg-white px-4 py-4 dark:bg-[#0a1628]">
+              <div className="flex items-center gap-2 text-xs font-medium text-slate-500 dark:text-slate-400">
+                <Icon className="h-4 w-4" /> {label}
               </div>
-            </CardHeader>
-            <CardContent className="p-3 md:p-4 pt-0">
-              <div className="text-xl md:text-2xl font-bold text-white">{totalActions}</div>
-              <p className="text-xs text-gray-500 mt-1">All time</p>
-            </CardContent>
-          </Card>
+              <div className="mt-1 text-2xl font-semibold">{value}</div>
+            </div>
+          ))}
+        </section>
 
-          <Card className="bg-gray-900 border-gray-800 min-w-[140px] flex-shrink-0 md:min-w-0">
-            <CardHeader className="pb-2 p-3 md:p-4">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-xs md:text-sm font-medium text-gray-400">Success Rate</CardTitle>
-                <TrendingUp className="h-4 w-4 text-green-400" />
-              </div>
-            </CardHeader>
-            <CardContent className="p-3 md:p-4 pt-0">
-              <div className="text-xl md:text-2xl font-bold text-white">{successRate}%</div>
-              <p className="text-xs text-gray-500 mt-1">Completed</p>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-gray-900 border-gray-800 min-w-[140px] flex-shrink-0 md:min-w-0">
-            <CardHeader className="pb-2 p-3 md:p-4">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-xs md:text-sm font-medium text-gray-400">Revenue</CardTitle>
-                <DollarSign className="h-4 w-4 text-emerald-400" />
-              </div>
-            </CardHeader>
-            <CardContent className="p-3 md:p-4 pt-0">
-              <div className="text-xl md:text-2xl font-bold text-white">${totalRevenue.toLocaleString()}</div>
-              <p className="text-xs text-gray-500 mt-1">From actions</p>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-gray-900 border-gray-800 min-w-[140px] flex-shrink-0 md:min-w-0">
-            <CardHeader className="pb-2 p-3 md:p-4">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-xs md:text-sm font-medium text-gray-400">Types</CardTitle>
-                <Settings className="h-4 w-4 text-purple-400" />
-              </div>
-            </CardHeader>
-            <CardContent className="p-3 md:p-4 pt-0">
-              <div className="text-xl md:text-2xl font-bold text-white">
-                {ACTION_CATEGORIES.reduce((sum, cat) => sum + cat.actions.length, 0)}
-              </div>
-              <p className="text-xs text-gray-500 mt-1">Available</p>
-            </CardContent>
-          </Card>
-        </div>
-
-        <Tabs defaultValue="catalog" className="space-y-4 md:space-y-6">
-          <TabsList className="bg-gray-900 border-gray-800 w-full sm:w-auto">
-            <TabsTrigger value="catalog" className="flex-1 sm:flex-initial h-10">Catalog</TabsTrigger>
-            <TabsTrigger value="history" className="flex-1 sm:flex-initial h-10">History</TabsTrigger>
+        <Tabs defaultValue="queue" className="mt-6">
+          <TabsList className="h-auto w-full justify-start overflow-x-auto rounded-none border-b border-slate-200 bg-transparent p-0 dark:border-slate-800">
+            <TabsTrigger value="queue" className="rounded-none border-b-2 border-transparent px-4 py-3 data-[state=active]:border-[#f5a623] data-[state=active]:bg-transparent">Work queue</TabsTrigger>
+            <TabsTrigger value="decisions" className="rounded-none border-b-2 border-transparent px-4 py-3 data-[state=active]:border-[#f5a623] data-[state=active]:bg-transparent">Approvals ({decisions.length})</TabsTrigger>
+            <TabsTrigger value="automations" className="rounded-none border-b-2 border-transparent px-4 py-3 data-[state=active]:border-[#f5a623] data-[state=active]:bg-transparent">Automation requests</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="catalog" className="space-y-4">
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-              <div className="flex-1">
-                <Input
-                  placeholder="Search actions..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="bg-gray-900 border-gray-800 h-11"
-                />
+          <TabsContent value="queue" className="mt-4">
+            <div className="mb-3 flex flex-col gap-2 sm:flex-row">
+              <div className="relative flex-1">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <Input value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} className="bg-white pl-9 dark:bg-[#0a1628]" placeholder="Search action ID, type, task, or source" />
               </div>
-              <Select value={selectedCategory || "all"} onValueChange={(v) => setSelectedCategory(v === "all" ? null : v)}>
-                <SelectTrigger className="w-full sm:w-[200px] bg-gray-900 border-gray-800 h-11">
-                  <SelectValue placeholder="All Categories" />
-                </SelectTrigger>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-full bg-white dark:bg-[#0a1628] sm:w-44"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Categories</SelectItem>
-                  {ACTION_CATEGORIES.map(cat => (
-                    <SelectItem key={cat.id} value={cat.id}>{cat.label}</SelectItem>
-                  ))}
+                  <SelectItem value="all">All states</SelectItem>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="review">Needs review</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
+                  <SelectItem value="failed">Failed</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-
-            <div className="space-y-4">
-              {filteredCategories.map((category) => {
-                const Icon = category.icon;
-                return (
-                  <Card key={category.id} className="bg-gray-900 border-gray-800">
-                    <CardHeader className="p-4 md:p-6">
-                      <div className="flex items-center gap-3">
-                        <Icon className={`h-5 w-5 ${category.color}`} />
-                        <CardTitle className="text-white text-base md:text-lg">{category.label}</CardTitle>
-                        <Badge variant="outline" className="ml-auto text-xs">
-                          {category.actions.length}
-                        </Badge>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="p-4 md:p-6 pt-0">
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                        {category.actions.map((action) => (
-                          <Card key={action.code} className="bg-gray-800/50 border-gray-700">
-                            <CardContent className="p-3 md:p-4">
-                              <div className="space-y-2">
-                                <div className="flex items-start justify-between gap-2">
-                                  <h4 className="text-sm font-medium text-white">{action.name}</h4>
-                                  <Badge variant="secondary" className="text-[10px] md:text-xs flex-shrink-0">
-                                    {action.code}
-                                  </Badge>
-                                </div>
-                                <p className="text-xs text-gray-400 line-clamp-2">{action.description}</p>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        ))}
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
+            <div className="overflow-hidden border border-slate-200 bg-white dark:border-slate-800 dark:bg-[#0a1628]">
+              {queueQuery.isLoading ? (
+                <div className="flex items-center justify-center gap-2 px-4 py-16 text-sm text-slate-500"><Loader2 className="h-4 w-4 animate-spin" /> Loading the action ledger</div>
+              ) : filteredQueue.length ? filteredQueue.map((item) => (
+                <ActionRecord key={item.id} item={item} busy={mutationBusy} onApprove={(id) => approveMutation.mutate(id)} onDeny={(id) => denyMutation.mutate(id)} />
+              )) : (
+                <div className="px-4 py-16 text-center"><History className="mx-auto h-7 w-7 text-slate-400" /><p className="mt-3 text-sm font-medium">No matching action records</p><p className="mt-1 text-xs text-slate-500">Approved meeting work and agent tool requests appear here.</p></div>
+              )}
             </div>
           </TabsContent>
 
-          <TabsContent value="history" className="space-y-4">
-            <div className="flex flex-col sm:flex-row items-stretch gap-3 overflow-x-auto pb-2">
-              <Select value={filterCompany} onValueChange={setFilterCompany}>
-                <SelectTrigger className="w-full sm:w-[180px] bg-gray-900 border-gray-800 h-11 flex-shrink-0">
-                  <SelectValue placeholder="All Companies" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Companies</SelectItem>
-                  <SelectItem value="Exportunity CI">Exportunity CI</SelectItem>
-                  <SelectItem value="Gold Trading UAE">Gold Trading UAE</SelectItem>
-                  <SelectItem value="Flying Cars Lab">Flying Cars Lab</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <Select value={filterExecutor} onValueChange={setFilterExecutor}>
-                <SelectTrigger className="w-full sm:w-[180px] bg-gray-900 border-gray-800 h-11 flex-shrink-0">
-                  <SelectValue placeholder="All Executors" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Executors</SelectItem>
-                  <SelectItem value="Platform Admin">Platform Admin</SelectItem>
-                  <SelectItem value="Chairman Assistant">Chairman Assistant</SelectItem>
-                  <SelectItem value="Sales Agent">Sales Agent</SelectItem>
-                  <SelectItem value="Finance Agent">Finance Agent</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <Select value={filterStatus} onValueChange={setFilterStatus}>
-                <SelectTrigger className="w-full sm:w-[160px] bg-gray-900 border-gray-800 h-11 flex-shrink-0">
-                  <SelectValue placeholder="All Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="success">Success</SelectItem>
-                  <SelectItem value="failed">Failed</SelectItem>
-                  <SelectItem value="pending">Pending</SelectItem>
-                </SelectContent>
-              </Select>
+          <TabsContent value="decisions" className="mt-4">
+            <div className="mb-3 border-l-2 border-[#f5a623] bg-amber-50 px-4 py-3 text-sm text-amber-950 dark:bg-amber-950/30 dark:text-amber-100">
+              External communications, persistent automations, and other governed effects wait here for a human decision.
             </div>
+            <div className="overflow-hidden border border-slate-200 bg-white dark:border-slate-800 dark:bg-[#0a1628]">
+              {decisionsQuery.isLoading ? (
+                <div className="flex items-center justify-center gap-2 px-4 py-16 text-sm text-slate-500"><Loader2 className="h-4 w-4 animate-spin" /> Loading approvals</div>
+              ) : decisions.length ? decisions.map((item) => (
+                <ActionRecord key={item.id} item={item} busy={mutationBusy} onApprove={(id) => approveMutation.mutate(id)} onDeny={(id) => denyMutation.mutate(id)} />
+              )) : (
+                <div className="px-4 py-16 text-center"><ShieldCheck className="mx-auto h-7 w-7 text-emerald-600" /><p className="mt-3 text-sm font-medium">No approvals waiting</p><p className="mt-1 text-xs text-slate-500">The governed queue is clear.</p></div>
+              )}
+            </div>
+          </TabsContent>
 
-            <Card className="bg-gray-900 border-gray-800">
-              <CardHeader className="p-4 md:p-6">
-                <CardTitle className="text-white text-base md:text-lg">Recent Executions</CardTitle>
-                <CardDescription className="text-xs md:text-sm">{filteredExecutions.length} action{filteredExecutions.length !== 1 ? 's' : ''} found</CardDescription>
-              </CardHeader>
-              <CardContent className="p-4 md:p-6 pt-0">
-                <div className="space-y-3">
-                  {filteredExecutions.map((action) => (
-                    <Card key={action.id} className="bg-gray-800/50 border-gray-700">
-                      <CardContent className="p-3 md:p-4">
-                        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-                          <div className="flex-1 space-y-2 min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              {getStatusIcon(action.status)}
-                              <h4 className="text-sm font-medium text-white">{action.actionName}</h4>
-                              <Badge variant="outline" className="text-xs">
-                                {action.category}
-                              </Badge>
-                            </div>
-                            
-                            <div className="flex items-center gap-3 md:gap-4 text-xs text-gray-400 flex-wrap">
-                              <span className="flex items-center gap-1">
-                                <Users className="h-3 w-3" />
-                                {action.executedBy}
-                              </span>
-                              {action.companyName && (
-                                <span className="flex items-center gap-1">
-                                  <Building2 className="h-3 w-3" />
-                                  {action.companyName}
-                                </span>
-                              )}
-                              <span className="flex items-center gap-1">
-                                <Clock className="h-3 w-3" />
-                                {format(new Date(action.timestamp), "MMM d, h:mm a")}
-                              </span>
-                            </div>
-
-                            {action.metadata?.details && (
-                              <p className="text-xs md:text-sm text-gray-300">{action.metadata.details}</p>
-                            )}
-
-                            {action.metadata?.revenue && (
-                              <div className="flex items-center gap-2">
-                                <Badge variant="default" className="bg-green-500/10 text-green-400 text-xs">
-                                  Revenue: ${action.metadata.revenue.toLocaleString()}
-                                </Badge>
-                              </div>
-                            )}
-
-                            {action.metadata?.participants && (
-                              <div className="text-xs text-gray-400">
-                                Participants: {action.metadata.participants.join(", ")}
-                              </div>
-                            )}
-                          </div>
-
-                          <Badge variant={action.status === "success" ? "default" : "destructive"} className="self-start flex-shrink-0">
-                            {action.status}
-                          </Badge>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-
-                  {filteredExecutions.length === 0 && (
-                    <div className="py-12 text-center">
-                      <Filter className="h-12 w-12 md:h-16 md:w-16 text-gray-600 mx-auto mb-4" />
-                      <h3 className="text-base md:text-lg font-medium text-gray-300">No actions found</h3>
-                      <p className="text-gray-500 mt-2 text-sm">Try adjusting your filters</p>
+          <TabsContent value="automations" className="mt-4">
+            <div className="overflow-hidden border border-slate-200 bg-white dark:border-slate-800 dark:bg-[#0a1628]">
+              {forgeQuery.isLoading ? (
+                <div className="flex items-center justify-center gap-2 px-4 py-16 text-sm text-slate-500"><Loader2 className="h-4 w-4 animate-spin" /> Loading requests</div>
+              ) : forgeRequests.length ? forgeRequests.map((request) => (
+                <div key={request.id} className="border-b border-slate-200 px-5 py-4 last:border-b-0 dark:border-slate-800">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <div className="text-xs font-semibold uppercase text-[#9a6200] dark:text-[#f5a623]">{request.desired_action_key || "Automation request"}</div>
+                      <div className="mt-1 text-sm font-medium">{request.desired_description || "Technical specification required"}</div>
                     </div>
-                  )}
+                    <Badge variant="outline">{normalize(request.status || "REQUESTED").replace(/_/g, " ")}</Badge>
+                  </div>
+                  <div className="mt-2 flex flex-wrap gap-3 text-xs text-slate-500"><span>Entity: {request.desired_entity || "operations"}</span><span>{dateLabel(request.created_at)}</span></div>
                 </div>
-              </CardContent>
-            </Card>
+              )) : (
+                <div className="px-4 py-16 text-center"><Sparkles className="mx-auto h-7 w-7 text-slate-400" /><p className="mt-3 text-sm font-medium">No automation requests</p><p className="mt-1 text-xs text-slate-500">Proposals remain inactive until reviewed and implemented.</p></div>
+              )}
+            </div>
           </TabsContent>
         </Tabs>
-
-        <Dialog open={generateOpen} onOpenChange={setGenerateOpen}>
-          <DialogContent className="bg-gray-900 border-gray-700">
-            <DialogHeader>
-              <DialogTitle className="text-white">Generate Automation</DialogTitle>
-              <DialogDescription className="text-gray-400">
-                Create a real Action Forge request from natural language, assign an owner agent, and optionally run a dry-run validation.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label className="text-gray-200">Automation prompt</Label>
-                <Textarea
-                  value={generatePrompt}
-                  onChange={(e) => setGeneratePrompt(e.target.value)}
-                  placeholder="Describe the automation you want to generate..."
-                  className="bg-gray-800 border-gray-700 text-white min-h-[100px]"
-                />
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="space-y-2">
-                  <Label className="text-gray-200">Entity</Label>
-                  <Input
-                    value={desiredEntity}
-                    onChange={(e) => setDesiredEntity(e.target.value)}
-                    placeholder="automation"
-                    className="bg-gray-800 border-gray-700 text-white h-10"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-gray-200">Owner agent</Label>
-                  <Select value={ownerAgentId} onValueChange={setOwnerAgentId}>
-                    <SelectTrigger className="bg-gray-800 border-gray-700 text-white h-10">
-                      <SelectValue placeholder="Select owner" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-gray-800 border-gray-700">
-                      <SelectItem value="none">Automation Manager</SelectItem>
-                      {agents.map((agent: any) => (
-                        <SelectItem key={agent.id} value={String(agent.id)}>
-                          {agent.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <label className="flex items-center gap-2 text-sm text-gray-300">
-                <input
-                  type="checkbox"
-                  checked={testBeforeActivate}
-                  onChange={(e) => setTestBeforeActivate(e.target.checked)}
-                  className="h-4 w-4 rounded border-gray-600 bg-gray-800"
-                />
-                Test before activate (dry-run)
-              </label>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" className="border-gray-700" onClick={() => setGenerateOpen(false)}>
-                Cancel
-              </Button>
-              <Button
-                className="bg-blue-600 hover:bg-blue-700"
-                disabled={!generatePrompt.trim() || generateAutomationMutation.isPending}
-                onClick={() => generateAutomationMutation.mutate()}
-              >
-                {generateAutomationMutation.isPending ? "Generating..." : "Generate"}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
       </div>
+
+      <Dialog open={automationOpen} onOpenChange={setAutomationOpen}>
+        <DialogContent className="bg-white text-slate-950 dark:bg-[#0a1628] dark:text-white">
+          <DialogHeader>
+            <DialogTitle>Propose an automation</DialogTitle>
+            <DialogDescription>Describe the repeatable outcome. This creates a visible technical request, not an active background process.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2"><Label htmlFor="automation-description">Required outcome</Label><Textarea id="automation-description" value={automationPrompt} onChange={(event) => setAutomationPrompt(event.target.value)} rows={5} placeholder="Example: Every Monday, prepare an internal supplier pipeline review for approval." /></div>
+            <div className="space-y-2"><Label>Area</Label><Select value={automationEntity} onValueChange={setAutomationEntity}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="operations">Operations</SelectItem><SelectItem value="sourcing">Sourcing</SelectItem><SelectItem value="sales">Sales</SelectItem><SelectItem value="finance">Finance</SelectItem><SelectItem value="compliance">Compliance</SelectItem></SelectContent></Select></div>
+            <div className="flex gap-2 bg-slate-50 px-3 py-3 text-xs leading-5 text-slate-600 dark:bg-slate-900 dark:text-slate-300"><FileCheck2 className="mt-0.5 h-4 w-4 shrink-0 text-[#b97500]" /><span>Activation requires implementation, testing, and an explicit production approval. No external contact is initiated here.</span></div>
+          </div>
+          <DialogFooter><Button variant="outline" onClick={() => setAutomationOpen(false)}>Cancel</Button><Button className="bg-[#f5a623] text-[#07121f] hover:bg-[#e59a18]" disabled={!automationPrompt.trim() || automationMutation.isPending} onClick={() => automationMutation.mutate()}>{automationMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}Create request</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
+
+export default ActionsPage;

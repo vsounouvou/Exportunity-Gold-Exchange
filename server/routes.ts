@@ -32,6 +32,7 @@ import { analyzeSentiment } from "./lib/sentiment";
 import { handleNewMemberJoined, initializeChatBehavior } from "./lib/chatBehavior";
 import { generateAndStoreSummary } from "./lib/meetingSummary";
 import { generateAndStoreMeetingOutputs } from "./lib/meetingOutputs";
+import { buildConversationAccountabilityTask } from "./lib/conversation-accountability";
 import { generateMeetingAgenda, updateMeetingWithAgenda } from "./lib/agendaGenerator";
 import { analyzeMeetingPriority, suggestOptimalSlots } from "./lib/priorityMatrix";
 import { predictMeetingDuration } from "./lib/durationPredictor";
@@ -816,29 +817,46 @@ async function ensurePrimaryConversationTask(input: {
   ownerAgentId?: number | null;
 }) {
   if (!input.companyId || input.companyId <= 0) return null;
-  const conversationTaskTitle = `Conversation ${input.conversationId}`.slice(0, 120);
+  const taskRecord = buildConversationAccountabilityTask({
+    conversationId: input.conversationId,
+    titleSource: input.titleSource,
+    description: input.description,
+  });
 
   const existing = await db.query.tasks.findFirst({
     where: and(
       eq(tasks.companyId, input.companyId),
-      eq(tasks.title, conversationTaskTitle),
+      or(
+        eq(tasks.title, taskRecord.legacyTitle),
+        sql`${tasks.description} like ${`%${taskRecord.reference}%`}`,
+      ),
       sql`coalesce(${tasks.status}, '') not in ('done', 'completed', 'cancelled')`,
     ),
     orderBy: [desc(tasks.id)],
-    columns: { id: true },
+    columns: { id: true, title: true, description: true },
   });
-  if (existing?.id) return { id: existing.id, created: false };
+  if (existing?.id) {
+    if (existing.title === taskRecord.legacyTitle || !String(existing.description || "").includes(taskRecord.reference)) {
+      await db
+        .update(tasks)
+        .set({
+          title: taskRecord.title,
+          description: taskRecord.description,
+          updatedAt: new Date(),
+        })
+        .where(eq(tasks.id, existing.id));
+    }
+    return { id: existing.id, created: false };
+  }
 
-  const title = conversationTaskTitle;
-  const description = String(input.description || "").trim() || String(input.titleSource || "").trim() || title;
   const now = new Date();
   const [created] = await db
     .insert(tasks)
     .values({
       agentId: input.ownerAgentId ?? null,
       companyId: input.companyId,
-      title,
-      description,
+      title: taskRecord.title,
+      description: taskRecord.description,
       status: "in_progress",
       priority: "high",
       createdAt: now,

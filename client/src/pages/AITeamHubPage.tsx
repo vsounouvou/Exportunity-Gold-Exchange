@@ -1662,6 +1662,9 @@ export function AITeamHubPage() {
   const confirmedMeetingTasks = meetingTasks.filter(
     (task) => String(task.approvalStatus || "").toLowerCase() === "approved",
   );
+  const meetingDecisionCount = currentMeeting && Array.isArray((currentMeeting.metadata as any)?.decisions)
+    ? (currentMeeting.metadata as any).decisions.filter((decision: unknown) => String(decision || "").trim()).length
+    : 0;
 
   const welcomeMessages = getWelcomeMessages(companyAgents, activeAgentIds);
   const recentActivity = (activityFeed?.items || []).slice(0, 5);
@@ -2147,11 +2150,36 @@ export function AITeamHubPage() {
       });
     },
     onSuccess: (data) => {
+      const payload = (data || {}) as any;
+      const extractedDecisions = Array.isArray(payload.decisions)
+        ? payload.decisions.map((decision: unknown) => String(decision || "").trim()).filter(Boolean)
+        : [];
+      if (extractedDecisions.length > 0) {
+        setCurrentMeeting((previous) => previous
+          ? {
+              ...previous,
+              metadata: {
+                ...(previous.metadata || {}),
+                decisions: extractedDecisions,
+                summary: payload.summary || (previous.metadata as any)?.summary,
+              },
+            }
+          : previous);
+      }
       queryClient.invalidateQueries({ queryKey: [executionCompanyId ? `/api/task-lifecycle/company/${executionCompanyId}` : ""] });
       queryClient.invalidateQueries({ queryKey: ["/api/chatrooms"] });
+      if (payload.blocked) {
+        toast({
+          title: "Decision required",
+          description: "Record a line beginning with ‘Decision:’ in the meeting, then extract again.",
+          variant: "destructive",
+        });
+        return;
+      }
+      const createdCount = Array.isArray(payload.createdTaskIds) ? payload.createdTaskIds.length : 0;
       toast({
-        title: "Tasks extracted",
-        description: `${Array.isArray((data as any)?.createdTaskIds) ? (data as any).createdTaskIds.length : 0} task(s) created (pending approval).`,
+        title: "Meeting records updated",
+        description: `${extractedDecisions.length} decision(s) captured and ${createdCount} task(s) created.`,
       });
     },
     onError: (error) => {
@@ -6382,6 +6410,111 @@ export function AITeamHubPage() {
             </SheetTitle>
           </SheetHeader>
           <div className="mt-4 space-y-4">
+            {currentMeeting && executionCompanyId && meetingRoomId ? (
+              <div
+                className={cn(
+                  "rounded-lg border p-3",
+                  useExportunityLightWorkspace
+                    ? "border-amber-200 bg-amber-50/70"
+                    : "border-amber-500/30 bg-amber-500/10",
+                )}
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <div className={cn("text-sm font-semibold", useExportunityLightWorkspace ? "text-slate-950" : "text-white")}>Meeting workflow</div>
+                    <div className={cn("mt-0.5 text-xs", useExportunityLightWorkspace ? "text-slate-600" : "text-gray-400")}>Decision to task, with explicit approval.</div>
+                  </div>
+                  <Badge className="border-green-500/30 bg-green-500/10 text-green-700 dark:text-green-300">Live</Badge>
+                </div>
+
+                <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+                  <div className={cn("rounded-md border px-2 py-2", useExportunityLightWorkspace ? "border-slate-200 bg-white" : "border-gray-700 bg-gray-900/50")}>
+                    <div className="text-[10px] uppercase tracking-wide text-gray-500">Decisions</div>
+                    <div className={cn("text-base font-semibold", useExportunityLightWorkspace ? "text-slate-950" : "text-white")}>{meetingDecisionCount}</div>
+                  </div>
+                  <div className={cn("rounded-md border px-2 py-2", useExportunityLightWorkspace ? "border-slate-200 bg-white" : "border-gray-700 bg-gray-900/50")}>
+                    <div className="text-[10px] uppercase tracking-wide text-gray-500">Proposed</div>
+                    <div className={cn("text-base font-semibold", useExportunityLightWorkspace ? "text-slate-950" : "text-white")}>{proposedMeetingTasks.length}</div>
+                  </div>
+                  <div className={cn("rounded-md border px-2 py-2", useExportunityLightWorkspace ? "border-slate-200 bg-white" : "border-gray-700 bg-gray-900/50")}>
+                    <div className="text-[10px] uppercase tracking-wide text-gray-500">Approved</div>
+                    <div className={cn("text-base font-semibold", useExportunityLightWorkspace ? "text-slate-950" : "text-white")}>{confirmedMeetingTasks.length}</div>
+                  </div>
+                </div>
+
+                <div className="mt-3 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className={cn("text-xs font-medium", useExportunityLightWorkspace ? "text-slate-700" : "text-gray-300")}>Linked objective</span>
+                    <Badge className={meetingGoalId ? "border-blue-500/30 bg-blue-500/10 text-blue-700 dark:text-blue-300" : "border-amber-500/30 bg-amber-500/10 text-amber-800 dark:text-amber-300"}>
+                      {meetingGoalId ? "Linked" : "Required to close"}
+                    </Badge>
+                  </div>
+                  <Select
+                    value={meetingGoalId ? String(meetingGoalId) : "none"}
+                    onValueChange={(value) => setMeetingGoalMutation.mutate(value === "none" ? null : Number(value))}
+                    disabled={goalsLoading || setMeetingGoalMutation.isPending}
+                  >
+                    <SelectTrigger className={cn("h-9", useExportunityLightWorkspace ? "border-slate-300 bg-white text-slate-950" : "border-gray-700 bg-gray-900 text-white")}>
+                      <SelectValue placeholder={goalsLoading ? "Loading objectives..." : "Select an objective"} />
+                    </SelectTrigger>
+                    <SelectContent className={useExportunityLightWorkspace ? "border-slate-200 bg-white" : "border-gray-700 bg-gray-900"}>
+                      <SelectItem value="none">No linked objective</SelectItem>
+                      {companyGoals.map((goal) => (
+                        <SelectItem key={`meeting-sheet-goal-${goal.id}`} value={String(goal.id)}>{goal.title}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => createMeetingGoalMutation.mutate()}
+                      disabled={createMeetingGoalMutation.isPending || goalsLoading}
+                      className={useExportunityLightWorkspace ? "border-slate-300 bg-white text-slate-900 hover:bg-slate-50" : "border-gray-700 text-gray-200 hover:bg-gray-800"}
+                    >
+                      <Target className="mr-1.5 h-4 w-4" />
+                      New objective
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => extractMeetingTasksMutation.mutate()}
+                      disabled={extractMeetingTasksMutation.isPending}
+                      className="bg-[#F5A623] text-slate-950 hover:bg-[#e99a18]"
+                    >
+                      {extractMeetingTasksMutation.isPending ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Sparkles className="mr-1.5 h-4 w-4" />}
+                      Extract records
+                    </Button>
+                  </div>
+                </div>
+
+                {proposedMeetingTasks.length > 0 ? (
+                  <div className="mt-3 space-y-2">
+                    <div className="text-[10px] uppercase tracking-wide text-gray-500">Awaiting approval</div>
+                    {proposedMeetingTasks.slice(0, 4).map((task) => (
+                      <div key={`meeting-sheet-task-${task.id}`} className={cn("flex items-start gap-2 rounded-md border p-2", useExportunityLightWorkspace ? "border-slate-200 bg-white" : "border-gray-700 bg-gray-900/50")}>
+                        <div className="min-w-0 flex-1">
+                          <div className={cn("text-xs font-medium", useExportunityLightWorkspace ? "text-slate-900" : "text-white")}>{task.title}</div>
+                          <div className="mt-0.5 text-[10px] text-gray-500">{task.agent?.name ? `Owner: ${task.agent.name}` : "Owner: Unassigned"}</div>
+                        </div>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={() => approveTaskMutation.mutate(task.id)}
+                          disabled={approveTaskMutation.isPending || !executionApproverAgentId}
+                          className="h-8 border-green-500/40 text-green-700 hover:bg-green-50 dark:text-green-300 dark:hover:bg-green-500/10"
+                        >
+                          Approve
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+
             <div>
               <div className="text-xs uppercase tracking-wide text-gray-500 mb-2">Current members</div>
               <div className="space-y-2">

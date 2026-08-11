@@ -19,6 +19,9 @@ export type IndustrialAssistantContext = {
   intro: string;
   role?: string;
   quickReplies?: string[];
+  requirementType?: string | null;
+  destinationReplies?: string[];
+  territoryCode?: string | null;
 };
 
 export type IndustrialAssistantProductContext = {
@@ -36,6 +39,7 @@ export type IndustrialAssistantProductContext = {
   minimumOrderQuantity?: string | null;
   leadTimeText?: string | null;
   reference?: string | null;
+  territoryCode?: string | null;
 };
 
 type AssistantMessage = {
@@ -145,9 +149,19 @@ function inferCountryCode(destination: string) {
   if (
     value.includes("ivoire") ||
     value.includes("abidjan") ||
-    value.includes("cocody")
+    value.includes("cocody") ||
+    value.includes("san-pedro")
   )
     return "CI";
+  if (
+    value.includes("emirats") ||
+    value.includes("united arab emirates") ||
+    value.includes("dubai") ||
+    value.includes("jebel ali") ||
+    value.includes("abu dhabi") ||
+    value === "uae"
+  )
+    return "AE";
   if (value.includes("togo") || value.includes("lome")) return "TG";
   if (value.includes("ghana") || value.includes("accra")) return "GH";
   if (value.includes("nigeria") || value.includes("lagos")) return "NG";
@@ -170,6 +184,209 @@ function inferUrgency(value: string): IntakePreview["urgency"] {
   )
     return "planned";
   return "standard";
+}
+
+function quantityQuestionForRequirement(
+  requirementType: string | null | undefined,
+  language: Language,
+) {
+  if (requirementType === "machinery") {
+    return language === "fr"
+      ? "Avez-vous besoin d'une machine, d'une ligne complete ou de plusieurs lignes ? Ajoutez la capacite de production cible si vous la connaissez."
+      : "Do you need one machine, one complete line, or several lines? Add the target production capacity if you know it.";
+  }
+  if (requirementType === "industrial_service") {
+    return language === "fr"
+      ? "Quel est le perimetre de l'intervention : une machine, une ligne ou plusieurs equipements ?"
+      : "What is the service scope: one machine, one line, or several pieces of equipment?";
+  }
+  if (
+    requirementType === "raw_material" ||
+    requirementType === "industrial_input"
+  ) {
+    return language === "fr"
+      ? "Quel volume ou conditionnement devez-vous approvisionner ?"
+      : "What volume or packaging unit do you need to source?";
+  }
+  if (requirementType === "export_quotation") {
+    return language === "fr"
+      ? "Quel volume souhaitez-vous commander : lot d'essai, palettes ou conteneur ?"
+      : "What volume would you like to order: a trial lot, pallets, or a container?";
+  }
+  if (
+    requirementType === "spare_part" ||
+    requirementType === "custom_manufacturing"
+  ) {
+    return language === "fr"
+      ? "Combien de pieces vous faut-il ?"
+      : "How many parts do you need?";
+  }
+  return language === "fr"
+    ? "Quelle quantite ou quel volume souhaitez-vous commander ?"
+    : "What quantity or volume would you like to order?";
+}
+
+function quantityRepliesForRequirement(
+  requirementType: string | null | undefined,
+  language: Language,
+  unitLabel: string,
+  minimumOrderQuantity?: string | null,
+) {
+  if (requirementType === "machinery") {
+    return language === "fr"
+      ? [
+          "1 machine",
+          "1 ligne complete",
+          "Plusieurs lignes",
+          "Capacite a definir",
+          "J'ai un cahier des charges",
+        ]
+      : [
+          "1 machine",
+          "1 complete line",
+          "Several lines",
+          "Capacity to be defined",
+          "I have a specification",
+        ];
+  }
+  if (requirementType === "industrial_service") {
+    return language === "fr"
+      ? [
+          "1 machine",
+          "1 ligne de production",
+          "Plusieurs equipements",
+          "Tout le site",
+          "Perimetre a evaluer",
+        ]
+      : [
+          "1 machine",
+          "1 production line",
+          "Several machines",
+          "The whole site",
+          "Scope to assess",
+        ];
+  }
+  if (
+    requirementType === "raw_material" ||
+    requirementType === "industrial_input"
+  ) {
+    return language === "fr"
+      ? [
+          "1 tonne",
+          "10 tonnes",
+          "1 camion",
+          "1 conteneur",
+          "Volume a definir",
+        ]
+      : [
+          "1 tonne",
+          "10 tonnes",
+          "1 truckload",
+          "1 container",
+          "Volume to be defined",
+        ];
+  }
+  if (requirementType === "export_quotation") {
+    return language === "fr"
+      ? [
+          "Lot d'essai",
+          "1 palette",
+          "10 palettes",
+          "1 conteneur",
+          "Volume a definir",
+        ]
+      : [
+          "Trial lot",
+          "1 pallet",
+          "10 pallets",
+          "1 container",
+          "Volume to be defined",
+        ];
+  }
+  if (
+    requirementType === "spare_part" ||
+    requirementType === "custom_manufacturing"
+  ) {
+    return Array.from(
+      new Set(
+        [
+          minimumOrderQuantity ? `MOQ: ${minimumOrderQuantity}` : `1 ${unitLabel}`,
+          `5 ${unitLabel}`,
+          `10 ${unitLabel}`,
+          `50 ${unitLabel}`,
+          language === "fr" ? "Quantite a confirmer" : "Quantity to confirm",
+        ].filter(Boolean),
+      ),
+    );
+  }
+  return Array.from(
+    new Set(
+      [
+        minimumOrderQuantity ? `MOQ: ${minimumOrderQuantity}` : `10 ${unitLabel}`,
+        `50 ${unitLabel}`,
+        `100 ${unitLabel}`,
+        language === "fr" ? "Je ne sais pas encore" : "I am not sure yet",
+      ].filter(Boolean),
+    ),
+  );
+}
+
+function destinationRepliesForTerritory(
+  territoryCode: string | null | undefined,
+  language: Language,
+) {
+  if (territoryCode === "CI") {
+    return language === "fr"
+      ? [
+          "Abidjan, Cote d'Ivoire",
+          "Port d'Abidjan",
+          "San-Pedro, Cote d'Ivoire",
+          "Livraison sur site",
+          "Destination a preciser",
+        ]
+      : [
+          "Abidjan, Cote d'Ivoire",
+          "Port of Abidjan",
+          "San-Pedro, Cote d'Ivoire",
+          "Deliver to site",
+          "Destination to be confirmed",
+        ];
+  }
+  if (territoryCode === "AE") {
+    return language === "fr"
+      ? [
+          "Dubai, Emirats arabes unis",
+          "Port de Jebel Ali",
+          "Abu Dhabi, Emirats arabes unis",
+          "Livraison sur site",
+          "Destination a preciser",
+        ]
+      : [
+          "Dubai, United Arab Emirates",
+          "Jebel Ali Port",
+          "Abu Dhabi, United Arab Emirates",
+          "Deliver to site",
+          "Destination to be confirmed",
+        ];
+  }
+  if (territoryCode === "BJ") {
+    return language === "fr"
+      ? [
+          "Cotonou, Benin",
+          "Port de Cotonou",
+          "GDIZ, Glo-Djigbe",
+          "Livraison sur site",
+          "Destination a preciser",
+        ]
+      : [
+          "Cotonou, Benin",
+          "Port of Cotonou",
+          "GDIZ, Glo-Djigbe",
+          "Deliver to site",
+          "Destination to be confirmed",
+        ];
+  }
+  return [];
 }
 
 export function IndustrialAssistantChat({
@@ -200,8 +417,12 @@ export function IndustrialAssistantChat({
           composerLabel: "Envoyer un message a Awa",
           greeting:
             "Bonjour, je suis Awa Kouadio, votre interlocutrice commerciale Exportunity. Dites-moi ce que vous devez acheter, sourcer, fabriquer ou acheminer; je vais qualifier le besoin et convenir avec vous de la prochaine etape.",
-          productGreeting: (name: string, factory: string) =>
-            `Bonjour, je suis Awa, votre interlocutrice commerciale Exportunity. Vous consultez ${name}${factory ? `, propose par ${factory}` : ""}. Je vais preparer la commande avec vous, une question a la fois. Quelle quantite souhaitez-vous ?`,
+          productGreeting: (
+            name: string,
+            factory: string,
+            quantityQuestion: string,
+          ) =>
+            `Bonjour, je suis Awa, votre interlocutrice commerciale Exportunity. Vous consultez ${name}${factory ? `, propose par ${factory}` : ""}. Je vais preparer la commande avec vous, une question a la fois. ${quantityQuestion}`,
           placeholder: "Ecrivez votre reponse a Awa...",
           completePlaceholder: "Votre dossier est enregistre",
           attach: "Joindre une photo ou un fichier",
@@ -289,8 +510,12 @@ export function IndustrialAssistantChat({
           composerLabel: "Message Awa",
           greeting:
             "Hello, I am Awa Kouadio, your Exportunity commercial lead. Tell me what you need to buy, source, manufacture, or move; I will qualify the requirement and agree the next step with you.",
-          productGreeting: (name: string, factory: string) =>
-            `Hello, I am Awa, your Exportunity commercial lead. You are viewing ${name}${factory ? `, offered by ${factory}` : ""}. I will prepare the order with you, one question at a time. What quantity do you need?`,
+          productGreeting: (
+            name: string,
+            factory: string,
+            quantityQuestion: string,
+          ) =>
+            `Hello, I am Awa, your Exportunity commercial lead. You are viewing ${name}${factory ? `, offered by ${factory}` : ""}. I will prepare the order with you, one question at a time. ${quantityQuestion}`,
           placeholder: "Type your answer to Awa...",
           completePlaceholder: "Your case has been recorded",
           attach: "Attach a photo or file",
@@ -368,8 +593,18 @@ export function IndustrialAssistantChat({
 
   const commercialMode = mode === "commercial" || Boolean(product);
   const activeGreeting = context?.intro || copy.greeting;
+  const initialRequirementType =
+    product?.requirementType || context?.requirementType || null;
+  const initialQuantityQuestion = quantityQuestionForRequirement(
+    initialRequirementType,
+    language,
+  );
   const productGreeting = product
-    ? copy.productGreeting(product.name, product.factoryName || "")
+    ? copy.productGreeting(
+        product.name,
+        product.factoryName || "",
+        initialQuantityQuestion,
+      )
     : activeGreeting;
   const visibleAgentName = commercialMode ? "Awa Kouadio" : copy.name;
   const visibleAgentRole = commercialMode
@@ -438,6 +673,12 @@ export function IndustrialAssistantChat({
   const [error, setError] = useState<string | null>(null);
   const attachmentInputRef = useRef<HTMLInputElement | null>(null);
   const messageLogRef = useRef<HTMLDivElement | null>(null);
+  const activeRequirementType =
+    intake?.requirementType || initialRequirementType || null;
+  const activeQuantityQuestion = quantityQuestionForRequirement(
+    activeRequirementType,
+    language,
+  );
 
   useEffect(() => {
     setMessages([
@@ -702,7 +943,10 @@ export function IndustrialAssistantChat({
         let nextQuestion: string;
         if (!nextQuantity) {
           nextStep = "quantity";
-          nextQuestion = copy.quantityQuestion;
+          nextQuestion = quantityQuestionForRequirement(
+            nextIntake.requirementType,
+            language,
+          );
         } else if (!nextDestination) {
           nextStep = "destination";
           nextQuestion = copy.destinationQuestion;
@@ -803,7 +1047,7 @@ export function IndustrialAssistantChat({
 
     if (step === "confirm") {
       if (wantsQuantityChange(message)) {
-        ask("quantity", copy.quantityQuestion);
+        ask("quantity", activeQuantityQuestion);
         return;
       }
       if (wantsDestinationChange(message)) {
@@ -869,18 +1113,21 @@ export function IndustrialAssistantChat({
 
   const unitLabel =
     product?.unitOfMeasure || (language === "fr" ? "unites" : "units");
-  const quantityReplies = Array.from(
-    new Set(
-      [
-        product?.minimumOrderQuantity
-          ? `MOQ: ${product.minimumOrderQuantity}`
-          : `10 ${unitLabel}`,
-        `50 ${unitLabel}`,
-        `100 ${unitLabel}`,
-        language === "fr" ? "Je ne sais pas encore" : "I am not sure yet",
-      ].filter(Boolean),
-    ),
+  const quantityReplies = quantityRepliesForRequirement(
+    activeRequirementType,
+    language,
+    unitLabel,
+    product?.minimumOrderQuantity,
   );
+  const territoryDestinationReplies = destinationRepliesForTerritory(
+    product?.territoryCode || context?.territoryCode,
+    language,
+  );
+  const destinationReplies = context?.destinationReplies?.length
+    ? context.destinationReplies
+    : territoryDestinationReplies.length
+      ? territoryDestinationReplies
+      : copy.destinationReplies;
   const activeQuickReplies =
     step === "need"
       ? context?.quickReplies?.length
@@ -889,7 +1136,7 @@ export function IndustrialAssistantChat({
       : step === "quantity"
         ? quantityReplies
         : step === "destination"
-          ? copy.destinationReplies
+          ? destinationReplies
           : step === "timing"
             ? copy.timingReplies
             : step === "priority"

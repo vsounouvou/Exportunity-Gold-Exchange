@@ -141,8 +141,23 @@ test("product and quote journeys use Awa's progressive commercial conversation",
     assistant,
     /type ConversationStep =[\s\S]*?"quantity"[\s\S]*?"destination"[\s\S]*?"timing"[\s\S]*?"priority"[\s\S]*?"confirm"/,
   );
+  assert.match(assistant, /function quantityQuestionForRequirement/);
+  assert.match(
+    assistant,
+    /requirementType === "machinery"[\s\S]*?1 complete line[\s\S]*?Capacity to be defined/,
+  );
+  assert.match(
+    assistant,
+    /function destinationRepliesForTerritory[\s\S]*?territoryCode === "CI"[\s\S]*?territoryCode === "AE"[\s\S]*?territoryCode === "BJ"/,
+  );
+  assert.match(assistant, /value\.includes\("jebel ali"\)/);
   assert.match(assistant, /data-conversation-mode=/);
   assert.match(assistant, /exportunity_ai_product_order/);
+  assert.match(hub, /const withSelectedMarket = \(href: string\)/);
+  assert.match(
+    hub,
+    /href=\{withSelectedMarket\([\s\S]*?\/request-quote\?type=machinery/,
+  );
 });
 
 test("global sourcing offers inherit the selected market without claiming local stock", () => {

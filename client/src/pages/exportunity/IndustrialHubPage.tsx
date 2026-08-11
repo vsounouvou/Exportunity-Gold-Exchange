@@ -426,6 +426,7 @@ function assistantProductContext(
     minimumOrderQuantity: item.minimumOrderQuantity || null,
     leadTimeText: item.leadTimeText || null,
     reference: item.partNumber || item.productCode || null,
+    territoryCode: territory?.code || null,
   };
 }
 
@@ -7385,6 +7386,13 @@ export default function IndustrialHubPage() {
     },
   ];
 
+  const withSelectedMarket = (href: string) => {
+    const [pathname, query = ""] = href.split("?");
+    const params = new URLSearchParams(query);
+    params.set("market", selectedTerritory.code);
+    return `${pathname}?${params.toString()}`;
+  };
+
   const machineryActions = [
     {
       title:
@@ -7393,7 +7401,7 @@ export default function IndustrialHubPage() {
         locale === "fr"
           ? "Décrivez la référence, le modèle ou la compatibilité."
           : "Provide a reference, model, or compatibility detail.",
-      href: "/request-quote?type=spare_part",
+      href: withSelectedMarket("/request-quote?type=spare_part"),
       icon: PackageSearch,
     },
     {
@@ -7405,7 +7413,7 @@ export default function IndustrialHubPage() {
         locale === "fr"
           ? "Lancez une étude de pièce, d'assemblage ou de rétro-ingénierie."
           : "Open a part, assembly, or reverse-engineering assessment.",
-      href: "/request-quote?type=custom_manufacturing",
+      href: withSelectedMarket("/request-quote?type=custom_manufacturing"),
       icon: Settings2,
     },
     {
@@ -7414,7 +7422,7 @@ export default function IndustrialHubPage() {
         locale === "fr"
           ? "Cadrez une machine, un équipement ou une capacité recherchée."
           : "Define the machine, equipment, or capability you need.",
-      href: "/request-quote?type=machinery",
+      href: withSelectedMarket("/request-quote?type=machinery"),
       icon: Wrench,
     },
     {
@@ -7426,9 +7434,11 @@ export default function IndustrialHubPage() {
         locale === "fr"
           ? "Décrivez le produit, le volume et les contraintes du site."
           : "Describe the product, volume, and site constraints.",
-      href: `/request-quote?type=machinery&product=${encodeURIComponent(
-        locale === "fr" ? "Ligne de production" : "Production line",
-      )}`,
+      href: withSelectedMarket(
+        `/request-quote?type=machinery&product=${encodeURIComponent(
+          locale === "fr" ? "Ligne de production" : "Production line",
+        )}`,
+      ),
       icon: Factory,
     },
     {
@@ -7440,7 +7450,9 @@ export default function IndustrialHubPage() {
         locale === "fr"
           ? "Ajoutez cette demande à un dossier machine pour un suivi après revue technique, sans promesse de financement."
           : "Add financing follow-up to a machinery requirement after technical review, without a financing promise.",
-      href: "/request-quote?type=machinery&financing=discussion",
+      href: withSelectedMarket(
+        "/request-quote?type=machinery&financing=discussion",
+      ),
       icon: Landmark,
     },
     {
@@ -7450,9 +7462,11 @@ export default function IndustrialHubPage() {
         locale === "fr"
           ? "Signalez l'équipement, la panne et l'impact opérationnel."
           : "Report the equipment, fault, and operational impact.",
-      href: `/request-quote?type=industrial_service&product=${encodeURIComponent(
-        locale === "fr" ? "Maintenance industrielle" : "Industrial maintenance",
-      )}`,
+      href: withSelectedMarket(
+        `/request-quote?type=industrial_service&product=${encodeURIComponent(
+          locale === "fr" ? "Maintenance industrielle" : "Industrial maintenance",
+        )}`,
+      ),
       icon: Wrench,
     },
     {
@@ -7469,9 +7483,11 @@ export default function IndustrialHubPage() {
     },
   ];
 
-  const machineryEmergencyHref = `/request-quote?type=industrial_service&urgency=urgent&product=${encodeURIComponent(
-    locale === "fr" ? "Arrêt de ligne" : "Production line stopped",
-  )}`;
+  const machineryEmergencyHref = withSelectedMarket(
+    `/request-quote?type=industrial_service&urgency=urgent&product=${encodeURIComponent(
+      locale === "fr" ? "Arrêt de ligne" : "Production line stopped",
+    )}`,
+  );
 
   const machineryOperatingStages = [
     {
@@ -7658,6 +7674,8 @@ export default function IndustrialHubPage() {
             "Source an industrial input",
             "Order a factory product",
           ]),
+    requirementType: queryValue(location, "type") || null,
+    territoryCode: selectedTerritory.code,
   };
   const claimFactoryId = factoryClaimId(location);
   const publicFactoryId = factoryProfileId(location);
@@ -8470,14 +8488,18 @@ export default function IndustrialHubPage() {
                           </div>
                           <div className="mt-7 flex flex-wrap gap-3">
                             <Link
-                              href="/request-quote?type=machinery"
+                              href={withSelectedMarket(
+                                "/request-quote?type=machinery",
+                              )}
                               className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-[#F5A623] px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-[#f9a800]"
                             >
                               <ClipboardList className="h-4 w-4" />
                               {copy.requestQuote}
                             </Link>
                             <Link
-                              href="/request-quote?type=custom_manufacturing"
+                              href={withSelectedMarket(
+                                "/request-quote?type=custom_manufacturing",
+                              )}
                               className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-800 transition hover:border-[#F5A623]/60 hover:bg-[#F5A623]/10 dark:border-white/20 dark:bg-transparent dark:text-white dark:hover:border-[#F5A623]/70 dark:hover:bg-[#F5A623]/10"
                             >
                               <Settings2 className="h-4 w-4" />

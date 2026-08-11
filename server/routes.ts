@@ -76,6 +76,7 @@ import adminRiskRouter from "./routes/admin-risk";
 import imageAssetsRouter from "./routes/image-assets";
 import adminMarketplaceRouter from "./routes/admin-marketplace";
 import adminAgentsOsRouter from "./routes/admin-agents-os";
+import { syncRuntimeAgentByIdToCatalog } from "./lib/agents/syncRuntimeAgentCatalog";
 import adminBourseRouter from "./routes/admin-bourse";
 import adminPmeExchangeRouter from "./routes/admin-pme-exchange";
 import adminAgentTasksRouter from "./routes/admin-agent-tasks";
@@ -10605,6 +10606,15 @@ Respond helpfully with your full platform awareness.`,
 
       if (!agent) {
         return res.status(404).json({ message: "Agent not found" });
+      }
+
+      const tenantId = Number(agent.tenantId || (req as any)?.tenant?.id || 0);
+      if (Number.isInteger(tenantId) && tenantId > 0) {
+        await syncRuntimeAgentByIdToCatalog({
+          tenantId,
+          runtimeAgentId: Number(agent.id),
+          actorUserId: (req as any)?.user?.id ? Number((req as any).user.id) : null,
+        });
       }
 
       console.log(`[API] Updated agent ${agent.name}: ${JSON.stringify(updateData)}`);

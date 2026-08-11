@@ -6,6 +6,7 @@ import { db } from "@db";
 import { agents, agentPhotoGenerations, generatedImages, imageAssets } from "@db/schema";
 import { and, desc, eq, sql } from "drizzle-orm";
 import { ensureTenantAdmin } from "./utils/auth";
+import { syncRuntimeAgentByIdToCatalog } from "../lib/agents/syncRuntimeAgentCatalog";
 import { resolveRuntimeAgentId } from "../lib/agents/resolveRuntimeAgentId";
 import {
   deleteGeneratedImage,
@@ -304,15 +305,23 @@ router.post("/agents/:id/photo/upload", ensureTenantAdmin, upload.single("file")
     });
 
     if (resolved.mode === "runtime") {
+      const avatarUrl = String((record as any)?.storedUrl || (record as any)?.storageUrl || "");
       await db
         .update(agents)
         .set({
           photoAssetId: asset.id,
+          avatarUrl: avatarUrl || null,
           photoUpdatedAt: new Date(),
           photoUpdatedBy: admin?.id ? `admin:${admin.id}` : "admin:unknown",
           updatedAt: new Date(),
         } as any)
         .where(eq(agents.id, entityId));
+
+      await syncRuntimeAgentByIdToCatalog({
+        tenantId: Number(tenantId),
+        runtimeAgentId: entityId,
+        actorUserId: admin?.id ? Number(admin.id) : null,
+      });
 
       await db.insert(agentPhotoGenerations).values({
         tenantId,
@@ -452,6 +461,19 @@ router.post("/agents/:id/photo/generate", ensureTenantAdmin, async (req: any, re
             .update(agentPhotoGenerations)
             .set({ status: "done", imageId: record.id, error: null } as any)
             .where(eq(agentPhotoGenerations.id, run.id));
+
+          if (i === 0 && shouldSetActiveFirst) {
+            const avatarUrl = String((record as any)?.storedUrl || (record as any)?.storageUrl || "");
+            await db
+              .update(agents)
+              .set({ avatarUrl: avatarUrl || null, updatedAt: new Date() } as any)
+              .where(eq(agents.id, entityId));
+            await syncRuntimeAgentByIdToCatalog({
+              tenantId: Number(tenantId),
+              runtimeAgentId: entityId,
+              actorUserId: admin?.id ? Number(admin.id) : null,
+            });
+          }
         } else if (i === 0) {
           await updateTemplatePhotoState({
             templateId: entityId,
@@ -526,15 +548,23 @@ router.post("/agents/:id/photo/select", ensureTenantAdmin, async (req: any, res)
     await setActiveImage(asset.id, imageId);
 
     if (resolved.mode === "runtime") {
+      const avatarUrl = String((belongs as any)?.storedUrl || (belongs as any)?.storageUrl || "");
       await db
         .update(agents)
         .set({
           photoAssetId: asset.id,
+          avatarUrl: avatarUrl || null,
           photoUpdatedAt: new Date(),
           photoUpdatedBy: admin?.id ? `admin:${admin.id}` : "admin:unknown",
           updatedAt: new Date(),
         } as any)
         .where(eq(agents.id, entityId));
+
+      await syncRuntimeAgentByIdToCatalog({
+        tenantId: Number(tenantId),
+        runtimeAgentId: entityId,
+        actorUserId: admin?.id ? Number(admin.id) : null,
+      });
     } else {
       await updateTemplatePhotoState({
         templateId: entityId,

@@ -3,25 +3,11 @@ import { sql } from "drizzle-orm";
 import { db } from "@db";
 import { ensureTenantAdmin } from "./utils/auth";
 import { ensureAgentsOsMarketplaceTables } from "../lib/agent-os/ensureMarketplaceCatalog";
-import { filterProductionAgentIds } from "../lib/agents/productionAllowlist";
-import { resolveAgentRuntimeEnv } from "../lib/agents/visibility";
+import { syncRuntimeAgentsToCatalog } from "../lib/agents/syncRuntimeAgentCatalog";
 
 const router = Router();
 const RUNTIME_SYNC_TTL_MS = 60_000;
 const runtimeSyncAt = new Map<number, number>();
-
-type RuntimeAgentRow = {
-  id: number;
-  name: string;
-  role: string | null;
-  status: string | null;
-  avatar: string | null;
-  manager_id: number | null;
-  department_id: number | null;
-  is_department_head: boolean | null;
-  base_budget: number | string | null;
-  metadata: any;
-};
 
 function asString(value: unknown) {
   return String(value ?? "").trim();
@@ -214,62 +200,6 @@ async function maybeSyncRuntimeOnRead(input: {
   });
 }
 
-function inferCategoryFromRole(role: unknown) {
-  const value = asString(role).toLowerCase();
-  if (!value) return "operations";
-  if (value.includes("compliance") || value.includes("legal")) return "compliance";
-  if (value.includes("finance") || value.includes("treasury") || value.includes("payment")) return "finance";
-  if (value.includes("support") || value.includes("customer")) return "support";
-  if (value.includes("market") || value.includes("growth") || value.includes("sales") || value.includes("hunter")) return "marketing";
-  if (value.includes("chairman") || value.includes("executive")) return "executive";
-  return "operations";
-}
-
-function mapRuntimeStatusToCatalogStatus(status: unknown) {
-  const value = asString(status).toLowerCase();
-  if (value === "active") return "active";
-  if (value === "archived") return "retired";
-  if (value === "inactive") return "retired";
-  return "draft";
-}
-
-async function listRuntimeAgentsForTenant(tenantId: number) {
-  const runtimeEnv = resolveAgentRuntimeEnv();
-  const rows = getRows<RuntimeAgentRow>(
-    await db.execute(sql`
-      select
-        id,
-        name,
-        role,
-        status::text as status,
-        avatar,
-        manager_id,
-        department_id,
-        is_department_head,
-        base_budget,
-        metadata
-      from agents
-      where env = ${runtimeEnv}
-        and coalesce(is_visible, true) = true
-        and coalesce(status::text, 'active') <> 'archived'
-      order by name asc
-    `),
-  ).map((row) => ({
-    ...row,
-    id: Number(row.id),
-    manager_id: row.manager_id == null ? null : Number(row.manager_id),
-    department_id: row.department_id == null ? null : Number(row.department_id),
-  }));
-
-  const allowedAgentIds = await filterProductionAgentIds({
-    tenantId,
-    agentIds: rows.map((row) => Number(row.id)).filter((id) => Number.isInteger(id) && id > 0),
-    context: "admin:agents-os:runtime-sync",
-  });
-  const allowed = new Set(allowedAgentIds.map((id) => Number(id)));
-  return rows.filter((row) => allowed.has(Number(row.id)));
-}
-
 async function syncRuntimeAgentsIntoCatalog(input: {
   tenantId: number;
   tenantKey: string;
@@ -291,121 +221,15 @@ async function syncRuntimeAgentsIntoCatalog(input: {
     }
   }
 
-  const runtimeAgents = await listRuntimeAgentsForTenant(input.tenantId);
-  let created = 0;
-  let updated = 0;
-  let skipped = 0;
-
-  for (const runtime of runtimeAgents) {
-    const runtimeId = Number(runtime.id);
-    if (!Number.isInteger(runtimeId) || runtimeId <= 0) {
-      skipped += 1;
-      continue;
-    }
-
-    const code = `runtime-${input.tenantId}-${runtimeId}`;
-    const slug = `runtime-${slugify(runtime.name || `agent-${runtimeId}`)}-${runtimeId}`;
-    const displayName = asString(runtime.name) || `Runtime Agent ${runtimeId}`;
-    const roleTitle = asString(runtime.role) || displayName;
-    const category = inferCategoryFromRole(runtime.role);
-    const runtimeStatus = mapRuntimeStatusToCatalogStatus(runtime.status);
-    const shortPitch = asString((runtime as any)?.metadata?.mission || "").slice(0, 300);
-    const longDescription = asString((runtime as any)?.metadata?.cv || "");
-    const approvalPolicy = {
-      runtimeAgentId: runtimeId,
-      runtimeManagerId: runtime.manager_id ?? null,
-      runtimeDepartmentId: runtime.department_id ?? null,
-      runtimeDepartmentHead: Boolean(runtime.is_department_head),
-      source: "runtime_agents",
-      syncedAt: new Date().toISOString(),
-    };
-    const baseSalary = Math.max(0, toNumber(runtime.base_budget, 0));
-
-    const existing = getRows<any>(
-      await db.execute(sql`
-        select id
-        from ece_agent_templates
-        where code = ${code}
-        limit 1
-      `),
-    )[0];
-
-    if (existing?.id) {
-      await db.execute(sql`
-        update ece_agent_templates
-        set
-          tenant_id = ${input.tenantId},
-          title = ${displayName},
-          role_title = ${roleTitle},
-          category = ${category},
-          short_pitch = ${shortPitch || null},
-          long_description = ${longDescription || null},
-          description = ${shortPitch || null},
-          base_model = coalesce(nullif(base_model, ''), 'gpt-5'),
-          autonomy_level = coalesce(autonomy_level, 2),
-          approval_policy = ${JSON.stringify(approvalPolicy)}::jsonb,
-          avatar_url = ${asString(runtime.avatar) || null},
-          status = ${runtimeStatus},
-          is_active = ${runtimeStatus !== "retired"},
-          updated_by_user_id = ${input.actor?.id ? Number(input.actor.id) : null},
-          updated_at = now()
-        where id = ${Number(existing.id)}
-      `);
-      updated += 1;
-    } else {
-      await db.execute(sql`
-        insert into ece_agent_templates (
-          tenant_id, code, slug, title, description, category, role_title, short_pitch, long_description,
-          base_model, personality_profile, autonomy_level, approval_policy, knowledge_base_id, avatar_url,
-          status, visibility, is_active, base_salary_monthly, created_by_user_id, updated_by_user_id, created_at, updated_at
-        )
-        values (
-          ${input.tenantId},
-          ${code},
-          ${slug},
-          ${displayName},
-          ${shortPitch || null},
-          ${category},
-          ${roleTitle},
-          ${shortPitch || null},
-          ${longDescription || null},
-          'gpt-5',
-          '{}'::jsonb,
-          2,
-          ${JSON.stringify(approvalPolicy)}::jsonb,
-          null,
-          ${asString(runtime.avatar) || null},
-          ${runtimeStatus},
-          'private',
-          ${runtimeStatus !== "retired"},
-          ${baseSalary},
-          ${input.actor?.id ? Number(input.actor.id) : null},
-          ${input.actor?.id ? Number(input.actor.id) : null},
-          now(),
-          now()
-        )
-      `);
-      created += 1;
-    }
-
-    await db.execute(sql`
-      insert into agent_marketplace_profiles (
-        agent_id, tenant_id, is_visible, price_monthly, currency, tags, is_featured, sort_rank, availability, created_at, updated_at
-      )
-      select id, ${input.tenantId}, false, ${baseSalary}, 'USD', '[]'::jsonb, false, 0, 'available', now(), now()
-      from ece_agent_templates
-      where code = ${code}
-      on conflict (tenant_id, agent_id) do nothing
-    `);
-  }
+  const result = await syncRuntimeAgentsToCatalog({
+    tenantId: input.tenantId,
+    actorUserId: input.actor?.id ? Number(input.actor.id) : null,
+  });
 
   runtimeSyncAt.set(input.tenantId, nowMs);
 
   return {
-    runtimeCount: runtimeAgents.length,
-    created,
-    updated,
-    skipped,
+    ...result,
     throttled: false,
   };
 }

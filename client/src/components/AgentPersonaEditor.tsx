@@ -138,6 +138,7 @@ export function AgentPersonaEditor({ agent, onClose }: AgentPersonaEditorProps) 
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/agents"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/agents"] });
       toast({
         title: "Success",
         description: "Agent persona updated successfully",

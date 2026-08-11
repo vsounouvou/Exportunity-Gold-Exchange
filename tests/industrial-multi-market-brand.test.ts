@@ -70,5 +70,12 @@ test("territory selection preserves one real commercial conversation", () => {
   );
   assert.match(homeMarkup, /value=\{selectedTerritoryCode\}/);
   assert.match(homeMarkup, /onChange=\{changeIndustrialTerritory\}/);
+  assert.match(homeMarkup, /territory=\{selectedTerritory\}/);
   assert.doesNotMatch(homeMarkup, /placeholder=\{copy\.searchPlaceholder\}/);
+  assert.doesNotMatch(
+    hub,
+    /Pieces, equipements et produits fabriques au Benin/,
+  );
+  assert.match(hub, /sourcing pour la Cote d'Ivoire/);
+  assert.match(hub, /sourcing international depuis Dubai/);
 });

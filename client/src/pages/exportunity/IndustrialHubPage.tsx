@@ -2345,15 +2345,51 @@ function ConversationalCatalog({
 function FeaturedCatalogSection({
   items,
   language,
+  territory,
   activeItemId,
   onStartConversation,
 }: {
   items: CatalogItem[];
   language: "fr" | "en";
+  territory: IndustrialTerritory;
   activeItemId?: string | null;
   onStartConversation?: (item: CatalogItem) => void;
 }) {
   if (!items.length) return null;
+  const marketCopy =
+    territory.code === "BJ"
+      ? {
+          detail:
+            language === "fr"
+              ? "Pieces de rechange, equipements et productions documentees au Benin. Awa confirme le fournisseur, le prix, la disponibilite et le delai avant engagement."
+              : "Spare parts, equipment, and documented output in Benin. Awa confirms the supplier, price, availability, and lead time before commitment.",
+          catalogueLabel:
+            language === "fr" ? "Produits du Benin" : "Products from Benin",
+          catalogueHref: "/export-products?market=BJ",
+        }
+      : territory.code === "CI"
+        ? {
+            detail:
+              language === "fr"
+                ? "Pieces, equipements et sourcing industriel pour la Cote d'Ivoire. Les offres affichees sont qualifiees par Awa avant cotation, livraison ou mise en relation."
+                : "Parts, equipment, and industrial sourcing for Cote d'Ivoire. Awa qualifies every displayed offer before quotation, delivery, or supplier introduction.",
+            catalogueLabel:
+              language === "fr"
+                ? "Offres pour la Cote d'Ivoire"
+                : "Offers for Cote d'Ivoire",
+            catalogueHref: "/industrial-supply?market=CI",
+          }
+        : {
+            detail:
+              language === "fr"
+                ? "Machines, intrants, matieres premieres et routes d'approvisionnement depuis Dubai. Awa verifie chaque fournisseur et chaque condition commerciale avant mise en relation."
+                : "Machinery, industrial inputs, commodities, and supply routes from Dubai. Awa verifies each supplier and commercial condition before introduction.",
+            catalogueLabel:
+              language === "fr"
+                ? "Sourcing depuis Dubai"
+                : "Sourcing from Dubai",
+            catalogueHref: "/industrial-supply?market=AE",
+          };
   return (
     <section
       className="mt-8 border-y border-slate-200 py-7 dark:border-white/10"
@@ -2375,9 +2411,7 @@ function FeaturedCatalogSection({
               : "Start with what your factory needs to buy"}
           </h2>
           <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
-            {language === "fr"
-              ? "Pieces de rechange, equipements et productions d'usines beninoises. Selectionnez un produit pour ouvrir une demande reelle, avec la reference ou la photo si vous l'avez."
-              : "Spare parts, equipment, and Benin factory output. Select a product to open a real request and add a reference or photo when available."}
+            {marketCopy.detail}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -2389,11 +2423,11 @@ function FeaturedCatalogSection({
             {language === "fr" ? "Toutes les pieces" : "All parts"}
           </Link>
           <Link
-            href="/export-products"
+            href={marketCopy.catalogueHref}
             className="inline-flex min-h-10 items-center gap-1.5 rounded-lg bg-[#07111F] px-3 py-2 text-sm font-semibold text-white hover:bg-[#0A1628] dark:bg-[#F5A623] dark:text-[#07111F]"
           >
             <PackageSearch className="h-4 w-4" />
-            {language === "fr" ? "Produits du Benin" : "Products from Benin"}
+            {marketCopy.catalogueLabel}
           </Link>
         </div>
       </div>
@@ -2452,16 +2486,30 @@ function FeaturedCatalogSection({
 function CatalogQuickRail({
   items,
   language,
+  territory,
   activeItemId,
   onStartConversation,
 }: {
   items: CatalogItem[];
   language: "fr" | "en";
+  territory: IndustrialTerritory;
   activeItemId?: string | null;
   onStartConversation?: (item: CatalogItem) => void;
 }) {
   const visibleItems = items.slice(0, 6);
   if (!visibleItems.length) return null;
+  const title =
+    territory.code === "BJ"
+      ? language === "fr"
+        ? "Pieces, equipements et productions documentees au Benin"
+        : "Parts, equipment, and documented output in Benin"
+      : territory.code === "CI"
+        ? language === "fr"
+          ? "Pieces, equipements et sourcing pour la Cote d'Ivoire"
+          : "Parts, equipment, and sourcing for Cote d'Ivoire"
+        : language === "fr"
+          ? "Machines, matieres et sourcing international depuis Dubai"
+          : "Machinery, commodities, and international sourcing from Dubai";
 
   return (
     <section
@@ -2479,13 +2527,11 @@ function CatalogQuickRail({
             id="industrial-quick-products"
             className="truncate text-sm font-semibold text-slate-950 dark:text-white"
           >
-            {language === "fr"
-              ? "Pieces, equipements et produits fabriques au Benin"
-              : "Parts, equipment, and products made in Benin"}
+            {title}
           </h2>
         </div>
         <Link
-          href="/industrial-supply"
+          href={`/industrial-supply?market=${territory.code}`}
           className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-[#7f5100] hover:text-[#5e3a00] dark:text-[#F5A623]"
         >
           {language === "fr" ? "Voir le catalogue" : "View catalogue"}
@@ -6295,27 +6341,58 @@ export default function IndustrialHubPage() {
     }),
     [catalogItems],
   );
+  const territoryCatalogItems = useMemo(() => {
+    const localItems = catalogItems.filter(
+      (item) => item.factoryCountryCode === selectedTerritory.countryCode,
+    );
+    const sourcingPrograms = catalogItems.filter(
+      (item) => item.listingKind === "exportunity_sourcing_program",
+    );
+    return Array.from(
+      new Map(
+        [...localItems, ...sourcingPrograms].map((item) => [item.id, item]),
+      ).values(),
+    );
+  }, [catalogItems, selectedTerritory.countryCode]);
   const featuredCatalogItems = useMemo(() => {
-    const spareParts = categorizedItems.supply.filter(
+    const territorySupply = territoryCatalogItems.filter((item) =>
+      [
+        "raw_material",
+        "industrial_input",
+        "spare_part",
+        "industrial_service",
+      ].includes(item.classification),
+    );
+    const territoryProducts = territoryCatalogItems.filter(
+      (item) => item.classification === "export_ready_factory_product",
+    );
+    const territoryMachinery = territoryCatalogItems.filter(
+      (item) => item.classification === "machinery",
+    );
+    const spareParts = territorySupply.filter(
       (item) => item.classification === "spare_part",
     );
-    const tools = categorizedItems.supply.filter(
+    const tools = territorySupply.filter(
       (item) => item.classification === "industrial_input",
+    );
+    const rawMaterials = territorySupply.filter(
+      (item) => item.classification === "raw_material",
     );
     const candidates = [
       spareParts[0],
-      categorizedItems.products[0],
+      territoryProducts[0],
       spareParts[1],
-      categorizedItems.machinery[0],
-      categorizedItems.products[1],
+      territoryMachinery[0],
+      territoryProducts[1],
       spareParts[4],
       tools[0],
-      categorizedItems.products[4],
+      rawMaterials[0],
+      territoryProducts[4],
     ].filter((item): item is CatalogItem => Boolean(item));
     return Array.from(
       new Map(candidates.map((item) => [item.id, item])).values(),
     ).slice(0, 8);
-  }, [categorizedItems]);
+  }, [territoryCatalogItems]);
   const selectionCatalogItems = useMemo(() => {
     if (selectedFactory) {
       return catalogItems.filter(
@@ -6934,6 +7011,7 @@ export default function IndustrialHubPage() {
               <CatalogQuickRail
                 items={featuredCatalogItems}
                 language={locale}
+                territory={selectedTerritory}
                 activeItemId={selectedOrderItemId || null}
                 onStartConversation={updateOrderConversation}
               />
@@ -7187,6 +7265,7 @@ export default function IndustrialHubPage() {
               <FeaturedCatalogSection
                 items={featuredCatalogItems}
                 language={locale}
+                territory={selectedTerritory}
                 activeItemId={selectedOrderItemId || null}
                 onStartConversation={updateOrderConversation}
               />

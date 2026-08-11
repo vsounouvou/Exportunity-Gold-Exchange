@@ -7101,27 +7101,14 @@ export default function IndustrialHubPage() {
                     contextProductCounts={contextProductCounts}
                     className="absolute inset-0 min-h-[520px] shadow-[0_24px_64px_rgba(7,17,31,0.18)]"
                   />
-                  <div className="absolute left-3 right-3 top-3 z-[600] rounded-xl border border-white/70 bg-white/95 p-2 shadow-[0_16px_38px_rgba(7,17,31,0.18)] backdrop-blur-xl sm:left-4 sm:right-auto sm:top-4 sm:w-[calc(100%-2rem)] sm:max-w-[350px] sm:p-3.5 dark:border-white/15 dark:bg-[#07111F]/95">
+                  <div className="absolute left-3 right-3 top-3 z-[600] rounded-xl border border-white/70 bg-white/95 p-2.5 shadow-[0_16px_38px_rgba(7,17,31,0.18)] backdrop-blur-xl sm:left-4 sm:right-4 sm:top-4 sm:p-3 dark:border-white/15 dark:bg-[#07111F]/95">
                     <IndustrialTerritorySwitcher
                       value={selectedTerritoryCode}
                       onChange={changeIndustrialTerritory}
                       language={locale}
-                      className="mb-2 border-slate-200/80 bg-slate-50/90 shadow-none dark:bg-white/[0.04]"
+                      className="border-slate-200/80 bg-slate-50/90 shadow-none dark:bg-white/[0.04]"
                     />
-                    <div className="hidden items-start gap-2.5 sm:flex">
-                      <span className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#F5A623]/15 text-[#865400] dark:text-[#F5A623]">
-                        <MapPinned className="h-4 w-4" />
-                      </span>
-                      <div className="min-w-0">
-                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#a96f0b] dark:text-[#F5A623]">
-                          {copy.verifiedMap}
-                        </p>
-                        <p className="mt-1 hidden text-xs leading-5 text-slate-600 sm:block dark:text-slate-300">
-                          {copy.mapDetail}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex snap-x gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mt-3 sm:grid sm:grid-cols-2 sm:gap-2 sm:overflow-visible">
+                    <div className="mt-2 flex snap-x gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                       {territoryContexts.map((context) => {
                         const active =
                           selectedIndustrialContext?.id === context.id;
@@ -7134,7 +7121,7 @@ export default function IndustrialHubPage() {
                               selectIndustrialContextForCommerce(context)
                             }
                             className={cn(
-                              "w-[88px] shrink-0 snap-start rounded-lg border px-2 py-1.5 text-left transition sm:w-auto sm:p-2",
+                              "w-[88px] shrink-0 snap-start rounded-lg border px-2 py-2 text-left transition",
                               active
                                 ? "border-[#F5A623] bg-[#F5A623]/15 shadow-[0_6px_14px_rgba(245,166,35,0.16)]"
                                 : "border-slate-200/90 bg-white/70 hover:border-[#F5A623]/65 hover:bg-[#F5A623]/10 dark:border-white/10 dark:bg-white/[0.04]",
@@ -7149,7 +7136,7 @@ export default function IndustrialHubPage() {
                                 {context.markerLabel}
                               </span>
                             </span>
-                            <span className="mt-1 hidden truncate text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-500 sm:block dark:text-slate-400">
+                            <span className="mt-1 hidden truncate text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-500 2xl:block dark:text-slate-400">
                               {industrialContextLayerLabel(
                                 context.kind,
                                 locale,
@@ -7158,14 +7145,15 @@ export default function IndustrialHubPage() {
                           </button>
                         );
                       })}
+                      <Link
+                        href="/map"
+                        aria-label={copy.openMap}
+                        title={copy.openMap}
+                        className="grid h-[38px] w-[38px] shrink-0 place-items-center rounded-lg border border-slate-200 bg-white/80 text-[#865400] transition hover:border-[#F5A623] hover:bg-[#F5A623]/10 dark:border-white/10 dark:bg-white/[0.04] dark:text-[#F5A623]"
+                      >
+                        <MapPinned className="h-4 w-4" />
+                      </Link>
                     </div>
-                    <Link
-                      href="/map"
-                      className="mt-3 hidden items-center gap-1 text-xs font-semibold text-[#865400] hover:text-[#6f4300] sm:inline-flex dark:text-[#F5A623] dark:hover:text-[#f9b54b]"
-                    >
-                      {copy.openMap}
-                      <ArrowRight className="h-3.5 w-3.5" />
-                    </Link>
                   </div>
                   {selectedFactory ? (
                     <div className="absolute bottom-4 left-4 right-4 z-[650] rounded-xl border border-white/70 bg-white/95 p-4 shadow-xl backdrop-blur dark:border-white/15 dark:bg-[#07111F]/95">
@@ -7207,7 +7195,7 @@ export default function IndustrialHubPage() {
                           locale,
                         )}
                       </p>
-                      <p className="mt-1 line-clamp-3 text-sm leading-5 text-slate-600 sm:line-clamp-none dark:text-slate-300">
+                      <p className="mt-1 line-clamp-2 text-sm leading-5 text-slate-600 dark:text-slate-300">
                         {industrialContextText(
                           selectedIndustrialContext.summary,
                           locale,

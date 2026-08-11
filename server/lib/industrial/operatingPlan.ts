@@ -11,10 +11,10 @@ import {
   roomMemberships,
 } from "@db/schema";
 
-const OPERATING_PLAN_VERSION = "exportunity-industrial-plan-v1";
+const OPERATING_PLAN_VERSION = "exportunity-industrial-plan-v2";
 
 export const EXPORTUNITY_INDUSTRIAL_MISSION =
-  "Turn verified industrial demand in Benin into reliable sourcing, reverse engineering, local production, and export-ready supply through an accountable agent-led operating system.";
+  "Turn verified industrial demand across Cote d'Ivoire, Benin, and connected UAE supplier corridors into reliable sourcing, reverse engineering, local production, and export-ready supply through an accountable agent-led operating system.";
 
 type AgentIds = Map<string, number>;
 
@@ -33,7 +33,7 @@ const INDUSTRIAL_OBJECTIVES: ObjectiveSpec[] = [
     key: "demand-intelligence",
     title: "Build the verified industrial demand pipeline",
     description:
-      "Capture and qualify real requirements from factories, agro-processors, workshops, logistics operators, and export-ready producers, beginning with GDIZ and Benin's principal industrial corridors.",
+      "Capture and qualify real requirements from factories, agro-processors, workshops, mining and logistics operators, and export-ready producers across Cote d'Ivoire and Benin, with UAE supplier corridors available for qualified sourcing cases.",
     ownerKey: "data",
     priority: "critical",
     keyResults: [
@@ -418,7 +418,7 @@ export async function ensureExportunityIndustrialOperatingPlan(input: {
       .update(companies)
       .set({
         description:
-          "Exportunity is an AI-managed industrial supply platform connecting verified demand, factories, suppliers, spare parts, machinery, engineering, logistics, and export-ready production across Benin and regional markets.",
+          "Exportunity | AI is an industrial trade and sourcing platform connecting verified demand, factories, exporters, suppliers, spare parts, machinery, raw materials, engineering, logistics, and export-ready production across Cote d'Ivoire, Benin, UAE supplier corridors, and other verified markets.",
         vision: EXPORTUNITY_INDUSTRIAL_MISSION,
         currentGoals: INDUSTRIAL_OBJECTIVES.map((objective) => objective.title),
         primarySector: "trade_export",
@@ -426,6 +426,9 @@ export async function ensureExportunityIndustrialOperatingPlan(input: {
           "industrial sourcing",
           "spare parts",
           "machinery",
+          "industrial raw materials",
+          "mining supply chains",
+          "precious metals sourcing",
           "reverse engineering",
           "local manufacturing",
           "export readiness",
@@ -434,6 +437,9 @@ export async function ensureExportunityIndustrialOperatingPlan(input: {
           ...asRecord(input.companyMetadata),
           operatingModel: "exportunity-industrial",
           operatingPlanVersion: OPERATING_PLAN_VERSION,
+          masterBrand: "Exportunity | AI",
+          operatingTerritories: ["Cote d'Ivoire", "Benin", "UAE supplier corridor"],
+          specializedDivisions: ["Exportunity Machinery"],
           externalActions: "human_approval_required",
         },
         updatedAt: new Date(),
@@ -460,4 +466,3 @@ export async function ensureExportunityIndustrialOperatingPlan(input: {
     createdMeetingIds,
   };
 }
-

@@ -54,7 +54,11 @@ test("Exportunity agent policies use current models by responsibility", () => {
 });
 
 test("Exportunity company context keeps agents in the B2B industrial domain", () => {
-  assert.match(EXPORTUNITY_COMPANY_CONTEXT, /B2B African trade, sourcing, commodities, machinery/i);
-  assert.match(EXPORTUNITY_COMPANY_CONTEXT, /not a retail marketplace, a gold business, a crypto product/i);
+  assert.match(EXPORTUNITY_COMPANY_CONTEXT, /Exportunity \| AI is the master brand/i);
+  assert.match(EXPORTUNITY_COMPANY_CONTEXT, /Cote d'Ivoire and Benin/i);
+  assert.match(EXPORTUNITY_COMPANY_CONTEXT, /supplier, manufacturing, commodities, and logistics corridors in the UAE/i);
+  assert.match(EXPORTUNITY_COMPANY_CONTEXT, /Exportunity Machinery is a specialized industrial operating division/i);
+  assert.match(EXPORTUNITY_COMPANY_CONTEXT, /compliance-gated precious-metals sourcing/i);
+  assert.match(EXPORTUNITY_COMPANY_CONTEXT, /not a crypto product, a public precious-metals exchange/i);
   assert.match(EXPORTUNITY_COMPANY_CONTEXT, /explicit human approval/i);
 });

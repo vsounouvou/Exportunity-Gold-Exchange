@@ -44,6 +44,7 @@ interface Company {
   monthlyBudget: string;
   budgetUsed: string;
   status: string;
+  metadata?: Record<string, unknown> | null;
 }
 
 interface StrategicGoal {
@@ -555,6 +556,11 @@ export default function HierarchyPage() {
   
   const activeStrategicGoals = strategicGoals.filter((goal) => goal.status === "planned" || goal.status === "in_progress");
   const companyMission = companyData.vision || activeStrategicGoals[0]?.title || companyData.currentGoals?.[0] || "Set the industrial mission";
+  const operatingTerritories = Array.isArray(companyData.metadata?.operatingTerritories)
+    ? companyData.metadata.operatingTerritories.filter(
+        (territory): territory is string => typeof territory === "string" && territory.trim().length > 0,
+      )
+    : [];
   
   return (
     <div className="exportunity-operations-light min-h-full bg-[#f7f8fa] p-4 text-slate-950 md:p-6">
@@ -563,7 +569,7 @@ export default function HierarchyPage() {
         <div>
           <h1 className="text-xl md:text-3xl font-bold tracking-tight">{companyData.name}</h1>
           <p className="mt-1 text-sm text-slate-600 md:text-base">
-            AI operating team, departments, reporting lines, and human oversight.
+            AI operating team, territory mandates, reporting lines, and human oversight.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -584,6 +590,15 @@ export default function HierarchyPage() {
           </CardHeader>
           <CardContent className="space-y-3">
             <p className="line-clamp-3 text-sm font-semibold leading-6">{companyMission}</p>
+            {operatingTerritories.length > 0 && (
+              <div className="flex flex-wrap gap-1.5" aria-label="Operating markets">
+                {operatingTerritories.map((territory) => (
+                  <Badge key={territory} variant="outline" className="border-amber-200 bg-amber-50 text-amber-900">
+                    {territory}
+                  </Badge>
+                ))}
+              </div>
+            )}
             <Button type="button" variant="ghost" size="sm" className="h-8 px-0 text-amber-700" onClick={() => setLocation("/goals")}>
               {activeStrategicGoals.length} active objectives
               <ChevronRight className="ml-1 h-4 w-4" />

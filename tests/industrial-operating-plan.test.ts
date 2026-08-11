@@ -13,7 +13,9 @@ function readRepoFile(relativePath: string) {
 test("the industrial operating plan owns mission, objectives, and recurring execution reviews", () => {
   const plan = readRepoFile("server/lib/industrial/operatingPlan.ts");
 
-  assert.match(plan, /Turn verified industrial demand in Benin into reliable sourcing/);
+  assert.match(plan, /industrial demand across Cote d'Ivoire, Benin, and connected UAE supplier corridors/);
+  assert.match(plan, /masterBrand: "Exportunity \| AI"/);
+  assert.match(plan, /operatingTerritories: \["Cote d'Ivoire", "Benin", "UAE supplier corridor"\]/);
   assert.match(plan, /Build the verified industrial demand pipeline/);
   assert.match(plan, /Establish the verified supplier and factory network/);
   assert.match(plan, /Convert urgent spare-parts needs into controlled orders/);
@@ -167,4 +169,6 @@ test("People and Access is tenant scoped and exposes real account controls", () 
   assert.match(hierarchy, /Human oversight/);
   assert.match(hierarchy, /Manage people & access/);
   assert.match(hierarchy, /identity, face, instructions, model, permissions, and memory/);
+  assert.match(hierarchy, /companyData\.metadata\?\.operatingTerritories/);
+  assert.match(hierarchy, /aria-label="Operating markets"/);
 });

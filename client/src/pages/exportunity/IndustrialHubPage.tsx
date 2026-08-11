@@ -6061,16 +6061,6 @@ export default function IndustrialHubPage() {
           view === "factoryWorkspace"
         ? "factories"
         : view;
-  useEffect(() => {
-    if (
-      view === "factories" &&
-      !selectedFactory &&
-      !selectedIndustrialContext
-    ) {
-      setSelectedIndustrialContext(territoryContexts[0] || null);
-    }
-  }, [selectedFactory, selectedIndustrialContext, territoryContexts, view]);
-
   const copy =
     locale === "fr"
       ? {

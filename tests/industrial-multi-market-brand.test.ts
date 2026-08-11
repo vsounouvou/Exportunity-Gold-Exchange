@@ -123,3 +123,22 @@ test("market switching updates the shareable route instead of being reset", () =
     /const requestedTerritory = queryValue\(location, "market"\)[\s\S]*?\}, \[location, selectedTerritoryCode\]\);/,
   );
 });
+
+test("factory discovery opens on the complete territory instead of forcing the first hub", () => {
+  const hub = readRepoFile(
+    "client/src/pages/exportunity/IndustrialHubPage.tsx",
+  );
+
+  assert.doesNotMatch(
+    hub,
+    /view === "factories"[\s\S]*?setSelectedIndustrialContext\(territoryContexts\[0\]/,
+  );
+  assert.match(
+    hub,
+    /Selectionnez un repere pour explorer les produits et ouvrir une conversation commerciale/,
+  );
+  assert.match(
+    hub,
+    /<IndustrialAssistantChat[\s\S]*?context=\{selectionAssistantContext\}/,
+  );
+});

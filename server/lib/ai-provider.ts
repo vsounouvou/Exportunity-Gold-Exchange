@@ -5,8 +5,8 @@ import { AiConsentRequiredError, assertAiEnabled } from "./ai-consent";
 import { db } from "@db";
 import { agents, companies } from "@db/schema";
 import { eq } from "drizzle-orm";
-import { sanitizeBdoText } from "./bdo/policy";
 import { EXPORTUNITY_COMPANY_CONTEXT } from "./industrial/companyContext";
+import { applyTenantResponsePolicy } from "./tenant-ai-policy";
 
 export type AIProvider = 'openai' | 'claude' | 'gemini';
 export type AgentEmailContext = {
@@ -28,6 +28,7 @@ type AiRoutingConfig = {
 };
 
 type AgentResponseContext = {
+  tenantKey?: string;
   agentName?: string;
   recentMessages: Array<{
     content: string;
@@ -140,6 +141,10 @@ function isExportunityCompanyName(value: unknown) {
   return /^exportunity(?:\s+machinery)?$/i.test(String(value || "").trim());
 }
 
+function isBdoCompanyName(value: unknown) {
+  return /bourse\s+de\s+l['’]?or/i.test(String(value || "").trim());
+}
+
 /**
  * The legacy channel/meeting callers are shared by multiple tenants. Hydrate
  * the named agent and company context here so Exportunity never falls through
@@ -171,8 +176,12 @@ async function hydrateAgentResponseOptions(options: AgentResponseOptions): Promi
   const metadata = asRecord(agentRow?.metadata);
   const metadataCompanyContext = typeof metadata.companyContext === "string" ? metadata.companyContext.trim() : "";
 
-  if (isExportunityCompanyName(company?.name)) {
+  const explicitTenantKey = String(context.tenantKey || "").trim().toLowerCase();
+  if (explicitTenantKey === "exportunity" || (!explicitTenantKey && isExportunityCompanyName(company?.name))) {
+    context.tenantKey = "exportunity";
     context.companyContext = EXPORTUNITY_COMPANY_CONTEXT;
+  } else if (explicitTenantKey === "bdo" || (!explicitTenantKey && isBdoCompanyName(company?.name))) {
+    context.tenantKey = "bdo";
   } else if (!context.companyContext && metadataCompanyContext) {
     context.companyContext = metadataCompanyContext;
   }
@@ -274,13 +283,17 @@ export async function generateAgentResponse(
     }
   );
 
-  const isExportunityContext = /Exportunity is a B2B/i.test(String(effectiveOptions.context.companyContext || ""));
-  if (!isExportunityContext) {
-    const sanitized = sanitizeBdoText(result.response);
-    if (sanitized.violated && sanitized.text !== result.response) {
-      debug("BDO compliance wording sanitized", { violations: sanitized.violations, agentId: options.agentId });
-      return { ...result, response: sanitized.text };
-    }
+  const policyResult = applyTenantResponsePolicy(result.response, {
+    tenantKey: effectiveOptions.context.tenantKey,
+    companyContext: effectiveOptions.context.companyContext,
+  });
+  if (policyResult.violated && policyResult.text !== result.response) {
+    debug("Tenant response wording sanitized", {
+      policy: policyResult.policy,
+      violations: policyResult.violations,
+      agentId: options.agentId,
+    });
+    return { ...result, response: policyResult.text };
   }
 
   return result;

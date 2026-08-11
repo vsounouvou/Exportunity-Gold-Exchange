@@ -37,6 +37,30 @@ test("Exportunity hides historical BDO policy text without deleting valid indust
     isTenantContentVisible({ tenantKey: "bdo", content: legacyGoldMessage }),
     true,
   );
+  assert.equal(
+    isTenantContentVisible({
+      tenantKey: "exportunity",
+      content: "The attached historical file mentions certified physical gold.",
+      metadata: { tenantKey: "exportunity", tenantContextStatus: "validated" },
+    }),
+    false,
+  );
+  assert.equal(
+    isTenantContentVisible({
+      tenantKey: "exportunity",
+      content: legacyGoldMessage,
+      metadata: { tenantKey: "bdo", tenantContextStatus: "validated" },
+    }),
+    false,
+  );
+  assert.equal(
+    isTenantContentVisible({
+      tenantKey: "exportunity",
+      content: industrialMessage,
+      metadata: { tenantKey: "exportunity", tenantContextStatus: "quarantined" },
+    }),
+    false,
+  );
 });
 
 test("shared agent and conversation paths enforce Exportunity context boundaries", () => {
@@ -49,6 +73,7 @@ test("shared agent and conversation paths enforce Exportunity context boundaries
   assert.match(provider, /EXPORTUNITY_COMPANY_CONTEXT/);
   assert.match(routes, /isTenantContentVisible/);
   assert.match(routes, /companyContext: isExportunityTenant \? EXPORTUNITY_COMPANY_CONTEXT/);
+  assert.match(routes, /tenantContextStatus: "validated"/);
   assert.match(claude, /The only supported action block is/);
   assert.match(gemini, /The only supported action block is/);
 });

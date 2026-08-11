@@ -7309,6 +7309,7 @@ Respond helpfully with your full platform awareness.`,
       // Create message in 'sending' state
       const [message] = await db.insert(messages)
         .values({
+          tenantId,
           content,
           fromAgentId: fromAgentId || null,
           toAgentId: toAgentId || null,
@@ -7318,6 +7319,8 @@ Respond helpfully with your full platform awareness.`,
           metadata: {
             isHumanUser: !fromAgentId,
             origin: fromAgentId ? 'agent' : 'human',
+            tenantKey: String(tenant?.key || "").trim().toLowerCase(),
+            tenantContextStatus: "validated",
             ...(attachments.length ? {
               attachments,
               evidenceIds: attachments.map((attachment: any) => attachment.evidenceId).filter(Boolean),
@@ -7788,6 +7791,11 @@ Respond helpfully with your full platform awareness.`,
                     agentId: member.agent?.id,
                     companyId: member.agent?.companyId,
                     context: {
+                      tenantKey: String(tenant?.key || "").trim().toLowerCase(),
+                      companyContext:
+                        String(tenant?.key || "").trim().toLowerCase() === "exportunity"
+                          ? EXPORTUNITY_COMPANY_CONTEXT
+                          : undefined,
                       recentMessages: latestMessages
                         .map((m) => ({
                           content: messageContentWithAttachmentEvidence(m),
@@ -7877,6 +7885,8 @@ Respond helpfully with your full platform awareness.`,
               const baseAgentMetadata = {
                 isHumanUser: false,
                 origin: "agent",
+                tenantKey: String(tenant?.key || "").trim().toLowerCase(),
+                tenantContextStatus: "validated",
                 analysis,
                 agentRole: member.agent?.role,
                 sentiment,
@@ -7901,6 +7911,7 @@ Respond helpfully with your full platform awareness.`,
               // Create agent's response message
               const [agentMessage] = await db.insert(messages)
                 .values({
+                  tenantId,
                   content: visibleAgentResponse,
                   fromAgentId: member.agent?.id || null,
                   toAgentId: null,

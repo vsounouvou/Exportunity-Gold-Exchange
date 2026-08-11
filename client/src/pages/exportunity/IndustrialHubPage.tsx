@@ -1303,9 +1303,19 @@ function IndustrialMap({
             language === "fr"
               ? `Ouvrir ${industrialContextText(context.name, language)}`
               : `Open ${industrialContextText(context.name, language)}`;
-          const eventHandlers = onSelectContext
+          const contextClickHandlers = onSelectContext
             ? { click: () => onSelectContext(context) }
             : undefined;
+          const contextMarkerEventHandlers = {
+            add: (event: L.LeafletEvent) => {
+              (event.target as L.Marker)
+                .getElement()
+                ?.setAttribute("aria-label", contextMarkerTitle);
+            },
+            ...(onSelectContext
+              ? { click: () => onSelectContext(context) }
+              : {}),
+          };
           return (
             <Fragment key={context.id}>
               <CircleMarker
@@ -1319,7 +1329,7 @@ function IndustrialMap({
                   opacity: active ? 0.75 : 0.42,
                   weight: active ? 2 : 1,
                 }}
-                eventHandlers={eventHandlers}
+                eventHandlers={contextClickHandlers}
               />
               <Marker
                 key={context.id}
@@ -1331,12 +1341,7 @@ function IndustrialMap({
                 )}
                 title={contextMarkerTitle}
                 alt={contextMarkerTitle}
-                ref={(marker) => {
-                  marker
-                    ?.getElement()
-                    ?.setAttribute("aria-label", contextMarkerTitle);
-                }}
-                eventHandlers={eventHandlers}
+                eventHandlers={contextMarkerEventHandlers}
                 zIndexOffset={active ? 900 : 450}
               >
                 <Tooltip direction="top" offset={[0, -22]} opacity={1}>
@@ -1357,25 +1362,27 @@ function IndustrialMap({
             </Fragment>
           );
         })}
-        {visibleFactories.map((factory) => (
-          <Marker
-            key={factory.id}
-            position={[factory.latitude as number, factory.longitude as number]}
-            icon={mapFactoryIcon(selectedFactory?.id === factory.id)}
-            title={`${factory.name} - ${factory.industry}`}
-            alt={`${factory.name} - ${factory.industry}`}
-            ref={(marker) => {
-              marker
-                ?.getElement()
-                ?.setAttribute(
-                  "aria-label",
-                  language === "fr"
-                    ? `Ouvrir ${factory.name} - ${factory.industry}`
-                    : `Open ${factory.name} - ${factory.industry}`,
-                );
-            }}
-            eventHandlers={{ click: () => onSelectFactory(factory) }}
-          >
+        {visibleFactories.map((factory) => {
+          const factoryMarkerLabel =
+            language === "fr"
+              ? `Ouvrir ${factory.name} - ${factory.industry}`
+              : `Open ${factory.name} - ${factory.industry}`;
+          return (
+            <Marker
+              key={factory.id}
+              position={[factory.latitude as number, factory.longitude as number]}
+              icon={mapFactoryIcon(selectedFactory?.id === factory.id)}
+              title={`${factory.name} - ${factory.industry}`}
+              alt={`${factory.name} - ${factory.industry}`}
+              eventHandlers={{
+                add: (event: L.LeafletEvent) => {
+                  (event.target as L.Marker)
+                    .getElement()
+                    ?.setAttribute("aria-label", factoryMarkerLabel);
+                },
+                click: () => onSelectFactory(factory),
+              }}
+            >
             <Tooltip direction="top" offset={[0, -14]} opacity={1}>
               <span className="block text-sm font-semibold">
                 {factory.name}
@@ -1384,8 +1391,9 @@ function IndustrialMap({
                 {factory.industry}
               </span>
             </Tooltip>
-          </Marker>
-        ))}
+            </Marker>
+          );
+        })}
       </MapContainer>
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_18%,rgba(245,166,35,0.18),transparent_26%),radial-gradient(circle_at_83%_70%,rgba(7,17,31,0.2),transparent_32%),linear-gradient(180deg,rgba(255,255,255,0.02),rgba(7,17,31,0.1))]" />
       <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-[#07111F]/45 to-transparent" />

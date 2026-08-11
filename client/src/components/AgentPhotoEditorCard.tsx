@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { getAgentAvatarUrl } from "@/lib/agentAvatar";
 import { cn } from "@/lib/utils";
 import { Trash2 } from "lucide-react";
+import { useLocale } from "@/contexts/LocaleContext";
 
 type GeneratedImage = {
   id: string;
@@ -72,6 +73,9 @@ function resolveImageUrl(url: string | null | undefined) {
 
 export function AgentPhotoEditorCard({ agentId, className }: { agentId: number; className?: string }) {
   const { toast } = useToast();
+  const { language } = useLocale();
+  const isFr = language !== "en";
+  const tr = (fr: string, en: string) => (isFr ? fr : en);
   const qc = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -103,9 +107,9 @@ export function AgentPhotoEditorCard({ agentId, className }: { agentId: number; 
       apiRequest(`/api/agents/${agentId}/photo/lock`, { method: "POST", body: JSON.stringify({ locked }) }),
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey });
-      toast({ title: "Saved", description: "Photo lock updated." });
+      toast({ title: tr("Enregistré", "Saved"), description: tr("Verrouillage de la photo mis à jour.", "Photo lock updated.") });
     },
-    onError: (err: any) => toast({ title: "Error", description: err?.message || "Failed to update lock", variant: "destructive" }),
+    onError: (err: any) => toast({ title: tr("Erreur", "Error"), description: err?.message || tr("Échec de la mise à jour du verrouillage", "Failed to update lock"), variant: "destructive" }),
   });
 
   const uploadMutation = useMutation({
@@ -116,9 +120,9 @@ export function AgentPhotoEditorCard({ agentId, className }: { agentId: number; 
     },
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey });
-      toast({ title: "Uploaded", description: "Agent photo updated." });
+      toast({ title: tr("Photo importée", "Uploaded"), description: tr("La photo de l'agent a été mise à jour.", "Agent photo updated.") });
     },
-    onError: (err: any) => toast({ title: "Error", description: err?.message || "Upload failed", variant: "destructive" }),
+    onError: (err: any) => toast({ title: tr("Erreur", "Error"), description: err?.message || tr("Échec de l'import", "Upload failed"), variant: "destructive" }),
   });
 
   const generateMutation = useMutation({
@@ -131,9 +135,9 @@ export function AgentPhotoEditorCard({ agentId, className }: { agentId: number; 
     },
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey });
-      toast({ title: "Generated", description: "New variants are ready." });
+      toast({ title: tr("Images générées", "Generated"), description: tr("Les nouvelles variantes sont prêtes.", "New variants are ready.") });
     },
-    onError: (err: any) => toast({ title: "Error", description: err?.message || "Generation failed", variant: "destructive" }),
+    onError: (err: any) => toast({ title: tr("Erreur", "Error"), description: err?.message || tr("Échec de la génération", "Generation failed"), variant: "destructive" }),
   });
 
   const selectMutation = useMutation({
@@ -141,9 +145,9 @@ export function AgentPhotoEditorCard({ agentId, className }: { agentId: number; 
       apiRequest(`/api/agents/${agentId}/photo/select`, { method: "POST", body: JSON.stringify({ imageId }) }),
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey });
-      toast({ title: "Updated", description: "Agent photo set." });
+      toast({ title: tr("Mise à jour", "Updated"), description: tr("La photo officielle de l'agent est définie.", "Agent photo set.") });
     },
-    onError: (err: any) => toast({ title: "Error", description: err?.message || "Select failed", variant: "destructive" }),
+    onError: (err: any) => toast({ title: tr("Erreur", "Error"), description: err?.message || tr("Échec de la sélection", "Select failed"), variant: "destructive" }),
   });
 
   const deleteMutation = useMutation({
@@ -151,9 +155,9 @@ export function AgentPhotoEditorCard({ agentId, className }: { agentId: number; 
       apiRequest(`/api/agents/${agentId}/photo/variant/${encodeURIComponent(imageId)}`, { method: "DELETE" }),
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey });
-      toast({ title: "Deleted", description: "Variant removed." });
+      toast({ title: tr("Supprimée", "Deleted"), description: tr("La variante a été supprimée.", "Variant removed.") });
     },
-    onError: (err: any) => toast({ title: "Error", description: err?.message || "Delete failed", variant: "destructive" }),
+    onError: (err: any) => toast({ title: tr("Erreur", "Error"), description: err?.message || tr("Échec de la suppression", "Delete failed"), variant: "destructive" }),
   });
 
   const busy =
@@ -179,9 +183,12 @@ export function AgentPhotoEditorCard({ agentId, className }: { agentId: number; 
   return (
     <Card className={cn("border-border bg-card text-card-foreground", className)}>
       <CardHeader className="pb-3">
-        <CardTitle className="text-sm">Agent Photo</CardTitle>
+        <CardTitle className="text-sm">{tr("Photo de l'agent", "Agent Photo")}</CardTitle>
         <CardDescription>
-          Upload or generate a professional headshot. Variants are saved for reuse.
+          {tr(
+            "Importez ou générez un portrait professionnel. Les variantes restent disponibles pour réutilisation.",
+            "Upload or generate a professional headshot. Variants are saved for reuse.",
+          )}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -197,7 +204,7 @@ export function AgentPhotoEditorCard({ agentId, className }: { agentId: number; 
                 // eslint-disable-next-line jsx-a11y/alt-text
                 <img src={previewUrl} className="w-full h-full object-cover" />
               ) : (
-                <div className="flex h-full w-full items-center justify-center text-xs text-muted-foreground">No photo</div>
+                <div className="flex h-full w-full items-center justify-center text-xs text-muted-foreground">{tr("Aucune photo", "No photo")}</div>
               )}
             </div>
             <div className="mt-2 flex items-center gap-2">
@@ -207,10 +214,10 @@ export function AgentPhotoEditorCard({ agentId, className }: { agentId: number; 
                 className="h-7 px-2 text-xs"
                 onClick={() => setPreviewShape((s) => (s === "circle" ? "square" : "circle"))}
               >
-                {previewShape === "circle" ? "Circle" : "Square"}
+                {previewShape === "circle" ? tr("Cercle", "Circle") : tr("Carré", "Square")}
               </Button>
               {locked ? (
-                <Badge className="h-7 border border-amber-500/30 bg-amber-500/15 text-amber-700 dark:text-amber-300">Locked</Badge>
+                <Badge className="h-7 border border-amber-500/30 bg-amber-500/15 text-amber-700 dark:text-amber-300">{tr("Verrouillée", "Locked")}</Badge>
               ) : null}
             </div>
           </div>
@@ -235,16 +242,16 @@ export function AgentPhotoEditorCard({ agentId, className }: { agentId: number; 
                 disabled={busy}
                 onClick={() => fileInputRef.current?.click()}
               >
-                Upload photo
+                {tr("Importer une photo", "Upload photo")}
               </Button>
               <Button
                 type="button"
                 className="bg-amber-500 text-slate-950 hover:bg-amber-400"
                 disabled={busy || locked}
-                title={locked ? "Unlock this photo before generating a replacement" : "Generate photo variants"}
+                title={locked ? tr("Déverrouillez la photo avant d'en générer une autre", "Unlock this photo before generating a replacement") : tr("Générer des variantes", "Generate photo variants")}
                 onClick={() => generateMutation.mutate()}
               >
-                Generate
+                {tr("Générer", "Generate")}
               </Button>
               <Button
                 type="button"
@@ -252,14 +259,14 @@ export function AgentPhotoEditorCard({ agentId, className }: { agentId: number; 
                 disabled={busy || locked}
                 onClick={() => generateMutation.mutate()}
               >
-                Regenerate
+                {tr("Régénérer", "Regenerate")}
               </Button>
             </div>
 
             <div className="flex min-w-0 items-center justify-between gap-4 rounded-md border border-border bg-muted px-3 py-2">
               <div className="min-w-0 flex-1">
-                <div className="text-xs font-medium">Lock photo</div>
-                <div className="text-[11px] leading-4 text-muted-foreground">When locked, the system will never automatically change this photo.</div>
+                <div className="text-xs font-medium">{tr("Verrouiller la photo", "Lock photo")}</div>
+                <div className="text-[11px] leading-4 text-muted-foreground">{tr("Une photo verrouillée ne sera jamais remplacée automatiquement.", "When locked, the system will never automatically change this photo.")}</div>
               </div>
               <Switch checked={locked} onCheckedChange={(v) => lockMutation.mutate(Boolean(v))} disabled={busy} />
             </div>
@@ -268,17 +275,17 @@ export function AgentPhotoEditorCard({ agentId, className }: { agentId: number; 
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div className="space-y-2">
-            <div className="text-xs text-muted-foreground">Prompt</div>
+            <div className="text-xs text-muted-foreground">{tr("Instruction de génération", "Prompt")}</div>
             <Textarea
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
               className="min-h-[110px] bg-background text-foreground"
-              placeholder="Describe the agent headshot style..."
+              placeholder={tr("Décrivez le style du portrait...", "Describe the agent headshot style...")}
             />
           </div>
           <div className="space-y-3">
             <div className="space-y-2">
-              <div className="text-xs text-muted-foreground">Style preset</div>
+              <div className="text-xs text-muted-foreground">{tr("Style prédéfini", "Style preset")}</div>
               <Select
                 value={preset}
                 onValueChange={(value: any) => {
@@ -288,20 +295,20 @@ export function AgentPhotoEditorCard({ agentId, className }: { agentId: number; 
                 }}
               >
                 <SelectTrigger className="bg-background text-foreground">
-                  <SelectValue placeholder="Select preset" />
+                  <SelectValue placeholder={tr("Choisir un style", "Select preset")} />
                 </SelectTrigger>
                 <SelectContent className="bg-popover text-popover-foreground">
-                  <SelectItem value="corporate">Corporate headshot</SelectItem>
-                  <SelectItem value="afrofuturistic">Afro-modern industrial</SelectItem>
-                  <SelectItem value="minimal">Minimal icon/avatar</SelectItem>
-                  <SelectItem value="illustrated">Illustrated (brand style)</SelectItem>
+                  <SelectItem value="corporate">{tr("Portrait professionnel", "Corporate headshot")}</SelectItem>
+                  <SelectItem value="afrofuturistic">{tr("Industriel afro-moderne", "Afro-modern industrial")}</SelectItem>
+                  <SelectItem value="minimal">{tr("Icône ou avatar minimal", "Minimal icon/avatar")}</SelectItem>
+                  <SelectItem value="illustrated">{tr("Illustration de marque", "Illustrated (brand style)")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
-                <div className="text-xs text-muted-foreground">Aspect ratio</div>
+                <div className="text-xs text-muted-foreground">{tr("Format", "Aspect ratio")}</div>
                 <Select value={aspectRatio} onValueChange={(v) => setAspectRatio(v)}>
                   <SelectTrigger className="bg-background text-foreground">
                     <SelectValue placeholder="1:1" />
@@ -314,7 +321,7 @@ export function AgentPhotoEditorCard({ agentId, className }: { agentId: number; 
                 </Select>
               </div>
               <div className="space-y-2">
-                <div className="text-xs text-muted-foreground">Seed (optional)</div>
+                <div className="text-xs text-muted-foreground">{tr("Graine (facultatif)", "Seed (optional)")}</div>
                 <Input
                   value={seed}
                   onChange={(e) => setSeed(e.target.value)}
@@ -326,14 +333,14 @@ export function AgentPhotoEditorCard({ agentId, className }: { agentId: number; 
 
             <div className="rounded-md border border-border bg-muted px-3 py-2">
               <div className="text-[11px] text-muted-foreground">
-                Tip: click a variant below to set it as the official agent photo.
+                {tr("Conseil : cliquez sur une variante pour la définir comme photo officielle.", "Tip: click a variant below to set it as the official agent photo.")}
               </div>
             </div>
           </div>
         </div>
 
         <div className="space-y-2">
-          <div className="text-xs text-muted-foreground">Recent variants</div>
+          <div className="text-xs text-muted-foreground">{tr("Variantes récentes", "Recent variants")}</div>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             {visibleVariants.map((img) => {
               const url = resolveImageUrl(img.storedUrl || null);
@@ -352,7 +359,7 @@ export function AgentPhotoEditorCard({ agentId, className }: { agentId: number; 
                     <img src={url} className="w-full h-20 object-cover" />
                   ) : (
                     <div className="flex h-20 w-full items-center justify-center text-[11px] text-muted-foreground">
-                      {img.status === "failed" ? "Failed" : "Pending"}
+                      {img.status === "failed" ? tr("Échec", "Failed") : tr("En attente", "Pending")}
                     </div>
                   )}
 
@@ -364,7 +371,7 @@ export function AgentPhotoEditorCard({ agentId, className }: { agentId: number; 
                       disabled={busy || !canSelect}
                       onClick={() => selectMutation.mutate(img.id)}
                     >
-                      {isActive ? "Active" : canSelect ? "Set" : "Processing"}
+                      {isActive ? tr("Active", "Active") : canSelect ? tr("Choisir", "Set") : tr("Traitement", "Processing")}
                     </Button>
                     <Button
                       type="button"
@@ -373,7 +380,7 @@ export function AgentPhotoEditorCard({ agentId, className }: { agentId: number; 
                       className="h-7 w-7 opacity-0 group-hover:opacity-100"
                       disabled={busy}
                       onClick={() => deleteMutation.mutate(img.id)}
-                      title="Delete variant"
+                      title={tr("Supprimer la variante", "Delete variant")}
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
@@ -383,13 +390,15 @@ export function AgentPhotoEditorCard({ agentId, className }: { agentId: number; 
             })}
             {!visibleVariants.length ? (
               <div className="col-span-2 text-[11px] text-muted-foreground sm:col-span-4">
-                No usable generated photos yet. Upload a headshot or generate new variants.
+                {tr("Aucune variante utilisable. Importez un portrait ou générez de nouvelles images.", "No usable generated photos yet. Upload a headshot or generate new variants.")}
               </div>
             ) : null}
           </div>
           {failedVariantCount > 0 ? (
             <div className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-800 dark:text-amber-200">
-              {failedVariantCount} previous generation attempt{failedVariantCount === 1 ? "" : "s"} did not complete. Uploading a photo still works; unlock this profile before trying generation again.
+              {isFr
+                ? `${failedVariantCount} tentative(s) précédente(s) n'ont pas abouti. L'import d'une photo reste disponible ; déverrouillez ce profil avant de relancer la génération.`
+                : `${failedVariantCount} previous generation attempt${failedVariantCount === 1 ? "" : "s"} did not complete. Uploading a photo still works; unlock this profile before trying generation again.`}
             </div>
           ) : null}
         </div>

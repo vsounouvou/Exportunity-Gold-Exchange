@@ -44,6 +44,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { useTenant } from "@/lib/tenant";
+import { useLocale } from "@/contexts/LocaleContext";
 import type { Agent, Department } from "@db/schema";
 import { AgentPhotoEditorCard } from "@/components/AgentPhotoEditorCard";
 import {
@@ -95,6 +96,9 @@ interface AgentProfileDialogProps {
 export function AgentProfileDialog({ agent, runtimeAgentId, open, onOpenChange }: AgentProfileDialogProps) {
   const { toast } = useToast();
   const { tenant } = useTenant();
+  const { language } = useLocale();
+  const isFr = language !== "en";
+  const tr = (fr: string, en: string) => (isFr ? fr : en);
   const queryClient = useQueryClient();
   const [newSkill, setNewSkill] = useState("");
   const [newIndustry, setNewIndustry] = useState("");
@@ -226,15 +230,15 @@ export function AgentProfileDialog({ agent, runtimeAgentId, open, onOpenChange }
       }
       queryClient.invalidateQueries({ queryKey: ["/api/companies"] });
       toast({
-        title: "Success",
-        description: "Agent profile updated successfully",
+        title: tr("Profil enregistré", "Profile saved"),
+        description: tr("Le profil de l'agent a été mis à jour.", "Agent profile updated successfully"),
       });
       onOpenChange(false);
     },
     onError: (error) => {
       toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to update agent profile",
+        title: tr("Erreur", "Error"),
+        description: error instanceof Error ? error.message : tr("Échec de la mise à jour du profil", "Failed to update agent profile"),
         variant: "destructive",
       });
     },
@@ -269,8 +273,8 @@ export function AgentProfileDialog({ agent, runtimeAgentId, open, onOpenChange }
     onSuccess: (data) => {
       setSuggestions(data);
       toast({
-        title: "Suggestions ready",
-        description: data.mode === "ai" ? "AI suggestions loaded" : "Options loaded",
+        title: tr("Suggestions prêtes", "Suggestions ready"),
+        description: data.mode === "ai" ? tr("Suggestions IA chargées", "AI suggestions loaded") : tr("Options chargées", "Options loaded"),
       });
     },
     onError: (error: any) => {
@@ -280,8 +284,8 @@ export function AgentProfileDialog({ agent, runtimeAgentId, open, onOpenChange }
         return;
       }
       toast({
-        title: "Suggestions failed",
-        description: error instanceof Error ? error.message : "Failed to load suggestions",
+        title: tr("Échec des suggestions", "Suggestions failed"),
+        description: error instanceof Error ? error.message : tr("Impossible de charger les suggestions", "Failed to load suggestions"),
         variant: "destructive",
       });
     },
@@ -314,14 +318,14 @@ export function AgentProfileDialog({ agent, runtimeAgentId, open, onOpenChange }
     },
     onSuccess: () => {
       toast({
-        title: "HR action queued",
-        description: "Action request created and visible in the action queue.",
+        title: tr("Action RH ajoutée", "HR action queued"),
+        description: tr("La demande est visible dans la file des actions.", "Action request created and visible in the action queue."),
       });
     },
     onError: (error) => {
       toast({
-        title: "Action queue failed",
-        description: error instanceof Error ? error.message : "Failed to queue HR action",
+        title: tr("Échec de la mise en file", "Action queue failed"),
+        description: error instanceof Error ? error.message : tr("Impossible d'ajouter l'action RH", "Failed to queue HR action"),
         variant: "destructive",
       });
     },
@@ -389,8 +393,10 @@ export function AgentProfileDialog({ agent, runtimeAgentId, open, onOpenChange }
       setSuggestions(data);
       applyGeneratedSection(section, data);
       toast({
-        title: "Section generated",
-        description: `${section[0].toUpperCase()}${section.slice(1)} fields were generated.`,
+        title: tr("Section générée", "Section generated"),
+        description: isFr
+          ? "Les champs de la section ont été générés."
+          : `${section[0].toUpperCase()}${section.slice(1)} fields were generated.`,
       });
     } catch (error: any) {
       if (error?.requiresConsent && error?.plan) {
@@ -399,8 +405,8 @@ export function AgentProfileDialog({ agent, runtimeAgentId, open, onOpenChange }
         return;
       }
       toast({
-        title: "Generate failed",
-        description: error instanceof Error ? error.message : "Failed to generate section",
+        title: tr("Échec de la génération", "Generate failed"),
+        description: error instanceof Error ? error.message : tr("Impossible de générer cette section", "Failed to generate section"),
         variant: "destructive",
       });
     } finally {
@@ -421,8 +427,8 @@ export function AgentProfileDialog({ agent, runtimeAgentId, open, onOpenChange }
   const onSubmit = (data: any) => {
     if (!agent || !effectiveAgentId) {
       toast({
-        title: "Error",
-        description: "Agent id could not be resolved. Refresh and try again.",
+        title: tr("Erreur", "Error"),
+        description: tr("L'identifiant de l'agent est introuvable. Actualisez puis réessayez.", "Agent id could not be resolved. Refresh and try again."),
         variant: "destructive",
       });
       return;
@@ -515,10 +521,14 @@ export function AgentProfileDialog({ agent, runtimeAgentId, open, onOpenChange }
     <div className="rounded-lg border p-3 bg-secondary/10">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <div className="text-sm font-medium">{label} tools</div>
-          <div className="text-xs text-muted-foreground">Generate, refine, and queue HR execution actions.</div>
+          <div className="text-sm font-medium">{tr(`Outils : ${label}`, `${label} tools`)}</div>
+          <div className="text-xs text-muted-foreground">
+            {tr("Générez, affinez ou placez une action RH dans la file d'exécution.", "Generate, refine, and queue HR execution actions.")}
+          </div>
           {!hasResolvableAgentId ? (
-            <div className="text-xs text-amber-500 mt-1">Agent id not resolved yet. Save/reload this agent first.</div>
+            <div className="text-xs text-amber-500 mt-1">
+              {tr("Enregistrez puis rechargez cet agent avant de lancer une action.", "Agent id not resolved yet. Save/reload this agent first.")}
+            </div>
           ) : null}
         </div>
         <div className="flex flex-wrap gap-2">
@@ -529,7 +539,7 @@ export function AgentProfileDialog({ agent, runtimeAgentId, open, onOpenChange }
             disabled={!hasResolvableAgentId || sectionGenerating === section || suggestionsMutation.isPending}
             onClick={() => runSectionGenerate(section, "offline")}
           >
-            {sectionGenerating === section ? "Generating..." : "Generate"}
+            {sectionGenerating === section ? tr("Génération...", "Generating...") : tr("Générer", "Generate")}
           </Button>
           <Button
             type="button"
@@ -538,7 +548,7 @@ export function AgentProfileDialog({ agent, runtimeAgentId, open, onOpenChange }
             disabled={!hasResolvableAgentId || sectionGenerating === section || suggestionsMutation.isPending}
             onClick={() => runSectionGenerate(section, "ai")}
           >
-            AI generate
+            {tr("Générer avec l'IA", "AI generate")}
           </Button>
           <Button
             type="button"
@@ -547,7 +557,7 @@ export function AgentProfileDialog({ agent, runtimeAgentId, open, onOpenChange }
             disabled={!hasResolvableAgentId || queueProfileActionMutation.isPending}
             onClick={() => queueProfileActionMutation.mutate({ section, scope: "targeted" })}
           >
-            Queue targeted action
+            {tr("Créer une action ciblée", "Queue targeted action")}
           </Button>
           <Button
             type="button"
@@ -556,7 +566,7 @@ export function AgentProfileDialog({ agent, runtimeAgentId, open, onOpenChange }
             disabled={!hasResolvableAgentId || queueProfileActionMutation.isPending}
             onClick={() => queueProfileActionMutation.mutate({ section, scope: "bulk" })}
           >
-            Queue bulk action
+            {tr("Créer une action groupée", "Queue bulk action")}
           </Button>
         </div>
       </div>
@@ -573,30 +583,33 @@ export function AgentProfileDialog({ agent, runtimeAgentId, open, onOpenChange }
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <User className="h-5 w-5" />
-            Agent Profile: {agent.name}
+            {tr("Profil de l'agent", "Agent Profile")}: {agent.name}
           </DialogTitle>
           <DialogDescription>
-            View and edit comprehensive HR-style profile information
+            {tr("Modifiez l'identité, le rattachement, les autorisations et le cycle de vie de cet agent.", "View and edit comprehensive HR-style profile information")}
           </DialogDescription>
         </DialogHeader>
 
         <AlertDialog open={aiConfirmOpen} onOpenChange={setAiConfirmOpen}>
           <AlertDialogContent className={tenant.key === "exportunity" ? "exportunity-operations-light bg-white text-slate-900 border-slate-200" : ""}>
             <AlertDialogHeader>
-              <AlertDialogTitle>Use AI to generate suggestions?</AlertDialogTitle>
+              <AlertDialogTitle>{tr("Utiliser l'IA pour générer des suggestions ?", "Use AI to generate suggestions?")}</AlertDialogTitle>
               <AlertDialogDescription>
-                This will call an external LLM provider (may cost money). Offline suggestions are always available without API calls.
+                {tr(
+                  "Cette action appelle un fournisseur de modèle externe et peut entraîner un coût. Les suggestions locales restent disponibles sans appel externe.",
+                  "This will call an external LLM provider (may cost money). Offline suggestions are always available without API calls.",
+                )}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogCancel>{tr("Annuler", "Cancel")}</AlertDialogCancel>
               <AlertDialogAction
                 onClick={() => {
                   setAiConfirmOpen(false);
                   suggestionsMutation.mutate("ai");
                 }}
               >
-                Continue
+                {tr("Continuer", "Continue")}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
@@ -605,9 +618,9 @@ export function AgentProfileDialog({ agent, runtimeAgentId, open, onOpenChange }
         <AlertDialog open={aiConsentOpen} onOpenChange={setAiConsentOpen}>
           <AlertDialogContent className={`${tenant.key === "exportunity" ? "exportunity-operations-light bg-white text-slate-900 border-slate-200" : ""} max-w-2xl`}>
             <AlertDialogHeader>
-              <AlertDialogTitle>AI consent required</AlertDialogTitle>
+              <AlertDialogTitle>{tr("Autorisation IA requise", "AI consent required")}</AlertDialogTitle>
               <AlertDialogDescription>
-                AI is currently disabled on the server. Enable it explicitly, then retry AI suggestions.
+                {tr("L'IA est désactivée sur le serveur. Activez-la explicitement, puis relancez la suggestion.", "AI is currently disabled on the server. Enable it explicitly, then retry AI suggestions.")}
               </AlertDialogDescription>
             </AlertDialogHeader>
             {aiConsentPlan && (
@@ -618,25 +631,25 @@ export function AgentProfileDialog({ agent, runtimeAgentId, open, onOpenChange }
                 </div>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div className="rounded-md border p-3">
-                    <div className="text-xs font-medium text-muted-foreground">For how long</div>
+                    <div className="text-xs font-medium text-muted-foreground">{tr("Durée", "For how long")}</div>
                     <div>{aiConsentPlan.forHowLong}</div>
                   </div>
                   <div className="rounded-md border p-3">
-                    <div className="text-xs font-medium text-muted-foreground">Resources</div>
+                    <div className="text-xs font-medium text-muted-foreground">{tr("Ressources", "Resources")}</div>
                     <ul className="list-disc pl-4">
                       {aiConsentPlan.resources?.map((r) => <li key={r}>{r}</li>)}
                     </ul>
                   </div>
                 </div>
                 <div className="rounded-md border p-3">
-                  <div className="text-xs font-medium text-muted-foreground">How to authorize</div>
+                  <div className="text-xs font-medium text-muted-foreground">{tr("Comment autoriser", "How to authorize")}</div>
                   <ul className="list-disc pl-4">
                     {aiConsentPlan.howToAuthorize?.map((s) => <li key={s}>{s}</li>)}
                   </ul>
                 </div>
                 {aiConsentPlan.howToStop?.length ? (
                   <div className="rounded-md border p-3">
-                    <div className="text-xs font-medium text-muted-foreground">How to stop</div>
+                    <div className="text-xs font-medium text-muted-foreground">{tr("Comment arrêter", "How to stop")}</div>
                     <ul className="list-disc pl-4">
                       {aiConsentPlan.howToStop.map((s) => <li key={s}>{s}</li>)}
                     </ul>
@@ -644,26 +657,26 @@ export function AgentProfileDialog({ agent, runtimeAgentId, open, onOpenChange }
                 ) : null}
                 {aiConsentPlan.visibility ? (
                   <div className="rounded-md border p-3">
-                    <div className="text-xs font-medium text-muted-foreground">Visibility</div>
+                    <div className="text-xs font-medium text-muted-foreground">{tr("Visibilité", "Visibility")}</div>
                     <div>{aiConsentPlan.visibility}</div>
                   </div>
                 ) : null}
               </div>
             )}
             <AlertDialogFooter>
-              <AlertDialogCancel>Close</AlertDialogCancel>
+              <AlertDialogCancel>{tr("Fermer", "Close")}</AlertDialogCancel>
               <AlertDialogAction
                 onClick={async () => {
                   if (!aiConsentPlan) return;
                   try {
                     await navigator.clipboard.writeText(JSON.stringify(aiConsentPlan, null, 2));
-                    toast({ title: "Copied", description: "Consent plan copied to clipboard" });
+                    toast({ title: tr("Copié", "Copied"), description: tr("Le plan d'autorisation a été copié.", "Consent plan copied to clipboard") });
                   } catch {
-                    toast({ title: "Copy failed", description: "Could not copy plan", variant: "destructive" });
+                    toast({ title: tr("Échec de la copie", "Copy failed"), description: tr("Impossible de copier le plan", "Could not copy plan"), variant: "destructive" });
                   }
                 }}
               >
-                Copy plan
+                {tr("Copier le plan", "Copy plan")}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
@@ -674,22 +687,22 @@ export function AgentProfileDialog({ agent, runtimeAgentId, open, onOpenChange }
             <Tabs defaultValue="identity" className="w-full">
               <TabsList className="grid h-auto w-full grid-cols-3 gap-1 p-1 lg:grid-cols-6">
                 <TabsTrigger value="identity">
-                  <User className="h-4 w-4 mr-1" /> Identity
+                  <User className="h-4 w-4 mr-1" /> {tr("Identité", "Identity")}
                 </TabsTrigger>
                 <TabsTrigger value="background">
-                  <Briefcase className="h-4 w-4 mr-1" /> Background
+                  <Briefcase className="h-4 w-4 mr-1" /> {tr("Parcours", "Background")}
                 </TabsTrigger>
                 <TabsTrigger value="personality">
-                  <Brain className="h-4 w-4 mr-1" /> Personality
+                  <Brain className="h-4 w-4 mr-1" /> {tr("Personnalité", "Personality")}
                 </TabsTrigger>
                 <TabsTrigger value="job">
-                  <Target className="h-4 w-4 mr-1" /> Job
+                  <Target className="h-4 w-4 mr-1" /> {tr("Mission", "Job")}
                 </TabsTrigger>
                 <TabsTrigger value="permissions">
-                  <Lock className="h-4 w-4 mr-1" /> Access
+                  <Lock className="h-4 w-4 mr-1" /> {tr("Accès", "Access")}
                 </TabsTrigger>
                 <TabsTrigger value="lifecycle">
-                  <Calendar className="h-4 w-4 mr-1" /> Lifecycle
+                  <Calendar className="h-4 w-4 mr-1" /> {tr("Cycle de vie", "Lifecycle")}
                 </TabsTrigger>
               </TabsList>
 
@@ -700,7 +713,7 @@ export function AgentProfileDialog({ agent, runtimeAgentId, open, onOpenChange }
                       <AgentPhotoEditorCard agentId={effectiveAgentId} />
                     ) : (
                       <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-200">
-                        Agent id is not resolved yet. Save/reload this agent before generating a photo.
+                        {tr("Enregistrez puis rechargez cet agent avant de générer sa photo.", "Agent id is not resolved yet. Save/reload this agent before generating a photo.")}
                       </div>
                     )}
                   </div>
@@ -710,9 +723,9 @@ export function AgentProfileDialog({ agent, runtimeAgentId, open, onOpenChange }
                   name="name"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Name</FormLabel>
+                      <FormLabel>{tr("Nom", "Name")}</FormLabel>
                       <FormControl>
-                        <Input {...field} placeholder="Agent Name" />
+                        <Input {...field} placeholder={tr("Nom de l'agent", "Agent Name")} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -725,9 +738,9 @@ export function AgentProfileDialog({ agent, runtimeAgentId, open, onOpenChange }
                     name="role"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Role</FormLabel>
+                        <FormLabel>{tr("Fonction", "Role")}</FormLabel>
                         <FormControl>
-                          <Input {...field} placeholder="e.g., Sales Agent" />
+                          <Input {...field} placeholder={tr("ex. Responsable commercial", "e.g., Sales Agent")} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -739,18 +752,18 @@ export function AgentProfileDialog({ agent, runtimeAgentId, open, onOpenChange }
                     name="departmentId"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Department</FormLabel>
+                        <FormLabel>{tr("Département", "Department")}</FormLabel>
                         <Select
                           onValueChange={(v) => field.onChange(v === "__unassigned__" ? "" : v)}
                           value={field.value || "__unassigned__"}
                         >
                           <FormControl>
                             <SelectTrigger>
-                              <SelectValue placeholder="Unassigned" />
+                              <SelectValue placeholder={tr("Non affecté", "Unassigned")} />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="__unassigned__">Unassigned</SelectItem>
+                            <SelectItem value="__unassigned__">{tr("Non affecté", "Unassigned")}</SelectItem>
                             {companyDepartments.map((d) => (
                               <SelectItem key={d.id} value={String(d.id)}>
                                 {d.name}
@@ -770,23 +783,23 @@ export function AgentProfileDialog({ agent, runtimeAgentId, open, onOpenChange }
                     name="managerId"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Manager</FormLabel>
+                        <FormLabel>{tr("Responsable hiérarchique", "Manager")}</FormLabel>
                         <Select
                           onValueChange={(v) => field.onChange(v === "__no_manager__" ? "" : v)}
                           value={field.value || "__no_manager__"}
                         >
                           <FormControl>
                             <SelectTrigger>
-                              <SelectValue placeholder="No manager (top-level)" />
+                              <SelectValue placeholder={tr("Aucun responsable (niveau supérieur)", "No manager (top-level)")} />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="__no_manager__">No manager (top-level)</SelectItem>
+                            <SelectItem value="__no_manager__">{tr("Aucun responsable (niveau supérieur)", "No manager (top-level)")}</SelectItem>
                             {companyAgents
                               .filter((a) => a.id !== agent.id)
                               .map((a) => (
                                 <SelectItem key={a.id} value={String(a.id)}>
-                                  {a.name} — {a.role}
+                                  {a.name} - {a.role}
                                 </SelectItem>
                               ))}
                           </SelectContent>
@@ -802,9 +815,9 @@ export function AgentProfileDialog({ agent, runtimeAgentId, open, onOpenChange }
                     render={({ field }) => (
                       <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
                         <div className="space-y-0.5">
-                          <FormLabel className="text-base">Department Head</FormLabel>
+                          <FormLabel className="text-base">{tr("Responsable de département", "Department Head")}</FormLabel>
                           <FormDescription>
-                            Marks this agent as the department leader
+                            {tr("Désigne cet agent comme responsable du département.", "Marks this agent as the department leader")}
                           </FormDescription>
                         </div>
                         <FormControl>
@@ -821,9 +834,9 @@ export function AgentProfileDialog({ agent, runtimeAgentId, open, onOpenChange }
                     name="country"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Country of Origin</FormLabel>
+                        <FormLabel>{tr("Pays d'origine", "Country of Origin")}</FormLabel>
                         <FormControl>
-                          <Input {...field} placeholder="e.g., Ghana" />
+                          <Input {...field} placeholder={tr("ex. Côte d'Ivoire", "e.g., Ghana")} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -835,7 +848,7 @@ export function AgentProfileDialog({ agent, runtimeAgentId, open, onOpenChange }
                     name="timezone"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Timezone</FormLabel>
+                        <FormLabel>{tr("Fuseau horaire", "Timezone")}</FormLabel>
                         <FormControl>
                           <Input {...field} placeholder="e.g., Africa/Accra" />
                         </FormControl>
@@ -849,7 +862,7 @@ export function AgentProfileDialog({ agent, runtimeAgentId, open, onOpenChange }
                     name="birthday"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Birthday</FormLabel>
+                        <FormLabel>{tr("Date de naissance", "Birthday")}</FormLabel>
                         <FormControl>
                           <Input {...field} type="date" />
                         </FormControl>
@@ -860,12 +873,12 @@ export function AgentProfileDialog({ agent, runtimeAgentId, open, onOpenChange }
                 </div>
 
                 <div>
-                  <FormLabel>Languages</FormLabel>
+                  <FormLabel>{tr("Langues", "Languages")}</FormLabel>
                   <div className="flex gap-2 mt-2">
                     <Input
                       value={newLanguage}
                       onChange={(e) => setNewLanguage(e.target.value)}
-                      placeholder="Add a language"
+                      placeholder={tr("Ajouter une langue", "Add a language")}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') {
                           e.preventDefault();
@@ -877,7 +890,7 @@ export function AgentProfileDialog({ agent, runtimeAgentId, open, onOpenChange }
                     <Button type="button" onClick={() => {
                       handleAddItem('language', newLanguage);
                       setNewLanguage("");
-                    }}>Add</Button>
+                    }}>{tr("Ajouter", "Add")}</Button>
                   </div>
                   <div className="flex flex-wrap gap-2 mt-2">
                     {(form.watch('languages') || []).map((lang: string) => (
@@ -910,13 +923,13 @@ export function AgentProfileDialog({ agent, runtimeAgentId, open, onOpenChange }
               </TabsContent>
 
               <TabsContent value="background" className="space-y-4">
-                {renderSectionActions("background", "Background")}
+                {renderSectionActions("background", tr("Parcours", "Background"))}
                 <div className="rounded-lg border p-3 bg-secondary/10">
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                      <div className="text-sm font-medium">Suggestions</div>
+                      <div className="text-sm font-medium">{tr("Suggestions", "Suggestions")}</div>
                       <div className="text-xs text-muted-foreground">
-                        Offline suggestions are free. AI suggestions require explicit consent per request.
+                        {tr("Les suggestions locales sont gratuites. Chaque appel IA exige une autorisation explicite.", "Offline suggestions are free. AI suggestions require explicit consent per request.")}
                       </div>
                     </div>
                     <div className="flex gap-2">
@@ -927,7 +940,7 @@ export function AgentProfileDialog({ agent, runtimeAgentId, open, onOpenChange }
                         disabled={suggestionsMutation.isPending}
                         onClick={() => suggestionsMutation.mutate("offline")}
                       >
-                        Suggest options
+                        {tr("Proposer des options", "Suggest options")}
                       </Button>
                       <Button
                         type="button"
@@ -936,13 +949,13 @@ export function AgentProfileDialog({ agent, runtimeAgentId, open, onOpenChange }
                         disabled={suggestionsMutation.isPending}
                         onClick={() => setAiConfirmOpen(true)}
                       >
-                        AI suggest
+                        {tr("Suggestion IA", "AI suggest")}
                       </Button>
                     </div>
                   </div>
                   {suggestions ? (
                     <div className="mt-2 text-xs text-muted-foreground">
-                      Loaded {suggestions.mode} suggestions · {new Date(suggestions.generatedAt).toLocaleString()}
+                      {tr("Suggestions chargées", "Loaded suggestions")} ({suggestions.mode}) - {new Date(suggestions.generatedAt).toLocaleString(isFr ? "fr-FR" : "en-GB")}
                     </div>
                   ) : null}
                 </div>
@@ -952,15 +965,15 @@ export function AgentProfileDialog({ agent, runtimeAgentId, open, onOpenChange }
                   name="cv"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>CV / Background</FormLabel>
+                      <FormLabel>{tr("CV / parcours", "CV / Background")}</FormLabel>
                       <FormControl>
                         <Textarea
                           {...field}
-                          placeholder="e.g., Has 10 years of experience in B2B sales across West Africa..."
+                          placeholder={tr("ex. Dix ans d'expérience en vente B2B en Afrique de l'Ouest...", "e.g., Has 10 years of experience in B2B sales across West Africa...")}
                           rows={4}
                         />
                       </FormControl>
-                      <FormDescription>Brief professional background and experience</FormDescription>
+                      <FormDescription>{tr("Résumé de l'expérience professionnelle", "Brief professional background and experience")}</FormDescription>
                       {suggestions?.text?.cv?.length ? (
                         <div className="mt-2 space-y-2">
                           {suggestions.text.cv.map((option) => (
@@ -968,10 +981,10 @@ export function AgentProfileDialog({ agent, runtimeAgentId, open, onOpenChange }
                               <div className="text-sm">{option}</div>
                               <div className="flex gap-2 sm:flex-col">
                                 <Button type="button" size="sm" onClick={() => applyTextSuggestion("cv", option, "replace")}>
-                                  Use
+                                  {tr("Utiliser", "Use")}
                                 </Button>
                                 <Button type="button" size="sm" variant="outline" onClick={() => applyTextSuggestion("cv", option, "append")}>
-                                  Append
+                                  {tr("Ajouter à la suite", "Append")}
                                 </Button>
                               </div>
                             </div>
@@ -988,15 +1001,15 @@ export function AgentProfileDialog({ agent, runtimeAgentId, open, onOpenChange }
                   name="lifeStory"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Life Story</FormLabel>
+                      <FormLabel>{tr("Histoire personnelle", "Life Story")}</FormLabel>
                       <FormControl>
                         <Textarea
                           {...field}
-                          placeholder="A short human-like background: upbringing, turning points, career highlights..."
+                          placeholder={tr("Parcours, moments décisifs et faits marquants de sa carrière...", "A short human-like background: upbringing, turning points, career highlights...")}
                           rows={4}
                         />
                       </FormControl>
-                      <FormDescription>Stored in metadata (persona)</FormDescription>
+                      <FormDescription>{tr("Conservé dans la fiche de personnalité", "Stored in metadata (persona)")}</FormDescription>
                       {suggestions?.text?.lifeStory?.length ? (
                         <div className="mt-2 space-y-2">
                           {suggestions.text.lifeStory.map((option) => (
@@ -1004,10 +1017,10 @@ export function AgentProfileDialog({ agent, runtimeAgentId, open, onOpenChange }
                               <div className="text-sm">{option}</div>
                               <div className="flex gap-2 sm:flex-col">
                                 <Button type="button" size="sm" onClick={() => applyTextSuggestion("lifeStory", option, "replace")}>
-                                  Use
+                                  {tr("Utiliser", "Use")}
                                 </Button>
                                 <Button type="button" size="sm" variant="outline" onClick={() => applyTextSuggestion("lifeStory", option, "append")}>
-                                  Append
+                                  {tr("Ajouter à la suite", "Append")}
                                 </Button>
                               </div>
                             </div>
@@ -1024,15 +1037,15 @@ export function AgentProfileDialog({ agent, runtimeAgentId, open, onOpenChange }
                   name="personalGoals"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Personal Goals</FormLabel>
+                      <FormLabel>{tr("Objectifs personnels", "Personal Goals")}</FormLabel>
                       <FormControl>
                         <Textarea
                           {...field}
-                          placeholder="What does this agent strive for? What motivates them day-to-day?"
+                          placeholder={tr("Quels résultats cet agent poursuit-il au quotidien ?", "What does this agent strive for? What motivates them day-to-day?")}
                           rows={3}
                         />
                       </FormControl>
-                      <FormDescription>Stored in metadata (persona)</FormDescription>
+                      <FormDescription>{tr("Conservé dans la fiche de personnalité", "Stored in metadata (persona)")}</FormDescription>
                       {suggestions?.text?.personalGoals?.length ? (
                         <div className="mt-2 space-y-2">
                           {suggestions.text.personalGoals.map((option) => (
@@ -1040,10 +1053,10 @@ export function AgentProfileDialog({ agent, runtimeAgentId, open, onOpenChange }
                               <div className="text-sm">{option}</div>
                               <div className="flex gap-2 sm:flex-col">
                                 <Button type="button" size="sm" onClick={() => applyTextSuggestion("personalGoals", option, "replace")}>
-                                  Use
+                                  {tr("Utiliser", "Use")}
                                 </Button>
                                 <Button type="button" size="sm" variant="outline" onClick={() => applyTextSuggestion("personalGoals", option, "append")}>
-                                  Append
+                                  {tr("Ajouter à la suite", "Append")}
                                 </Button>
                               </div>
                             </div>
@@ -1056,12 +1069,12 @@ export function AgentProfileDialog({ agent, runtimeAgentId, open, onOpenChange }
                 />
 
                 <div>
-                  <FormLabel>Skills</FormLabel>
+                  <FormLabel>{tr("Compétences", "Skills")}</FormLabel>
                   <div className="flex gap-2 mt-2">
                     <Input
                       value={newSkill}
                       onChange={(e) => setNewSkill(e.target.value)}
-                      placeholder="Add a skill"
+                      placeholder={tr("Ajouter une compétence", "Add a skill")}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') {
                           e.preventDefault();
@@ -1073,7 +1086,7 @@ export function AgentProfileDialog({ agent, runtimeAgentId, open, onOpenChange }
                     <Button type="button" onClick={() => {
                       handleAddItem('skill', newSkill);
                       setNewSkill("");
-                    }}>Add</Button>
+                    }}>{tr("Ajouter", "Add")}</Button>
                   </div>
                   <div className="flex flex-wrap gap-2 mt-2">
                     {(form.watch('skills') || []).map((skill: string) => (
@@ -1103,12 +1116,12 @@ export function AgentProfileDialog({ agent, runtimeAgentId, open, onOpenChange }
                 </div>
 
                 <div>
-                  <FormLabel>Industry Focus</FormLabel>
+                  <FormLabel>{tr("Secteurs d'intervention", "Industry Focus")}</FormLabel>
                   <div className="flex gap-2 mt-2">
                     <Input
                       value={newIndustry}
                       onChange={(e) => setNewIndustry(e.target.value)}
-                      placeholder="Add an industry"
+                      placeholder={tr("Ajouter un secteur", "Add an industry")}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') {
                           e.preventDefault();
@@ -1120,7 +1133,7 @@ export function AgentProfileDialog({ agent, runtimeAgentId, open, onOpenChange }
                     <Button type="button" onClick={() => {
                       handleAddItem('industry', newIndustry);
                       setNewIndustry("");
-                    }}>Add</Button>
+                    }}>{tr("Ajouter", "Add")}</Button>
                   </div>
                   <div className="flex flex-wrap gap-2 mt-2">
                     {(form.watch('industryFocus') || []).map((industry: string) => (
@@ -1151,14 +1164,14 @@ export function AgentProfileDialog({ agent, runtimeAgentId, open, onOpenChange }
               </TabsContent>
 
               <TabsContent value="personality" className="space-y-4">
-                {renderSectionActions("personality", "Personality")}
-                <div className="grid grid-cols-2 gap-4">
+                {renderSectionActions("personality", tr("Personnalité", "Personality"))}
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <FormField
                     control={form.control}
                     name="personalityTone"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Tone</FormLabel>
+                        <FormLabel>{tr("Ton", "Tone")}</FormLabel>
                         <Select onValueChange={field.onChange} value={field.value}>
                           <FormControl>
                             <SelectTrigger>
@@ -1166,9 +1179,9 @@ export function AgentProfileDialog({ agent, runtimeAgentId, open, onOpenChange }
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="formal">Formal</SelectItem>
-                            <SelectItem value="neutral">Neutral</SelectItem>
-                            <SelectItem value="friendly">Friendly</SelectItem>
+                            <SelectItem value="formal">{tr("Formel", "Formal")}</SelectItem>
+                            <SelectItem value="neutral">{tr("Neutre", "Neutral")}</SelectItem>
+                            <SelectItem value="friendly">{tr("Chaleureux", "Friendly")}</SelectItem>
                           </SelectContent>
                         </Select>
                         <FormMessage />
@@ -1181,7 +1194,7 @@ export function AgentProfileDialog({ agent, runtimeAgentId, open, onOpenChange }
                     name="personalityRisk"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Risk Tolerance</FormLabel>
+                        <FormLabel>{tr("Tolérance au risque", "Risk Tolerance")}</FormLabel>
                         <Select onValueChange={field.onChange} value={field.value}>
                           <FormControl>
                             <SelectTrigger>
@@ -1189,9 +1202,9 @@ export function AgentProfileDialog({ agent, runtimeAgentId, open, onOpenChange }
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="conservative">Conservative</SelectItem>
-                            <SelectItem value="moderate">Moderate</SelectItem>
-                            <SelectItem value="bold">Bold</SelectItem>
+                            <SelectItem value="conservative">{tr("Prudente", "Conservative")}</SelectItem>
+                            <SelectItem value="moderate">{tr("Modérée", "Moderate")}</SelectItem>
+                            <SelectItem value="bold">{tr("Audacieuse", "Bold")}</SelectItem>
                           </SelectContent>
                         </Select>
                         <FormMessage />
@@ -1204,7 +1217,7 @@ export function AgentProfileDialog({ agent, runtimeAgentId, open, onOpenChange }
                     name="personalitySpeed"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Working Speed</FormLabel>
+                        <FormLabel>{tr("Rythme de travail", "Working Speed")}</FormLabel>
                         <Select onValueChange={field.onChange} value={field.value}>
                           <FormControl>
                             <SelectTrigger>
@@ -1212,9 +1225,9 @@ export function AgentProfileDialog({ agent, runtimeAgentId, open, onOpenChange }
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="deliberate">Deliberate</SelectItem>
-                            <SelectItem value="moderate">Moderate</SelectItem>
-                            <SelectItem value="fast">Fast</SelectItem>
+                            <SelectItem value="deliberate">{tr("Réfléchi", "Deliberate")}</SelectItem>
+                            <SelectItem value="moderate">{tr("Modéré", "Moderate")}</SelectItem>
+                            <SelectItem value="fast">{tr("Rapide", "Fast")}</SelectItem>
                           </SelectContent>
                         </Select>
                         <FormMessage />
@@ -1227,7 +1240,7 @@ export function AgentProfileDialog({ agent, runtimeAgentId, open, onOpenChange }
                     name="personalityDetail"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Detail Level</FormLabel>
+                        <FormLabel>{tr("Niveau de détail", "Detail Level")}</FormLabel>
                         <Select onValueChange={field.onChange} value={field.value}>
                           <FormControl>
                             <SelectTrigger>
@@ -1235,9 +1248,9 @@ export function AgentProfileDialog({ agent, runtimeAgentId, open, onOpenChange }
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="high_level">High-level</SelectItem>
-                            <SelectItem value="moderate">Moderate</SelectItem>
-                            <SelectItem value="very_detailed">Very Detailed</SelectItem>
+                            <SelectItem value="high_level">{tr("Synthétique", "High-level")}</SelectItem>
+                            <SelectItem value="moderate">{tr("Modéré", "Moderate")}</SelectItem>
+                            <SelectItem value="very_detailed">{tr("Très détaillé", "Very Detailed")}</SelectItem>
                           </SelectContent>
                         </Select>
                         <FormMessage />
@@ -1246,19 +1259,19 @@ export function AgentProfileDialog({ agent, runtimeAgentId, open, onOpenChange }
                   />
                 </div>
                 <FormDescription>
-                  These personality traits influence how the agent communicates and works
+                  {tr("Ces paramètres influencent la façon dont l'agent communique et travaille.", "These personality traits influence how the agent communicates and works")}
                 </FormDescription>
               </TabsContent>
 
               <TabsContent value="job" className="space-y-4">
-                {renderSectionActions("job", "Job")}
+                {renderSectionActions("job", tr("Mission", "Job"))}
                 {!suggestions ? (
                   <div className="rounded-lg border p-3 bg-secondary/10">
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                       <div>
-                        <div className="text-sm font-medium">Suggestions</div>
+                        <div className="text-sm font-medium">{tr("Suggestions", "Suggestions")}</div>
                         <div className="text-xs text-muted-foreground">
-                          Load offline suggestions or request AI suggestions explicitly.
+                          {tr("Chargez des suggestions locales ou autorisez explicitement une suggestion IA.", "Load offline suggestions or request AI suggestions explicitly.")}
                         </div>
                       </div>
                       <div className="flex gap-2">
@@ -1269,7 +1282,7 @@ export function AgentProfileDialog({ agent, runtimeAgentId, open, onOpenChange }
                           disabled={suggestionsMutation.isPending}
                           onClick={() => suggestionsMutation.mutate("offline")}
                         >
-                          Suggest options
+                          {tr("Proposer des options", "Suggest options")}
                         </Button>
                         <Button
                           type="button"
@@ -1278,7 +1291,7 @@ export function AgentProfileDialog({ agent, runtimeAgentId, open, onOpenChange }
                           disabled={suggestionsMutation.isPending}
                           onClick={() => setAiConfirmOpen(true)}
                         >
-                          AI suggest
+                          {tr("Suggestion IA", "AI suggest")}
                         </Button>
                       </div>
                     </div>
@@ -1290,15 +1303,15 @@ export function AgentProfileDialog({ agent, runtimeAgentId, open, onOpenChange }
                   name="mission"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Mission Statement</FormLabel>
+                      <FormLabel>{tr("Énoncé de mission", "Mission Statement")}</FormLabel>
                       <FormControl>
                         <Textarea
                           {...field}
-                          placeholder="e.g., Drive B2B sales growth across Francophone West Africa..."
+                          placeholder={tr("ex. Développer les ventes B2B en Afrique francophone...", "e.g., Drive B2B sales growth across Francophone West Africa...")}
                           rows={3}
                         />
                       </FormControl>
-                      <FormDescription>1-3 sentences describing the agent's core mission</FormDescription>
+                      <FormDescription>{tr("Une à trois phrases décrivant la mission principale de l'agent", "1-3 sentences describing the agent's core mission")}</FormDescription>
                       {suggestions?.text?.mission?.length ? (
                         <div className="mt-2 space-y-2">
                           {suggestions.text.mission.map((option) => (
@@ -1306,10 +1319,10 @@ export function AgentProfileDialog({ agent, runtimeAgentId, open, onOpenChange }
                               <div className="text-sm">{option}</div>
                               <div className="flex gap-2 sm:flex-col">
                                 <Button type="button" size="sm" onClick={() => applyTextSuggestion("mission", option, "replace")}>
-                                  Use
+                                  {tr("Utiliser", "Use")}
                                 </Button>
                                 <Button type="button" size="sm" variant="outline" onClick={() => applyTextSuggestion("mission", option, "append")}>
-                                  Append
+                                  {tr("Ajouter à la suite", "Append")}
                                 </Button>
                               </div>
                             </div>
@@ -1322,12 +1335,12 @@ export function AgentProfileDialog({ agent, runtimeAgentId, open, onOpenChange }
                 />
 
                 <div>
-                  <FormLabel>Responsibilities</FormLabel>
+                  <FormLabel>{tr("Responsabilités", "Responsibilities")}</FormLabel>
                   <div className="flex gap-2 mt-2">
                     <Input
                       value={newResponsibility}
                       onChange={(e) => setNewResponsibility(e.target.value)}
-                      placeholder="Add a responsibility"
+                      placeholder={tr("Ajouter une responsabilité", "Add a responsibility")}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') {
                           e.preventDefault();
@@ -1339,7 +1352,7 @@ export function AgentProfileDialog({ agent, runtimeAgentId, open, onOpenChange }
                     <Button type="button" onClick={() => {
                       handleAddItem('responsibility', newResponsibility);
                       setNewResponsibility("");
-                    }}>Add</Button>
+                    }}>{tr("Ajouter", "Add")}</Button>
                   </div>
                   <div className="space-y-2 mt-2">
                     {(form.watch('responsibilities') || []).map((resp: string, idx: number) => (
@@ -1370,7 +1383,7 @@ export function AgentProfileDialog({ agent, runtimeAgentId, open, onOpenChange }
               </TabsContent>
 
               <TabsContent value="permissions" className="space-y-4">
-                {renderSectionActions("permissions", "Access")}
+                {renderSectionActions("permissions", tr("Accès", "Access"))}
                 <div className="space-y-4">
                   <FormField
                     control={form.control}
@@ -1378,8 +1391,8 @@ export function AgentProfileDialog({ agent, runtimeAgentId, open, onOpenChange }
                     render={({ field }) => (
                       <FormItem className="flex items-center justify-between rounded-lg border p-4">
                         <div className="space-y-0.5">
-                          <FormLabel className="text-base">Email Access</FormLabel>
-                          <FormDescription>Can send and receive emails</FormDescription>
+                          <FormLabel className="text-base">{tr("Accès aux e-mails", "Email Access")}</FormLabel>
+                          <FormDescription>{tr("Peut envoyer et recevoir des e-mails", "Can send and receive emails")}</FormDescription>
                         </div>
                         <FormControl>
                           <Switch checked={field.value} onCheckedChange={field.onChange} />
@@ -1394,8 +1407,8 @@ export function AgentProfileDialog({ agent, runtimeAgentId, open, onOpenChange }
                     render={({ field }) => (
                       <FormItem className="flex items-center justify-between rounded-lg border p-4">
                         <div className="space-y-0.5">
-                          <FormLabel className="text-base">Calendar Access</FormLabel>
-                          <FormDescription>Can schedule and manage meetings</FormDescription>
+                          <FormLabel className="text-base">{tr("Accès au calendrier", "Calendar Access")}</FormLabel>
+                          <FormDescription>{tr("Peut planifier et gérer des réunions", "Can schedule and manage meetings")}</FormDescription>
                         </div>
                         <FormControl>
                           <Switch checked={field.value} onCheckedChange={field.onChange} />
@@ -1410,8 +1423,8 @@ export function AgentProfileDialog({ agent, runtimeAgentId, open, onOpenChange }
                     render={({ field }) => (
                       <FormItem className="flex items-center justify-between rounded-lg border p-4">
                         <div className="space-y-0.5">
-                          <FormLabel className="text-base">CRM Access</FormLabel>
-                          <FormDescription>Can access and update CRM data</FormDescription>
+                          <FormLabel className="text-base">{tr("Accès au CRM", "CRM Access")}</FormLabel>
+                          <FormDescription>{tr("Peut consulter et mettre à jour les données CRM", "Can access and update CRM data")}</FormDescription>
                         </div>
                         <FormControl>
                           <Switch checked={field.value} onCheckedChange={field.onChange} />
@@ -1426,8 +1439,8 @@ export function AgentProfileDialog({ agent, runtimeAgentId, open, onOpenChange }
                     render={({ field }) => (
                       <FormItem className="flex items-center justify-between rounded-lg border p-4">
                         <div className="space-y-0.5">
-                          <FormLabel className="text-base">Knowledge Base Access</FormLabel>
-                          <FormDescription>Can read and write to knowledge base</FormDescription>
+                          <FormLabel className="text-base">{tr("Accès à la base de connaissances", "Knowledge Base Access")}</FormLabel>
+                          <FormDescription>{tr("Peut lire et enrichir la base de connaissances", "Can read and write to knowledge base")}</FormDescription>
                         </div>
                         <FormControl>
                           <Switch checked={field.value} onCheckedChange={field.onChange} />
@@ -1442,8 +1455,8 @@ export function AgentProfileDialog({ agent, runtimeAgentId, open, onOpenChange }
                     render={({ field }) => (
                       <FormItem className="flex items-center justify-between rounded-lg border p-4">
                         <div className="space-y-0.5">
-                          <FormLabel className="text-base">Payments Access</FormLabel>
-                          <FormDescription>Can process payments and financial transactions</FormDescription>
+                          <FormLabel className="text-base">{tr("Accès aux paiements", "Payments Access")}</FormLabel>
+                          <FormDescription>{tr("Peut traiter des paiements et opérations financières", "Can process payments and financial transactions")}</FormDescription>
                         </div>
                         <FormControl>
                           <Switch checked={field.value} onCheckedChange={field.onChange} />
@@ -1458,8 +1471,8 @@ export function AgentProfileDialog({ agent, runtimeAgentId, open, onOpenChange }
                     render={({ field }) => (
                       <FormItem className="flex items-center justify-between rounded-lg border p-4">
                         <div className="space-y-0.5">
-                          <FormLabel className="text-base">Web Research</FormLabel>
-                          <FormDescription>Can browse the web and conduct research</FormDescription>
+                          <FormLabel className="text-base">{tr("Recherche web", "Web Research")}</FormLabel>
+                          <FormDescription>{tr("Peut naviguer sur le web et effectuer des recherches", "Can browse the web and conduct research")}</FormDescription>
                         </div>
                         <FormControl>
                           <Switch checked={field.value} onCheckedChange={field.onChange} />
@@ -1476,7 +1489,7 @@ export function AgentProfileDialog({ agent, runtimeAgentId, open, onOpenChange }
                   name="autonomyLevel"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Autonomy Level</FormLabel>
+                      <FormLabel>{tr("Niveau d'autonomie", "Autonomy Level")}</FormLabel>
                       <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger>
@@ -1484,13 +1497,13 @@ export function AgentProfileDialog({ agent, runtimeAgentId, open, onOpenChange }
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="draft_only">Draft Only</SelectItem>
-                          <SelectItem value="partial">Partial Autonomy</SelectItem>
-                          <SelectItem value="full">Full Autonomy</SelectItem>
+                          <SelectItem value="draft_only">{tr("Brouillons uniquement", "Draft Only")}</SelectItem>
+                          <SelectItem value="partial">{tr("Autonomie partielle", "Partial Autonomy")}</SelectItem>
+                          <SelectItem value="full">{tr("Autonomie complète", "Full Autonomy")}</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormDescription>
-                        Controls how much the agent can act independently
+                        {tr("Détermine jusqu'où l'agent peut agir sans validation humaine.", "Controls how much the agent can act independently")}
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
@@ -1499,14 +1512,14 @@ export function AgentProfileDialog({ agent, runtimeAgentId, open, onOpenChange }
               </TabsContent>
 
               <TabsContent value="lifecycle" className="space-y-4">
-                {renderSectionActions("lifecycle", "Lifecycle")}
-                <div className="grid grid-cols-2 gap-4">
+                {renderSectionActions("lifecycle", tr("Cycle de vie", "Lifecycle"))}
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <FormField
                     control={form.control}
                     name="status"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Status</FormLabel>
+                        <FormLabel>{tr("Statut", "Status")}</FormLabel>
                         <Select onValueChange={field.onChange} value={field.value}>
                           <FormControl>
                             <SelectTrigger>
@@ -1514,10 +1527,10 @@ export function AgentProfileDialog({ agent, runtimeAgentId, open, onOpenChange }
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="active">Active</SelectItem>
-                            <SelectItem value="inactive">Inactive</SelectItem>
-                            <SelectItem value="paused">Paused</SelectItem>
-                            <SelectItem value="archived">Archived</SelectItem>
+                            <SelectItem value="active">{tr("Actif", "Active")}</SelectItem>
+                            <SelectItem value="inactive">{tr("Inactif", "Inactive")}</SelectItem>
+                            <SelectItem value="paused">{tr("En pause", "Paused")}</SelectItem>
+                            <SelectItem value="archived">{tr("Archivé", "Archived")}</SelectItem>
                           </SelectContent>
                         </Select>
                         <FormMessage />
@@ -1526,13 +1539,13 @@ export function AgentProfileDialog({ agent, runtimeAgentId, open, onOpenChange }
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <FormField
                     control={form.control}
                     name="hiredDate"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Hired Date</FormLabel>
+                        <FormLabel>{tr("Date d'affectation", "Hired Date")}</FormLabel>
                         <FormControl>
                           <Input type="date" {...field} />
                         </FormControl>
@@ -1546,7 +1559,7 @@ export function AgentProfileDialog({ agent, runtimeAgentId, open, onOpenChange }
                     name="promotedDate"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Promoted Date</FormLabel>
+                        <FormLabel>{tr("Date de promotion", "Promoted Date")}</FormLabel>
                         <FormControl>
                           <Input type="date" {...field} />
                         </FormControl>
@@ -1558,26 +1571,26 @@ export function AgentProfileDialog({ agent, runtimeAgentId, open, onOpenChange }
 
                 <div className="space-y-2 p-4 bg-secondary/30 rounded-lg">
                   <div className="flex justify-between">
-                    <span className="text-sm font-medium">Created</span>
+                    <span className="text-sm font-medium">{tr("Créé le", "Created")}</span>
                     <span className="text-sm text-muted-foreground">
-                      {agent.createdAt ? new Date(agent.createdAt).toLocaleDateString() : 'N/A'}
+                      {agent.createdAt ? new Date(agent.createdAt).toLocaleDateString(isFr ? "fr-FR" : "en-GB") : tr("Non disponible", "N/A")}
                     </span>
                   </div>
                 </div>
               </TabsContent>
             </Tabs>
 
-            <div className="flex justify-end gap-2 pt-4 border-t">
+            <div className="sticky bottom-0 z-10 flex justify-end gap-2 border-t bg-background/95 py-3 backdrop-blur">
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => onOpenChange(false)}
               >
-                Cancel
+                {tr("Annuler", "Cancel")}
               </Button>
               <Button type="submit" disabled={updateAgentMutation.isPending}>
                 <Save className="h-4 w-4 mr-2" />
-                {updateAgentMutation.isPending ? "Saving..." : "Save Changes"}
+                {updateAgentMutation.isPending ? tr("Enregistrement...", "Saving...") : tr("Enregistrer les modifications", "Save Changes")}
               </Button>
             </div>
           </form>

@@ -31,6 +31,8 @@ import {
   ExternalLink,
   Factory,
   FileCheck2,
+  Gem,
+  Globe2,
   GraduationCap,
   Handshake,
   Landmark,
@@ -56,11 +58,16 @@ import { useLocale } from "@/contexts/LocaleContext";
 import { useSession } from "@/lib/session";
 import { cn } from "@/lib/utils";
 import {
-  BENIN_INDUSTRIAL_CONTEXT_LOCATIONS,
-  BENIN_INDUSTRIAL_MAP_CENTER,
-  BENIN_INDUSTRIAL_SECTOR_LENSES,
+  DEFAULT_INDUSTRIAL_TERRITORY_CODE,
+  INDUSTRIAL_CONTEXT_LOCATIONS,
+  INDUSTRIAL_SECTOR_LENSES,
+  INDUSTRIAL_TERRITORIES,
+  INDUSTRIAL_TERRITORY_ORDER,
+  industrialContextsForTerritory,
   industrialContextText,
   type IndustrialContextLocation,
+  type IndustrialTerritory,
+  type IndustrialTerritoryCode,
 } from "@/components/exportunity/industrialContext";
 import { IndustrialAssistantChat } from "@/components/exportunity/IndustrialAssistantChat";
 import type {
@@ -220,18 +227,12 @@ type TaxonomyCategory = {
   examples: { fr: string[]; en: string[] };
 };
 
-const GDIZ_CONTEXT = BENIN_INDUSTRIAL_CONTEXT_LOCATIONS.find(
-  (context) => context.id === "gdiz",
-)!;
-const PORT_COTONOU_CONTEXT = BENIN_INDUSTRIAL_CONTEXT_LOCATIONS.find(
-  (context) => context.id === "port-cotonou",
-)!;
-
 const INDUSTRIAL_CONTEXT_VISUALS = {
   industrial_zone: { icon: Factory, markerCode: "I" },
   logistics_gateway: { icon: Anchor, markerCode: "L" },
   innovation_hub: { icon: GraduationCap, markerCode: "S" },
   agro_processing_reference: { icon: Wheat, markerCode: "A" },
+  commodity_hub: { icon: Gem, markerCode: "M" },
 } satisfies Record<
   IndustrialContextLocation["kind"],
   { icon: typeof Factory; markerCode: string }
@@ -246,6 +247,7 @@ function industrialContextLayerLabel(
     logistics_gateway: language === "fr" ? "Logistique" : "Logistics",
     innovation_hub: language === "fr" ? "Competences" : "Skills",
     agro_processing_reference: language === "fr" ? "Agro" : "Agro",
+    commodity_hub: language === "fr" ? "Matieres" : "Commodities",
   } as const;
   return labels[kind];
 }
@@ -421,7 +423,9 @@ function contextCatalogItems(
 
   if (context.id === "port-cotonou") {
     return items.filter(
-      (item) => item.classification === "export_ready_factory_product",
+      (item) =>
+        item.factoryCountryCode === "BJ" &&
+        item.classification === "export_ready_factory_product",
     );
   }
 
@@ -433,10 +437,37 @@ function contextCatalogItems(
     );
   }
 
-  return items.filter((item) =>
-    ["industrial_service", "machinery", "spare_part"].includes(
-      item.classification,
-    ),
+  const territoryItems = items.filter(
+    (item) =>
+      item.factoryCountryCode === context.countryCode ||
+      item.listingKind === "exportunity_sourcing_program",
+  );
+
+  if (context.kind === "logistics_gateway") {
+    return territoryItems.filter((item) =>
+      [
+        "export_ready_factory_product",
+        "raw_material",
+        "industrial_service",
+      ].includes(item.classification),
+    );
+  }
+
+  if (context.kind === "commodity_hub") {
+    return territoryItems.filter((item) =>
+      ["raw_material", "industrial_input", "industrial_service"].includes(
+        item.classification,
+      ),
+    );
+  }
+
+  return territoryItems.filter((item) =>
+    [
+      "export_ready_factory_product",
+      "industrial_service",
+      "machinery",
+      "spare_part",
+    ].includes(item.classification),
   );
 }
 
@@ -445,11 +476,13 @@ function assistantContextForSelection({
   context,
   items,
   language,
+  territory,
 }: {
   factory: PublicFactory | null;
   context: IndustrialContextLocation | null;
   items: CatalogItem[];
   language: "fr" | "en";
+  territory: IndustrialTerritory;
 }): IndustrialAssistantContext {
   if (factory) {
     const productCount = items.filter(
@@ -551,6 +584,131 @@ function assistantContextForSelection({
     };
   }
 
+  if (context?.id === "port-abidjan" || context?.id === "jebel-ali-port") {
+    const placeName = industrialContextText(context.name, language);
+    return {
+      id: `context:${context.id}`,
+      title: placeName,
+      role:
+        language === "fr"
+          ? "Exportunity AI | Export et logistique"
+          : "Exportunity AI | Export and logistics",
+      intro:
+        language === "fr"
+          ? `Vous explorez ${placeName}. Awa peut cadrer le produit, l'incoterm, la destination et les contraintes de transport, puis ouvrir un dossier logistique a confirmer.`
+          : `You are exploring ${placeName}. Awa can scope the product, Incoterm, destination, and transport constraints, then open a logistics case for confirmation.`,
+      quickReplies:
+        language === "fr"
+          ? [
+              "Preparer une expedition export",
+              "Trouver un fournisseur",
+              "Sourcer des matieres premieres",
+              "Verifier les documents requis",
+              "Demander un devis logistique",
+            ]
+          : [
+              "Prepare an export shipment",
+              "Find a supplier",
+              "Source raw materials",
+              "Check required documents",
+              "Request a logistics quote",
+            ],
+    };
+  }
+
+  if (context?.id === "dmcc-commodities") {
+    return {
+      id: "context:dmcc-commodities",
+      title: industrialContextText(context.name, language),
+      role:
+        language === "fr"
+          ? "Exportunity AI | Sourcing et conformite"
+          : "Exportunity AI | Sourcing and compliance",
+      intro:
+        language === "fr"
+          ? "DMCC est affiche comme ecosysteme public de commerce. Awa peut qualifier votre besoin en matieres premieres ou metaux precieux, puis organiser les controles de contrepartie, d'origine et de conformite avant toute transaction."
+          : "DMCC is shown as a public trade ecosystem. Awa can qualify your commodity or precious-metals requirement, then organize counterparty, origin, and compliance checks before any transaction.",
+      quickReplies:
+        language === "fr"
+          ? [
+              "Sourcer une matiere premiere",
+              "Verifier un fournisseur de metaux",
+              "Preparer un dossier d'origine",
+              "Organiser une inspection",
+              "Ouvrir un besoin confidentiel",
+            ]
+          : [
+              "Source a commodity",
+              "Verify a metals supplier",
+              "Prepare an origin file",
+              "Arrange an inspection",
+              "Open a confidential requirement",
+            ],
+    };
+  }
+
+  if (context?.territoryCode === "CI") {
+    return {
+      id: `context:${context.id}`,
+      title: industrialContextText(context.name, language),
+      role:
+        language === "fr"
+          ? "Exportunity AI | Industrie Cote d'Ivoire"
+          : "Exportunity AI | Cote d'Ivoire industry",
+      intro:
+        language === "fr"
+          ? `Vous explorez ${industrialContextText(context.name, language)}. Awa peut rechercher des producteurs, produits, pieces et capacites documentees, puis ouvrir un dossier commercial sans inventer de stock.`
+          : `You are exploring ${industrialContextText(context.name, language)}. Awa can find documented producers, products, parts, and capabilities, then open a commercial case without inventing stock.`,
+      quickReplies:
+        language === "fr"
+          ? [
+              "Trouver un fabricant",
+              "Voir les produits exportables",
+              "Commander une piece detachee",
+              "Sourcer un intrant industriel",
+              "Ouvrir une commande",
+            ]
+          : [
+              "Find a manufacturer",
+              "Show export-ready products",
+              "Order a spare part",
+              "Source an industrial input",
+              "Open an order",
+            ],
+    };
+  }
+
+  if (context?.territoryCode === "AE") {
+    return {
+      id: `context:${context.id}`,
+      title: industrialContextText(context.name, language),
+      role:
+        language === "fr"
+          ? "Exportunity AI | Sourcing international"
+          : "Exportunity AI | International sourcing",
+      intro:
+        language === "fr"
+          ? `Vous explorez ${industrialContextText(context.name, language)}. Awa peut qualifier une recherche de machine, piece, fournisseur ou partenaire logistique et organiser les verifications avant mise en relation.`
+          : `You are exploring ${industrialContextText(context.name, language)}. Awa can qualify a machinery, part, supplier, or logistics search and organize verification before an introduction.`,
+      quickReplies:
+        language === "fr"
+          ? [
+              "Sourcer une machine",
+              "Trouver des pieces industrielles",
+              "Comparer des fournisseurs",
+              "Organiser une livraison vers l'Afrique",
+              "Ouvrir un dossier de sourcing",
+            ]
+          : [
+              "Source machinery",
+              "Find industrial parts",
+              "Compare suppliers",
+              "Arrange delivery to Africa",
+              "Open a sourcing case",
+            ],
+    };
+  }
+
   if (context?.id === "ketou-agro-processing") {
     return {
       id: "context:ketou",
@@ -599,31 +757,66 @@ function assistantContextForSelection({
 
   return {
     id: "industrial-discovery",
-    title: language === "fr" ? "Industrie du Benin" : "Benin industry",
+    title:
+      language === "fr"
+        ? "Reseau industriel Exportunity"
+        : "Exportunity industrial network",
     role:
       language === "fr"
         ? "Exportunity AI | Guide industriel"
         : "Exportunity AI | Industrial guide",
     intro:
       language === "fr"
-        ? "Bonjour, je suis Awa Kouadio, votre interlocutrice commerciale. Choisissez un repere sur la carte ou dites-moi le produit, la piece ou la machine dont vous avez besoin."
-        : "Hello, I am Awa Kouadio, your commercial lead. Select a map reference or tell me which product, part, or machine you need.",
+        ? `Bonjour, je suis Awa Kouadio, votre interlocutrice commerciale. Vous explorez ${industrialContextText(territory.name, language)}. Dites-moi le produit, la piece, la machine, la matiere premiere ou la route export dont vous avez besoin.`
+        : `Hello, I am Awa Kouadio, your commercial lead. You are exploring ${industrialContextText(territory.name, language)}. Tell me which product, part, machine, commodity, or export route you need.`,
     quickReplies:
-      language === "fr"
-        ? [
-            "Voir les producteurs de la GDIZ",
-            "Trouver une piece detachee",
-            "Voir les produits exportables",
-            "Sourcer une machine",
-            "Demarrer une commande",
-          ]
-        : [
-            "Show GDIZ producers",
-            "Find a spare part",
-            "Show export-ready products",
-            "Source a machine",
-            "Start an order",
-          ],
+      territory.code === "AE"
+        ? language === "fr"
+          ? [
+              "Sourcer une machine a Dubai",
+              "Trouver des pieces industrielles",
+              "Verifier un fournisseur",
+              "Sourcer des matieres premieres",
+              "Organiser l'export vers l'Afrique",
+            ]
+          : [
+              "Source machinery in Dubai",
+              "Find industrial parts",
+              "Verify a supplier",
+              "Source commodities",
+              "Arrange export to Africa",
+            ]
+        : territory.code === "CI"
+          ? language === "fr"
+            ? [
+                "Trouver un fabricant a Abidjan",
+                "Voir les produits exportables",
+                "Commander une piece detachee",
+                "Sourcer un intrant industriel",
+                "Preparer une expedition export",
+              ]
+            : [
+                "Find a manufacturer in Abidjan",
+                "Show export-ready products",
+                "Order a spare part",
+                "Source an industrial input",
+                "Prepare an export shipment",
+              ]
+          : language === "fr"
+            ? [
+                "Voir les producteurs de la GDIZ",
+                "Trouver une piece detachee",
+                "Voir les produits exportables",
+                "Sourcer une machine",
+                "Demarrer une commande",
+              ]
+            : [
+                "Show GDIZ producers",
+                "Find a spare part",
+                "Show export-ready products",
+                "Source a machine",
+                "Start an order",
+              ],
   };
 }
 
@@ -634,6 +827,93 @@ function queryValue(location: string, key: string) {
       ? window.location.search.slice(1)
       : "";
   return new URLSearchParams(query || "").get(key) || "";
+}
+
+function isIndustrialTerritoryCode(
+  value: string | null | undefined,
+): value is IndustrialTerritoryCode {
+  return Boolean(value && value in INDUSTRIAL_TERRITORIES);
+}
+
+function initialIndustrialTerritoryCode(): IndustrialTerritoryCode {
+  if (typeof window === "undefined") return DEFAULT_INDUSTRIAL_TERRITORY_CODE;
+
+  const requested = new URLSearchParams(window.location.search)
+    .get("market")
+    ?.toUpperCase();
+  if (isIndustrialTerritoryCode(requested)) return requested;
+
+  const saved = window.localStorage
+    .getItem("exportunity-industrial-territory")
+    ?.toUpperCase();
+  if (isIndustrialTerritoryCode(saved)) return saved;
+
+  const browserLocale = window.navigator.language.toUpperCase();
+  if (browserLocale.endsWith("-AE")) return "AE";
+  if (browserLocale.endsWith("-BJ")) return "BJ";
+  if (browserLocale.endsWith("-CI")) return "CI";
+
+  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  if (timeZone === "Asia/Dubai") return "AE";
+  if (timeZone === "Africa/Porto-Novo") return "BJ";
+  if (timeZone === "Africa/Abidjan") return "CI";
+
+  return DEFAULT_INDUSTRIAL_TERRITORY_CODE;
+}
+
+function IndustrialTerritorySwitcher({
+  value,
+  onChange,
+  language,
+  className,
+}: {
+  value: IndustrialTerritoryCode;
+  onChange: (territoryCode: IndustrialTerritoryCode) => void;
+  language: "fr" | "en";
+  className?: string;
+}) {
+  return (
+    <div
+      role="group"
+      aria-label={
+        language === "fr" ? "Choisir un marche" : "Choose a market"
+      }
+      className={cn(
+        "flex min-w-0 items-center gap-1 rounded-lg border border-slate-200 bg-white/95 p-1 shadow-sm dark:border-white/15 dark:bg-[#07111F]/95",
+        className,
+      )}
+    >
+      <span
+        className="hidden h-8 w-8 shrink-0 items-center justify-center text-[#865400] sm:inline-flex dark:text-[#F5A623]"
+        title={language === "fr" ? "Marches Exportunity" : "Exportunity markets"}
+      >
+        <Globe2 className="h-4 w-4" aria-hidden="true" />
+      </span>
+      {INDUSTRIAL_TERRITORY_ORDER.map((territoryCode) => {
+        const territory = INDUSTRIAL_TERRITORIES[territoryCode];
+        const active = territoryCode === value;
+        return (
+          <button
+            key={territoryCode}
+            type="button"
+            aria-pressed={active}
+            title={industrialContextText(territory.name, language)}
+            onClick={() => onChange(territoryCode)}
+            className={cn(
+              "min-h-8 min-w-0 flex-1 rounded-md px-2 py-1 text-xs font-semibold transition sm:flex-none sm:px-3",
+              active
+                ? "bg-[#F5A623] text-[#07111F] shadow-sm"
+                : "text-slate-600 hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-white/10 dark:hover:text-white",
+            )}
+          >
+            <span className="block truncate">
+              {industrialContextText(territory.shortName, language)}
+            </span>
+          </button>
+        );
+      })}
+    </div>
+  );
 }
 
 function factoryClaimId(location: string) {
@@ -683,6 +963,12 @@ function industrialContextMarkerStyle(kind: IndustrialContextLocation["kind"]) {
       color: "#FFFFFF",
       pulse: "#FFFFFF",
     },
+    commodity_hub: {
+      background: "#FFFFFF",
+      border: "#F5A623",
+      color: "#8A5700",
+      pulse: "#F5A623",
+    },
   } as const;
   return markerStyles[kind];
 }
@@ -707,9 +993,11 @@ function mapIndustrialContextIcon(
 function MapViewport({
   factory,
   context,
+  territory,
 }: {
   factory: PublicFactory | null;
   context: IndustrialContextLocation | null;
+  territory: IndustrialTerritory;
 }) {
   const map = useMap();
   useEffect(() => {
@@ -719,12 +1007,16 @@ function MapViewport({
     }
     if (context) {
       map.flyTo([context.latitude, context.longitude], 12, { duration: 0.75 });
+      return;
     }
-  }, [context, factory, map]);
+    map.flyTo(territory.mapCenter, territory.mapZoom, { duration: 0.75 });
+  }, [context, factory, map, territory]);
   return null;
 }
 
 function IndustrialMap({
+  territory,
+  contexts,
   factories,
   selectedFactory,
   onSelectFactory,
@@ -736,6 +1028,8 @@ function IndustrialMap({
   onSelectContext,
   contextProductCounts = {},
 }: {
+  territory: IndustrialTerritory;
+  contexts: IndustrialContextLocation[];
   factories: PublicFactory[];
   selectedFactory: PublicFactory | null;
   onSelectFactory: (factory: PublicFactory) => void;
@@ -750,6 +1044,15 @@ function IndustrialMap({
   const visibleFactories = factories.filter(
     (factory) => factory.latitude !== null && factory.longitude !== null,
   );
+  const routeContexts = (territory.routeContextIds || [])
+    .map((contextId) => contexts.find((context) => context.id === contextId))
+    .filter((context): context is IndustrialContextLocation => Boolean(context));
+  const routePositions =
+    routeContexts.length === 2
+      ? (routeContexts.map(
+          (context) => [context.latitude, context.longitude] as [number, number],
+        ) as [[number, number], [number, number]])
+      : null;
   return (
     <div
       className={cn(
@@ -758,15 +1061,15 @@ function IndustrialMap({
       )}
     >
       <MapContainer
-        center={BENIN_INDUSTRIAL_MAP_CENTER}
-        zoom={9}
+        center={territory.mapCenter}
+        zoom={territory.mapZoom}
         scrollWheelZoom
         zoomControl={false}
         className="h-full w-full"
         aria-label={
           language === "fr"
-            ? "Carte industrielle du Benin"
-            : "Benin industrial map"
+            ? `Carte industrielle - ${industrialContextText(territory.name, language)}`
+            : `Industrial map - ${industrialContextText(territory.name, language)}`
         }
       >
         <TileLayer
@@ -778,34 +1081,35 @@ function IndustrialMap({
           }
         />
         <ZoomControl position="bottomright" />
-        <MapViewport factory={selectedFactory} context={selectedContext} />
-        <Polyline
-          positions={[
-            [GDIZ_CONTEXT.latitude, GDIZ_CONTEXT.longitude],
-            [PORT_COTONOU_CONTEXT.latitude, PORT_COTONOU_CONTEXT.longitude],
-          ]}
-          pathOptions={{
-            color: "#F5A623",
-            dashArray: "7 10",
-            lineCap: "round",
-            opacity: isDark ? 0.82 : 0.7,
-            weight: 3,
-          }}
-        >
-          <Tooltip sticky direction="top" opacity={1}>
-            <span className="block text-xs font-semibold text-slate-800">
-              {language === "fr"
-                ? "Repere de liaison GDIZ - Port de Cotonou"
-                : "GDIZ - Port of Cotonou reference link"}
-            </span>
-            <span className="mt-0.5 block text-xs text-slate-600">
-              {language === "fr"
-                ? "Contexte public de chaine logistique, pas un itineraire de transport."
-                : "Public supply-chain context, not a transport route."}
-            </span>
-          </Tooltip>
-        </Polyline>
-        {BENIN_INDUSTRIAL_CONTEXT_LOCATIONS.map((context) => {
+        <MapViewport
+          factory={selectedFactory}
+          context={selectedContext}
+          territory={territory}
+        />
+        {routePositions ? (
+          <Polyline
+            positions={routePositions}
+            pathOptions={{
+              color: "#F5A623",
+              dashArray: "7 10",
+              lineCap: "round",
+              opacity: isDark ? 0.82 : 0.7,
+              weight: 3,
+            }}
+          >
+            <Tooltip sticky direction="top" opacity={1}>
+              <span className="block text-xs font-semibold text-slate-800">
+                {industrialContextText(territory.routeLabel, language)}
+              </span>
+              <span className="mt-0.5 block text-xs text-slate-600">
+                {language === "fr"
+                  ? "Contexte public de chaine logistique, pas un itineraire de transport."
+                  : "Public supply-chain context, not a transport route."}
+              </span>
+            </Tooltip>
+          </Polyline>
+        ) : null}
+        {contexts.map((context) => {
           const active = selectedContext?.id === context.id;
           const style = industrialContextMarkerStyle(context.kind);
           const eventHandlers = onSelectContext
@@ -883,13 +1187,13 @@ function IndustrialMap({
           <MapPinned className="h-5 w-5 text-[#a96f0b]" />
           <p className="mt-3 text-sm font-semibold text-slate-950 dark:text-white">
             {language === "fr"
-              ? "La carte montre déjà les repères industriels publics"
-              : "The map already shows public industrial references"}
+              ? `La carte montre les reperes publics de ${industrialContextText(territory.name, language)}`
+              : `The map shows public references in ${industrialContextText(territory.name, language)}`}
           </p>
           <p className="mt-1.5 text-xs leading-5 text-slate-600 dark:text-slate-300">
             {language === "fr"
-              ? "GDIZ, le Port de Cotonou, Seme City et Ketou sont affiches comme contexte public. Les usines ne sont ajoutees qu'apres verification et autorisation de publication."
-              : "GDIZ, the Port of Cotonou, Seme City, and Ketou appear as public context. Factories are added only after verification and publication approval."}
+              ? `${contexts.map((context) => context.markerLabel).join(", ")} sont affiches comme contexte public. Les usines ne sont ajoutees qu'apres verification et autorisation de publication.`
+              : `${contexts.map((context) => context.markerLabel).join(", ")} appear as public context. Factories are added only after verification and publication approval.`}
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
             <Link
@@ -1452,7 +1756,7 @@ function FactoryMapContextPanel({
                   : "The map remains useful with documented infrastructure and sector context. Factory profiles appear only after verification and publication approval."}
             </p>
             <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
-              {BENIN_INDUSTRIAL_CONTEXT_LOCATIONS.map((context) => (
+              {INDUSTRIAL_CONTEXT_LOCATIONS.map((context) => (
                 <button
                   key={context.id}
                   type="button"
@@ -1492,7 +1796,7 @@ function FactoryMapContextPanel({
                 </p>
               </div>
               <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
-                {BENIN_INDUSTRIAL_SECTOR_LENSES.map((sector) => (
+                {INDUSTRIAL_SECTOR_LENSES.map((sector) => (
                   <a
                     key={sector.id}
                     href={sector.sourceUrl}
@@ -5673,6 +5977,13 @@ export default function IndustrialHubPage() {
       ? "dark"
       : "light",
   );
+  const [selectedTerritoryCode, setSelectedTerritoryCode] =
+    useState<IndustrialTerritoryCode>(initialIndustrialTerritoryCode);
+  const selectedTerritory = INDUSTRIAL_TERRITORIES[selectedTerritoryCode];
+  const territoryContexts = useMemo(
+    () => industrialContextsForTerritory(selectedTerritoryCode),
+    [selectedTerritoryCode],
+  );
   const [factories, setFactories] = useState<PublicFactory[]>([]);
   const [catalogItems, setCatalogItems] = useState<CatalogItem[]>([]);
   const [catalogLoading, setCatalogLoading] = useState(true);
@@ -5702,17 +6013,15 @@ export default function IndustrialHubPage() {
           view === "factoryWorkspace"
         ? "factories"
         : view;
-  const isMachineryBrand = view === "machinery";
-
   useEffect(() => {
     if (
       view === "factories" &&
       !selectedFactory &&
       !selectedIndustrialContext
     ) {
-      setSelectedIndustrialContext(GDIZ_CONTEXT);
+      setSelectedIndustrialContext(territoryContexts[0] || null);
     }
-  }, [selectedFactory, selectedIndustrialContext, view]);
+  }, [selectedFactory, selectedIndustrialContext, territoryContexts, view]);
 
   const copy =
     locale === "fr"
@@ -5729,13 +6038,12 @@ export default function IndustrialHubPage() {
           heroTitle:
             "Que devons-nous sourcer, fabriquer ou acheminer pour vous ?",
           heroText:
-            "Discutez avec Awa ou joignez une photo, une reference ou un plan. Elle qualifie votre besoin et convient avec vous de la prochaine etape avant toute mise en relation.",
+            "Discutez avec Awa ou joignez une photo, une reference ou un plan. Elle mobilise le reseau Exportunity en Cote d'Ivoire, au Benin et aux Emirats selon votre besoin.",
           searchPlaceholder:
             "Rechercher une usine, un produit, une machine, une matière première ou une pièce",
           search: "Rechercher",
-          verifiedMap: "Carte industrielle du Bénin",
-          mapDetail:
-            "GDIZ, le Port de Cotonou et les filières publiques donnent le contexte. Les usines ne sont publiées qu'après vérification.",
+          verifiedMap: `Reseau industriel | ${industrialContextText(selectedTerritory.shortName, locale)}`,
+          mapDetail: `${industrialContextText(selectedTerritory.summary, locale)} Les entreprises et offres restent soumises a verification.`,
           sourceFactory: "S'approvisionner auprès d'une usine vérifiée",
           sourceFactoryDetail:
             "Identifier des fabricants et des produits export-ready.",
@@ -5753,10 +6061,9 @@ export default function IndustrialHubPage() {
           exportProducts: "Produits prêts à l'export",
           industrialSupply: "Approvisionnement industriel",
           machineryTitle: "Exportunity Machinery",
-          mapEyebrow: "Repères industriels publics",
-          mapTitle: "Carte industrielle du Bénin",
-          mapDescription:
-            "Explorez les infrastructures et filières publiques, puis les implantations de fabricants vérifiés lorsqu'elles sont autorisées à être publiées.",
+          mapEyebrow: "Reseau industriel multi-marches",
+          mapTitle: "Carte industrielle Exportunity",
+          mapDescription: `Explorez ${industrialContextText(selectedTerritory.name, locale)}, ses reperes publics et les fabricants verifies autorises a etre publies. Changez de marche entre la Cote d'Ivoire, le Benin et les Emirats.`,
           factoriesDescription:
             "Explorez les producteurs documentés, leurs produits et les profils d'usines vérifiés. Awa confirme ensuite disponibilité, prix et commande.",
           productsDescription:
@@ -5793,13 +6100,12 @@ export default function IndustrialHubPage() {
           heroEyebrow: "Exportunity AI | Awa Kouadio",
           heroTitle: "What do you need to source, manufacture, or move?",
           heroText:
-            "Message Awa or attach a photo, reference, or drawing. She qualifies the requirement and agrees the next step with you before any introduction.",
+            "Message Awa or attach a photo, reference, or drawing. She mobilizes Exportunity's network in Cote d'Ivoire, Benin, and the UAE according to your requirement.",
           searchPlaceholder:
             "Search a factory, product, machine, raw material, or part number",
           search: "Search",
-          verifiedMap: "Benin industrial map",
-          mapDetail:
-            "GDIZ, the Port of Cotonou, and public sector lenses provide context. Factories are published only after verification.",
+          verifiedMap: `Industrial network | ${industrialContextText(selectedTerritory.shortName, locale)}`,
+          mapDetail: `${industrialContextText(selectedTerritory.summary, locale)} Companies and offerings remain subject to verification.`,
           sourceFactory: "Source from a verified factory",
           sourceFactoryDetail:
             "Identify manufacturers and export-ready products.",
@@ -5816,10 +6122,9 @@ export default function IndustrialHubPage() {
           exportProducts: "Export-ready products",
           industrialSupply: "Industrial supply",
           machineryTitle: "Exportunity Machinery",
-          mapEyebrow: "Public industrial references",
-          mapTitle: "Benin industrial map",
-          mapDescription:
-            "Explore public infrastructure and sector context, then published locations of verified manufacturers when they are authorized for public display.",
+          mapEyebrow: "Multi-market industrial network",
+          mapTitle: "Exportunity industrial map",
+          mapDescription: `Explore ${industrialContextText(selectedTerritory.name, locale)}, its public references, and verified manufacturers authorized for publication. Switch between Cote d'Ivoire, Benin, and the UAE.`,
           factoriesDescription:
             "Explore documented producers, their products, and verified factory profiles. Awa then confirms availability, price, and the order.",
           productsDescription:
@@ -5848,6 +6153,40 @@ export default function IndustrialHubPage() {
   useEffect(() => {
     window.localStorage.setItem("exportunity-industrial-theme", theme);
   }, [theme]);
+
+  useEffect(() => {
+    window.localStorage.setItem(
+      "exportunity-industrial-territory",
+      selectedTerritoryCode,
+    );
+  }, [selectedTerritoryCode]);
+
+  useEffect(() => {
+    const requestedTerritory = queryValue(location, "market").toUpperCase();
+    if (
+      isIndustrialTerritoryCode(requestedTerritory) &&
+      requestedTerritory !== selectedTerritoryCode
+    ) {
+      setSelectedTerritoryCode(requestedTerritory);
+      setSelectedFactory(null);
+      setSelectedIndustrialContext(null);
+    }
+  }, [location, selectedTerritoryCode]);
+
+  useEffect(() => {
+    if (
+      selectedFactory &&
+      selectedFactory.countryCode.toUpperCase() !== selectedTerritoryCode
+    ) {
+      setSelectedFactory(null);
+    }
+    if (
+      selectedIndustrialContext &&
+      selectedIndustrialContext.territoryCode !== selectedTerritoryCode
+    ) {
+      setSelectedIndustrialContext(null);
+    }
+  }, [selectedFactory, selectedIndustrialContext, selectedTerritoryCode]);
 
   useEffect(() => {
     setSearch(queryValue(location, "q"));
@@ -5920,6 +6259,14 @@ export default function IndustrialHubPage() {
     });
   }, [factories, factoryFilters]);
   const factoryFiltersActive = Object.values(factoryFilters).some(Boolean);
+  const territoryFactories = useMemo(
+    () =>
+      filteredFactories.filter(
+        (factory) =>
+          factory.countryCode.toUpperCase() === selectedTerritory.countryCode,
+      ),
+    [filteredFactories, selectedTerritory.countryCode],
+  );
 
   useEffect(() => {
     if (
@@ -5978,10 +6325,14 @@ export default function IndustrialHubPage() {
     return contextCatalogItems(selectedIndustrialContext, catalogItems);
   }, [catalogItems, selectedFactory, selectedIndustrialContext]);
   const contextProductCounts = useMemo(
-    () => ({
-      gdiz: contextCatalogItems(GDIZ_CONTEXT, catalogItems).length,
-    }),
-    [catalogItems],
+    () =>
+      Object.fromEntries(
+        territoryContexts.map((context) => [
+          context.id,
+          contextCatalogItems(context, catalogItems).length,
+        ]),
+      ),
+    [catalogItems, territoryContexts],
   );
   const selectionAssistantContext = useMemo(
     () =>
@@ -5990,8 +6341,15 @@ export default function IndustrialHubPage() {
         context: selectedIndustrialContext,
         items: catalogItems,
         language: locale,
+        territory: selectedTerritory,
       }),
-    [catalogItems, locale, selectedFactory, selectedIndustrialContext],
+    [
+      catalogItems,
+      locale,
+      selectedFactory,
+      selectedIndustrialContext,
+      selectedTerritory,
+    ],
   );
   const scrollToSelectionCommerce = () => {
     window.setTimeout(() => {
@@ -6005,7 +6363,20 @@ export default function IndustrialHubPage() {
     if (view !== "factories") return;
     scrollToSelectionCommerce();
   };
+  const changeIndustrialTerritory = (
+    territoryCode: IndustrialTerritoryCode,
+  ) => {
+    setSelectedTerritoryCode(territoryCode);
+    setSelectedFactory(null);
+    setSelectedIndustrialContext(
+      industrialContextsForTerritory(territoryCode)[0] || null,
+    );
+  };
   const selectFactoryForCommerce = (factory: PublicFactory) => {
+    const factoryTerritoryCode = factory.countryCode.toUpperCase();
+    if (isIndustrialTerritoryCode(factoryTerritoryCode)) {
+      setSelectedTerritoryCode(factoryTerritoryCode);
+    }
     setSelectedIndustrialContext(null);
     setSelectedFactory(factory);
     revealFactorySelection();
@@ -6013,6 +6384,7 @@ export default function IndustrialHubPage() {
   const selectIndustrialContextForCommerce = (
     context: IndustrialContextLocation,
   ) => {
+    setSelectedTerritoryCode(context.territoryCode);
     setSelectedFactory(null);
     setSelectedIndustrialContext(context);
     revealFactorySelection();
@@ -6455,14 +6827,14 @@ export default function IndustrialHubPage() {
         <header className="sticky top-0 z-40 border-b border-slate-900/10 bg-white/90 backdrop-blur-xl dark:border-white/10 dark:bg-[#07111F]/90">
           <div className="mx-auto flex min-h-16 max-w-[1560px] items-center gap-4 px-4 lg:px-7">
             <Link
-              href={isMachineryBrand ? "/machinery" : "/industrial"}
+              href="/industrial"
               className="flex h-11 shrink-0 items-center overflow-hidden rounded-lg bg-[#07111F] px-2.5 shadow-[0_8px_20px_rgba(7,17,31,0.16)]"
-              aria-label="Exportunity Machinery"
+              aria-label="Exportunity AI"
             >
               <img
-                src="/tenants/exportunity/machinery-logo.svg"
-                alt="Exportunity Machinery"
-                className="h-full w-auto max-w-[178px] object-contain"
+                src="/tenants/exportunity/logo.svg"
+                alt="Exportunity AI"
+                className="h-full w-auto max-w-[194px] object-contain"
               />
             </Link>
             <nav className="hidden flex-1 items-center justify-center gap-1 xl:flex">
@@ -6631,7 +7003,9 @@ export default function IndustrialHubPage() {
                 </div>
                 <div className="relative min-h-[520px]">
                   <IndustrialMap
-                    factories={factories}
+                    territory={selectedTerritory}
+                    contexts={territoryContexts}
+                    factories={territoryFactories}
                     selectedFactory={selectedFactory}
                     onSelectFactory={selectFactoryForCommerce}
                     selectedContext={selectedIndustrialContext}
@@ -6641,7 +7015,13 @@ export default function IndustrialHubPage() {
                     contextProductCounts={contextProductCounts}
                     className="absolute inset-0 min-h-[520px] shadow-[0_24px_64px_rgba(7,17,31,0.18)]"
                   />
-                  <div className="absolute left-3 right-3 top-3 z-[600] rounded-xl border border-white/70 bg-white/95 p-2 shadow-[0_16px_38px_rgba(7,17,31,0.18)] backdrop-blur-xl sm:left-4 sm:right-auto sm:top-4 sm:w-[calc(100%-2rem)] sm:max-w-[294px] sm:p-3.5 dark:border-white/15 dark:bg-[#07111F]/95">
+                  <div className="absolute left-3 right-3 top-3 z-[600] rounded-xl border border-white/70 bg-white/95 p-2 shadow-[0_16px_38px_rgba(7,17,31,0.18)] backdrop-blur-xl sm:left-4 sm:right-auto sm:top-4 sm:w-[calc(100%-2rem)] sm:max-w-[350px] sm:p-3.5 dark:border-white/15 dark:bg-[#07111F]/95">
+                    <IndustrialTerritorySwitcher
+                      value={selectedTerritoryCode}
+                      onChange={changeIndustrialTerritory}
+                      language={locale}
+                      className="mb-2 border-slate-200/80 bg-slate-50/90 shadow-none dark:bg-white/[0.04]"
+                    />
                     <div className="hidden items-start gap-2.5 sm:flex">
                       <span className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#F5A623]/15 text-[#865400] dark:text-[#F5A623]">
                         <MapPinned className="h-4 w-4" />
@@ -6656,7 +7036,7 @@ export default function IndustrialHubPage() {
                       </div>
                     </div>
                     <div className="flex snap-x gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mt-3 sm:grid sm:grid-cols-2 sm:gap-2 sm:overflow-visible">
-                      {BENIN_INDUSTRIAL_CONTEXT_LOCATIONS.map((context) => {
+                      {territoryContexts.map((context) => {
                         const active =
                           selectedIndustrialContext?.id === context.id;
                         return (
@@ -6759,9 +7139,13 @@ export default function IndustrialHubPage() {
                               ? locale === "fr"
                                 ? `Voir ${selectionCatalogItems.length} produits GDIZ`
                                 : `View ${selectionCatalogItems.length} GDIZ products`
+                              : selectionCatalogItems.length
+                                ? locale === "fr"
+                                  ? `Voir ${selectionCatalogItems.length} offres liees`
+                                  : `View ${selectionCatalogItems.length} related offerings`
                               : locale === "fr"
-                                ? "Voir les offres liees"
-                                : "View related offerings"}
+                                  ? "Sourcer dans cette zone"
+                                  : "Source in this area"}
                           </span>
                         </button>
                         <a
@@ -6903,10 +7287,28 @@ export default function IndustrialHubPage() {
               ) : null}
               {view === "map" ? (
                 <section className="-mt-2">
+                  <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-sm font-semibold text-slate-950 dark:text-white">
+                        {industrialContextText(selectedTerritory.name, locale)}
+                      </p>
+                      <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                        {industrialContextText(selectedTerritory.summary, locale)}
+                      </p>
+                    </div>
+                    <IndustrialTerritorySwitcher
+                      value={selectedTerritoryCode}
+                      onChange={changeIndustrialTerritory}
+                      language={locale}
+                      className="w-full sm:w-auto"
+                    />
+                  </div>
                   <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
                     <div className="min-w-0">
                       <IndustrialMap
-                        factories={filteredFactories}
+                        territory={selectedTerritory}
+                        contexts={territoryContexts}
+                        factories={territoryFactories}
                         selectedFactory={selectedFactory}
                         onSelectFactory={selectFactoryForCommerce}
                         selectedContext={selectedIndustrialContext}
@@ -6954,10 +7356,30 @@ export default function IndustrialHubPage() {
                       language={locale}
                     />
                   ) : null}
+                  <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-sm font-semibold text-slate-950 dark:text-white">
+                        {industrialContextText(selectedTerritory.name, locale)}
+                      </p>
+                      <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                        {locale === "fr"
+                          ? "Selectionnez un repere pour explorer les produits et ouvrir une conversation commerciale."
+                          : "Select a reference to explore products and open a commercial conversation."}
+                      </p>
+                    </div>
+                    <IndustrialTerritorySwitcher
+                      value={selectedTerritoryCode}
+                      onChange={changeIndustrialTerritory}
+                      language={locale}
+                      className="w-full sm:w-auto"
+                    />
+                  </div>
                   <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
                     <div className="order-2 min-w-0 xl:order-1">
                       <IndustrialMap
-                        factories={filteredFactories}
+                        territory={selectedTerritory}
+                        contexts={territoryContexts}
+                        factories={territoryFactories}
                         selectedFactory={selectedFactory}
                         onSelectFactory={selectFactoryForCommerce}
                         selectedContext={selectedIndustrialContext}

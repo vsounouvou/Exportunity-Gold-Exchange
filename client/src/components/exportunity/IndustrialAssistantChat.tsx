@@ -925,7 +925,7 @@ export function IndustrialAssistantChat({
               src={
                 commercialMode
                   ? "/tenants/exportunity/industrial/awa-kouadio.webp"
-                  : "/tenants/exportunity/machinery-logo.svg"
+                  : "/tenants/exportunity/logo.svg"
               }
               alt=""
               className={cn(

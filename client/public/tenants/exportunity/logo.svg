@@ -1,9 +1,13 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="520" height="144" viewBox="0 0 520 144" role="img" aria-label="Exportunity">
-  <title>Exportunity</title>
-  <rect width="520" height="144" rx="16" fill="#07121F"/>
-  <g transform="translate(20 20)">
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="144" viewBox="0 0 600 144" role="img" aria-labelledby="exportunity-ai-title exportunity-ai-description">
+  <title id="exportunity-ai-title">Exportunity AI</title>
+  <desc id="exportunity-ai-description">The classic Exportunity E beside the outlined Exportunity AI conversation bar.</desc>
+  <g transform="translate(18 20)">
     <path d="M0 0h112v22H32v19h68v21H32v20h80v22H0V0Z" fill="#FFFFFF"/>
-    <path d="M0 93h112v10H0z" fill="#E2A416"/>
+    <path d="M0 93h112v10H0z" fill="#F5A623"/>
   </g>
-  <text x="154" y="85" fill="#FFFFFF" font-family="Agency FB, Bahnschrift Condensed, Arial Narrow, sans-serif" font-size="47" font-weight="700" letter-spacing="1.4">EXPORTUNITY</text>
+  <path d="M154 35h414a14 14 0 0 1 14 14v52a14 14 0 0 1-14 14h-16v18l-22-18H154a14 14 0 0 1-14-14V49a14 14 0 0 1 14-14Z" fill="none" stroke="#F5A623" stroke-width="4"/>
+  <text x="164" y="88" fill="#FFFFFF" font-family="Agency FB, Bahnschrift Condensed, Arial Narrow, sans-serif" font-size="43" font-weight="700" letter-spacing="1.5">EXPORTUNITY</text>
+  <path d="M463 52v46" stroke="#F5A623" stroke-width="2"/>
+  <rect x="482" y="50" width="70" height="48" rx="9" fill="#F5A623"/>
+  <text x="517" y="86" fill="#07111F" font-family="Agency FB, Bahnschrift Condensed, Arial Narrow, sans-serif" font-size="32" font-weight="800" text-anchor="middle" letter-spacing="1">AI</text>
 </svg>

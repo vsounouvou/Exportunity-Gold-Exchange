@@ -84,7 +84,9 @@ test("the homepage presents current corridors as one expanding industrial networ
     hub,
     /industrialContextsForTerritory\(territoryCode\)[\s\S]*?\.map\(\(context\) => context\.markerLabel\)/,
   );
-  assert.match(hub, /max-w-\[152px\]/);
+  assert.match(hub, /max-w-\[132px\]/);
+  assert.match(hub, /mb-3[\s\S]*?xl:hidden/);
+  assert.match(hub, /hidden[\s\S]*?xl:block/);
 });
 
 test("territory selection preserves one real commercial conversation", () => {

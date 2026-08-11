@@ -1171,6 +1171,7 @@ function IndustrialTerritorySwitcher({
         </span>
         <Link
           href={`/request-quote?type=industrial_service&topic=new-market&market=${value}`}
+          aria-label={language === "fr" ? "Explorer un autre marche" : "Explore another market"}
           className="inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-1 text-[10px] font-bold text-slate-600 transition hover:bg-[#F5A623]/12 hover:text-slate-950 dark:text-slate-300 dark:hover:text-white"
           title={language === "fr" ? "Explorer un autre marche" : "Explore another market"}
         >
@@ -8048,13 +8049,13 @@ export default function IndustrialHubPage() {
           <div className="mx-auto flex min-h-14 max-w-[1560px] items-center gap-4 px-4 lg:px-7">
             <Link
               href="/industrial"
-              className="flex h-9 shrink-0 items-center overflow-hidden rounded-md bg-[#07111F] px-2 shadow-[0_6px_16px_rgba(7,17,31,0.14)]"
+              className="flex h-8 shrink-0 items-center overflow-hidden rounded-md bg-[#07111F] px-1.5 shadow-[0_6px_16px_rgba(7,17,31,0.14)]"
               aria-label="Exportunity AI"
             >
               <img
                 src="/tenants/exportunity/logo.svg"
                 alt="Exportunity AI"
-                className="h-full w-auto max-w-[152px] object-contain"
+                className="h-full w-auto max-w-[132px] object-contain"
               />
             </Link>
             <nav className="hidden flex-1 items-center justify-center gap-1 xl:flex">
@@ -8151,6 +8152,12 @@ export default function IndustrialHubPage() {
         <main className="mx-auto max-w-[1560px] px-4 py-4 sm:py-6 lg:px-7 lg:py-8">
           {view === "home" ? (
             <>
+              <IndustrialTerritorySwitcher
+                value={selectedTerritoryCode}
+                onChange={changeIndustrialTerritory}
+                language={locale}
+                className="mb-3 border-slate-200/80 bg-white shadow-[0_10px_28px_rgba(7,17,31,0.08)] xl:hidden dark:bg-[#07111F]"
+              />
               <CatalogQuickRail
                 items={featuredCatalogItems}
                 language={locale}
@@ -8242,9 +8249,9 @@ export default function IndustrialHubPage() {
                       value={selectedTerritoryCode}
                       onChange={changeIndustrialTerritory}
                       language={locale}
-                      className="border-slate-200/80 bg-slate-50/90 shadow-none dark:bg-white/[0.04]"
+                      className="hidden border-slate-200/80 bg-slate-50/90 shadow-none xl:block dark:bg-white/[0.04]"
                     />
-                    <div className="mt-2 flex snap-x gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                    <div className="flex snap-x gap-1.5 overflow-x-auto [scrollbar-width:none] xl:mt-2 [&::-webkit-scrollbar]:hidden">
                       {territoryContexts.map((context) => {
                         const active =
                           selectedIndustrialContext?.id === context.id;

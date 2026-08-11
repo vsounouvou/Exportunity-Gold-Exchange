@@ -77,6 +77,9 @@ test("the homepage presents current corridors as one expanding industrial networ
   assert.match(hub, /Corridors industriels actifs/);
   assert.match(hub, /Reseau en expansion/);
   assert.match(hub, /Autre marche/);
+  assert.match(hub, /topic === "new-market"/);
+  assert.match(hub, /Nos corridors actuels ne limitent pas notre reseau/);
+  assert.match(hub, /Explorer une zone industrielle/);
   assert.match(
     hub,
     /industrialContextsForTerritory\(territoryCode\)[\s\S]*?\.map\(\(context\) => context\.markerLabel\)/,

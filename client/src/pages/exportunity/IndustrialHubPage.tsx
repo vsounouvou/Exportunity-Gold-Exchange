@@ -889,9 +889,36 @@ function queryValue(location: string, key: string) {
 
 function quoteIntentForLocation(location: string, language: "fr" | "en") {
   const type = queryValue(location, "type");
+  const topic = queryValue(location, "topic");
   const product = queryValue(location, "product");
   const urgent = queryValue(location, "urgency") === "urgent";
   const financing = Boolean(queryValue(location, "financing"));
+
+  if (topic === "new-market") {
+    return language === "fr"
+      ? {
+          intro:
+            "Bonjour, je suis Awa Kouadio, directrice commerciale chez Exportunity. Nos corridors actuels ne limitent pas notre reseau. Quel pays, quelle ville, quel port ou quelle zone industrielle souhaitez-vous explorer ? Je vais qualifier le besoin et organiser la prospection avec vous.",
+          quickReplies: [
+            "Explorer une zone industrielle",
+            "Ouvrir un nouveau pays",
+            "Trouver des fournisseurs",
+            "Relier une usine a un port",
+            "Developper un nouveau marche",
+          ],
+        }
+      : {
+          intro:
+            "Hello, I am Awa Kouadio, Exportunity's Commercial Director. Our current corridors do not limit the network. Which country, city, port, or industrial zone do you want to explore? I will qualify the requirement and organize the market research with you.",
+          quickReplies: [
+            "Explore an industrial zone",
+            "Open a new country",
+            "Find suppliers",
+            "Connect a factory to a port",
+            "Develop a new market",
+          ],
+        };
+  }
 
   if (type === "machinery") {
     return language === "fr"

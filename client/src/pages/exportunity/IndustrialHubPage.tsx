@@ -372,20 +372,51 @@ function catalogActionLabel(item: CatalogItem, language: "fr" | "en") {
   return language === "fr" ? "Commander ce produit" : "Order this product";
 }
 
+function catalogDisplayProvider(item: CatalogItem) {
+  return item.listingKind === "exportunity_sourcing_program"
+    ? "Exportunity AI Sourcing"
+    : item.factoryName || "Exportunity";
+}
+
+function catalogDisplayLocation(
+  item: CatalogItem,
+  language: "fr" | "en",
+  territory?: IndustrialTerritory,
+) {
+  if (item.listingKind === "exportunity_sourcing_program" && territory) {
+    const territoryName = industrialContextText(territory.name, language);
+    return language === "fr"
+      ? `Reseau de sourcing - ${territoryName}`
+      : `Sourcing network - ${territoryName}`;
+  }
+  return [item.factoryCity, item.factoryCountryCode].filter(Boolean).join(", ");
+}
+
+function catalogVerificationCopy(item: CatalogItem, language: "fr" | "en") {
+  if (item.listingKind === "exportunity_sourcing_program") {
+    return language === "fr"
+      ? "Fournisseur, prix, disponibilite et delai verifies avant engagement. Aucun stock local n'est presume."
+      : "Supplier, price, availability, and lead time are verified before commitment. No local stock is assumed.";
+  }
+  return language === "fr"
+    ? "Stock, prix et delai confirmes avant engagement."
+    : "Stock, price, and lead time are confirmed before commitment.";
+}
+
 function assistantProductContext(
   item: CatalogItem,
   language: "fr" | "en",
+  territory?: IndustrialTerritory,
 ): IndustrialAssistantProductContext {
+  const isSourcingProgram = item.listingKind === "exportunity_sourcing_program";
   return {
     id: item.id,
     name: catalogItemName(item, language),
     description: catalogItemDescription(item, language),
     imageUrl: item.media?.[0] || null,
-    factoryId: item.factoryId || null,
-    factoryName: item.factoryName || null,
-    factoryLocation: [item.factoryCity, item.factoryCountryCode]
-      .filter(Boolean)
-      .join(", "),
+    factoryId: isSourcingProgram ? null : item.factoryId || null,
+    factoryName: catalogDisplayProvider(item),
+    factoryLocation: catalogDisplayLocation(item, language, territory),
     categoryCode: item.categoryCode,
     classification: item.classification,
     requirementType:
@@ -2121,7 +2152,7 @@ function IndustrialSelectionCommerce({
   onStartConversation?: (item: CatalogItem) => void;
 }) {
   const producers = Array.from(
-    new Set(items.map((item) => item.factoryName).filter(Boolean)),
+    new Set(items.map((item) => catalogDisplayProvider(item)).filter(Boolean)),
   );
   const title = selectedFactory
     ? selectedFactory.name
@@ -2230,7 +2261,7 @@ function IndustrialSelectionCommerce({
               </div>
               <div className="flex min-w-0 flex-1 flex-col p-3.5">
                 <p className="truncate text-[10px] font-semibold uppercase tracking-[0.11em] text-[#946000] dark:text-[#F5A623]">
-                  {item.factoryName}
+                  {catalogDisplayProvider(item)}
                 </p>
                 <h3 className="mt-1 line-clamp-2 text-sm font-semibold leading-5 text-slate-950 dark:text-white">
                   {catalogItemName(item, language)}
@@ -2323,6 +2354,7 @@ function IndustrialSelectionCommerce({
 function CatalogList({
   items,
   language,
+  territory,
   emptyTitle,
   emptyDetail,
   loading = false,
@@ -2332,6 +2364,7 @@ function CatalogList({
 }: {
   items: CatalogItem[];
   language: "fr" | "en";
+  territory?: IndustrialTerritory;
   emptyTitle: string;
   emptyDetail: string;
   loading?: boolean;
@@ -2415,17 +2448,15 @@ function CatalogList({
                   href={`/factories/${item.factoryId}`}
                   className="text-sm font-semibold text-slate-900 hover:text-[#946000] dark:text-white dark:hover:text-[#F5A623]"
                 >
-                  {item.factoryName}
+                  {catalogDisplayProvider(item)}
                 </Link>
               ) : (
                 <p className="text-sm font-semibold text-slate-900 dark:text-white">
-                  {item.factoryName}
+                  {catalogDisplayProvider(item)}
                 </p>
               )}
               <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                {[item.factoryCity, item.factoryCountryCode]
-                  .filter(Boolean)
-                  .join(", ")}
+                {catalogDisplayLocation(item, language, territory)}
               </p>
               <div className="mt-3 flex flex-wrap gap-1.5 text-xs">
                 {item.partNumber || item.productCode ? (
@@ -2488,9 +2519,7 @@ function CatalogList({
               ) : null}
             </div>
             <p className="mt-3 text-[11px] leading-4 text-slate-500 dark:text-slate-400">
-              {language === "fr"
-                ? "Stock, prix et delai confirmes avant engagement."
-                : "Stock, price, and lead time are confirmed before commitment."}
+              {catalogVerificationCopy(item, language)}
             </p>
           </div>
         </article>
@@ -2502,6 +2531,7 @@ function CatalogList({
 function ConversationalCatalog({
   items,
   language,
+  territory,
   loading,
   emptyTitle,
   emptyDetail,
@@ -2512,6 +2542,7 @@ function ConversationalCatalog({
 }: {
   items: CatalogItem[];
   language: "fr" | "en";
+  territory: IndustrialTerritory;
   loading: boolean;
   emptyTitle: string;
   emptyDetail: string;
@@ -2531,6 +2562,7 @@ function ConversationalCatalog({
         <CatalogList
           items={items}
           language={language}
+          territory={territory}
           loading={loading}
           emptyTitle={emptyTitle}
           emptyDetail={emptyDetail}
@@ -2685,7 +2717,7 @@ function FeaturedCatalogSection({
                 {catalogItemName(item, language)}
               </h3>
               <p className="mt-1.5 line-clamp-1 text-xs text-slate-500 dark:text-slate-400">
-                {item.factoryName}
+                {catalogDisplayProvider(item)}
               </p>
               <button
                 type="button"
@@ -7290,9 +7322,9 @@ export default function IndustrialHubPage() {
   const selectedAssistantProduct = useMemo(
     () =>
       selectedOrderItem
-        ? assistantProductContext(selectedOrderItem, locale)
+        ? assistantProductContext(selectedOrderItem, locale, selectedTerritory)
         : null,
-    [locale, selectedOrderItem],
+    [locale, selectedOrderItem, selectedTerritory],
   );
 
   const updateOrderConversation = (item: CatalogItem | null) => {
@@ -8321,6 +8353,7 @@ export default function IndustrialHubPage() {
                   <ConversationalCatalog
                     items={visibleExportItems}
                     language={locale}
+                    territory={selectedTerritory}
                     loading={catalogLoading}
                     emptyTitle={copy.noCatalog}
                     emptyDetail={copy.noCatalogDetail}
@@ -8378,6 +8411,7 @@ export default function IndustrialHubPage() {
                     <ConversationalCatalog
                       items={visibleSupplyItems}
                       language={locale}
+                      territory={selectedTerritory}
                       loading={catalogLoading}
                       emptyTitle={copy.noCatalog}
                       emptyDetail={copy.noCatalogDetail}
@@ -8586,6 +8620,7 @@ export default function IndustrialHubPage() {
                   <ConversationalCatalog
                     items={visibleMachineryItems}
                     language={locale}
+                    territory={selectedTerritory}
                     loading={catalogLoading}
                     emptyTitle={copy.noCatalog}
                     emptyDetail={copy.noCatalogDetail}

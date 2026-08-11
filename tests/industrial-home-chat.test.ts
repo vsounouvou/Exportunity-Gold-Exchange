@@ -145,6 +145,27 @@ test("product and quote journeys use Awa's progressive commercial conversation",
   assert.match(assistant, /exportunity_ai_product_order/);
 });
 
+test("global sourcing offers inherit the selected market without claiming local stock", () => {
+  const hub = readRepoFile(
+    "client/src/pages/exportunity/IndustrialHubPage.tsx",
+  );
+
+  assert.match(
+    hub,
+    /function catalogDisplayProvider[\s\S]*?exportunity_sourcing_program[\s\S]*?Exportunity AI Sourcing/,
+  );
+  assert.match(
+    hub,
+    /function catalogDisplayLocation[\s\S]*?Reseau de sourcing[\s\S]*?Sourcing network/,
+  );
+  assert.match(hub, /No local stock is assumed/);
+  assert.match(hub, /assistantProductContext\([\s\S]*?selectedTerritory/);
+  assert.match(
+    hub,
+    /<ConversationalCatalog[\s\S]*?territory=\{selectedTerritory\}/,
+  );
+});
+
 test("factory onboarding is a private one-question Awa conversation", () => {
   const hub = readRepoFile(
     "client/src/pages/exportunity/IndustrialHubPage.tsx",

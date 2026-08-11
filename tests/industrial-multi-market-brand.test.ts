@@ -15,6 +15,7 @@ function readRepoFile(relativePath: string) {
 
 test("the industrial platform uses the approved Exportunity AI master mark", () => {
   const logo = readRepoFile("client/public/tenants/exportunity/logo.svg");
+  const app = readRepoFile("client/src/App.tsx");
   const hub = readRepoFile(
     "client/src/pages/exportunity/IndustrialHubPage.tsx",
   );
@@ -30,6 +31,12 @@ test("the industrial platform uses the approved Exportunity AI master mark", () 
   assert.match(hub, /alt="Exportunity AI"/);
   assert.doesNotMatch(hub, /src="\/tenants\/exportunity\/machinery-logo\.svg"/);
   assert.doesNotMatch(assistant, /tenants\/exportunity\/machinery-logo\.svg/);
+  assert.match(app, /function RouteLoadingFallback\(\)/);
+  assert.match(
+    app,
+    /tenant\.key === "exportunity"[\s\S]*?\/tenants\/exportunity\/logo\.svg[\s\S]*?Opening the industrial network/,
+  );
+  assert.match(app, /fallback=\{<RouteLoadingFallback \/>\}/);
 });
 
 test("public industrial discovery covers Cote d'Ivoire, Benin, and the UAE", () => {
@@ -76,8 +83,14 @@ test("territory selection preserves one real commercial conversation", () => {
     hub,
     /Pieces, equipements et produits fabriques au Benin/,
   );
-  assert.match(hub, /sourcing pour la Cote d'Ivoire/);
-  assert.match(hub, /sourcing international depuis Dubai/);
+  assert.match(hub, /sourcing industriel pour la Cote d'Ivoire/);
+  assert.match(hub, /routes d'approvisionnement depuis Dubai/);
+  assert.match(hub, /Offres industrielles documentees/);
+  assert.match(hub, /Acheter pour votre usine \| \$\{marketLabel\}/);
+  assert.doesNotMatch(
+    hub,
+    /id="industrial-quick-products"[\s\S]{0,120}className="truncate/,
+  );
 });
 
 test("unselected map catalog stays scoped to the active territory", () => {

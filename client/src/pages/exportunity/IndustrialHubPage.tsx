@@ -2844,18 +2844,22 @@ function CatalogQuickRail({
 }) {
   const visibleItems = items.slice(0, 6);
   if (!visibleItems.length) return null;
-  const title =
+  const marketLabel =
     territory.code === "BJ"
       ? language === "fr"
-        ? "Pieces, equipements et productions documentees au Benin"
-        : "Parts, equipment, and documented output in Benin"
+        ? "Benin"
+        : "Benin"
       : territory.code === "CI"
         ? language === "fr"
-          ? "Pieces, equipements et sourcing pour la Cote d'Ivoire"
-          : "Parts, equipment, and sourcing for Cote d'Ivoire"
+          ? "Cote d'Ivoire"
+          : "Cote d'Ivoire"
         : language === "fr"
-          ? "Machines, matieres et sourcing international depuis Dubai"
-          : "Machinery, commodities, and international sourcing from Dubai";
+          ? "Emirats arabes unis"
+          : "United Arab Emirates";
+  const title =
+    language === "fr"
+      ? "Offres industrielles documentees"
+      : "Documented industrial offers";
 
   return (
     <section
@@ -2866,12 +2870,12 @@ function CatalogQuickRail({
         <div className="min-w-0">
           <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#946000] dark:text-[#F5A623]">
             {language === "fr"
-              ? "Acheter pour votre usine"
-              : "Buy for your factory"}
+              ? `Acheter pour votre usine | ${marketLabel}`
+              : `Buy for your factory | ${marketLabel}`}
           </p>
           <h2
             id="industrial-quick-products"
-            className="truncate text-sm font-semibold text-slate-950 dark:text-white"
+            className="text-sm font-semibold leading-5 text-slate-950 dark:text-white"
           >
             {title}
           </h2>

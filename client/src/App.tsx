@@ -778,6 +778,52 @@ function ProLandingRedirect() {
   return <Redirect to={isMine ? "/pro/mine" : "/pro/operations"} />;
 }
 
+function RouteLoadingFallback() {
+  const { tenant } = useTenant();
+
+  if (tenant.key === "exportunity") {
+    return (
+      <div
+        role="status"
+        aria-live="polite"
+        className="grid min-h-screen w-full place-items-center bg-[#F7F8FA] p-6"
+      >
+        <div className="flex max-w-sm flex-col items-center text-center">
+          <img
+            src="/tenants/exportunity/logo.svg"
+            alt="Exportunity AI"
+            className="h-12 w-auto max-w-[230px]"
+          />
+          <div className="mt-6 flex items-center gap-3 text-sm font-medium text-[#334155]">
+            <span className="h-5 w-5 animate-spin rounded-full border-2 border-[#F5A623]/30 border-t-[#F5A623]" />
+            Opening the industrial network...
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex min-h-screen w-full items-center justify-center p-4">
+      <Card className="w-full max-w-md border-gray-800 bg-gray-900">
+        <CardContent className="pt-6">
+          <div className="mb-4 flex items-center gap-4">
+            <MinerLoadingAnimation className="h-16 w-28 shrink-0" />
+            <div className="min-w-0">
+              <h1 className="text-2xl font-bold leading-tight text-white">
+                Loading...
+              </h1>
+              <p className="mt-1 text-sm text-gray-400">
+                Preparing the page.
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 function App() {
   const [location] = useLocation();
   const previousPathRef = useRef(location.split("?")[0] || "/");
@@ -802,21 +848,7 @@ function App() {
       <ZoneInstallPrompt />
       {import.meta.env.DEV ? <TapTraceOverlay /> : null}
       <Suspense
-        fallback={
-          <div className="min-h-screen w-full flex items-center justify-center p-4">
-            <Card className="w-full max-w-md bg-gray-900 border-gray-800">
-              <CardContent className="pt-6">
-                <div className="flex mb-4 gap-4 items-center">
-                  <MinerLoadingAnimation className="h-16 w-28 shrink-0" />
-                  <div className="min-w-0">
-                    <h1 className="text-2xl font-bold text-white leading-tight">Loading...</h1>
-                    <p className="mt-1 text-sm text-gray-400">Preparing the page.</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        }
+        fallback={<RouteLoadingFallback />}
       >
         <RouteErrorBoundary key={location} routePath={location}>
           <Switch>

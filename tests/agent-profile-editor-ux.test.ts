@@ -39,3 +39,13 @@ test("agent profile editor remains usable on compact screens", () => {
   assert.match(profile, /w-full bg-amber-500 text-slate-950 hover:bg-amber-400 sm:w-auto/);
   assert.doesNotMatch(profile, /â€”|Â·/);
 });
+
+test("agent portrait defaults reflect the global Exportunity brand", () => {
+  const editor = readRepoFile("client/src/components/AgentPhotoEditorCard.tsx");
+  const route = readRepoFile("server/routes/agent-photos.ts");
+  for (const source of [editor, route]) {
+    assert.match(source, /global B2B trade, sourcing, export, supply-chain, and market-expansion network/);
+    assert.match(source, /premium Afro-global business aesthetic/);
+    assert.doesNotMatch(source, /African industrial company team member/);
+  }
+});

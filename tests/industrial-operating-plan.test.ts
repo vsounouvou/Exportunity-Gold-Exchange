@@ -14,8 +14,11 @@ test("the industrial operating plan owns mission, objectives, and recurring exec
   const plan = readRepoFile("server/lib/industrial/operatingPlan.ts");
 
   assert.match(plan, /industrial demand across Cote d'Ivoire, Benin, and connected UAE supplier corridors/);
+  assert.match(plan, /EXPORTUNITY_GLOBAL_MISSION/);
+  assert.match(plan, /Trade\. Source\. Expand\. Operate\./);
   assert.match(plan, /masterBrand: "Exportunity \| AI"/);
-  assert.match(plan, /operatingTerritories: \["Cote d'Ivoire", "Benin", "UAE supplier corridor"\]/);
+  assert.match(plan, /operatingTerritories: \["Global network", "Cote d'Ivoire", "Benin", "United Arab Emirates"\]/);
+  assert.match(plan, /activeOperatingCorridors: \["Cote d'Ivoire", "Benin", "United Arab Emirates"\]/);
   assert.match(plan, /Build the verified industrial demand pipeline/);
   assert.match(plan, /Establish the verified supplier and factory network/);
   assert.match(plan, /Convert urgent spare-parts needs into controlled orders/);
@@ -183,5 +186,9 @@ test("People and Access is tenant scoped and exposes real account controls", () 
   assert.match(hierarchy, /Manage people & access/);
   assert.match(hierarchy, /identity, face, instructions, model, permissions, and memory/);
   assert.match(hierarchy, /companyData\.metadata\?\.operatingTerritories/);
+  assert.match(hierarchy, /Global trade mission/);
+  assert.match(hierarchy, /Active corridors, not limits/);
+  assert.match(hierarchy, /roleSeatOrganization\.summary\.total/);
+  assert.match(hierarchy, /\/agents-os\?tab=organization/);
   assert.match(hierarchy, /aria-label="Operating markets"/);
 });

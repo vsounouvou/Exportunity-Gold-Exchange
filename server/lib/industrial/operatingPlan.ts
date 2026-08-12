@@ -13,6 +13,9 @@ import {
 
 const OPERATING_PLAN_VERSION = "exportunity-industrial-plan-v2";
 
+export const EXPORTUNITY_GLOBAL_MISSION =
+  "Trade. Source. Expand. Operate. Exportunity is an AI-managed global B2B trade and operations network that helps companies express demand, source products and services, sell or export, manage supply chains, and enter new markets through governed workflows.";
+
 export const EXPORTUNITY_INDUSTRIAL_MISSION =
   "Turn verified industrial demand across Cote d'Ivoire, Benin, and connected UAE supplier corridors into reliable sourcing, reverse engineering, local production, and export-ready supply through an accountable agent-led operating system.";
 
@@ -418,8 +421,8 @@ export async function ensureExportunityIndustrialOperatingPlan(input: {
       .update(companies)
       .set({
         description:
-          "Exportunity | AI is an industrial trade and sourcing platform connecting verified demand, factories, exporters, suppliers, spare parts, machinery, raw materials, engineering, logistics, and export-ready production across Cote d'Ivoire, Benin, UAE supplier corridors, and other verified markets.",
-        vision: EXPORTUNITY_INDUSTRIAL_MISSION,
+          "Exportunity | AI is an AI-managed global B2B trade and operations network for demand capture, sourcing, supplier and buyer intelligence, export, logistics, market entry, and governed company execution. Industrial equipment, spare parts, manufacturing, raw materials, commodities, agriculture, infrastructure, energy, mobility, mining, precious metals under compliance review, and export-ready products are sector capabilities within the wider network.",
+        vision: EXPORTUNITY_GLOBAL_MISSION,
         currentGoals: INDUSTRIAL_OBJECTIVES.map((objective) => objective.title),
         primarySector: "trade_export",
         industryTags: [
@@ -435,10 +438,12 @@ export async function ensureExportunityIndustrialOperatingPlan(input: {
         ],
         metadata: {
           ...asRecord(input.companyMetadata),
-          operatingModel: "exportunity-industrial",
+          operatingModel: "exportunity-global-trade-os",
           operatingPlanVersion: OPERATING_PLAN_VERSION,
           masterBrand: "Exportunity | AI",
-          operatingTerritories: ["Cote d'Ivoire", "Benin", "UAE supplier corridor"],
+          operatingTerritories: ["Global network", "Cote d'Ivoire", "Benin", "United Arab Emirates"],
+          activeOperatingCorridors: ["Cote d'Ivoire", "Benin", "United Arab Emirates"],
+          industrialProgramMission: EXPORTUNITY_INDUSTRIAL_MISSION,
           specializedDivisions: ["Exportunity Machinery"],
           externalActions: "human_approval_required",
         },

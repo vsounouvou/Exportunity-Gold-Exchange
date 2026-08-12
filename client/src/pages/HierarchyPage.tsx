@@ -54,6 +54,17 @@ interface StrategicGoal {
   priority: string | null;
 }
 
+interface RoleSeatOrganizationSummary {
+  summary: {
+    total: number;
+    available: number;
+    provisioned: number;
+    activeRuntime: number;
+    productionEnabled: number;
+  };
+  departments: Array<{ key: string; name: string; capacity: number }>;
+}
+
 function DepartmentCard({ 
   department, 
   onEdit, 
@@ -482,6 +493,12 @@ export default function HierarchyPage() {
     queryKey: [`/api/goals/company/${selectedCompanyId}`],
     enabled: !!selectedCompanyId,
   });
+
+  const { data: roleSeatOrganization } = useQuery<RoleSeatOrganizationSummary>({
+    queryKey: ["/api/admin/agents-os/role-seats"],
+    enabled: !!selectedCompanyId,
+    staleTime: 60_000,
+  });
   
   const deleteDepartmentMutation = useMutation({
     mutationFn: async (deptId: number) => {
@@ -555,7 +572,8 @@ export default function HierarchyPage() {
   }
   
   const activeStrategicGoals = strategicGoals.filter((goal) => goal.status === "planned" || goal.status === "in_progress");
-  const companyMission = companyData.vision || activeStrategicGoals[0]?.title || companyData.currentGoals?.[0] || "Set the industrial mission";
+  const companyMission = companyData.vision ||
+    "Trade. Source. Expand. Operate. Exportunity is an AI-managed global B2B trade and operations network.";
   const operatingTerritories = Array.isArray(companyData.metadata?.operatingTerritories)
     ? companyData.metadata.operatingTerritories.filter(
         (territory): territory is string => typeof territory === "string" && territory.trim().length > 0,
@@ -585,18 +603,21 @@ export default function HierarchyPage() {
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-sm font-medium">
               <Target className="h-4 w-4 text-amber-600" />
-              Industrial Mission
+              Global trade mission
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             <p className="line-clamp-3 text-sm font-semibold leading-6">{companyMission}</p>
             {operatingTerritories.length > 0 && (
-              <div className="flex flex-wrap gap-1.5" aria-label="Operating markets">
+              <div className="space-y-1.5">
+                <p className="text-xs font-medium uppercase text-slate-500">Active corridors, not limits</p>
+                <div className="flex flex-wrap gap-1.5" aria-label="Operating markets">
                 {operatingTerritories.map((territory) => (
                   <Badge key={territory} variant="outline" className="border-amber-200 bg-amber-50 text-amber-900">
                     {territory}
                   </Badge>
                 ))}
+                </div>
               </div>
             )}
             <Button type="button" variant="ghost" size="sm" className="h-8 px-0 text-amber-700" onClick={() => setLocation("/goals")}>
@@ -626,17 +647,26 @@ export default function HierarchyPage() {
         
         <Card className="border-slate-200 bg-white shadow-sm">
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium">Departments</CardTitle>
+            <CardTitle className="text-sm font-medium">AI organization</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-baseline gap-2">
               <Building2 className="w-5 h-5 text-muted-foreground" />
               <span className="text-2xl font-bold">{activeDepartments.length}</span>
-              <span className="text-sm text-muted-foreground">active departments</span>
+              <span className="text-sm text-muted-foreground">active runtime departments</span>
             </div>
-            <p className="text-xs text-muted-foreground mt-3">
-              {allAgents?.length || 0} AI agents{emptyDepartments.length ? ` - ${emptyDepartments.length} empty hidden` : ""}
-            </p>
+            <div className="mt-3 space-y-1 text-xs text-muted-foreground">
+              <p>{allAgents?.length || 0} active runtime agents{emptyDepartments.length ? ` - ${emptyDepartments.length} empty department hidden` : ""}</p>
+              {roleSeatOrganization?.summary ? (
+                <p>
+                  {roleSeatOrganization.summary.total} governed role seats across {roleSeatOrganization.departments.length} departments - {roleSeatOrganization.summary.provisioned} provisioned, {roleSeatOrganization.summary.available} available.
+                </p>
+              ) : null}
+            </div>
+            <Button type="button" variant="ghost" size="sm" className="mt-2 h-8 px-0 text-amber-700" onClick={() => setLocation("/agents-os?tab=organization")}>
+              Open role-seat organization
+              <ChevronRight className="ml-1 h-4 w-4" />
+            </Button>
           </CardContent>
         </Card>
       </div>

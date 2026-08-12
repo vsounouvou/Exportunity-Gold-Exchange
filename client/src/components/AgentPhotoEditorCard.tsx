@@ -46,20 +46,20 @@ function defaultPrompt(agent: AgentPhotoBundle["agent"]) {
   const role = agent.role || "Operations";
   const country = String(agent.country || "").trim();
   const countryClause = country ? ` from ${country}` : "";
-  return `Professional headshot of an African industrial company team member named ${name}${countryClause}, role ${role} at Exportunity, an AI-managed industrial supply, sourcing, export, and manufacturing platform. Clean studio lighting, modern Afro-industrial business aesthetic, confident and approachable, deep navy workwear or professional attire with restrained gold accents, neutral background, high detail, photorealistic, 1:1. Do not add text, logos, uniforms from other companies, or financial-trading imagery.`;
+  return `Professional headshot of a global trade and operations team member named ${name}${countryClause}, role ${role} at Exportunity, an AI-managed global B2B trade, sourcing, export, supply-chain, and market-expansion network. Clean studio lighting, premium Afro-global business aesthetic, confident and approachable, deep navy professional attire with restrained gold accents, neutral background, high detail, photorealistic, 1:1. Adapt subtle role cues to the stated function without forcing an industrial uniform. Do not add text, logos, uniforms from other companies, or financial-trading imagery.`;
 }
 
 function presetPrompt(key: StylePresetKey, agent: AgentPhotoBundle["agent"]) {
   const base = defaultPrompt(agent);
   if (key === "corporate") return base;
   if (key === "afrofuturistic") {
-    return `${base} Afro-modern industrial technology aesthetic, subtle engineering environment cues, premium and cinematic but realistic, tasteful.`;
+    return `${base} Afro-modern global trade and operations aesthetic, subtle role-appropriate technology or market cues, premium and cinematic but realistic, tasteful.`;
   }
   if (key === "minimal") {
-    return `Minimal professional avatar icon of an African corporate team member named ${agent.name}, role ${agent.role}. Clean flat design, modern UI icon style, high contrast, neutral background, 1:1.`;
+    return `Minimal professional avatar icon of an Afro-global trade and operations team member named ${agent.name}, role ${agent.role} at Exportunity. Clean flat design, modern UI icon style, high contrast, neutral background, deep navy and restrained gold-orange palette, 1:1.`;
   }
   if (key === "illustrated") {
-    return `Premium illustrated headshot of an African industrial company team member named ${agent.name}, role ${agent.role} at Exportunity. Clean editorial illustration, friendly and confident, deep navy, white and restrained gold-orange palette, neutral background, 1:1. No text or third-party logos.`;
+    return `Premium illustrated headshot of an Afro-global trade and operations team member named ${agent.name}, role ${agent.role} at Exportunity. Clean editorial illustration, friendly and confident, deep navy, white and restrained gold-orange palette, neutral background, 1:1. Adapt visual cues to the stated role. No text or third-party logos.`;
   }
   return base;
 }

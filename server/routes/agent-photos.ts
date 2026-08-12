@@ -49,7 +49,7 @@ function defaultPromptTemplate(agent: any) {
   const role = String(agent?.role || "").trim() || "Operations";
   const country = String(agent?.country || "").trim();
   const countryClause = country ? ` from ${country}` : "";
-  return `Professional headshot of an African industrial company team member named ${name}${countryClause}, role ${role} at Exportunity, an AI-managed industrial supply, sourcing, export, and manufacturing platform. Clean studio lighting, modern Afro-industrial business aesthetic, confident and approachable, deep navy workwear or professional attire with restrained gold accents, neutral background, high detail, photorealistic, 1:1. Do not add text, third-party logos, or financial-trading imagery.`;
+  return `Professional headshot of a global trade and operations team member named ${name}${countryClause}, role ${role} at Exportunity, an AI-managed global B2B trade, sourcing, export, supply-chain, and market-expansion network. Clean studio lighting, premium Afro-global business aesthetic, confident and approachable, deep navy professional attire with restrained gold accents, neutral background, high detail, photorealistic, 1:1. Adapt subtle role cues to the stated function without forcing an industrial uniform. Do not add text, third-party logos, or financial-trading imagery.`;
 }
 
 function safeObject(input: unknown): Record<string, any> {

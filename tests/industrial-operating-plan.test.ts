@@ -164,6 +164,9 @@ test("Exportunity dashboard prioritizes live industrial operations and readable 
   assert.match(chairmanDock, /const COLLAPSED_DOCK_HEIGHT = 68/);
   assert.match(chairmanDock, /snapDockToBottom[\s\S]*collapsed: true/);
   assert.match(chairmanDock, /Minimize assistant at the bottom/);
+  assert.match(chairmanDock, /aria-label="Assistant placement controls"/);
+  assert.match(chairmanDock, /aria-label="Dock assistant to the right side"/);
+  assert.match(chairmanDock, /<PanelBottom className="h-4 w-4"/);
   assert.match(chairmanDock, /isWorkSurface && current\.collapsed/);
   assert.match(chairmanDock, /DOCK_OPEN_STORAGE_KEY/);
   assert.match(chairmanDock, /readStoredDockOpen/);

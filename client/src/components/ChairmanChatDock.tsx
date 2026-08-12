@@ -22,6 +22,8 @@ import {
   MessageSquare,
   Minimize2,
   Move,
+  PanelBottom,
+  PanelRight,
   Paperclip,
   PhoneCall,
   Send,
@@ -998,7 +1000,7 @@ export function ChairmanChatDock() {
           style={desktopDockStyle}
         >
           <div
-            className={`flex items-center justify-between gap-3 px-4 py-3 ${
+            className={`flex flex-col px-4 py-3 ${
               dockLayout.collapsed && !isMobile ? "" : "border-b border-slate-200"
             } ${isMobile ? "" : "cursor-move select-none"}`}
             onPointerDown={handleDockPointerDown}
@@ -1007,109 +1009,133 @@ export function ChairmanChatDock() {
             onPointerCancel={handleDockPointerUp}
             title={isMobile ? undefined : "Drag to move assistant"}
           >
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-full bg-slate-100 flex items-center justify-center overflow-hidden">
-                {agent?.avatarUrl ? (
-                  <img
-                    src={agent.avatarUrl}
-                    alt={agent.displayName || "Assistant"}
-                    className="h-10 w-10 rounded-full object-cover"
-                  />
-                ) : (
-                  <Sparkles className="h-5 w-5 text-[#F5A623]" />
-                )}
-              </div>
-              <div>
-                <div className="text-sm font-semibold flex items-center gap-2">
-                  <span>{assistantName}</span>
+            <div className="flex min-w-0 items-center justify-between gap-2">
+              <div className="flex min-w-0 items-center gap-3">
+                <div className="h-10 w-10 shrink-0 rounded-full bg-slate-100 flex items-center justify-center overflow-hidden">
+                  {agent?.avatarUrl ? (
+                    <img
+                      src={agent.avatarUrl}
+                      alt={agent.displayName || "Assistant"}
+                      className="h-10 w-10 rounded-full object-cover"
+                    />
+                  ) : (
+                    <Sparkles className="h-5 w-5 text-[#F5A623]" />
+                  )}
+                </div>
+                <div className="min-w-0">
+                  <div className="text-sm font-semibold flex min-w-0 items-center gap-2">
+                    <span className="truncate">{assistantName}</span>
+                    {!dockLayout.collapsed || isMobile ? (
+                      <Badge
+                        variant="outline"
+                        className="max-w-[150px] shrink truncate border-slate-200 text-[10px] text-slate-600"
+                      >
+                        {assistantScopeLabel}
+                      </Badge>
+                    ) : null}
+                  </div>
                   {!dockLayout.collapsed || isMobile ? (
-                  <Badge variant="outline" className="border-slate-200 text-[10px] text-slate-600">
-                    {assistantScopeLabel}
-                  </Badge>
-                  ) : null}
+                    <div className="flex min-w-0 items-center gap-2 text-xs text-slate-500">
+                      <span className="truncate">Workspace assistant</span>
+                      <span
+                        className={`h-1.5 w-1.5 shrink-0 rounded-full ${
+                          threadQuery.isError ? "bg-rose-400" : isThreadReady ? "bg-emerald-400" : "bg-amber-300"
+                        }`}
+                      />
+                      <span className="shrink-0">{threadStatusText}</span>
+                      {agent?.status ? (
+                        <Badge
+                          variant="outline"
+                          className="max-w-[64px] shrink truncate border-slate-200 text-[9px] text-slate-500"
+                        >
+                          {agent.status}
+                        </Badge>
+                      ) : null}
+                    </div>
+                  ) : (
+                    <div className="text-xs text-slate-500">Collapsed</div>
+                  )}
                 </div>
-                {!dockLayout.collapsed || isMobile ? (
-                <div className="text-xs text-slate-500 flex items-center gap-2">
-                  <span>Workspace assistant</span>
-                  <span
-                    className={`h-1.5 w-1.5 rounded-full ${
-                      threadQuery.isError ? "bg-rose-400" : isThreadReady ? "bg-emerald-400" : "bg-amber-300"
-                    }`}
-                  />
-                  <span>{threadStatusText}</span>
-                  {agent?.status ? (
-                    <Badge variant="outline" className="border-slate-200 text-slate-500 text-[10px]">
-                      {agent.status}
-                    </Badge>
-                  ) : null}
-                </div>
-                ) : (
-                  <div className="text-xs text-slate-500">Collapsed</div>
-                )}
               </div>
-            </div>
-            <div className="flex items-center gap-1" data-no-drag="true">
-              {!isMobile ? (
-                <>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-slate-500 hover:bg-slate-100 hover:text-slate-900"
-                    onClick={resetDockLayout}
-                    title="Reset position"
-                  >
-                    <Move className="h-4 w-4" />
-                  </Button>
+              <div className="flex shrink-0 items-center gap-1" data-no-drag="true">
+                {!isMobile && dockLayout.collapsed ? (
                   <Button
                     type="button"
                     variant="ghost"
                     size="icon"
                     className="h-8 w-8 text-slate-500 hover:bg-slate-100 hover:text-slate-900"
                     onClick={toggleDockCollapsed}
-                    title={dockLayout.collapsed ? "Expand assistant" : "Collapse assistant"}
+                    aria-label="Expand assistant"
+                    title="Expand assistant"
                   >
-                    {dockLayout.collapsed ? <Maximize2 className="h-4 w-4" /> : <Minimize2 className="h-4 w-4" />}
+                    <Maximize2 className="h-4 w-4" />
                   </Button>
-                  {!dockLayout.collapsed ? (
-                    <>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 px-2 text-[11px] font-semibold text-slate-500 hover:bg-slate-100 hover:text-slate-900"
-                        onClick={snapDockToSide}
-                        title="Snap assistant to the right side"
-                      >
-                        Side
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 px-2 text-[11px] font-semibold text-slate-500 hover:bg-slate-100 hover:text-slate-900"
-                        onClick={snapDockToBottom}
-                        title="Minimize assistant at the bottom"
-                        aria-label="Minimize assistant at the bottom"
-                      >
-                        Bottom
-                      </Button>
-                    </>
-                  ) : null}
-                </>
-              ) : null}
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 text-slate-500 hover:bg-slate-100 hover:text-slate-900"
-                onClick={() => setIsOpen(false)}
-                aria-label={`Close ${assistantName} assistant`}
-                title={`Close ${assistantName} assistant`}
-              >
-                <X className="h-5 w-5" />
-              </Button>
+                ) : null}
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+                  onClick={() => setIsOpen(false)}
+                  aria-label={`Close ${assistantName} assistant`}
+                  title={`Close ${assistantName} assistant`}
+                >
+                  <X className="h-5 w-5" />
+                </Button>
+              </div>
             </div>
+            {!isMobile && !dockLayout.collapsed ? (
+              <div
+                className="mt-2 flex w-full items-center justify-end gap-1 border-t border-slate-100 pt-2"
+                data-no-drag="true"
+                aria-label="Assistant placement controls"
+              >
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+                  onClick={resetDockLayout}
+                  aria-label="Reset assistant position"
+                  title="Reset assistant position"
+                >
+                  <Move className="h-4 w-4" />
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+                  onClick={toggleDockCollapsed}
+                  aria-label="Collapse assistant"
+                  title="Collapse assistant"
+                >
+                  <Minimize2 className="h-4 w-4" />
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+                  onClick={snapDockToSide}
+                  aria-label="Dock assistant to the right side"
+                  title="Dock assistant to the right side"
+                >
+                  <PanelRight className="h-4 w-4" />
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+                  onClick={snapDockToBottom}
+                  aria-label="Minimize assistant at the bottom"
+                  title="Minimize assistant at the bottom"
+                >
+                  <PanelBottom className="h-4 w-4" />
+                </Button>
+              </div>
+            ) : null}
           </div>
 
           {dockLayout.collapsed && !isMobile ? null : (

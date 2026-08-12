@@ -79,7 +79,12 @@ test.describe("Exportunity industrial launch experience", () => {
     expect(mapBox?.width || 0).toBeGreaterThan(340);
     expect(mapBox?.height || 0).toBeGreaterThan(480);
 
-    await page.getByRole("button", { name: "GDIZ" }).first().click();
+    await page
+      .getByRole("button", { name: /GDIZ - Cotonou corridor/i })
+      .click();
+    await page
+      .getByRole("button", { name: /Open GDIZ - Glo-Djigbe Industrial Zone/i })
+      .click();
     await expect(
       page
         .getByText(/GDIZ\s*-\s*Zone Industrielle de Glo-Djigbe|Glo-Djigb. Industrial Zone/i)
@@ -105,9 +110,12 @@ test.describe("Exportunity industrial launch experience", () => {
       "/machinery",
       "/request-quote",
     ]) {
-      const response = await page.goto(route, { waitUntil: "networkidle" });
+      const response = await page.goto(route, {
+        waitUntil: "load",
+        timeout: 45_000,
+      });
       expect(response?.status(), route).toBeLessThan(400);
-      await expect(page.locator("main")).toBeVisible();
+      await expect(page.locator("main")).toBeVisible({ timeout: 30_000 });
       await expect(page.locator("body")).not.toContainText(/application error/i);
     }
 

@@ -18,7 +18,7 @@ function clearTenantScopedQueries(queryClient: ReturnType<typeof useQueryClient>
 
 export function TenantGuard({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
-  const { tenant, loading } = useTenant();
+  const { tenant } = useTenant();
   const previousTenant = useRef<string | null>(null);
 
   useEffect(() => {
@@ -33,10 +33,6 @@ export function TenantGuard({ children }: { children: ReactNode }) {
 
     previousTenant.current = current;
   }, [queryClient, tenant?.key]);
-
-  if (loading && !tenant?.id) {
-    return <div className="min-h-screen bg-gray-950 text-gray-300 flex items-center justify-center">Resolving tenant...</div>;
-  }
 
   return <>{children}</>;
 }

@@ -23,6 +23,13 @@ export type IndustrialAssistantContext = {
   requirementType?: string | null;
   destinationReplies?: string[];
   territoryCode?: string | null;
+  tradeIntake?: boolean;
+  missionType?:
+    | "trade"
+    | "source"
+    | "sell_export"
+    | "manage_supply"
+    | "market_expansion";
 };
 
 export type IndustrialAssistantProductContext = {
@@ -68,6 +75,13 @@ type ConversationStep =
   | "destination"
   | "timing"
   | "priority"
+  | "frequency"
+  | "origin"
+  | "quality"
+  | "incoterm"
+  | "budget"
+  | "confidentiality"
+  | "communication"
   | "name"
   | "email"
   | "company"
@@ -398,6 +412,7 @@ export function IndustrialAssistantChat({
   mode = "commercial",
   onCloseProduct,
   onDiscoveryRequest,
+  pane = false,
   className,
 }: {
   language: Language;
@@ -407,6 +422,7 @@ export function IndustrialAssistantChat({
   mode?: "concierge" | "commercial";
   onCloseProduct?: (() => void) | null;
   onDiscoveryRequest?: ((message: string) => string | null | void) | null;
+  pane?: boolean;
   className?: string;
 }) {
   const copy =
@@ -453,6 +469,57 @@ export function IndustrialAssistantChat({
             "Meilleur cout total",
             "Qualite et certifications",
             "Fournisseur local verifie",
+          ],
+          frequencyQuestion:
+            "A quelle frequence ce besoin se repete-t-il ?",
+          frequencyReplies: [
+            "Achat ponctuel",
+            "Chaque mois",
+            "Approvisionnement recurrent",
+            "Frequence a confirmer",
+          ],
+          originQuestion:
+            "Avez-vous une origine fournisseur preferee ou des pays a exclure ?",
+          originReplies: [
+            "Aucune preference",
+            "Afrique",
+            "Moyen-Orient",
+            "Europe ou Asie",
+            "Je vais preciser",
+          ],
+          qualityQuestion:
+            "Quelles exigences de qualite, de specification ou de certification devons-nous respecter ?",
+          qualityReplies: [
+            "Qualite commerciale standard",
+            "Certification obligatoire",
+            "J'ai une fiche technique",
+            "Exigences a confirmer",
+          ],
+          incotermQuestion:
+            "Quel Incoterm preferez-vous pour cette operation ? Je peux aussi vous aider a le choisir.",
+          incotermReplies: ["EXW", "FOB", "CIF", "DDP", "Aidez-moi a choisir"],
+          budgetQuestion:
+            "Avez-vous une enveloppe budgetaire ou devons-nous d'abord etablir le prix de marche ?",
+          budgetReplies: [
+            "Budget deja defini",
+            "Etablir le prix de marche",
+            "Budget confidentiel",
+            "A confirmer",
+          ],
+          confidentialityQuestion:
+            "Quel niveau de confidentialite faut-il appliquer au dossier ?",
+          confidentialityReplies: [
+            "Traitement standard",
+            "Demande confidentielle",
+            "Accord de confidentialite requis",
+          ],
+          communicationQuestion:
+            "Quel canal preferez-vous pour le suivi commercial ?",
+          communicationReplies: [
+            "Email",
+            "WhatsApp",
+            "Telephone",
+            "Messagerie Exportunity",
           ],
           nameQuestion:
             "Quel nom dois-je inscrire comme contact pour ce dossier ?",
@@ -545,6 +612,56 @@ export function IndustrialAssistantChat({
             "Quality and certifications",
             "Verified local supplier",
           ],
+          frequencyQuestion: "How often does this requirement repeat?",
+          frequencyReplies: [
+            "One-time purchase",
+            "Every month",
+            "Recurring supply",
+            "Frequency to be confirmed",
+          ],
+          originQuestion:
+            "Do you have a preferred supplier origin or countries to exclude?",
+          originReplies: [
+            "No preference",
+            "Africa",
+            "Middle East",
+            "Europe or Asia",
+            "I will specify",
+          ],
+          qualityQuestion:
+            "Which quality, specification, or certification requirements must we meet?",
+          qualityReplies: [
+            "Standard commercial quality",
+            "Certification required",
+            "I have a technical specification",
+            "Requirements to be confirmed",
+          ],
+          incotermQuestion:
+            "Which Incoterm do you prefer for this transaction? I can also help you choose.",
+          incotermReplies: ["EXW", "FOB", "CIF", "DDP", "Help me choose"],
+          budgetQuestion:
+            "Do you have a budget range, or should we establish market pricing first?",
+          budgetReplies: [
+            "Budget already defined",
+            "Establish market pricing",
+            "Budget is confidential",
+            "To be confirmed",
+          ],
+          confidentialityQuestion:
+            "Which confidentiality level should apply to this case?",
+          confidentialityReplies: [
+            "Standard handling",
+            "Confidential request",
+            "NDA required",
+          ],
+          communicationQuestion:
+            "Which channel do you prefer for commercial follow-up?",
+          communicationReplies: [
+            "Email",
+            "WhatsApp",
+            "Phone",
+            "Exportunity messaging",
+          ],
           nameQuestion: "What contact name should I put on this case?",
           invalidName: "I need a contact name with at least two characters.",
           emailQuestion:
@@ -595,6 +712,7 @@ export function IndustrialAssistantChat({
         };
 
   const commercialMode = mode === "commercial" || Boolean(product);
+  const globalTradeIntake = Boolean(context?.tradeIntake && !product);
   const activeGreeting = context?.intro || copy.greeting;
   const initialRequirementType =
     product?.requirementType || context?.requirementType || null;
@@ -661,6 +779,13 @@ export function IndustrialAssistantChat({
   const [destination, setDestination] = useState("");
   const [requiredBy, setRequiredBy] = useState("");
   const [purchasePriority, setPurchasePriority] = useState("");
+  const [frequency, setFrequency] = useState("");
+  const [originPreference, setOriginPreference] = useState("");
+  const [qualityRequirements, setQualityRequirements] = useState("");
+  const [incoterm, setIncoterm] = useState("");
+  const [budget, setBudget] = useState("");
+  const [confidentiality, setConfidentiality] = useState("");
+  const [preferredCommunication, setPreferredCommunication] = useState("");
   const [additionalNotes, setAdditionalNotes] = useState("");
   const [requesterName, setRequesterName] = useState(
     requester?.displayName || "",
@@ -696,6 +821,13 @@ export function IndustrialAssistantChat({
     setDestination("");
     setRequiredBy("");
     setPurchasePriority("");
+    setFrequency("");
+    setOriginPreference("");
+    setQualityRequirements("");
+    setIncoterm("");
+    setBudget("");
+    setConfidentiality("");
+    setPreferredCommunication("");
     setAdditionalNotes("");
     setRequesterCompany("");
     setCaseReference(null);
@@ -749,6 +881,14 @@ export function IndustrialAssistantChat({
     ask("company", copy.companyQuestion);
   };
 
+  const continueAfterCoreRequirement = () => {
+    if (globalTradeIntake) {
+      ask("frequency", copy.frequencyQuestion);
+      return;
+    }
+    continueToContact();
+  };
+
   const requirementDetails = () =>
     [
       product ? `Product: ${product.name}` : initialNeed,
@@ -758,6 +898,17 @@ export function IndustrialAssistantChat({
       destination ? `Delivery: ${destination}` : "",
       requiredBy ? `Needed by: ${requiredBy}` : "",
       purchasePriority ? `Buyer priority: ${purchasePriority}` : "",
+      frequency ? `Frequency: ${frequency}` : "",
+      originPreference ? `Preferred origin: ${originPreference}` : "",
+      qualityRequirements
+        ? `Quality and certification: ${qualityRequirements}`
+        : "",
+      incoterm ? `Incoterm: ${incoterm}` : "",
+      budget ? `Budget: ${budget}` : "",
+      confidentiality ? `Confidentiality: ${confidentiality}` : "",
+      preferredCommunication
+        ? `Preferred communication: ${preferredCommunication}`
+        : "",
       additionalNotes ? `Additional details: ${additionalNotes}` : "",
     ]
       .filter(Boolean)
@@ -780,6 +931,8 @@ export function IndustrialAssistantChat({
       const technicalDetails: Record<string, string> = {
         intakeSource: product
           ? "exportunity_ai_product_order"
+          : globalTradeIntake
+            ? "exportunity_ai_global_trade_mission"
           : commercialMode
             ? "exportunity_ai_commercial_intake"
             : "exportunity_ai_industrial_intake",
@@ -798,6 +951,19 @@ export function IndustrialAssistantChat({
       };
       if (purchasePriority)
         technicalDetails.purchasePriority = purchasePriority;
+      if (context?.missionType)
+        technicalDetails.missionType = context.missionType;
+      if (frequency) technicalDetails.frequency = frequency;
+      if (originPreference)
+        technicalDetails.originPreference = originPreference;
+      if (qualityRequirements)
+        technicalDetails.qualityRequirements = qualityRequirements;
+      if (incoterm) technicalDetails.incoterm = incoterm;
+      if (budget) technicalDetails.budget = budget;
+      if (confidentiality)
+        technicalDetails.confidentiality = confidentiality;
+      if (preferredCommunication)
+        technicalDetails.preferredCommunication = preferredCommunication;
       if (product?.id) technicalDetails.catalogItemId = product.id;
       if (product?.name) technicalDetails.productName = product.name;
       if (product?.factoryName)
@@ -971,6 +1137,9 @@ export function IndustrialAssistantChat({
         } else if (!nextPriority) {
           nextStep = "priority";
           nextQuestion = copy.priorityQuestion;
+        } else if (globalTradeIntake) {
+          nextStep = "frequency";
+          nextQuestion = copy.frequencyQuestion;
         } else {
           nextStep = requesterName.trim()
             ? requesterEmail.trim()
@@ -1008,7 +1177,7 @@ export function IndustrialAssistantChat({
       if (!destination) ask("destination", copy.destinationQuestion);
       else if (!requiredBy) ask("timing", copy.timingQuestion);
       else if (!purchasePriority) ask("priority", copy.priorityQuestion);
-      else continueToContact();
+      else continueAfterCoreRequirement();
       return;
     }
 
@@ -1016,19 +1185,61 @@ export function IndustrialAssistantChat({
       setDestination(message);
       if (!requiredBy) ask("timing", copy.timingQuestion);
       else if (!purchasePriority) ask("priority", copy.priorityQuestion);
-      else continueToContact();
+      else continueAfterCoreRequirement();
       return;
     }
 
     if (step === "timing") {
       setRequiredBy(message);
       if (!purchasePriority) ask("priority", copy.priorityQuestion);
-      else continueToContact();
+      else continueAfterCoreRequirement();
       return;
     }
 
     if (step === "priority") {
       setPurchasePriority(message);
+      continueAfterCoreRequirement();
+      return;
+    }
+
+    if (step === "frequency") {
+      setFrequency(message);
+      ask("origin", copy.originQuestion);
+      return;
+    }
+
+    if (step === "origin") {
+      setOriginPreference(message);
+      ask("quality", copy.qualityQuestion);
+      return;
+    }
+
+    if (step === "quality") {
+      setQualityRequirements(message);
+      ask("incoterm", copy.incotermQuestion);
+      return;
+    }
+
+    if (step === "incoterm") {
+      setIncoterm(message);
+      ask("budget", copy.budgetQuestion);
+      return;
+    }
+
+    if (step === "budget") {
+      setBudget(message);
+      ask("confidentiality", copy.confidentialityQuestion);
+      return;
+    }
+
+    if (step === "confidentiality") {
+      setConfidentiality(message);
+      ask("communication", copy.communicationQuestion);
+      return;
+    }
+
+    if (step === "communication") {
+      setPreferredCommunication(message);
       continueToContact();
       return;
     }
@@ -1156,6 +1367,20 @@ export function IndustrialAssistantChat({
             ? copy.timingReplies
             : step === "priority"
               ? copy.priorityReplies
+              : step === "frequency"
+                ? copy.frequencyReplies
+                : step === "origin"
+                  ? copy.originReplies
+                  : step === "quality"
+                    ? copy.qualityReplies
+                    : step === "incoterm"
+                      ? copy.incotermReplies
+                      : step === "budget"
+                        ? copy.budgetReplies
+                        : step === "confidentiality"
+                          ? copy.confidentialityReplies
+                          : step === "communication"
+                            ? copy.communicationReplies
               : step === "company"
                 ? [copy.skip]
                 : step === "confirm"
@@ -1171,12 +1396,15 @@ export function IndustrialAssistantChat({
       data-conversation-mode={
         product
           ? "product-order"
+          : globalTradeIntake
+            ? "global-trade-mission"
           : commercialMode
             ? "commercial-intake"
             : "industrial-intake"
       }
       className={cn(
         "mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_22px_54px_rgba(15,23,42,0.14)] backdrop-blur-md sm:mt-5 dark:border-[#F5A623]/35 dark:bg-[#02070e]/[0.96] dark:shadow-[0_22px_54px_rgba(0,0,0,0.32)]",
+        pane && "flex min-h-0 flex-col",
         className,
       )}
     >
@@ -1270,7 +1498,12 @@ export function IndustrialAssistantChat({
 
       <div
         ref={messageLogRef}
-        className="max-h-[240px] space-y-3 overflow-y-auto bg-white px-3 py-3 sm:max-h-[300px] sm:px-4 dark:bg-transparent"
+        className={cn(
+          "space-y-3 overflow-y-auto bg-white px-3 py-3 sm:px-4 dark:bg-transparent",
+          pane
+            ? "min-h-0 flex-1"
+            : "max-h-[240px] sm:max-h-[300px]",
+        )}
         aria-live="polite"
         aria-label={activeConversationLabel}
         role="log"
@@ -1364,6 +1597,34 @@ export function IndustrialAssistantChat({
                 </dt>
                 <dd className="truncate font-medium text-slate-900 dark:text-white">
                   {purchasePriority}
+                </dd>
+              </div>
+            ) : null}
+            {frequency ? (
+              <div className="min-w-0">
+                <dt className="text-slate-500 dark:text-slate-400">
+                  {language === "fr" ? "Frequence" : "Frequency"}
+                </dt>
+                <dd className="truncate font-medium text-slate-900 dark:text-white">
+                  {frequency}
+                </dd>
+              </div>
+            ) : null}
+            {incoterm ? (
+              <div className="min-w-0">
+                <dt className="text-slate-500 dark:text-slate-400">Incoterm</dt>
+                <dd className="truncate font-medium text-slate-900 dark:text-white">
+                  {incoterm}
+                </dd>
+              </div>
+            ) : null}
+            {confidentiality ? (
+              <div className="min-w-0">
+                <dt className="text-slate-500 dark:text-slate-400">
+                  {language === "fr" ? "Confidentialite" : "Confidentiality"}
+                </dt>
+                <dd className="truncate font-medium text-slate-900 dark:text-white">
+                  {confidentiality}
                 </dd>
               </div>
             ) : null}

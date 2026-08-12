@@ -34,7 +34,7 @@ test("the industrial platform uses the approved Exportunity AI master mark", () 
   assert.match(app, /function RouteLoadingFallback\(\)/);
   assert.match(
     app,
-    /tenant\.key === "exportunity"[\s\S]*?\/tenants\/exportunity\/logo\.svg[\s\S]*?Opening the industrial network/,
+    /tenant\.key === "exportunity"[\s\S]*?\/tenants\/exportunity\/logo\.svg[\s\S]*?Opening the global trade network/,
   );
   assert.match(app, /fallback=\{<RouteLoadingFallback \/>\}/);
 });

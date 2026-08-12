@@ -139,6 +139,10 @@ const RULES: Array<{ prefix: string; tenants: TenantKey[] }> = [
   { prefix: "/admin/territory", tenants: ["bdo", "exportunity", "xportcard"] },
 
   // Exportunity + zone.
+  { prefix: "/source", tenants: ["exportunity"] },
+  { prefix: "/sell-export", tenants: ["exportunity"] },
+  { prefix: "/manage-supply", tenants: ["exportunity"] },
+  { prefix: "/expand", tenants: ["exportunity"] },
   { prefix: "/zone", tenants: [...ALL_TENANTS] },
   { prefix: "/map", tenants: [...ALL_TENANTS] },
   { prefix: "/industrial", tenants: ["exportunity"] },

@@ -220,6 +220,7 @@ const MindbaseAdminAgentsPage = lazyPage(() => import("@/pages/mindbase/Mindbase
 const MindbaseAdminSettingsPage = lazyPage(() => import("@/pages/mindbase/MindbaseAdminPages"), "MindbaseAdminSettingsPage");
 
 // Exportunity marketing clone (exportunity.com)
+const ExportunityGlobalTradeHomePage = lazyPage(() => import("@/pages/exportunity/GlobalTradeHomePage"));
 const ExportunityIndustrialHubPage = lazyPage(() => import("@/pages/exportunity/IndustrialHubPage"));
 const ExportunityMarketingHomePage = lazyPage(() => import("@/pages/exportunity/MarketingHomePage"));
 const ExportunityMarketingVitrinePage = lazyPage(() => import("@/pages/exportunity/MarketingVitrinePage"));
@@ -507,6 +508,7 @@ const DefaultLanding = () => <Redirect to="/zone" />;
 function RootPublicRoute() {
   const { tenant } = useTenant();
   if (isExportunityMarketingHost()) return <ExportunityMarketingHomePage />;
+  if (tenant.key === "exportunity") return <ExportunityGlobalTradeHomePage />;
 
   const config = getTenantConfigByKey(tenant.key);
   if (!config) return <Redirect to="/store" />;
@@ -523,6 +525,15 @@ function RootPublicRoute() {
   if (tenant.key === "zogueland") return <Redirect to="/store" />;
   if (tenant.key === "zone" || tenant.key === "rayon1km") return <Redirect to="/zone" />;
   return <Redirect to={getTenantHomeRoute(tenant.key)} />;
+}
+
+function ExportunityGlobalTradeRoute() {
+  const { tenant } = useTenant();
+  if (tenant.key === "exportunity" && !isExportunityMarketingHost()) {
+    return <ExportunityGlobalTradeHomePage />;
+  }
+  if (isExportunityMarketingHost()) return <Redirect to="/solutions" />;
+  return <Redirect to="/zone" />;
 }
 
 function StoreRoute() {
@@ -797,7 +808,7 @@ function RouteLoadingFallback() {
           />
           <div className="mt-6 flex items-center gap-3 text-sm font-medium text-[#334155]">
             <span className="h-5 w-5 animate-spin rounded-full border-2 border-[#F5A623]/30 border-t-[#F5A623]" />
-            Opening the industrial network...
+            Opening the global trade network...
           </div>
         </div>
       </div>
@@ -855,6 +866,10 @@ function App() {
           <Switch>
           {/* Public routes */}
           <Route path="/" component={RootPublicRoute} />
+          <Route path="/source" component={ExportunityGlobalTradeRoute} />
+          <Route path="/sell-export" component={ExportunityGlobalTradeRoute} />
+          <Route path="/manage-supply" component={ExportunityGlobalTradeRoute} />
+          <Route path="/expand" component={ExportunityGlobalTradeRoute} />
           <Route path="/store" component={StoreRoute} />
           <Route path="/or" component={StoreRoute} />
           <Route path="/or/:rest*" component={StoreRoute} />

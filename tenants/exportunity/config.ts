@@ -5,7 +5,7 @@ import { exportunityThemeTokens } from "./theme";
 export const exportunityTenantConfig: TenantConfig = {
   slug: "exportunity",
   brandName: "Exportunity",
-  tagline: "Industrial procurement, factory intelligence, and export",
+  tagline: "Trade, source, manage supply, and expand across markets",
   primaryDomain: "exportunity.net",
   domains: [
     "exportunity.com",
@@ -19,17 +19,17 @@ export const exportunityTenantConfig: TenantConfig = {
   uiMode: "industrial",
   categoryPreset: "industrial_factory_export",
   homeMode: "platform",
-  homeRedirectTo: "/industrial",
+  homeRedirectTo: "/",
   storefrontMarketType: "EXPORT_READY",
   modulesEnabled: exportunityModulesEnabled,
   modulesDisabled: exportunityModulesDisabled,
   themeTokens: exportunityThemeTokens,
   storefrontHero: {
-    eyebrow: "Industrial procurement and export",
-    title: "Industrial supply and export opportunities for verified factories",
-    subtitle: "Source machinery, raw materials, industrial inputs, and spare parts through one focused B2B platform.",
-    ctaPrimary: { label: "Submit an Industrial Requirement", href: "/request-quote" },
-    ctaSecondary: { label: "Explore Verified Factories", href: "/factories" },
+    eyebrow: "Global trade operating network",
+    title: "Trade. Source. Expand. Operate.",
+    subtitle: "Turn a commercial need into a governed sourcing, selling, supply, or market-expansion mission.",
+    ctaPrimary: { label: "Tell Us What You Need", href: "/" },
+    ctaSecondary: { label: "Explore Industries", href: "/industrial" },
     backgroundStyle: "from-[#07111F] via-[#0A1628] to-[#14243B]",
   },
   storefrontTheme: {
@@ -49,8 +49,8 @@ export const exportunityTenantConfig: TenantConfig = {
     },
   },
   storefrontIdentity: {
-    platformLabel: "Industrial Procurement and Export Platform",
-    retailModeLabel: "Industrial Platform",
+    platformLabel: "Global Trade Operating Platform",
+    retailModeLabel: "Trade Network",
     sections: [
       { slug: "factories", title: "Verified Factories", subtitle: "Public factory profiles approved by Exportunity", limit: 24 },
       { slug: "export-products", title: "Export-Ready Products", subtitle: "Approved B2B factory production", limit: 24 },

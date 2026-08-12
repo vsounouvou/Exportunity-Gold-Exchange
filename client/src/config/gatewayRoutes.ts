@@ -10,7 +10,7 @@ export type GatewayDestinations = {
 
 const TENANT_ENTRY_URLS: Record<TenantKey, string> = {
   bdo: "/marketplace?mode=retail",
-  exportunity: "/industrial",
+  exportunity: "/",
   agoojye: "/",
   zone: "/marketplace?mode=retail",
   mindbase: "/mindbase",

@@ -10,13 +10,13 @@ test("tenant home route matrix matches platform-first decision", () => {
   assert.equal(getTenantHomeRoute("mindbase"), "/store");
   assert.equal(getTenantHomeRoute("zogueland"), "/store");
   assert.equal(getTenantHomeRoute("bdo"), "/store");
-  assert.equal(getTenantHomeRoute("exportunity"), "/industrial");
+  assert.equal(getTenantHomeRoute("exportunity"), "/");
   assert.equal(getTenantHomeRoute("rayon1km"), "/zone");
   assert.equal(getTenantHomeRoute("rayon"), "/zone");
 });
 
-test("Exportunity separates the public industrial home from the admin workspace", () => {
-  assert.equal(getTenantHomeRoute("exportunity"), "/industrial");
+test("Exportunity separates the public global trade home from the admin workspace", () => {
+  assert.equal(getTenantHomeRoute("exportunity"), "/");
   assert.equal(getTenantAdminHomeRoute("exportunity"), "/ai-team");
   assert.equal(getTenantAdminHomeRoute("mindbase"), "/admin/mindbase");
 });

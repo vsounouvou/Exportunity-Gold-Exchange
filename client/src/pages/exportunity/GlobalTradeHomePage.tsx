@@ -284,6 +284,12 @@ const MARKET_CENTERS: Record<MarketCode, { center: [number, number]; zoom: numbe
   OTHER: { center: [13.2, 25], zoom: 3 },
 };
 
+const GLOBAL_MARKET_CLUSTERS = (["CI", "BJ", "AE"] as const).map((code) => ({
+  code,
+  center: MARKET_CENTERS[code].center,
+  count: INDUSTRIAL_CONTEXT_LOCATIONS.filter((item) => item.territoryCode === code).length,
+}));
+
 const CONTEXT_VISUALS: Record<
   IndustrialContextKind,
   { icon: LucideIcon; code: string; color: string; background: string }
@@ -423,12 +429,29 @@ function assistantProduct(
 
 function mapMarkerIcon(context: IndustrialContextLocation, active: boolean) {
   const visual = CONTEXT_VISUALS[context.kind];
+  if (!active) {
+    return L.divIcon({
+      className: "exportunity-global-marker",
+      html: `<span style="position:relative;display:grid;place-items:center;width:38px;height:38px;border:2px solid rgba(255,255,255,.94);border-radius:9px;background:${visual.background};color:${visual.color};box-shadow:0 10px 24px rgba(7,17,31,.34);font-family:Arial,sans-serif;font-size:8px;font-weight:800;letter-spacing:0"><span>${visual.code}</span><span style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0">${context.markerLabel}</span></span>`,
+      iconSize: [38, 38],
+      iconAnchor: [19, 19],
+    });
+  }
   const width = Math.max(active ? 96 : 86, context.markerLabel.length * 8 + 42);
   return L.divIcon({
     className: "exportunity-global-marker",
     html: `<span style="display:flex;align-items:center;gap:7px;width:${width}px;height:${active ? 42 : 38}px;padding:0 9px;border:2px solid ${active ? "#F5A623" : "rgba(255,255,255,.92)"};border-radius:8px;background:${visual.background};color:${visual.color};box-shadow:0 12px 26px rgba(7,17,31,.32);font-family:Arial,sans-serif;font-size:10px;font-weight:800;letter-spacing:0"><span style="display:grid;place-items:center;width:21px;height:21px;border-radius:5px;background:${visual.color};color:${visual.background};font-size:8px">${visual.code}</span><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${context.markerLabel}</span></span>`,
     iconSize: [width, active ? 42 : 38],
     iconAnchor: [Math.round(width / 2), active ? 21 : 19],
+  });
+}
+
+function marketClusterIcon(code: "CI" | "BJ" | "AE", count: number) {
+  return L.divIcon({
+    className: "exportunity-global-market-cluster",
+    html: `<span style="position:relative;display:grid;place-items:center;width:34px;height:34px;border:2px solid #F5A623;border-radius:50%;background:#07111F;color:#fff;box-shadow:0 10px 28px rgba(7,17,31,.4);font-family:Arial,sans-serif;font-size:9px;font-weight:800"><span>${code}</span><span style="position:absolute;right:-7px;top:-7px;display:grid;place-items:center;min-width:18px;height:18px;padding:0 4px;border:2px solid #fff;border-radius:999px;background:#F5A623;color:#07111F;font-size:9px">${count}</span></span>`,
+    iconSize: [34, 34],
+    iconAnchor: [17, 17],
   });
 }
 
@@ -1096,25 +1119,48 @@ export default function GlobalTradeHomePage() {
                         />
                       ))
                     : null}
-                  {visibleLocations.map((context) => (
-                    <Marker
-                      key={context.id}
-                      position={[context.latitude, context.longitude]}
-                      icon={mapMarkerIcon(context, selectedLocation?.id === context.id)}
-                      eventHandlers={{
-                        click: () => {
-                          setSelectedLocation(context);
-                          setSelectedProduct(null);
-                        },
-                      }}
-                    >
-                      <Tooltip direction="top" offset={[0, -20]} opacity={0.96}>
-                        <span className="font-semibold">
-                          {industrialContextText(context.name, language)}
-                        </span>
-                      </Tooltip>
-                    </Marker>
-                  ))}
+                  {market === "GLOBAL" || market === "OTHER"
+                    ? GLOBAL_MARKET_CLUSTERS.map((cluster) => {
+                        const marketOption = MARKET_OPTIONS.find((item) => item.code === cluster.code)!;
+                        return (
+                          <Marker
+                            key={`market-cluster-${cluster.code}`}
+                            position={cluster.center}
+                            icon={marketClusterIcon(cluster.code, cluster.count)}
+                            title={language === "fr" ? marketOption.fr : marketOption.en}
+                            riseOnHover
+                            eventHandlers={{ click: () => selectMarket(cluster.code) }}
+                          >
+                            <Tooltip direction="top" offset={[0, -18]} opacity={0.96}>
+                              <span className="font-semibold">
+                                {language === "fr" ? marketOption.fr : marketOption.en} · {cluster.count}
+                              </span>
+                            </Tooltip>
+                          </Marker>
+                        );
+                      })
+                    : visibleLocations.map((context) => (
+                        <Marker
+                          key={context.id}
+                          position={[context.latitude, context.longitude]}
+                          icon={mapMarkerIcon(context, selectedLocation?.id === context.id)}
+                          title={industrialContextText(context.name, language)}
+                          riseOnHover
+                          zIndexOffset={selectedLocation?.id === context.id ? 1000 : 0}
+                          eventHandlers={{
+                            click: () => {
+                              setSelectedLocation(context);
+                              setSelectedProduct(null);
+                            },
+                          }}
+                        >
+                          <Tooltip direction="top" offset={[0, -20]} opacity={0.96}>
+                            <span className="font-semibold">
+                              {industrialContextText(context.name, language)}
+                            </span>
+                          </Tooltip>
+                        </Marker>
+                      ))}
                 </MapContainer>
                 <div className="pointer-events-none absolute left-3 top-3 z-[500] flex items-center gap-2 rounded-md border border-white/80 bg-white/92 px-2.5 py-2 text-[11px] font-semibold text-[#07111F] shadow-md backdrop-blur dark:border-white/15 dark:bg-[#07111F]/90 dark:text-white">
                   <Globe2 className="h-4 w-4 text-[#B26F00] dark:text-[#F5A623]" />

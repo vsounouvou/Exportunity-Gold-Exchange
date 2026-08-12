@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AlertTriangle,
+  BriefcaseBusiness,
   Building2,
   CheckCircle2,
   ClipboardCheck,
@@ -17,6 +18,7 @@ import {
   ShieldCheck,
   Truck,
   UploadCloud,
+  UserRoundCog,
   Users,
 } from "lucide-react";
 import { Link } from "wouter";
@@ -143,6 +145,65 @@ type StoredContactPlan = ContactPlanForm & {
 type FactoryLeadResponse = {
   ok: boolean;
   leads: FactoryLead[];
+  total: number;
+};
+
+type OpportunityWorkstream = {
+  key: string;
+  taskId: number | null;
+  agentId: number | null;
+  agentName: string;
+  role: string;
+  title: string;
+  status: string;
+};
+
+type CommercialOpportunity = {
+  id: string;
+  referenceCode: string;
+  title: string;
+  requirementType: string;
+  status: string;
+  urgency: string;
+  quantityText: string | null;
+  deliveryCity: string | null;
+  deliveryCountryCode: string | null;
+  requesterCompany: string | null;
+  commercialIntent: string | null;
+  commercialActionMode: string | null;
+  intentConfidence: number | null;
+  nextAction: string | null;
+  submittedAt: string | null;
+  productRequirement: {
+    productName: string | null;
+    productCategory: string | null;
+    specification: string | null;
+    quantityText: string | null;
+    unit: string | null;
+    origin: string | null;
+    destination: string | null;
+    frequency: string | null;
+    incoterm: string | null;
+    missingFields: string[];
+  } | null;
+  operationsHandoff: {
+    taskId: number;
+    status: string;
+    assignedAgentName: string | null;
+    participants: Array<{
+      key: string;
+      agentId: number | null;
+      agentName: string;
+      role: string;
+    }>;
+    workstreams: OpportunityWorkstream[];
+    missingSpecialistKeys: string[];
+  } | null;
+};
+
+type CommercialOpportunityResponse = {
+  ok: boolean;
+  requirements: CommercialOpportunity[];
   total: number;
 };
 
@@ -316,6 +377,11 @@ export default function AdminIndustrialNetworkPage() {
     staleTime: 15_000,
   });
 
+  const opportunitiesQuery = useQuery<CommercialOpportunityResponse>({
+    queryKey: ["/api/industrial/admin/requirements?limit=25"],
+    staleTime: 10_000,
+  });
+
   const importMutation = useMutation({
     mutationFn: async () =>
       apiRequest(
@@ -455,6 +521,10 @@ export default function AdminIndustrialNetworkPage() {
 
   const summary = previewQuery.data?.summary;
   const leads = leadsQuery.data?.leads || [];
+  const opportunities = opportunitiesQuery.data?.requirements || [];
+  const openOpportunities = opportunities.filter(
+    (item) => !["closed", "cancelled"].includes(item.status),
+  );
 
   return (
     <main className="min-h-screen bg-[#F7F8FA] text-slate-950">
@@ -469,9 +539,8 @@ export default function AdminIndustrialNetworkPage() {
               Industrial Network
             </h1>
             <p className="mt-2 text-sm leading-6 text-slate-600 sm:text-base">
-              Qualify Benin factories, industrial buyers, technical suppliers and
-              logistics partners from cited sources before any contact or public
-              publication.
+              Manage global industrial demand, specialist execution and source-backed
+              partner discovery before any contact or public commitment.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -481,11 +550,12 @@ export default function AdminIndustrialNetworkPage() {
               onClick={() => {
                 previewQuery.refetch();
                 leadsQuery.refetch();
+                opportunitiesQuery.refetch();
               }}
-              disabled={previewQuery.isFetching || leadsQuery.isFetching}
+              disabled={previewQuery.isFetching || leadsQuery.isFetching || opportunitiesQuery.isFetching}
             >
               <RefreshCw
-                className={`mr-2 h-4 w-4 ${previewQuery.isFetching || leadsQuery.isFetching ? "animate-spin" : ""}`}
+                className={`mr-2 h-4 w-4 ${previewQuery.isFetching || leadsQuery.isFetching || opportunitiesQuery.isFetching ? "animate-spin" : ""}`}
               />
               Refresh evidence
             </Button>
@@ -497,6 +567,119 @@ export default function AdminIndustrialNetworkPage() {
             </Button>
           </div>
         </header>
+
+        <section className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm" aria-labelledby="commercial-opportunities-title">
+          <div className="flex flex-col gap-3 border-b border-slate-200 p-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <div className="flex items-center gap-2">
+                <BriefcaseBusiness className="h-5 w-5 text-[#9A6700]" />
+                <h2 id="commercial-opportunities-title" className="text-lg font-black text-[#07121F]">
+                  Live commercial opportunities
+                </h2>
+              </div>
+              <p className="mt-1 text-sm text-slate-500">
+                Every client demand has one accountable lead, visible specialist work and a governed next action.
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-800">
+                {openOpportunities.length} open
+              </Badge>
+              <Button asChild size="sm" variant="outline" className="border-slate-300 bg-white text-slate-800">
+                <Link href="/ai-team">Open Operations Center</Link>
+              </Button>
+              <Button asChild size="sm" variant="outline" className="border-slate-300 bg-white text-slate-800">
+                <Link href="/admin/agents-os?tab=workforce">Review staffing</Link>
+              </Button>
+            </div>
+          </div>
+
+          {opportunitiesQuery.isLoading ? (
+            <div className="flex min-h-40 items-center justify-center gap-2 text-sm text-slate-500">
+              <RefreshCw className="h-4 w-4 animate-spin" /> Loading commercial work...
+            </div>
+          ) : opportunitiesQuery.isError ? (
+            <div className="m-4 rounded-lg border border-rose-200 bg-rose-50 p-4 text-sm text-rose-900">
+              The opportunity queue could not be loaded. Confirm the staff session and database migration status.
+            </div>
+          ) : opportunities.length ? (
+            <div className="divide-y divide-slate-100">
+              {opportunities.slice(0, 8).map((opportunity) => {
+                const product = opportunity.productRequirement;
+                const handoff = opportunity.operationsHandoff;
+                const productName = product?.productName || opportunity.title;
+                const quantity = product?.quantityText || opportunity.quantityText;
+                const destination = product?.destination || [opportunity.deliveryCity, opportunity.deliveryCountryCode].filter(Boolean).join(", ");
+                return (
+                  <article key={opportunity.id} className="grid gap-4 p-4 hover:bg-slate-50/70 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,1.2fr)]">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-xs font-black uppercase tracking-[0.08em] text-[#9A6700]">{opportunity.referenceCode}</span>
+                        <Badge variant="outline" className="border-slate-200 bg-slate-50 text-slate-700">
+                          {readableStatus(opportunity.status)}
+                        </Badge>
+                        {opportunity.commercialActionMode ? (
+                          <Badge variant="outline" className="border-blue-200 bg-blue-50 text-blue-800">
+                            {opportunity.commercialActionMode}
+                          </Badge>
+                        ) : null}
+                      </div>
+                      <h3 className="mt-2 truncate font-black text-[#07121F]">{productName}</h3>
+                      <p className="mt-1 text-xs leading-5 text-slate-500">
+                        {[quantity, destination, product?.incoterm].filter(Boolean).join(" / ") || "Qualification in progress"}
+                      </p>
+                      <div className="mt-2 text-xs font-semibold text-slate-600">
+                        {readableStatus(opportunity.commercialIntent || opportunity.requirementType)}
+                        {opportunity.requesterCompany ? ` for ${opportunity.requesterCompany}` : ""}
+                      </div>
+                    </div>
+
+                    <div className="min-w-0 border-slate-200 xl:border-l xl:pl-4">
+                      <div className="flex items-center gap-2 text-xs font-bold uppercase text-slate-500">
+                        <UserRoundCog className="h-4 w-4" /> Accountable team
+                      </div>
+                      <div className="mt-2 font-bold text-[#07121F]">
+                        {handoff?.assignedAgentName || "Commercial assignment required"}
+                      </div>
+                      <div className="mt-2 flex flex-wrap gap-1.5">
+                        {(handoff?.workstreams || []).slice(0, 5).map((workstream) => (
+                          <Badge key={`${opportunity.id}-${workstream.key}`} variant="outline" className="border-slate-200 bg-white text-slate-600">
+                            {workstream.agentName || readableStatus(workstream.key)} · {readableStatus(workstream.status)}
+                          </Badge>
+                        ))}
+                      </div>
+                      {handoff?.missingSpecialistKeys?.length ? (
+                        <p className="mt-2 text-xs font-semibold text-amber-700">
+                          Staffing review: {handoff.missingSpecialistKeys.map(readableStatus).join(", ")}
+                        </p>
+                      ) : null}
+                    </div>
+
+                    <div className="min-w-0 border-slate-200 xl:border-l xl:pl-4">
+                      <div className="text-xs font-bold uppercase text-slate-500">Next action</div>
+                      <p className="mt-2 text-sm font-semibold leading-5 text-slate-800">
+                        {opportunity.nextAction || "Review and qualify the industrial requirement."}
+                      </p>
+                      {product?.missingFields?.length ? (
+                        <p className="mt-2 text-xs leading-5 text-slate-500">
+                          Missing: {product.missingFields.map(readableStatus).join(", ")}
+                        </p>
+                      ) : (
+                        <p className="mt-2 text-xs font-semibold text-emerald-700">Commercial qualification captured</p>
+                      )}
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="p-8 text-center">
+              <BriefcaseBusiness className="mx-auto h-8 w-8 text-slate-300" />
+              <div className="mt-3 font-black text-[#07121F]">No commercial demand has been submitted yet</div>
+              <p className="mt-1 text-sm text-slate-500">Qualified client conversations will appear here with their assigned team and workstreams.</p>
+            </div>
+          )}
+        </section>
 
         <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5" aria-label="Industrial network coverage">
           {[

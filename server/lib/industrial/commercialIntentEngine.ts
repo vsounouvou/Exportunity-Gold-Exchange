@@ -1,25 +1,35 @@
 import { normalizeIndustrialText } from "./taxonomy";
 
-export type CommercialIntent =
-  | "SOURCE_PRODUCT"
-  | "BUY_PRODUCT"
-  | "SELL_EXPORT"
-  | "FIND_BUYER"
-  | "FIND_MACHINERY"
-  | "FIND_RAW_MATERIAL"
-  | "REQUEST_QUOTE"
-  | "COMPARE_SUPPLIERS"
-  | "PLACE_ORDER"
-  | "TRACK_ORDER"
-  | "NEGOTIATE"
-  | "MARKET_RESEARCH"
-  | "MARKET_ENTRY"
-  | "VERIFY_SUPPLIER"
-  | "FINANCING"
-  | "LOGISTICS"
-  | "GENERAL_QUESTION";
+export const COMMERCIAL_INTENTS = [
+  "SOURCE_PRODUCT",
+  "BUY_PRODUCT",
+  "SELL_EXPORT",
+  "FIND_BUYER",
+  "FIND_MACHINERY",
+  "FIND_RAW_MATERIAL",
+  "REQUEST_QUOTE",
+  "COMPARE_SUPPLIERS",
+  "PLACE_ORDER",
+  "TRACK_ORDER",
+  "NEGOTIATE",
+  "MARKET_RESEARCH",
+  "MARKET_ENTRY",
+  "VERIFY_SUPPLIER",
+  "FINANCING",
+  "LOGISTICS",
+  "GENERAL_QUESTION",
+] as const;
 
-export type CommercialActionMode = "ANSWER" | "ASK" | "ACT" | "ESCALATE";
+export type CommercialIntent = (typeof COMMERCIAL_INTENTS)[number];
+
+export const COMMERCIAL_ACTION_MODES = [
+  "ANSWER",
+  "ASK",
+  "ACT",
+  "ESCALATE",
+] as const;
+
+export type CommercialActionMode = (typeof COMMERCIAL_ACTION_MODES)[number];
 
 export type CommercialProductIntent = {
   name?: string;

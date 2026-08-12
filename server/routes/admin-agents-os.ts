@@ -8,6 +8,7 @@ import { ensureAgentManagementV2Tables } from "../lib/agents/ensureManagementV2T
 import { ensureAgentsProductionTables } from "../lib/agents/ensureProductionAgents";
 import { ensureDefaultCompany } from "../lib/default-company";
 import { ensureExportunityRoleSeatCatalog } from "../lib/company-brain/ensureRoleSeatCatalog";
+import { ensureIndustrialTables } from "../lib/industrial/ensureTables";
 import {
   EXPORTUNITY_ROLE_SEAT_DEPARTMENTS,
   EXPORTUNITY_ROLE_SEAT_TOTAL,
@@ -355,6 +356,114 @@ router.get("/marketplace/agents", async (req: any, res) => {
 
 router.use("/admin", ensureTenantAdmin);
 
+router.get("/admin/agents-os/workforce-requests", async (req: any, res) => {
+  try {
+    await ensureIndustrialTables();
+    const tenant = resolveTenant(req, res);
+    if (!tenant) return;
+    const result = await db.execute(sql`
+      select
+        sr.id,
+        sr.requirement_id,
+        sr.role_template_id,
+        sr.role_code,
+        sr.role_title,
+        sr.department_key,
+        sr.reason,
+        sr.evidence,
+        sr.priority,
+        sr.status,
+        sr.review_note,
+        sr.provisioned_agent_id,
+        sr.created_at,
+        sr.updated_at,
+        ir.reference_code,
+        ir.title as requirement_title,
+        ir.commercial_intent
+      from industrial_agent_staffing_requests sr
+      left join industrial_requirements ir on ir.id = sr.requirement_id
+      where sr.tenant_id = ${tenant.tenantId}
+      order by
+        case sr.status when 'proposed' then 0 when 'approved' then 1 when 'provisioned' then 2 else 3 end,
+        case sr.priority when 'critical' then 0 when 'high' then 1 when 'medium' then 2 else 3 end,
+        sr.updated_at desc
+      limit 200
+    `);
+    const items = getRows<any>(result);
+    res.json({
+      ok: true,
+      summary: {
+        total: items.length,
+        proposed: items.filter((item) => item.status === "proposed").length,
+        approved: items.filter((item) => item.status === "approved").length,
+        provisioned: items.filter((item) => item.status === "provisioned").length,
+      },
+      items,
+    });
+  } catch (error: any) {
+    res.status(500).json({ message: error?.message || "Failed to load workforce requests" });
+  }
+});
+
+router.post("/admin/agents-os/workforce-requests/:id(\\d+)/review", async (req: any, res) => {
+  try {
+    await ensureIndustrialTables();
+    const tenant = resolveTenant(req, res);
+    if (!tenant) return;
+    const id = Number(req.params.id);
+    const decision = asString(req.body?.decision).toLowerCase();
+    const reviewNote = asString(req.body?.reviewNote).slice(0, 1200);
+    if (!id || !["approve", "reject"].includes(decision)) {
+      return res.status(400).json({ message: "Choose approve or reject." });
+    }
+    const beforeResult = await db.execute(sql`
+      select * from industrial_agent_staffing_requests
+      where id = ${id} and tenant_id = ${tenant.tenantId}
+      limit 1
+    `);
+    const before = getRows<any>(beforeResult)[0];
+    if (!before) return res.status(404).json({ message: "Workforce request not found" });
+    if (!["proposed", "approved"].includes(String(before.status))) {
+      return res.status(409).json({ message: `This workforce request is already ${before.status}.` });
+    }
+    const nextStatus = decision === "approve" ? "approved" : "rejected";
+    const updatedResult = await db.execute(sql`
+      update industrial_agent_staffing_requests
+      set status = ${nextStatus},
+          reviewed_by_user_id = ${req.adminUser?.id ? Number(req.adminUser.id) : null},
+          review_note = ${reviewNote || null},
+          reviewed_at = now(),
+          updated_at = now()
+      where id = ${id} and tenant_id = ${tenant.tenantId}
+      returning *
+    `);
+    const updated = getRows<any>(updatedResult)[0];
+    await writeAudit({
+      tenantId: tenant.tenantId,
+      actor: req.adminUser,
+      action: decision === "approve" ? "WORKFORCE_REQUEST_APPROVE" : "WORKFORCE_REQUEST_REJECT",
+      entityType: "industrial_agent_staffing_request",
+      entityId: id,
+      before,
+      after: updated,
+      metadata: { runtimeAgentsStarted: 0, productionEnabled: false },
+      req,
+    });
+    res.json({
+      ok: true,
+      item: updated,
+      runtimeAgentsStarted: 0,
+      productionEnabled: false,
+      nextStep:
+        nextStatus === "approved"
+          ? "Provision the approved role seat separately. It will remain inactive until explicitly enabled."
+          : null,
+    });
+  } catch (error: any) {
+    res.status(500).json({ message: error?.message || "Failed to review workforce request" });
+  }
+});
+
 router.get("/admin/agents-os/summary", async (req: any, res) => {
   try {
     await ensureAgentsOsMarketplaceTables();
@@ -474,6 +583,7 @@ router.post("/admin/agents/:id(\\d+)/provision", async (req: any, res) => {
 
     await ensureExportunityRoleSeatCatalog();
     await ensureAgentManagementV2Tables();
+    await ensureIndustrialTables();
     const templateId = Number(req.params.id);
     const companyId = await ensureDefaultCompany({
       tenantId: tenant.tenantId,
@@ -630,8 +740,32 @@ router.post("/admin/agents/:id(\\d+)/provision", async (req: any, res) => {
         where id = ${templateId} and tenant_id = ${tenant.tenantId}
       `);
 
+      await tx.execute(sql`
+        update industrial_agent_staffing_requests
+        set status = 'provisioned',
+            provisioned_agent_id = ${Number(runtime.id)},
+            provisioned_at = now(),
+            updated_at = now()
+        where tenant_id = ${tenant.tenantId}
+          and role_template_id = ${templateId}
+          and status = 'approved'
+      `);
+
       return { runtimeAgentId: Number(runtime.id), alreadyProvisioned: false };
     });
+
+    // Reusing an existing inactive runtime still fulfils an approved staffing
+    // request. Provisioning never activates the runtime or external tools.
+    await db.execute(sql`
+      update industrial_agent_staffing_requests
+      set status = 'provisioned',
+          provisioned_agent_id = ${result.runtimeAgentId},
+          provisioned_at = coalesce(provisioned_at, now()),
+          updated_at = now()
+      where tenant_id = ${tenant.tenantId}
+        and role_template_id = ${templateId}
+        and status = 'approved'
+    `);
 
     await writeAudit({
       tenantId: tenant.tenantId,

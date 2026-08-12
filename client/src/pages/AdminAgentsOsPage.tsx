@@ -24,7 +24,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { getAgentAvatarUrl } from "@/lib/agentAvatar";
 
-type AgentsOsTab = "registry" | "organization" | "studio" | "knowledge" | "marketplace" | "analytics" | "governance";
+type AgentsOsTab = "registry" | "organization" | "workforce" | "studio" | "knowledge" | "marketplace" | "analytics" | "governance";
 
 type SummaryPayload = {
   summary: {
@@ -140,6 +140,31 @@ type RoleSeatsResponse = {
   departments: RoleSeatDepartment[];
 };
 
+type WorkforceRequest = {
+  id: number;
+  requirement_id: string | null;
+  role_template_id: number | null;
+  role_code: string;
+  role_title: string;
+  department_key: string;
+  reason: string;
+  evidence: Record<string, unknown> | null;
+  priority: string;
+  status: string;
+  review_note: string | null;
+  provisioned_agent_id: number | null;
+  reference_code: string | null;
+  requirement_title: string | null;
+  commercial_intent: string | null;
+  created_at: string;
+};
+
+type WorkforceResponse = {
+  ok: boolean;
+  summary: { total: number; proposed: number; approved: number; provisioned: number };
+  items: WorkforceRequest[];
+};
+
 function useDebouncedValue<T>(value: T, delayMs = 300) {
   const [debounced, setDebounced] = useState(value);
   useEffect(() => {
@@ -158,7 +183,7 @@ function fmtMoney(value: number | string | null | undefined) {
 function parseTab(search: string): AgentsOsTab {
   try {
     const value = String(new URLSearchParams(search).get("tab") || "").toLowerCase();
-    if (value === "registry" || value === "organization" || value === "studio" || value === "knowledge" || value === "marketplace" || value === "analytics" || value === "governance") {
+    if (value === "registry" || value === "organization" || value === "workforce" || value === "studio" || value === "knowledge" || value === "marketplace" || value === "analytics" || value === "governance") {
       return value;
     }
   } catch {
@@ -253,6 +278,14 @@ export default function AdminAgentsOsPage() {
     refetchOnWindowFocus: false,
     retry: 1,
   });
+  const workforceQuery = useQuery<WorkforceResponse>({
+    queryKey: ["/api/admin/agents-os/workforce-requests"],
+    queryFn: async () => apiRequest("/api/admin/agents-os/workforce-requests", "GET"),
+    enabled: activeTab === "workforce",
+    staleTime: 15_000,
+    refetchOnWindowFocus: false,
+    retry: 1,
+  });
 
   const filteredRoleSeatDepartments = useMemo(() => {
     const needle = organizationQuery.trim().toLowerCase();
@@ -293,6 +326,7 @@ export default function AdminAgentsOsPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/marketplace/agents"] }),
       queryClient.invalidateQueries({ queryKey: ["/api/marketplace/agents"] }),
       queryClient.invalidateQueries({ queryKey: ["/api/admin/agents-os/role-seats"] }),
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/agents-os/workforce-requests"] }),
     ]);
   };
 
@@ -308,6 +342,21 @@ export default function AdminAgentsOsPage() {
     },
     onError: (error: any) => {
       toast({ title: "Provisioning failed", description: error?.message || "Could not provision role seat", variant: "destructive" });
+    },
+  });
+
+  const reviewWorkforceRequest = useMutation({
+    mutationFn: async ({ id, decision }: { id: number; decision: "approve" | "reject" }) =>
+      apiRequest(`/api/admin/agents-os/workforce-requests/${id}/review`, "POST", { decision }),
+    onSuccess: async (payload: any) => {
+      await refreshAll();
+      toast({
+        title: payload?.item?.status === "approved" ? "Staffing need approved" : "Staffing need rejected",
+        description: payload?.nextStep || "The governed workforce record was updated.",
+      });
+    },
+    onError: (error: any) => {
+      toast({ title: "Review failed", description: error?.message || "Could not review staffing need", variant: "destructive" });
     },
   });
 
@@ -590,9 +639,10 @@ export default function AdminAgentsOsPage() {
       </div>
 
       <Tabs value={activeTab} onValueChange={navigateTab}>
-        <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 lg:grid-cols-7 bg-gray-900 border border-gray-800">
+        <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 lg:grid-cols-8 bg-gray-900 border border-gray-800">
           <TabsTrigger value="registry"><Bot className="h-4 w-4 mr-1" />Registry</TabsTrigger>
           <TabsTrigger value="organization"><Building2 className="h-4 w-4 mr-1" />Organization</TabsTrigger>
+          <TabsTrigger value="workforce"><UsersRound className="h-4 w-4 mr-1" />Workforce</TabsTrigger>
           <TabsTrigger value="studio"><Plus className="h-4 w-4 mr-1" />Studio</TabsTrigger>
           <TabsTrigger value="knowledge"><Library className="h-4 w-4 mr-1" />Knowledge</TabsTrigger>
           <TabsTrigger value="marketplace"><Globe className="h-4 w-4 mr-1" />Marketplace</TabsTrigger>
@@ -743,6 +793,78 @@ export default function AdminAgentsOsPage() {
             ) : (
               <div className="p-6 text-sm text-slate-600">No role seats match this search.</div>
             )}
+          </section>
+        </TabsContent>
+
+        <TabsContent value="workforce" className="space-y-3">
+          <section className="rounded-lg border border-slate-200 bg-white shadow-sm">
+            <div className="flex flex-col gap-3 border-b border-slate-200 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h2 className="text-lg font-semibold text-slate-950">Demand-driven workforce</h2>
+                <p className="mt-1 max-w-3xl text-sm text-slate-600">
+                  Commercial demand can propose missing capacity. Approval, provisioning, production access, and external communication remain separate human-controlled gates.
+                </p>
+              </div>
+              <Button variant="outline" className="agents-os-secondary-action" onClick={() => workforceQuery.refetch()}>
+                <RefreshCw className="mr-2 h-4 w-4" />Refresh
+              </Button>
+            </div>
+            <div className="grid grid-cols-2 gap-px border-b border-slate-200 bg-slate-200 lg:grid-cols-4">
+              {[
+                ["Total needs", workforceQuery.data?.summary.total ?? 0],
+                ["Awaiting review", workforceQuery.data?.summary.proposed ?? 0],
+                ["Approved", workforceQuery.data?.summary.approved ?? 0],
+                ["Provisioned inactive", workforceQuery.data?.summary.provisioned ?? 0],
+              ].map(([label, value]) => (
+                <div key={String(label)} className="bg-white px-4 py-3">
+                  <div className="text-xs font-medium text-slate-500">{label}</div>
+                  <div className="mt-1 text-xl font-semibold text-slate-950">{value}</div>
+                </div>
+              ))}
+            </div>
+            <div className="divide-y divide-slate-200">
+              {workforceQuery.isLoading ? (
+                <div className="p-6 text-sm text-slate-600">Loading workforce demand...</div>
+              ) : workforceQuery.isError ? (
+                <div className="p-6 text-sm text-rose-700">Workforce demand could not be loaded.</div>
+              ) : workforceQuery.data?.items?.length ? (
+                workforceQuery.data.items.map((item) => (
+                  <article key={item.id} className="p-4">
+                    <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h3 className="font-semibold text-slate-950">{item.role_title}</h3>
+                          <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-800">{item.priority}</Badge>
+                          <Badge variant="outline" className="border-slate-200 bg-slate-50 text-slate-700">{item.status}</Badge>
+                        </div>
+                        <p className="mt-1 text-sm text-slate-700">{item.reason}</p>
+                        <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
+                          <span>Department: {item.department_key}</span>
+                          {item.reference_code ? <span>Case: {item.reference_code}</span> : null}
+                          {item.commercial_intent ? <span>Intent: {item.commercial_intent}</span> : null}
+                        </div>
+                      </div>
+                      <div className="flex shrink-0 flex-wrap gap-2">
+                        {item.status === "proposed" ? (
+                          <>
+                            <Button size="sm" variant="outline" className="agents-os-secondary-action" onClick={() => reviewWorkforceRequest.mutate({ id: item.id, decision: "reject" })}>Reject</Button>
+                            <Button size="sm" className="bg-amber-500 text-slate-950 hover:bg-amber-400" onClick={() => reviewWorkforceRequest.mutate({ id: item.id, decision: "approve" })}>Approve need</Button>
+                          </>
+                        ) : null}
+                        {item.status === "approved" && item.role_template_id ? (
+                          <Button size="sm" className="bg-slate-950 text-white hover:bg-slate-800" onClick={() => provisionRoleSeat.mutate(Number(item.role_template_id))}>Provision inactive</Button>
+                        ) : null}
+                        {item.provisioned_agent_id ? (
+                          <Button size="sm" variant="outline" className="agents-os-secondary-action" onClick={() => setLocation(`/operations/agents/${item.provisioned_agent_id}?edit=1`)}>Edit identity</Button>
+                        ) : null}
+                      </div>
+                    </div>
+                  </article>
+                ))
+              ) : (
+                <div className="p-6 text-sm text-slate-600">No unmet staffing demand is recorded.</div>
+              )}
+            </div>
           </section>
         </TabsContent>
 

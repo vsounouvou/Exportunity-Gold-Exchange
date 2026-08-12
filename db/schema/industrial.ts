@@ -747,6 +747,16 @@ export const industrialRequirements = pgTable(
     requesterName: text("requester_name").notNull(),
     requesterEmail: text("requester_email").notNull(),
     requesterPhone: text("requester_phone"),
+    commercialIntent: text("commercial_intent"),
+    commercialActionMode: text("commercial_action_mode"),
+    intentConfidence: decimal("intent_confidence", {
+      precision: 4,
+      scale: 3,
+    }),
+    assignedCommercialAgentId: integer("assigned_commercial_agent_id"),
+    sourceConversationId: text("source_conversation_id"),
+    nextAction: text("next_action"),
+    nextActionAt: timestamp("next_action_at"),
     status: industrialRequirementStatusEnum("status")
       .notNull()
       .default("draft"),
@@ -778,6 +788,62 @@ export const industrialRequirements = pgTable(
     technicalContextIndex: index(
       "industrial_requirements_technical_context_idx",
     ).on(t.factoryId, t.machineId, t.assemblyId, t.componentId),
+    commercialQueueIndex: index(
+      "industrial_requirements_commercial_queue_idx",
+    ).on(t.tenantId, t.commercialIntent, t.status, t.nextActionAt),
+  }),
+);
+
+export const industrialProductRequirements = pgTable(
+  "industrial_product_requirements",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: integer("tenant_id")
+      .references(() => tenants.id, { onDelete: "cascade" })
+      .notNull(),
+    requirementId: uuid("requirement_id")
+      .references(() => industrialRequirements.id, { onDelete: "cascade" })
+      .notNull(),
+    intent: text("intent").notNull(),
+    intentConfidence: decimal("intent_confidence", {
+      precision: 4,
+      scale: 3,
+    }),
+    suggestedAction: text("suggested_action").notNull().default("ASK"),
+    productName: text("product_name"),
+    productCategory: text("product_category"),
+    specification: text("specification"),
+    quantityText: text("quantity_text"),
+    unit: text("unit"),
+    origin: text("origin"),
+    destination: text("destination"),
+    targetPrice: text("target_price"),
+    currency: text("currency"),
+    deadlineText: text("deadline_text"),
+    frequency: text("frequency"),
+    incoterm: text("incoterm"),
+    customerType: text("customer_type"),
+    missingFields: jsonb("missing_fields")
+      .$type<string[]>()
+      .notNull()
+      .default([]),
+    metadata: jsonb("metadata")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default({}),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => ({
+    requirementUnique: uniqueIndex(
+      "industrial_product_requirements_requirement_unique",
+    ).on(t.requirementId),
+    tenantIntentIndex: index(
+      "industrial_product_requirements_tenant_intent_idx",
+    ).on(t.tenantId, t.intent, t.createdAt),
+    tenantProductIndex: index(
+      "industrial_product_requirements_tenant_product_idx",
+    ).on(t.tenantId, t.productCategory, t.productName),
   }),
 );
 

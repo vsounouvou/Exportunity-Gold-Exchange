@@ -444,6 +444,9 @@ export function IndustrialAssistantChat({
   pane?: boolean;
   className?: string;
 }) {
+  const conversationIdRef = useRef(
+    `industrial-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
+  );
   const copy =
     language === "fr"
       ? {
@@ -1064,6 +1067,29 @@ export function IndustrialAssistantChat({
           requesterEmail: requesterEmail.trim(),
           factoryId: product?.factoryId || null,
           technicalDetails,
+          commercialContext: {
+            intent: intake.intent || "GENERAL_QUESTION",
+            confidence: intake.confidence || 0,
+            suggestedAction: intake.suggestedAction || "ASK",
+            product: {
+              name: intake.product?.name || product?.name || undefined,
+              category: intake.product?.category || undefined,
+              specification:
+                intake.product?.specification || qualityRequirements || undefined,
+              quantity: intake.product?.quantity || quantityText || undefined,
+              unit: intake.product?.unit || product?.unitOfMeasure || undefined,
+            },
+            origin: intake.origin || originPreference || undefined,
+            destination: destination || undefined,
+            targetPrice: intake.targetPrice || budget || undefined,
+            currency: intake.currency || undefined,
+            deadline: intake.deadline || requiredBy || undefined,
+            frequency: intake.frequency || frequency || undefined,
+            incoterm: intake.incoterm || incoterm || undefined,
+            customerType: intake.customerType || undefined,
+            missingFields: intake.missingFields || [],
+            sourceConversationId: conversationIdRef.current,
+          },
         }),
       });
       const payload = await response.json().catch(() => null);
@@ -1093,6 +1119,13 @@ export function IndustrialAssistantChat({
       const assignedAgentName = String(
         payload.requirement?.operationsHandoff?.assignedAgentName || "",
       ).trim();
+      const specialistNames = Array.from(
+        new Set(
+          (payload.requirement?.operationsHandoff?.workstreams || [])
+            .map((item: any) => String(item?.agentName || "").trim())
+            .filter(Boolean),
+        ),
+      );
       setAttachments([]);
       setAttachmentSession(null);
       setCaseReference(createdReference);
@@ -1100,8 +1133,8 @@ export function IndustrialAssistantChat({
       setStep("complete");
       appendAssistant(
         language === "fr"
-          ? `Dossier ${createdReference} enregistre.${uploaded ? ` ${uploaded} ${uploaded > 1 ? copy.evidenceSavedPlural : copy.evidenceSaved}.` : ""}${assignedAgentName ? ` ${assignedAgentName} est assigne a la revue interne.` : ""} Aucun fournisseur n'est contacte automatiquement.`
-          : `Case ${createdReference} has been recorded.${uploaded ? ` ${uploaded} ${uploaded > 1 ? copy.evidenceSavedPlural : copy.evidenceSaved}.` : ""}${assignedAgentName ? ` ${assignedAgentName} has been assigned to the internal review.` : ""} No supplier is contacted automatically.`,
+          ? `Dossier ${createdReference} enregistre.${uploaded ? ` ${uploaded} ${uploaded > 1 ? copy.evidenceSavedPlural : copy.evidenceSaved}.` : ""}${assignedAgentName ? ` ${assignedAgentName} pilote la revue commerciale.` : ""}${specialistNames.length ? ` Equipe mobilisee: ${specialistNames.join(", ")}. Chaque specialiste a un travail visible dans le Centre des operations.` : ""} Aucun fournisseur n'est contacte automatiquement.`
+          : `Case ${createdReference} has been recorded.${uploaded ? ` ${uploaded} ${uploaded > 1 ? copy.evidenceSavedPlural : copy.evidenceSaved}.` : ""}${assignedAgentName ? ` ${assignedAgentName} owns the commercial review.` : ""}${specialistNames.length ? ` Mobilized team: ${specialistNames.join(", ")}. Each specialist has a visible Operations Center workstream.` : ""} No supplier is contacted automatically.`,
       );
     } catch (nextError: any) {
       if (createdReference) {

@@ -31,6 +31,7 @@ import {
   industrialOrders,
   industrialPartRecordDocuments,
   industrialPartRecords,
+  industrialProductRequirements,
   industrialProductionLines,
   industrialRequirementAttachments,
   industrialRequirementMatches,
@@ -184,6 +185,11 @@ import {
   recommendLegacyProductReview,
 } from "../lib/industrial/legacyProductReview";
 import { createIndustrialRequirementOperationsHandoff } from "../lib/industrial/operationsHandoff";
+import {
+  COMMERCIAL_ACTION_MODES,
+  COMMERCIAL_INTENTS,
+} from "../lib/industrial/commercialIntentEngine";
+import { proposeCommercialStaffing } from "../lib/industrial/workforcePlanning";
 
 const router = Router();
 
@@ -498,6 +504,33 @@ const industrialRequirementSchema = z.object({
     .record(z.string(), z.string().trim().max(600))
     .optional()
     .default({}),
+  commercialContext: z
+    .object({
+      intent: z.enum(COMMERCIAL_INTENTS),
+      confidence: z.number().min(0).max(1).optional().default(0),
+      suggestedAction: z.enum(COMMERCIAL_ACTION_MODES),
+      product: z
+        .object({
+          name: z.string().trim().max(240).optional(),
+          category: z.string().trim().max(160).optional(),
+          specification: z.string().trim().max(600).optional(),
+          quantity: z.string().trim().max(160).optional(),
+          unit: z.string().trim().max(80).optional(),
+        })
+        .optional()
+        .default({}),
+      origin: z.string().trim().max(240).optional(),
+      destination: z.string().trim().max(240).optional(),
+      targetPrice: z.string().trim().max(160).optional(),
+      currency: z.string().trim().max(16).optional(),
+      deadline: z.string().trim().max(160).optional(),
+      frequency: z.string().trim().max(160).optional(),
+      incoterm: z.string().trim().max(16).optional(),
+      customerType: z.string().trim().max(160).optional(),
+      missingFields: z.array(z.string().trim().max(120)).max(30).default([]),
+      sourceConversationId: z.string().trim().max(160).optional(),
+    })
+    .optional(),
 });
 
 const factoryReviewSchema = z.object({
@@ -1686,10 +1719,31 @@ async function loadRequirementLifecycles(
 function staffRequirementSummary(
   row: any,
   lifecycle?: ReturnType<typeof requirementLifecycleFor>,
+  productRequirement?: any,
 ) {
   const metadata = safeRecord(row.metadata);
   const workflow = safeRecord(metadata.internalWorkflow);
   const technicalDetails = safeRecord(metadata.technicalDetails);
+  const operationsHandoff = safeRecord(metadata.operationsHandoff);
+  const participants = Array.isArray(operationsHandoff.participants)
+    ? operationsHandoff.participants.filter(
+        (participant): participant is Record<string, unknown> =>
+          Boolean(participant) && typeof participant === "object",
+      )
+    : [];
+  const workstreams = Array.isArray(operationsHandoff.workstreams)
+    ? operationsHandoff.workstreams.filter(
+        (workstream): workstream is Record<string, unknown> =>
+          Boolean(workstream) && typeof workstream === "object",
+      )
+    : [];
+  const missingSpecialistKeys = Array.isArray(
+    operationsHandoff.missingSpecialistKeys,
+  )
+    ? operationsHandoff.missingSpecialistKeys
+        .map((value) => String(value || "").trim())
+        .filter(Boolean)
+    : [];
   return {
     id: row.id,
     referenceCode: row.referenceCode,
@@ -1709,7 +1763,66 @@ function staffRequirementSummary(
     status: row.status,
     visibility: row.visibility,
     nextAction:
-      typeof workflow.nextAction === "string" ? workflow.nextAction : null,
+      typeof row.nextAction === "string" && row.nextAction.trim()
+        ? row.nextAction
+        : typeof workflow.nextAction === "string"
+          ? workflow.nextAction
+          : null,
+    nextActionAt: row.nextActionAt || null,
+    commercialIntent: row.commercialIntent || null,
+    commercialActionMode: row.commercialActionMode || null,
+    intentConfidence:
+      row.intentConfidence == null ? null : Number(row.intentConfidence),
+    assignedCommercialAgentId: row.assignedCommercialAgentId || null,
+    sourceConversationId: row.sourceConversationId || null,
+    productRequirement: productRequirement
+      ? {
+          id: productRequirement.id,
+          productName: productRequirement.productName,
+          productCategory: productRequirement.productCategory,
+          specification: productRequirement.specification,
+          quantityText: productRequirement.quantityText,
+          unit: productRequirement.unit,
+          origin: productRequirement.origin,
+          destination: productRequirement.destination,
+          targetPrice: productRequirement.targetPrice,
+          currency: productRequirement.currency,
+          deadlineText: productRequirement.deadlineText,
+          frequency: productRequirement.frequency,
+          incoterm: productRequirement.incoterm,
+          customerType: productRequirement.customerType,
+          missingFields: Array.isArray(productRequirement.missingFields)
+            ? productRequirement.missingFields
+            : [],
+        }
+      : null,
+    operationsHandoff: operationsHandoff.taskId
+      ? {
+          taskId: Number(operationsHandoff.taskId),
+          status: String(operationsHandoff.status || "created"),
+          assignedAgentId: Number(operationsHandoff.assignedAgentId || 0) || null,
+          assignedAgentName:
+            typeof operationsHandoff.assignedAgentName === "string"
+              ? operationsHandoff.assignedAgentName
+              : null,
+          participants: participants.map((participant) => ({
+            key: String(participant.key || ""),
+            agentId: Number(participant.agentId || 0) || null,
+            agentName: String(participant.agentName || ""),
+            role: String(participant.role || ""),
+          })),
+          workstreams: workstreams.map((workstream) => ({
+            key: String(workstream.key || ""),
+            taskId: Number(workstream.taskId || 0) || null,
+            agentId: Number(workstream.agentId || 0) || null,
+            agentName: String(workstream.agentName || ""),
+            role: String(workstream.role || ""),
+            title: String(workstream.title || ""),
+            status: String(workstream.status || "backlog"),
+          })),
+          missingSpecialistKeys,
+        }
+      : null,
     financingDiscussionRequested:
       row.requirementType === "machinery" &&
       String(technicalDetails.financingDiscussion || "").toLowerCase() ===
@@ -6353,6 +6466,16 @@ router.post("/requirements", async (req: any, res) => {
       parsedRequiredBy && !Number.isNaN(parsedRequiredBy.valueOf())
         ? parsedRequiredBy
         : null;
+    const commercialContext = parsed.data.commercialContext;
+    const nextAction = commercialContext
+      ? commercialContext.suggestedAction === "ASK"
+        ? `Complete qualification: ${commercialContext.missingFields.join(", ") || "commercial details"}`
+        : commercialContext.suggestedAction === "ACT"
+          ? "Review the qualified case and prepare approved specialist execution."
+          : commercialContext.suggestedAction === "ESCALATE"
+            ? "Escalate the case for human review."
+            : "Provide an evidence-backed answer."
+      : "Review and qualify the industrial requirement.";
     const [requirement] = await db
       .insert(industrialRequirements)
       .values({
@@ -6372,6 +6495,13 @@ router.post("/requirements", async (req: any, res) => {
         requesterName: parsed.data.requesterName,
         requesterEmail: parsed.data.requesterEmail,
         requesterPhone: parsed.data.requesterPhone || null,
+        commercialIntent: commercialContext?.intent || null,
+        commercialActionMode: commercialContext?.suggestedAction || null,
+        intentConfidence: commercialContext
+          ? String(commercialContext.confidence)
+          : null,
+        sourceConversationId: commercialContext?.sourceConversationId || null,
+        nextAction,
         status: "submitted",
         visibility: "exportunity_internal",
         submittedAt,
@@ -6394,6 +6524,67 @@ router.post("/requirements", async (req: any, res) => {
         createdAt: industrialRequirements.createdAt,
       });
 
+    if (commercialContext) {
+      await db.insert(industrialProductRequirements).values({
+        tenantId: tenant.id,
+        requirementId: requirement.id,
+        intent: commercialContext.intent,
+        intentConfidence: String(commercialContext.confidence),
+        suggestedAction: commercialContext.suggestedAction,
+        productName:
+          commercialContext.product.name ||
+          parsed.data.technicalDetails.productName ||
+          parsed.data.technicalDetails.detectedProductName ||
+          null,
+        productCategory:
+          commercialContext.product.category ||
+          parsed.data.technicalDetails.detectedProductCategory ||
+          null,
+        specification:
+          commercialContext.product.specification ||
+          parsed.data.technicalDetails.qualityRequirements ||
+          null,
+        quantityText:
+          commercialContext.product.quantity || parsed.data.quantityText || null,
+        unit:
+          commercialContext.product.unit ||
+          parsed.data.technicalDetails.unitOfMeasure ||
+          null,
+        origin:
+          commercialContext.origin ||
+          parsed.data.technicalDetails.originPreference ||
+          null,
+        destination:
+          commercialContext.destination || parsed.data.deliveryCity || null,
+        targetPrice:
+          commercialContext.targetPrice ||
+          parsed.data.technicalDetails.targetPrice ||
+          parsed.data.technicalDetails.budget ||
+          null,
+        currency: commercialContext.currency || null,
+        deadlineText:
+          commercialContext.deadline || parsed.data.requiredBy || null,
+        frequency:
+          commercialContext.frequency ||
+          parsed.data.technicalDetails.frequency ||
+          null,
+        incoterm:
+          commercialContext.incoterm ||
+          parsed.data.technicalDetails.incoterm ||
+          null,
+        customerType:
+          commercialContext.customerType ||
+          parsed.data.technicalDetails.customerType ||
+          null,
+        missingFields: commercialContext.missingFields,
+        metadata: {
+          source: "exportunity_ai_commercial_intake",
+          requirementType: parsed.data.requirementType,
+          categoryCode: parsed.data.categoryCode,
+        },
+      });
+    }
+
     await db.insert(industrialAuditLogs).values({
       tenantId: tenant.id,
       action: "industrial_requirement.submitted",
@@ -6404,6 +6595,9 @@ router.post("/requirements", async (req: any, res) => {
         requirementType: parsed.data.requirementType,
         categoryCode: parsed.data.categoryCode,
         intake: "public",
+        commercialIntent: commercialContext?.intent || null,
+        suggestedAction: commercialContext?.suggestedAction || null,
+        missingFields: commercialContext?.missingFields || [],
       },
     });
 
@@ -6450,10 +6644,14 @@ router.post("/requirements", async (req: any, res) => {
                 assignedAgentId: handoff.assignedAgentId,
                 assignedAgentName: handoff.assignedAgentName,
                 participantAgentIds: handoff.participantAgentIds,
+                participants: handoff.participants,
+                workstreams: handoff.workstreams,
+                missingSpecialistKeys: handoff.missingSpecialistKeys,
                 status: handoff.status,
                 createdAt: new Date().toISOString(),
               },
             },
+            assignedCommercialAgentId: handoff.assignedAgentId || null,
             updatedAt: new Date(),
           })
           .where(eq(industrialRequirements.id, requirement.id));
@@ -6467,6 +6665,8 @@ router.post("/requirements", async (req: any, res) => {
             taskId: handoff.taskId,
             assignedAgentId: handoff.assignedAgentId,
             participantAgentIds: handoff.participantAgentIds,
+            workstreamTaskIds: handoff.workstreams.map((item) => item.taskId),
+            missingSpecialistKeys: handoff.missingSpecialistKeys,
             source: "exportunity_industrial_front_office",
           },
         });
@@ -6489,6 +6689,50 @@ router.post("/requirements", async (req: any, res) => {
       });
     }
 
+    let staffingProposals: Awaited<
+      ReturnType<typeof proposeCommercialStaffing>
+    > = [];
+    if (commercialContext) {
+      try {
+        staffingProposals = await proposeCommercialStaffing({
+          tenantId: tenant.id,
+          companyId: operationsHandoff?.companyId || null,
+          requirementId: requirement.id,
+          referenceCode: requirement.referenceCode,
+          proposedByAgentId: operationsHandoff?.assignedAgentId || null,
+          context: {
+            intent: commercialContext.intent,
+            productCategory: commercialContext.product.category,
+            requirementType: parsed.data.requirementType,
+            missingSpecialistKeys:
+              operationsHandoff?.missingSpecialistKeys || [],
+          },
+        });
+        if (staffingProposals.length) {
+          await db.insert(industrialAuditLogs).values({
+            tenantId: tenant.id,
+            action: "industrial_requirement.staffing_proposed",
+            entityType: "industrial_requirement",
+            entityId: requirement.id,
+            metadata: {
+              staffingRequestIds: staffingProposals.map((item) => item.id),
+              roles: staffingProposals.map((item) => item.roleTitle),
+              approvalRequired: true,
+              runtimeAgentsStarted: 0,
+            },
+          });
+        }
+      } catch (staffingError) {
+        console.error("industrial_requirement_staffing_proposal_failed", {
+          requirementId: requirement.id,
+          message:
+            staffingError instanceof Error
+              ? staffingError.message
+              : "unknown error",
+        });
+      }
+    }
+
     return res.status(201).json({
       ok: true,
       requirement: {
@@ -6506,8 +6750,18 @@ router.post("/requirements", async (req: any, res) => {
             ? {
                 status: operationsHandoff.status,
                 assignedAgentName: operationsHandoff.assignedAgentName,
+                participants: operationsHandoff.participants,
+                workstreams: operationsHandoff.workstreams,
+                missingSpecialistKeys:
+                  operationsHandoff.missingSpecialistKeys,
               }
             : null,
+        staffingProposals: staffingProposals.map((item) => ({
+          id: item.id,
+          roleTitle: item.roleTitle,
+          status: item.status,
+          approvalRequired: true,
+        })),
       },
       message:
         "Your industrial requirement has been received. An Exportunity account manager will review it before any supplier contact begins.",
@@ -9381,11 +9635,32 @@ router.get("/admin/requirements", ensureTenantStaff, async (req: any, res) => {
       tenant.id,
       rows.map((row) => row.id),
     );
+    const productRequirements = rows.length
+      ? await db
+          .select()
+          .from(industrialProductRequirements)
+          .where(
+            and(
+              eq(industrialProductRequirements.tenantId, tenant.id),
+              inArray(
+                industrialProductRequirements.requirementId,
+                rows.map((row) => row.id),
+              ),
+            ),
+          )
+      : [];
+    const productByRequirementId = new Map(
+      productRequirements.map((item) => [item.requirementId, item] as const),
+    );
 
     return res.json({
       ok: true,
       requirements: rows.map((row) =>
-        staffRequirementSummary(row, lifecycleByRequirementId.get(row.id)),
+        staffRequirementSummary(
+          row,
+          lifecycleByRequirementId.get(row.id),
+          productByRequirementId.get(row.id),
+        ),
       ),
       total: rows.length,
     });
@@ -9424,7 +9699,7 @@ router.get(
           .status(404)
           .json({ ok: false, message: "Industrial requirement not found." });
 
-      const [factory, attachments, audit, quotes, orders] = await Promise.all([
+      const [factory, attachments, audit, quotes, orders, productRequirement] = await Promise.all([
         requirement.factoryId
           ? db.query.industrialFactories.findFirst({
               where: and(
@@ -9478,13 +9753,19 @@ router.get(
             ),
           )
           .orderBy(desc(industrialOrders.updatedAt)),
+        db.query.industrialProductRequirements.findFirst({
+          where: and(
+            eq(industrialProductRequirements.tenantId, tenant.id),
+            eq(industrialProductRequirements.requirementId, requirement.id),
+          ),
+        }),
       ]);
       const lifecycle = requirementLifecycleFor(requirement, quotes, orders);
 
       return res.json({
         ok: true,
         requirement: {
-          ...staffRequirementSummary(requirement, lifecycle),
+          ...staffRequirementSummary(requirement, lifecycle, productRequirement),
           details: requirement.details,
           internalNotes: requirement.internalNotes,
           metadata: requirement.metadata,

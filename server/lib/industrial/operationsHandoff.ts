@@ -2,27 +2,33 @@ import { and, desc, eq } from "drizzle-orm";
 
 import { db } from "@db";
 import { activityLog, agents, goals, tasks } from "@db/schema";
+import {
+  industrialSpecialistKeys,
+  resolveIndustrialRequirementHandoffPlan,
+  type HandoffAgentKey,
+  type IndustrialRequirementHandoffPlan,
+  type IndustrialRequirementHandoffType,
+  type IndustrialRequirementHandoffUrgency,
+} from "./operationsHandoffPolicy";
 
-export type IndustrialRequirementHandoffType =
-  | "machinery"
-  | "raw_material"
-  | "industrial_input"
-  | "spare_part"
-  | "custom_manufacturing"
-  | "industrial_service"
-  | "export_quotation";
+export {
+  industrialSpecialistKeys,
+  resolveIndustrialRequirementHandoffPlan,
+} from "./operationsHandoffPolicy";
+export type {
+  IndustrialRequirementHandoffPlan,
+  IndustrialRequirementHandoffType,
+  IndustrialRequirementHandoffUrgency,
+} from "./operationsHandoffPolicy";
 
-export type IndustrialRequirementHandoffUrgency =
-  "standard" | "urgent" | "planned";
-
-type HandoffAgentKey =
-  "tassi" | "commercial" | "technical" | "sourcing" | "logistics" | "quality";
-
-export type IndustrialRequirementHandoffPlan = {
-  primaryAgentKey: HandoffAgentKey;
-  participantAgentKeys: HandoffAgentKey[];
-  priority: "medium" | "high" | "critical";
-  urgencyScore: number;
+export type IndustrialRequirementWorkstream = {
+  key: HandoffAgentKey;
+  taskId: number;
+  agentId: number;
+  agentName: string;
+  role: string;
+  title: string;
+  status: string;
 };
 
 export type IndustrialRequirementOperationsHandoffInput = {
@@ -48,72 +54,18 @@ export type IndustrialRequirementOperationsHandoffResult = {
   assignedAgentId: number | null;
   assignedAgentName: string | null;
   participantAgentIds: number[];
+  participants: Array<{
+    key: HandoffAgentKey;
+    agentId: number;
+    agentName: string;
+    role: string;
+  }>;
+  workstreams: IndustrialRequirementWorkstream[];
+  missingSpecialistKeys: HandoffAgentKey[];
   reason?: string;
 };
 
 const INDUSTRIAL_INTAKE_GOAL_TITLE = "Industrial demand intake";
-
-export function resolveIndustrialRequirementHandoffPlan(input: {
-  requirementType: IndustrialRequirementHandoffType;
-  urgency: IndustrialRequirementHandoffUrgency;
-}): IndustrialRequirementHandoffPlan {
-  // Awa owns the buyer relationship. Specialist agents join the same case for
-  // technical, sourcing, quality, and logistics work without fragmenting the
-  // client's commercial conversation.
-  const primaryAgentKey: HandoffAgentKey = "commercial";
-
-  const participantKeys = new Set<HandoffAgentKey>([
-    primaryAgentKey,
-    "commercial",
-    "tassi",
-  ]);
-
-  if (
-    input.requirementType === "machinery" ||
-    input.requirementType === "spare_part" ||
-    input.requirementType === "custom_manufacturing"
-  ) {
-    participantKeys.add("technical");
-    participantKeys.add("sourcing");
-  }
-
-  if (
-    input.requirementType === "raw_material" ||
-    input.requirementType === "industrial_input"
-  ) {
-    participantKeys.add("sourcing");
-  }
-
-  if (
-    input.requirementType === "spare_part" ||
-    input.requirementType === "custom_manufacturing"
-  ) {
-    participantKeys.add("quality");
-  }
-
-  if (input.requirementType === "export_quotation") {
-    participantKeys.add("sourcing");
-    participantKeys.add("logistics");
-  }
-
-  if (input.requirementType === "industrial_service") {
-    participantKeys.add("technical");
-    participantKeys.add("logistics");
-  }
-
-  return {
-    primaryAgentKey,
-    participantAgentKeys: Array.from(participantKeys),
-    priority:
-      input.urgency === "urgent"
-        ? "critical"
-        : input.urgency === "planned"
-          ? "medium"
-          : "high",
-    urgencyScore:
-      input.urgency === "urgent" ? 10 : input.urgency === "planned" ? 4 : 7,
-  };
-}
 
 function asMetadata(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value)
@@ -150,6 +102,128 @@ function buildTaskDescription(
     .join("\n");
 }
 
+const WORKSTREAM_DEFINITIONS: Record<
+  Exclude<HandoffAgentKey, "tassi" | "commercial">,
+  { label: string; instruction: string }
+> = {
+  technical: {
+    label: "Technical review",
+    instruction:
+      "Validate specifications, identify technical ambiguities, and record the evidence needed before supplier selection.",
+  },
+  sourcing: {
+    label: "Supplier sourcing",
+    instruction:
+      "Build a traceable candidate-supplier shortlist and comparison criteria. Do not contact any supplier before approval.",
+  },
+  logistics: {
+    label: "Logistics and delivery",
+    instruction:
+      "Assess route, delivery constraints, Incoterm implications, and missing transport information without booking freight.",
+  },
+  quality: {
+    label: "Quality requirements",
+    instruction:
+      "Define required quality evidence, certifications, inspection points, and acceptance criteria.",
+  },
+  finance: {
+    label: "Commercial finance",
+    instruction:
+      "Review target price, payment currency, payment terms, margin risks, and financial information still required.",
+  },
+  compliance: {
+    label: "Trade compliance",
+    instruction:
+      "Identify counterparty, origin, destination, customs, sanctions, and documentary checks required before commitment.",
+  },
+};
+
+type RoutedAgent = {
+  id: number;
+  companyId: number | null;
+  name: string;
+  role: string;
+  metadata: unknown;
+};
+
+async function ensureSpecialistWorkstreams(input: {
+  parentTaskId: number;
+  companyId: number;
+  goalId: number | null;
+  referenceCode: string;
+  requestTitle: string;
+  plan: IndustrialRequirementHandoffPlan;
+  byKey: Map<string, RoutedAgent>;
+}) {
+  const existing = await db.query.tasks.findMany({
+    where: eq(tasks.parentTaskId, input.parentTaskId),
+    columns: { id: true, agentId: true, title: true, status: true },
+    orderBy: [desc(tasks.id)],
+  });
+  const byAgentId = new Map(
+    existing
+      .filter((task) => Number(task.agentId) > 0)
+      .map((task) => [Number(task.agentId), task] as const),
+  );
+  const result: IndustrialRequirementWorkstream[] = [];
+  const specialistKeys = industrialSpecialistKeys(input.plan);
+
+  for (const key of specialistKeys) {
+    const agent = input.byKey.get(key);
+    if (!agent?.id) continue;
+    const definition = WORKSTREAM_DEFINITIONS[key];
+    const title = `${input.referenceCode} - ${definition.label}`.slice(0, 240);
+    let workstream = byAgentId.get(Number(agent.id));
+    if (!workstream) {
+      const [created] = await db
+        .insert(tasks)
+        .values({
+          agentId: agent.id,
+          companyId: input.companyId,
+          goalId: input.goalId,
+          objectiveId: input.goalId,
+          parentTaskId: input.parentTaskId,
+          title,
+          description: [
+            `Specialist workstream for ${input.referenceCode}: ${input.requestTitle}.`,
+            definition.instruction,
+            "Record findings in the shared case. External outreach, payments, contracts, and public claims require visible human approval.",
+          ].join("\n"),
+          priority: input.plan.priority,
+          status: "backlog",
+          executionType: "ind_workstream",
+          urgencyScore: input.plan.urgencyScore,
+          importanceScore: 8,
+          dependencyScore: 6,
+          isAutomated: false,
+          isGroupTask: false,
+          participantAgentIds: [agent.id],
+          approvalStatus: "pending",
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .returning({
+          id: tasks.id,
+          agentId: tasks.agentId,
+          title: tasks.title,
+          status: tasks.status,
+        });
+      workstream = created;
+    }
+    if (!workstream?.id) continue;
+    result.push({
+      key,
+      taskId: Number(workstream.id),
+      agentId: Number(agent.id),
+      agentName: agent.name,
+      role: agent.role,
+      title: workstream.title,
+      status: String(workstream.status || "backlog"),
+    });
+  }
+  return result;
+}
+
 export async function createIndustrialRequirementOperationsHandoff(
   input: IndustrialRequirementOperationsHandoffInput,
 ): Promise<IndustrialRequirementOperationsHandoffResult> {
@@ -163,6 +237,7 @@ export async function createIndustrialRequirementOperationsHandoff(
       id: true,
       companyId: true,
       name: true,
+      role: true,
       metadata: true,
     },
   });
@@ -186,6 +261,9 @@ export async function createIndustrialRequirementOperationsHandoff(
       assignedAgentId: primaryAgent?.id ? Number(primaryAgent.id) : null,
       assignedAgentName: primaryAgent?.name || null,
       participantAgentIds: [],
+      participants: [],
+      workstreams: [],
+      missingSpecialistKeys: plan.participantAgentKeys,
       reason:
         "The Exportunity industrial agent organization is not available for task routing.",
     };
@@ -194,17 +272,42 @@ export async function createIndustrialRequirementOperationsHandoff(
   const participantAgentIds = plan.participantAgentKeys
     .map((key) => byKey.get(key)?.id)
     .filter((value): value is number => typeof value === "number" && value > 0);
+  const participants = plan.participantAgentKeys
+    .map((key) => {
+      const agent = byKey.get(key);
+      return agent?.id
+        ? {
+            key,
+            agentId: Number(agent.id),
+            agentName: agent.name,
+            role: agent.role,
+          }
+        : null;
+    })
+    .filter((item): item is NonNullable<typeof item> => Boolean(item));
+  const missingSpecialistKeys = plan.participantAgentKeys.filter(
+    (key) => !byKey.get(key)?.id,
+  );
   const taskTitle = `Review ${input.referenceCode}: ${input.title}`.slice(
     0,
     240,
   );
   const existingTask = await db.query.tasks.findFirst({
     where: and(eq(tasks.companyId, companyId), eq(tasks.title, taskTitle)),
-    columns: { id: true, agentId: true },
+    columns: { id: true, agentId: true, goalId: true },
     orderBy: [desc(tasks.id)],
   });
 
   if (existingTask?.id) {
+    const workstreams = await ensureSpecialistWorkstreams({
+      parentTaskId: Number(existingTask.id),
+      companyId,
+      goalId: existingTask.goalId ? Number(existingTask.goalId) : null,
+      referenceCode: input.referenceCode,
+      requestTitle: input.title,
+      plan,
+      byKey,
+    });
     return {
       status: "existing",
       taskId: Number(existingTask.id),
@@ -212,6 +315,9 @@ export async function createIndustrialRequirementOperationsHandoff(
       assignedAgentId: Number(existingTask.agentId || primaryAgent.id),
       assignedAgentName: primaryAgent.name,
       participantAgentIds,
+      participants,
+      workstreams,
+      missingSpecialistKeys,
     };
   }
 
@@ -255,6 +361,9 @@ export async function createIndustrialRequirementOperationsHandoff(
       assignedAgentId: primaryAgent.id,
       assignedAgentName: primaryAgent.name,
       participantAgentIds,
+      participants,
+      workstreams: [],
+      missingSpecialistKeys,
       reason:
         "The Operations Center objective could not be prepared for this industrial requirement.",
     };
@@ -293,6 +402,9 @@ export async function createIndustrialRequirementOperationsHandoff(
       assignedAgentId: primaryAgent.id,
       assignedAgentName: primaryAgent.name,
       participantAgentIds,
+      participants,
+      workstreams: [],
+      missingSpecialistKeys,
       reason:
         "The Operations Center task could not be created for this industrial requirement.",
     };
@@ -317,6 +429,16 @@ export async function createIndustrialRequirementOperationsHandoff(
     createdAt: now,
   });
 
+  const workstreams = await ensureSpecialistWorkstreams({
+    parentTaskId: Number(task.id),
+    companyId,
+    goalId: Number(goal.id),
+    referenceCode: input.referenceCode,
+    requestTitle: input.title,
+    plan,
+    byKey,
+  });
+
   return {
     status: "created",
     taskId: Number(task.id),
@@ -324,5 +446,8 @@ export async function createIndustrialRequirementOperationsHandoff(
     assignedAgentId: primaryAgent.id,
     assignedAgentName: primaryAgent.name,
     participantAgentIds,
+    participants,
+    workstreams,
+    missingSpecialistKeys,
   };
 }

@@ -51,6 +51,7 @@ export async function generateAgentResponse(
     agentId?: number;
     companyId?: number | null;
     context: {
+      tenantKey?: string;
       agentName?: string;
       recentMessages: Array<{
         content: string;
@@ -126,7 +127,9 @@ export async function generateAgentResponse(
     ? `\n\nEMAIL MEMORY (authoritative mailbox context):\n${options.context.emailContext.summary}`
     : "";
   const companyContext = String(options.context.companyContext || "").trim();
-  const isExportunityContext = /Exportunity is a B2B/i.test(companyContext);
+  const isExportunityContext =
+    String(options.context.tenantKey || "").trim().toLowerCase() === "exportunity" ||
+    /\bExportunity(?:\s*\|\s*AI)?\s+is\b/i.test(companyContext);
   const agentSummonBlock = !isExportunityContext && agentDirectory.length > 0
     ? `\n\nACTION (optional, internal tool call):\n- To invite another listed agent, append a final line inside [Response]:\n  [[SUMMON_AGENTS: 12,34]]`
     : "";

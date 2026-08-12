@@ -54,6 +54,7 @@ export async function generateAgentResponse(
     agentId?: number;
     companyId?: number | null;
     context: {
+      tenantKey?: string;
       agentName?: string;
       recentMessages: Array<{
         content: string;
@@ -121,7 +122,9 @@ export async function generateAgentResponse(
       .join('\n');
 
     const companyContext = String(options.context.companyContext || "").trim();
-    const isExportunityContext = /Exportunity is a B2B/i.test(companyContext);
+    const isExportunityContext =
+      String(options.context.tenantKey || "").trim().toLowerCase() === "exportunity" ||
+      /\bExportunity(?:\s*\|\s*AI)?\s+is\b/i.test(companyContext);
     const companyContextBlock = companyContext
       ? `\n\nCOMPANY CONTEXT (authoritative):\n${companyContext}`
       : `\n\n${BDO_POLICY_SNIPPET}`;

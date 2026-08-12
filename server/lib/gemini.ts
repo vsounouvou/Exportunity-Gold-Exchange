@@ -4,6 +4,7 @@ import { validateCreditEligibility } from "./cost-tracker";
 import { recordAgentTokenUsageEvent } from "./agent-economy-governance";
 
 type AgentContext = {
+  tenantKey?: string;
   agentName?: string;
   recentMessages: Array<{
     content: string;
@@ -110,7 +111,9 @@ export async function generateAgentResponse(
     ? `\n\nEMAIL MEMORY (authoritative mailbox context):\n${options.context.emailContext.summary}`
     : "";
   const companyContext = String(options.context.companyContext || "").trim();
-  const isExportunityContext = /Exportunity is a B2B/i.test(companyContext);
+  const isExportunityContext =
+    String(options.context.tenantKey || "").trim().toLowerCase() === "exportunity" ||
+    /\bExportunity(?:\s*\|\s*AI)?\s+is\b/i.test(companyContext);
   const agentName = String(options.context.agentName || "").trim();
   const agentIdentityBlock = agentName
     ? `\n\nCURRENT SPEAKER (authoritative):\n- Name: ${agentName}\n- Role: ${options.role}\n- Reply only as ${agentName}. Do not answer on behalf of another agent.`

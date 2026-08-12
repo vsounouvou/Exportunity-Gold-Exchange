@@ -1,11 +1,16 @@
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
 import test from "node:test";
+import { fileURLToPath } from "node:url";
 
 import { EXPORTUNITY_COMPANY_CONTEXT } from "../server/lib/industrial/companyContext";
 import {
   getExportunityAgentModelPolicy,
   listExportunityAgentModelPolicies,
 } from "../server/lib/industrial/modelPolicy";
+
+const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 const MODEL_ENV_KEYS = [
   "OPENAI_EXPORTUNITY_MODEL",
@@ -53,12 +58,25 @@ test("Exportunity agent policies use current models by responsibility", () => {
   });
 });
 
-test("Exportunity company context keeps agents in the B2B industrial domain", () => {
+test("Exportunity company context keeps agents in the global trade domain", () => {
   assert.match(EXPORTUNITY_COMPANY_CONTEXT, /Exportunity \| AI is the master brand/i);
+  assert.match(EXPORTUNITY_COMPANY_CONTEXT, /AI-managed global B2B trade and operations network/i);
+  assert.match(EXPORTUNITY_COMPANY_CONTEXT, /global by default/i);
+  assert.match(EXPORTUNITY_COMPANY_CONTEXT, /Trade\. Source\. Expand\. Operate\./i);
   assert.match(EXPORTUNITY_COMPANY_CONTEXT, /Cote d'Ivoire and Benin/i);
   assert.match(EXPORTUNITY_COMPANY_CONTEXT, /supplier, manufacturing, commodities, and logistics corridors in the UAE/i);
   assert.match(EXPORTUNITY_COMPANY_CONTEXT, /Exportunity Machinery is a specialized industrial operating division/i);
   assert.match(EXPORTUNITY_COMPANY_CONTEXT, /compliance-gated precious-metals sourcing/i);
   assert.match(EXPORTUNITY_COMPANY_CONTEXT, /not a crypto product, a public precious-metals exchange/i);
   assert.match(EXPORTUNITY_COMPANY_CONTEXT, /explicit human approval/i);
+
+  for (const gatewayPath of [
+    "server/lib/openai.ts",
+    "server/lib/claude.ts",
+    "server/lib/gemini.ts",
+  ]) {
+    const gateway = fs.readFileSync(path.join(repoRoot, gatewayPath), "utf8");
+    assert.match(gateway, /tenantKey[\s\S]{0,120}exportunity/);
+    assert.match(gateway, /Exportunity\(\?:\\s\*\\\|\\s\*AI\)\?/);
+  }
 });

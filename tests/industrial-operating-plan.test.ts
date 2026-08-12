@@ -165,6 +165,12 @@ test("Exportunity dashboard prioritizes live industrial operations and readable 
   assert.match(chairmanDock, /snapDockToBottom[\s\S]*collapsed: true/);
   assert.match(chairmanDock, /Minimize assistant at the bottom/);
   assert.match(chairmanDock, /isWorkSurface && current\.collapsed/);
+  assert.match(chairmanDock, /DOCK_OPEN_STORAGE_KEY/);
+  assert.match(chairmanDock, /readStoredDockOpen/);
+  assert.match(
+    chairmanDock,
+    /localStorage\.setItem\(DOCK_OPEN_STORAGE_KEY, String\(isOpen\)\)/,
+  );
 });
 
 test("People and Access is tenant scoped and exposes real account controls", () => {

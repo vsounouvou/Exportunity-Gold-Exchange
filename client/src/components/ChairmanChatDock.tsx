@@ -93,6 +93,7 @@ type DockLayout = {
 };
 
 const DOCK_LAYOUT_STORAGE_KEY = "exportunity:chairman-chat-dock-layout:v4";
+const DOCK_OPEN_STORAGE_KEY = "exportunity:chairman-chat-dock-open:v1";
 const MIN_DOCK_WIDTH = 300;
 const MIN_DOCK_HEIGHT = 320;
 const DEFAULT_DOCK_WIDTH = 312;
@@ -190,6 +191,11 @@ function toPositiveInt(value: unknown): number | null {
 function isTassiAssistant(name: string | null | undefined) {
   const normalizedName = String(name || "").trim().toLowerCase();
   return normalizedName.includes("tassi");
+}
+
+function readStoredDockOpen() {
+  if (typeof window === "undefined" || window.innerWidth < 768) return false;
+  return window.localStorage.getItem(DOCK_OPEN_STORAGE_KEY) === "true";
 }
 
 async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, timeoutMessage: string): Promise<T> {
@@ -325,7 +331,7 @@ export function ChairmanChatDock() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { currentCompanyId } = useChairmanContext();
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(readStoredDockOpen);
   const [activeTab, setActiveTab] = useState<"chat" | "history" | "actions">("chat");
   const [message, setMessage] = useState("");
   const [activeThreadId, setActiveThreadId] = useState<number | null>(null);
@@ -368,6 +374,11 @@ export function ChairmanChatDock() {
     if (isMobile || typeof window === "undefined") return;
     window.localStorage.setItem(DOCK_LAYOUT_STORAGE_KEY, JSON.stringify(dockLayout));
   }, [dockLayout, isMobile]);
+
+  useEffect(() => {
+    if (isMobile || typeof window === "undefined") return;
+    window.localStorage.setItem(DOCK_OPEN_STORAGE_KEY, String(isOpen));
+  }, [isMobile, isOpen]);
 
   useEffect(() => {
     const handleOpen = (event: Event) => {

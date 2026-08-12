@@ -17,6 +17,13 @@ test("French intake reuses quantity and timing without confusing a part number",
   assert.equal(preview.facts.requiredBy, "sous dix jours");
 });
 
+test("homepage spare-part action stays in the unit-based parts workflow", () => {
+  const preview = classifyIndustrialIntake("Order a spare part", "en");
+
+  assert.equal(preview.requirementType, "spare_part");
+  assert.equal(preview.categoryCode, "spare_parts_and_components");
+});
+
 test("English intake extracts explicit quantity, destination, and timing", () => {
   const facts = extractIndustrialIntakeFacts(
     "We need 50 motors delivered to Lagos within three weeks.",

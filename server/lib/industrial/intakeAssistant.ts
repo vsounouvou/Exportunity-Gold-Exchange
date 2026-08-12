@@ -279,7 +279,10 @@ export function classifyIndustrialIntake(
   } else if (
     includesAny(normalized, [
       "piece",
+      "spare part",
+      "replacement part",
       "part ",
+      "parts",
       "bearing",
       "roulement",
       "belt",

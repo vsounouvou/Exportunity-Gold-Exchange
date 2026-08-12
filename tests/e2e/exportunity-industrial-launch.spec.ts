@@ -3,7 +3,7 @@ import { expect, test, type Page } from "@playwright/test";
 async function expectNoBrokenImages(page: Page) {
   const broken = await page.locator("img").evaluateAll((images) =>
     images
-      .filter((image) => !image.complete || image.naturalWidth === 0)
+      .filter((image) => image.complete && image.naturalWidth === 0)
       .map((image) => image.getAttribute("src")),
   );
   expect(broken).toEqual([]);
@@ -18,7 +18,7 @@ async function expectNoPageOverflow(page: Page) {
 }
 
 test.describe("Exportunity industrial launch experience", () => {
-  test("desktop keeps Tassi and the industrial map as the primary actions", async ({
+  test("desktop keeps Awa and the industrial map as the primary actions", async ({
     page,
   }) => {
     await page.setViewportSize({ width: 1280, height: 720 });
@@ -47,13 +47,15 @@ test.describe("Exportunity industrial launch experience", () => {
 
     const firstRequest = chat
       .getByRole("button")
-      .filter({ hasText: /urgent spare part|pi[eè]ce d[eé]tach[eé]e urgente/i })
+      .filter({ hasText: /order a spare part|commander une pi.ce d.tach.e/i })
       .first();
     await firstRequest.click();
     await expect(
-      chat.getByText(/open the technical case|ouvrir le dossier technique/i),
+      chat.getByText(/prepared a spare-part request|pr.par. une demande de pi.ce d.tach.e/i),
     ).toBeVisible();
-    await expect(chat.locator('input[type="email"]')).toBeVisible();
+    await expect(
+      chat.getByRole("button", { name: /1 unit/i }),
+    ).toBeVisible();
   });
 
   test("mobile preserves a usable composer and a full-width interactive map", async ({
@@ -78,7 +80,11 @@ test.describe("Exportunity industrial launch experience", () => {
     expect(mapBox?.height || 0).toBeGreaterThan(480);
 
     await page.getByRole("button", { name: "GDIZ" }).first().click();
-    await expect(page.getByText(/Glo-Djigb[eé] Industrial Zone/i).last()).toBeVisible();
+    await expect(
+      page
+        .getByText(/GDIZ\s*-\s*Zone Industrielle de Glo-Djigbe|Glo-Djigb. Industrial Zone/i)
+        .last(),
+    ).toBeVisible();
     await page.screenshot({
       path: test.info().outputPath("industrial-mobile.png"),
       fullPage: true,

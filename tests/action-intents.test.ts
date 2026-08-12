@@ -276,6 +276,8 @@ test("dispatchAgentActionIntents normalizes CREATE_TASK payload and preserves re
       conversationId: "conv-task-1",
       source: "test",
       requestedByUserId: 99,
+      meetingId: 41,
+      messageId: 902,
       agent: { id: 17, name: "Awa Bamba", role: "Coordinator" },
     },
     {
@@ -291,6 +293,9 @@ test("dispatchAgentActionIntents normalizes CREATE_TASK payload and preserves re
   assert.equal(captured.actionType, "CREATE_TASK");
   assert.equal(captured.payload.title, "Follow up with supplier");
   assert.equal(captured.payload.priority, "high");
+  assert.equal(captured.payload.sourceMeetingId, 41);
+  assert.equal(captured.payload.sourceMessageId, 902);
+  assert.equal(captured.relatedThreadId, null);
   assert.equal(captured.payload.recurring.intervalMinutes, 60);
   assert.equal(captured.payload.recurring.maxRuns, 3);
 });

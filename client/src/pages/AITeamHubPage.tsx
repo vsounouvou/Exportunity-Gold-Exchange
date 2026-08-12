@@ -1208,9 +1208,8 @@ export function AITeamHubPage() {
     refetchInterval: 5000,
   });
 
-  const commsEnabled = !currentMeeting && (opsView === "background" || opsView === "live" || opsView === "arborescence");
+  const commsEnabled = opsView === "background" || opsView === "live" || opsView === "arborescence";
   const actionsEnabled =
-    !currentMeeting &&
     (opsView === "actions" || opsView === "decisions" || opsView === "automations" || opsView === "live" || opsView === "arborescence");
   const agendaEnabled = opsView === "agenda" || opsView === "live" || opsView === "background" || opsView === "arborescence";
 
@@ -1426,9 +1425,37 @@ export function AITeamHubPage() {
     items: Array<any>;
   }>({
     queryKey: ["/api/actions/decisions?limit=200"],
-    enabled: !currentMeeting && (opsView === "decisions" || opsView === "live" || opsView === "arborescence"),
-    refetchInterval: !currentMeeting && (opsView === "decisions" || opsView === "live" || opsView === "arborescence") ? 5_000 : false,
+    enabled: opsView === "decisions" || opsView === "live" || opsView === "arborescence",
+    refetchInterval: opsView === "decisions" || opsView === "live" || opsView === "arborescence" ? 5_000 : false,
   });
+
+  const visibleActionQueueItems = useMemo(() => {
+    const items = Array.isArray(actionsQueueResponse?.items) ? actionsQueueResponse.items : [];
+    if (!currentMeeting?.conversationId) return items;
+    return items.filter((item: any) => {
+      const conversationId = String(
+        item?.trace?.conversationId ||
+          item?.relatedConversationId ||
+          item?.payload?.conversationId ||
+          "",
+      ).trim();
+      return conversationId === currentMeeting.conversationId;
+    });
+  }, [actionsQueueResponse?.items, currentMeeting?.conversationId]);
+
+  const visibleDecisionQueueItems = useMemo(() => {
+    const items = Array.isArray(decisionsResponse?.items) ? decisionsResponse.items : [];
+    if (!currentMeeting?.conversationId) return items;
+    return items.filter((item: any) => {
+      const conversationId = String(
+        item?.trace?.conversationId ||
+          item?.relatedConversationId ||
+          item?.payload?.conversationId ||
+          "",
+      ).trim();
+      return conversationId === currentMeeting.conversationId;
+    });
+  }, [decisionsResponse?.items, currentMeeting?.conversationId]);
 
   const agendaWindow = useMemo(() => {
     const now = new Date();
@@ -1658,6 +1685,7 @@ export function AITeamHubPage() {
   const meetingTasks = currentMeeting && meetingRoomId
     ? companyTasks.filter((task) => task.sourceMeetingId === meetingRoomId)
     : [];
+  const visibleWorkspaceTasks = currentMeeting ? meetingTasks : companyTasks;
 
   const proposedMeetingTasks = meetingTasks.filter(
     (task) => String(task.approvalStatus || "").toLowerCase() === "pending",
@@ -2032,6 +2060,7 @@ export function AITeamHubPage() {
     onSuccess: (newRoom) => {
       console.log("[Meeting] Setting current meeting:", newRoom);
       setCurrentMeeting(newRoom);
+      setOpsView("chat");
       queryClient.invalidateQueries({ queryKey: ["/api/chatrooms"] });
       queryClient.invalidateQueries({ queryKey: ["/api/meetings"] });
       toast({
@@ -3043,7 +3072,7 @@ export function AITeamHubPage() {
     },
   });
 
-  const isChatViewActive = Boolean(currentMeeting) || opsView === "chat";
+  const isChatViewActive = opsView === "chat";
 
   useEffect(() => {
     const viewport = getChatViewport();
@@ -3284,7 +3313,7 @@ export function AITeamHubPage() {
                 ? "bg-blue-600/20 border-blue-500 shadow-[0_0_0_1px_rgba(59,130,246,0.25)]"
                 : "bg-gray-800/50 border-gray-700 hover:bg-gray-800/80 hover:border-gray-600"
             )}
-            onClick={() => { setCurrentMeeting(null); if (isMobile) setMobileLeftSheet(false); }}
+            onClick={() => { setCurrentMeeting(null); setOpsView("chat"); if (isMobile) setMobileLeftSheet(false); }}
           >
             <CardHeader className="p-3">
               <div className="flex items-center gap-2">
@@ -3319,7 +3348,7 @@ export function AITeamHubPage() {
                     ? "bg-blue-600/20 border-blue-500 shadow-[0_0_0_1px_rgba(59,130,246,0.25)]"
                     : "bg-gray-800/50 border-gray-700 hover:bg-gray-800/80 hover:border-gray-600"
                 )}
-                onClick={() => { setCurrentMeeting(room); if (isMobile) setMobileLeftSheet(false); }}
+                onClick={() => { setCurrentMeeting(room); setOpsView("chat"); if (isMobile) setMobileLeftSheet(false); }}
               >
                 <CardHeader className="p-3">
                   <div className="flex items-start justify-between gap-2">
@@ -3649,7 +3678,7 @@ export function AITeamHubPage() {
                   ? "bg-blue-600/20 border-blue-500 shadow-[0_0_0_1px_rgba(59,130,246,0.25)]"
                   : "bg-gray-800/50 border-gray-700 hover:bg-gray-800/80 hover:border-gray-600"
               )}
-              onClick={() => setCurrentMeeting(null)}
+              onClick={() => { setCurrentMeeting(null); setOpsView("chat"); }}
             >
               <CardHeader className="p-3">
                 <div className="flex items-center gap-2">
@@ -3684,7 +3713,7 @@ export function AITeamHubPage() {
                       ? "bg-blue-600/20 border-blue-500 shadow-[0_0_0_1px_rgba(59,130,246,0.25)]"
                       : "bg-gray-800/50 border-gray-700 hover:bg-gray-800/80 hover:border-gray-600"
                   )}
-                  onClick={() => setCurrentMeeting(room)}
+                  onClick={() => { setCurrentMeeting(room); setOpsView("chat"); }}
                 >
                   <CardHeader className="p-3">
                     <div className="flex items-start justify-between gap-2">
@@ -3924,10 +3953,9 @@ export function AITeamHubPage() {
           </div>
         )}
 
-        {!currentMeeting && (
-          <div className="border-b border-gray-800 bg-gray-900/30 px-3 md:px-6 py-1.5">
-            <Tabs value={opsView} onValueChange={(value) => setOpsView(value as any)}>
-              <TabsList className="h-9 w-full justify-start gap-1 overflow-x-auto overflow-y-hidden bg-gray-800/50 p-1 scrollbar-hide">
+        <div className="border-b border-gray-800 bg-gray-900/30 px-3 py-1.5 md:px-6">
+          <Tabs value={opsView} onValueChange={(value) => setOpsView(value as any)}>
+            <TabsList className="h-9 w-full justify-start gap-1 overflow-x-auto overflow-y-hidden bg-gray-800/50 p-1 scrollbar-hide">
                 <TabsTrigger value="chat" className="shrink-0 whitespace-nowrap">Chat</TabsTrigger>
                 <TabsTrigger value="objectives" className="shrink-0 whitespace-nowrap">Objectives</TabsTrigger>
                 <TabsTrigger value="agenda" className="shrink-0 whitespace-nowrap">Agenda</TabsTrigger>
@@ -3944,12 +3972,11 @@ export function AITeamHubPage() {
                 <TabsTrigger value="automations" className="shrink-0 whitespace-nowrap">Automations</TabsTrigger>
                 <TabsTrigger value="arborescence" className="shrink-0 whitespace-nowrap">Arborescence</TabsTrigger>
                 <TabsTrigger value="live" className="shrink-0 whitespace-nowrap">Live activity</TabsTrigger>
-              </TabsList>
-            </Tabs>
-          </div>
-        )}
+            </TabsList>
+          </Tabs>
+        </div>
 
-        {(currentMeeting || opsView === "chat") && (
+        {opsView === "chat" && (
           <>
             {/* Messages Area */}
             <ScrollArea ref={chatScrollAreaRef} className="ops-chat-scroll-area flex-1 px-3 md:px-6 py-3 md:py-4">
@@ -4709,7 +4736,7 @@ export function AITeamHubPage() {
           </>
         )}
 
-        {!currentMeeting && opsView === "objectives" && (
+        {opsView === "objectives" && (
           <ScrollArea className="flex-1 px-3 md:px-6 py-4">
             <div className="max-w-4xl mx-auto space-y-4">
               <div className="flex items-center justify-between">
@@ -4772,7 +4799,7 @@ export function AITeamHubPage() {
           </ScrollArea>
         )}
 
-        {!currentMeeting && opsView === "agenda" && (
+        {opsView === "agenda" && (
           <ScrollArea className="flex-1 px-3 md:px-6 py-4">
             <div className="max-w-4xl mx-auto space-y-4">
               <Card className="bg-gray-900/30 border-gray-800">
@@ -4861,7 +4888,7 @@ export function AITeamHubPage() {
           </ScrollArea>
         )}
 
-        {!currentMeeting && opsView === "background" && (
+        {opsView === "background" && (
           <div className="flex-1 flex flex-col">
             <div className="border-b border-gray-800 bg-gray-900/20 px-3 md:px-6 py-3 flex items-center justify-between gap-3">
               <div className="flex items-center gap-2 min-w-0">
@@ -5370,7 +5397,7 @@ export function AITeamHubPage() {
           </div>
         )}
 
-        {!currentMeeting && opsView === "tasks" && (
+        {opsView === "tasks" && (
           <ScrollArea className="flex-1 px-3 md:px-6 py-4">
             <div className="max-w-4xl mx-auto space-y-4">
               <div className="flex items-center justify-between">
@@ -5379,7 +5406,7 @@ export function AITeamHubPage() {
                   <div className="text-xs text-gray-400">Execution backlog from meetings, brainstorm and chats.</div>
                 </div>
                 <Badge variant="outline" className="text-[10px] bg-emerald-500/10 text-emerald-300 border-emerald-500/30">
-                  {companyTasks.length} tracked
+                  {visibleWorkspaceTasks.length} {currentMeeting ? "in this meeting" : "tracked"}
                 </Badge>
               </div>
 
@@ -5389,13 +5416,13 @@ export function AITeamHubPage() {
                     <Skeleton key={i} className="h-16 bg-gray-800" />
                   ))}
                 </div>
-              ) : companyTasks.length === 0 && suggestedConversationTasks.length === 0 ? (
+              ) : visibleWorkspaceTasks.length === 0 && suggestedConversationTasks.length === 0 ? (
                 <div className="rounded-lg border border-gray-700 bg-gray-800/40 px-4 py-8 text-center text-sm text-gray-400">
                   No tasks yet.
                 </div>
               ) : (
                 <div className="space-y-2">
-                  {companyTasks.slice(0, 80).map((task) => (
+                  {visibleWorkspaceTasks.slice(0, 80).map((task) => (
                     <div key={`task:${task.id}`} className="rounded-lg border border-gray-700 bg-gray-800/40 p-3">
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
@@ -5428,10 +5455,10 @@ export function AITeamHubPage() {
           </ScrollArea>
         )}
 
-        {!currentMeeting && opsView === "actions" && (
+        {opsView === "actions" && (
           <ScrollArea className="flex-1 px-3 md:px-6 py-4">
             <div className="max-w-4xl mx-auto space-y-6">
-              <Card className="bg-gray-900/30 border-gray-800">
+              {!currentMeeting && <Card className="bg-gray-900/30 border-gray-800">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-base text-white">Queue action: SEND_EMAIL</CardTitle>
                   <p className="text-xs text-gray-400">Creates an action request (runs via background worker).</p>
@@ -5518,7 +5545,7 @@ export function AITeamHubPage() {
                     </Button>
                   </div>
                 </div>
-              </Card>
+              </Card>}
 
               <Card className="bg-gray-900/30 border-gray-800">
                 <CardHeader className="pb-3">
@@ -5532,11 +5559,11 @@ export function AITeamHubPage() {
                         <Skeleton key={i} className="h-16 bg-gray-800" />
                       ))}
                     </div>
-                  ) : (actionsQueueResponse?.items?.length || 0) === 0 ? (
+                  ) : visibleActionQueueItems.length === 0 ? (
                     <div className="text-gray-500 text-sm py-8 text-center">No action requests yet</div>
                   ) : (
                     <div className="space-y-2">
-                      {actionsQueueResponse!.items.slice(0, 50).map((item: any) => (
+                      {visibleActionQueueItems.slice(0, 50).map((item: any) => (
                         <div key={String(item.id)} className="bg-gray-800/40 border border-gray-700/50 rounded-lg p-3">
                           <div className="flex items-center justify-between gap-3">
                             <div className="min-w-0">
@@ -5582,7 +5609,7 @@ export function AITeamHubPage() {
           </ScrollArea>
         )}
 
-        {!currentMeeting && opsView === "decisions" && (
+        {opsView === "decisions" && (
           <ScrollArea className="flex-1 px-3 md:px-6 py-4">
             <div className="max-w-4xl mx-auto space-y-4">
               <div className="flex items-center justify-between">
@@ -5595,7 +5622,7 @@ export function AITeamHubPage() {
                     {conversationDecisionItems.length} in chat
                   </Badge>
                   <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-300 border-amber-500/30">
-                    {decisionsResponse?.items?.length || 0} pending
+                    {visibleDecisionQueueItems.length} pending
                   </Badge>
                 </div>
               </div>
@@ -5632,11 +5659,11 @@ export function AITeamHubPage() {
                       <Skeleton key={i} className="h-16 bg-gray-800" />
                     ))}
                   </div>
-                ) : (decisionsResponse?.items?.length || 0) === 0 ? (
+                ) : visibleDecisionQueueItems.length === 0 ? (
                   <div className="text-gray-500 text-sm py-6 text-center">No approvals pending</div>
                 ) : (
                   <div className="space-y-2">
-                    {decisionsResponse!.items.slice(0, 100).map((item: any) => (
+                    {visibleDecisionQueueItems.slice(0, 100).map((item: any) => (
                       <div key={String(item.id)} className="bg-gray-800/40 border border-gray-700/50 rounded-lg p-3">
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
@@ -5678,7 +5705,7 @@ export function AITeamHubPage() {
           </ScrollArea>
         )}
 
-        {!currentMeeting && opsView === "automations" && (
+        {opsView === "automations" && (
           <ScrollArea className="flex-1 px-3 md:px-6 py-4">
             <div className="max-w-4xl mx-auto space-y-4">
               <div className="flex items-center justify-between">
@@ -5687,7 +5714,7 @@ export function AITeamHubPage() {
                   <div className="text-xs text-gray-400">Queued and autonomous actions across this operations room.</div>
                 </div>
                 <Badge variant="outline" className="text-[10px] bg-purple-500/10 text-purple-300 border-purple-500/30">
-                  {actionsQueueResponse?.items?.length || 0} requests
+                  {visibleActionQueueItems.length} requests
                 </Badge>
               </div>
 
@@ -5698,10 +5725,10 @@ export function AITeamHubPage() {
                 <div className="px-4 pb-4">
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
                     {[
-                      { label: "Queued", count: actionsQueueResponse?.items?.filter((item: any) => actionStateForUi(item) === "QUEUED" || actionStateForUi(item) === "CREATED").length || 0 },
-                      { label: "Running", count: actionsQueueResponse?.items?.filter((item: any) => actionStateForUi(item) === "RUNNING").length || 0 },
-                      { label: "Done", count: actionsQueueResponse?.items?.filter((item: any) => actionStateForUi(item) === "SUCCEEDED" || actionStateForUi(item) === "DONE").length || 0 },
-                      { label: "Failed", count: actionsQueueResponse?.items?.filter((item: any) => actionStateForUi(item) === "FAILED").length || 0 },
+                      { label: "Queued", count: visibleActionQueueItems.filter((item: any) => actionStateForUi(item) === "QUEUED" || actionStateForUi(item) === "CREATED").length },
+                      { label: "Running", count: visibleActionQueueItems.filter((item: any) => actionStateForUi(item) === "RUNNING").length },
+                      { label: "Done", count: visibleActionQueueItems.filter((item: any) => actionStateForUi(item) === "SUCCEEDED" || actionStateForUi(item) === "DONE").length },
+                      { label: "Failed", count: visibleActionQueueItems.filter((item: any) => actionStateForUi(item) === "FAILED").length },
                     ].map((stat) => (
                       <div key={stat.label} className="rounded-lg border border-gray-700 bg-gray-800/30 p-3">
                         <div className="text-[11px] text-gray-400">{stat.label}</div>
@@ -5713,7 +5740,7 @@ export function AITeamHubPage() {
               </Card>
 
               <div className="space-y-2">
-                {(actionsQueueResponse?.items || []).slice(0, 80).map((item: any) => (
+                {visibleActionQueueItems.slice(0, 80).map((item: any) => (
                   <div key={`automation:${String(item.id)}`} className="rounded-lg border border-gray-700 bg-gray-800/40 p-3">
                     <div className="flex items-center justify-between gap-3">
                       <div className="min-w-0">
@@ -5749,7 +5776,7 @@ export function AITeamHubPage() {
           </ScrollArea>
         )}
 
-        {!currentMeeting && opsView === "arborescence" && (
+        {opsView === "arborescence" && (
           <ScrollArea className="flex-1 px-3 md:px-6 py-4">
             <div className="max-w-6xl mx-auto space-y-4">
               <div className="flex flex-wrap items-start justify-between gap-3">
@@ -5927,7 +5954,7 @@ export function AITeamHubPage() {
           </ScrollArea>
         )}
 
-        {!currentMeeting && opsView === "live" && (
+        {opsView === "live" && (
           <ScrollArea className="flex-1 px-3 md:px-6 py-4">
             <div className="max-w-5xl mx-auto space-y-4">
               <div className="flex items-center justify-between">

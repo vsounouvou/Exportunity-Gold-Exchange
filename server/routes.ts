@@ -8025,6 +8025,8 @@ Respond helpfully with your full platform awareness.`,
                     source: "operations-center.meeting.message",
                     companyId: member.agent?.companyId ?? null,
                     channelId: room.type,
+                    meetingId: room.type === "meeting" ? Number(room.id) : null,
+                    messageId: Number((message as any)?.id || 0) || null,
                     requestedByUserId,
                     isAdmin: false,
                     agent: {

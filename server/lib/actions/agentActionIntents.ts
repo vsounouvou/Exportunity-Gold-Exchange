@@ -48,6 +48,8 @@ export type DispatchAgentActionsInput = {
   source: string;
   companyId?: number | null;
   channelId?: string | null;
+  meetingId?: number | null;
+  messageId?: number | null;
   requestedByUserId?: number | null;
   fallbackRecipientEmails?: string[] | null;
   isAdmin?: boolean;
@@ -1490,6 +1492,8 @@ export async function dispatchAgentActionIntents(
       conversationId: input.conversationId,
       channelId: input.channelId ?? null,
       companyId: input.companyId ?? null,
+      sourceMeetingId: input.meetingId ?? null,
+      sourceMessageId: input.messageId ?? null,
       correlationId,
       agentId: input.agent?.id ?? null,
     } as Record<string, unknown>;

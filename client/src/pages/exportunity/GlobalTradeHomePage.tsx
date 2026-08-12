@@ -763,6 +763,13 @@ export default function GlobalTradeHomePage() {
     window.localStorage.setItem("exportunity-global-theme", theme);
   }, [theme]);
 
+  useEffect(() => {
+    document.title =
+      language === "fr"
+        ? "Exportunity | Commerce mondial, sourcing et expansion"
+        : "Exportunity | Global trade, sourcing and expansion";
+  }, [language]);
+
   const visibleLocations = useMemo(
     () =>
       market === "GLOBAL" || market === "OTHER"
@@ -980,7 +987,7 @@ export default function GlobalTradeHomePage() {
                 <p className="text-xs font-bold uppercase text-[#9A6200] dark:text-[#F5A623]">
                   Exportunity global trade network
                 </p>
-                <h1 className="mt-2 text-3xl font-semibold leading-tight text-[#07111F] dark:text-white sm:text-4xl">
+                <h1 className="mt-2 text-2xl font-semibold leading-tight text-[#07111F] dark:text-white sm:text-4xl">
                   Trade. Source. Expand. Operate.
                 </h1>
                 <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600 dark:text-slate-300 sm:text-base">
@@ -999,7 +1006,7 @@ export default function GlobalTradeHomePage() {
               </div>
             </div>
 
-            <div className="mt-4 flex snap-x snap-mandatory gap-2 overflow-x-auto pb-1 sm:grid sm:grid-cols-2 sm:overflow-visible xl:grid-cols-5">
+            <div className="mt-4 hidden gap-2 sm:grid sm:grid-cols-2 xl:grid-cols-5">
               {PATHWAYS.map((pathway) => {
                 const Icon = pathway.icon;
                 const active = pathway.id === mission;
@@ -1211,7 +1218,7 @@ export default function GlobalTradeHomePage() {
             onCloseProduct={() => setSelectedProduct(null)}
             mode="commercial"
             pane
-            className="mt-0 h-[520px] min-h-0 rounded-lg lg:h-full lg:min-h-[610px]"
+            className="mt-0 h-[440px] min-h-0 rounded-lg sm:h-[520px] lg:h-full lg:min-h-[610px]"
           />
         </aside>
 

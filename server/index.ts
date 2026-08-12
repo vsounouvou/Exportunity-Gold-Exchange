@@ -58,6 +58,7 @@ import { ensureMindbaseTables } from "./lib/mindbase/ensureTables";
 import { ensureVsTenantTables } from "./lib/vs/ensureTables";
 import { ensureIndustrialTables } from "./lib/industrial/ensureTables";
 import { ensureExportunityIndustrialAgentOrganization } from "./lib/industrial/agentOrganization";
+import { ensureCompanyBrainTables } from "./lib/company-brain/ensureTables";
 import { assertWhatsAppOtpConfigured, getWhatsAppOtpHealth } from "./services/whatsappOtp.service";
 import { getMessagingHealth } from "./lib/messaging/config";
 import { validateSmtpEnvAtBoot } from "./lib/mail/smtpProbe";
@@ -569,6 +570,8 @@ const errorHandler = (err: any, _req: Request, res: Response, _next: NextFunctio
     await ensureMarketplaceMapTables();
     // Exportunity's industrial schema is additive and idempotent.
     await ensureIndustrialTables();
+    // Company Brain provenance is additive; capabilities remain feature-gated.
+    await ensureCompanyBrainTables();
     const exportunityOrganization = await ensureExportunityIndustrialAgentOrganization();
     log(
       `Exportunity industrial organization synchronized (${exportunityOrganization.organizationVersion}, ${exportunityOrganization.changes.length} agents)`,

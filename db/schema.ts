@@ -144,6 +144,9 @@ export * from "./schema/intelligence-governance";
 // Export model gateway tables (local/external model routing + policy + logs + evals)
 export * from "./schema/model-gateway";
 
+// Export the evidence-backed Company Brain foundation.
+export * from "./schema/company-brain";
+
 // Message type enum and values
 const MESSAGE_TYPES = ['chat', 'system', 'notification', 'thought'] as const;
 export type MessageType = typeof MESSAGE_TYPES[number];

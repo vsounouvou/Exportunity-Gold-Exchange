@@ -1240,7 +1240,7 @@ export default function GlobalTradeHomePage() {
 
         <aside
           ref={assistantRef}
-          className="order-2 min-w-0 scroll-mt-20 lg:sticky lg:top-[84px] lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:h-[calc(100vh-100px)]"
+          className="relative z-[100] isolate order-2 min-w-0 scroll-mt-20 lg:sticky lg:top-[84px] lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:h-[calc(100vh-100px)]"
           aria-label="Exportunity commercial assistant"
         >
           <div className="mb-2 flex items-center justify-between gap-3 lg:hidden">
@@ -1268,7 +1268,7 @@ export default function GlobalTradeHomePage() {
           />
         </aside>
 
-        <section className="order-4 min-w-0 lg:col-span-2 lg:row-start-3" id="industries" aria-labelledby="industries-title">
+        <section className="relative z-0 order-4 min-w-0 lg:col-span-2 lg:row-start-3" id="industries" aria-labelledby="industries-title">
           <div className="border-y border-slate-200 py-4 dark:border-white/10">
             <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
               <div>

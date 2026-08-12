@@ -64,6 +64,18 @@ test("the global home reuses one real assistant and the existing commercial case
   assert.doesNotMatch(home, /placeholder|dummy|lorem ipsum/i);
 });
 
+test("the fixed assistant pane stays above the commerce canvas", () => {
+  const home = readRepoFile(
+    "client/src/pages/exportunity/GlobalTradeHomePage.tsx",
+  );
+
+  assert.match(
+    home,
+    /<aside[\s\S]*?className="relative z-\[100\] isolate[\s\S]*?aria-label="Exportunity commercial assistant"/,
+  );
+  assert.match(home, /<section className="relative z-0 order-4/);
+});
+
 test("public map and catalog language distinguishes evidence from unverified availability", () => {
   const home = readRepoFile(
     "client/src/pages/exportunity/GlobalTradeHomePage.tsx",

@@ -87,6 +87,8 @@ test("the homepage presents current corridors as one expanding industrial networ
   assert.match(hub, /max-w-\[132px\]/);
   assert.match(hub, /mb-3[\s\S]*?xl:hidden/);
   assert.match(hub, /hidden[\s\S]*?xl:block/);
+  assert.match(hub, /"Reseau en expansion"/);
+  assert.match(hub, /className="sm:hidden"[\s\S]*?"Autre"/);
 });
 
 test("territory selection preserves one real commercial conversation", () => {

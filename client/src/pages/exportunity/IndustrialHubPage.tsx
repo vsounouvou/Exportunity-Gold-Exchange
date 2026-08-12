@@ -1162,11 +1162,13 @@ function IndustrialTerritorySwitcher({
           <Globe2 className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
           <span className="truncate text-[10px] font-bold uppercase tracking-[0.11em]">
             {language === "fr"
-              ? "Corridors industriels actifs"
-              : "Active industrial corridors"}
+              ? "Reseau en expansion"
+              : "Expanding network"}
           </span>
           <span className="hidden text-[10px] font-semibold text-slate-500 sm:inline dark:text-slate-400">
-            {language === "fr" ? "Reseau en expansion" : "Expanding network"}
+            {language === "fr"
+              ? "Corridors industriels actifs"
+              : "Active industrial corridors"}
           </span>
         </span>
         <Link
@@ -1176,6 +1178,9 @@ function IndustrialTerritorySwitcher({
           title={language === "fr" ? "Explorer un autre marche" : "Explore another market"}
         >
           <Plus className="h-3 w-3" aria-hidden="true" />
+          <span className="sm:hidden">
+            {language === "fr" ? "Autre" : "More"}
+          </span>
           <span className="hidden sm:inline">
             {language === "fr" ? "Autre marche" : "Another market"}
           </span>

@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   dispatchAgentActionIntents,
   extractAgentActionIntents,
+  extractExplicitCreateTaskIntent,
   renderActionDispatchFeedback,
   stripAgentActionMarkers,
 } from "../server/lib/actions/agentActionIntents";
@@ -40,6 +41,25 @@ test("extractAgentActionIntents still accepts explicit action blocks when heuris
   );
   assert.equal(intents.length, 1);
   assert.equal(intents[0]?.actionType, "CREATE_TASK");
+});
+
+test("extractExplicitCreateTaskIntent parses a guarded French task request", () => {
+  const intent = extractExplicitCreateTaskIntent(
+    "Fenou, cr\u00e9e une seule t\u00e2che interne intitul\u00e9e \u00ab QA - Valider le Company Brain global - 2026-08-12 \u00bb, priorit\u00e9 basse, assign\u00e9e \u00e0 Fenou. Description: v\u00e9rifier que la mission globale reste coh\u00e9rente. Ne contacte personne et ne cr\u00e9e aucune autre action.",
+  );
+
+  assert.ok(intent);
+  assert.equal(intent?.actionType, "CREATE_TASK");
+  assert.equal(intent?.payload?.title, "QA - Valider le Company Brain global - 2026-08-12");
+  assert.equal(intent?.payload?.priority, "low");
+  assert.equal(intent?.payload?.description, "v\u00e9rifier que la mission globale reste coh\u00e9rente");
+});
+
+test("extractExplicitCreateTaskIntent respects explicit no-task instructions", () => {
+  const intent = extractExplicitCreateTaskIntent(
+    "R\u00e9sume cette preuve, mais ne cr\u00e9e aucune t\u00e2che et ne contacte personne.",
+  );
+  assert.equal(intent, null);
 });
 
 test("extractAgentActionIntents parses CREATE_CONTACT and CREATE_SHOP action blocks", () => {

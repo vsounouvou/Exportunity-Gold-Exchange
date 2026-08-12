@@ -683,31 +683,65 @@ function parseHeuristicCreateShopIntent(text: string): ParsedAgentActionIntent |
   };
 }
 
+function normalizeTaskRequestText(text: string) {
+  return String(text || "")
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[\u2019']/g, " ")
+    .toLowerCase();
+}
+
 function parseHeuristicCreateTaskIntent(text: string): ParsedAgentActionIntent | null {
+  const normalized = normalizeTaskRequestText(text);
+  const explicitlyRejectsTask =
+    /\b(?:do not|dont|without)\s+(?:create|add|assign|open|track|schedule|creating|adding)\b[^.!?\n]{0,100}\b(?:task|todo|to-do|action item|follow-?up)s?\b/i.test(normalized) ||
+    /\bne\s+(?:cree|creer|creez|ajoute|ajouter|ajoutez|assigne|assigner|ouvrez|ouvrir|planifie|planifier)\s+(?:pas|aucun|aucune)\b[^.!?\n]{0,100}\b(?:tache|todo|suivi)s?\b/i.test(normalized) ||
+    /\bsans\s+(?:creer|ajouter|assigner|ouvrir|planifier)\b[^.!?\n]{0,100}\b(?:tache|todo|suivi)s?\b/i.test(normalized);
+  if (explicitlyRejectsTask) return null;
+
   const wantsCreate =
-    /\b(create|add|assign|open|track|schedule)\b/i.test(text) &&
-    /\b(task|todo|to-do|action item|follow-?up)\b/i.test(text);
+    /\b(create|add|assign|open|track|schedule|cree|creer|creez|ajoute|ajouter|ajoutez|assigne|assigner|ouvrez|ouvrir|planifie|planifier|enregistre|enregistrer)\b/i.test(normalized) &&
+    /\b(task|tasks|todo|to-do|action item|follow-?up|tache|taches|suivi)\b/i.test(normalized);
   if (!wantsCreate) return null;
 
+  const quotedTitleMatch = text.match(/["\u00ab\u201c]([^"\u00bb\u201d\n]{3,220})["\u00bb\u201d]/u);
   const titleMatch =
-    text.match(/\b(?:task|todo|action item|follow-?up)\s*[:=-]\s*["â€œ]?([^"\nâ€]{3,220})/i) ||
-    text.match(/\b(?:assign|create)\s+(?:a\s+)?task\s+(?:to|for)\s+([^\n,.]{3,180})/i);
-  const dueDateMatch = text.match(/\b(?:due|deadline)\s*[:=-]\s*([0-9]{4}-[0-9]{2}-[0-9]{2})\b/i);
-  const priorityMatch = text.match(/\b(?:priority)\s*[:=-]\s*(low|medium|high|urgent)\b/i);
+    text.match(/\b(?:task|todo|action item|follow-?up|t(?:a|\u00e2)che)\s*[:=-]\s*["\u00ab\u201c]?([^"\u00bb\u201d\n]{3,220})/iu) ||
+    text.match(/\b(?:assign|create|cr(?:e|\u00e9)e|ajoute)\s+(?:a|une?)?\s*(?:task|t(?:a|\u00e2)che)\s+(?:to|for|pour|a|\u00e0)\s+([^\n,.]{3,180})/iu);
+  const dueDateMatch = normalized.match(/\b(?:due|deadline|echeance)\s*[:=-]\s*([0-9]{4}-[0-9]{2}-[0-9]{2})\b/i);
+  const priorityMatch = normalized.match(
+    /\b(?:priority|priorite)\s*[:=-]?\s*(low|medium|high|urgent|basse?|faible|moyenne?|haute?|elevee?|urgente?)\b/i,
+  );
+  const descriptionMatch = text.match(
+    /\bdescription\s*:\s*([\s\S]*?)(?=(?:\n|\.\s+(?:do not|dont|no other|ne\s|sans\s))|$)/i,
+  );
   const recurring = parseRecurringFromText(text);
   const cleaned = stripAgentActionMarkers(text).trim();
+  const rawPriority = priorityMatch?.[1]?.toLowerCase() || "medium";
+  const priority =
+    ["low", "basse", "bas", "faible"].includes(rawPriority)
+      ? "low"
+      : ["high", "haute", "haut", "elevee", "eleve"].includes(rawPriority)
+        ? "high"
+        : ["urgent", "urgente"].includes(rawPriority)
+          ? "urgent"
+          : "medium";
 
   return {
     actionType: "CREATE_TASK",
     payload: {
-      title: titleMatch?.[1]?.trim() || cleaned.slice(0, 180) || "Follow-up task",
-      description: cleaned || null,
+      title: quotedTitleMatch?.[1]?.trim() || titleMatch?.[1]?.trim() || cleaned.slice(0, 180) || "Follow-up task",
+      description: descriptionMatch?.[1]?.trim() || cleaned || null,
       dueDate: dueDateMatch?.[1] || null,
-      priority: priorityMatch?.[1]?.toLowerCase() || "medium",
+      priority,
       ...(recurring ? { recurring } : {}),
     },
     source: "heuristic",
   };
+}
+
+export function extractExplicitCreateTaskIntent(text: string): ParsedAgentActionIntent | null {
+  return parseHeuristicCreateTaskIntent(String(text || ""));
 }
 
 function parseHeuristicMeetingIntent(text: string): ParsedAgentActionIntent | null {

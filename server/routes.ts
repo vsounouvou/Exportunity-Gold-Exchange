@@ -167,6 +167,8 @@ import { extractAttachmentText } from "./lib/uploads/extractAttachmentText";
 import { ensureDefaultCompany } from "./lib/default-company";
 import {
   dispatchAgentActionIntents,
+  extractAgentActionIntents,
+  extractExplicitCreateTaskIntent,
   renderActionDispatchFeedback,
   stripAgentActionMarkers,
 } from "./lib/actions/agentActionIntents";
@@ -7695,7 +7697,9 @@ Respond helpfully with your full platform awareness.`,
         let primaryTaskId: number | null = null;
         let primaryTaskCreated = false;
         const taskCreationProhibited = prohibitsTaskCreation(content);
-        if (accountabilityEnabled && tenantId && !taskCreationProhibited) {
+        const explicitTaskIntent = extractExplicitCreateTaskIntent(content);
+        const automaticPrimaryTaskSuppressed = taskCreationProhibited || Boolean(explicitTaskIntent);
+        if (accountabilityEnabled && tenantId && !automaticPrimaryTaskSuppressed) {
           try {
             const ownerAgentId =
               parsePositiveInt((responderMembers[0] as any)?.agent?.id) ??
@@ -7942,7 +7946,7 @@ Respond helpfully with your full platform awareness.`,
                 unverifiedClaim: Boolean(completionClaim && accountabilitySettings.requireReceiptsForCompletion),
                 ...(evidenceCitations.length ? { evidenceCitations } : {}),
                 actionReceiptRequested,
-                automaticTaskCreationSuppressed: taskCreationProhibited,
+                automaticTaskCreationSuppressed: automaticPrimaryTaskSuppressed,
                 emailContext: emailContext
                   ? {
                       attached: emailContext.attached,
@@ -7997,10 +8001,24 @@ Respond helpfully with your full platform awareness.`,
                 }]
               });
 
-              const actionDispatch = taskCreationProhibited
+              const structuredResponseIntents = extractAgentActionIntents(response, {
+                allowHeuristics: false,
+              });
+              const responseAlreadyCreatesTask = structuredResponseIntents.some(
+                (intent) => intent.actionType === "CREATE_TASK",
+              );
+              const explicitTaskActionBlock = explicitTaskIntent
+                ? `[[ACTION:CREATE_TASK ${JSON.stringify(explicitTaskIntent.payload)}]]`
+                : "";
+              const actionDispatchText = taskCreationProhibited
+                ? explicitTaskActionBlock
+                : explicitTaskActionBlock && !responseAlreadyCreatesTask
+                  ? `${response}\n${explicitTaskActionBlock}`
+                  : response;
+              const actionDispatch = !actionDispatchText.trim()
                 ? { created: [], blocked: [], intentsDetected: 0 }
                 : await dispatchAgentActionIntents({
-                    text: response,
+                    text: actionDispatchText,
                     allowHeuristics: false,
                     tenantId: tenant?.id ?? null,
                     conversationId,
@@ -8033,8 +8051,8 @@ Respond helpfully with your full platform awareness.`,
                 actionRunIds: createdActionIds,
                 executionReceipt: {
                   requested: actionReceiptRequested,
-                  automaticTaskCreationSuppressed: taskCreationProhibited,
-                  primaryTaskId: taskCreationProhibited ? null : primaryTaskId,
+                  automaticTaskCreationSuppressed: automaticPrimaryTaskSuppressed,
+                  primaryTaskId: automaticPrimaryTaskSuppressed ? null : primaryTaskId,
                   primaryTaskCreated,
                   createdActionIds,
                   blockedCount: actionDispatch.blocked.length,

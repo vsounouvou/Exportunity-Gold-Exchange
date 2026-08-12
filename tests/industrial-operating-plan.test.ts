@@ -190,5 +190,7 @@ test("People and Access is tenant scoped and exposes real account controls", () 
   assert.match(hierarchy, /Active corridors, not limits/);
   assert.match(hierarchy, /roleSeatOrganization\.summary\.total/);
   assert.match(hierarchy, /\/agents-os\?tab=organization/);
+  assert.match(hierarchy, /for \(const department of departments \|\| \[\]\)/);
+  assert.match(hierarchy, /apiRequest\("\/api\/admin\/agents-os\/role-seats", "GET"\)/);
   assert.match(hierarchy, /aria-label="Operating markets"/);
 });

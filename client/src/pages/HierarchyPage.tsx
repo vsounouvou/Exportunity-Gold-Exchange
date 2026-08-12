@@ -15,6 +15,7 @@ import { useCompany } from "@/hooks/use-company";
 import { OrgChartTree } from "@/components/OrgChartTree";
 import type { Agent as DBAgent, Department } from "@db/schema";
 import { resolveApiUrl } from "@/lib/runtimeConfig";
+import { apiRequest } from "@/lib/queryClient";
 import { useLocation } from "wouter";
 
 interface Agent extends DBAgent {
@@ -484,10 +485,21 @@ export default function HierarchyPage() {
     enabled: !!selectedCompanyId,
   });
   
-  const { data: allAgents } = useQuery<Agent[]>({
+  const { data: companyAgents = [] } = useQuery<Agent[]>({
     queryKey: [`/api/companies/${selectedCompanyId}/agents`],
     enabled: !!selectedCompanyId,
   });
+
+  const allAgents = useMemo(() => {
+    const byId = new Map<number, Agent>();
+    for (const agent of companyAgents) byId.set(agent.id, agent);
+    for (const department of departments || []) {
+      for (const agent of department.agents || []) {
+        byId.set(agent.id, { ...byId.get(agent.id), ...agent });
+      }
+    }
+    return Array.from(byId.values());
+  }, [companyAgents, departments]);
 
   const { data: strategicGoals = [] } = useQuery<StrategicGoal[]>({
     queryKey: [`/api/goals/company/${selectedCompanyId}`],
@@ -496,6 +508,7 @@ export default function HierarchyPage() {
 
   const { data: roleSeatOrganization } = useQuery<RoleSeatOrganizationSummary>({
     queryKey: ["/api/admin/agents-os/role-seats"],
+    queryFn: () => apiRequest("/api/admin/agents-os/role-seats", "GET"),
     enabled: !!selectedCompanyId,
     staleTime: 60_000,
   });

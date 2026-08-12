@@ -3,6 +3,12 @@ import type { ChatMessage } from "./anthropic-gateway";
 import { generateText as generateAnthropicText } from "./anthropic-gateway";
 import { generateText as generateOpenAiText } from "./openai-gateway";
 import { injectCompanyContext } from "./company-context";
+import {
+  loadCompanyBrainContextPack,
+  type CompanyBrainContextPack,
+  type ContextPackPurpose,
+} from "../company-brain/contextAssembler";
+import { isCompanyBrainFeatureEnabled } from "../company-brain/featureFlags";
 
 export type LlmProvider = "openai" | "anthropic";
 export type LlmTier = "fast" | "balanced" | "quality";
@@ -37,6 +43,14 @@ function computeTier(policy: AgentPolicy): LlmTier {
   if (authority === "high") return roleLevel >= 4 ? "quality" : "balanced";
   if (authority === "medium") return roleLevel >= 3 ? "balanced" : "fast";
   return "fast";
+}
+
+function inferContextPurpose(purpose: string | undefined): ContextPackPurpose {
+  const normalized = String(purpose || "").toLowerCase();
+  if (/(?:mail|email|outreach|whatsapp|proposal|external)[._:-]/.test(`${normalized}.`)) {
+    return "external_draft";
+  }
+  return "internal";
 }
 
 function pickOpenAiModel(policy: AgentPolicy, tier: LlmTier) {
@@ -81,6 +95,11 @@ export async function generateText(params: {
   maxTokens?: number;
   temperature?: number;
   purpose?: string;
+  taskKey?: string;
+  conversationId?: string | null;
+  correlationId?: string | null;
+  contextPack?: CompanyBrainContextPack | null;
+  contextPurpose?: ContextPackPurpose;
 }): Promise<{
   text: string;
   provider: LlmProvider;
@@ -88,7 +107,24 @@ export async function generateText(params: {
   usage?: { promptTokens: number; completionTokens: number; totalTokens: number };
 }> {
   const tier = computeTier(params.policy);
-  const messages = injectCompanyContext(params.policy, params.messages);
+  let contextPack = params.contextPack;
+  if (
+    contextPack === undefined &&
+    params.policy.tenantId &&
+    isCompanyBrainFeatureEnabled("companyBrain") &&
+    isCompanyBrainFeatureEnabled("contextPacks")
+  ) {
+    contextPack = await loadCompanyBrainContextPack({
+      tenantId: params.policy.tenantId,
+      companyId: params.policy.companyId,
+      agentPolicy: params.policy,
+      taskKey: params.taskKey || params.purpose || params.jobId,
+      purpose: params.contextPurpose || inferContextPurpose(params.purpose),
+      conversationId: params.conversationId || null,
+      correlationId: params.correlationId || params.jobId,
+    });
+  }
+  const messages = injectCompanyContext(params.policy, params.messages, contextPack);
 
   const openaiConfigured = !!process.env.OPENAI_API_KEY;
   const anthropicConfigured = !!(process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY || process.env.ANTHROPIC_API_KEY);

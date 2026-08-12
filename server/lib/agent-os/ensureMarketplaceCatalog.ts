@@ -67,6 +67,30 @@ export async function ensureAgentsOsMarketplaceTables() {
       alter table ece_agent_templates
       add column if not exists updated_by_user_id int references ece_users(id) on delete set null;
     `);
+    await db.execute(sql`
+      alter table ece_agent_templates
+      add column if not exists seat_type text not null default 'agent';
+    `);
+    await db.execute(sql`
+      alter table ece_agent_templates
+      add column if not exists seat_status text not null default 'available';
+    `);
+    await db.execute(sql`
+      alter table ece_agent_templates
+      add column if not exists organization_version text;
+    `);
+    await db.execute(sql`
+      alter table ece_agent_templates
+      add column if not exists department_key text;
+    `);
+    await db.execute(sql`
+      alter table ece_agent_templates
+      add column if not exists role_profile jsonb not null default '{}'::jsonb;
+    `);
+    await db.execute(sql`
+      alter table ece_agent_templates
+      add column if not exists runtime_agent_id int references agents(id) on delete set null;
+    `);
 
     await db.execute(sql`
       update ece_agent_templates
@@ -90,6 +114,15 @@ export async function ensureAgentsOsMarketplaceTables() {
     await db.execute(sql`
       create index if not exists ece_agent_templates_tenant_category_idx
       on ece_agent_templates (tenant_id, category, updated_at desc);
+    `).catch(() => {});
+    await db.execute(sql`
+      create index if not exists ece_agent_templates_tenant_seat_idx
+      on ece_agent_templates (tenant_id, seat_type, department_key, seat_status);
+    `).catch(() => {});
+    await db.execute(sql`
+      create unique index if not exists ece_agent_templates_tenant_runtime_agent_uniq
+      on ece_agent_templates (tenant_id, runtime_agent_id)
+      where runtime_agent_id is not null;
     `).catch(() => {});
 
     await db.execute(sql`

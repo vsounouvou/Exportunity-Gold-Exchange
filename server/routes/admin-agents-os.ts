@@ -4,6 +4,14 @@ import { db } from "@db";
 import { ensureTenantAdmin } from "./utils/auth";
 import { ensureAgentsOsMarketplaceTables } from "../lib/agent-os/ensureMarketplaceCatalog";
 import { syncRuntimeAgentsToCatalog } from "../lib/agents/syncRuntimeAgentCatalog";
+import { ensureAgentManagementV2Tables } from "../lib/agents/ensureManagementV2Tables";
+import { ensureAgentsProductionTables } from "../lib/agents/ensureProductionAgents";
+import { ensureDefaultCompany } from "../lib/default-company";
+import { ensureExportunityRoleSeatCatalog } from "../lib/company-brain/ensureRoleSeatCatalog";
+import {
+  EXPORTUNITY_ROLE_SEAT_DEPARTMENTS,
+  EXPORTUNITY_ROLE_SEAT_TOTAL,
+} from "../lib/company-brain/roleSeatCatalog";
 
 const router = Router();
 const RUNTIME_SYNC_TTL_MS = 60_000;
@@ -267,6 +275,7 @@ router.get("/marketplace/agents", async (req: any, res) => {
       sql`coalesce(mp.is_visible, false) = true`,
       sql`coalesce(t.status::text, 'draft') = 'active'`,
       sql`coalesce(t.is_active, true) = true`,
+      sql`coalesce(t.seat_type, 'agent') <> 'role_seat'`,
       sql`(t.tenant_id = ${tenant.tenantId} or t.tenant_id is null)`,
     ];
     if (category) whereParts.push(sql`lower(coalesce(t.category, '')) = ${category}`);
@@ -365,6 +374,7 @@ router.get("/admin/agents-os/summary", async (req: any, res) => {
         count(*) filter (where coalesce(status::text, 'draft') = 'draft')::int as draft_agents
       from ece_agent_templates
       where tenant_id = ${tenant.tenantId}
+        and coalesce(seat_type, 'agent') <> 'role_seat'
     `);
 
     const market = await db.execute(sql`
@@ -372,8 +382,11 @@ router.get("/admin/agents-os/summary", async (req: any, res) => {
         count(*)::int as marketplace_agents,
         count(*) filter (where is_visible = true)::int as marketplace_visible,
         coalesce(sum(price_monthly) filter (where is_visible = true), 0)::numeric as visible_monthly_revenue
-      from agent_marketplace_profiles
-      where tenant_id = ${tenant.tenantId}
+      from agent_marketplace_profiles mp
+      join ece_agent_templates t
+        on t.id = mp.agent_id and t.tenant_id = ${tenant.tenantId}
+      where mp.tenant_id = ${tenant.tenantId}
+        and coalesce(t.seat_type, 'agent') <> 'role_seat'
     `);
 
     const summary = {
@@ -388,6 +401,263 @@ router.get("/admin/agents-os/summary", async (req: any, res) => {
     res.json({ ok: true, summary });
   } catch (error: any) {
     res.status(500).json({ message: error?.message || "Failed to load Agents OS summary" });
+  }
+});
+
+router.get("/admin/agents-os/role-seats", async (req: any, res) => {
+  try {
+    const tenant = resolveTenant(req, res);
+    if (!tenant) return;
+    if (tenant.tenantKey !== "exportunity") {
+      return res.status(404).json({ message: "The Exportunity global organization is not available for this tenant." });
+    }
+
+    await ensureExportunityRoleSeatCatalog();
+    await ensureAgentsProductionTables();
+    const result = await db.execute(sql`
+      select
+        t.id,
+        t.code,
+        t.title as display_name,
+        coalesce(nullif(t.role_title, ''), t.title) as role_title,
+        t.department_key,
+        t.seat_status,
+        t.organization_version,
+        t.role_profile,
+        t.avatar_url,
+        t.runtime_agent_id,
+        a.status as runtime_status,
+        a.display_name as runtime_display_name,
+        coalesce(ap.is_enabled, false) as production_enabled
+      from ece_agent_templates t
+      left join agents a
+        on a.id = t.runtime_agent_id and a.tenant_id = ${tenant.tenantId}
+      left join agents_production ap
+        on ap.agent_id = t.runtime_agent_id and ap.tenant_id = ${tenant.tenantId}
+      where t.tenant_id = ${tenant.tenantId}
+        and t.seat_type = 'role_seat'
+      order by t.department_key asc, t.id asc
+    `);
+    const seats = getRows<any>(result);
+    const departments = EXPORTUNITY_ROLE_SEAT_DEPARTMENTS.map((department) => ({
+      key: department.key,
+      name: department.name,
+      mission: department.mission,
+      capacity: department.capacity,
+      seats: seats.filter((seat) => seat.department_key === department.key),
+    }));
+
+    res.json({
+      ok: true,
+      organizationVersion: seats[0]?.organization_version || null,
+      summary: {
+        total: EXPORTUNITY_ROLE_SEAT_TOTAL,
+        available: seats.filter((seat) => !seat.runtime_agent_id).length,
+        provisioned: seats.filter((seat) => Number(seat.runtime_agent_id || 0) > 0).length,
+        activeRuntime: seats.filter((seat) => seat.runtime_status === "active").length,
+        productionEnabled: seats.filter((seat) => Boolean(seat.production_enabled)).length,
+      },
+      departments,
+    });
+  } catch (error: any) {
+    res.status(500).json({ message: error?.message || "Failed to load Exportunity role seats" });
+  }
+});
+
+router.post("/admin/agents/:id(\\d+)/provision", async (req: any, res) => {
+  try {
+    const tenant = resolveTenant(req, res);
+    if (!tenant) return;
+    if (tenant.tenantKey !== "exportunity") {
+      return res.status(404).json({ message: "Role-seat provisioning is not available for this tenant." });
+    }
+
+    await ensureExportunityRoleSeatCatalog();
+    await ensureAgentManagementV2Tables();
+    const templateId = Number(req.params.id);
+    const companyId = await ensureDefaultCompany({
+      tenantId: tenant.tenantId,
+      tenantKey: tenant.tenantKey,
+      tenantName: "Exportunity",
+      attachUnassignedAgents: false,
+    });
+
+    const templateResult = await db.execute(sql`
+      select *
+      from ece_agent_templates
+      where id = ${templateId}
+        and tenant_id = ${tenant.tenantId}
+        and seat_type = 'role_seat'
+      limit 1
+    `);
+    const template = getRows<any>(templateResult)[0];
+    if (!template) return res.status(404).json({ message: "Role seat not found" });
+
+    const profile = template.role_profile && typeof template.role_profile === "object"
+      ? template.role_profile
+      : {};
+    const departmentKey = asString(profile.departmentKey || template.department_key || "operations");
+    const departmentName = asString(profile.departmentName || "Operations");
+    const existingDepartmentResult = await db.execute(sql`
+      select id
+      from departments
+      where company_id = ${companyId}
+        and (
+          metadata->>'organizationKey' = ${departmentKey}
+          or lower(name) = lower(${departmentName})
+        )
+      order by case when metadata->>'organizationKey' = ${departmentKey} then 0 else 1 end, id asc
+      limit 1
+    `);
+    let departmentId = Number(getRows<any>(existingDepartmentResult)[0]?.id || 0);
+    if (!departmentId) {
+      const departmentOrder = Math.max(
+        1,
+        EXPORTUNITY_ROLE_SEAT_DEPARTMENTS.findIndex((item) => item.key === departmentKey) + 1,
+      ) * 10;
+      const createdDepartment = await db.execute(sql`
+        insert into departments (company_id, name, description, color, "order", metadata, created_at, updated_at)
+        values (
+          ${companyId},
+          ${departmentName},
+          ${asString(profile.description || `Global operating department for ${departmentName}.`)},
+          '#F5A623',
+          ${departmentOrder},
+          ${JSON.stringify({
+            organizationKey: departmentKey,
+            organizationVersion: template.organization_version,
+            operatingModel: "exportunity-global-trade-os",
+          })}::jsonb,
+          now(),
+          now()
+        )
+        returning id
+      `);
+      departmentId = Number(getRows<any>(createdDepartment)[0]?.id || 0);
+    }
+
+    const result = await db.transaction(async (tx) => {
+      const lockedResult = await tx.execute(sql`
+        select *
+        from ece_agent_templates
+        where id = ${templateId}
+          and tenant_id = ${tenant.tenantId}
+          and seat_type = 'role_seat'
+        for update
+      `);
+      const locked = getRows<any>(lockedResult)[0];
+      if (!locked) throw new Error("Role seat not found");
+      const linkedRuntimeId = Number(locked.runtime_agent_id || 0);
+      if (linkedRuntimeId > 0) return { runtimeAgentId: linkedRuntimeId, alreadyProvisioned: true };
+
+      const roleProfile = locked.role_profile && typeof locked.role_profile === "object"
+        ? locked.role_profile
+        : profile;
+      const roleLevel = Math.max(1, Math.min(5, Number(roleProfile.roleLevel || 2)));
+      const hierarchyLevel = roleLevel >= 5 ? "super" : roleLevel >= 4 ? "director" : roleLevel >= 3 ? "manager" : "executor";
+      const intelligenceCap = roleLevel >= 5 ? "UNLIMITED" : roleLevel >= 4 ? "HIGH" : roleLevel >= 3 ? "MEDIUM" : "LOW";
+      const displayName = asString(locked.title || roleProfile.defaultDisplayName || roleProfile.role || "Exportunity Agent");
+      const role = asString(locked.role_title || roleProfile.role || displayName);
+      const permittedTools = Array.isArray(roleProfile.permittedTools) ? roleProfile.permittedTools : [];
+      const dailyTokenLimit = Math.max(1_000, Math.min(120_000, Number(roleProfile.budget?.dailyTokenLimit || 10_000)));
+      const approvalRules = {
+        externalCommunication: "human_approval_required",
+        payments: "human_approval_required",
+        contracts: "human_approval_required",
+        publicClaims: "human_approval_required",
+        productionEnablement: "human_approval_required",
+        backgroundAutonomy: "disabled",
+      };
+      const metadata = {
+        organizationKey: asString(locked.code),
+        organizationVersion: asString(locked.organization_version),
+        operatingModel: "exportunity-global-trade-os",
+        roleSeatTemplateId: templateId,
+        departmentKey,
+        companyContext: "Exportunity is a global AI-managed trade, sourcing, industrial supply, and market expansion platform.",
+        activationState: "inactive",
+        roleSeatProfile: roleProfile,
+      };
+
+      const inserted = await tx.execute(sql`
+        insert into agents (
+          tenant_id, company_id, department_id, manager_id, env, is_test, is_visible,
+          name, display_name, role, hierarchy_level, intelligence_cap, max_context_tokens,
+          max_daily_tokens, is_super_agent, token_multiplier, is_department_head, status,
+          avatar_url, country, timezone, languages, skills, industry_focus, personality,
+          mission, responsibilities, kpi_targets, permissions, autonomy_level, approval_rules,
+          role_level, context_window_tokens, decision_authority, can_approve_below,
+          communication_style, capabilities, base_budget, budget_used, budget_bonus, metadata,
+          domain, department_key, tools_enabled_json, is_template, created_at, updated_at
+        ) values (
+          ${tenant.tenantId}, ${companyId}, ${departmentId || null}, null, 'prod', false, true,
+          ${displayName}, ${displayName}, ${role}, ${hierarchyLevel}, ${intelligenceCap}, 32000,
+          ${dailyTokenLimit}, ${roleLevel >= 5}, '1.00', false, 'inactive',
+          ${asString(locked.avatar_url) || null}, ${asString(roleProfile.geographicCompetencies?.[0] || "Global")}, 'UTC',
+          ${JSON.stringify(Array.isArray(roleProfile.languages) ? roleProfile.languages : ["English", "French"])}::jsonb,
+          ${JSON.stringify(Array.isArray(roleProfile.sectorCompetencies) ? roleProfile.sectorCompetencies : [])}::jsonb,
+          ${JSON.stringify(Array.isArray(roleProfile.sectorCompetencies) ? roleProfile.sectorCompetencies : [])}::jsonb,
+          ${JSON.stringify(locked.personality_profile || {})}::jsonb,
+          ${asString(roleProfile.description || locked.long_description || locked.description)},
+          ${JSON.stringify(Array.isArray(roleProfile.escalationRules) ? roleProfile.escalationRules : [])}::jsonb,
+          '{}'::jsonb,
+          ${JSON.stringify({ email: false, calendar: false, crm: false, knowledge: true, payments: false, webResearch: false })}::jsonb,
+          'draft_only', ${JSON.stringify(approvalRules)}::jsonb,
+          ${roleLevel}, 16000, ${asString(roleProfile.decisionAuthority || "low")}, false,
+          ${JSON.stringify({ tone: "direct", verbosity: "concise", emoji: false })}::jsonb,
+          ${JSON.stringify(permittedTools)}::jsonb,
+          '0.00', '0.00', '0.00', ${JSON.stringify(metadata)}::jsonb,
+          'INTERNAL', ${departmentKey}, ${JSON.stringify(permittedTools)}::jsonb, false, now(), now()
+        )
+        returning id, name, role, status
+      `);
+      const runtime = getRows<any>(inserted)[0];
+      if (!runtime?.id) throw new Error("Unable to provision runtime agent");
+
+      const approvalPolicy = {
+        ...(locked.approval_policy && typeof locked.approval_policy === "object" ? locked.approval_policy : {}),
+        runtimeAgentId: Number(runtime.id),
+        activationState: "inactive",
+        productionEnablement: "human_approval_required",
+      };
+      await tx.execute(sql`
+        update ece_agent_templates
+        set runtime_agent_id = ${Number(runtime.id)},
+            seat_status = 'provisioned',
+            approval_policy = ${JSON.stringify(approvalPolicy)}::jsonb,
+            updated_by_user_id = ${req.adminUser?.id ? Number(req.adminUser.id) : null},
+            updated_at = now()
+        where id = ${templateId} and tenant_id = ${tenant.tenantId}
+      `);
+
+      return { runtimeAgentId: Number(runtime.id), alreadyProvisioned: false };
+    });
+
+    await writeAudit({
+      tenantId: tenant.tenantId,
+      actor: req.adminUser,
+      action: result.alreadyProvisioned ? "ROLE_SEAT_PROVISION_REUSED" : "ROLE_SEAT_PROVISION",
+      entityType: "role_seat",
+      entityId: templateId,
+      before: template,
+      after: {
+        runtimeAgentId: result.runtimeAgentId,
+        status: "inactive",
+        productionEnabled: false,
+        externalCommunicationsEnabled: false,
+      },
+      req,
+    });
+
+    res.status(result.alreadyProvisioned ? 200 : 201).json({
+      ok: true,
+      ...result,
+      status: "inactive",
+      productionEnabled: false,
+      externalCommunicationsEnabled: false,
+    });
+  } catch (error: any) {
+    res.status(500).json({ message: error?.message || "Failed to provision role seat" });
   }
 });
 
@@ -621,7 +891,10 @@ router.get("/admin/agents", async (req: any, res) => {
     const category = asString(req.query?.category).toLowerCase();
     const sort = asString(req.query?.sort).toLowerCase();
 
-    const whereParts: any[] = [sql`t.tenant_id = ${tenant.tenantId}`];
+    const whereParts: any[] = [
+      sql`t.tenant_id = ${tenant.tenantId}`,
+      sql`coalesce(t.seat_type, 'agent') <> 'role_seat'`,
+    ];
     if (status) whereParts.push(sql`coalesce(t.status::text, 'draft') = ${status}`);
     if (category) whereParts.push(sql`lower(coalesce(t.category, '')) = ${category}`);
     if (q) {
@@ -661,11 +934,11 @@ router.get("/admin/agents", async (req: any, res) => {
         coalesce(t.autonomy_level, 2) as autonomy_level,
         coalesce(t.status::text, 'draft') as status,
         coalesce(t.avatar_url, '') as avatar_url,
-        case
+        coalesce(t.runtime_agent_id, case
           when coalesce(t.approval_policy->>'runtimeAgentId', t.approval_policy->>'runtime_agent_id', '') ~ '^[0-9]+$'
             then coalesce(t.approval_policy->>'runtimeAgentId', t.approval_policy->>'runtime_agent_id')::int
           else null
-        end as runtime_agent_id,
+        end) as runtime_agent_id,
         coalesce(mp.is_visible, false) as marketplace_visible,
         coalesce(mp.price_monthly, t.base_salary_monthly, 0) as price_monthly,
         coalesce(mp.currency, 'USD') as currency,
@@ -864,6 +1137,41 @@ router.patch("/admin/agents/:id(\\d+)", async (req: any, res) => {
     const existing = getRows<any>(existingRows)[0];
     if (!existing) return res.status(404).json({ message: "Agent not found" });
 
+    const existingRoleProfile =
+      existing.role_profile && typeof existing.role_profile === "object" && !Array.isArray(existing.role_profile)
+        ? existing.role_profile
+        : {};
+    const incomingRoleProfile =
+      req.body?.roleProfile && typeof req.body.roleProfile === "object" && !Array.isArray(req.body.roleProfile)
+        ? req.body.roleProfile
+        : null;
+    const nextRoleProfile = incomingRoleProfile && existing.seat_type === "role_seat"
+      ? {
+          ...existingRoleProfile,
+          description: asString(incomingRoleProfile.description ?? existingRoleProfile.description),
+          languages: parseTags(incomingRoleProfile.languages ?? existingRoleProfile.languages),
+          geographicCompetencies: parseTags(
+            incomingRoleProfile.geographicCompetencies ?? existingRoleProfile.geographicCompetencies,
+          ),
+          sectorCompetencies: parseTags(
+            incomingRoleProfile.sectorCompetencies ?? existingRoleProfile.sectorCompetencies,
+          ),
+          permittedTools: parseTags(incomingRoleProfile.permittedTools ?? existingRoleProfile.permittedTools),
+          prohibitedTools: parseTags(incomingRoleProfile.prohibitedTools ?? existingRoleProfile.prohibitedTools),
+          decisionAuthority: ["none", "low", "medium", "high", "executive"].includes(
+            asString(incomingRoleProfile.decisionAuthority).toLowerCase(),
+          )
+            ? asString(incomingRoleProfile.decisionAuthority).toLowerCase()
+            : asString(existingRoleProfile.decisionAuthority || "low"),
+          roleLevel: Math.max(1, Math.min(5, toInt(incomingRoleProfile.roleLevel ?? existingRoleProfile.roleLevel, 2))),
+          // Immutable organization identity and reporting boundaries cannot be changed from profile editing.
+          immutableAgentId: existingRoleProfile.immutableAgentId,
+          departmentKey: existingRoleProfile.departmentKey,
+          departmentName: existingRoleProfile.departmentName,
+          activationStatus: existingRoleProfile.activationStatus || "available",
+        }
+      : existingRoleProfile;
+
     const next = {
       title: asString(req.body?.displayName ?? req.body?.display_name ?? existing.title) || existing.title,
       role_title: asString(req.body?.roleTitle ?? req.body?.role_title ?? existing.role_title ?? existing.title) || existing.title,
@@ -884,6 +1192,7 @@ router.patch("/admin/agents/:id(\\d+)", async (req: any, res) => {
       avatar_url: asString(req.body?.avatarUrl ?? req.body?.avatar_url ?? existing.avatar_url) || null,
       status: normalizeStatus(req.body?.status ?? existing.status),
       slug: asString(req.body?.slug ?? existing.slug) || existing.slug,
+      role_profile: nextRoleProfile,
     };
 
     const updatedRows = await db.execute(sql`
@@ -901,6 +1210,7 @@ router.patch("/admin/agents/:id(\\d+)", async (req: any, res) => {
         personality_profile = ${JSON.stringify(next.personality_profile)}::jsonb,
         knowledge_base_id = ${next.knowledge_base_id > 0 ? next.knowledge_base_id : null},
         avatar_url = ${next.avatar_url},
+        role_profile = ${JSON.stringify(next.role_profile)}::jsonb,
         status = ${next.status},
         slug = ${slugify(next.slug) || existing.slug},
         updated_by_user_id = ${actor?.id ? Number(actor.id) : null},
@@ -909,6 +1219,26 @@ router.patch("/admin/agents/:id(\\d+)", async (req: any, res) => {
       returning *
     `);
     const updated = getRows(updatedRows)[0];
+
+    const runtimeAgentId = Number(existing.runtime_agent_id || 0);
+    if (existing.seat_type === "role_seat" && runtimeAgentId > 0) {
+      await db.execute(sql`
+        update agents
+        set name = ${next.title},
+            display_name = ${next.title},
+            role = ${next.role_title},
+            avatar_url = ${next.avatar_url},
+            mission = ${asString(next.role_profile.description) || null},
+            languages = ${JSON.stringify(next.role_profile.languages || [])}::jsonb,
+            skills = ${JSON.stringify(next.role_profile.sectorCompetencies || [])}::jsonb,
+            industry_focus = ${JSON.stringify(next.role_profile.sectorCompetencies || [])}::jsonb,
+            decision_authority = ${asString(next.role_profile.decisionAuthority || "low")},
+            role_level = ${Math.max(1, Math.min(5, Number(next.role_profile.roleLevel || 2)))},
+            metadata = coalesce(metadata, '{}'::jsonb) || ${JSON.stringify({ roleSeatProfile: next.role_profile })}::jsonb,
+            updated_at = now()
+        where id = ${runtimeAgentId} and tenant_id = ${tenant.tenantId}
+      `);
+    }
 
     await writeAudit({
       tenantId: tenant.tenantId,
@@ -1169,7 +1499,11 @@ router.get("/admin/marketplace/agents", async (req: any, res) => {
     const category = asString(req.query?.category).toLowerCase();
     const visible = asString(req.query?.visible).toLowerCase();
 
-    const whereParts: any[] = [sql`t.tenant_id = ${tenant.tenantId}`, sql`mp.tenant_id = ${tenant.tenantId}`];
+    const whereParts: any[] = [
+      sql`t.tenant_id = ${tenant.tenantId}`,
+      sql`mp.tenant_id = ${tenant.tenantId}`,
+      sql`coalesce(t.seat_type, 'agent') <> 'role_seat'`,
+    ];
     if (category) whereParts.push(sql`lower(coalesce(t.category, '')) = ${category}`);
     if (visible === "true" || visible === "false") whereParts.push(sql`coalesce(mp.is_visible, false) = ${visible === "true"}`);
     if (q) {

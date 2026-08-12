@@ -276,10 +276,10 @@ export function AgentDetailPage() {
 
   const normalizeAgentRecord = (record: any): Agent | null => {
     if (!record || typeof record !== "object") return null;
-    const runtimeAgentId =
+    const explicitRuntimeAgentId =
       Number(record.runtimeAgentId || record.runtime_agent_id || record.approval_policy?.runtimeAgentId || record.approval_policy?.runtime_agent_id || 0) ||
-      Number(record.approvalPolicy?.runtimeAgentId || record.approvalPolicy?.runtime_agent_id || 0) ||
-      Number(record.id || 0);
+      Number(record.approvalPolicy?.runtimeAgentId || record.approvalPolicy?.runtime_agent_id || 0);
+    const runtimeAgentId = explicitRuntimeAgentId || (record.name || record.role ? Number(record.id || 0) : 0);
     if (record.name || record.role) return { ...(record as any), runtimeAgentId } as Agent;
     return {
       ...(record as any),
@@ -330,10 +330,10 @@ export function AgentDetailPage() {
       Number((adminAgent as any)?.approval_policy?.runtime_agent_id || 0),
       Number((agent as any)?.runtimeAgentId || 0),
       Number((agent as any)?.runtime_agent_id || 0),
-      Number(agent?.id || 0),
+      adminPath ? 0 : Number(agent?.id || 0),
     ];
     return candidates.find((value) => Number.isInteger(value) && value > 0) || 0;
-  }, [adminAgent, agent]);
+  }, [adminAgent, adminPath, agent]);
 
   const versionsQuery = useQuery<AgentVersionsResponse>({
     queryKey: adminPath && agentId ? [`/api/admin/agents/${agentId}/versions`] : ["__no_agent_versions__"],
@@ -376,11 +376,11 @@ export function AgentDetailPage() {
   }, [actionQueueQuery.data?.items, adminAgent, agent]);
 
   const mailboxAgentKey = useMemo(() => {
-    if (!agent) return "";
+    if (!agent || !runtimeAgentId) return "";
     const meta = (agent as any)?.metadata && typeof (agent as any).metadata === "object" ? (agent as any).metadata : {};
     const explicit = typeof meta?.mailAgentKey === "string" ? meta.mailAgentKey : null;
     return normalizeAgentKey(explicit || agent.name || "");
-  }, [agent]);
+  }, [agent, runtimeAgentId]);
 
   const mailboxQuery = useQuery<MailboxResponse>({
     queryKey:

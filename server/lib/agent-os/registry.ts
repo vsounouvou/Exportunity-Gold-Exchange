@@ -2,6 +2,7 @@ import { db } from "@db";
 import { agentRegistry, agents } from "@db/schema";
 import { eq } from "drizzle-orm";
 import { PermissionDeniedError } from "./errors";
+import { isCompanyBrainFeatureEnabled } from "../company-brain/featureFlags";
 
 export type AgentOsScope = "personal" | "department" | "company" | "entity";
 
@@ -21,6 +22,7 @@ export type AgentOsAnthropicPolicy = {
 
 export type AgentPolicy = {
   agentId: number;
+  tenantId: number | null;
   companyId: number | null;
   departmentId: number | null;
   organizationKey: string | null;
@@ -73,7 +75,7 @@ function deriveToolPermissions(agent: typeof agents.$inferSelect): string[] {
   allowed.add("log_event");
   allowed.add("create_job");
 
-  if (perms.email) allowed.add("send_message");
+  if (perms.email && isCompanyBrainFeatureEnabled("externalCommunications")) allowed.add("send_message");
   if (perms.webResearch) allowed.add("search_web");
   if (perms.crm) {
     allowed.add("create_lead");
@@ -174,6 +176,7 @@ export async function getAgentPolicy(agentId: number): Promise<AgentPolicy> {
 
   return {
     agentId,
+    tenantId: agent.tenantId ?? null,
     companyId: agent.companyId ?? null,
     departmentId: agent.departmentId ?? null,
     organizationKey: organization.organizationKey,
@@ -192,6 +195,11 @@ export async function getAgentPolicy(agentId: number): Promise<AgentPolicy> {
 }
 
 export function assertToolAllowed(policy: AgentPolicy, toolName: string) {
+  if (toolName === "send_message" && !isCompanyBrainFeatureEnabled("externalCommunications")) {
+    throw new PermissionDeniedError(
+      "External communication is disabled. The agent may prepare a draft, but cannot send it.",
+    );
+  }
   if (policy.permissions.includes(toolName)) return;
   throw new PermissionDeniedError(`Agent ${policy.agentId} cannot use tool: ${toolName}`);
 }

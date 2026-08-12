@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { BarChart3, Bot, BrainCircuit, CopyPlus, Globe, Library, MoreHorizontal, Network, Pencil, Plus, RefreshCw, Settings2, ShieldCheck, Sparkles, UsersRound } from "lucide-react";
+import { BarChart3, Bot, BrainCircuit, Building2, CopyPlus, Globe, Library, MoreHorizontal, Network, Pencil, Plus, RefreshCw, Search, Settings2, ShieldCheck, Sparkles, UsersRound } from "lucide-react";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,7 +24,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { getAgentAvatarUrl } from "@/lib/agentAvatar";
 
-type AgentsOsTab = "registry" | "studio" | "knowledge" | "marketplace" | "analytics" | "governance";
+type AgentsOsTab = "registry" | "organization" | "studio" | "knowledge" | "marketplace" | "analytics" | "governance";
 
 type SummaryPayload = {
   summary: {
@@ -90,6 +91,55 @@ type GovernanceResponse = {
   nodes: GovernanceNode[];
 };
 
+type RoleSeatProfile = {
+  immutableAgentId?: string;
+  description?: string;
+  languages?: string[];
+  geographicCompetencies?: string[];
+  sectorCompetencies?: string[];
+  roleLevel?: number;
+  decisionAuthority?: string;
+  permittedTools?: string[];
+  prohibitedTools?: string[];
+  activationStatus?: string;
+};
+
+type RoleSeat = {
+  id: number;
+  code: string;
+  display_name: string;
+  role_title: string;
+  department_key: string;
+  seat_status: "available" | "provisioned" | string;
+  role_profile: RoleSeatProfile | null;
+  avatar_url: string | null;
+  runtime_agent_id: number | null;
+  runtime_status: string | null;
+  runtime_display_name: string | null;
+  production_enabled: boolean;
+};
+
+type RoleSeatDepartment = {
+  key: string;
+  name: string;
+  mission: string;
+  capacity: number;
+  seats: RoleSeat[];
+};
+
+type RoleSeatsResponse = {
+  ok: boolean;
+  organizationVersion: string | null;
+  summary: {
+    total: number;
+    available: number;
+    provisioned: number;
+    activeRuntime: number;
+    productionEnabled: number;
+  };
+  departments: RoleSeatDepartment[];
+};
+
 function useDebouncedValue<T>(value: T, delayMs = 300) {
   const [debounced, setDebounced] = useState(value);
   useEffect(() => {
@@ -108,7 +158,7 @@ function fmtMoney(value: number | string | null | undefined) {
 function parseTab(search: string): AgentsOsTab {
   try {
     const value = String(new URLSearchParams(search).get("tab") || "").toLowerCase();
-    if (value === "registry" || value === "studio" || value === "knowledge" || value === "marketplace" || value === "analytics" || value === "governance") {
+    if (value === "registry" || value === "organization" || value === "studio" || value === "knowledge" || value === "marketplace" || value === "analytics" || value === "governance") {
       return value;
     }
   } catch {
@@ -124,6 +174,18 @@ export default function AdminAgentsOsPage() {
   const activeTab = parseTab(search);
 
   const [q, setQ] = useState("");
+  const [organizationQuery, setOrganizationQuery] = useState("");
+  const [editingRoleSeat, setEditingRoleSeat] = useState<RoleSeat | null>(null);
+  const [roleSeatDraft, setRoleSeatDraft] = useState({
+    displayName: "",
+    roleTitle: "",
+    avatarUrl: "",
+    description: "",
+    languages: "",
+    geographies: "",
+    sectors: "",
+    decisionAuthority: "low",
+  });
   const [statusFilter, setStatusFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
 
@@ -183,6 +245,37 @@ export default function AdminAgentsOsPage() {
     refetchOnWindowFocus: false,
     retry: 1,
   });
+  const roleSeatsQuery = useQuery<RoleSeatsResponse>({
+    queryKey: ["/api/admin/agents-os/role-seats"],
+    queryFn: async () => apiRequest("/api/admin/agents-os/role-seats", "GET"),
+    enabled: activeTab === "organization",
+    staleTime: 30_000,
+    refetchOnWindowFocus: false,
+    retry: 1,
+  });
+
+  const filteredRoleSeatDepartments = useMemo(() => {
+    const needle = organizationQuery.trim().toLowerCase();
+    if (!needle) return roleSeatsQuery.data?.departments || [];
+    return (roleSeatsQuery.data?.departments || [])
+      .map((department) => ({
+        ...department,
+        seats: department.seats.filter((seat) => {
+          const profile = seat.role_profile || {};
+          return [
+            seat.display_name,
+            seat.role_title,
+            seat.code,
+            department.name,
+            profile.description,
+            ...(profile.languages || []),
+            ...(profile.geographicCompetencies || []),
+            ...(profile.sectorCompetencies || []),
+          ].some((value) => String(value || "").toLowerCase().includes(needle));
+        }),
+      }))
+      .filter((department) => department.seats.length > 0);
+  }, [organizationQuery, roleSeatsQuery.data?.departments]);
 
   const categories = useMemo(() => {
     const unique = new Set<string>();
@@ -199,8 +292,72 @@ export default function AdminAgentsOsPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/agents"] }),
       queryClient.invalidateQueries({ queryKey: ["/api/admin/marketplace/agents"] }),
       queryClient.invalidateQueries({ queryKey: ["/api/marketplace/agents"] }),
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/agents-os/role-seats"] }),
     ]);
   };
+
+  const provisionRoleSeat = useMutation({
+    mutationFn: async (templateId: number) => apiRequest(`/api/admin/agents/${templateId}/provision`, "POST", {}),
+    onSuccess: async (payload: { runtimeAgentId: number; alreadyProvisioned?: boolean }) => {
+      await refreshAll();
+      await queryClient.invalidateQueries({ queryKey: ["/api/admin/agents-os/governance"] });
+      toast({
+        title: payload.alreadyProvisioned ? "Role seat already provisioned" : "Role seat provisioned inactive",
+        description: "No production access or external communication was enabled. You can now edit its identity and face.",
+      });
+    },
+    onError: (error: any) => {
+      toast({ title: "Provisioning failed", description: error?.message || "Could not provision role seat", variant: "destructive" });
+    },
+  });
+
+  const openRoleSeatEditor = (seat: RoleSeat) => {
+    const profile = seat.role_profile || {};
+    setEditingRoleSeat(seat);
+    setRoleSeatDraft({
+      displayName: seat.display_name || "",
+      roleTitle: seat.role_title || "",
+      avatarUrl: seat.avatar_url || "",
+      description: profile.description || "",
+      languages: (profile.languages || []).join(", "),
+      geographies: (profile.geographicCompetencies || []).join(", "),
+      sectors: (profile.sectorCompetencies || []).join(", "),
+      decisionAuthority: profile.decisionAuthority || "low",
+    });
+  };
+
+  const updateRoleSeat = useMutation({
+    mutationFn: async () => {
+      if (!editingRoleSeat) throw new Error("No role seat selected");
+      const toList = (value: string) => value.split(",").map((item) => item.trim()).filter(Boolean);
+      return apiRequest(`/api/admin/agents/${editingRoleSeat.id}`, "PATCH", {
+        displayName: roleSeatDraft.displayName,
+        roleTitle: roleSeatDraft.roleTitle,
+        avatarUrl: roleSeatDraft.avatarUrl,
+        shortPitch: roleSeatDraft.description,
+        longDescription: roleSeatDraft.description,
+        roleProfile: {
+          ...(editingRoleSeat.role_profile || {}),
+          description: roleSeatDraft.description,
+          languages: toList(roleSeatDraft.languages),
+          geographicCompetencies: toList(roleSeatDraft.geographies),
+          sectorCompetencies: toList(roleSeatDraft.sectors),
+          decisionAuthority: roleSeatDraft.decisionAuthority,
+        },
+      });
+    },
+    onSuccess: async () => {
+      setEditingRoleSeat(null);
+      await refreshAll();
+      toast({
+        title: "Role seat updated",
+        description: "The role blueprint was saved. Runtime status and production permissions were not changed.",
+      });
+    },
+    onError: (error: any) => {
+      toast({ title: "Update failed", description: error?.message || "Could not update role seat", variant: "destructive" });
+    },
+  });
 
   const createAgent = useMutation({
     mutationFn: async () =>
@@ -433,14 +590,161 @@ export default function AdminAgentsOsPage() {
       </div>
 
       <Tabs value={activeTab} onValueChange={navigateTab}>
-        <TabsList className="grid w-full grid-cols-2 md:grid-cols-3 lg:grid-cols-6 bg-gray-900 border border-gray-800">
+        <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 lg:grid-cols-7 bg-gray-900 border border-gray-800">
           <TabsTrigger value="registry"><Bot className="h-4 w-4 mr-1" />Registry</TabsTrigger>
+          <TabsTrigger value="organization"><Building2 className="h-4 w-4 mr-1" />Organization</TabsTrigger>
           <TabsTrigger value="studio"><Plus className="h-4 w-4 mr-1" />Studio</TabsTrigger>
           <TabsTrigger value="knowledge"><Library className="h-4 w-4 mr-1" />Knowledge</TabsTrigger>
           <TabsTrigger value="marketplace"><Globe className="h-4 w-4 mr-1" />Marketplace</TabsTrigger>
           <TabsTrigger value="analytics"><BarChart3 className="h-4 w-4 mr-1" />Analytics</TabsTrigger>
           <TabsTrigger value="governance"><ShieldCheck className="h-4 w-4 mr-1" />Governance</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="organization" className="space-y-3">
+          <section className="rounded-lg border border-slate-200 bg-white shadow-sm">
+            <div className="flex flex-col gap-3 border-b border-slate-200 p-4 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <div className="flex items-center gap-2">
+                  <Building2 className="h-5 w-5 text-amber-600" />
+                  <h2 className="text-lg font-semibold text-slate-950">Exportunity global organization</h2>
+                  {roleSeatsQuery.data?.organizationVersion ? (
+                    <Badge variant="outline" className="border-slate-200 bg-slate-50 text-slate-600">
+                      {roleSeatsQuery.data.organizationVersion}
+                    </Badge>
+                  ) : null}
+                </div>
+                <p className="mt-1 max-w-3xl text-sm text-slate-600">
+                  Role seats define the company structure. They do not run, spend, contact anyone, or use production tools until a human provisions and separately enables them.
+                </p>
+              </div>
+              <div className="relative w-full lg:w-80">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <Input
+                  value={organizationQuery}
+                  onChange={(event) => setOrganizationQuery(event.target.value)}
+                  placeholder="Search role, market, sector..."
+                  className="pl-9"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-px border-b border-slate-200 bg-slate-200 lg:grid-cols-5">
+              {[
+                ["Role seats", roleSeatsQuery.data?.summary.total ?? 0],
+                ["Available", roleSeatsQuery.data?.summary.available ?? 0],
+                ["Provisioned inactive", roleSeatsQuery.data?.summary.provisioned ?? 0],
+                ["Active runtimes", roleSeatsQuery.data?.summary.activeRuntime ?? 0],
+                ["Production enabled", roleSeatsQuery.data?.summary.productionEnabled ?? 0],
+              ].map(([label, value]) => (
+                <div key={String(label)} className="bg-white px-4 py-3">
+                  <div className="text-xs font-medium text-slate-500">{label}</div>
+                  <div className="mt-1 text-xl font-semibold text-slate-950">{value}</div>
+                </div>
+              ))}
+            </div>
+
+            {roleSeatsQuery.isLoading ? (
+              <div className="p-6 text-sm text-slate-600">Loading the global organization...</div>
+            ) : roleSeatsQuery.isError ? (
+              <div className="p-6">
+                <div className="text-sm font-medium text-rose-700">The organization could not be loaded.</div>
+                <Button className="mt-3" variant="outline" onClick={() => roleSeatsQuery.refetch()}>
+                  <RefreshCw className="mr-2 h-4 w-4" />Retry
+                </Button>
+              </div>
+            ) : filteredRoleSeatDepartments.length ? (
+              <div className="divide-y divide-slate-200">
+                {filteredRoleSeatDepartments.map((department) => (
+                  <section key={department.key} className="p-4">
+                    <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+                      <div>
+                        <h3 className="font-semibold text-slate-950">{department.name}</h3>
+                        <p className="text-xs text-slate-600">{department.mission}</p>
+                      </div>
+                      <div className="text-xs font-medium text-slate-500">
+                        {department.seats.length}{organizationQuery.trim() ? ` of ${department.capacity}` : ""} seats
+                      </div>
+                    </div>
+                    <div className="divide-y divide-slate-100 rounded-md border border-slate-200">
+                      {department.seats.map((seat) => {
+                        const runtimeAgentId = Number(seat.runtime_agent_id || 0);
+                        const profile = seat.role_profile || {};
+                        const avatarUrl = String(seat.avatar_url || "").trim() || getAgentAvatarUrl({
+                          id: runtimeAgentId || seat.id,
+                          name: seat.display_name,
+                          label: seat.display_name,
+                          size: 80,
+                        });
+                        return (
+                          <div key={seat.id} className="flex flex-col gap-3 bg-white p-3 lg:flex-row lg:items-center lg:justify-between">
+                            <div className="flex min-w-0 items-center gap-3">
+                              <img
+                                src={avatarUrl}
+                                alt={`${seat.display_name} profile`}
+                                loading="lazy"
+                                className="h-10 w-10 shrink-0 rounded-full border border-slate-200 bg-slate-100 object-cover"
+                              />
+                              <div className="min-w-0">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <div className="truncate text-sm font-semibold text-slate-950">{seat.display_name}</div>
+                                  <Badge
+                                    variant="outline"
+                                    className={runtimeAgentId > 0 ? "border-amber-200 bg-amber-50 text-amber-800" : "border-slate-200 bg-slate-50 text-slate-600"}
+                                  >
+                                    {runtimeAgentId > 0 ? "provisioned inactive" : "available seat"}
+                                  </Badge>
+                                  {seat.production_enabled ? (
+                                    <Badge className="border border-rose-200 bg-rose-50 text-rose-700">production enabled</Badge>
+                                  ) : null}
+                                </div>
+                                <div className="mt-0.5 truncate text-xs text-slate-600">{seat.role_title}</div>
+                                <div className="mt-1 line-clamp-1 text-xs text-slate-500">{profile.description || "Task-scoped role in the Exportunity operating model."}</div>
+                              </div>
+                            </div>
+                            <div className="flex shrink-0 flex-wrap items-center gap-2 lg:justify-end">
+                              <div className="hidden max-w-56 text-right text-[11px] text-slate-500 xl:block">
+                                {(profile.languages || []).slice(0, 2).join(" / ") || "English / French"}
+                                <br />Authority: {profile.decisionAuthority || "low"}
+                              </div>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="agents-os-secondary-action"
+                                onClick={() => openRoleSeatEditor(seat)}
+                              >
+                                <Pencil className="mr-1.5 h-3.5 w-3.5" />Edit role
+                              </Button>
+                              {runtimeAgentId > 0 ? (
+                                <Button
+                                  size="sm"
+                                  className="bg-amber-500 text-slate-950 hover:bg-amber-400"
+                                  onClick={() => setLocation(`/operations/agents/${runtimeAgentId}?edit=1`)}
+                                >
+                                  Edit identity &amp; face
+                                </Button>
+                              ) : (
+                                <Button
+                                  size="sm"
+                                  className="bg-slate-950 text-white hover:bg-slate-800"
+                                  disabled={provisionRoleSeat.isPending}
+                                  onClick={() => provisionRoleSeat.mutate(seat.id)}
+                                >
+                                  Provision inactive
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </section>
+                ))}
+              </div>
+            ) : (
+              <div className="p-6 text-sm text-slate-600">No role seats match this search.</div>
+            )}
+          </section>
+        </TabsContent>
 
         <TabsContent value="registry" className="space-y-3">
           <Card className="bg-gray-900 border-gray-800">
@@ -783,6 +1087,107 @@ export default function AdminAgentsOsPage() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      <Dialog open={Boolean(editingRoleSeat)} onOpenChange={(open) => !open && setEditingRoleSeat(null)}>
+        <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto border-slate-200 bg-white text-slate-950">
+          <DialogHeader>
+            <DialogTitle>Edit role seat</DialogTitle>
+            <DialogDescription>
+              Update the role blueprint. Immutable seat identity, department ownership, runtime state, and production permissions remain unchanged.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-2 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="role-seat-name">Display name</Label>
+              <Input
+                id="role-seat-name"
+                value={roleSeatDraft.displayName}
+                onChange={(event) => setRoleSeatDraft((current) => ({ ...current, displayName: event.target.value }))}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="role-seat-title">Role title</Label>
+              <Input
+                id="role-seat-title"
+                value={roleSeatDraft.roleTitle}
+                onChange={(event) => setRoleSeatDraft((current) => ({ ...current, roleTitle: event.target.value }))}
+              />
+            </div>
+            <div className="space-y-1.5 sm:col-span-2">
+              <Label htmlFor="role-seat-avatar">Portrait URL</Label>
+              <Input
+                id="role-seat-avatar"
+                value={roleSeatDraft.avatarUrl}
+                onChange={(event) => setRoleSeatDraft((current) => ({ ...current, avatarUrl: event.target.value }))}
+                placeholder="https://..."
+              />
+              <p className="text-xs text-slate-500">After provisioning, use the existing identity editor to upload or generate a professional face.</p>
+            </div>
+            <div className="space-y-1.5 sm:col-span-2">
+              <Label htmlFor="role-seat-description">Mission and scope</Label>
+              <Textarea
+                id="role-seat-description"
+                value={roleSeatDraft.description}
+                onChange={(event) => setRoleSeatDraft((current) => ({ ...current, description: event.target.value }))}
+                className="min-h-24"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="role-seat-languages">Languages</Label>
+              <Input
+                id="role-seat-languages"
+                value={roleSeatDraft.languages}
+                onChange={(event) => setRoleSeatDraft((current) => ({ ...current, languages: event.target.value }))}
+                placeholder="English, French"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="role-seat-authority">Decision authority</Label>
+              <Select
+                value={roleSeatDraft.decisionAuthority}
+                onValueChange={(value) => setRoleSeatDraft((current) => ({ ...current, decisionAuthority: value }))}
+              >
+                <SelectTrigger id="role-seat-authority"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">None</SelectItem>
+                  <SelectItem value="low">Low</SelectItem>
+                  <SelectItem value="medium">Medium</SelectItem>
+                  <SelectItem value="high">High</SelectItem>
+                  <SelectItem value="executive">Executive</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="role-seat-geographies">Territories</Label>
+              <Input
+                id="role-seat-geographies"
+                value={roleSeatDraft.geographies}
+                onChange={(event) => setRoleSeatDraft((current) => ({ ...current, geographies: event.target.value }))}
+                placeholder="Global, West Africa, UAE"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="role-seat-sectors">Sectors</Label>
+              <Input
+                id="role-seat-sectors"
+                value={roleSeatDraft.sectors}
+                onChange={(event) => setRoleSeatDraft((current) => ({ ...current, sectors: event.target.value }))}
+                placeholder="Machinery, Mining, Agro-processing"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingRoleSeat(null)}>Cancel</Button>
+            <Button
+              className="bg-amber-500 text-slate-950 hover:bg-amber-400"
+              disabled={updateRoleSeat.isPending || !roleSeatDraft.displayName.trim() || !roleSeatDraft.roleTitle.trim()}
+              onClick={() => updateRoleSeat.mutate()}
+            >
+              Save role seat
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <div className="text-xs text-gray-500">{location.includes("admin/agents-os") ? "" : ""}</div>
     </div>

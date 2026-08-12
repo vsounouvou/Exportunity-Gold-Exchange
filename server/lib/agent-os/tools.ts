@@ -5,6 +5,7 @@ import { leads, leadMessages } from "@db/schema";
 import type { AgentPolicy } from "./registry";
 import { assertToolAllowed, getAgentPolicy } from "./registry";
 import { logAgentAuditEvent, createAgentJob } from "./audit";
+import { assertExternalCommunicationAuthorized } from "../company-brain/featureFlags";
 
 export type ToolName =
   | "send_message"
@@ -201,6 +202,11 @@ export async function runTool(params: {
         break;
       }
       case "send_message": {
+        assertExternalCommunicationAuthorized(
+          params.payload.approval && typeof params.payload.approval === "object"
+            ? (params.payload.approval as Record<string, unknown>)
+            : null,
+        );
         const channel = typeof params.payload.channel === "string" ? params.payload.channel : "in_app";
         const to = typeof params.payload.to === "string" ? params.payload.to : null;
         const content = typeof params.payload.content === "string" ? params.payload.content : "";

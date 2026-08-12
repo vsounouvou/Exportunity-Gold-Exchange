@@ -570,6 +570,8 @@ const errorHandler = (err: any, _req: Request, res: Response, _next: NextFunctio
     await ensureMarketplaceMapTables();
     // Exportunity's industrial schema is additive and idempotent.
     await ensureIndustrialTables();
+    // Ensure Mindbase credentials exist before Company Brain connector rows reference them.
+    await ensureMindbaseTables();
     // Company Brain provenance is additive; capabilities remain feature-gated.
     await ensureCompanyBrainTables();
     const exportunityOrganization = await ensureExportunityIndustrialAgentOrganization();
@@ -594,8 +596,6 @@ const errorHandler = (err: any, _req: Request, res: Response, _next: NextFunctio
     await ensureWorkstationTables();
     // Ensure cadastre + demo-link tables exist (investment map + public demo route)
     await ensureCadastreTables();
-    // Ensure Mindbase core tables exist (creator profiles + intellects + knowledge + chat)
-    await ensureMindbaseTables();
     // Ensure Exportunity Meet tables exist (SFU sessions + invites + artifacts)
     await ensureMeetTables();
     await ensureMeetingContextTables();

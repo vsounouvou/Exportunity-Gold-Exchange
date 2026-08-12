@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import {
+  boolean,
   index,
   integer,
   jsonb,
@@ -9,9 +10,11 @@ import {
   text,
   timestamp,
   uniqueIndex,
+  uuid,
 } from "drizzle-orm/pg-core";
 import { agents, companies } from "../schema";
 import { eceUsers } from "./ece";
+import { mindbaseIntegrationConnections } from "./mindbase";
 import { tenants } from "./tenants";
 
 export type CompanyBrainClassification = {
@@ -30,6 +33,153 @@ export type CompanyBrainCitation = {
   contentHash?: string;
 };
 
+export type CompanyBrainWorkspaceService = "drive" | "gmail" | "contacts";
+
+export const companyBrainSourceConnectors = pgTable(
+  "company_brain_source_connectors",
+  {
+    id: serial("id").primaryKey(),
+    tenantId: integer("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    companyId: integer("company_id").references(() => companies.id, { onDelete: "cascade" }),
+    connectionId: uuid("connection_id")
+      .notNull()
+      .references(() => mindbaseIntegrationConnections.id, { onDelete: "cascade" }),
+    service: text("service").$type<CompanyBrainWorkspaceService>().notNull(),
+    mode: text("mode").notNull().default("review_only"),
+    status: text("status").notNull().default("connected"),
+    readOnly: boolean("read_only").notNull().default(true),
+    grantedScopes: jsonb("granted_scopes").$type<string[]>().notNull().default([]),
+    policy: jsonb("policy").$type<Record<string, unknown>>().notNull().default({}),
+    syncSettings: jsonb("sync_settings").$type<Record<string, unknown>>().notNull().default({}),
+    lastSyncAt: timestamp("last_sync_at", { withTimezone: true }),
+    lastSuccessfulSyncAt: timestamp("last_successful_sync_at", { withTimezone: true }),
+    lastError: text("last_error"),
+    pausedAt: timestamp("paused_at", { withTimezone: true }),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    createdByUserId: integer("created_by_user_id").references(() => eceUsers.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    tenantServiceIdx: index("company_brain_source_connectors_tenant_service_idx").on(
+      table.tenantId,
+      table.service,
+      table.status,
+    ),
+    connectionServiceIdx: uniqueIndex("company_brain_source_connectors_connection_service_uniq").on(
+      table.connectionId,
+      table.service,
+    ),
+  }),
+);
+
+export const companyBrainOauthStates = pgTable(
+  "company_brain_oauth_states",
+  {
+    stateHash: text("state_hash").primaryKey(),
+    tenantId: integer("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => eceUsers.id, { onDelete: "cascade" }),
+    service: text("service").$type<CompanyBrainWorkspaceService>().notNull(),
+    returnTo: text("return_to").notNull().default("/admin/settings/integrations/google-workspace"),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    consumedAt: timestamp("consumed_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    tenantExpiryIdx: index("company_brain_oauth_states_tenant_expiry_idx").on(table.tenantId, table.expiresAt),
+  }),
+);
+
+export const companyBrainSyncRuns = pgTable(
+  "company_brain_sync_runs",
+  {
+    id: serial("id").primaryKey(),
+    tenantId: integer("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    connectorId: integer("connector_id")
+      .notNull()
+      .references(() => companyBrainSourceConnectors.id, { onDelete: "cascade" }),
+    service: text("service").$type<CompanyBrainWorkspaceService>().notNull(),
+    trigger: text("trigger").notNull().default("manual"),
+    syncMode: text("sync_mode").notNull().default("incremental"),
+    status: text("status").notNull().default("queued"),
+    phase: text("phase").notNull().default("queued"),
+    counters: jsonb("counters").$type<Record<string, number>>().notNull().default({}),
+    cursorBefore: jsonb("cursor_before").$type<Record<string, unknown>>().notNull().default({}),
+    cursorAfter: jsonb("cursor_after").$type<Record<string, unknown>>().notNull().default({}),
+    errorCode: text("error_code"),
+    errorMessage: text("error_message"),
+    createdByUserId: integer("created_by_user_id").references(() => eceUsers.id, { onDelete: "set null" }),
+    startedAt: timestamp("started_at", { withTimezone: true }),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    connectorCreatedIdx: index("company_brain_sync_runs_connector_created_idx").on(
+      table.connectorId,
+      table.createdAt,
+    ),
+    tenantStatusIdx: index("company_brain_sync_runs_tenant_status_idx").on(table.tenantId, table.status, table.createdAt),
+  }),
+);
+
+export const companyBrainSyncCursors = pgTable(
+  "company_brain_sync_cursors",
+  {
+    id: serial("id").primaryKey(),
+    connectorId: integer("connector_id")
+      .notNull()
+      .references(() => companyBrainSourceConnectors.id, { onDelete: "cascade" }),
+    cursorType: text("cursor_type").notNull(),
+    cursorValue: text("cursor_value"),
+    metadata: jsonb("metadata").$type<Record<string, unknown>>().notNull().default({}),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    connectorTypeIdx: uniqueIndex("company_brain_sync_cursors_connector_type_uniq").on(
+      table.connectorId,
+      table.cursorType,
+    ),
+  }),
+);
+
+export const companyBrainSyncDeadLetters = pgTable(
+  "company_brain_sync_dead_letters",
+  {
+    id: serial("id").primaryKey(),
+    tenantId: integer("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    connectorId: integer("connector_id")
+      .notNull()
+      .references(() => companyBrainSourceConnectors.id, { onDelete: "cascade" }),
+    syncRunId: integer("sync_run_id").references(() => companyBrainSyncRuns.id, { onDelete: "set null" }),
+    providerItemId: text("provider_item_id"),
+    stage: text("stage").notNull(),
+    errorCode: text("error_code"),
+    errorMessage: text("error_message").notNull(),
+    payload: jsonb("payload").$type<Record<string, unknown>>().notNull().default({}),
+    status: text("status").notNull().default("open"),
+    resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    connectorStatusIdx: index("company_brain_sync_dead_letters_connector_status_idx").on(
+      table.connectorId,
+      table.status,
+      table.createdAt,
+    ),
+  }),
+);
+
 export const companyBrainSources = pgTable(
   "company_brain_sources",
   {
@@ -38,6 +188,7 @@ export const companyBrainSources = pgTable(
       .notNull()
       .references(() => tenants.id, { onDelete: "cascade" }),
     companyId: integer("company_id").references(() => companies.id, { onDelete: "cascade" }),
+    connectorId: integer("connector_id").references(() => companyBrainSourceConnectors.id, { onDelete: "set null" }),
     connectorType: text("connector_type").notNull().default("manual"),
     providerSourceId: text("provider_source_id"),
     parentSourceId: integer("parent_source_id"),
@@ -57,6 +208,7 @@ export const companyBrainSources = pgTable(
   (table) => ({
     tenantStatusIdx: index("company_brain_sources_tenant_status_idx").on(table.tenantId, table.status, table.updatedAt),
     tenantCompanyIdx: index("company_brain_sources_tenant_company_idx").on(table.tenantId, table.companyId),
+    connectorStatusIdx: index("company_brain_sources_connector_status_idx").on(table.connectorId, table.status),
     providerIdentityIdx: uniqueIndex("company_brain_sources_provider_identity_uniq").on(
       table.tenantId,
       table.connectorType,

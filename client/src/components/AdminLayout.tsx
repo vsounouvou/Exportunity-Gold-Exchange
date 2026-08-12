@@ -50,6 +50,7 @@ import {
   DollarSign,
   Search,
   RefreshCw,
+  Cloud,
   Bell,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -350,6 +351,7 @@ const ICONS: Record<AdminNavIconKey, any> = {
   Target,
   MessageSquare,
   Mail,
+  Cloud,
 };
 
 function resolveDepartmentPageKey(pathname: string) {

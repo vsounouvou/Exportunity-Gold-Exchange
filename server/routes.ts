@@ -139,6 +139,7 @@ import telemetryRouter from "./routes/telemetry";
 import adminMarketingRouter from "./routes/admin-marketing";
 import adminInvestRouter from "./routes/admin-invest";
 import adminContextRouter from "./routes/admin-context";
+import companyBrainWorkspaceRouter from "./routes/company-brain-workspace";
 import { kkiapayPaymentsRouter, kkiapayWebhook } from "./routes/kkiapay";
 import { flutterwavePaymentsRouter, flutterwaveWebhook } from "./routes/flutterwave";
 import { CreditService } from "./lib/credits/CreditService";
@@ -1134,6 +1135,7 @@ export function registerRoutes(app: Express): Server {
   app.use("/api/admin/purge", adminPurgeRouter);
   // Marketing CMS admin API (posts, press, library, media)
   app.use("/api/admin", adminContextRouter);
+  app.use("/api/admin/company-brain/workspace", companyBrainWorkspaceRouter);
   // Marketing CMS admin API (posts, press, library, media)
   app.use("/api/admin", adminMarketingRouter);
   // Investment CMS admin API (opportunities + lead review)

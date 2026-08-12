@@ -580,6 +580,15 @@ const OVERRIDES: Record<string, Partial<RouteDef>> = {
     icon: "MapPin",
     order: 25,
   },
+  "/admin/settings/integrations/google-workspace": {
+    title: "Google Workspace Evidence",
+    group: "settings",
+    subgroup: "Integrations",
+    icon: "Cloud",
+    order: 26,
+    adminOnly: true,
+    tags: ["company brain", "gmail", "drive", "contacts", "evidence"],
+  },
   "/admin/communications/twilio": {
     title: "Twilio Inbox",
     group: "settings",

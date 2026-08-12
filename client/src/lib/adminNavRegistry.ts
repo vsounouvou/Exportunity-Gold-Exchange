@@ -28,7 +28,8 @@ export type AdminNavIconKey =
   | "User"
   | "Target"
   | "MessageSquare"
-  | "Mail";
+  | "Mail"
+  | "Cloud";
 
 export type AdminNavRegistryItem = {
   route: string;
@@ -189,6 +190,21 @@ const GOOGLE_MAPS_NAV_ITEM: AdminNavRegistryItem = {
   visibleInNav: true,
 };
 
+const GOOGLE_WORKSPACE_NAV_ITEM: AdminNavRegistryItem = {
+  route: "/admin/settings/integrations/google-workspace",
+  pageTitle: "Google Workspace Evidence",
+  module: "Company Brain",
+  capabilityTag: "admin_google_workspace_evidence",
+  apiEndpointsCalled: [
+    "/api/admin/company-brain/workspace/status",
+    "/api/admin/company-brain/workspace/connect/:service",
+    "/api/admin/company-brain/workspace/connectors/:service/sync",
+  ],
+  navEntryName: "Google Workspace Evidence",
+  icon: "Cloud",
+  visibleInNav: true,
+};
+
 const INDUSTRIAL_NETWORK_NAV_ITEM: AdminNavRegistryItem = {
   route: "/admin/industrial-network",
   pageTitle: "Industrial Network",
@@ -276,6 +292,7 @@ const ROUTE_CATEGORY_OVERRIDES: Record<string, AdminNavCategory> = {
   "/admin/map-icons": "Settings",
   "/admin/settings/onboarding": "Settings",
   "/admin/settings/integrations/google-maps": "Settings",
+  "/admin/settings/integrations/google-workspace": "Settings",
 };
 
 const MODULE_ORDER: AdminNavCategory[] = ["Agents OS", "Operations", "Trade", "Territories", "Finance", "Settings"];
@@ -353,6 +370,7 @@ const CATEGORY_ITEM_ORDER: Record<AdminNavCategory, Record<string, number>> = {
     "/admin/email": 10,
     "/admin/settings/communications/twilio": 20,
     "/admin/settings/integrations/google-maps": 25,
+    "/admin/settings/integrations/google-workspace": 26,
   },
 };
 
@@ -375,6 +393,7 @@ export function getAdminNavItems() {
     if (!next.some((entry) => entry.route === item.route)) next.push(item);
   }
   if (!next.some((entry) => entry.route === GOOGLE_MAPS_NAV_ITEM.route)) next.push(GOOGLE_MAPS_NAV_ITEM);
+  if (!next.some((entry) => entry.route === GOOGLE_WORKSPACE_NAV_ITEM.route)) next.push(GOOGLE_WORKSPACE_NAV_ITEM);
   return next;
 }
 

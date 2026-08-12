@@ -1,5 +1,29 @@
 # Google Workspace Connectors
 
+## Runtime configuration
+
+```dotenv
+FEATURE_COMPANY_BRAIN=true
+FEATURE_GOOGLE_WORKSPACE_CONNECTORS=true
+FEATURE_GOOGLE_WORKSPACE_DRIVE_READ=true
+FEATURE_GOOGLE_WORKSPACE_GMAIL_READ=true
+FEATURE_GOOGLE_WORKSPACE_CONTACTS_READ=true
+GOOGLE_WORKSPACE_CLIENT_ID=...
+GOOGLE_WORKSPACE_CLIENT_SECRET=...
+GOOGLE_WORKSPACE_REDIRECT_URI=https://exportunity.net/api/admin/company-brain/workspace/google/callback
+FEATURE_EXTERNAL_COMMUNICATIONS=false
+```
+
+Register the exact redirect URI on one Google OAuth web application. The admin
+surface is `/admin/settings/integrations/google-workspace`. Each service is
+authorized separately and shows the verified email, Google account subject,
+account type, exact granted scopes, connection time, health, and last successful
+manual sync.
+
+This phase never requests Gmail send, compose, modify, label, settings, or delete
+scopes. It never requests Contacts write or Drive write scopes. Sync is manual and
+visible; no scheduler or background loop is started.
+
 ## Phase-one policy
 
 Google Workspace is a read-only evidence source for the Company Brain. It is not an email-sending integration in phase one.
@@ -22,6 +46,11 @@ The OAuth callback must obtain and persist:
 - created, last tested, last synchronized, and revoked timestamps.
 
 The refresh token itself must be encrypted or stored in an external secret store. Database records contain only a secret reference and non-secret metadata.
+
+The current implementation encrypts the OAuth token payload at rest with
+AES-256-GCM in the existing integration connection store. Access tokens and
+refresh tokens are never returned by connector status endpoints or written to
+application logs.
 
 ## Allowed phase-one scopes
 
@@ -84,6 +113,12 @@ Drive ingestion is limited to approved files or approved folder roots. For every
 
 A modified file creates a new `company_brain_source_versions` row. It does not silently replace the prior version.
 
+The initial allowlisted archive import uses a resumable per-folder backfill
+cursor. After it completes, Drive's native change token is used for additions,
+updates, removals, and access loss. A removal creates an immutable tombstone;
+it does not erase prior evidence versions. Changing the approved allowlist
+forces a reviewed backfill and tombstones sources no longer approved.
+
 ## Gmail ingestion
 
 Gmail ingestion is business-only and read-only. It retains:
@@ -98,11 +133,25 @@ Personal, unrelated, credential-bearing, medical, or otherwise sensitive content
 
 No phase-one endpoint may send, draft, modify, label, archive, delete, or mark mail as read.
 
+The initial business-history import retains its page token until the final page
+is committed. Gmail's native history ID then drives incremental additions,
+label changes, and deletions. An expired history ID causes a visible full
+resynchronization, not a silent timestamp fallback.
+
 ## Contacts ingestion
 
 Contacts sync must use the existing tenant contact pipeline. Retain Google resource name, etag, source type, sync token, and deletion state. Normalize phone and email identities, then create a merge proposal when a possible match exists.
 
 Sync does not overwrite consent, DNC, relationship owner, internal notes, or verified tenant data.
+
+People API page parameters remain identical across a paginated run. The next
+sync token is committed only after the final page. Google deletion events mark
+the Google source link as deleted while preserving the canonical CRM contact.
+Expired seven-day sync tokens cause a visible full resynchronization.
+
+Item-level failures remain open in the dead-letter queue and block advancement
+past the affected provider page. A later visible manual sync retries that page;
+successful retries resolve the corresponding dead-letter records.
 
 ## Operator UI
 

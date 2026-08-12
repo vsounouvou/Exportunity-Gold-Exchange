@@ -118,6 +118,7 @@ export const APP_ROUTE_PATHS = [
   "/admin/settings/developer",
   "/admin/settings/fx",
   "/admin/settings/integrations/google-maps",
+  "/admin/settings/integrations/google-workspace",
   "/admin/settings/map",
   "/admin/settings/onboarding",
   "/admin/stamped-gold",

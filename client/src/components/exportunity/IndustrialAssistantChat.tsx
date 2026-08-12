@@ -61,6 +61,25 @@ type IntakePreview = {
   categoryCode: string;
   title: string;
   urgency: "standard" | "urgent" | "planned";
+  intent?: string;
+  confidence?: number;
+  commercial?: boolean;
+  product?: {
+    name?: string;
+    category?: string;
+    specification?: string;
+    quantity?: string;
+    unit?: string;
+  };
+  origin?: string;
+  targetPrice?: string;
+  currency?: string;
+  deadline?: string;
+  frequency?: string;
+  incoterm?: string;
+  customerType?: string;
+  missingFields?: string[];
+  suggestedAction?: "ANSWER" | "ASK" | "ACT" | "ESCALATE";
   facts?: {
     quantityText?: string;
     deliveryDestination?: string;
@@ -882,8 +901,44 @@ export function IndustrialAssistantChat({
   };
 
   const continueAfterCoreRequirement = () => {
-    if (globalTradeIntake) {
-      ask("frequency", copy.frequencyQuestion);
+    const requiresTradeQualification =
+      globalTradeIntake ||
+      Boolean(
+        intake?.commercial &&
+          ["raw_material", "export_quotation"].includes(
+            intake.requirementType,
+          ),
+      );
+    if (requiresTradeQualification) {
+      if (!frequency) {
+        ask("frequency", copy.frequencyQuestion);
+        return;
+      }
+      if (!originPreference) {
+        ask("origin", copy.originQuestion);
+        return;
+      }
+      if (!qualityRequirements) {
+        ask("quality", copy.qualityQuestion);
+        return;
+      }
+      if (!incoterm) {
+        ask("incoterm", copy.incotermQuestion);
+        return;
+      }
+      if (!budget) {
+        ask("budget", copy.budgetQuestion);
+        return;
+      }
+      if (!confidentiality) {
+        ask("confidentiality", copy.confidentialityQuestion);
+        return;
+      }
+      if (!preferredCommunication) {
+        ask("communication", copy.communicationQuestion);
+        return;
+      }
+      continueToContact();
       return;
     }
     continueToContact();
@@ -948,7 +1003,23 @@ export function IndustrialAssistantChat({
         closePolicy: commercialMode
           ? "mutually_agreed_specific_next_step_no_pressure"
           : "",
+        commercialIntent: intake.intent || "GENERAL_QUESTION",
+        commercialStage: "QUALIFYING",
+        intentConfidence: String(intake.confidence || 0),
+        suggestedAction: intake.suggestedAction || "ASK",
+        missingFields: (intake.missingFields || []).join(","),
       };
+      if (intake.product?.name)
+        technicalDetails.detectedProductName = intake.product.name;
+      if (intake.product?.category)
+        technicalDetails.detectedProductCategory = intake.product.category;
+      if (intake.product?.specification)
+        technicalDetails.detectedProductSpecification =
+          intake.product.specification;
+      if (intake.customerType)
+        technicalDetails.customerType = intake.customerType;
+      if (intake.targetPrice)
+        technicalDetails.targetPrice = intake.targetPrice;
       if (purchasePriority)
         technicalDetails.purchasePriority = purchasePriority;
       if (context?.missionType)
@@ -1096,11 +1167,23 @@ export function IndustrialAssistantChat({
         const nextDestination = facts.deliveryDestination || "";
         const nextRequiredBy = facts.requiredBy || "";
         const nextPriority = facts.purchasePriority || "";
+        const nextFrequency = String(nextIntake.frequency || "");
+        const nextOrigin = String(nextIntake.origin || "");
+        const nextQuality = String(
+          nextIntake.product?.specification || "",
+        );
+        const nextIncoterm = String(nextIntake.incoterm || "");
+        const nextBudget = String(nextIntake.targetPrice || "");
         setIntake(nextIntake);
         if (nextQuantity) setQuantityText(nextQuantity);
         if (nextDestination) setDestination(nextDestination);
         if (nextRequiredBy) setRequiredBy(nextRequiredBy);
         if (nextPriority) setPurchasePriority(nextPriority);
+        if (nextFrequency) setFrequency(nextFrequency);
+        if (nextOrigin) setOriginPreference(nextOrigin);
+        if (nextQuality) setQualityRequirements(nextQuality);
+        if (nextIncoterm) setIncoterm(nextIncoterm);
+        if (nextBudget) setBudget(nextBudget);
 
         const capturedFacts = [
           nextQuantity
@@ -1137,9 +1220,34 @@ export function IndustrialAssistantChat({
         } else if (!nextPriority) {
           nextStep = "priority";
           nextQuestion = copy.priorityQuestion;
-        } else if (globalTradeIntake) {
-          nextStep = "frequency";
-          nextQuestion = copy.frequencyQuestion;
+        } else if (
+          globalTradeIntake ||
+          Boolean(
+            nextIntake.commercial &&
+              ["raw_material", "export_quotation"].includes(
+                nextIntake.requirementType,
+              ),
+          )
+        ) {
+          if (!nextFrequency) {
+            nextStep = "frequency";
+            nextQuestion = copy.frequencyQuestion;
+          } else if (!nextOrigin) {
+            nextStep = "origin";
+            nextQuestion = copy.originQuestion;
+          } else if (!nextQuality) {
+            nextStep = "quality";
+            nextQuestion = copy.qualityQuestion;
+          } else if (!nextIncoterm) {
+            nextStep = "incoterm";
+            nextQuestion = copy.incotermQuestion;
+          } else if (!nextBudget) {
+            nextStep = "budget";
+            nextQuestion = copy.budgetQuestion;
+          } else {
+            nextStep = "confidentiality";
+            nextQuestion = copy.confidentialityQuestion;
+          }
         } else {
           nextStep = requesterName.trim()
             ? requesterEmail.trim()

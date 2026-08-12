@@ -44,3 +44,44 @@ test("commercial intake recognizes an explicit buying criterion", () => {
   assert.equal(facts.quantityText, "3 tonnes");
   assert.equal(facts.purchasePriority, "Qualite et certifications");
 });
+
+test("palm-oil sourcing is a commercial raw-material request, never a CAD workflow", () => {
+  const preview = classifyIndustrialIntake(
+    "Je veux sourcer de l'huile de palme.",
+    "fr",
+  );
+
+  assert.equal(preview.requirementType, "raw_material");
+  assert.equal(preview.categoryCode, "raw_materials");
+  assert.equal(preview.intent, "SOURCE_PRODUCT");
+  assert.equal(preview.commercial, true);
+  assert.equal(preview.product.name, "Huile de palme");
+  assert.equal(preview.product.category, "palm_oil");
+  assert.equal(preview.suggestedAction, "ASK");
+  assert.deepEqual(preview.missingFields, [
+    "product.quantity",
+    "destination",
+    "product.specification",
+    "frequency",
+    "incoterm",
+  ]);
+  assert.doesNotMatch(preview.response, /CAD|plan|photo/i);
+  assert.match(preview.response, /approvisionnement|sourcing/i);
+});
+
+test("qualified palm-oil sourcing captures commercial terms already supplied", () => {
+  const preview = classifyIndustrialIntake(
+    "Je veux acheter 20 tonnes d'huile de palme raffinee, livrer a Abidjan, chaque mois, CIF.",
+    "fr",
+  );
+
+  assert.equal(preview.intent, "BUY_PRODUCT");
+  assert.equal(preview.product.quantity, "20");
+  assert.equal(preview.product.unit, "tonnes");
+  assert.equal(preview.product.specification, "refined");
+  assert.equal(preview.facts.deliveryDestination, "Abidjan");
+  assert.equal(preview.frequency, "Chaque mois");
+  assert.equal(preview.incoterm, "CIF");
+  assert.deepEqual(preview.missingFields, []);
+  assert.equal(preview.suggestedAction, "ACT");
+});

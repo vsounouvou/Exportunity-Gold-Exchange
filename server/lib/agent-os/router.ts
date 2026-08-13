@@ -23,6 +23,10 @@ export type RouterDecision = {
   };
 };
 
+export function allowsDirectMemoryAnswer(intent: string | null | undefined) {
+  return String(intent || "").trim() !== "industrial_opportunity_workstream";
+}
+
 function simpleIntent(task: string): string | null {
   const t = task.toLowerCase();
   if (t.includes("find leads") || t.includes("client hunter") || t.includes("prospect")) return "client_hunter";
@@ -65,7 +69,11 @@ async function decide(params: {
   });
 
   const topKeyword = keywordMemory[0];
-  if (topKeyword && topKeyword.score >= 0.75) {
+  if (
+    allowsDirectMemoryAnswer(params.intent) &&
+    topKeyword &&
+    topKeyword.score >= 0.75
+  ) {
     return {
       decision: "memory",
       reason: "High-confidence match found in memory",
@@ -130,6 +138,8 @@ export async function runAgentTask(params: {
   language?: string | null;
   vars?: Record<string, unknown>;
   to?: string | null;
+  conversationId?: string | null;
+  correlationId?: string | null;
 }): Promise<{
   jobId: string;
   decision: RouterDecision;
@@ -138,7 +148,10 @@ export async function runAgentTask(params: {
   const jobId =
     params.jobId ??
     (await createAgentJob({
-      title: "AgentOS Task",
+      title:
+        params.intent === "industrial_opportunity_workstream"
+          ? "Industrial opportunity workstream"
+          : "AgentOS Task",
       agentId: params.agentId,
       companyId: params.companyId ?? null,
       payload: {
@@ -147,6 +160,8 @@ export async function runAgentTask(params: {
         entityId: params.entityId ?? null,
         channel: params.channel ?? null,
         useCase: params.useCase ?? null,
+        conversationId: params.conversationId ?? null,
+        correlationId: params.correlationId ?? null,
       },
     }));
 
@@ -275,14 +290,25 @@ export async function runAgentTask(params: {
       .map((m) => `- (${m.clue.type}) ${m.clue.content}`)
       .join("\n");
 
+    const industrialWorkstream =
+      params.intent === "industrial_opportunity_workstream";
     const response = await generateText({
       jobId,
       policy,
-      purpose: "router_hard_case",
+      purpose: industrialWorkstream
+        ? "industrial_opportunity_workstream"
+        : "router_hard_case",
+      taskKey: industrialWorkstream
+        ? `industrial-opportunity:${params.entityId || jobId}`
+        : undefined,
+      conversationId: params.conversationId || null,
+      correlationId: params.correlationId || jobId,
       messages: [
         {
           role: "system",
-          content: `You are an internal AgentOS helper.\n\nUse the memory if relevant. Be concise and actionable.\n\nMEMORY:\n${memorySnippets || "(none)"}`,
+          content: industrialWorkstream
+            ? `You are an accountable Exportunity employee executing one internal commercial-opportunity workstream. The canonical case in the user message is authoritative. Use memory only when it is directly relevant and never substitute cached content for the current case. Do not invent suppliers, prices, inventory, certifications, completed checks, or external actions. Do not contact anyone, move money, accept terms, or make commitments. Separate evidence, missing facts, risks, and proposed approval-gated next actions.\n\nSUPPORTING MEMORY:\n${memorySnippets || "(none)"}`
+            : `You are an internal AgentOS helper.\n\nUse the memory if relevant. Be concise and actionable.\n\nMEMORY:\n${memorySnippets || "(none)"}`,
         },
         { role: "user", content: params.task },
       ],
@@ -293,11 +319,14 @@ export async function runAgentTask(params: {
     const clueId = await addClue({
       jobId,
       policy,
-      scope: "personal",
+      scope: industrialWorkstream ? "entity" : "personal",
       type: "note",
       content: response.text.slice(0, 600),
-      tags: ["router_cache"],
-      confidence: 0.6,
+      entityId: industrialWorkstream ? params.entityId ?? null : null,
+      tags: industrialWorkstream
+        ? ["industrial_opportunity", "workstream_review"]
+        : ["router_cache"],
+      confidence: industrialWorkstream ? 0.75 : 0.6,
       embed: true,
     });
 

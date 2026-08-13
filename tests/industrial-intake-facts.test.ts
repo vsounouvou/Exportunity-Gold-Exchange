@@ -97,6 +97,23 @@ test("qualified palm-oil sourcing captures commercial terms already supplied", (
   assert.equal(preview.suggestedAction, "ACT");
 });
 
+test("refined palm-oil demand keeps supplied facts and asks only for missing trade terms", () => {
+  const preview = classifyIndustrialIntake(
+    "Je cherche 100 tonnes d'huile de palme raffinée à livrer à Abidjan.",
+    "fr",
+  );
+
+  assert.equal(preview.intent, "BUY_PRODUCT");
+  assert.equal(preview.product.name, "Huile de palme");
+  assert.equal(preview.product.quantity, "100");
+  assert.equal(preview.product.unit, "tonnes");
+  assert.equal(preview.product.specification, "refined");
+  assert.equal(preview.facts.deliveryDestination, "Abidjan");
+  assert.deepEqual(preview.missingFields, ["frequency", "incoterm"]);
+  assert.equal(preview.suggestedAction, "ASK");
+  assert.doesNotMatch(preview.response, /CAD|plan|photo/i);
+});
+
 test("server qualification trusts completed conversation answers, not stale preview gaps", () => {
   const qualification = resolveCommercialQualification({
     analysis: {

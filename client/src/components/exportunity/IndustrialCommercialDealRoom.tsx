@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowRight,
   AlertTriangle,
+  Bot,
   BriefcaseBusiness,
   Calculator,
   CheckCircle2,
@@ -14,7 +15,6 @@ import {
   LockKeyhole,
   Mail,
   PackageCheck,
-  Play,
   RefreshCw,
   RotateCcw,
   ShieldCheck,
@@ -120,6 +120,7 @@ type OpportunityExecution = {
     agentName: string | null;
     taskId: number | null;
     createdAt: string | null;
+    output?: string | null;
   }>;
 };
 
@@ -317,18 +318,6 @@ function statusClass(status: string) {
 }
 
 function workstreamAction(status: string) {
-  if (status === "backlog") {
-    return { status: "in_progress", label: "Start", icon: Play };
-  }
-  if (status === "in_progress") {
-    return { status: "done", label: "Complete", icon: CheckCircle2 };
-  }
-  if (status === "blocked") {
-    return { status: "in_progress", label: "Resume", icon: RotateCcw };
-  }
-  if (status === "done") {
-    return { status: "in_progress", label: "Reopen", icon: RotateCcw };
-  }
   if (status === "canceled") {
     return { status: "backlog", label: "Reopen", icon: RotateCcw };
   }
@@ -666,6 +655,31 @@ export function IndustrialCommercialDealRoom({
       }),
   });
 
+  const runAgentMutation = useMutation({
+    mutationFn: (taskId: number) =>
+      apiRequest(
+        `/api/industrial/admin/requirements/${opportunity.id}/workstreams/${taskId}/run`,
+        "POST",
+        {},
+      ),
+    onSuccess: async (result: any) => {
+      await refresh();
+      toast({
+        title: "Employee work started",
+        description:
+          result?.message ||
+          "The assigned employee is executing this workstream through Agent OS.",
+      });
+    },
+    onError: (error: any) =>
+      toast({
+        title: "Employee could not start",
+        description:
+          error?.message || "Review the employee assignment and Agent OS status.",
+        variant: "destructive",
+      }),
+  });
+
   const selectedSupplierQuotes = useMemo(
     () =>
       (room?.supplierQuotes || []).filter((quote) =>
@@ -707,7 +721,8 @@ export function IndustrialCommercialDealRoom({
     customerQuoteMutation.isPending ||
     quoteStatusMutation.isPending ||
     orderMutation.isPending ||
-    workstreamMutation.isPending;
+    workstreamMutation.isPending ||
+    runAgentMutation.isPending;
 
   return (
     <>
@@ -883,6 +898,28 @@ export function IndustrialCommercialDealRoom({
                                   </p>
                                 </div>
                                 <div className="flex items-center gap-2">
+                                  {["backlog", "blocked"].includes(
+                                    workstream.status,
+                                  ) && workstream.agentId ? (
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      disabled={busy}
+                                      onClick={() =>
+                                        runAgentMutation.mutate(workstream.id)
+                                      }
+                                      className="bg-[#07121F] font-black text-white hover:bg-[#14273B]"
+                                    >
+                                      {runAgentMutation.isPending ? (
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                      ) : (
+                                        <Bot className="mr-2 h-4 w-4" />
+                                      )}
+                                      {workstream.status === "blocked"
+                                        ? "Retry agent"
+                                        : "Run agent"}
+                                    </Button>
+                                  ) : null}
                                   {workstream.status === "in_progress" &&
                                   workstream.allowedNextStatuses.includes("blocked") ? (
                                     <Button
@@ -900,6 +937,18 @@ export function IndustrialCommercialDealRoom({
                                     >
                                       <CircleSlash2 className="mr-2 h-4 w-4" />
                                       Block
+                                    </Button>
+                                  ) : null}
+                                  {workstream.status === "in_progress" ? (
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      variant="outline"
+                                      disabled
+                                      className="border-blue-200 bg-blue-50 text-blue-800"
+                                    >
+                                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                      Agent working
                                     </Button>
                                   ) : null}
                                   {action &&
@@ -958,6 +1007,16 @@ export function IndustrialCommercialDealRoom({
                                   <p className="mt-0.5 text-xs leading-5 text-slate-600">
                                     {event.description}
                                   </p>
+                                ) : null}
+                                {event.output ? (
+                                  <details className="mt-2 rounded border border-slate-200 bg-slate-50 px-3 py-2">
+                                    <summary className="cursor-pointer text-xs font-black text-[#07121F]">
+                                      Review employee output
+                                    </summary>
+                                    <div className="mt-2 whitespace-pre-wrap text-xs leading-5 text-slate-700">
+                                      {event.output}
+                                    </div>
+                                  </details>
                                 ) : null}
                               </div>
                             ))}

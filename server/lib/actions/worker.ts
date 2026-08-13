@@ -43,6 +43,7 @@ import {
   externalCommunicationsEnabled,
   isExternalCommunicationAction,
 } from "./externalCommunications";
+import { executeIndustrialOpportunityAgentWork } from "../industrial/agentWorkExecution";
 
 type ActionRequestRow = typeof actionRequests.$inferSelect;
 type ActionRunOutcome = "SUCCESS" | "FAILED" | "NO_EFFECT" | "APPROVAL_PENDING";
@@ -3328,6 +3329,85 @@ export async function runActionWorkerOnce() {
 
       console.log(`${actionLogPrefix} status=DONE taskId=${createdTask.id}`);
       return { ok: true, processed: 1, id: Number(next.id), taskId: createdTask.id } as const;
+    }
+
+    if (actionType === "RUN_AGENT_TASK") {
+      const taskId = parseOptionalNumber(payload.taskId ?? payload.task_id);
+      const requirementId = firstNonEmptyString(
+        payload.requirementId,
+        payload.requirement_id,
+      );
+      const payloadAgentId = parseOptionalNumber(
+        payload.agentId ?? payload.agent_id,
+      );
+      if (!taskId) throw new Error("RUN_AGENT_TASK requires taskId.");
+      if (!requirementId) {
+        throw new Error("RUN_AGENT_TASK requires requirementId.");
+      }
+
+      const result = await executeIndustrialOpportunityAgentWork({
+        tenantId,
+        actionRequestId: Number(next.id),
+        requirementId,
+        taskId,
+        payloadAgentId,
+        workstreamKey: firstNonEmptyString(
+          payload.workstreamKey,
+          payload.workstream_key,
+        ),
+        correlationId,
+        conversationId,
+      });
+
+      await finalize({
+        action: next,
+        status: "DONE",
+        actionType,
+        result,
+        receipts: [
+          {
+            receiptType: "DB_MUTATION",
+            entityType: "task",
+            entityIds: [taskId],
+            affectedRows: 1,
+            externalRef: result.jobId,
+          },
+          {
+            receiptType: "DB_MUTATION",
+            entityType: "industrial_requirement",
+            entityIds: [requirementId],
+            affectedRows: 1,
+            externalRef: result.jobId,
+          },
+        ],
+      });
+      await logAudit({
+        tenantId,
+        userId: requestedByUserId ? Number(requestedByUserId) : null,
+        action: "action_request.done",
+        entityId: Number(next.id),
+        metadata: {
+          actionType,
+          taskId,
+          requirementId,
+          agentId: result.agentId,
+          agentJobId: result.jobId,
+          reviewRequired: true,
+          externalActionStarted: false,
+          finishedAt: nowIso(),
+        },
+      });
+      console.log(
+        `${actionLogPrefix} status=DONE taskId=${taskId} agentJobId=${result.jobId}`,
+      );
+      return {
+        ok: true,
+        processed: 1,
+        id: Number(next.id),
+        taskId,
+        requirementId,
+        agentJobId: result.jobId,
+      } as const;
     }
 
     throw new Error(`Unsupported action_type: ${actionType}`);

@@ -59,6 +59,7 @@ export type IndustrialOpportunityExecution = {
     agentName: string | null;
     taskId: number | null;
     createdAt: Date | null;
+    output: string | null;
   }>;
 };
 
@@ -296,6 +297,7 @@ export function buildIndustrialOpportunityExecution(input: {
     agentName: event.agentName,
     taskId: positiveInt(record(event.metadata).taskId),
     createdAt: event.createdAt,
+    output: text(record(event.metadata).output) || null,
   }));
   const activityTaskIds = new Set(
     activityTimeline.map((event) => event.taskId).filter(Boolean),
@@ -310,6 +312,7 @@ export function buildIndustrialOpportunityExecution(input: {
       agentName: task.agentName,
       taskId: task.id,
       createdAt: task.createdAt,
+      output: null,
     }));
   const timeline = [...activityTimeline, ...taskTimeline]
     .sort(

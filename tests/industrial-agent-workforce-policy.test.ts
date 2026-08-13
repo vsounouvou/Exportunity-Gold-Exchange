@@ -205,3 +205,32 @@ test("the private opportunity room reads and updates real Operations Center work
   assert.match(room, /workstreamMutation/);
   assert.match(room, /No specialist task is linked yet/);
 });
+
+test("qualified opportunities dispatch visible employee work through the governed action worker", () => {
+  const route = readRepoFile("server/routes/industrial.ts");
+  const actionRouter = readRepoFile("server/lib/actions/ActionRouter.ts");
+  const worker = readRepoFile("server/lib/actions/worker.ts");
+  const execution = readRepoFile(
+    "server/lib/industrial/agentWorkExecution.ts",
+  );
+  const agentRouter = readRepoFile("server/lib/agent-os/router.ts");
+  const room = readRepoFile(
+    "client/src/components/exportunity/IndustrialCommercialDealRoom.tsx",
+  );
+
+  assert.match(actionRouter, /RUN_AGENT_TASK/);
+  assert.match(worker, /executeIndustrialOpportunityAgentWork/);
+  assert.match(worker, /actionType === "RUN_AGENT_TASK"/);
+  assert.match(execution, /buildIndustrialAgentTaskInstruction/);
+  assert.match(execution, /Do not invent suppliers, prices, stock/);
+  assert.match(execution, /externalActionStarted: false/);
+  assert.match(agentRouter, /industrial_opportunity_workstream/);
+  assert.match(agentRouter, /allowsDirectMemoryAnswer/);
+  assert.match(route, /commercialContext\?\.suggestedAction === "ACT"/);
+  assert.match(
+    route,
+    /workstreams\/:taskId\/run/,
+  );
+  assert.match(room, /Run agent/);
+  assert.match(room, /Review employee output/);
+});

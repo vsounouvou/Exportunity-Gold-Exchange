@@ -209,6 +209,11 @@ import {
   calculateIndustrialCommercialPricing,
 } from "../lib/industrial/commercialPricing";
 import { createActionRequest } from "../lib/actions/ActionRouter";
+import {
+  queueIndustrialOpportunityAgentWork,
+  queueIndustrialOpportunityWorkstream,
+  type QueuedIndustrialAgentWork,
+} from "../lib/industrial/agentWorkExecution";
 import { externalCommunicationsEnabled } from "../lib/actions/externalCommunications";
 import {
   updateTaskStatus,
@@ -6874,12 +6879,13 @@ router.post("/requirements", async (req: any, res) => {
       },
     });
 
-    // A front-office requirement becomes a visible Operations Center task. This
-    // deliberately creates no agent conversation, supplier outreach, or other
-    // external action; those remain subject to the normal approval workflow.
+    // A front-office requirement becomes a visible Operations Center case.
+    // Qualified requests may launch internal employee reviews; supplier outreach,
+    // payments, and commercial commitments remain approval-gated external actions.
     let operationsHandoff: Awaited<
       ReturnType<typeof createIndustrialRequirementOperationsHandoff>
     > | null = null;
+    let queuedAgentWork: QueuedIndustrialAgentWork[] = [];
     try {
       const handoff = await createIndustrialRequirementOperationsHandoff({
         tenantId: tenant.id,
@@ -6944,6 +6950,55 @@ router.post("/requirements", async (req: any, res) => {
             source: "exportunity_industrial_front_office",
           },
         });
+
+        try {
+          if (commercialContext?.suggestedAction === "ACT") {
+            queuedAgentWork = await queueIndustrialOpportunityAgentWork({
+              tenantId: tenant.id,
+              requirementId: requirement.id,
+              referenceCode: requirement.referenceCode,
+              sourceConversationId:
+                submittedCommercialContext?.sourceConversationId || null,
+              handoff,
+            });
+          } else {
+            await db.insert(industrialAuditLogs).values({
+              tenantId: tenant.id,
+              action: "industrial_requirement.agent_work_deferred",
+              entityType: "industrial_requirement",
+              entityId: requirement.id,
+              reason: "Commercial qualification is incomplete.",
+              metadata: {
+                taskId: handoff.taskId,
+                missingFields: commercialContext?.missingFields || [],
+                externalActionStarted: false,
+              },
+            });
+          }
+        } catch (queueError) {
+          const message =
+            queueError instanceof Error
+              ? queueError.message
+              : "unknown queue error";
+          console.error("industrial_requirement_agent_work_queue_failed", {
+            requirementId: requirement.id,
+            message,
+          });
+          await db.insert(industrialAuditLogs).values({
+            tenantId: tenant.id,
+            action: "industrial_requirement.agent_work_queue_failed",
+            entityType: "industrial_requirement",
+            entityId: requirement.id,
+            reason: message,
+            metadata: {
+              taskId: handoff.taskId,
+              workstreamTaskIds: handoff.workstreams.map(
+                (item) => item.taskId,
+              ),
+              externalActionStarted: false,
+            },
+          });
+        }
       } else if (handoff.status === "unavailable") {
         await db.insert(industrialAuditLogs).values({
           tenantId: tenant.id,
@@ -7005,6 +7060,7 @@ router.post("/requirements", async (req: any, res) => {
                   agentId: item.existingRuntimeAgentId,
                   taskId: item.assignmentTaskId,
                 })),
+              runtimeAgentWorkQueued: queuedAgentWork.length,
               runtimeAgentsStarted: 0,
             },
           });
@@ -7065,6 +7121,7 @@ router.post("/requirements", async (req: any, res) => {
                 assignedAgentName: operationsHandoff.assignedAgentName,
                 participants: operationsHandoff.participants,
                 workstreams: operationsHandoff.workstreams,
+                agentWork: queuedAgentWork,
                 missingSpecialistKeys:
                   operationsHandoff.missingSpecialistKeys,
               }
@@ -7105,7 +7162,9 @@ router.post("/requirements", async (req: any, res) => {
           : null,
       },
       message:
-        "Your industrial requirement has been received. An Exportunity account manager will review it before any supplier contact begins.",
+        commercialContext?.suggestedAction === "ASK"
+          ? `Your requirement is saved. Complete these commercial terms before the employee team starts: ${(commercialContext.missingFields || []).join(", ") || "remaining qualification details"}.`
+          : "Your industrial requirement has been received. The internal employee team can review it before any supplier contact begins.",
     });
   } catch {
     return res.status(500).json({
@@ -8207,6 +8266,87 @@ router.patch(
         ok: false,
         message: "The factory lead review could not be saved.",
       });
+    }
+  },
+);
+
+router.post(
+  "/admin/requirements/:requirementId/workstreams/:taskId/run",
+  ensureTenantStaff,
+  async (req: any, res) => {
+    const tenant = resolveExportunityTenant(req, res);
+    if (!tenant) return;
+    const requirementId = String(req.params?.requirementId || "").trim();
+    const taskId = Number(req.params?.taskId || 0);
+    if (
+      !z.string().uuid().safeParse(requirementId).success ||
+      !Number.isInteger(taskId) ||
+      taskId <= 0
+    ) {
+      return res.status(400).json({
+        ok: false,
+        message: "A valid opportunity workstream is required.",
+      });
+    }
+
+    try {
+      const requirement = await db.query.industrialRequirements.findFirst({
+        where: and(
+          eq(industrialRequirements.id, requirementId),
+          eq(industrialRequirements.tenantId, tenant.id),
+        ),
+      });
+      if (!requirement) {
+        return res
+          .status(404)
+          .json({ ok: false, message: "Industrial requirement not found." });
+      }
+      const execution = (
+        await loadIndustrialOpportunityExecutions({
+          tenantId: tenant.id,
+          requirements: [{ id: requirement.id, metadata: requirement.metadata }],
+          includeTimeline: true,
+        })
+      ).get(requirement.id);
+      const workstream = execution?.workstreams.find(
+        (item) => item.id === taskId,
+      );
+      if (!workstream) {
+        return res.status(404).json({
+          ok: false,
+          message: "This task is not linked to the selected opportunity.",
+        });
+      }
+      if (!workstream.agentId) {
+        return res.status(409).json({
+          ok: false,
+          message: "Assign an active employee before running this workstream.",
+        });
+      }
+
+      const action = await queueIndustrialOpportunityWorkstream({
+        tenantId: tenant.id,
+        requirementId: requirement.id,
+        taskId,
+        requestedByUserId: actorIdFor(req),
+        sourceConversationId:
+          String(req.body?.sourceConversationId || "").trim() || null,
+      });
+      return res.status(action.reused ? 200 : 202).json({
+        ok: true,
+        action,
+        message: action.reused
+          ? "The assigned employee is already queued for this workstream."
+          : `${action.agentName} is now executing this workstream through Agent OS.`,
+        externalActionStarted: false,
+      });
+    } catch (error: any) {
+      const message =
+        String(error?.message || "").trim() ||
+        "The employee workstream could not be queued.";
+      return res
+        .status(/already running|only queued or blocked/i.test(message) ? 409 : 500)
+        .json({ ok: false, message });
     }
   },
 );

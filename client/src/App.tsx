@@ -790,6 +790,11 @@ function ProLandingRedirect() {
   return <Redirect to={isMine ? "/pro/mine" : "/pro/operations"} />;
 }
 
+function AgentsOsAliasRedirect() {
+  const search = typeof window === "undefined" ? "" : String(window.location.search || "");
+  return <Redirect to={`/agents-os${search}`} />;
+}
+
 function RouteLoadingFallback() {
   const { tenant } = useTenant();
 
@@ -1706,7 +1711,7 @@ function App() {
 
         <Route path="/admin/agents-os">
           <ProtectedRoute>
-            <Redirect to="/agents-os" />
+            <AgentsOsAliasRedirect />
           </ProtectedRoute>
         </Route>
 

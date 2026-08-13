@@ -471,7 +471,7 @@ export default function AdminAgentsOsPage() {
       setCreateShortPitch("");
       setCreateLongDescription("");
       await refreshAll();
-      setLocation("/admin/agents-os?tab=registry");
+      setLocation("/agents-os?tab=registry");
     },
     onError: (error: any) => {
       toast({ title: "Create failed", description: error?.message || "Failed to create agent", variant: "destructive" });
@@ -501,7 +501,7 @@ export default function AdminAgentsOsPage() {
       });
       await refreshAll();
       await queryClient.invalidateQueries({ queryKey: ["/api/admin/agents-os/governance"] });
-      setLocation("/admin/agents-os?tab=registry");
+      setLocation("/agents-os?tab=registry");
     },
     onError: (error: any) => {
       toast({ title: "Generation failed", description: error?.message || "Could not generate agents", variant: "destructive" });
@@ -569,7 +569,7 @@ export default function AdminAgentsOsPage() {
 
   const navigateTab = (tab: string) => {
     const safe = (tab || "registry").toLowerCase();
-    setLocation(`/admin/agents-os?tab=${safe}`, { replace: true });
+    setLocation(`/agents-os?tab=${safe}`, { replace: true });
   };
 
   return (
@@ -1025,7 +1025,7 @@ export default function AdminAgentsOsPage() {
                         size="sm"
                         variant="outline"
                         className="agents-os-secondary-action"
-                        onClick={() => setLocation(runtimeAgentId > 0 ? `/operations/agents/${runtimeAgentId}` : `/admin/agents-os/agents/${item.id}`)}
+                        onClick={() => setLocation(runtimeAgentId > 0 ? `/operations/agents/${runtimeAgentId}` : `/agents-os/agents/${item.id}`)}
                       >
                         <Bot className="h-3.5 w-3.5 mr-1" />
                         {runtimeAgentId > 0 ? "Open workspace" : "Edit listing"}

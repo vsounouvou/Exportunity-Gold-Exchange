@@ -62,3 +62,18 @@ test("governed workforce profiles cannot bypass manager or lifecycle controls", 
   assert.match(routes, /updateData\.status = currentAgent\.status/);
   assert.match(routes, /updateData\.isVisible = currentAgent\.isVisible/);
 });
+
+test("Agents OS tabs use the canonical route and legacy links preserve tab state", () => {
+  const app = readRepoFile("client/src/App.tsx");
+  const agentsOs = readRepoFile("client/src/pages/AdminAgentsOsPage.tsx");
+  const industrialNetwork = readRepoFile("client/src/pages/AdminIndustrialNetworkPage.tsx");
+
+  assert.match(app, /function AgentsOsAliasRedirect\(\)/);
+  assert.match(app, /String\(window\.location\.search \|\| ""\)/);
+  assert.match(app, /<Redirect to=\{`\/agents-os\$\{search\}`\} \/>/);
+  assert.match(agentsOs, /setLocation\(`\/agents-os\?tab=\$\{safe\}`/);
+  assert.match(agentsOs, /<TabsTrigger value="workforce">/);
+  assert.match(agentsOs, /<TabsContent value="workforce"/);
+  assert.doesNotMatch(agentsOs, /setLocation\(`\/admin\/agents-os\?tab=/);
+  assert.match(industrialNetwork, /href="\/agents-os\?tab=workforce"/);
+});

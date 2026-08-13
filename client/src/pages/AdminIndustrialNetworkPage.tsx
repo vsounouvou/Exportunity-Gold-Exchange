@@ -590,7 +590,7 @@ export default function AdminIndustrialNetworkPage() {
                 <Link href="/ai-team">Open Operations Center</Link>
               </Button>
               <Button asChild size="sm" variant="outline" className="border-slate-300 bg-white text-slate-800">
-                <Link href="/admin/agents-os?tab=workforce">Review staffing</Link>
+                <Link href="/agents-os?tab=workforce">Review staffing</Link>
               </Button>
             </div>
           </div>

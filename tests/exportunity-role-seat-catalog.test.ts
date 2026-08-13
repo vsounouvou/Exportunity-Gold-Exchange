@@ -9,6 +9,10 @@ import {
   EXPORTUNITY_ROLE_SEATS,
   EXPORTUNITY_ROLE_SEAT_TOTAL,
 } from "../server/lib/company-brain/roleSeatCatalog";
+import {
+  buildDemandRoleSeatProfile,
+  EXPORTUNITY_DEMAND_ROLE_SEAT_VERSION,
+} from "../server/lib/company-brain/demandRoleSeat";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const read = (relativePath: string) => fs.readFileSync(path.join(repoRoot, relativePath), "utf8");
@@ -71,7 +75,10 @@ test("every role seat has editable identity metadata but starts dormant and unab
 test("role-seat provisioning creates an inactive zero-budget runtime and never enables production", () => {
   const routes = read("server/routes/admin-agents-os.ts");
   const start = routes.indexOf('router.post("/admin/agents/:id(\\\\d+)/provision"');
-  const end = routes.indexOf('router.post("/admin/agents-os/import-runtime"', start);
+  const end = routes.indexOf(
+    'router.post("/admin/agents-os/workforce-requests/:id(\\\\d+)/lifecycle"',
+    start,
+  );
   assert.ok(start >= 0 && end > start, "Unable to isolate role-seat provisioning route");
   const provisionRoute = routes.slice(start, end);
 
@@ -91,4 +98,61 @@ test("Agents OS exposes organization browsing, role editing, and the existing fa
   assert.match(page, /Edit identity &amp; face/);
   assert.match(page, /roleProfile:/);
   assert.match(page, /\/operations\/agents\/\$\{runtimeAgentId\}\?edit=1/);
+});
+
+test("demand-created role seats inherit company governance and evidence", () => {
+  const profile = buildDemandRoleSeatProfile({
+    roleCode: "exportunity-demand-seat-soybean-oil",
+    roleTitle: "Soybean Oil Desk Agent",
+    departmentKey: "commodity-industry-desks",
+    reason: "Five distinct sourcing requirements require durable coverage.",
+    staffingRequestId: 41,
+    demandCount: 5,
+    demandThreshold: 5,
+    evidenceItems: [
+      { requirementId: "requirement-a", productName: "Soybean oil" },
+      { requirementId: "requirement-b", productCategory: "soybean_oil" },
+    ],
+  });
+
+  assert.equal(EXPORTUNITY_DEMAND_ROLE_SEAT_VERSION, "exportunity-demand-role-seats-v1");
+  assert.equal(profile.dynamicRoleSeat, true);
+  assert.equal(profile.source, "demand_driven_workforce");
+  assert.equal(profile.managerOrganizationKey, "sourcing");
+  assert.equal(profile.budget.monthlyLimit, 0);
+  assert.equal(profile.contextPolicy.evidenceRequired, true);
+  assert.equal(profile.contextPolicy.conflictAware, true);
+  assert.deepEqual(profile.evidenceRequirementIds, ["requirement-a", "requirement-b"]);
+  assert.ok(profile.companyEntityScope.includes("Exportunity.net"));
+  assert.ok(profile.prohibitedTools.includes("send_email"));
+  assert.equal(profile.permittedTools.includes("send_email"), false);
+});
+
+test("approving recurring demand creates only a private inactive role blueprint", () => {
+  const routes = read("server/routes/admin-agents-os.ts");
+  const start = routes.indexOf('router.post("/admin/agents-os/workforce-requests/:id(\\\\d+)/review"');
+  const end = routes.indexOf('router.get("/admin/agents-os/role-seats"', start);
+  assert.ok(start >= 0 && end > start, "Unable to isolate workforce review route");
+  const reviewRoute = routes.slice(start, end);
+
+  assert.match(reviewRoute, /buildDemandRoleSeatProfile/);
+  assert.match(reviewRoute, /EXPORTUNITY_DEMAND_ROLE_SEAT_VERSION/);
+  assert.match(reviewRoute, /'draft', 'private'/);
+  assert.match(reviewRoute, /roleSeatCreated/);
+  assert.match(reviewRoute, /runtimeAgentsStarted: 0/);
+  assert.match(reviewRoute, /productionEnabled: false/);
+  assert.doesNotMatch(reviewRoute, /insert\s+into\s+agents\s*\(/i);
+  assert.doesNotMatch(reviewRoute, /insert\s+into\s+agents_production/i);
+});
+
+test("Agents OS links demand evidence to the exact opportunity and identifies dynamic seats", () => {
+  const page = read("client/src/pages/AdminAgentsOsPage.tsx");
+  const network = read("client/src/pages/AdminIndustrialNetworkPage.tsx");
+
+  assert.match(page, /demand-created role/);
+  assert.match(page, /Planned manager:/);
+  assert.match(page, /industrial-network\?requirement=/);
+  assert.match(network, /focusedRequirementId/);
+  assert.match(network, /requirement-\$\{opportunity\.id\}/);
+  assert.match(network, /ring-amber-300/);
 });

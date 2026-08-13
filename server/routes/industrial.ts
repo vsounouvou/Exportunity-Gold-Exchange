@@ -6976,6 +6976,7 @@ router.post("/requirements", async (req: any, res) => {
           proposedByAgentId: operationsHandoff?.assignedAgentId || null,
           context: {
             intent: commercialContext.intent,
+            productName: commercialContext.product.name,
             productCategory: commercialContext.product.category,
             requirementType: parsed.data.requirementType,
             missingSpecialistKeys:
@@ -6997,6 +6998,13 @@ router.post("/requirements", async (req: any, res) => {
                 count: item.demandCount,
                 threshold: item.demandThreshold,
               })),
+              activeEmployeeAssignments: staffingProposals
+                .filter((item) => item.assignmentTaskId)
+                .map((item) => ({
+                  requestId: item.id,
+                  agentId: item.existingRuntimeAgentId,
+                  taskId: item.assignmentTaskId,
+                })),
               runtimeAgentsStarted: 0,
             },
           });
@@ -7068,6 +7076,9 @@ router.post("/requirements", async (req: any, res) => {
           approvalRequired: item.reviewReady,
           demandCount: item.demandCount,
           demandThreshold: item.demandThreshold,
+          dynamicRoleSeat: item.dynamicRoleSeat,
+          existingRuntimeAgentId: item.existingRuntimeAgentId,
+          assignmentTaskId: item.assignmentTaskId,
         })),
         qualification: commercialContext
           ? {

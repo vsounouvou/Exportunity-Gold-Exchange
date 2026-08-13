@@ -103,6 +103,12 @@ type RoleSeatProfile = {
   prohibitedTools?: string[];
   activationStatus?: string;
   managerOrganizationKey?: string;
+  source?: string;
+  dynamicRoleSeat?: boolean;
+  staffingRequestId?: number;
+  demandCount?: number;
+  demandThreshold?: number;
+  evidenceRequirementIds?: string[];
 };
 
 type RoleSeat = {
@@ -126,7 +132,9 @@ type RoleSeatDepartment = {
   key: string;
   name: string;
   mission: string;
+  baseCapacity: number;
   capacity: number;
+  demandCreated: number;
   seats: RoleSeat[];
 };
 
@@ -135,6 +143,8 @@ type RoleSeatsResponse = {
   organizationVersion: string | null;
   summary: {
     total: number;
+    baseline: number;
+    demandCreated: number;
     available: number;
     provisioned: number;
     activeRuntime: number;
@@ -161,6 +171,10 @@ type WorkforceRequest = {
   status: string;
   review_note: string | null;
   provisioned_agent_id: number | null;
+  role_seat_status: string | null;
+  role_seat_organization_version: string | null;
+  role_profile: RoleSeatProfile | null;
+  dynamic_role_seat: boolean;
   runtime_status: string | null;
   runtime_display_name: string | null;
   manager_id: number | null;
@@ -723,9 +737,10 @@ export default function AdminAgentsOsPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-px border-b border-slate-200 bg-slate-200 lg:grid-cols-5">
+            <div className="grid grid-cols-2 gap-px border-b border-slate-200 bg-slate-200 lg:grid-cols-6">
               {[
                 ["Role seats", roleSeatsQuery.data?.summary.total ?? 0],
+                ["Demand-created", roleSeatsQuery.data?.summary.demandCreated ?? 0],
                 ["Available", roleSeatsQuery.data?.summary.available ?? 0],
                 ["Provisioned inactive", roleSeatsQuery.data?.summary.provisioned ?? 0],
                 ["Active runtimes", roleSeatsQuery.data?.summary.activeRuntime ?? 0],
@@ -758,6 +773,7 @@ export default function AdminAgentsOsPage() {
                       </div>
                       <div className="text-xs font-medium text-slate-500">
                         {department.seats.length}{organizationQuery.trim() ? ` of ${department.capacity}` : ""} seats
+                        {department.demandCreated > 0 ? ` · ${department.demandCreated} demand-created` : ""}
                       </div>
                     </div>
                     <div className="divide-y divide-slate-100 rounded-md border border-slate-200">
@@ -793,10 +809,19 @@ export default function AdminAgentsOsPage() {
                                   >
                                     {runtimeActive ? "active employee" : runtimeAgentId > 0 ? `${seat.runtime_status || "inactive"} employee` : "available seat"}
                                   </Badge>
+                                  {profile.dynamicRoleSeat ? (
+                                    <Badge variant="outline" className="border-violet-200 bg-violet-50 text-violet-800">
+                                      demand-created role
+                                    </Badge>
+                                  ) : null}
                                 </div>
                                 <div className="mt-0.5 truncate text-xs text-slate-600">{seat.role_title}</div>
                                 {seat.runtime_manager_name ? (
                                   <div className="mt-0.5 text-xs text-slate-500">Reports to {seat.runtime_manager_name}</div>
+                                ) : profile.managerOrganizationKey ? (
+                                  <div className="mt-0.5 text-xs text-slate-500">
+                                    Planned manager: {profile.managerOrganizationKey.replace(/-/g, " ")}
+                                  </div>
                                 ) : null}
                                 <div className="mt-1 line-clamp-1 text-xs text-slate-500">{profile.description || "Task-scoped role in the Exportunity operating model."}</div>
                               </div>
@@ -887,6 +912,9 @@ export default function AdminAgentsOsPage() {
                         <div className="flex flex-wrap items-center gap-2">
                           <h3 className="font-semibold text-slate-950">{item.role_title}</h3>
                           <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-800">{item.priority}</Badge>
+                        {item.dynamic_role_seat || Boolean(item.evidence?.dynamicRoleSeat) ? (
+                            <Badge variant="outline" className="border-violet-200 bg-violet-50 text-violet-800">demand-created role</Badge>
+                          ) : null}
                           <Badge variant="outline" className={item.status === "active"
                             ? "border-emerald-200 bg-emerald-50 text-emerald-800"
                             : item.status === "proposed"
@@ -895,11 +923,11 @@ export default function AdminAgentsOsPage() {
                           >{item.status === "monitoring" ? "watching demand" : item.status}</Badge>
                         </div>
                         <p className="mt-1 text-sm text-slate-700">{item.reason}</p>
-                        {item.signal_type === "recurring_demand" ? (
+                        {["recurring_demand", "active_capacity"].includes(item.signal_type) ? (
                           <div className="mt-3 max-w-xl">
                             <div className="mb-1 flex items-center justify-between text-xs font-medium text-slate-600">
                               <span>{item.demand_count} distinct demand signal{item.demand_count === 1 ? "" : "s"}</span>
-                              <span>Review at {item.demand_threshold}</span>
+                              <span>{item.signal_type === "active_capacity" ? "Assigned to active capacity" : `Review at ${item.demand_threshold}`}</span>
                             </div>
                             <div className="h-2 overflow-hidden rounded-full bg-slate-100">
                               <div
@@ -916,6 +944,31 @@ export default function AdminAgentsOsPage() {
                           {item.commercial_intent ? <span>Intent: {item.commercial_intent}</span> : null}
                           {item.manager_display_name ? <span>Manager: {item.manager_display_name}</span> : null}
                         </div>
+                        {Array.isArray(item.evidence_items) && item.evidence_items.length ? (
+                          <div className="mt-3 flex flex-wrap gap-2" aria-label="Commercial demand evidence">
+                            {item.evidence_items.slice(0, 8).map((evidence, index) => {
+                              const referenceCode = String(evidence.referenceCode || evidence.reference_code || `Evidence ${index + 1}`);
+                              const product = String(evidence.productName || evidence.productCategory || "Verified demand");
+                              const requirementId = String(evidence.requirementId || evidence.requirement_id || "").trim();
+                              return (
+                                <button
+                                  type="button"
+                                  key={`${referenceCode}-${index}`}
+                                  onClick={() => setLocation(
+                                    requirementId
+                                      ? `/admin/industrial-network?requirement=${encodeURIComponent(requirementId)}`
+                                      : "/admin/industrial-network",
+                                  )}
+                                  className="rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-left text-xs text-slate-700 transition-colors hover:border-amber-300 hover:bg-amber-50"
+                                  title="Open the industrial opportunity workspace"
+                                >
+                                  <span className="font-semibold text-slate-950">{referenceCode}</span>
+                                  <span className="ml-1 text-slate-500">/ {product}</span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        ) : null}
                       </div>
                       <div className="flex shrink-0 flex-wrap gap-2">
                         {item.status === "proposed" ? (
@@ -929,6 +982,20 @@ export default function AdminAgentsOsPage() {
                         ) : null}
                         {item.provisioned_agent_id ? (
                           <Button size="sm" variant="outline" className="agents-os-secondary-action" onClick={() => setLocation(`/operations/agents/${item.provisioned_agent_id}?edit=1`)}>Edit identity</Button>
+                        ) : null}
+                        {item.status === "active" ? (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="agents-os-secondary-action"
+                            onClick={() => setLocation(
+                              item.requirement_id
+                                ? `/admin/industrial-network?requirement=${encodeURIComponent(item.requirement_id)}`
+                                : "/admin/industrial-network",
+                            )}
+                          >
+                            View linked work
+                          </Button>
                         ) : null}
                         {item.status === "provisioned" && item.provisioned_agent_id ? (
                           <Button size="sm" className="bg-emerald-700 text-white hover:bg-emerald-600" onClick={() => setActivationRequest(item)}>Review &amp; activate</Button>

@@ -8,6 +8,10 @@ import { ensureAgentManagementV2Tables } from "../lib/agents/ensureManagementV2T
 import { ensureAgentsProductionTables } from "../lib/agents/ensureProductionAgents";
 import { ensureDefaultCompany } from "../lib/default-company";
 import { ensureExportunityRoleSeatCatalog } from "../lib/company-brain/ensureRoleSeatCatalog";
+import {
+  buildDemandRoleSeatProfile,
+  EXPORTUNITY_DEMAND_ROLE_SEAT_VERSION,
+} from "../lib/company-brain/demandRoleSeat";
 import { ensureIndustrialTables } from "../lib/industrial/ensureTables";
 import { commercialStaffingSpecialistKey } from "../lib/industrial/workforcePlanningPolicy";
 import {
@@ -420,6 +424,10 @@ router.get("/admin/agents-os/workforce-requests", async (req: any, res) => {
         sr.last_signal_at,
         sr.activated_at,
         sr.paused_at,
+        template.seat_status as role_seat_status,
+        template.organization_version as role_seat_organization_version,
+        template.role_profile,
+        coalesce(template.role_profile->>'dynamicRoleSeat', 'false') = 'true' as dynamic_role_seat,
         a.status as runtime_status,
         a.display_name as runtime_display_name,
         a.manager_id,
@@ -432,6 +440,8 @@ router.get("/admin/agents-os/workforce-requests", async (req: any, res) => {
         ir.commercial_intent
       from industrial_agent_staffing_requests sr
       left join industrial_requirements ir on ir.id = sr.requirement_id
+      left join ece_agent_templates template
+        on template.id = sr.role_template_id and template.tenant_id = sr.tenant_id
       left join agents a on a.id = sr.provisioned_agent_id and a.tenant_id = sr.tenant_id
       left join agents manager on manager.id = a.manager_id and manager.tenant_id = sr.tenant_id
       left join agents_production ap on ap.agent_id = sr.provisioned_agent_id and ap.tenant_id = sr.tenant_id
@@ -466,6 +476,10 @@ router.post("/admin/agents-os/workforce-requests/:id(\\d+)/review", async (req: 
     await ensureIndustrialTables();
     const tenant = resolveTenant(req, res);
     if (!tenant) return;
+    if (tenant.tenantKey !== "exportunity") {
+      return res.status(404).json({ message: "Demand-driven role seats are not available for this tenant." });
+    }
+    await ensureExportunityRoleSeatCatalog();
     const id = Number(req.params.id);
     const decision = asString(req.body?.decision).toLowerCase();
     const reviewNote = asString(req.body?.reviewNote).slice(0, 1200);
@@ -483,17 +497,138 @@ router.post("/admin/agents-os/workforce-requests/:id(\\d+)/review", async (req: 
       return res.status(409).json({ message: `This workforce request is already ${before.status}.` });
     }
     const nextStatus = decision === "approve" ? "approved" : "rejected";
-    const updatedResult = await db.execute(sql`
-      update industrial_agent_staffing_requests
-      set status = ${nextStatus},
-          reviewed_by_user_id = ${req.adminUser?.id ? Number(req.adminUser.id) : null},
-          review_note = ${reviewNote || null},
-          reviewed_at = now(),
-          updated_at = now()
-      where id = ${id} and tenant_id = ${tenant.tenantId}
-      returning *
-    `);
-    const updated = getRows<any>(updatedResult)[0];
+    const demandSeatBaseModel = asString(
+      process.env.OPENAI_EXPORTUNITY_MODEL || process.env.OPENAI_MODEL || "gpt-5.6-terra",
+    );
+    const reviewResult = await db.transaction(async (tx) => {
+      const lockedResult = await tx.execute(sql`
+        select *
+        from industrial_agent_staffing_requests
+        where id = ${id} and tenant_id = ${tenant.tenantId}
+        for update
+      `);
+      const locked = getRows<any>(lockedResult)[0];
+      if (!locked) throw new Error("Workforce request not found");
+      if (!["proposed", "approved"].includes(String(locked.status))) {
+        const conflict: any = new Error(`This workforce request is already ${locked.status}.`);
+        conflict.statusCode = 409;
+        throw conflict;
+      }
+
+      let roleTemplateId = Number(locked.role_template_id || 0) || null;
+      let roleSeatCreated = false;
+      if (decision === "approve" && !roleTemplateId) {
+        const isDemandRole = Boolean(
+          locked.evidence?.dynamicRoleSeat ||
+            locked.evidence?.dynamic_role_seat ||
+            asString(locked.role_code).startsWith("exportunity-demand-seat-"),
+        );
+        if (!isDemandRole) {
+          throw new Error("The approved staffing need has no governed role-seat blueprint.");
+        }
+
+        const roleProfile = buildDemandRoleSeatProfile({
+          roleCode: locked.role_code,
+          roleTitle: locked.role_title,
+          departmentKey: locked.department_key,
+          reason: locked.reason,
+          staffingRequestId: Number(locked.id),
+          demandCount: Number(locked.demand_count || 1),
+          demandThreshold: Number(locked.demand_threshold || 1),
+          evidenceItems: Array.isArray(locked.evidence_items)
+            ? locked.evidence_items
+            : [],
+        });
+        const existingTemplateResult = await tx.execute(sql`
+          select id
+          from ece_agent_templates
+          where tenant_id = ${tenant.tenantId}
+            and code = ${roleProfile.immutableAgentId}
+          limit 1
+        `);
+        roleTemplateId =
+          Number(getRows<any>(existingTemplateResult)[0]?.id || 0) || null;
+        if (!roleTemplateId) {
+          const approvalPolicy = {
+            source: "demand_driven_workforce",
+            staffingRequestId: Number(locked.id),
+            activationState: "available",
+            externalCommunication: "human_approval_required",
+            payments: "human_approval_required",
+            contracts: "human_approval_required",
+            publicClaims: "human_approval_required",
+            productionEnablement: "human_approval_required",
+            backgroundAutonomy: "disabled",
+          };
+          const personalityProfile = {
+            tone: "professional",
+            warmth: "calm",
+            riskTolerance: "conservative",
+            evidenceBehavior: "cite_and_escalate_conflicts",
+          };
+          const createdTemplateResult = await tx.execute(sql`
+            insert into ece_agent_templates (
+              tenant_id, code, slug, title, description, category, role_title,
+              short_pitch, long_description, default_tools, default_limits,
+              base_model, personality_profile, autonomy_level, approval_policy,
+              avatar_url, status, visibility, is_active, base_salary_monthly,
+              seat_type, seat_status, organization_version, department_key,
+              role_profile, runtime_agent_id, created_by_user_id,
+              updated_by_user_id, created_at, updated_at
+            ) values (
+              ${tenant.tenantId}, ${roleProfile.immutableAgentId},
+              ${roleProfile.immutableAgentId}, ${roleProfile.defaultDisplayName},
+              ${roleProfile.description}, ${roleProfile.departmentKey},
+              ${roleProfile.role}, ${roleProfile.description},
+              ${roleProfile.description},
+              ${JSON.stringify(roleProfile.permittedTools)}::jsonb,
+              ${JSON.stringify(roleProfile.budget)}::jsonb, ${demandSeatBaseModel},
+              ${JSON.stringify(personalityProfile)}::jsonb, 1,
+              ${JSON.stringify(approvalPolicy)}::jsonb, null, 'draft', 'private',
+              true, 0, 'role_seat', 'available',
+              ${EXPORTUNITY_DEMAND_ROLE_SEAT_VERSION},
+              ${roleProfile.departmentKey}, ${JSON.stringify(roleProfile)}::jsonb,
+              null, ${req.adminUser?.id ? Number(req.adminUser.id) : null},
+              ${req.adminUser?.id ? Number(req.adminUser.id) : null}, now(), now()
+            )
+            returning id
+          `);
+          roleTemplateId =
+            Number(getRows<any>(createdTemplateResult)[0]?.id || 0) || null;
+          if (!roleTemplateId) throw new Error("Unable to create the approved role seat");
+          roleSeatCreated = true;
+          await tx.execute(sql`
+            insert into agent_marketplace_profiles (
+              agent_id, tenant_id, is_visible, price_monthly, currency, tags,
+              is_featured, sort_rank, availability, created_at, updated_at
+            ) values (
+              ${roleTemplateId}, ${tenant.tenantId}, false, 0, 'USD', '[]'::jsonb,
+              false, 0, 'paused', now(), now()
+            )
+            on conflict (tenant_id, agent_id)
+            do update set is_visible = false, availability = 'paused', updated_at = now()
+          `);
+        }
+      }
+
+      const updatedResult = await tx.execute(sql`
+        update industrial_agent_staffing_requests
+        set status = ${nextStatus},
+            role_template_id = coalesce(${roleTemplateId}, role_template_id),
+            reviewed_by_user_id = ${req.adminUser?.id ? Number(req.adminUser.id) : null},
+            review_note = ${reviewNote || null},
+            reviewed_at = now(),
+            updated_at = now()
+        where id = ${id} and tenant_id = ${tenant.tenantId}
+        returning *
+      `);
+      return {
+        updated: getRows<any>(updatedResult)[0],
+        roleSeatCreated,
+        roleTemplateId,
+      };
+    });
+    const updated = reviewResult.updated;
     await writeAudit({
       tenantId: tenant.tenantId,
       actor: req.adminUser,
@@ -502,7 +637,12 @@ router.post("/admin/agents-os/workforce-requests/:id(\\d+)/review", async (req: 
       entityId: id,
       before,
       after: updated,
-      metadata: { runtimeAgentsStarted: 0, productionEnabled: false },
+      metadata: {
+        runtimeAgentsStarted: 0,
+        productionEnabled: false,
+        roleSeatCreated: reviewResult.roleSeatCreated,
+        roleTemplateId: reviewResult.roleTemplateId,
+      },
       req,
     });
     res.json({
@@ -510,13 +650,17 @@ router.post("/admin/agents-os/workforce-requests/:id(\\d+)/review", async (req: 
       item: updated,
       runtimeAgentsStarted: 0,
       productionEnabled: false,
+      roleSeatCreated: reviewResult.roleSeatCreated,
+      roleTemplateId: reviewResult.roleTemplateId,
       nextStep:
         nextStatus === "approved"
-          ? "Provision the approved role seat separately. It will remain inactive until explicitly enabled."
+          ? reviewResult.roleSeatCreated
+            ? "A governed demand-backed role seat was added to the organization. Create the employee inactive, edit the identity and face, then review activation."
+            : "Provision the approved role seat separately. It will remain inactive until explicitly enabled."
           : null,
     });
   } catch (error: any) {
-    res.status(500).json({ message: error?.message || "Failed to review workforce request" });
+    res.status(Number(error?.statusCode || 500)).json({ message: error?.message || "Failed to review workforce request" });
   }
 });
 
@@ -608,21 +752,40 @@ router.get("/admin/agents-os/role-seats", async (req: any, res) => {
       order by t.department_key asc, t.id asc
     `);
     const seats = getRows<any>(result);
-    const departments = EXPORTUNITY_ROLE_SEAT_DEPARTMENTS.map((department) => ({
-      key: department.key,
-      name: department.name,
-      mission: department.mission,
-      capacity: department.capacity,
-      seats: seats.filter((seat) => seat.department_key === department.key),
-    }));
+    const demandCreated = seats.filter(
+      (seat) => seat.role_profile?.dynamicRoleSeat === true,
+    );
+    const departments = EXPORTUNITY_ROLE_SEAT_DEPARTMENTS.map((department) => {
+      const departmentSeats = seats.filter(
+        (seat) => seat.department_key === department.key,
+      );
+      const departmentDemandCreated = departmentSeats.filter(
+        (seat) => seat.role_profile?.dynamicRoleSeat === true,
+      ).length;
+      return {
+        key: department.key,
+        name: department.name,
+        mission: department.mission,
+        baseCapacity: department.capacity,
+        capacity: department.capacity + departmentDemandCreated,
+        demandCreated: departmentDemandCreated,
+        seats: departmentSeats,
+      };
+    });
 
     res.json({
       ok: true,
       organizationVersion: seats[0]?.organization_version || null,
       summary: {
-        total: EXPORTUNITY_ROLE_SEAT_TOTAL,
+        total: seats.length,
+        baseline: EXPORTUNITY_ROLE_SEAT_TOTAL,
+        demandCreated: demandCreated.length,
         available: seats.filter((seat) => !seat.runtime_agent_id).length,
-        provisioned: seats.filter((seat) => Number(seat.runtime_agent_id || 0) > 0).length,
+        provisioned: seats.filter(
+          (seat) =>
+            Number(seat.runtime_agent_id || 0) > 0 &&
+            seat.runtime_status !== "active",
+        ).length,
         activeRuntime: seats.filter((seat) => seat.runtime_status === "active").length,
         productionEnabled: seats.filter((seat) => Boolean(seat.production_enabled)).length,
       },

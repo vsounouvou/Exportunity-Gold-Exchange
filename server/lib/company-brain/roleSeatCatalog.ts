@@ -325,7 +325,7 @@ function slugify(value: string) {
     .replace(/^-+|-+$/g, "");
 }
 
-function toolsForDepartment(departmentKey: string) {
+export function roleSeatPermittedTools(departmentKey: string) {
   if (["global-revenue-business-development", "relationship-intelligence-crm"].includes(departmentKey)) {
     return COMMERCIAL_TOOLS;
   }
@@ -335,7 +335,7 @@ function toolsForDepartment(departmentKey: string) {
   return INTERNAL_TOOLS;
 }
 
-function managerForDepartment(departmentKey: string) {
+export function roleSeatManagerOrganizationKey(departmentKey: string) {
   const managers: Record<string, string> = {
     "executive-office": "ceo",
     "global-revenue-business-development": "commercial",
@@ -380,7 +380,7 @@ export const EXPORTUNITY_ROLE_SEATS: ExportunityRoleSeatProfile[] = EXPORTUNITY_
         role,
         departmentKey: department.key,
         departmentName: department.name,
-        managerOrganizationKey: managerForDepartment(department.key),
+        managerOrganizationKey: roleSeatManagerOrganizationKey(department.key),
         companyEntityScope: ["Exportunity Group", "Exportunity.net"],
         description: `${department.mission} This seat serves as Exportunity's ${role}.`,
         languages: ["English", "French"],
@@ -388,7 +388,7 @@ export const EXPORTUNITY_ROLE_SEATS: ExportunityRoleSeatProfile[] = EXPORTUNITY_
         sectorCompetencies: department.sectorCompetencies,
         roleLevel: levelForAuthority(decisionAuthority),
         decisionAuthority,
-        permittedTools: toolsForDepartment(department.key),
+        permittedTools: roleSeatPermittedTools(department.key),
         prohibitedTools: ["send_message", "send_email", "send_whatsapp", "make_call", "payments", "contract_commitment", "external_publish"],
         budget: {
           currency: "USD" as const,

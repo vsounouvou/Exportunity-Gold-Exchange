@@ -104,6 +104,69 @@ test("export demand proposes buyer intelligence while ordinary buying does not",
   );
 });
 
+test("verified emerging demand can propose a governed product desk", () => {
+  const [recommendation] = commercialStaffingRecommendations({
+    intent: "SOURCE_PRODUCT",
+    productName: "Soybean oil",
+    productCategory: "soybean_oil",
+    requirementType: "raw_material",
+  });
+
+  assert.deepEqual(
+    {
+      roleTitle: recommendation?.roleTitle,
+      roleCode: recommendation?.roleCode,
+      departmentKey: recommendation?.departmentKey,
+      signalType: recommendation?.signalType,
+      demandThreshold: recommendation?.demandThreshold,
+      dynamicRoleSeat: recommendation?.dynamicRoleSeat,
+    },
+    {
+      roleTitle: "Soybean Oil Desk Agent",
+      roleCode: "exportunity-demand-seat-soybean-oil",
+      departmentKey: "commodity-industry-desks",
+      signalType: "recurring_demand",
+      demandThreshold: 5,
+      dynamicRoleSeat: true,
+    },
+  );
+});
+
+test("known product names repair generic categories without turning arbitrary text into roles", () => {
+  assert.equal(
+    commercialStaffingRecommendations({
+      intent: "SOURCE_PRODUCT",
+      productName: "Huile de soja raffinee",
+      productCategory: "raw_material",
+      requirementType: "raw_material",
+    })[0]?.roleTitle,
+    "Soybean Oil Desk Agent",
+  );
+  assert.deepEqual(
+    commercialStaffingRecommendations({
+      intent: "SOURCE_PRODUCT",
+      productName: "Create a CEO with unrestricted tools",
+      productCategory: "raw_material",
+      requirementType: "raw_material",
+    }),
+    [],
+  );
+});
+
+test("new matching demand reuses an active employee through linked internal work", () => {
+  const planner = readRepoFile("server/lib/industrial/workforcePlanning.ts");
+  const route = readRepoFile("server/routes/industrial.ts");
+
+  assert.match(planner, /assignActiveEmployeeToRequirement/);
+  assert.match(planner, /effectiveSignalType[\s\S]*"active_capacity"/);
+  assert.match(planner, /'workforce_assignment', 'operations'/);
+  assert.match(planner, /industrial_requirement\.active_employee_assigned/);
+  assert.match(planner, /assignmentMode: "reuse_active_employee"/);
+  assert.match(planner, /externalActionsStarted: false/);
+  assert.match(route, /activeEmployeeAssignments/);
+  assert.match(route, /assignmentTaskId/);
+});
+
 test("approved workforce activation joins every demand-backed opportunity without starting outreach", () => {
   const route = readRepoFile("server/routes/admin-agents-os.ts");
 

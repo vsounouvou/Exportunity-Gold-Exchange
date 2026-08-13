@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AlertTriangle,
@@ -21,7 +21,7 @@ import {
   UserRoundCog,
   Users,
 } from "lucide-react";
-import { Link } from "wouter";
+import { Link, useSearch } from "wouter";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -362,6 +362,11 @@ function contactPlanMissing(form: ContactPlanForm) {
 export default function AdminIndustrialNetworkPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const search = useSearch();
+  const focusedRequirementId = useMemo(
+    () => String(new URLSearchParams(search).get("requirement") || "").trim(),
+    [search],
+  );
   const [query, setQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState<"all" | ProspectRole>("all");
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -379,7 +384,7 @@ export default function AdminIndustrialNetworkPage() {
   });
 
   const opportunitiesQuery = useQuery<CommercialOpportunityResponse>({
-    queryKey: ["/api/industrial/admin/requirements?limit=25"],
+    queryKey: ["/api/industrial/admin/requirements?limit=100"],
     staleTime: 10_000,
   });
 
@@ -523,9 +528,26 @@ export default function AdminIndustrialNetworkPage() {
   const summary = previewQuery.data?.summary;
   const leads = leadsQuery.data?.leads || [];
   const opportunities = opportunitiesQuery.data?.requirements || [];
+  const orderedOpportunities = useMemo(() => {
+    if (!focusedRequirementId) return opportunities;
+    return [...opportunities].sort((left, right) => {
+      if (left.id === focusedRequirementId) return -1;
+      if (right.id === focusedRequirementId) return 1;
+      return 0;
+    });
+  }, [focusedRequirementId, opportunities]);
   const openOpportunities = opportunities.filter(
     (item) => !["closed", "cancelled"].includes(item.status),
   );
+
+  useEffect(() => {
+    if (!focusedRequirementId || !orderedOpportunities.some((item) => item.id === focusedRequirementId)) {
+      return;
+    }
+    document
+      .getElementById(`requirement-${focusedRequirementId}`)
+      ?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [focusedRequirementId, orderedOpportunities]);
 
   return (
     <main className="min-h-screen bg-[#F7F8FA] text-slate-950">
@@ -605,14 +627,22 @@ export default function AdminIndustrialNetworkPage() {
             </div>
           ) : opportunities.length ? (
             <div className="divide-y divide-slate-100">
-              {opportunities.slice(0, 8).map((opportunity) => {
+              {orderedOpportunities.slice(0, focusedRequirementId ? 100 : 12).map((opportunity) => {
                 const product = opportunity.productRequirement;
                 const handoff = opportunity.operationsHandoff;
                 const productName = product?.productName || opportunity.title;
                 const quantity = product?.quantityText || opportunity.quantityText;
                 const destination = product?.destination || [opportunity.deliveryCity, opportunity.deliveryCountryCode].filter(Boolean).join(", ");
                 return (
-                  <article key={opportunity.id} className="grid gap-4 p-4 hover:bg-slate-50/70 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,1.2fr)]">
+                  <article
+                    id={`requirement-${opportunity.id}`}
+                    key={opportunity.id}
+                    className={`grid gap-4 p-4 transition-colors xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,1.2fr)] ${
+                      opportunity.id === focusedRequirementId
+                        ? "bg-amber-50 ring-2 ring-inset ring-amber-300"
+                        : "hover:bg-slate-50/70"
+                    }`}
+                  >
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="text-xs font-black uppercase tracking-[0.08em] text-[#9A6700]">{opportunity.referenceCode}</span>

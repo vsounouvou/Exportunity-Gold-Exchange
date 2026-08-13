@@ -200,6 +200,26 @@ type WorkforceResponse = {
   items: WorkforceRequest[];
 };
 
+type WorkforceEvaluationResponse = {
+  ok: boolean;
+  requirementsEvaluated: number;
+  requirementsWithSignals: number;
+  signalsObserved: number;
+  roles: Array<{
+    roleTitle: string;
+    status: string;
+    demandCount: number;
+    demandThreshold: number;
+    reviewReady: boolean;
+  }>;
+  reviewReady: number;
+  runtimeAgentsStarted: 0;
+  employeesCreated: 0;
+  employeesActivated: 0;
+  externalActionsStarted: false;
+  nextStep: string;
+};
+
 function useDebouncedValue<T>(value: T, delayMs = 300) {
   const [debounced, setDebounced] = useState(value);
   useEffect(() => {
@@ -416,6 +436,25 @@ export default function AdminAgentsOsPage() {
     },
     onError: (error: any) => {
       toast({ title: "Review failed", description: error?.message || "Could not review staffing need", variant: "destructive" });
+    },
+  });
+
+  const evaluateCurrentDemand = useMutation({
+    mutationFn: async () =>
+      apiRequest("/api/admin/agents-os/workforce-requests/evaluate-current-demand", "POST", {}),
+    onSuccess: async (payload: WorkforceEvaluationResponse) => {
+      await refreshAll();
+      toast({
+        title: "Current demand evaluated",
+        description: `${payload.requirementsEvaluated} opportunities reviewed. ${payload.roles.length} governed role signal${payload.roles.length === 1 ? " is" : "s are"} now visible. No employee was created or activated.`,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Demand evaluation failed",
+        description: error?.message || "Current industrial opportunities could not be evaluated.",
+        variant: "destructive",
+      });
     },
   });
 
@@ -880,9 +919,35 @@ export default function AdminAgentsOsPage() {
                   Commercial demand can propose missing capacity. Approval, provisioning, production access, and external communication remain separate human-controlled gates.
                 </p>
               </div>
-              <Button variant="outline" className="agents-os-secondary-action" onClick={() => workforceQuery.refetch()}>
-                <RefreshCw className="mr-2 h-4 w-4" />Refresh
-              </Button>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  className="bg-amber-500 text-slate-950 hover:bg-amber-400"
+                  disabled={evaluateCurrentDemand.isPending}
+                  onClick={() => evaluateCurrentDemand.mutate()}
+                >
+                  <Sparkles className="mr-2 h-4 w-4" />
+                  {evaluateCurrentDemand.isPending ? "Evaluating demand..." : "Evaluate current demand"}
+                </Button>
+                <Button variant="outline" className="agents-os-secondary-action" onClick={() => workforceQuery.refetch()}>
+                  <RefreshCw className="mr-2 h-4 w-4" />Refresh
+                </Button>
+              </div>
+            </div>
+            <div className="grid gap-3 border-b border-slate-200 bg-slate-50 px-4 py-3 sm:grid-cols-2 xl:grid-cols-4">
+              {[
+                ["1", "Evaluate real demand", "Read current industrial opportunities and deduplicate evidence."],
+                ["2", "Approve the need", "A human reviews the role, threshold, and linked commercial cases."],
+                ["3", "Create and edit", "Provision inactive, then set the employee's identity, face, manager, and limits."],
+                ["4", "Activate separately", "Enable internal work only after review; outreach and spending stay gated."],
+              ].map(([step, title, description]) => (
+                <div key={step} className="flex gap-3">
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-950 text-xs font-semibold text-white">{step}</span>
+                  <div>
+                    <div className="text-sm font-semibold text-slate-950">{title}</div>
+                    <div className="mt-0.5 text-xs leading-5 text-slate-600">{description}</div>
+                  </div>
+                </div>
+              ))}
             </div>
             <div className="grid grid-cols-2 gap-px border-b border-slate-200 bg-slate-200 lg:grid-cols-6">
               {[
@@ -1011,7 +1076,22 @@ export default function AdminAgentsOsPage() {
                   </article>
                 ))
               ) : (
-                <div className="p-6 text-sm text-slate-600">No unmet staffing demand is recorded.</div>
+                <div className="flex flex-col items-start gap-3 p-6">
+                  <div>
+                    <div className="font-semibold text-slate-950">No staffing signal has been recorded yet.</div>
+                    <p className="mt-1 max-w-2xl text-sm text-slate-600">
+                      Evaluate the company's current industrial opportunities against the governed role catalog. This records review evidence only. No employee is created or activated, and no external action starts.
+                    </p>
+                  </div>
+                  <Button
+                    className="bg-amber-500 text-slate-950 hover:bg-amber-400"
+                    disabled={evaluateCurrentDemand.isPending}
+                    onClick={() => evaluateCurrentDemand.mutate()}
+                  >
+                    <Sparkles className="mr-2 h-4 w-4" />
+                    {evaluateCurrentDemand.isPending ? "Evaluating demand..." : "Evaluate current demand"}
+                  </Button>
+                </div>
               )}
             </div>
           </section>

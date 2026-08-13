@@ -167,6 +167,27 @@ test("new matching demand reuses an active employee through linked internal work
   assert.match(route, /assignmentTaskId/);
 });
 
+test("historical demand evaluation records governed signals without silently assigning employees", () => {
+  const planner = readRepoFile("server/lib/industrial/workforcePlanning.ts");
+  const route = readRepoFile("server/routes/admin-agents-os.ts");
+  const ui = readRepoFile("client/src/pages/AdminAgentsOsPage.tsx");
+
+  assert.match(route, /workforce-requests\/evaluate-current-demand/);
+  assert.match(route, /assignmentMode: "signal_only"/);
+  assert.match(route, /ir\.status in \(/);
+  assert.match(route, /proposeCommercialStaffing/);
+  assert.match(route, /runtimeAgentsStarted: 0/);
+  assert.match(route, /employeesCreated: 0/);
+  assert.match(route, /employeesActivated: 0/);
+  assert.match(route, /externalActionsStarted: false/);
+  assert.match(planner, /input\.assignmentMode === "signal_only" && runtimeIsActive/);
+  assert.match(planner, /runtimeIsActive && input\.assignmentMode !== "signal_only"/);
+  assert.match(ui, /Evaluate current demand/);
+  assert.match(ui, /No employee is created or activated/);
+  assert.match(ui, /Create and edit/);
+  assert.match(ui, /Activate separately/);
+});
+
 test("approved workforce activation joins every demand-backed opportunity without starting outreach", () => {
   const route = readRepoFile("server/routes/admin-agents-os.ts");
 

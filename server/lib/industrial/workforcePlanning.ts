@@ -216,6 +216,7 @@ export async function proposeCommercialStaffing(input: {
   requirementId: string;
   referenceCode: string;
   proposedByAgentId?: number | null;
+  assignmentMode?: "assign_active_employee" | "signal_only";
   context: CommercialStaffingContext;
 }): Promise<StaffingProposal[]> {
   await ensureExportunityRoleSeatCatalog();
@@ -251,6 +252,9 @@ export async function proposeCommercialStaffing(input: {
     }
 
     const runtimeIsActive = runtimeStatus === "active";
+    if (input.assignmentMode === "signal_only" && runtimeIsActive) {
+      continue;
+    }
     const effectiveSignalType = runtimeAgentId > 0
       ? runtimeIsActive
         ? "active_capacity"
@@ -275,6 +279,7 @@ export async function proposeCommercialStaffing(input: {
       missingSpecialistKeys: input.context.missingSpecialistKeys || [],
       existingRuntimeAgentId: runtimeAgentId || null,
       externalActionsStarted: false,
+      assignmentMode: input.assignmentMode || "assign_active_employee",
       signalType: effectiveSignalType,
       rationale: recommendation.rationale,
       dynamicRoleSeat: Boolean(recommendation.dynamicRoleSeat || template?.role_profile?.dynamicRoleSeat),
@@ -355,7 +360,7 @@ export async function proposeCommercialStaffing(input: {
     const row = rows<any>(inserted)[0];
     if (!row?.id) continue;
     let assignmentTaskId: number | null = null;
-    if (runtimeIsActive) {
+    if (runtimeIsActive && input.assignmentMode !== "signal_only") {
       try {
         assignmentTaskId = await assignActiveEmployeeToRequirement({
           tenantId: input.tenantId,

@@ -13,6 +13,7 @@ import {
   EXPORTUNITY_DEMAND_ROLE_SEAT_VERSION,
 } from "../lib/company-brain/demandRoleSeat";
 import { ensureIndustrialTables } from "../lib/industrial/ensureTables";
+import { proposeCommercialStaffing } from "../lib/industrial/workforcePlanning";
 import { commercialStaffingSpecialistKey } from "../lib/industrial/workforcePlanningPolicy";
 import {
   EXPORTUNITY_ROLE_SEAT_DEPARTMENTS,
@@ -468,6 +469,134 @@ router.get("/admin/agents-os/workforce-requests", async (req: any, res) => {
     });
   } catch (error: any) {
     res.status(500).json({ message: error?.message || "Failed to load workforce requests" });
+  }
+});
+
+router.post("/admin/agents-os/workforce-requests/evaluate-current-demand", async (req: any, res) => {
+  try {
+    await ensureIndustrialTables();
+    const tenant = resolveTenant(req, res);
+    if (!tenant) return;
+    if (tenant.tenantKey !== "exportunity") {
+      return res.status(404).json({ message: "Demand-driven workforce planning is not available for this tenant." });
+    }
+
+    await ensureExportunityRoleSeatCatalog();
+    const companyId = await ensureDefaultCompany({
+      tenantId: tenant.tenantId,
+      tenantKey: tenant.tenantKey,
+      tenantName: "Exportunity",
+      attachUnassignedAgents: false,
+    });
+    const demandResult = await db.execute(sql`
+      select
+        ir.id,
+        ir.reference_code,
+        ir.requirement_type,
+        ir.category_code,
+        ir.title,
+        ir.commercial_intent,
+        ir.assigned_commercial_agent_id,
+        ir.metadata,
+        product.intent as product_intent,
+        product.product_name,
+        product.product_category
+      from industrial_requirements ir
+      left join industrial_product_requirements product
+        on product.requirement_id = ir.id
+        and product.tenant_id = ir.tenant_id
+      where ir.tenant_id = ${tenant.tenantId}
+        and ir.status in (
+          'submitted', 'triaged', 'under_review', 'supplier_matching',
+          'quote_preparation', 'quoted'
+        )
+      order by coalesce(ir.submitted_at, ir.created_at) asc
+      limit 500
+    `);
+    const requirements = getRows<any>(demandResult);
+    const roles = new Map<string, {
+      roleTitle: string;
+      status: string;
+      demandCount: number;
+      demandThreshold: number;
+      reviewReady: boolean;
+    }>();
+    let requirementsWithSignals = 0;
+    let signalsObserved = 0;
+
+    for (const requirement of requirements) {
+      const metadata = requirement.metadata && typeof requirement.metadata === "object"
+        ? requirement.metadata as Record<string, any>
+        : {};
+      const handoff = metadata.operationsHandoff && typeof metadata.operationsHandoff === "object"
+        ? metadata.operationsHandoff as Record<string, any>
+        : {};
+      const missingSpecialistKeys = Array.isArray(handoff.missingSpecialistKeys)
+        ? handoff.missingSpecialistKeys.map((value: unknown) => asString(value)).filter(Boolean)
+        : [];
+      const proposals = await proposeCommercialStaffing({
+        tenantId: tenant.tenantId,
+        companyId,
+        requirementId: String(requirement.id),
+        referenceCode: asString(requirement.reference_code),
+        proposedByAgentId:
+          Number(requirement.assigned_commercial_agent_id || handoff.assignedAgentId || 0) || null,
+        assignmentMode: "signal_only",
+        context: {
+          intent: requirement.product_intent || requirement.commercial_intent || null,
+          productName: requirement.product_name || requirement.title || null,
+          productCategory: requirement.product_category || requirement.category_code || null,
+          requirementType: asString(requirement.requirement_type),
+          missingSpecialistKeys,
+        },
+      });
+      if (proposals.length) requirementsWithSignals += 1;
+      signalsObserved += proposals.length;
+      for (const proposal of proposals) {
+        roles.set(proposal.roleCode, {
+          roleTitle: proposal.roleTitle,
+          status: proposal.status,
+          demandCount: proposal.demandCount,
+          demandThreshold: proposal.demandThreshold,
+          reviewReady: proposal.reviewReady,
+        });
+      }
+    }
+
+    const roleSignals = Array.from(roles.values());
+    const result = {
+      ok: true,
+      requirementsEvaluated: requirements.length,
+      requirementsWithSignals,
+      signalsObserved,
+      roles: roleSignals,
+      reviewReady: roleSignals.filter((role) => role.reviewReady).length,
+      runtimeAgentsStarted: 0,
+      employeesCreated: 0,
+      employeesActivated: 0,
+      externalActionsStarted: false,
+      nextStep: roleSignals.length
+        ? "Review the evidence. Approve only a demonstrated staffing need, then create and edit the employee before a separate activation review."
+        : "No unmet governed staffing need was found in current industrial opportunities.",
+    };
+    await writeAudit({
+      tenantId: tenant.tenantId,
+      actor: req.adminUser,
+      action: "WORKFORCE_DEMAND_EVALUATE",
+      entityType: "industrial_agent_staffing_request",
+      entityId: null,
+      after: result,
+      metadata: {
+        source: "current_industrial_requirements",
+        assignmentMode: "signal_only",
+        runtimeAgentsStarted: 0,
+        externalActionsStarted: false,
+      },
+      req,
+    });
+    res.json(result);
+  } catch (error: any) {
+    res.status(500).json({ message: error?.message || "Failed to evaluate current workforce demand" });
   }
 });
 

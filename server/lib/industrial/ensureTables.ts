@@ -515,14 +515,43 @@ export async function ensureIndustrialTables() {
         reviewed_by_user_id integer REFERENCES ece_users(id) ON DELETE SET NULL,
         review_note text,
         provisioned_agent_id integer REFERENCES agents(id) ON DELETE SET NULL,
+        demand_count integer NOT NULL DEFAULT 1,
+        demand_threshold integer NOT NULL DEFAULT 1,
+        signal_type text NOT NULL DEFAULT 'critical_capability_gap',
+        evidence_items jsonb NOT NULL DEFAULT '[]'::jsonb,
+        last_signal_at timestamp,
+        activated_by_user_id integer REFERENCES ece_users(id) ON DELETE SET NULL,
+        activated_at timestamp,
+        paused_at timestamp,
         reviewed_at timestamp,
         provisioned_at timestamp,
         created_at timestamp NOT NULL DEFAULT now(),
         updated_at timestamp NOT NULL DEFAULT now()
       )
     `);
+    await db.execute(sql`
+      ALTER TABLE industrial_agent_staffing_requests
+        ADD COLUMN IF NOT EXISTS demand_count integer NOT NULL DEFAULT 1,
+        ADD COLUMN IF NOT EXISTS demand_threshold integer NOT NULL DEFAULT 1,
+        ADD COLUMN IF NOT EXISTS signal_type text NOT NULL DEFAULT 'critical_capability_gap',
+        ADD COLUMN IF NOT EXISTS evidence_items jsonb NOT NULL DEFAULT '[]'::jsonb,
+        ADD COLUMN IF NOT EXISTS last_signal_at timestamp,
+        ADD COLUMN IF NOT EXISTS activated_by_user_id integer REFERENCES ece_users(id) ON DELETE SET NULL,
+        ADD COLUMN IF NOT EXISTS activated_at timestamp,
+        ADD COLUMN IF NOT EXISTS paused_at timestamp
+    `);
+    await db.execute(sql`
+      UPDATE industrial_agent_staffing_requests
+      SET evidence_items = jsonb_build_array(evidence),
+          last_signal_at = coalesce(last_signal_at, updated_at)
+      WHERE jsonb_array_length(coalesce(evidence_items, '[]'::jsonb)) = 0
+        AND evidence <> '{}'::jsonb
+    `);
     await db.execute(
-      sql`CREATE UNIQUE INDEX IF NOT EXISTS industrial_agent_staffing_requests_open_role_unique ON industrial_agent_staffing_requests(tenant_id, role_code) WHERE status IN ('proposed', 'approved', 'provisioned')`,
+      sql`DROP INDEX IF EXISTS industrial_agent_staffing_requests_open_role_unique`,
+    );
+    await db.execute(
+      sql`CREATE UNIQUE INDEX IF NOT EXISTS industrial_agent_staffing_requests_open_role_unique ON industrial_agent_staffing_requests(tenant_id, role_code) WHERE status IN ('monitoring', 'proposed', 'approved', 'provisioned', 'active', 'paused')`,
     );
     await db.execute(
       sql`CREATE INDEX IF NOT EXISTS industrial_agent_staffing_requests_tenant_status_idx ON industrial_agent_staffing_requests(tenant_id, status, priority, created_at)`,

@@ -6945,13 +6945,18 @@ router.post("/requirements", async (req: any, res) => {
         if (staffingProposals.length) {
           await db.insert(industrialAuditLogs).values({
             tenantId: tenant.id,
-            action: "industrial_requirement.staffing_proposed",
+            action: "industrial_requirement.workforce_signal_recorded",
             entityType: "industrial_requirement",
             entityId: requirement.id,
             metadata: {
               staffingRequestIds: staffingProposals.map((item) => item.id),
               roles: staffingProposals.map((item) => item.roleTitle),
-              approvalRequired: true,
+              reviewReady: staffingProposals.filter((item) => item.reviewReady).map((item) => item.id),
+              demandProgress: staffingProposals.map((item) => ({
+                requestId: item.id,
+                count: item.demandCount,
+                threshold: item.demandThreshold,
+              })),
               runtimeAgentsStarted: 0,
             },
           });
@@ -7020,7 +7025,9 @@ router.post("/requirements", async (req: any, res) => {
           id: item.id,
           roleTitle: item.roleTitle,
           status: item.status,
-          approvalRequired: true,
+          approvalRequired: item.reviewReady,
+          demandCount: item.demandCount,
+          demandThreshold: item.demandThreshold,
         })),
         qualification: commercialContext
           ? {

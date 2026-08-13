@@ -25,6 +25,9 @@ test("agent management exposes a localized identity and face workflow", () => {
   assert.match(profile, /Responsable de département/);
   assert.match(profile, /Niveau d'autonomie/);
   assert.match(profile, /Enregistrer les modifications/);
+  assert.match(profile, /isGovernedRoleSeat/);
+  assert.match(profile, /Agents OS > Workforce/);
+  assert.match(profile, /Workforce employees remain partially autonomous with human approvals/);
   assert.match(photo, /Importer une photo/);
   assert.match(photo, /Verrouiller la photo/);
 });
@@ -48,4 +51,14 @@ test("agent portrait defaults reflect the global Exportunity brand", () => {
     assert.match(source, /premium Afro-global business aesthetic/);
     assert.doesNotMatch(source, /African industrial company team member/);
   }
+});
+
+test("governed workforce profiles cannot bypass manager or lifecycle controls", () => {
+  const routes = readRepoFile("server/routes.ts");
+
+  assert.match(routes, /GOVERNED_WORKFORCE_LIFECYCLE_REQUIRED/);
+  assert.match(routes, /GOVERNED_WORKFORCE_MANAGER_REQUIRED/);
+  assert.match(routes, /GOVERNED_WORKFORCE_COMPANY_REQUIRED/);
+  assert.match(routes, /updateData\.status = currentAgent\.status/);
+  assert.match(routes, /updateData\.isVisible = currentAgent\.isVisible/);
 });

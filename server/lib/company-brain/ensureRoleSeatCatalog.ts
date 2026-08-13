@@ -4,7 +4,7 @@ import { ensureAgentsOsMarketplaceTables } from "../agent-os/ensureMarketplaceCa
 import { ensureTenants, getTenantByKey } from "../tenants";
 import { EXPORTUNITY_ROLE_SEATS } from "./roleSeatCatalog";
 
-export const EXPORTUNITY_ROLE_SEAT_ORGANIZATION_VERSION = "exportunity-global-role-seats-v1";
+export const EXPORTUNITY_ROLE_SEAT_ORGANIZATION_VERSION = "exportunity-global-role-seats-v2";
 
 function rows<T = any>(result: any): T[] {
   if (Array.isArray(result?.rows)) return result.rows as T[];
@@ -141,4 +141,3 @@ export async function ensureExportunityRoleSeatCatalog() {
     externalCommunicationsStarted: 0,
   };
 }
-

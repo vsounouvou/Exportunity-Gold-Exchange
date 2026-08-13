@@ -6,6 +6,7 @@ export type ExportunityRoleSeatProfile = {
   role: string;
   departmentKey: string;
   departmentName: string;
+  managerOrganizationKey: string;
   companyEntityScope: string[];
   description: string;
   languages: string[];
@@ -334,6 +335,26 @@ function toolsForDepartment(departmentKey: string) {
   return INTERNAL_TOOLS;
 }
 
+function managerForDepartment(departmentKey: string) {
+  const managers: Record<string, string> = {
+    "executive-office": "ceo",
+    "global-revenue-business-development": "commercial",
+    "relationship-intelligence-crm": "commercial",
+    "sourcing-procurement": "sourcing",
+    "supplier-buyer-intelligence": "sourcing",
+    "trade-operations-logistics": "logistics",
+    "commodity-industry-desks": "sourcing",
+    "country-market-expansion": "commercial",
+    "finance-treasury": "finance",
+    "legal-compliance-risk": "compliance",
+    "customer-success-supply-management": "commercial",
+    "marketing-communications": "marketing",
+    "data-research-knowledge": "data",
+    "product-engineering-security": "technical",
+  };
+  return managers[departmentKey] || "ceo";
+}
+
 function authorityForRole(role: string, ordinal: number): RoleSeatDecisionAuthority {
   if (/Founder|Chief of Staff|Strategy Director|Portfolio Director/i.test(role)) return "executive";
   if (/Director|Manager|Lead/i.test(role) || ordinal === 0) return "high";
@@ -359,6 +380,7 @@ export const EXPORTUNITY_ROLE_SEATS: ExportunityRoleSeatProfile[] = EXPORTUNITY_
         role,
         departmentKey: department.key,
         departmentName: department.name,
+        managerOrganizationKey: managerForDepartment(department.key),
         companyEntityScope: ["Exportunity Group", "Exportunity.net"],
         description: `${department.mission} This seat serves as Exportunity's ${role}.`,
         languages: ["English", "French"],
@@ -398,4 +420,3 @@ export const EXPORTUNITY_ROLE_SEATS: ExportunityRoleSeatProfile[] = EXPORTUNITY_
 );
 
 export const EXPORTUNITY_ROLE_SEAT_TOTAL = EXPORTUNITY_ROLE_SEATS.length;
-

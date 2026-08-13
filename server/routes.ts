@@ -10536,6 +10536,22 @@ Respond helpfully with your full platform awareness.`,
       if (!agentId) {
         return res.status(404).json({ message: "Agent not found" });
       }
+      const currentAgent = await db.query.agents.findFirst({
+        where: eq(agents.id, agentId),
+        columns: {
+          status: true,
+          metadata: true,
+          tenantId: true,
+          companyId: true,
+          managerId: true,
+          env: true,
+          isTest: true,
+          isVisible: true,
+        },
+      });
+      if (!currentAgent) {
+        return res.status(404).json({ message: "Agent not found" });
+      }
       const {
         managerId,
         baseBudget,
@@ -10568,6 +10584,62 @@ Respond helpfully with your full platform awareness.`,
         isVisible,
       } = req.body;
 
+      const currentMetadata = (currentAgent.metadata as Record<string, unknown> | null) || {};
+      const isGovernedRoleSeat = Number(currentMetadata.roleSeatTemplateId || 0) > 0;
+      if (isGovernedRoleSeat && status !== undefined && String(status) !== String(currentAgent.status || "")) {
+        return res.status(409).json({
+          message: "This employee belongs to the governed workforce. Review, activate, pause, or reactivate it from Agents OS > Workforce.",
+          code: "GOVERNED_WORKFORCE_LIFECYCLE_REQUIRED",
+        });
+      }
+      if (
+        isGovernedRoleSeat
+        && companyId !== undefined
+        && Number(companyId || 0) !== Number(currentAgent.companyId || 0)
+      ) {
+        return res.status(409).json({
+          message: "A governed employee cannot be moved between companies from the profile editor.",
+          code: "GOVERNED_WORKFORCE_COMPANY_REQUIRED",
+        });
+      }
+      if (
+        isGovernedRoleSeat
+        && (
+          (env !== undefined && String(env) !== String(currentAgent.env || ""))
+          || (isTest !== undefined && Boolean(isTest) !== Boolean(currentAgent.isTest))
+          || (isVisible !== undefined && Boolean(isVisible) !== Boolean(currentAgent.isVisible))
+        )
+      ) {
+        return res.status(409).json({
+          message: "Runtime visibility for a governed employee is controlled by the Workforce lifecycle.",
+          code: "GOVERNED_WORKFORCE_VISIBILITY_REQUIRED",
+        });
+      }
+      if (isGovernedRoleSeat && managerId !== undefined) {
+        const normalizedManagerId = Number(managerId || 0);
+        if (!Number.isInteger(normalizedManagerId) || normalizedManagerId <= 0 || normalizedManagerId === agentId) {
+          return res.status(409).json({
+            message: "Select an active manager for this governed employee.",
+            code: "GOVERNED_WORKFORCE_MANAGER_REQUIRED",
+          });
+        }
+        const manager = await db.query.agents.findFirst({
+          where: and(
+            eq(agents.id, normalizedManagerId),
+            eq(agents.tenantId, Number(currentAgent.tenantId || 0)),
+            eq(agents.companyId, Number(currentAgent.companyId || 0)),
+            eq(agents.status, "active"),
+          ),
+          columns: { id: true },
+        });
+        if (!manager) {
+          return res.status(409).json({
+            message: "The selected manager must be active and belong to the same Exportunity company.",
+            code: "GOVERNED_WORKFORCE_MANAGER_REQUIRED",
+          });
+        }
+      }
+
       const updateData: any = { updatedAt: new Date() };
       if (managerId !== undefined) updateData.managerId = managerId;
       if (baseBudget !== undefined) updateData.baseBudget = baseBudget;
@@ -10589,35 +10661,51 @@ Respond helpfully with your full platform awareness.`,
       if (languages !== undefined) updateData.languages = languages;
       if (responsibilities !== undefined) updateData.responsibilities = responsibilities;
       if (personality !== undefined) updateData.personality = personality;
-      if (permissions !== undefined) updateData.permissions = permissions;
-      if (autonomyLevel !== undefined) updateData.autonomyLevel = autonomyLevel;
+      if (permissions !== undefined) {
+        updateData.permissions = isGovernedRoleSeat
+          ? {
+              ...(permissions && typeof permissions === "object" ? permissions : {}),
+              email: false,
+              calendar: false,
+              payments: false,
+            }
+          : permissions;
+      }
+      if (autonomyLevel !== undefined) {
+        updateData.autonomyLevel = isGovernedRoleSeat && autonomyLevel === "full"
+          ? "partial"
+          : autonomyLevel;
+      }
       if (decisionAuthority !== undefined) updateData.decisionAuthority = decisionAuthority;
       if (avatar !== undefined) updateData.avatar = avatar;
       if (capabilities !== undefined) updateData.capabilities = capabilities;
       if (env !== undefined || isTest !== undefined || isVisible !== undefined || status !== undefined) {
-        const visibility = sanitizeAgentVisibilityInput({
-          status: status ?? undefined,
-          env: env ?? resolveAgentRuntimeEnv(),
-          isTest: isTest ?? undefined,
-          isVisible: isVisible ?? undefined,
-          name: name ?? undefined,
-          role: role ?? undefined,
-          metadata: metadata ?? undefined,
-        });
-        updateData.env = visibility.env;
-        updateData.isTest = visibility.isTest;
-        updateData.isVisible = visibility.isVisible;
-        updateData.status = visibility.status;
+        if (isGovernedRoleSeat) {
+          updateData.env = currentAgent.env;
+          updateData.isTest = currentAgent.isTest;
+          updateData.isVisible = currentAgent.isVisible;
+          updateData.status = currentAgent.status;
+        } else {
+          const visibility = sanitizeAgentVisibilityInput({
+            status: status ?? undefined,
+            env: env ?? resolveAgentRuntimeEnv(),
+            isTest: isTest ?? undefined,
+            isVisible: isVisible ?? undefined,
+            name: name ?? undefined,
+            role: role ?? undefined,
+            metadata: metadata ?? undefined,
+          });
+          updateData.env = visibility.env;
+          updateData.isTest = visibility.isTest;
+          updateData.isVisible = visibility.isVisible;
+          updateData.status = visibility.status;
+        }
       }
 
       if (metadata !== undefined) {
-        const existing = await db.query.agents.findFirst({
-          where: eq(agents.id, agentId),
-          columns: { metadata: true },
-        });
-        const existingMeta = (existing?.metadata as any) || {};
+        const existingMeta = currentMetadata as any;
         const nextMeta = (metadata as any) || {};
-        updateData.metadata = {
+        const mergedMetadata: Record<string, unknown> = {
           ...existingMeta,
           ...nextMeta,
           persona:
@@ -10625,6 +10713,31 @@ Respond helpfully with your full platform awareness.`,
               ? { ...existingMeta.persona, ...nextMeta.persona }
               : nextMeta.persona ?? existingMeta.persona,
         };
+        if (isGovernedRoleSeat) {
+          for (const protectedKey of [
+            "organizationKey",
+            "organizationVersion",
+            "operatingModel",
+            "roleSeatTemplateId",
+            "staffingRequestId",
+            "demandCount",
+            "demandThreshold",
+            "evidenceItems",
+            "managerOrganizationKey",
+            "companyContext",
+            "activationState",
+            "activationSource",
+            "roleSeatProfile",
+          ]) {
+            if (Object.prototype.hasOwnProperty.call(existingMeta, protectedKey)) {
+              mergedMetadata[protectedKey] = existingMeta[protectedKey];
+            }
+          }
+        }
+        if (isGovernedRoleSeat && managerId !== undefined) mergedMetadata.managerAgentId = managerId;
+        updateData.metadata = mergedMetadata;
+      } else if (isGovernedRoleSeat && managerId !== undefined) {
+        updateData.metadata = { ...currentMetadata, managerAgentId: managerId };
       }
 
       const [agent] = await db.update(agents)

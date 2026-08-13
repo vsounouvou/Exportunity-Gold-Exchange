@@ -243,6 +243,43 @@ async function syncRuntimeAgentsIntoCatalog(input: {
   };
 }
 
+async function resolveRoleSeatManager(input: {
+  tenantId: number;
+  companyId: number;
+  managerOrganizationKey: string;
+}) {
+  const managerResult = await db.execute(sql`
+    select id, display_name, name, role
+    from agents
+    where tenant_id = ${input.tenantId}
+      and company_id = ${input.companyId}
+      and status = 'active'
+      and metadata->>'organizationKey' = ${input.managerOrganizationKey}
+    order by id asc
+    limit 1
+  `);
+  const manager = getRows<any>(managerResult)[0];
+  if (manager?.id) return manager;
+
+  const executiveFallback = await db.execute(sql`
+    select id, display_name, name, role
+    from agents
+    where tenant_id = ${input.tenantId}
+      and company_id = ${input.companyId}
+      and status = 'active'
+      and (
+        metadata->>'organizationKey' = 'ceo'
+        or decision_authority = 'executive'
+        or is_super_agent = true
+      )
+    order by
+      case when metadata->>'organizationKey' = 'ceo' then 0 else 1 end,
+      id asc
+    limit 1
+  `);
+  return getRows<any>(executiveFallback)[0] || null;
+}
+
 const AGENTS_OS_SEED_PRESET = [
   { name: "Chairman Assistant", role: "Executive Assistant", category: "executive", pitch: "Coordinates executive priorities, schedules, and follow-ups." },
   { name: "Operations Coordinator", role: "Operations Coordinator", category: "operations", pitch: "Runs daily execution, escalations, and cross-team coordination." },
@@ -375,6 +412,18 @@ router.get("/admin/agents-os/workforce-requests", async (req: any, res) => {
         sr.status,
         sr.review_note,
         sr.provisioned_agent_id,
+        sr.demand_count,
+        sr.demand_threshold,
+        sr.signal_type,
+        sr.evidence_items,
+        sr.last_signal_at,
+        sr.activated_at,
+        sr.paused_at,
+        a.status as runtime_status,
+        a.display_name as runtime_display_name,
+        a.manager_id,
+        manager.display_name as manager_display_name,
+        coalesce(ap.is_enabled, false) as production_enabled,
         sr.created_at,
         sr.updated_at,
         ir.reference_code,
@@ -382,9 +431,12 @@ router.get("/admin/agents-os/workforce-requests", async (req: any, res) => {
         ir.commercial_intent
       from industrial_agent_staffing_requests sr
       left join industrial_requirements ir on ir.id = sr.requirement_id
+      left join agents a on a.id = sr.provisioned_agent_id and a.tenant_id = sr.tenant_id
+      left join agents manager on manager.id = a.manager_id and manager.tenant_id = sr.tenant_id
+      left join agents_production ap on ap.agent_id = sr.provisioned_agent_id and ap.tenant_id = sr.tenant_id
       where sr.tenant_id = ${tenant.tenantId}
       order by
-        case sr.status when 'proposed' then 0 when 'approved' then 1 when 'provisioned' then 2 else 3 end,
+        case sr.status when 'proposed' then 0 when 'approved' then 1 when 'provisioned' then 2 when 'active' then 3 when 'monitoring' then 4 else 5 end,
         case sr.priority when 'critical' then 0 when 'high' then 1 when 'medium' then 2 else 3 end,
         sr.updated_at desc
       limit 200
@@ -394,9 +446,12 @@ router.get("/admin/agents-os/workforce-requests", async (req: any, res) => {
       ok: true,
       summary: {
         total: items.length,
+        monitoring: items.filter((item) => item.status === "monitoring").length,
         proposed: items.filter((item) => item.status === "proposed").length,
         approved: items.filter((item) => item.status === "approved").length,
         provisioned: items.filter((item) => item.status === "provisioned").length,
+        active: items.filter((item) => item.status === "active").length,
+        paused: items.filter((item) => item.status === "paused").length,
       },
       items,
     });
@@ -537,10 +592,14 @@ router.get("/admin/agents-os/role-seats", async (req: any, res) => {
         t.runtime_agent_id,
         a.status as runtime_status,
         a.display_name as runtime_display_name,
+        a.manager_id as runtime_manager_id,
+        manager.display_name as runtime_manager_name,
         coalesce(ap.is_enabled, false) as production_enabled
       from ece_agent_templates t
       left join agents a
         on a.id = t.runtime_agent_id and a.tenant_id = ${tenant.tenantId}
+      left join agents manager
+        on manager.id = a.manager_id and manager.tenant_id = ${tenant.tenantId}
       left join agents_production ap
         on ap.agent_id = t.runtime_agent_id and ap.tenant_id = ${tenant.tenantId}
       where t.tenant_id = ${tenant.tenantId}
@@ -585,6 +644,7 @@ router.post("/admin/agents/:id(\\d+)/provision", async (req: any, res) => {
     await ensureAgentManagementV2Tables();
     await ensureIndustrialTables();
     const templateId = Number(req.params.id);
+    const staffingRequestId = Math.max(0, Number(req.body?.staffingRequestId || 0));
     const companyId = await ensureDefaultCompany({
       tenantId: tenant.tenantId,
       tenantKey: tenant.tenantKey,
@@ -606,6 +666,24 @@ router.post("/admin/agents/:id(\\d+)/provision", async (req: any, res) => {
     const profile = template.role_profile && typeof template.role_profile === "object"
       ? template.role_profile
       : {};
+    let staffingRequest: any = null;
+    if (staffingRequestId > 0) {
+      const staffingResult = await db.execute(sql`
+        select *
+        from industrial_agent_staffing_requests
+        where id = ${staffingRequestId}
+          and tenant_id = ${tenant.tenantId}
+          and role_template_id = ${templateId}
+        limit 1
+      `);
+      staffingRequest = getRows<any>(staffingResult)[0];
+      if (!staffingRequest) {
+        return res.status(404).json({ message: "The approved workforce request does not match this role seat." });
+      }
+      if (String(staffingRequest.status) !== "approved") {
+        return res.status(409).json({ message: `Approve this workforce request before provisioning. Current status: ${staffingRequest.status}.` });
+      }
+    }
     const departmentKey = asString(profile.departmentKey || template.department_key || "operations");
     const departmentName = asString(profile.departmentName || "Operations");
     const existingDepartmentResult = await db.execute(sql`
@@ -646,6 +724,18 @@ router.post("/admin/agents/:id(\\d+)/provision", async (req: any, res) => {
       departmentId = Number(getRows<any>(createdDepartment)[0]?.id || 0);
     }
 
+    const managerOrganizationKey = asString(profile.managerOrganizationKey || "ceo");
+    const manager = await resolveRoleSeatManager({
+      tenantId: tenant.tenantId,
+      companyId,
+      managerOrganizationKey,
+    });
+    if (!manager?.id) {
+      return res.status(409).json({
+        message: `No active manager is available for ${departmentName}. Restore the core organization before hiring this employee.`,
+      });
+    }
+
     const result = await db.transaction(async (tx) => {
       const lockedResult = await tx.execute(sql`
         select *
@@ -658,7 +748,43 @@ router.post("/admin/agents/:id(\\d+)/provision", async (req: any, res) => {
       const locked = getRows<any>(lockedResult)[0];
       if (!locked) throw new Error("Role seat not found");
       const linkedRuntimeId = Number(locked.runtime_agent_id || 0);
-      if (linkedRuntimeId > 0) return { runtimeAgentId: linkedRuntimeId, alreadyProvisioned: true };
+      if (linkedRuntimeId > 0) {
+        const reuseMetadata = {
+          roleSeatTemplateId: templateId,
+          departmentKey,
+          managerOrganizationKey,
+          ...(staffingRequestId > 0
+            ? {
+                staffingRequestId,
+                demandCount: Number(staffingRequest?.demand_count || 0),
+                demandThreshold: Number(staffingRequest?.demand_threshold || 0),
+                evidenceItems: Array.isArray(staffingRequest?.evidence_items) ? staffingRequest.evidence_items : [],
+              }
+            : {}),
+        };
+        const reusedResult = await tx.execute(sql`
+          update agents
+          set manager_id = coalesce(manager_id, ${Number(manager.id)}),
+              department_id = coalesce(department_id, ${departmentId || null}),
+              metadata = jsonb_set(
+                coalesce(metadata, '{}'::jsonb) || ${JSON.stringify(reuseMetadata)}::jsonb,
+                '{managerAgentId}',
+                to_jsonb(coalesce(manager_id, ${Number(manager.id)})),
+                true
+              ),
+              updated_at = now()
+          where id = ${linkedRuntimeId} and tenant_id = ${tenant.tenantId}
+          returning id, status, manager_id
+        `);
+        const reused = getRows<any>(reusedResult)[0];
+        if (!reused?.id) throw new Error("The linked runtime employee is unavailable for this tenant");
+        return {
+          runtimeAgentId: linkedRuntimeId,
+          runtimeStatus: asString(reused.status || "inactive"),
+          managerAgentId: Number(reused.manager_id || manager.id),
+          alreadyProvisioned: true,
+        };
+      }
 
       const roleProfile = locked.role_profile && typeof locked.role_profile === "object"
         ? locked.role_profile
@@ -683,7 +809,13 @@ router.post("/admin/agents/:id(\\d+)/provision", async (req: any, res) => {
         organizationVersion: asString(locked.organization_version),
         operatingModel: "exportunity-global-trade-os",
         roleSeatTemplateId: templateId,
+        staffingRequestId: staffingRequestId || null,
+        demandCount: Number(staffingRequest?.demand_count || 0),
+        demandThreshold: Number(staffingRequest?.demand_threshold || 0),
+        evidenceItems: Array.isArray(staffingRequest?.evidence_items) ? staffingRequest.evidence_items : [],
         departmentKey,
+        managerOrganizationKey,
+        managerAgentId: Number(manager.id),
         companyContext: "Exportunity is a global AI-managed trade, sourcing, industrial supply, and market expansion platform.",
         activationState: "inactive",
         roleSeatProfile: roleProfile,
@@ -700,7 +832,7 @@ router.post("/admin/agents/:id(\\d+)/provision", async (req: any, res) => {
           communication_style, capabilities, base_budget, budget_used, budget_bonus, metadata,
           domain, department_key, tools_enabled_json, is_template, created_at, updated_at
         ) values (
-          ${tenant.tenantId}, ${companyId}, ${departmentId || null}, null, 'prod', false, true,
+          ${tenant.tenantId}, ${companyId}, ${departmentId || null}, ${Number(manager.id)}, 'prod', false, true,
           ${displayName}, ${displayName}, ${role}, ${hierarchyLevel}, ${intelligenceCap}, 32000,
           ${dailyTokenLimit}, ${roleLevel >= 5}, '1.00', false, 'inactive',
           ${asString(locked.avatar_url) || null}, ${asString(roleProfile.geographicCompetencies?.[0] || "Global")}, 'UTC',
@@ -749,9 +881,16 @@ router.post("/admin/agents/:id(\\d+)/provision", async (req: any, res) => {
         where tenant_id = ${tenant.tenantId}
           and role_template_id = ${templateId}
           and status = 'approved'
+          and ${staffingRequestId} > 0
+          and id = ${staffingRequestId}
       `);
 
-      return { runtimeAgentId: Number(runtime.id), alreadyProvisioned: false };
+      return {
+        runtimeAgentId: Number(runtime.id),
+        runtimeStatus: "inactive",
+        managerAgentId: Number(manager.id),
+        alreadyProvisioned: false,
+      };
     });
 
     // Reusing an existing inactive runtime still fulfils an approved staffing
@@ -765,6 +904,8 @@ router.post("/admin/agents/:id(\\d+)/provision", async (req: any, res) => {
       where tenant_id = ${tenant.tenantId}
         and role_template_id = ${templateId}
         and status = 'approved'
+        and ${staffingRequestId} > 0
+        and id = ${staffingRequestId}
     `);
 
     await writeAudit({
@@ -776,9 +917,12 @@ router.post("/admin/agents/:id(\\d+)/provision", async (req: any, res) => {
       before: template,
       after: {
         runtimeAgentId: result.runtimeAgentId,
-        status: "inactive",
+        status: result.runtimeStatus,
         productionEnabled: false,
         externalCommunicationsEnabled: false,
+        managerAgentId: result.managerAgentId,
+        managerName: asString(manager.display_name || manager.name),
+        staffingRequestId: staffingRequestId || null,
       },
       req,
     });
@@ -786,12 +930,326 @@ router.post("/admin/agents/:id(\\d+)/provision", async (req: any, res) => {
     res.status(result.alreadyProvisioned ? 200 : 201).json({
       ok: true,
       ...result,
-      status: "inactive",
+      status: result.runtimeStatus,
       productionEnabled: false,
       externalCommunicationsEnabled: false,
+      manager: {
+        id: Number(manager.id),
+        name: asString(manager.display_name || manager.name),
+        role: asString(manager.role),
+      },
+      staffingRequestId: staffingRequestId || null,
     });
   } catch (error: any) {
     res.status(500).json({ message: error?.message || "Failed to provision role seat" });
+  }
+});
+
+router.post("/admin/agents-os/workforce-requests/:id(\\d+)/lifecycle", async (req: any, res) => {
+  try {
+    const tenant = resolveTenant(req, res);
+    if (!tenant) return;
+    if (tenant.tenantKey !== "exportunity") {
+      return res.status(404).json({ message: "Demand-driven workforce is not available for this tenant." });
+    }
+    await ensureIndustrialTables();
+    await ensureAgentManagementV2Tables();
+    await ensureAgentsProductionTables();
+
+    const requestId = Number(req.params.id);
+    const action = asString(req.body?.action).toLowerCase();
+    const reason = asString(req.body?.reason).slice(0, 1200);
+    if (!requestId || !["activate", "pause"].includes(action)) {
+      return res.status(400).json({ message: "Choose activate or pause." });
+    }
+    if (action === "activate" && req.body?.confirmActivation !== true) {
+      return res.status(400).json({ message: "Explicit activation confirmation is required." });
+    }
+
+    const beforeResult = await db.execute(sql`
+      select
+        sr.*,
+        a.status as runtime_status,
+        a.display_name as runtime_display_name,
+        a.role as runtime_role,
+        a.manager_id,
+        a.role_level,
+        a.max_daily_tokens,
+        a.permissions,
+        a.metadata as runtime_metadata,
+        manager.status as manager_status,
+        t.id as template_id,
+        t.role_profile,
+        t.approval_policy
+      from industrial_agent_staffing_requests sr
+      left join agents a on a.id = sr.provisioned_agent_id and a.tenant_id = sr.tenant_id
+      left join agents manager on manager.id = a.manager_id and manager.tenant_id = sr.tenant_id
+      left join ece_agent_templates t on t.id = sr.role_template_id and t.tenant_id = sr.tenant_id
+      where sr.id = ${requestId} and sr.tenant_id = ${tenant.tenantId}
+      limit 1
+    `);
+    const before = getRows<any>(beforeResult)[0];
+    if (!before) return res.status(404).json({ message: "Workforce request not found." });
+    const runtimeAgentId = Number(before.provisioned_agent_id || 0);
+    if (!runtimeAgentId) {
+      return res.status(409).json({ message: "Provision and edit this employee before activation." });
+    }
+    if (!Number(before.manager_id || 0) || String(before.manager_status || "") !== "active") {
+      return res.status(409).json({ message: "Assign an active manager before activation." });
+    }
+
+    const targetAgentStatus = action === "activate" ? "active" : "paused";
+    const targetRequestStatus = action === "activate" ? "active" : "paused";
+    if (action === "activate" && !["provisioned", "paused"].includes(String(before.status))) {
+      return res.status(409).json({ message: `This employee cannot be activated from ${before.status}.` });
+    }
+    if (action === "pause" && String(before.status) !== "active") {
+      return res.status(409).json({ message: `This employee cannot be paused from ${before.status}.` });
+    }
+
+    const profile = before.role_profile && typeof before.role_profile === "object" ? before.role_profile : {};
+    const permittedTools = Array.isArray(profile.permittedTools) ? profile.permittedTools : [];
+    const permissions = {
+      ...(before.permissions && typeof before.permissions === "object" ? before.permissions : {}),
+      email: false,
+      calendar: false,
+      crm: permittedTools.includes("update_crm") || permittedTools.includes("create_lead"),
+      knowledge: true,
+      payments: false,
+      webResearch: permittedTools.includes("search_web"),
+    };
+    const runtimeMetadata = before.runtime_metadata && typeof before.runtime_metadata === "object"
+      ? before.runtime_metadata
+      : {};
+    const model = asString(process.env.OPENAI_EXPORTUNITY_MODEL || process.env.OPENAI_MODEL || "gpt-5.6-terra");
+    const roleLevel = Number(before.role_level || profile.roleLevel || 2);
+    const productionMetadata = {
+      source: "demand_driven_workforce",
+      staffingRequestId: requestId,
+      roleSeatTemplateId: Number(before.template_id || 0) || null,
+      role: asString(before.runtime_role || before.role_title),
+      managerAgentId: Number(before.manager_id),
+      externalActions: "human_approval_required",
+      backgroundConversations: "disabled",
+      eventDrivenExecution: true,
+      modelPolicy: {
+        model,
+        reasoningEffort: roleLevel >= 4 ? "high" : roleLevel >= 3 ? "medium" : "low",
+        maxDailyTokens: Number(before.max_daily_tokens || 10_000),
+      },
+    };
+
+    let activationTaskId: number | null = null;
+
+    await db.transaction(async (tx) => {
+      await tx.execute(sql`
+        update agents
+        set status = ${targetAgentStatus},
+            autonomy_level = ${action === "activate" ? "partial" : "draft_only"},
+            permissions = ${JSON.stringify(permissions)}::jsonb,
+            approval_rules = coalesce(approval_rules, '{}'::jsonb) || ${JSON.stringify({
+              externalCommunication: "human_approval_required",
+              payments: "human_approval_required",
+              contracts: "human_approval_required",
+              publicClaims: "human_approval_required",
+              backgroundAutonomy: "disabled",
+            })}::jsonb,
+            metadata = ${JSON.stringify({
+              ...runtimeMetadata,
+              activationState: action === "activate" ? "active" : "paused",
+              activationSource: "human_workforce_approval",
+            })}::jsonb,
+            updated_at = now()
+        where id = ${runtimeAgentId} and tenant_id = ${tenant.tenantId}
+      `);
+
+      const productionResult = await tx.execute(sql`
+        select id
+        from agents_production
+        where tenant_id = ${tenant.tenantId}
+          and (agent_id = ${runtimeAgentId} or agent_key = ${asString(before.role_code)})
+        order by id asc
+        limit 1
+        for update
+      `);
+      const production = getRows<any>(productionResult)[0];
+      if (production?.id) {
+        await tx.execute(sql`
+          update agents_production
+          set agent_id = ${runtimeAgentId},
+              agent_key = ${asString(before.role_code)},
+              display_name = ${asString(before.runtime_display_name || before.role_title)},
+              is_enabled = ${action === "activate"},
+              metadata = ${JSON.stringify(productionMetadata)}::jsonb,
+              updated_at = now()
+          where id = ${Number(production.id)} and tenant_id = ${tenant.tenantId}
+        `);
+      } else {
+        await tx.execute(sql`
+          insert into agents_production (
+            tenant_id, agent_id, agent_key, display_name, is_enabled, metadata, created_at, updated_at
+          ) values (
+            ${tenant.tenantId}, ${runtimeAgentId}, ${asString(before.role_code)},
+            ${asString(before.runtime_display_name || before.role_title)}, ${action === "activate"},
+            ${JSON.stringify(productionMetadata)}::jsonb, now(), now()
+          )
+        `);
+      }
+
+      await tx.execute(sql`
+        update industrial_agent_staffing_requests
+        set status = ${targetRequestStatus},
+            activated_by_user_id = ${action === "activate" && req.adminUser?.id ? Number(req.adminUser.id) : before.activated_by_user_id || null},
+            activated_at = ${action === "activate" ? sql`now()` : sql`activated_at`},
+            paused_at = ${action === "pause" ? sql`now()` : null},
+            review_note = coalesce(${reason || null}, review_note),
+            updated_at = now()
+        where id = ${requestId} and tenant_id = ${tenant.tenantId}
+      `);
+
+      if (Number(before.template_id || 0)) {
+        const approvalPolicy = {
+          ...(before.approval_policy && typeof before.approval_policy === "object" ? before.approval_policy : {}),
+          activationState: action === "activate" ? "active" : "paused",
+          lastLifecycleDecisionBy: req.adminUser?.id ? Number(req.adminUser.id) : null,
+          externalCommunication: "human_approval_required",
+        };
+        await tx.execute(sql`
+          update ece_agent_templates
+          set seat_status = ${action === "activate" ? "active" : "provisioned"},
+              approval_policy = ${JSON.stringify(approvalPolicy)}::jsonb,
+              role_profile = jsonb_set(
+                coalesce(role_profile, '{}'::jsonb),
+                '{activationStatus}',
+                to_jsonb(${action === "activate" ? "active" : "paused"}::text),
+                true
+              ),
+              updated_by_user_id = ${req.adminUser?.id ? Number(req.adminUser.id) : null},
+              updated_at = now()
+          where id = ${Number(before.template_id)} and tenant_id = ${tenant.tenantId}
+        `);
+      }
+
+      if (action === "activate" && before.requirement_id && before.company_id) {
+        const requirementResult = await tx.execute(sql`
+          select reference_code, title, details, status
+          from industrial_requirements
+          where id = ${String(before.requirement_id)}
+            and tenant_id = ${tenant.tenantId}
+          limit 1
+        `);
+        const requirement = getRows<any>(requirementResult)[0];
+        if (requirement) {
+          const goalTitle = "Execute verified industrial demand with accountable agent teams";
+          const goalResult = await tx.execute(sql`
+            select id
+            from goals
+            where company_id = ${Number(before.company_id)} and title = ${goalTitle}
+            order by id desc
+            limit 1
+          `);
+          let goalId = Number(getRows<any>(goalResult)[0]?.id || 0);
+          if (!goalId) {
+            const createdGoal = await tx.execute(sql`
+              insert into goals (
+                company_id, owner_agent_id, title, description, status, priority, metadata, created_at, updated_at
+              ) values (
+                ${Number(before.company_id)}, ${Number(before.manager_id)}, ${goalTitle},
+                'Route qualified industrial requirements to event-driven specialists with evidence, budgets, and visible approval gates.',
+                'in_progress', 'high',
+                ${JSON.stringify({ source: "demand_driven_workforce", tenant: "exportunity" })}::jsonb,
+                now(), now()
+              ) returning id
+            `);
+            goalId = Number(getRows<any>(createdGoal)[0]?.id || 0);
+          }
+          const taskTitle = `${requirement.reference_code} - ${before.role_title}`.slice(0, 240);
+          const existingTaskResult = await tx.execute(sql`
+            select id
+            from tasks
+            where company_id = ${Number(before.company_id)}
+              and agent_id = ${runtimeAgentId}
+              and title = ${taskTitle}
+            order by id desc
+            limit 1
+          `);
+          activationTaskId = Number(getRows<any>(existingTaskResult)[0]?.id || 0) || null;
+          if (!activationTaskId) {
+            const createdTaskResult = await tx.execute(sql`
+              insert into tasks (
+                agent_id, company_id, goal_id, objective_id, title, description,
+                priority, status, execution_type, urgency_score, importance_score,
+                dependency_score, is_automated, is_group_task, participant_agent_ids,
+                approval_status, approved_by_agent_id, approved_at, created_at, updated_at
+              ) values (
+                ${runtimeAgentId}, ${Number(before.company_id)}, ${goalId || null}, ${goalId || null},
+                ${taskTitle},
+                ${[
+                  `Case-linked specialist assignment for ${requirement.reference_code}: ${requirement.title}.`,
+                  `Demand evidence justified activation of ${before.role_title}.`,
+                  `Review the requirement and record findings in the shared case: ${String(requirement.details || "").slice(0, 1200)}`,
+                  "Do not send external messages, make payments, sign contracts, publish claims, or start background conversations without a separate visible approval.",
+                ].join("\n")},
+                'high', 'backlog', 'workforce_activation', 7, 8, 5,
+                false, false, ${JSON.stringify([runtimeAgentId])}::jsonb,
+                'approved', ${Number(before.manager_id)}, now(), now(), now()
+              ) returning id
+            `);
+            activationTaskId = Number(getRows<any>(createdTaskResult)[0]?.id || 0) || null;
+          }
+          await tx.execute(sql`
+            insert into activity_log (
+              company_id, agent_id, event_type, event_category, title, description, metadata, created_at
+            ) values (
+              ${Number(before.company_id)}, ${runtimeAgentId}, 'workforce_activation', 'operations',
+              ${`${before.runtime_display_name || before.role_title} joined the commercial team`},
+              ${`Activated for case ${requirement.reference_code} under manager #${before.manager_id}.`},
+              ${JSON.stringify({
+                staffingRequestId: requestId,
+                requirementId: String(before.requirement_id),
+                referenceCode: String(requirement.reference_code),
+                taskId: activationTaskId,
+                managerAgentId: Number(before.manager_id),
+                externalActionsStarted: false,
+              })}::jsonb,
+              now()
+            )
+          `);
+        }
+      }
+    });
+
+    await writeAudit({
+      tenantId: tenant.tenantId,
+      actor: req.adminUser,
+      action: action === "activate" ? "WORKFORCE_EMPLOYEE_ACTIVATE" : "WORKFORCE_EMPLOYEE_PAUSE",
+      entityType: "industrial_agent_staffing_request",
+      entityId: requestId,
+      before,
+      after: {
+        status: targetRequestStatus,
+        runtimeAgentId,
+        runtimeStatus: targetAgentStatus,
+        productionEnabled: action === "activate",
+        externalCommunicationEnabled: false,
+        activationTaskId,
+      },
+      metadata: { reason: reason || null, eventDrivenExecution: true, activationTaskId },
+      req,
+    });
+
+    res.json({
+      ok: true,
+      requestId,
+      runtimeAgentId,
+      status: targetRequestStatus,
+      productionEnabled: action === "activate",
+      externalCommunicationEnabled: false,
+      backgroundConversationsEnabled: false,
+      activationTaskId,
+    });
+  } catch (error: any) {
+    res.status(500).json({ message: error?.message || "Failed to update employee lifecycle" });
   }
 });
 
@@ -1407,6 +1865,12 @@ router.post("/admin/agents/:id(\\d+)/retire", async (req: any, res) => {
     `);
     const existing = getRows(before)[0];
     if (!existing) return res.status(404).json({ message: "Agent not found" });
+    if (asString(existing.seat_type) === "role_seat") {
+      return res.status(409).json({
+        message: "Role-seat employees use the governed Workforce review and lifecycle.",
+        code: "GOVERNED_WORKFORCE_LIFECYCLE_REQUIRED",
+      });
+    }
 
     const updatedRows = await db.execute(sql`
       update ece_agent_templates
@@ -1455,6 +1919,12 @@ router.post("/admin/agents/:id(\\d+)/activate", async (req: any, res) => {
     `);
     const existing = getRows(before)[0];
     if (!existing) return res.status(404).json({ message: "Agent not found" });
+    if (asString(existing.seat_type) === "role_seat") {
+      return res.status(409).json({
+        message: "Role-seat employees use the governed Workforce review and activation lifecycle.",
+        code: "GOVERNED_WORKFORCE_LIFECYCLE_REQUIRED",
+      });
+    }
 
     const updatedRows = await db.execute(sql`
       update ece_agent_templates

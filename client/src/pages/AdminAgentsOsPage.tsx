@@ -102,6 +102,7 @@ type RoleSeatProfile = {
   permittedTools?: string[];
   prohibitedTools?: string[];
   activationStatus?: string;
+  managerOrganizationKey?: string;
 };
 
 type RoleSeat = {
@@ -116,6 +117,8 @@ type RoleSeat = {
   runtime_agent_id: number | null;
   runtime_status: string | null;
   runtime_display_name: string | null;
+  runtime_manager_id: number | null;
+  runtime_manager_name: string | null;
   production_enabled: boolean;
 };
 
@@ -149,10 +152,20 @@ type WorkforceRequest = {
   department_key: string;
   reason: string;
   evidence: Record<string, unknown> | null;
+  evidence_items: Array<Record<string, unknown>> | null;
+  demand_count: number;
+  demand_threshold: number;
+  signal_type: string;
+  last_signal_at: string | null;
   priority: string;
   status: string;
   review_note: string | null;
   provisioned_agent_id: number | null;
+  runtime_status: string | null;
+  runtime_display_name: string | null;
+  manager_id: number | null;
+  manager_display_name: string | null;
+  production_enabled: boolean;
   reference_code: string | null;
   requirement_title: string | null;
   commercial_intent: string | null;
@@ -161,7 +174,15 @@ type WorkforceRequest = {
 
 type WorkforceResponse = {
   ok: boolean;
-  summary: { total: number; proposed: number; approved: number; provisioned: number };
+  summary: {
+    total: number;
+    monitoring: number;
+    proposed: number;
+    approved: number;
+    provisioned: number;
+    active: number;
+    paused: number;
+  };
   items: WorkforceRequest[];
 };
 
@@ -201,6 +222,7 @@ export default function AdminAgentsOsPage() {
   const [q, setQ] = useState("");
   const [organizationQuery, setOrganizationQuery] = useState("");
   const [editingRoleSeat, setEditingRoleSeat] = useState<RoleSeat | null>(null);
+  const [activationRequest, setActivationRequest] = useState<WorkforceRequest | null>(null);
   const [roleSeatDraft, setRoleSeatDraft] = useState({
     displayName: "",
     roleTitle: "",
@@ -331,17 +353,40 @@ export default function AdminAgentsOsPage() {
   };
 
   const provisionRoleSeat = useMutation({
-    mutationFn: async (templateId: number) => apiRequest(`/api/admin/agents/${templateId}/provision`, "POST", {}),
-    onSuccess: async (payload: { runtimeAgentId: number; alreadyProvisioned?: boolean }) => {
+    mutationFn: async ({ templateId, staffingRequestId }: { templateId: number; staffingRequestId?: number }) =>
+      apiRequest(`/api/admin/agents/${templateId}/provision`, "POST", { staffingRequestId }),
+    onSuccess: async (payload: { runtimeAgentId: number; alreadyProvisioned?: boolean; manager?: { name?: string } }) => {
       await refreshAll();
       await queryClient.invalidateQueries({ queryKey: ["/api/admin/agents-os/governance"] });
       toast({
         title: payload.alreadyProvisioned ? "Role seat already provisioned" : "Role seat provisioned inactive",
-        description: "No production access or external communication was enabled. You can now edit its identity and face.",
+        description: `${payload.manager?.name ? `Reports to ${payload.manager.name}. ` : ""}No production access or external communication was enabled. Edit the employee before activation.`,
       });
     },
     onError: (error: any) => {
       toast({ title: "Provisioning failed", description: error?.message || "Could not provision role seat", variant: "destructive" });
+    },
+  });
+
+  const updateEmployeeLifecycle = useMutation({
+    mutationFn: async ({ id, action }: { id: number; action: "activate" | "pause" }) =>
+      apiRequest(`/api/admin/agents-os/workforce-requests/${id}/lifecycle`, "POST", {
+        action,
+        confirmActivation: action === "activate",
+      }),
+    onSuccess: async (payload: { status: string; externalCommunicationEnabled: boolean }) => {
+      setActivationRequest(null);
+      await refreshAll();
+      await queryClient.invalidateQueries({ queryKey: ["/api/admin/agents-os/governance"] });
+      toast({
+        title: payload.status === "active" ? "Employee activated" : "Employee paused",
+        description: payload.status === "active"
+          ? "The employee can accept event-driven internal work. External messages, payments, and contracts still require separate approval."
+          : "Production execution is paused. The employee profile and evidence remain available.",
+      });
+    },
+    onError: (error: any) => {
+      toast({ title: "Lifecycle update failed", description: error?.message || "Could not update this employee", variant: "destructive" });
     },
   });
 
@@ -718,6 +763,7 @@ export default function AdminAgentsOsPage() {
                     <div className="divide-y divide-slate-100 rounded-md border border-slate-200">
                       {department.seats.map((seat) => {
                         const runtimeAgentId = Number(seat.runtime_agent_id || 0);
+                        const runtimeActive = seat.runtime_status === "active" && seat.production_enabled;
                         const profile = seat.role_profile || {};
                         const avatarUrl = String(seat.avatar_url || "").trim() || getAgentAvatarUrl({
                           id: runtimeAgentId || seat.id,
@@ -739,15 +785,19 @@ export default function AdminAgentsOsPage() {
                                   <div className="truncate text-sm font-semibold text-slate-950">{seat.display_name}</div>
                                   <Badge
                                     variant="outline"
-                                    className={runtimeAgentId > 0 ? "border-amber-200 bg-amber-50 text-amber-800" : "border-slate-200 bg-slate-50 text-slate-600"}
+                                    className={runtimeActive
+                                      ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                                      : runtimeAgentId > 0
+                                        ? "border-amber-200 bg-amber-50 text-amber-800"
+                                        : "border-slate-200 bg-slate-50 text-slate-600"}
                                   >
-                                    {runtimeAgentId > 0 ? "provisioned inactive" : "available seat"}
+                                    {runtimeActive ? "active employee" : runtimeAgentId > 0 ? `${seat.runtime_status || "inactive"} employee` : "available seat"}
                                   </Badge>
-                                  {seat.production_enabled ? (
-                                    <Badge className="border border-rose-200 bg-rose-50 text-rose-700">production enabled</Badge>
-                                  ) : null}
                                 </div>
                                 <div className="mt-0.5 truncate text-xs text-slate-600">{seat.role_title}</div>
+                                {seat.runtime_manager_name ? (
+                                  <div className="mt-0.5 text-xs text-slate-500">Reports to {seat.runtime_manager_name}</div>
+                                ) : null}
                                 <div className="mt-1 line-clamp-1 text-xs text-slate-500">{profile.description || "Task-scoped role in the Exportunity operating model."}</div>
                               </div>
                             </div>
@@ -777,7 +827,7 @@ export default function AdminAgentsOsPage() {
                                   size="sm"
                                   className="bg-slate-950 text-white hover:bg-slate-800"
                                   disabled={provisionRoleSeat.isPending}
-                                  onClick={() => provisionRoleSeat.mutate(seat.id)}
+                                  onClick={() => provisionRoleSeat.mutate({ templateId: seat.id })}
                                 >
                                   Provision inactive
                                 </Button>
@@ -809,12 +859,14 @@ export default function AdminAgentsOsPage() {
                 <RefreshCw className="mr-2 h-4 w-4" />Refresh
               </Button>
             </div>
-            <div className="grid grid-cols-2 gap-px border-b border-slate-200 bg-slate-200 lg:grid-cols-4">
+            <div className="grid grid-cols-2 gap-px border-b border-slate-200 bg-slate-200 lg:grid-cols-6">
               {[
-                ["Total needs", workforceQuery.data?.summary.total ?? 0],
-                ["Awaiting review", workforceQuery.data?.summary.proposed ?? 0],
+                ["Demand signals", workforceQuery.data?.summary.monitoring ?? 0],
+                ["Ready for review", workforceQuery.data?.summary.proposed ?? 0],
                 ["Approved", workforceQuery.data?.summary.approved ?? 0],
-                ["Provisioned inactive", workforceQuery.data?.summary.provisioned ?? 0],
+                ["Created inactive", workforceQuery.data?.summary.provisioned ?? 0],
+                ["Active employees", workforceQuery.data?.summary.active ?? 0],
+                ["Paused", workforceQuery.data?.summary.paused ?? 0],
               ].map(([label, value]) => (
                 <div key={String(label)} className="bg-white px-4 py-3">
                   <div className="text-xs font-medium text-slate-500">{label}</div>
@@ -835,13 +887,34 @@ export default function AdminAgentsOsPage() {
                         <div className="flex flex-wrap items-center gap-2">
                           <h3 className="font-semibold text-slate-950">{item.role_title}</h3>
                           <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-800">{item.priority}</Badge>
-                          <Badge variant="outline" className="border-slate-200 bg-slate-50 text-slate-700">{item.status}</Badge>
+                          <Badge variant="outline" className={item.status === "active"
+                            ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                            : item.status === "proposed"
+                              ? "border-amber-200 bg-amber-50 text-amber-800"
+                              : "border-slate-200 bg-slate-50 text-slate-700"}
+                          >{item.status === "monitoring" ? "watching demand" : item.status}</Badge>
                         </div>
                         <p className="mt-1 text-sm text-slate-700">{item.reason}</p>
+                        {item.signal_type === "recurring_demand" ? (
+                          <div className="mt-3 max-w-xl">
+                            <div className="mb-1 flex items-center justify-between text-xs font-medium text-slate-600">
+                              <span>{item.demand_count} distinct demand signal{item.demand_count === 1 ? "" : "s"}</span>
+                              <span>Review at {item.demand_threshold}</span>
+                            </div>
+                            <div className="h-2 overflow-hidden rounded-full bg-slate-100">
+                              <div
+                                className="h-full rounded-full bg-amber-500 transition-all"
+                                style={{ width: `${Math.min(100, Math.round((Number(item.demand_count || 0) / Math.max(1, Number(item.demand_threshold || 1))) * 100))}%` }}
+                              />
+                            </div>
+                          </div>
+                        ) : null}
                         <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
                           <span>Department: {item.department_key}</span>
+                          <span>Evidence: {Array.isArray(item.evidence_items) ? item.evidence_items.length : item.demand_count || 0}</span>
                           {item.reference_code ? <span>Case: {item.reference_code}</span> : null}
                           {item.commercial_intent ? <span>Intent: {item.commercial_intent}</span> : null}
+                          {item.manager_display_name ? <span>Manager: {item.manager_display_name}</span> : null}
                         </div>
                       </div>
                       <div className="flex shrink-0 flex-wrap gap-2">
@@ -852,10 +925,19 @@ export default function AdminAgentsOsPage() {
                           </>
                         ) : null}
                         {item.status === "approved" && item.role_template_id ? (
-                          <Button size="sm" className="bg-slate-950 text-white hover:bg-slate-800" onClick={() => provisionRoleSeat.mutate(Number(item.role_template_id))}>Provision inactive</Button>
+                          <Button size="sm" className="bg-slate-950 text-white hover:bg-slate-800" onClick={() => provisionRoleSeat.mutate({ templateId: Number(item.role_template_id), staffingRequestId: item.id })}>Create employee inactive</Button>
                         ) : null}
                         {item.provisioned_agent_id ? (
                           <Button size="sm" variant="outline" className="agents-os-secondary-action" onClick={() => setLocation(`/operations/agents/${item.provisioned_agent_id}?edit=1`)}>Edit identity</Button>
+                        ) : null}
+                        {item.status === "provisioned" && item.provisioned_agent_id ? (
+                          <Button size="sm" className="bg-emerald-700 text-white hover:bg-emerald-600" onClick={() => setActivationRequest(item)}>Review &amp; activate</Button>
+                        ) : null}
+                        {item.status === "active" ? (
+                          <Button size="sm" variant="outline" className="agents-os-secondary-action" onClick={() => updateEmployeeLifecycle.mutate({ id: item.id, action: "pause" })}>Pause employee</Button>
+                        ) : null}
+                        {item.status === "paused" ? (
+                          <Button size="sm" className="bg-emerald-700 text-white hover:bg-emerald-600" onClick={() => setActivationRequest(item)}>Reactivate</Button>
                         ) : null}
                       </div>
                     </div>
@@ -1306,6 +1388,43 @@ export default function AdminAgentsOsPage() {
               onClick={() => updateRoleSeat.mutate()}
             >
               Save role seat
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={Boolean(activationRequest)} onOpenChange={(open) => !open && setActivationRequest(null)}>
+        <DialogContent className="max-w-lg border-slate-200 bg-white text-slate-950">
+          <DialogHeader>
+            <DialogTitle>{activationRequest?.status === "paused" ? "Reactivate employee" : "Activate employee"}</DialogTitle>
+            <DialogDescription>
+              Confirm that this profile, reporting line, and budget are ready for event-driven internal work.
+            </DialogDescription>
+          </DialogHeader>
+          {activationRequest ? (
+            <div className="space-y-3 py-2 text-sm">
+              <div className="rounded-md border border-slate-200 bg-slate-50 p-3">
+                <div className="font-semibold text-slate-950">{activationRequest.runtime_display_name || activationRequest.role_title}</div>
+                <div className="mt-1 text-slate-600">{activationRequest.role_title}</div>
+                <div className="mt-2 grid gap-1 text-xs text-slate-500">
+                  <span>Manager: {activationRequest.manager_display_name || "Not assigned"}</span>
+                  <span>Demand evidence: {activationRequest.demand_count} of {activationRequest.demand_threshold}</span>
+                  <span>Department: {activationRequest.department_key}</span>
+                </div>
+              </div>
+              <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-amber-950">
+                Activation enables internal production routing only. Email, WhatsApp, calls, payments, contracts, public claims, and background conversations remain disabled or approval-gated.
+              </div>
+            </div>
+          ) : null}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setActivationRequest(null)}>Cancel</Button>
+            <Button
+              className="bg-emerald-700 text-white hover:bg-emerald-600"
+              disabled={updateEmployeeLifecycle.isPending || !activationRequest?.manager_id}
+              onClick={() => activationRequest && updateEmployeeLifecycle.mutate({ id: activationRequest.id, action: "activate" })}
+            >
+              Confirm activation
             </Button>
           </DialogFooter>
         </DialogContent>

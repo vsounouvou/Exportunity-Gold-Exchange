@@ -5,7 +5,10 @@ import {
   industrialSpecialistKeys,
   resolveIndustrialRequirementHandoffPlan,
 } from "../server/lib/industrial/operationsHandoffPolicy";
-import { commercialStaffingRoleTitles } from "../server/lib/industrial/workforcePlanningPolicy";
+import {
+  commercialStaffingRecommendations,
+  commercialStaffingRoleTitles,
+} from "../server/lib/industrial/workforcePlanningPolicy";
 
 test("raw-material demand routes to a commercial team, not a CAD-only flow", () => {
   const plan = resolveIndustrialRequirementHandoffPlan({
@@ -33,6 +36,41 @@ test("palm-oil demand proposes the dedicated desk without inventing machinery st
 
   assert.deepEqual(roles, ["Palm Oil Desk Agent"]);
   assert.equal(roles.includes("Machinery and Industrial Equipment Desk Agent"), false);
+  assert.deepEqual(
+    commercialStaffingRecommendations({
+      intent: "SOURCE_PRODUCT",
+      productCategory: "palm_oil",
+      requirementType: "raw_material",
+    }).map(({ roleTitle, signalType, demandThreshold }) => ({ roleTitle, signalType, demandThreshold })),
+    [{
+      roleTitle: "Palm Oil Desk Agent",
+      signalType: "recurring_demand",
+      demandThreshold: 10,
+    }],
+  );
+});
+
+test("a missing execution specialist is immediately reviewable while a new desk accumulates demand", () => {
+  assert.deepEqual(
+    commercialStaffingRecommendations({
+      intent: "BUY_PRODUCT",
+      productCategory: "cocoa",
+      requirementType: "raw_material",
+      missingSpecialistKeys: ["logistics"],
+    }).map(({ roleTitle, signalType, demandThreshold }) => ({ roleTitle, signalType, demandThreshold })),
+    [
+      {
+        roleTitle: "Cocoa Desk Agent",
+        signalType: "recurring_demand",
+        demandThreshold: 10,
+      },
+      {
+        roleTitle: "Freight Routing Agent",
+        signalType: "critical_capability_gap",
+        demandThreshold: 1,
+      },
+    ],
+  );
 });
 
 test("export demand proposes buyer intelligence while ordinary buying does not", () => {

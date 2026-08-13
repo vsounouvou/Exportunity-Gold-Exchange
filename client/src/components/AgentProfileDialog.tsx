@@ -115,6 +115,7 @@ export function AgentProfileDialog({ agent, runtimeAgentId, open, onOpenChange }
     return candidateIds.find((value) => Number.isInteger(value) && value > 0) || 0;
   }, [agent, runtimeAgentId]);
   const hasResolvableAgentId = Number.isInteger(effectiveAgentId) && effectiveAgentId > 0;
+  const isGovernedRoleSeat = Number((agent?.metadata as any)?.roleSeatTemplateId || 0) > 0;
 
   const form = useForm({
     defaultValues: {
@@ -1499,11 +1500,16 @@ export function AgentProfileDialog({ agent, runtimeAgentId, open, onOpenChange }
                         <SelectContent>
                           <SelectItem value="draft_only">{tr("Brouillons uniquement", "Draft Only")}</SelectItem>
                           <SelectItem value="partial">{tr("Autonomie partielle", "Partial Autonomy")}</SelectItem>
-                          <SelectItem value="full">{tr("Autonomie complète", "Full Autonomy")}</SelectItem>
+                          <SelectItem value="full" disabled={isGovernedRoleSeat}>{tr("Autonomie complète", "Full Autonomy")}</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormDescription>
-                        {tr("Détermine jusqu'où l'agent peut agir sans validation humaine.", "Controls how much the agent can act independently")}
+                        {isGovernedRoleSeat
+                          ? tr(
+                              "Les employés Workforce restent en autonomie partielle avec validations humaines.",
+                              "Workforce employees remain partially autonomous with human approvals.",
+                            )
+                          : tr("Détermine jusqu'où l'agent peut agir sans validation humaine.", "Controls how much the agent can act independently")}
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
@@ -1520,7 +1526,7 @@ export function AgentProfileDialog({ agent, runtimeAgentId, open, onOpenChange }
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>{tr("Statut", "Status")}</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
+                        <Select onValueChange={field.onChange} value={field.value} disabled={isGovernedRoleSeat}>
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue />
@@ -1533,6 +1539,14 @@ export function AgentProfileDialog({ agent, runtimeAgentId, open, onOpenChange }
                             <SelectItem value="archived">{tr("Archivé", "Archived")}</SelectItem>
                           </SelectContent>
                         </Select>
+                        {isGovernedRoleSeat ? (
+                          <FormDescription>
+                            {tr(
+                              "Le cycle de vie de cet employ\u00e9 est g\u00e9r\u00e9 dans Agents OS > Workforce.",
+                              "This employee's lifecycle is managed in Agents OS > Workforce.",
+                            )}
+                          </FormDescription>
+                        ) : null}
                         <FormMessage />
                       </FormItem>
                     )}

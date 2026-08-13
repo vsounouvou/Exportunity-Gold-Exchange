@@ -363,10 +363,14 @@ export default function AdminIndustrialNetworkPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const search = useSearch();
-  const focusedRequirementId = useMemo(
-    () => String(new URLSearchParams(search).get("requirement") || "").trim(),
-    [search],
-  );
+  const focusedRequirementId = useMemo(() => {
+    const routerValue = new URLSearchParams(search).get("requirement");
+    const browserValue =
+      typeof window !== "undefined"
+        ? new URLSearchParams(window.location.search).get("requirement")
+        : null;
+    return String(routerValue || browserValue || "").trim();
+  }, [search]);
   const [query, setQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState<"all" | ProspectRole>("all");
   const [selected, setSelected] = useState<Set<string>>(new Set());

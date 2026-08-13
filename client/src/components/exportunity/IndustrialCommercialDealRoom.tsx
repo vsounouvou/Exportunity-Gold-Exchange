@@ -2,16 +2,21 @@ import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowRight,
+  AlertTriangle,
   BriefcaseBusiness,
   Calculator,
   CheckCircle2,
+  CircleSlash2,
+  Clock3,
   ClipboardCheck,
   FileCheck2,
   Loader2,
   LockKeyhole,
   Mail,
   PackageCheck,
+  Play,
   RefreshCw,
+  RotateCcw,
   ShieldCheck,
   ShoppingCart,
   UserRoundCog,
@@ -54,8 +59,68 @@ export type IndustrialCommercialOpportunitySummary = {
       agentId: number | null;
       agentName: string;
       role: string;
+      avatarUrl?: string | null;
+      taskId?: number | null;
+      taskStatus?: string;
     }>;
+    progress?: ExecutionProgress;
   } | null;
+};
+
+type ExecutionProgress = {
+  total: number;
+  completed: number;
+  inProgress: number;
+  blocked: number;
+  backlog: number;
+  percent: number;
+};
+
+type OpportunityExecutionTask = {
+  id: number;
+  parentTaskId: number | null;
+  agentId: number | null;
+  agentName: string | null;
+  agentRole: string | null;
+  agentAvatarUrl: string | null;
+  title: string;
+  description: string;
+  status: string;
+  priority: string;
+  executionType: string | null;
+  approvalStatus: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
+  completedAt: string | null;
+  key: string;
+  allowedNextStatuses: string[];
+};
+
+type OpportunityExecution = {
+  requirementId: string;
+  parentTask: OpportunityExecutionTask | null;
+  workstreams: OpportunityExecutionTask[];
+  team: Array<{
+    key: string;
+    agentId: number | null;
+    agentName: string;
+    role: string;
+    avatarUrl: string | null;
+    taskId: number | null;
+    taskStatus: string;
+  }>;
+  missingSpecialistKeys: string[];
+  status: string;
+  progress: ExecutionProgress;
+  timeline: Array<{
+    id: string;
+    type: string;
+    title: string;
+    description: string | null;
+    agentName: string | null;
+    taskId: number | null;
+    createdAt: string | null;
+  }>;
 };
 
 type Supplier = {
@@ -177,6 +242,7 @@ type CommercialRoomResponse = {
       reason: string | null;
       createdAt: string;
     }>;
+    execution: OpportunityExecution | null;
     controls: {
       externalCommunicationsEnabled: boolean;
       supplierCostsArePrivate: boolean;
@@ -230,13 +296,43 @@ function shortDate(value: string | null | undefined) {
 }
 
 function statusClass(status: string) {
-  if (["approved", "accepted", "completed", "reviewed"].includes(status)) {
+  if (
+    ["approved", "accepted", "completed", "reviewed", "done", "review_ready"].includes(
+      status,
+    )
+  ) {
     return "border-emerald-200 bg-emerald-50 text-emerald-800";
   }
-  if (["declined", "cancelled", "expired", "rejected"].includes(status)) {
+  if (
+    ["declined", "cancelled", "canceled", "expired", "rejected", "blocked"].includes(
+      status,
+    )
+  ) {
     return "border-rose-200 bg-rose-50 text-rose-800";
   }
+  if (["in_progress", "working"].includes(status)) {
+    return "border-blue-200 bg-blue-50 text-blue-800";
+  }
   return "border-amber-200 bg-amber-50 text-amber-800";
+}
+
+function workstreamAction(status: string) {
+  if (status === "backlog") {
+    return { status: "in_progress", label: "Start", icon: Play };
+  }
+  if (status === "in_progress") {
+    return { status: "done", label: "Complete", icon: CheckCircle2 };
+  }
+  if (status === "blocked") {
+    return { status: "in_progress", label: "Resume", icon: RotateCcw };
+  }
+  if (status === "done") {
+    return { status: "in_progress", label: "Reopen", icon: RotateCcw };
+  }
+  if (status === "canceled") {
+    return { status: "backlog", label: "Reopen", icon: RotateCcw };
+  }
+  return null;
 }
 
 function toggleId(current: Set<string>, id: string) {
@@ -540,6 +636,36 @@ export function IndustrialCommercialDealRoom({
       }),
   });
 
+  const workstreamMutation = useMutation({
+    mutationFn: (input: { taskId: number; status: string }) =>
+      apiRequest(
+        `/api/industrial/admin/requirements/${opportunity.id}/workstreams/${input.taskId}/status`,
+        "PATCH",
+        {
+          status: input.status,
+          reason:
+            eventNote.trim() ||
+            "Updated from the private industrial opportunity room.",
+        },
+      ),
+    onSuccess: async (result: any) => {
+      setEventNote("");
+      await refresh();
+      toast({
+        title: "Employee workstream updated",
+        description:
+          result?.nextAction ||
+          "The real Operations Center task and opportunity timeline were updated.",
+      });
+    },
+    onError: (error: any) =>
+      toast({
+        title: "Workstream could not be updated",
+        description: error?.message || "Review the allowed task transition.",
+        variant: "destructive",
+      }),
+  });
+
   const selectedSupplierQuotes = useMemo(
     () =>
       (room?.supplierQuotes || []).filter((quote) =>
@@ -580,7 +706,8 @@ export function IndustrialCommercialDealRoom({
     approveOfferMutation.isPending ||
     customerQuoteMutation.isPending ||
     quoteStatusMutation.isPending ||
-    orderMutation.isPending;
+    orderMutation.isPending ||
+    workstreamMutation.isPending;
 
   return (
     <>
@@ -644,16 +771,42 @@ export function IndustrialCommercialDealRoom({
                         Accountable agent team
                       </div>
                       <div className="mt-3 flex flex-wrap gap-2">
-                        {(opportunity.operationsHandoff?.participants || []).map(
+                        {(room.execution?.team ||
+                          room.requirement.operationsHandoff?.participants ||
+                          opportunity.operationsHandoff?.participants ||
+                          []).map(
                           (participant) => (
                             <span
                               key={`${participant.key}-${participant.agentId || "open"}`}
-                              className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-bold text-slate-700"
+                              className="inline-flex items-center gap-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-bold text-slate-700"
                             >
-                              {participant.agentName || readable(participant.key)}
-                              <span className="ml-1 font-medium text-slate-500">
+                              <span className="flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#07121F] text-[10px] font-black text-white">
+                                {participant.avatarUrl ? (
+                                  <img
+                                    src={participant.avatarUrl}
+                                    alt=""
+                                    className="h-full w-full object-cover"
+                                  />
+                                ) : (
+                                  (participant.agentName || participant.key)
+                                    .slice(0, 1)
+                                    .toUpperCase()
+                                )}
+                              </span>
+                              <span>
+                                {participant.agentName || readable(participant.key)}
+                              </span>
+                              <span className="font-medium text-slate-500">
                                 / {participant.role}
                               </span>
+                              {participant.taskStatus ? (
+                                <Badge
+                                  variant="outline"
+                                  className={statusClass(participant.taskStatus)}
+                                >
+                                  {readable(participant.taskStatus)}
+                                </Badge>
+                              ) : null}
                             </span>
                           ),
                         )}
@@ -669,6 +822,150 @@ export function IndustrialCommercialDealRoom({
                       </p>
                     </div>
                   </div>
+                  {room.execution ? (
+                    <div className="mt-5 border-t border-slate-200 pt-5">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                          <div className="flex items-center gap-2 text-sm font-black text-[#07121F]">
+                            <Clock3 className="h-4 w-4 text-[#9A6700]" />
+                            Live execution
+                            <Badge
+                              variant="outline"
+                              className={statusClass(room.execution.status)}
+                            >
+                              {readable(room.execution.status)}
+                            </Badge>
+                          </div>
+                          <p className="mt-1 text-xs text-slate-500">
+                            {room.execution.progress.completed} of {room.execution.progress.total} specialist workstreams completed
+                          </p>
+                        </div>
+                        <div className="min-w-48 sm:w-64">
+                          <div className="h-2 overflow-hidden rounded-full bg-slate-200">
+                            <div
+                              className="h-full bg-[#E2A416] transition-[width] duration-500"
+                              style={{ width: `${room.execution.progress.percent}%` }}
+                            />
+                          </div>
+                          <div className="mt-1 text-right text-xs font-black text-slate-600">
+                            {room.execution.progress.percent}%
+                          </div>
+                        </div>
+                      </div>
+
+                      {room.execution.workstreams.length ? (
+                        <div className="mt-4 divide-y divide-slate-100 overflow-hidden rounded-md border border-slate-200">
+                          {room.execution.workstreams.map((workstream) => {
+                            const action = workstreamAction(workstream.status);
+                            const ActionIcon = action?.icon;
+                            return (
+                              <div
+                                key={workstream.id}
+                                className="grid gap-3 bg-white px-4 py-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
+                              >
+                                <div className="min-w-0">
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <span className="font-black text-[#07121F]">
+                                      {workstream.agentName || readable(workstream.key)}
+                                    </span>
+                                    <span className="text-xs font-semibold text-slate-500">
+                                      {workstream.agentRole || readable(workstream.key)}
+                                    </span>
+                                    <Badge
+                                      variant="outline"
+                                      className={statusClass(workstream.status)}
+                                    >
+                                      {readable(workstream.status)}
+                                    </Badge>
+                                  </div>
+                                  <p className="mt-1 truncate text-sm font-semibold text-slate-700">
+                                    {workstream.title}
+                                  </p>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  {workstream.status === "in_progress" &&
+                                  workstream.allowedNextStatuses.includes("blocked") ? (
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      variant="outline"
+                                      disabled={busy}
+                                      onClick={() =>
+                                        workstreamMutation.mutate({
+                                          taskId: workstream.id,
+                                          status: "blocked",
+                                        })
+                                      }
+                                      className="border-slate-300 bg-white text-slate-700"
+                                    >
+                                      <CircleSlash2 className="mr-2 h-4 w-4" />
+                                      Block
+                                    </Button>
+                                  ) : null}
+                                  {action &&
+                                  workstream.allowedNextStatuses.includes(
+                                    action.status,
+                                  ) &&
+                                  ActionIcon ? (
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      disabled={busy}
+                                      onClick={() =>
+                                        workstreamMutation.mutate({
+                                          taskId: workstream.id,
+                                          status: action.status,
+                                        })
+                                      }
+                                      className="bg-[#07121F] font-black text-white hover:bg-[#14273B]"
+                                    >
+                                      <ActionIcon className="mr-2 h-4 w-4" />
+                                      {action.label}
+                                    </Button>
+                                  ) : null}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <div className="mt-4 flex items-start gap-3 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950">
+                          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                          No specialist task is linked yet. Review the staffing signal before claiming work has started.
+                        </div>
+                      )}
+
+                      {room.execution.timeline.length ? (
+                        <div className="mt-5">
+                          <div className="text-xs font-black uppercase text-slate-500">
+                            Factual timeline
+                          </div>
+                          <div className="mt-2 divide-y divide-slate-100 border-l-2 border-amber-300 pl-4">
+                            {room.execution.timeline.slice(0, 8).map((event) => (
+                              <div key={event.id} className="relative py-2.5 first:pt-0">
+                                <span className="absolute -left-[21px] top-4 h-2.5 w-2.5 rounded-full border-2 border-white bg-[#E2A416]" />
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <span className="text-sm font-black text-[#07121F]">
+                                    {event.title}
+                                  </span>
+                                  {event.createdAt ? (
+                                    <span className="text-xs text-slate-500">
+                                      {shortDate(event.createdAt)}
+                                    </span>
+                                  ) : null}
+                                </div>
+                                {event.description ? (
+                                  <p className="mt-0.5 text-xs leading-5 text-slate-600">
+                                    {event.description}
+                                  </p>
+                                ) : null}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : null}
                   <div
                     className={`mt-5 flex items-start gap-3 rounded-lg border p-3 text-sm leading-6 ${
                       room.controls.externalCommunicationsEnabled

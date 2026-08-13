@@ -40,6 +40,15 @@ function normalize(value: unknown) {
   return String(value || "").trim().toLowerCase();
 }
 
+export function commercialStaffingSpecialistKey(roleTitle: unknown) {
+  const normalizedRoleTitle = normalize(roleTitle);
+  return (
+    Object.entries(MISSING_SPECIALIST_ROLES).find(
+      ([, title]) => normalize(title) === normalizedRoleTitle,
+    )?.[0] || null
+  );
+}
+
 export function commercialStaffingRecommendations(
   context: CommercialStaffingContext,
 ): CommercialStaffingRecommendation[] {

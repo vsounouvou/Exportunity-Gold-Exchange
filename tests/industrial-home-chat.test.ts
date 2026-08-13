@@ -320,6 +320,9 @@ test("Awa owns the real commercial handoff while specialists join the case", () 
     "server/lib/industrial/agentOrganization.ts",
   );
   const handoff = readRepoFile("server/lib/industrial/operationsHandoff.ts");
+  const handoffPolicy = readRepoFile(
+    "server/lib/industrial/operationsHandoffPolicy.ts",
+  );
   const intake = readRepoFile("server/lib/industrial/intakeAssistant.ts");
   const routes = readRepoFile("server/routes/industrial.ts");
 
@@ -328,12 +331,13 @@ test("Awa owns the real commercial handoff while specialists join the case", () 
   assert.match(organization, /"objection_handling"/);
   assert.match(organization, /"commercial_close"/);
   assert.match(
-    handoff,
+    handoffPolicy,
     /const primaryAgentKey: HandoffAgentKey = "commercial"/,
   );
-  assert.match(handoff, /participantKeys\.add\("technical"\)/);
-  assert.match(handoff, /participantKeys\.add\("sourcing"\)/);
-  assert.match(handoff, /participantKeys\.add\("logistics"\)/);
+  assert.match(handoffPolicy, /participantKeys\.add\("technical"\)/);
+  assert.match(handoffPolicy, /participantKeys\.add\("sourcing"\)/);
+  assert.match(handoffPolicy, /participantKeys\.add\("logistics"\)/);
+  assert.match(handoff, /ensureSpecialistWorkstreams/);
   assert.match(intake, /You are Awa Kouadio/);
   assert.match(intake, /mutually agreed next step/);
   assert.match(

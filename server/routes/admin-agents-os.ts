@@ -9,6 +9,7 @@ import { ensureAgentsProductionTables } from "../lib/agents/ensureProductionAgen
 import { ensureDefaultCompany } from "../lib/default-company";
 import { ensureExportunityRoleSeatCatalog } from "../lib/company-brain/ensureRoleSeatCatalog";
 import { ensureIndustrialTables } from "../lib/industrial/ensureTables";
+import { commercialStaffingSpecialistKey } from "../lib/industrial/workforcePlanningPolicy";
 import {
   EXPORTUNITY_ROLE_SEAT_DEPARTMENTS,
   EXPORTUNITY_ROLE_SEAT_TOTAL,
@@ -666,6 +667,9 @@ router.post("/admin/agents/:id(\\d+)/provision", async (req: any, res) => {
     const profile = template.role_profile && typeof template.role_profile === "object"
       ? template.role_profile
       : {};
+    const specialistOrganizationKey = commercialStaffingSpecialistKey(
+      template.role_title || profile.role || template.title,
+    );
     let staffingRequest: any = null;
     if (staffingRequestId > 0) {
       const staffingResult = await db.execute(sql`
@@ -750,6 +754,9 @@ router.post("/admin/agents/:id(\\d+)/provision", async (req: any, res) => {
       const linkedRuntimeId = Number(locked.runtime_agent_id || 0);
       if (linkedRuntimeId > 0) {
         const reuseMetadata = {
+          ...(specialistOrganizationKey
+            ? { organizationKey: specialistOrganizationKey }
+            : {}),
           roleSeatTemplateId: templateId,
           departmentKey,
           managerOrganizationKey,
@@ -805,7 +812,8 @@ router.post("/admin/agents/:id(\\d+)/provision", async (req: any, res) => {
         backgroundAutonomy: "disabled",
       };
       const metadata = {
-        organizationKey: asString(locked.code),
+        organizationKey:
+          specialistOrganizationKey || asString(locked.code),
         organizationVersion: asString(locked.organization_version),
         operatingModel: "exportunity-global-trade-os",
         roleSeatTemplateId: templateId,
@@ -1021,6 +1029,17 @@ router.post("/admin/agents-os/workforce-requests/:id(\\d+)/lifecycle", async (re
     const runtimeMetadata = before.runtime_metadata && typeof before.runtime_metadata === "object"
       ? before.runtime_metadata
       : {};
+    const specialistOrganizationKey = commercialStaffingSpecialistKey(
+      before.runtime_role || before.role_title,
+    );
+    const nextRuntimeMetadata = {
+      ...runtimeMetadata,
+      ...(specialistOrganizationKey
+        ? { organizationKey: specialistOrganizationKey }
+        : {}),
+      activationState: action === "activate" ? "active" : "paused",
+      activationSource: "human_workforce_approval",
+    };
     const model = asString(process.env.OPENAI_EXPORTUNITY_MODEL || process.env.OPENAI_MODEL || "gpt-5.6-terra");
     const roleLevel = Number(before.role_level || profile.roleLevel || 2);
     const productionMetadata = {
@@ -1032,6 +1051,8 @@ router.post("/admin/agents-os/workforce-requests/:id(\\d+)/lifecycle", async (re
       externalActions: "human_approval_required",
       backgroundConversations: "disabled",
       eventDrivenExecution: true,
+      organizationKey:
+        specialistOrganizationKey || asString(runtimeMetadata.organizationKey) || null,
       modelPolicy: {
         model,
         reasoningEffort: roleLevel >= 4 ? "high" : roleLevel >= 3 ? "medium" : "low",
@@ -1039,7 +1060,22 @@ router.post("/admin/agents-os/workforce-requests/:id(\\d+)/lifecycle", async (re
       },
     };
 
+    const demandRequirementIds = Array.from(
+      new Set(
+        [
+          ...(Array.isArray(before.evidence_items)
+            ? before.evidence_items.map((item: any) =>
+                asString(item?.requirementId || item?.requirement_id),
+              )
+            : []),
+          asString(before.requirement_id),
+        ].filter(Boolean),
+      ),
+    );
     let activationTaskId: number | null = null;
+    const activationTaskIds: number[] = [];
+    const pausedTaskIds: number[] = [];
+    const linkedRequirementIds: string[] = [];
 
     await db.transaction(async (tx) => {
       await tx.execute(sql`
@@ -1054,11 +1090,7 @@ router.post("/admin/agents-os/workforce-requests/:id(\\d+)/lifecycle", async (re
               publicClaims: "human_approval_required",
               backgroundAutonomy: "disabled",
             })}::jsonb,
-            metadata = ${JSON.stringify({
-              ...runtimeMetadata,
-              activationState: action === "activate" ? "active" : "paused",
-              activationSource: "human_workforce_approval",
-            })}::jsonb,
+            metadata = ${JSON.stringify(nextRuntimeMetadata)}::jsonb,
             updated_at = now()
         where id = ${runtimeAgentId} and tenant_id = ${tenant.tenantId}
       `);
@@ -1130,39 +1162,51 @@ router.post("/admin/agents-os/workforce-requests/:id(\\d+)/lifecycle", async (re
         `);
       }
 
-      if (action === "activate" && before.requirement_id && before.company_id) {
-        const requirementResult = await tx.execute(sql`
-          select reference_code, title, details, status
-          from industrial_requirements
-          where id = ${String(before.requirement_id)}
-            and tenant_id = ${tenant.tenantId}
+      if (action === "activate" && demandRequirementIds.length && before.company_id) {
+        const goalTitle = "Execute verified industrial demand with accountable agent teams";
+        const goalResult = await tx.execute(sql`
+          select id
+          from goals
+          where company_id = ${Number(before.company_id)} and title = ${goalTitle}
+          order by id desc
           limit 1
         `);
-        const requirement = getRows<any>(requirementResult)[0];
-        if (requirement) {
-          const goalTitle = "Execute verified industrial demand with accountable agent teams";
-          const goalResult = await tx.execute(sql`
-            select id
-            from goals
-            where company_id = ${Number(before.company_id)} and title = ${goalTitle}
-            order by id desc
+        let goalId = Number(getRows<any>(goalResult)[0]?.id || 0);
+        if (!goalId) {
+          const createdGoal = await tx.execute(sql`
+            insert into goals (
+              company_id, owner_agent_id, title, description, status, priority, metadata, created_at, updated_at
+            ) values (
+              ${Number(before.company_id)}, ${Number(before.manager_id)}, ${goalTitle},
+              'Route qualified industrial requirements to event-driven specialists with evidence, budgets, and visible approval gates.',
+              'in_progress', 'high',
+              ${JSON.stringify({ source: "demand_driven_workforce", tenant: "exportunity" })}::jsonb,
+              now(), now()
+            ) returning id
+          `);
+          goalId = Number(getRows<any>(createdGoal)[0]?.id || 0);
+        }
+
+        for (const demandRequirementId of demandRequirementIds) {
+          const requirementResult = await tx.execute(sql`
+            select reference_code, title, details, status, metadata
+            from industrial_requirements
+            where id = ${demandRequirementId}
+              and tenant_id = ${tenant.tenantId}
             limit 1
           `);
-          let goalId = Number(getRows<any>(goalResult)[0]?.id || 0);
-          if (!goalId) {
-            const createdGoal = await tx.execute(sql`
-              insert into goals (
-                company_id, owner_agent_id, title, description, status, priority, metadata, created_at, updated_at
-              ) values (
-                ${Number(before.company_id)}, ${Number(before.manager_id)}, ${goalTitle},
-                'Route qualified industrial requirements to event-driven specialists with evidence, budgets, and visible approval gates.',
-                'in_progress', 'high',
-                ${JSON.stringify({ source: "demand_driven_workforce", tenant: "exportunity" })}::jsonb,
-                now(), now()
-              ) returning id
-            `);
-            goalId = Number(getRows<any>(createdGoal)[0]?.id || 0);
-          }
+          const requirement = getRows<any>(requirementResult)[0];
+          if (!requirement) continue;
+          const requirementMetadata =
+            requirement.metadata && typeof requirement.metadata === "object"
+              ? requirement.metadata
+              : {};
+          const operationsHandoff =
+            requirementMetadata.operationsHandoff &&
+            typeof requirementMetadata.operationsHandoff === "object"
+              ? requirementMetadata.operationsHandoff
+              : {};
+          const parentTaskId = Number(operationsHandoff.taskId || 0) || null;
           const taskTitle = `${requirement.reference_code} - ${before.role_title}`.slice(0, 240);
           const existingTaskResult = await tx.execute(sql`
             select id
@@ -1173,17 +1217,19 @@ router.post("/admin/agents-os/workforce-requests/:id(\\d+)/lifecycle", async (re
             order by id desc
             limit 1
           `);
-          activationTaskId = Number(getRows<any>(existingTaskResult)[0]?.id || 0) || null;
-          if (!activationTaskId) {
+          let caseTaskId =
+            Number(getRows<any>(existingTaskResult)[0]?.id || 0) || null;
+          if (!caseTaskId) {
             const createdTaskResult = await tx.execute(sql`
               insert into tasks (
-                agent_id, company_id, goal_id, objective_id, title, description,
-                priority, status, execution_type, urgency_score, importance_score,
-                dependency_score, is_automated, is_group_task, participant_agent_ids,
-                approval_status, approved_by_agent_id, approved_at, created_at, updated_at
+                agent_id, company_id, goal_id, objective_id, parent_task_id,
+                title, description, priority, status, execution_type,
+                urgency_score, importance_score, dependency_score, is_automated,
+                is_group_task, participant_agent_ids, approval_status,
+                approved_by_agent_id, approved_at, created_at, updated_at
               ) values (
                 ${runtimeAgentId}, ${Number(before.company_id)}, ${goalId || null}, ${goalId || null},
-                ${taskTitle},
+                ${parentTaskId}, ${taskTitle},
                 ${[
                   `Case-linked specialist assignment for ${requirement.reference_code}: ${requirement.title}.`,
                   `Demand evidence justified activation of ${before.role_title}.`,
@@ -1195,8 +1241,53 @@ router.post("/admin/agents-os/workforce-requests/:id(\\d+)/lifecycle", async (re
                 'approved', ${Number(before.manager_id)}, now(), now(), now()
               ) returning id
             `);
-            activationTaskId = Number(getRows<any>(createdTaskResult)[0]?.id || 0) || null;
+            caseTaskId =
+              Number(getRows<any>(createdTaskResult)[0]?.id || 0) || null;
+          } else {
+            await tx.execute(sql`
+              update tasks
+              set parent_task_id = coalesce(parent_task_id, ${parentTaskId}),
+                  execution_type = 'workforce_activation',
+                  participant_agent_ids = ${JSON.stringify([runtimeAgentId])}::jsonb,
+                  status = case
+                    when status in ('blocked', 'canceled') then 'backlog'
+                    else status
+                  end,
+                  updated_at = now()
+              where id = ${caseTaskId}
+                and company_id = ${Number(before.company_id)}
+            `);
           }
+          if (!caseTaskId) continue;
+          if (parentTaskId) {
+            await tx.execute(sql`
+              update tasks
+              set is_group_task = true,
+                  participant_agent_ids = case
+                    when coalesce(participant_agent_ids, '[]'::jsonb) @>
+                      ${JSON.stringify([runtimeAgentId])}::jsonb
+                      then coalesce(participant_agent_ids, '[]'::jsonb)
+                    else coalesce(participant_agent_ids, '[]'::jsonb) ||
+                      ${JSON.stringify([runtimeAgentId])}::jsonb
+                  end,
+                  updated_at = now()
+              where id = ${parentTaskId}
+                and company_id = ${Number(before.company_id)}
+            `);
+          }
+
+          activationTaskIds.push(caseTaskId);
+          linkedRequirementIds.push(demandRequirementId);
+          if (!activationTaskId) activationTaskId = caseTaskId;
+          const activationMetadata = {
+            staffingRequestId: requestId,
+            requirementId: demandRequirementId,
+            referenceCode: String(requirement.reference_code),
+            taskId: caseTaskId,
+            parentTaskId,
+            managerAgentId: Number(before.manager_id),
+            externalActionsStarted: false,
+          };
           await tx.execute(sql`
             insert into activity_log (
               company_id, agent_id, event_type, event_category, title, description, metadata, created_at
@@ -1204,12 +1295,61 @@ router.post("/admin/agents-os/workforce-requests/:id(\\d+)/lifecycle", async (re
               ${Number(before.company_id)}, ${runtimeAgentId}, 'workforce_activation', 'operations',
               ${`${before.runtime_display_name || before.role_title} joined the commercial team`},
               ${`Activated for case ${requirement.reference_code} under manager #${before.manager_id}.`},
+              ${JSON.stringify(activationMetadata)}::jsonb,
+              now()
+            )
+          `);
+          await tx.execute(sql`
+            insert into industrial_audit_logs (
+              tenant_id, actor_user_id, action, entity_type, entity_id, reason,
+              previous_value, next_value, metadata, created_at
+            ) values (
+              ${tenant.tenantId},
+              ${req.adminUser?.id ? Number(req.adminUser.id) : null},
+              'industrial_requirement.employee_joined',
+              'industrial_requirement', ${demandRequirementId}::uuid,
+              ${reason || `Approved demand-driven activation of ${before.role_title}.`},
+              '{}'::jsonb,
+              ${JSON.stringify({
+                agentId: runtimeAgentId,
+                roleTitle: asString(before.role_title),
+                taskId: caseTaskId,
+                parentTaskId,
+              })}::jsonb,
+              ${JSON.stringify(activationMetadata)}::jsonb,
+              now()
+            )
+          `);
+        }
+      }
+
+      if (action === "pause" && before.company_id) {
+        const pausedTasksResult = await tx.execute(sql`
+          update tasks
+          set status = 'blocked',
+              updated_at = now()
+          where company_id = ${Number(before.company_id)}
+            and agent_id = ${runtimeAgentId}
+            and execution_type = 'workforce_activation'
+            and status in ('backlog', 'in_progress')
+          returning id, parent_task_id, title
+        `);
+        const pausedTasks = getRows<any>(pausedTasksResult);
+        for (const pausedTask of pausedTasks) {
+          const pausedTaskId = Number(pausedTask.id || 0);
+          if (!pausedTaskId) continue;
+          pausedTaskIds.push(pausedTaskId);
+          await tx.execute(sql`
+            insert into activity_log (
+              company_id, agent_id, event_type, event_category, title, description, metadata, created_at
+            ) values (
+              ${Number(before.company_id)}, ${runtimeAgentId}, 'workforce_pause', 'operations',
+              ${`${before.runtime_display_name || before.role_title} paused case work`},
+              ${`Blocked ${pausedTask.title} until the employee is reactivated or the case is reassigned.`},
               ${JSON.stringify({
                 staffingRequestId: requestId,
-                requirementId: String(before.requirement_id),
-                referenceCode: String(requirement.reference_code),
-                taskId: activationTaskId,
-                managerAgentId: Number(before.manager_id),
+                taskId: pausedTaskId,
+                parentTaskId: Number(pausedTask.parent_task_id || 0) || null,
                 externalActionsStarted: false,
               })}::jsonb,
               now()
@@ -1233,8 +1373,18 @@ router.post("/admin/agents-os/workforce-requests/:id(\\d+)/lifecycle", async (re
         productionEnabled: action === "activate",
         externalCommunicationEnabled: false,
         activationTaskId,
+        activationTaskIds,
+        pausedTaskIds,
+        linkedRequirementIds,
       },
-      metadata: { reason: reason || null, eventDrivenExecution: true, activationTaskId },
+      metadata: {
+        reason: reason || null,
+        eventDrivenExecution: true,
+        activationTaskId,
+        activationTaskIds,
+        pausedTaskIds,
+        linkedRequirementIds,
+      },
       req,
     });
 
@@ -1247,6 +1397,9 @@ router.post("/admin/agents-os/workforce-requests/:id(\\d+)/lifecycle", async (re
       externalCommunicationEnabled: false,
       backgroundConversationsEnabled: false,
       activationTaskId,
+      activationTaskIds,
+      pausedTaskIds,
+      linkedRequirementIds,
     });
   } catch (error: any) {
     res.status(500).json({ message: error?.message || "Failed to update employee lifecycle" });

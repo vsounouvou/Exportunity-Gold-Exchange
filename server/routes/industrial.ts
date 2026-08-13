@@ -189,6 +189,11 @@ import {
 } from "../lib/industrial/legacyProductReview";
 import { createIndustrialRequirementOperationsHandoff } from "../lib/industrial/operationsHandoff";
 import {
+  loadIndustrialOpportunityExecutions,
+  nextActionForIndustrialExecution,
+  type IndustrialOpportunityExecution,
+} from "../lib/industrial/opportunityExecution";
+import {
   COMMERCIAL_ACTION_MODES,
   COMMERCIAL_INTENTS,
   resolveCommercialQualification,
@@ -205,6 +210,10 @@ import {
 } from "../lib/industrial/commercialPricing";
 import { createActionRequest } from "../lib/actions/ActionRouter";
 import { externalCommunicationsEnabled } from "../lib/actions/externalCommunications";
+import {
+  updateTaskStatus,
+  type TaskStatus,
+} from "../lib/taskLifecycleService";
 
 const router = Router();
 
@@ -1824,6 +1833,7 @@ function staffRequirementSummary(
   row: any,
   lifecycle?: ReturnType<typeof requirementLifecycleFor>,
   productRequirement?: any,
+  execution?: IndustrialOpportunityExecution,
 ) {
   const metadata = safeRecord(row.metadata);
   const workflow = safeRecord(metadata.internalWorkflow);
@@ -1900,7 +1910,37 @@ function staffRequirementSummary(
             : [],
         }
       : null,
-    operationsHandoff: operationsHandoff.taskId
+    operationsHandoff: execution?.parentTask
+      ? {
+          taskId: execution.parentTask.id,
+          status: execution.status,
+          assignedAgentId: execution.parentTask.agentId,
+          assignedAgentName: execution.parentTask.agentName,
+          participants: execution.team.map((participant) => ({
+            key: participant.key,
+            agentId: participant.agentId,
+            agentName: participant.agentName,
+            role: participant.role,
+            avatarUrl: participant.avatarUrl,
+            taskId: participant.taskId,
+            taskStatus: participant.taskStatus,
+          })),
+          workstreams: execution.workstreams.map((workstream) => ({
+            key: workstream.key,
+            taskId: workstream.id,
+            agentId: workstream.agentId,
+            agentName: workstream.agentName,
+            role: workstream.agentRole,
+            title: workstream.title,
+            status: workstream.status,
+            approvalStatus: workstream.approvalStatus,
+            allowedNextStatuses: workstream.allowedNextStatuses,
+            updatedAt: workstream.updatedAt,
+          })),
+          missingSpecialistKeys: execution.missingSpecialistKeys,
+          progress: execution.progress,
+        }
+      : operationsHandoff.taskId
       ? {
           taskId: Number(operationsHandoff.taskId),
           status: String(operationsHandoff.status || "created"),
@@ -9942,6 +9982,10 @@ router.get("/admin/requirements", ensureTenantStaff, async (req: any, res) => {
     const productByRequirementId = new Map(
       productRequirements.map((item) => [item.requirementId, item] as const),
     );
+    const executionByRequirementId = await loadIndustrialOpportunityExecutions({
+      tenantId: tenant.id,
+      requirements: rows.map((row) => ({ id: row.id, metadata: row.metadata })),
+    });
 
     return res.json({
       ok: true,
@@ -9950,6 +9994,7 @@ router.get("/admin/requirements", ensureTenantStaff, async (req: any, res) => {
           row,
           lifecycleByRequirementId.get(row.id),
           productByRequirementId.get(row.id),
+          executionByRequirementId.get(row.id),
         ),
       ),
       total: rows.length,
@@ -10051,11 +10096,23 @@ router.get(
         }),
       ]);
       const lifecycle = requirementLifecycleFor(requirement, quotes, orders);
+      const execution = (
+        await loadIndustrialOpportunityExecutions({
+          tenantId: tenant.id,
+          requirements: [{ id: requirement.id, metadata: requirement.metadata }],
+          includeTimeline: true,
+        })
+      ).get(requirement.id);
 
       return res.json({
         ok: true,
         requirement: {
-          ...staffRequirementSummary(requirement, lifecycle, productRequirement),
+          ...staffRequirementSummary(
+            requirement,
+            lifecycle,
+            productRequirement,
+            execution,
+          ),
           details: requirement.details,
           internalNotes: requirement.internalNotes,
           metadata: requirement.metadata,
@@ -11215,6 +11272,13 @@ router.get(
           requirement.id,
       );
       const lifecycle = requirementLifecycleFor(requirement, quotes, orders);
+      const execution = (
+        await loadIndustrialOpportunityExecutions({
+          tenantId: tenant.id,
+          requirements: [{ id: requirement.id, metadata: requirement.metadata }],
+          includeTimeline: true,
+        })
+      ).get(requirement.id);
 
       return res.json({
         ok: true,
@@ -11224,6 +11288,7 @@ router.get(
               requirement,
               lifecycle,
               productRequirement,
+              execution,
             ),
             details: requirement.details,
             internalNotes: requirement.internalNotes,
@@ -11246,6 +11311,7 @@ router.get(
           approvalActions: actions.map(staffActionRequestSummary),
           attachments,
           audit,
+          execution: execution || null,
           controls: {
             externalCommunicationsEnabled: externalCommunicationsEnabled(
               process.env.FEATURE_EXTERNAL_COMMUNICATIONS,
@@ -11260,6 +11326,139 @@ router.get(
       return res.status(503).json({
         ok: false,
         message: "The private commercial room is temporarily unavailable.",
+      });
+    }
+  },
+);
+
+router.patch(
+  "/admin/requirements/:requirementId/workstreams/:taskId/status",
+  ensureTenantStaff,
+  async (req: any, res) => {
+    const tenant = resolveExportunityTenant(req, res);
+    if (!tenant) return;
+    const requirementId = String(req.params?.requirementId || "").trim();
+    const taskId = Number(req.params?.taskId || 0);
+    const parsed = z
+      .object({
+        status: z.enum([
+          "backlog",
+          "in_progress",
+          "blocked",
+          "done",
+          "canceled",
+        ]),
+        reason: z.string().trim().max(600).optional(),
+      })
+      .safeParse(req.body || {});
+    if (
+      !z.string().uuid().safeParse(requirementId).success ||
+      !Number.isInteger(taskId) ||
+      taskId <= 0 ||
+      !parsed.success
+    ) {
+      return res.status(400).json({
+        ok: false,
+        message: "A valid opportunity workstream update is required.",
+      });
+    }
+
+    try {
+      const requirement = await db.query.industrialRequirements.findFirst({
+        where: and(
+          eq(industrialRequirements.id, requirementId),
+          eq(industrialRequirements.tenantId, tenant.id),
+        ),
+      });
+      if (!requirement) {
+        return res
+          .status(404)
+          .json({ ok: false, message: "Industrial requirement not found." });
+      }
+      const beforeExecution = (
+        await loadIndustrialOpportunityExecutions({
+          tenantId: tenant.id,
+          requirements: [{ id: requirement.id, metadata: requirement.metadata }],
+        })
+      ).get(requirement.id);
+      const workstream = beforeExecution?.workstreams.find(
+        (item) => item.id === taskId,
+      );
+      if (!workstream) {
+        return res.status(404).json({
+          ok: false,
+          message: "This task is not a workstream for the selected opportunity.",
+        });
+      }
+      const previousStatus = workstream.status;
+      const result = await updateTaskStatus(
+        taskId,
+        parsed.data.status as TaskStatus,
+        parsed.data.reason || "Updated from the industrial opportunity room.",
+      );
+      if (!result.success) {
+        return res.status(409).json({ ok: false, message: result.error });
+      }
+      const execution = (
+        await loadIndustrialOpportunityExecutions({
+          tenantId: tenant.id,
+          requirements: [{ id: requirement.id, metadata: requirement.metadata }],
+          includeTimeline: true,
+        })
+      ).get(requirement.id);
+      if (!execution) {
+        return res.status(409).json({
+          ok: false,
+          message: "The opportunity execution record could not be refreshed.",
+        });
+      }
+      const now = new Date();
+      const nextAction = nextActionForIndustrialExecution(execution);
+      await Promise.all([
+        db
+          .update(industrialRequirements)
+          .set({ nextAction, nextActionAt: now, updatedAt: now })
+          .where(
+            and(
+              eq(industrialRequirements.id, requirement.id),
+              eq(industrialRequirements.tenantId, tenant.id),
+            ),
+          ),
+        db.insert(industrialAuditLogs).values({
+          tenantId: tenant.id,
+          actorUserId: actorIdFor(req),
+          action: "industrial_requirement.workstream_status_updated",
+          entityType: "industrial_requirement",
+          entityId: requirement.id,
+          reason:
+            parsed.data.reason ||
+            "Updated from the private industrial opportunity room.",
+          previousValue: { taskId, status: previousStatus },
+          nextValue: { taskId, status: parsed.data.status, nextAction },
+          metadata: {
+            requirementId: requirement.id,
+            referenceCode: requirement.referenceCode,
+            taskId,
+            agentId: workstream.agentId,
+            executionStatus: execution.status,
+            progress: execution.progress,
+            externalActionStarted: false,
+          },
+        }),
+      ]);
+      return res.json({
+        ok: true,
+        task: result.task,
+        execution,
+        nextAction,
+        externalActionStarted: false,
+      });
+    } catch (error: any) {
+      return res.status(500).json({
+        ok: false,
+        message:
+          String(error?.message || "").trim() ||
+          "The opportunity workstream could not be updated.",
       });
     }
   },

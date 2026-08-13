@@ -85,6 +85,7 @@ import {
 import type { Agent } from "@db/schema";
 import { format, formatDistanceToNowStrict } from "date-fns";
 import ReactMarkdown from "react-markdown";
+import { mergeChannelMessages } from "@/lib/channelMessageMerge";
 
 type BackgroundConsentPlan = {
   what: string;
@@ -364,42 +365,6 @@ function getOldestStoredMessageId(messages: ChannelMessage[]) {
     min = min == null ? id : Math.min(min, id);
   }
   return min;
-}
-
-function mergeChannelMessages(existing: ChannelMessage[], incoming: ChannelMessage[]) {
-  const merged = existing.slice();
-
-  const seenById = new Set(existing.map((msg) => `${msg.isBackgroundMessage ? "bg" : "chat"}:${String(msg.id)}`));
-  const indexByClientMessageId = new Map<string, number>();
-
-  for (let index = 0; index < existing.length; index += 1) {
-    const msg = existing[index];
-    const scope = msg.isBackgroundMessage ? "bg" : "chat";
-    const cmid = typeof msg.clientMessageId === "string" ? msg.clientMessageId.trim() : "";
-    if (cmid) indexByClientMessageId.set(`${scope}:${cmid}`, index);
-  }
-
-  for (const msg of incoming) {
-    const scope = msg.isBackgroundMessage ? "bg" : "chat";
-    const idKey = `${scope}:${String(msg.id)}`;
-    if (seenById.has(idKey)) continue;
-
-    const cmid = typeof msg.clientMessageId === "string" ? msg.clientMessageId.trim() : "";
-    const cmidKey = cmid ? `${scope}:${cmid}` : "";
-    const existingIndex = cmidKey ? indexByClientMessageId.get(cmidKey) : undefined;
-
-    if (existingIndex != null) {
-      merged[existingIndex] = { ...merged[existingIndex], ...msg };
-      seenById.add(idKey);
-      continue;
-    }
-
-    seenById.add(idKey);
-    merged.push(msg);
-    if (cmidKey) indexByClientMessageId.set(cmidKey, merged.length - 1);
-  }
-
-  return merged;
 }
 
 function createdAtToEpoch(value: unknown) {
@@ -1720,7 +1685,7 @@ export function AITeamHubPage() {
   
   const allMessages = currentMeeting
     ? []
-    : [...welcomeMessages, ...conversationMessages, ...localMessages].sort(compareByCreatedAtAsc);
+    : [...welcomeMessages, ...mergeChannelMessages(localMessages, conversationMessages)].sort(compareByCreatedAtAsc);
 
   const sortedMeetingMessages = useMemo(
     () =>

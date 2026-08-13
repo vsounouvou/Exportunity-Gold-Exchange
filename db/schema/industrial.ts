@@ -14,6 +14,7 @@ import {
 
 import { eceUsers } from "./ece";
 import { tenants } from "./tenants";
+import { contacts } from "./contact";
 
 export const industrialVisibilityEnum = pgEnum("industrial_visibility", [
   "public",
@@ -729,6 +730,10 @@ export const industrialRequirements = pgTable(
       () => eceUsers.id,
       { onDelete: "set null" },
     ),
+    customerContactId: integer("customer_contact_id").references(
+      () => contacts.id,
+      { onDelete: "set null" },
+    ),
     assignedAccountManagerUserId: integer(
       "assigned_account_manager_user_id",
     ).references(() => eceUsers.id, { onDelete: "set null" }),
@@ -791,6 +796,9 @@ export const industrialRequirements = pgTable(
     commercialQueueIndex: index(
       "industrial_requirements_commercial_queue_idx",
     ).on(t.tenantId, t.commercialIntent, t.status, t.nextActionAt),
+    customerContactIndex: index(
+      "industrial_requirements_customer_contact_idx",
+    ).on(t.tenantId, t.customerContactId, t.status),
   }),
 );
 
@@ -1265,6 +1273,13 @@ export const industrialRequirementSupplierMatches = pgTable(
       .default("candidate"),
     matchScore: integer("match_score"),
     matchReason: text("match_reason"),
+    source: text("source").notNull().default("internal_supplier_network"),
+    discoveryUrl: text("discovery_url"),
+    discoveryAgentId: integer("discovery_agent_id"),
+    verificationScore: integer("verification_score"),
+    relevanceScore: integer("relevance_score"),
+    contactabilityScore: integer("contactability_score"),
+    lastVerifiedAt: timestamp("last_verified_at"),
     internalNotes: text("internal_notes"),
     createdByUserId: integer("created_by_user_id").references(
       () => eceUsers.id,
@@ -1348,6 +1363,159 @@ export const industrialLegacyProductReviews = pgTable(
   }),
 );
 
+// Supplier quotations are strictly internal evidence. Customer-facing prices
+// live in industrial_quotes and never inherit cost or margin fields from this
+// table through a public serializer.
+export const industrialSupplierQuotes = pgTable(
+  "industrial_supplier_quotes",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: integer("tenant_id")
+      .references(() => tenants.id, { onDelete: "cascade" })
+      .notNull(),
+    requirementId: uuid("requirement_id")
+      .references(() => industrialRequirements.id, { onDelete: "cascade" })
+      .notNull(),
+    supplierProfileId: uuid("supplier_profile_id")
+      .references(() => industrialSupplierProfiles.id, { onDelete: "set null" }),
+    supplierMatchId: uuid("supplier_match_id").references(
+      () => industrialRequirementSupplierMatches.id,
+      { onDelete: "set null" },
+    ),
+    referenceCode: text("reference_code").notNull(),
+    product: text("product").notNull(),
+    specification: text("specification"),
+    quantityText: text("quantity_text"),
+    unit: text("unit"),
+    unitPrice: decimal("unit_price", { precision: 16, scale: 4 }),
+    totalCost: decimal("total_cost", { precision: 16, scale: 2 }),
+    currencyCode: text("currency_code").notNull().default("XOF"),
+    incoterm: text("incoterm"),
+    origin: text("origin"),
+    destination: text("destination"),
+    packaging: text("packaging"),
+    minimumOrderQuantity: text("minimum_order_quantity"),
+    leadTimeDays: integer("lead_time_days"),
+    paymentTerms: text("payment_terms"),
+    validUntil: timestamp("valid_until"),
+    certifications: jsonb("certifications")
+      .$type<string[]>()
+      .notNull()
+      .default([]),
+    documentReferences: jsonb("document_references")
+      .$type<string[]>()
+      .notNull()
+      .default([]),
+    sourceChannel: text("source_channel").notNull().default("manual"),
+    rawSourceMessageId: text("raw_source_message_id"),
+    rawSourceText: text("raw_source_text"),
+    extractionConfidence: decimal("extraction_confidence", {
+      precision: 4,
+      scale: 3,
+    }),
+    status: text("status").notNull().default("needs_review"),
+    internalNotes: text("internal_notes"),
+    createdByUserId: integer("created_by_user_id").references(
+      () => eceUsers.id,
+      { onDelete: "set null" },
+    ),
+    receivedAt: timestamp("received_at"),
+    reviewedAt: timestamp("reviewed_at"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => ({
+    tenantReferenceUnique: uniqueIndex(
+      "industrial_supplier_quotes_tenant_reference_unique",
+    ).on(t.tenantId, t.referenceCode),
+    tenantRequirementIndex: index(
+      "industrial_supplier_quotes_tenant_requirement_idx",
+    ).on(t.tenantId, t.requirementId, t.status, t.updatedAt),
+    tenantSupplierIndex: index(
+      "industrial_supplier_quotes_tenant_supplier_idx",
+    ).on(t.tenantId, t.supplierProfileId, t.status),
+    sourceMessageIndex: index(
+      "industrial_supplier_quotes_source_message_idx",
+    ).on(t.tenantId, t.rawSourceMessageId),
+  }),
+);
+
+// Internal pricing workbench. Conversion to a customer quote is an explicit,
+// audited step; no supplier cost or margin is copied into customer-visible
+// fields.
+export const industrialCommercialOffers = pgTable(
+  "industrial_commercial_offers",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: integer("tenant_id")
+      .references(() => tenants.id, { onDelete: "cascade" })
+      .notNull(),
+    requirementId: uuid("requirement_id")
+      .references(() => industrialRequirements.id, { onDelete: "cascade" })
+      .notNull(),
+    customerContactId: integer("customer_contact_id").references(
+      () => contacts.id,
+      { onDelete: "set null" },
+    ),
+    referenceCode: text("reference_code").notNull(),
+    version: integer("version").notNull().default(1),
+    supplierQuoteIds: jsonb("supplier_quote_ids")
+      .$type<string[]>()
+      .notNull()
+      .default([]),
+    costStack: jsonb("cost_stack")
+      .$type<Record<string, string>>()
+      .notNull()
+      .default({}),
+    totalCost: decimal("total_cost", { precision: 16, scale: 2 }).notNull(),
+    internalMargin: decimal("internal_margin", {
+      precision: 16,
+      scale: 2,
+    }).notNull(),
+    marginPercent: decimal("margin_percent", {
+      precision: 7,
+      scale: 3,
+    }).notNull(),
+    customerPrice: decimal("customer_price", {
+      precision: 16,
+      scale: 2,
+    }).notNull(),
+    currencyCode: text("currency_code").notNull().default("XOF"),
+    incoterm: text("incoterm"),
+    deliveryEstimate: text("delivery_estimate"),
+    paymentTerms: text("payment_terms"),
+    offerValidUntil: timestamp("offer_valid_until"),
+    terms: text("terms"),
+    status: text("status").notNull().default("draft"),
+    pricingPolicy: jsonb("pricing_policy")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default({}),
+    createdByUserId: integer("created_by_user_id").references(
+      () => eceUsers.id,
+      { onDelete: "set null" },
+    ),
+    approvedByUserId: integer("approved_by_user_id").references(
+      () => eceUsers.id,
+      { onDelete: "set null" },
+    ),
+    approvedAt: timestamp("approved_at"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => ({
+    tenantReferenceUnique: uniqueIndex(
+      "industrial_commercial_offers_tenant_reference_unique",
+    ).on(t.tenantId, t.referenceCode),
+    requirementVersionUnique: uniqueIndex(
+      "industrial_commercial_offers_requirement_version_unique",
+    ).on(t.requirementId, t.version),
+    tenantRequirementIndex: index(
+      "industrial_commercial_offers_tenant_requirement_idx",
+    ).on(t.tenantId, t.requirementId, t.status, t.updatedAt),
+  }),
+);
+
 export const industrialQuotes = pgTable(
   "industrial_quotes",
   {
@@ -1367,6 +1535,10 @@ export const industrialQuotes = pgTable(
     }),
     catalogItemId: uuid("catalog_item_id").references(
       () => industrialCatalogItems.id,
+      { onDelete: "set null" },
+    ),
+    commercialOfferId: uuid("commercial_offer_id").references(
+      () => industrialCommercialOffers.id,
       { onDelete: "set null" },
     ),
     referenceCode: text("reference_code").notNull(),
@@ -1410,6 +1582,9 @@ export const industrialQuotes = pgTable(
       t.factoryId,
       t.status,
     ),
+    commercialOfferUnique: uniqueIndex(
+      "industrial_quotes_commercial_offer_unique",
+    ).on(t.tenantId, t.commercialOfferId),
   }),
 );
 

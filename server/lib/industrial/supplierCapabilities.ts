@@ -44,6 +44,11 @@ type SupplierCapabilityRecord = {
   categoryCodes?: unknown;
   capabilities?: unknown;
   industriesServed?: unknown;
+  materialsHandled?: unknown;
+  email?: unknown;
+  phone?: unknown;
+  website?: unknown;
+  verifiedAt?: unknown;
 };
 
 type IndustrialRequirementForMatching = {
@@ -51,6 +56,9 @@ type IndustrialRequirementForMatching = {
   requirementType: string;
   title?: string | null;
   details?: string | null;
+  productName?: string | null;
+  productCategory?: string | null;
+  specification?: string | null;
 };
 
 export function normalizeIndustrialStringList(value: unknown): string[] {
@@ -135,12 +143,17 @@ export function scoreIndustrialSupplierCapabilityMatch(
       matchedCategory: false,
       matchedCapability: false,
       matchedIndustry: false,
+      matchedMaterial: false,
+      relevanceScore: 0,
+      verificationScore: 0,
+      contactabilityScore: 0,
     };
   }
 
   const categoryCodes = normalizeIndustrialStringList(supplier.categoryCodes);
   const capabilities = normalizeIndustrialStringList(supplier.capabilities);
   const industriesServed = normalizeIndustrialStringList(supplier.industriesServed);
+  const materialsHandled = normalizeIndustrialStringList(supplier.materialsHandled);
   const normalizedCategory = String(requirement.categoryCode || "")
     .trim()
     .toLocaleLowerCase("fr");
@@ -148,18 +161,42 @@ export function scoreIndustrialSupplierCapabilityMatch(
     requirement.requirementType,
     requirement.title,
     requirement.details,
+    requirement.productName,
+    requirement.productCategory,
+    requirement.specification,
   ]
     .filter(Boolean)
     .join(" ");
   const matchedCategory = categoryCodes.some(
-    (category) => category.toLocaleLowerCase("fr") === normalizedCategory,
+    (category) => {
+      const normalized = category.toLocaleLowerCase("fr");
+      return (
+        normalized === normalizedCategory ||
+        normalized === String(requirement.productCategory || "").toLocaleLowerCase("fr") ||
+        hasTermOverlap([category], requirementText)
+      );
+    },
   );
   const matchedCapability = hasTermOverlap(capabilities, requirementText);
   const matchedIndustry = hasTermOverlap(industriesServed, requirementText);
-  const score =
-    (matchedCategory ? 55 : 0) +
-    (matchedCapability ? 30 : 0) +
-    (matchedIndustry ? 15 : 0);
+  const matchedMaterial = hasTermOverlap(materialsHandled, requirementText);
+  const relevanceScore = Math.min(
+    100,
+    (matchedCategory ? 45 : 0) +
+      (matchedMaterial ? 30 : 0) +
+      (matchedCapability ? 15 : 0) +
+      (matchedIndustry ? 10 : 0),
+  );
+  const verificationScore = supplier.verifiedAt ? 100 : 85;
+  const contactabilityScore = Math.min(
+    100,
+    (String(supplier.email || "").trim() ? 55 : 0) +
+      (String(supplier.phone || "").trim() ? 30 : 0) +
+      (String(supplier.website || "").trim() ? 15 : 0),
+  );
+  const score = Math.round(
+    relevanceScore * 0.7 + verificationScore * 0.2 + contactabilityScore * 0.1,
+  );
 
   return {
     eligible: true,
@@ -167,6 +204,10 @@ export function scoreIndustrialSupplierCapabilityMatch(
     matchedCategory,
     matchedCapability,
     matchedIndustry,
+    matchedMaterial,
+    relevanceScore,
+    verificationScore,
+    contactabilityScore,
   };
 }
 

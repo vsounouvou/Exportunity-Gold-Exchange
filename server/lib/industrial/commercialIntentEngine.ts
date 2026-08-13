@@ -268,7 +268,7 @@ function determineIntent(normalized: string, hasProduct: boolean): CommercialInt
   return "GENERAL_QUESTION";
 }
 
-function missingFieldsFor(input: {
+export function missingFieldsForCommercialIntent(input: {
   intent: CommercialIntent;
   product: CommercialProductIntent;
   destination?: string;
@@ -315,7 +315,7 @@ export function analyzeCommercialIntent(input: {
   const frequency = extractFrequency(normalized, language);
   const incoterm = extractIncoterm(input.message);
   const pricing = extractTargetPrice(input.message);
-  const missingFields = missingFieldsFor({
+  const missingFields = missingFieldsForCommercialIntent({
     intent,
     product,
     destination: input.destination,
@@ -347,5 +347,83 @@ export function analyzeCommercialIntent(input: {
         : missingFields.length
           ? "ASK"
           : "ACT",
+  };
+}
+
+export function resolveCommercialQualification(input: {
+  analysis: Pick<
+    CommercialIntentAnalysis,
+    | "intent"
+    | "confidence"
+    | "commercial"
+    | "product"
+    | "origin"
+    | "destination"
+    | "targetPrice"
+    | "currency"
+    | "deadline"
+    | "frequency"
+    | "incoterm"
+    | "customerType"
+  > &
+    Partial<Pick<CommercialIntentAnalysis, "suggestedAction">>;
+  fallback?: {
+    productName?: string | null;
+    productCategory?: string | null;
+    specification?: string | null;
+    quantity?: string | null;
+    unit?: string | null;
+    destination?: string | null;
+    frequency?: string | null;
+    incoterm?: string | null;
+    customerType?: string | null;
+  };
+}): CommercialIntentAnalysis {
+  const fallback = input.fallback || {};
+  const product: CommercialProductIntent = {
+    name: compact(input.analysis.product?.name || fallback.productName) || undefined,
+    category:
+      compact(input.analysis.product?.category || fallback.productCategory) ||
+      undefined,
+    specification:
+      compact(input.analysis.product?.specification || fallback.specification) ||
+      undefined,
+    quantity:
+      compact(input.analysis.product?.quantity || fallback.quantity) || undefined,
+    unit: compact(input.analysis.product?.unit || fallback.unit) || undefined,
+  };
+  const destination =
+    compact(input.analysis.destination || fallback.destination) || undefined;
+  const frequency =
+    compact(input.analysis.frequency || fallback.frequency) || undefined;
+  const incoterm =
+    compact(input.analysis.incoterm || fallback.incoterm).toUpperCase() ||
+    undefined;
+  const missingFields = missingFieldsForCommercialIntent({
+    intent: input.analysis.intent,
+    product,
+    destination,
+    frequency,
+    incoterm,
+  });
+  const suggestedAction: CommercialActionMode =
+    input.analysis.suggestedAction === "ESCALATE"
+      ? "ESCALATE"
+      : !input.analysis.commercial
+        ? "ANSWER"
+        : missingFields.length
+          ? "ASK"
+          : "ACT";
+
+  return {
+    ...input.analysis,
+    product,
+    destination,
+    frequency,
+    incoterm,
+    customerType:
+      compact(input.analysis.customerType || fallback.customerType) || undefined,
+    missingFields,
+    suggestedAction,
   };
 }

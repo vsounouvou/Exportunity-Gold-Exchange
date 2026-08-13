@@ -17,9 +17,11 @@ import { z } from "zod";
 
 import { db } from "@db";
 import {
+  actionRequests,
   industrialAuditLogs,
   industrialCatalogItems,
   industrialChallenges,
+  industrialCommercialOffers,
   industrialFactoryClaims,
   industrialFactoryDocuments,
   industrialFactories,
@@ -39,6 +41,7 @@ import {
   industrialRequirements,
   industrialRecurringRequirements,
   industrialQuotes,
+  industrialSupplierQuotes,
   industrialSupplierProfiles,
   productCategories,
   sellerProducts,
@@ -188,8 +191,20 @@ import { createIndustrialRequirementOperationsHandoff } from "../lib/industrial/
 import {
   COMMERCIAL_ACTION_MODES,
   COMMERCIAL_INTENTS,
+  resolveCommercialQualification,
 } from "../lib/industrial/commercialIntentEngine";
 import { proposeCommercialStaffing } from "../lib/industrial/workforcePlanning";
+import {
+  discoverVerifiedCommercialSuppliers,
+  ensureIndustrialCustomerContact,
+} from "../lib/industrial/commercialExecution";
+import {
+  buildCustomerQuoteSnapshot,
+  buildIndustrialRfqMessage,
+  calculateIndustrialCommercialPricing,
+} from "../lib/industrial/commercialPricing";
+import { createActionRequest } from "../lib/actions/ActionRouter";
+import { externalCommunicationsEnabled } from "../lib/actions/externalCommunications";
 
 const router = Router();
 
@@ -898,6 +913,95 @@ const industrialOrderStatusSchema = z.object({
   plannedDeliveryAt: z.string().trim().max(80).optional().nullable(),
   deliveryNotes: z.string().trim().max(6000).optional().nullable(),
   internalNotes: z.string().trim().max(6000).optional().nullable(),
+});
+
+const industrialRfqDraftSchema = z
+  .object({
+    supplierMatchIds: z.array(z.string().uuid()).min(1).max(12),
+    channel: z.enum(["email", "whatsapp"]).default("email"),
+    language: z.enum(["fr", "en"]).default("fr"),
+    message: z.string().trim().min(40).max(8000).optional(),
+    whatsappOptInEvidence: z.string().trim().max(2000).optional(),
+    contentSid: z.string().trim().max(160).optional(),
+  })
+  .superRefine((value, context) => {
+    if (value.channel !== "whatsapp") return;
+    if (value.supplierMatchIds.length !== 1) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["supplierMatchIds"],
+        message:
+          "Prepare one WhatsApp draft at a time so its opt-in evidence belongs to one recipient.",
+      });
+    }
+    if (!value.contentSid) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["contentSid"],
+        message: "An approved WhatsApp template SID is required.",
+      });
+    }
+    if (!value.whatsappOptInEvidence || value.whatsappOptInEvidence.length < 12) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["whatsappOptInEvidence"],
+        message: "Explicit WhatsApp opt-in evidence is required.",
+      });
+    }
+  });
+
+const industrialSupplierQuoteCreateSchema = z.object({
+  supplierMatchId: z.string().uuid(),
+  product: z.string().trim().max(240).optional(),
+  specification: z.string().trim().max(2000).optional().nullable(),
+  quantityText: z.string().trim().max(240).optional().nullable(),
+  unit: z.string().trim().max(80).optional().nullable(),
+  unitPrice: z.coerce.number().nonnegative().max(99999999999999.9999).optional().nullable(),
+  totalCost: z.coerce.number().positive().max(99999999999999.99),
+  currencyCode: z
+    .string()
+    .trim()
+    .regex(/^[A-Za-z]{3}$/)
+    .transform((value) => value.toUpperCase())
+    .default("XOF"),
+  incoterm: z.string().trim().max(16).optional().nullable(),
+  origin: z.string().trim().max(240).optional().nullable(),
+  destination: z.string().trim().max(240).optional().nullable(),
+  packaging: z.string().trim().max(500).optional().nullable(),
+  minimumOrderQuantity: z.string().trim().max(240).optional().nullable(),
+  leadTimeDays: z.coerce.number().int().min(0).max(3650).optional().nullable(),
+  paymentTerms: z.string().trim().max(2000).optional().nullable(),
+  validUntil: z.string().trim().max(80).optional().nullable(),
+  certifications: z.array(z.string().trim().min(1).max(180)).max(30).optional().default([]),
+  sourceChannel: z.enum(["email", "whatsapp", "phone", "document", "manual"]).default("manual"),
+  sourceText: z.string().trim().min(10).max(12000),
+  internalNotes: z.string().trim().max(6000).optional().nullable(),
+  humanReviewed: z.literal(true),
+});
+
+const industrialCommercialOfferCreateSchema = z.object({
+  supplierQuoteIds: z.array(z.string().uuid()).min(1).max(20),
+  additionalCosts: z
+    .record(z.string().trim().min(1).max(120), z.coerce.number().nonnegative().max(99999999999999.99))
+    .optional()
+    .default({}),
+  customerPrice: z.coerce.number().positive().max(99999999999999.99),
+  currencyCode: z
+    .string()
+    .trim()
+    .regex(/^[A-Za-z]{3}$/)
+    .transform((value) => value.toUpperCase())
+    .default("XOF"),
+  incoterm: z.string().trim().max(16).optional().nullable(),
+  deliveryEstimate: z.string().trim().max(500).optional().nullable(),
+  paymentTerms: z.string().trim().max(2000).optional().nullable(),
+  offerValidUntil: z.string().trim().max(80).optional().nullable(),
+  terms: z.string().trim().max(6000).optional().nullable(),
+});
+
+const industrialCommercialOfferApprovalSchema = z.object({
+  humanApproved: z.literal(true),
+  reason: z.string().trim().min(2).max(1600),
 });
 
 const factoryClaimSchema = z
@@ -2195,8 +2299,103 @@ function staffSupplierCapabilityMatchSummary(row: any, supplier?: any) {
         ? null
         : Number(row.matchScore),
     matchReason: row.matchReason,
+    source: row.source || "internal_supplier_network",
+    discoveryUrl: row.discoveryUrl || null,
+    discoveryAgentId: row.discoveryAgentId || null,
+    verificationScore:
+      row.verificationScore == null ? null : Number(row.verificationScore),
+    relevanceScore:
+      row.relevanceScore == null ? null : Number(row.relevanceScore),
+    contactabilityScore:
+      row.contactabilityScore == null ? null : Number(row.contactabilityScore),
+    lastVerifiedAt: row.lastVerifiedAt || null,
     internalNotes: row.internalNotes,
     selectedAt: row.selectedAt,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  };
+}
+
+function staffSupplierQuoteSummary(row: any, supplier?: any) {
+  return {
+    id: row.id,
+    referenceCode: row.referenceCode,
+    requirementId: row.requirementId,
+    supplierProfileId: row.supplierProfileId,
+    supplierMatchId: row.supplierMatchId,
+    supplierName: supplier?.displayName || null,
+    product: row.product,
+    specification: row.specification,
+    quantityText: row.quantityText,
+    unit: row.unit,
+    unitPrice: row.unitPrice == null ? null : String(row.unitPrice),
+    totalCost: row.totalCost == null ? null : String(row.totalCost),
+    currencyCode: row.currencyCode,
+    incoterm: row.incoterm,
+    origin: row.origin,
+    destination: row.destination,
+    packaging: row.packaging,
+    minimumOrderQuantity: row.minimumOrderQuantity,
+    leadTimeDays: row.leadTimeDays,
+    paymentTerms: row.paymentTerms,
+    validUntil: row.validUntil,
+    certifications: Array.isArray(row.certifications) ? row.certifications : [],
+    sourceChannel: row.sourceChannel,
+    status: row.status,
+    internalNotes: row.internalNotes,
+    receivedAt: row.receivedAt,
+    reviewedAt: row.reviewedAt,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  };
+}
+
+function staffCommercialOfferSummary(row: any) {
+  return {
+    id: row.id,
+    referenceCode: row.referenceCode,
+    requirementId: row.requirementId,
+    customerContactId: row.customerContactId,
+    version: row.version,
+    supplierQuoteIds: Array.isArray(row.supplierQuoteIds)
+      ? row.supplierQuoteIds
+      : [],
+    costStack: safeRecord(row.costStack),
+    totalCost: String(row.totalCost),
+    internalMargin: String(row.internalMargin),
+    marginPercent: String(row.marginPercent),
+    customerPrice: String(row.customerPrice),
+    currencyCode: row.currencyCode,
+    incoterm: row.incoterm,
+    deliveryEstimate: row.deliveryEstimate,
+    paymentTerms: row.paymentTerms,
+    offerValidUntil: row.offerValidUntil,
+    terms: row.terms,
+    status: row.status,
+    pricingPolicy: safeRecord(row.pricingPolicy),
+    approvedByUserId: row.approvedByUserId,
+    approvedAt: row.approvedAt,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  };
+}
+
+function staffActionRequestSummary(row: any) {
+  return {
+    id: row.id,
+    publicActionId: row.publicActionId,
+    actionType: row.actionType,
+    status: row.status,
+    lifecycleState: row.lifecycleState,
+    mode: row.mode,
+    outcome: row.outcome,
+    requestedByAgentKey: row.requestedByAgentKey,
+    payload: safeRecord(row.payload),
+    metadata: safeRecord(row.metadata),
+    errorCode: row.errorCode,
+    errorMessage: row.errorMessage,
+    approvedByUserId: row.approvedByUserId,
+    approvedAt: row.approvedAt,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
@@ -2372,6 +2571,7 @@ function staffQuoteSummary(
     requirementReferenceCode: requirement?.referenceCode || null,
     requirementTitle: requirement?.title || null,
     requirementMatchId: row.requirementMatchId,
+    commercialOfferId: row.commercialOfferId || null,
     factoryId: row.factoryId,
     factoryName: factory?.displayName || null,
     catalogItemId: row.catalogItemId,
@@ -6466,7 +6666,37 @@ router.post("/requirements", async (req: any, res) => {
       parsedRequiredBy && !Number.isNaN(parsedRequiredBy.valueOf())
         ? parsedRequiredBy
         : null;
-    const commercialContext = parsed.data.commercialContext;
+    const submittedCommercialContext = parsed.data.commercialContext;
+    const commercialContext = submittedCommercialContext
+      ? resolveCommercialQualification({
+          analysis: {
+            ...submittedCommercialContext,
+            commercial:
+              submittedCommercialContext.intent !== "GENERAL_QUESTION",
+          },
+          fallback: {
+            productName:
+              parsed.data.technicalDetails.productName ||
+              parsed.data.technicalDetails.detectedProductName,
+            productCategory:
+              parsed.data.technicalDetails.detectedProductCategory,
+            specification: parsed.data.technicalDetails.qualityRequirements,
+            quantity: parsed.data.quantityText,
+            unit: parsed.data.technicalDetails.unitOfMeasure,
+            destination: parsed.data.deliveryCity,
+            frequency: parsed.data.technicalDetails.frequency,
+            incoterm: parsed.data.technicalDetails.incoterm,
+            customerType: parsed.data.technicalDetails.customerType,
+          },
+        })
+      : undefined;
+    const customerContact = await ensureIndustrialCustomerContact({
+      tenantId: tenant.id,
+      requesterName: parsed.data.requesterName,
+      requesterCompany: parsed.data.requesterCompany,
+      requesterEmail: parsed.data.requesterEmail,
+      requesterPhone: parsed.data.requesterPhone,
+    });
     const nextAction = commercialContext
       ? commercialContext.suggestedAction === "ASK"
         ? `Complete qualification: ${commercialContext.missingFields.join(", ") || "commercial details"}`
@@ -6481,6 +6711,7 @@ router.post("/requirements", async (req: any, res) => {
       .values({
         tenantId: tenant.id,
         factoryId: parsed.data.factoryId || null,
+        customerContactId: customerContact.contactId,
         referenceCode,
         requirementType: parsed.data.requirementType,
         categoryCode: parsed.data.categoryCode,
@@ -6500,7 +6731,8 @@ router.post("/requirements", async (req: any, res) => {
         intentConfidence: commercialContext
           ? String(commercialContext.confidence)
           : null,
-        sourceConversationId: commercialContext?.sourceConversationId || null,
+        sourceConversationId:
+          submittedCommercialContext?.sourceConversationId || null,
         nextAction,
         status: "submitted",
         visibility: "exportunity_internal",
@@ -6508,6 +6740,7 @@ router.post("/requirements", async (req: any, res) => {
         metadata: {
           intake: "public_industrial_requirement",
           source: "exportunity.net",
+          customerContactId: customerContact.contactId,
           requiredByText: parsed.data.requiredBy || null,
           technicalDetails: parsed.data.technicalDetails,
           attachmentUpload: {
@@ -6632,6 +6865,7 @@ router.post("/requirements", async (req: any, res) => {
             metadata: {
               intake: "public_industrial_requirement",
               source: "exportunity.net",
+              customerContactId: customerContact.contactId,
               requiredByText: parsed.data.requiredBy || null,
               technicalDetails: parsed.data.technicalDetails,
               attachmentUpload: {
@@ -6733,12 +6967,38 @@ router.post("/requirements", async (req: any, res) => {
       }
     }
 
+    let commercialExecution: Awaited<
+      ReturnType<typeof discoverVerifiedCommercialSuppliers>
+    > | null = null;
+    if (commercialContext?.suggestedAction === "ACT") {
+      try {
+        commercialExecution = await discoverVerifiedCommercialSuppliers({
+          tenantId: tenant.id,
+          requirementId: requirement.id,
+          discoveryAgentId: operationsHandoff?.assignedAgentId || null,
+        });
+      } catch (supplierError) {
+        console.error("industrial_requirement_supplier_discovery_failed", {
+          requirementId: requirement.id,
+          message:
+            supplierError instanceof Error
+              ? supplierError.message
+              : "unknown error",
+        });
+      }
+    }
+
     return res.status(201).json({
       ok: true,
       requirement: {
         id: requirement.id,
         referenceCode: requirement.referenceCode,
-        status: requirement.status,
+        status:
+          commercialExecution?.status === "matched"
+            ? "supplier_matching"
+            : commercialExecution?.status === "research_required"
+              ? "under_review"
+              : requirement.status,
         createdAt: requirement.createdAt,
         attachmentUpload: {
           token: attachmentUpload.token,
@@ -6762,6 +7022,29 @@ router.post("/requirements", async (req: any, res) => {
           status: item.status,
           approvalRequired: true,
         })),
+        qualification: commercialContext
+          ? {
+              intent: commercialContext.intent,
+              suggestedAction: commercialContext.suggestedAction,
+              missingFields: commercialContext.missingFields,
+            }
+          : null,
+        commercialExecution: commercialExecution
+          ? {
+              status: commercialExecution.status,
+              nextAction: commercialExecution.nextAction,
+              candidateCount: commercialExecution.candidates.length,
+              candidates: commercialExecution.candidates.map((candidate) => ({
+                supplierProfileId: candidate.supplierProfileId,
+                displayName: candidate.displayName,
+                countryCode: candidate.countryCode,
+                city: candidate.city,
+                score: candidate.score,
+              })),
+              outreachCreated: 0,
+              approvalRequiredBeforeOutreach: true,
+            }
+          : null,
       },
       message:
         "Your industrial requirement has been received. An Exportunity account manager will review it before any supplier contact begins.",
@@ -10740,6 +11023,1210 @@ router.patch(
       return res.status(500).json({
         ok: false,
         message: "The supplier capability match could not be updated.",
+      });
+    }
+  },
+);
+
+router.get(
+  "/admin/requirements/:requirementId/commercial-room",
+  ensureTenantStaff,
+  async (req: any, res) => {
+    const tenant = resolveExportunityTenant(req, res);
+    if (!tenant) return;
+    const requirementId = String(req.params?.requirementId || "").trim();
+    if (!z.string().uuid().safeParse(requirementId).success) {
+      return res.status(400).json({
+        ok: false,
+        message: "Invalid industrial requirement identifier.",
+      });
+    }
+
+    try {
+      const requirement = await db.query.industrialRequirements.findFirst({
+        where: and(
+          eq(industrialRequirements.id, requirementId),
+          eq(industrialRequirements.tenantId, tenant.id),
+        ),
+      });
+      if (!requirement) {
+        return res
+          .status(404)
+          .json({ ok: false, message: "Industrial requirement not found." });
+      }
+
+      const [
+        productRequirement,
+        matchRows,
+        supplierQuoteRows,
+        commercialOffers,
+        quotes,
+        orders,
+        attachments,
+        tenantAudit,
+        tenantActions,
+      ] = await Promise.all([
+        db.query.industrialProductRequirements.findFirst({
+          where: and(
+            eq(industrialProductRequirements.tenantId, tenant.id),
+            eq(industrialProductRequirements.requirementId, requirement.id),
+          ),
+        }),
+        db
+          .select({
+            match: industrialRequirementSupplierMatches,
+            supplier: industrialSupplierProfiles,
+          })
+          .from(industrialRequirementSupplierMatches)
+          .innerJoin(
+            industrialSupplierProfiles,
+            and(
+              eq(
+                industrialRequirementSupplierMatches.supplierProfileId,
+                industrialSupplierProfiles.id,
+              ),
+              eq(
+                industrialRequirementSupplierMatches.tenantId,
+                industrialSupplierProfiles.tenantId,
+              ),
+            ),
+          )
+          .where(
+            and(
+              eq(industrialRequirementSupplierMatches.tenantId, tenant.id),
+              eq(
+                industrialRequirementSupplierMatches.requirementId,
+                requirement.id,
+              ),
+            ),
+          )
+          .orderBy(
+            desc(industrialRequirementSupplierMatches.matchScore),
+            desc(industrialRequirementSupplierMatches.updatedAt),
+          ),
+        db
+          .select({
+            quote: industrialSupplierQuotes,
+            supplier: industrialSupplierProfiles,
+          })
+          .from(industrialSupplierQuotes)
+          .leftJoin(
+            industrialSupplierProfiles,
+            and(
+              eq(
+                industrialSupplierQuotes.supplierProfileId,
+                industrialSupplierProfiles.id,
+              ),
+              eq(
+                industrialSupplierQuotes.tenantId,
+                industrialSupplierProfiles.tenantId,
+              ),
+            ),
+          )
+          .where(
+            and(
+              eq(industrialSupplierQuotes.tenantId, tenant.id),
+              eq(industrialSupplierQuotes.requirementId, requirement.id),
+            ),
+          )
+          .orderBy(desc(industrialSupplierQuotes.updatedAt)),
+        db
+          .select()
+          .from(industrialCommercialOffers)
+          .where(
+            and(
+              eq(industrialCommercialOffers.tenantId, tenant.id),
+              eq(industrialCommercialOffers.requirementId, requirement.id),
+            ),
+          )
+          .orderBy(desc(industrialCommercialOffers.version)),
+        db
+          .select()
+          .from(industrialQuotes)
+          .where(
+            and(
+              eq(industrialQuotes.tenantId, tenant.id),
+              eq(industrialQuotes.requirementId, requirement.id),
+            ),
+          )
+          .orderBy(desc(industrialQuotes.updatedAt)),
+        db
+          .select()
+          .from(industrialOrders)
+          .where(
+            and(
+              eq(industrialOrders.tenantId, tenant.id),
+              eq(industrialOrders.requirementId, requirement.id),
+            ),
+          )
+          .orderBy(desc(industrialOrders.updatedAt)),
+        db
+          .select()
+          .from(industrialRequirementAttachments)
+          .where(
+            and(
+              eq(industrialRequirementAttachments.tenantId, tenant.id),
+              eq(
+                industrialRequirementAttachments.requirementId,
+                requirement.id,
+              ),
+            ),
+          )
+          .orderBy(desc(industrialRequirementAttachments.createdAt)),
+        db
+          .select()
+          .from(industrialAuditLogs)
+          .where(eq(industrialAuditLogs.tenantId, tenant.id))
+          .orderBy(desc(industrialAuditLogs.createdAt))
+          .limit(300),
+        db
+          .select()
+          .from(actionRequests)
+          .where(eq(actionRequests.tenantId, tenant.id))
+          .orderBy(desc(actionRequests.createdAt))
+          .limit(300),
+      ]);
+
+      const relatedIds = new Set<string>([
+        requirement.id,
+        ...matchRows.map(({ match }) => String(match.id)),
+        ...supplierQuoteRows.map(({ quote }) => String(quote.id)),
+        ...commercialOffers.map((offer) => String(offer.id)),
+        ...quotes.map((quote) => String(quote.id)),
+        ...orders.map((order) => String(order.id)),
+      ]);
+      const audit = tenantAudit.filter((row) => {
+        const metadata = safeRecord(row.metadata);
+        return (
+          relatedIds.has(String(row.entityId || "")) ||
+          String(metadata.requirementId || "") === requirement.id
+        );
+      });
+      const actions = tenantActions.filter(
+        (row) =>
+          String(safeRecord(row.payload).requirementId || "") ===
+          requirement.id,
+      );
+      const lifecycle = requirementLifecycleFor(requirement, quotes, orders);
+
+      return res.json({
+        ok: true,
+        room: {
+          requirement: {
+            ...staffRequirementSummary(
+              requirement,
+              lifecycle,
+              productRequirement,
+            ),
+            details: requirement.details,
+            internalNotes: requirement.internalNotes,
+          },
+          supplierMatches: matchRows.map(({ match, supplier }) =>
+            staffSupplierCapabilityMatchSummary(match, supplier),
+          ),
+          supplierQuotes: supplierQuoteRows.map(({ quote, supplier }) =>
+            staffSupplierQuoteSummary(quote, supplier),
+          ),
+          commercialOffers: commercialOffers.map(
+            staffCommercialOfferSummary,
+          ),
+          customerQuotes: quotes.map((quote) =>
+            staffQuoteSummary(quote, requirement),
+          ),
+          orders: orders.map((order) =>
+            staffOrderSummary(order, undefined, requirement),
+          ),
+          approvalActions: actions.map(staffActionRequestSummary),
+          attachments,
+          audit,
+          controls: {
+            externalCommunicationsEnabled: externalCommunicationsEnabled(
+              process.env.FEATURE_EXTERNAL_COMMUNICATIONS,
+            ),
+            supplierCostsArePrivate: true,
+            customerQuoteRequiresApprovedOffer: true,
+          },
+        },
+      });
+    } catch (error) {
+      console.error("[industrial] commercial room failed", error);
+      return res.status(503).json({
+        ok: false,
+        message: "The private commercial room is temporarily unavailable.",
+      });
+    }
+  },
+);
+
+router.post(
+  "/admin/requirements/:requirementId/discover-suppliers",
+  ensureTenantStaff,
+  async (req: any, res) => {
+    const tenant = resolveExportunityTenant(req, res);
+    if (!tenant) return;
+    const requirementId = String(req.params?.requirementId || "").trim();
+    if (!z.string().uuid().safeParse(requirementId).success) {
+      return res.status(400).json({
+        ok: false,
+        message: "Invalid industrial requirement identifier.",
+      });
+    }
+    try {
+      const requirement = await db.query.industrialRequirements.findFirst({
+        where: and(
+          eq(industrialRequirements.id, requirementId),
+          eq(industrialRequirements.tenantId, tenant.id),
+        ),
+      });
+      if (!requirement) {
+        return res
+          .status(404)
+          .json({ ok: false, message: "Industrial requirement not found." });
+      }
+      const handoff = safeRecord(safeRecord(requirement.metadata).operationsHandoff);
+      const participants = Array.isArray(handoff.participants)
+        ? handoff.participants
+        : [];
+      const sourcingParticipant = participants.find(
+        (participant: any) =>
+          String(safeRecord(participant).key || "") === "sourcing",
+      );
+      const discoveryAgentId = Number(
+        safeRecord(sourcingParticipant).agentId ||
+          requirement.assignedCommercialAgentId ||
+          0,
+      );
+      const result = await discoverVerifiedCommercialSuppliers({
+        tenantId: tenant.id,
+        requirementId: requirement.id,
+        discoveryAgentId: Number.isFinite(discoveryAgentId)
+          ? discoveryAgentId
+          : null,
+        createdByUserId: actorIdFor(req),
+      });
+      return res.json({ ok: true, ...result, outreachCreated: 0 });
+    } catch (error: any) {
+      return res.status(500).json({
+        ok: false,
+        message:
+          String(error?.message || "").trim() ||
+          "Verified supplier discovery could not be completed.",
+      });
+    }
+  },
+);
+
+router.post(
+  "/admin/requirements/:requirementId/rfq-actions",
+  ensureTenantStaff,
+  async (req: any, res) => {
+    const tenant = resolveExportunityTenant(req, res);
+    if (!tenant) return;
+    const requirementId = String(req.params?.requirementId || "").trim();
+    if (!z.string().uuid().safeParse(requirementId).success) {
+      return res.status(400).json({
+        ok: false,
+        message: "Invalid industrial requirement identifier.",
+      });
+    }
+    const parsed = industrialRfqDraftSchema.safeParse(req.body || {});
+    if (!parsed.success) {
+      return res.status(400).json({
+        ok: false,
+        message: "A valid, controlled RFQ draft is required.",
+        issues: parsed.error.flatten(),
+      });
+    }
+
+    try {
+      const [requirement, productRequirement, matches] = await Promise.all([
+        db.query.industrialRequirements.findFirst({
+          where: and(
+            eq(industrialRequirements.id, requirementId),
+            eq(industrialRequirements.tenantId, tenant.id),
+          ),
+        }),
+        db.query.industrialProductRequirements.findFirst({
+          where: and(
+            eq(industrialProductRequirements.requirementId, requirementId),
+            eq(industrialProductRequirements.tenantId, tenant.id),
+          ),
+        }),
+        db
+          .select({
+            match: industrialRequirementSupplierMatches,
+            supplier: industrialSupplierProfiles,
+          })
+          .from(industrialRequirementSupplierMatches)
+          .innerJoin(
+            industrialSupplierProfiles,
+            and(
+              eq(
+                industrialRequirementSupplierMatches.supplierProfileId,
+                industrialSupplierProfiles.id,
+              ),
+              eq(
+                industrialRequirementSupplierMatches.tenantId,
+                industrialSupplierProfiles.tenantId,
+              ),
+            ),
+          )
+          .where(
+            and(
+              eq(industrialRequirementSupplierMatches.tenantId, tenant.id),
+              eq(
+                industrialRequirementSupplierMatches.requirementId,
+                requirementId,
+              ),
+              inArray(
+                industrialRequirementSupplierMatches.id,
+                parsed.data.supplierMatchIds,
+              ),
+            ),
+          ),
+      ]);
+      if (!requirement) {
+        return res
+          .status(404)
+          .json({ ok: false, message: "Industrial requirement not found." });
+      }
+      if (matches.length !== parsed.data.supplierMatchIds.length) {
+        return res.status(409).json({
+          ok: false,
+          message:
+            "One or more selected suppliers no longer belong to this requirement.",
+        });
+      }
+
+      const actorUserId = actorIdFor(req);
+      const product =
+        productRequirement?.productName || requirement.title;
+      const destination =
+        productRequirement?.destination ||
+        [requirement.deliveryCity, requirement.deliveryCountryCode]
+          .filter(Boolean)
+          .join(", ");
+      const created: any[] = [];
+      const skipped: Array<{ supplierProfileId: string; reason: string }> = [];
+
+      for (const { match, supplier } of matches) {
+        if (!isSupplierEligibleForCapabilityMatching(supplier)) {
+          skipped.push({
+            supplierProfileId: supplier.id,
+            reason: "Supplier is not active and verified.",
+          });
+          continue;
+        }
+        const recipient =
+          parsed.data.channel === "email" ? supplier.email : supplier.phone;
+        if (!String(recipient || "").trim()) {
+          skipped.push({
+            supplierProfileId: supplier.id,
+            reason: `No verified ${parsed.data.channel} contact route.`,
+          });
+          continue;
+        }
+        const generatedMessage = buildIndustrialRfqMessage({
+          language: parsed.data.language,
+          supplierName: supplier.displayName,
+          referenceCode: requirement.referenceCode,
+          product,
+          specification: productRequirement?.specification,
+          quantity:
+            productRequirement?.quantityText || requirement.quantityText,
+          unit: productRequirement?.unit,
+          destination,
+          incoterm: productRequirement?.incoterm,
+          requiredBy:
+            productRequirement?.deadlineText ||
+            requirement.requiredBy?.toISOString().slice(0, 10) ||
+            null,
+        });
+        const message = parsed.data.message
+          ? parsed.data.message.replaceAll(
+              "{supplier_name}",
+              supplier.displayName,
+            )
+          : generatedMessage;
+        const commonPayload = {
+          agentKey: "sourcing",
+          requirementId: requirement.id,
+          requirementReferenceCode: requirement.referenceCode,
+          supplierProfileId: supplier.id,
+          supplierMatchId: match.id,
+          product,
+          humanApprovalRequired: true,
+          externalActivationRequired: true,
+          recipientProvenance: {
+            source: "verified_internal_supplier_profile",
+            verificationStatus: supplier.verificationStatus,
+            lastVerifiedAt: supplier.verifiedAt,
+          },
+        };
+        try {
+          const action = await createActionRequest({
+            tenantId: tenant.id,
+            requestedByUserId: actorUserId,
+            requestedByAgentKey: "sourcing",
+            actionType:
+              parsed.data.channel === "email"
+                ? "SEND_EMAIL"
+                : "SEND_WHATSAPP",
+            payload:
+              parsed.data.channel === "email"
+                ? {
+                    ...commonPayload,
+                    to: [String(recipient).trim()],
+                    subject: `${requirement.referenceCode} - Request for quotation - ${product}`,
+                    body: { text: message },
+                  }
+                : {
+                    ...commonPayload,
+                    toE164: String(recipient).trim(),
+                    mode: "template",
+                    contentSid: parsed.data.contentSid,
+                    contentVariables: {
+                      "1": supplier.displayName,
+                      "2": product,
+                      "3": requirement.referenceCode,
+                    },
+                    body: message,
+                    whatsappOptInEvidence:
+                      parsed.data.whatsappOptInEvidence,
+                  },
+            mode: "REAL",
+            priority: requirement.urgency === "critical" ? 10 : 5,
+            idempotencyKey: `industrial-rfq:${requirement.id}:${match.id}:${parsed.data.channel}:v1`,
+            correlationId: `industrial:${requirement.referenceCode}`,
+            relatedConversationId: requirement.sourceConversationId,
+            forceApproval: true,
+          });
+          created.push(staffActionRequestSummary(action));
+        } catch (error: any) {
+          skipped.push({
+            supplierProfileId: supplier.id,
+            reason:
+              String(error?.message || "").trim() ||
+              "The action draft could not be prepared.",
+          });
+        }
+      }
+
+      if (created.length) {
+        const now = new Date();
+        await db
+          .update(industrialRequirementSupplierMatches)
+          .set({ status: "shortlisted", updatedAt: now })
+          .where(
+            and(
+              eq(industrialRequirementSupplierMatches.tenantId, tenant.id),
+              eq(
+                industrialRequirementSupplierMatches.requirementId,
+                requirement.id,
+              ),
+              inArray(
+                industrialRequirementSupplierMatches.id,
+                matches.map(({ match }) => match.id),
+              ),
+            ),
+          );
+        await db
+          .update(industrialRequirements)
+          .set({
+            status: "supplier_matching",
+            nextAction:
+              "Review RFQ drafts in Actions. External communications remain disabled until separately activated.",
+            nextActionAt: now,
+            updatedAt: now,
+          })
+          .where(
+            and(
+              eq(industrialRequirements.id, requirement.id),
+              eq(industrialRequirements.tenantId, tenant.id),
+            ),
+          );
+        await db.insert(industrialAuditLogs).values({
+          tenantId: tenant.id,
+          actorUserId,
+          action: "industrial_requirement.rfq_drafts_created",
+          entityType: "industrial_requirement",
+          entityId: requirement.id,
+          reason:
+            "Human-review RFQ actions were prepared without sending external communication.",
+          nextValue: {
+            actionIds: created.map((action) => action.id),
+            channel: parsed.data.channel,
+          },
+          metadata: {
+            requirementId: requirement.id,
+            sent: 0,
+            externalCommunicationsEnabled: externalCommunicationsEnabled(
+              process.env.FEATURE_EXTERNAL_COMMUNICATIONS,
+            ),
+            skipped,
+          },
+        });
+      }
+
+      return res.status(201).json({
+        ok: true,
+        actions: created,
+        skipped,
+        sent: 0,
+        message:
+          "RFQ drafts were created for visible human review. Nothing was sent.",
+      });
+    } catch (error) {
+      console.error("[industrial] RFQ draft preparation failed", error);
+      return res.status(500).json({
+        ok: false,
+        message: "The RFQ drafts could not be prepared.",
+      });
+    }
+  },
+);
+
+router.post(
+  "/admin/requirements/:requirementId/supplier-quotes",
+  ensureTenantStaff,
+  async (req: any, res) => {
+    const tenant = resolveExportunityTenant(req, res);
+    if (!tenant) return;
+    const requirementId = String(req.params?.requirementId || "").trim();
+    if (!z.string().uuid().safeParse(requirementId).success) {
+      return res.status(400).json({
+        ok: false,
+        message: "Invalid industrial requirement identifier.",
+      });
+    }
+    const parsed = industrialSupplierQuoteCreateSchema.safeParse(req.body || {});
+    if (!parsed.success) {
+      return res.status(400).json({
+        ok: false,
+        message: "A human-reviewed supplier quotation is required.",
+        issues: parsed.error.flatten(),
+      });
+    }
+    const validUntil = parseOptionalDate(parsed.data.validUntil);
+    if (parsed.data.validUntil && !validUntil) {
+      return res.status(400).json({
+        ok: false,
+        message: "The supplier quotation validity date is invalid.",
+      });
+    }
+
+    try {
+      const [requirement, productRequirement, matchRow] = await Promise.all([
+        db.query.industrialRequirements.findFirst({
+          where: and(
+            eq(industrialRequirements.id, requirementId),
+            eq(industrialRequirements.tenantId, tenant.id),
+          ),
+        }),
+        db.query.industrialProductRequirements.findFirst({
+          where: and(
+            eq(industrialProductRequirements.requirementId, requirementId),
+            eq(industrialProductRequirements.tenantId, tenant.id),
+          ),
+        }),
+        db
+          .select({
+            match: industrialRequirementSupplierMatches,
+            supplier: industrialSupplierProfiles,
+          })
+          .from(industrialRequirementSupplierMatches)
+          .innerJoin(
+            industrialSupplierProfiles,
+            and(
+              eq(
+                industrialRequirementSupplierMatches.supplierProfileId,
+                industrialSupplierProfiles.id,
+              ),
+              eq(
+                industrialRequirementSupplierMatches.tenantId,
+                industrialSupplierProfiles.tenantId,
+              ),
+            ),
+          )
+          .where(
+            and(
+              eq(
+                industrialRequirementSupplierMatches.id,
+                parsed.data.supplierMatchId,
+              ),
+              eq(
+                industrialRequirementSupplierMatches.requirementId,
+                requirementId,
+              ),
+              eq(industrialRequirementSupplierMatches.tenantId, tenant.id),
+            ),
+          )
+          .limit(1),
+      ]);
+      if (!requirement) {
+        return res
+          .status(404)
+          .json({ ok: false, message: "Industrial requirement not found." });
+      }
+      const matched = matchRow[0];
+      if (!matched || !isSupplierEligibleForCapabilityMatching(matched.supplier)) {
+        return res.status(409).json({
+          ok: false,
+          message: "The supplier match is unavailable or no longer eligible.",
+        });
+      }
+
+      const now = new Date();
+      const actorUserId = actorIdFor(req);
+      const [quote] = await db
+        .insert(industrialSupplierQuotes)
+        .values({
+          tenantId: tenant.id,
+          requirementId: requirement.id,
+          supplierProfileId: matched.supplier.id,
+          supplierMatchId: matched.match.id,
+          referenceCode: makeReference("SQ"),
+          product:
+            parsed.data.product ||
+            productRequirement?.productName ||
+            requirement.title,
+          specification:
+            parsed.data.specification ??
+            productRequirement?.specification ??
+            null,
+          quantityText:
+            parsed.data.quantityText ??
+            productRequirement?.quantityText ??
+            requirement.quantityText ??
+            null,
+          unit: parsed.data.unit ?? productRequirement?.unit ?? null,
+          unitPrice:
+            parsed.data.unitPrice == null
+              ? null
+              : String(parsed.data.unitPrice),
+          totalCost: String(parsed.data.totalCost),
+          currencyCode: parsed.data.currencyCode,
+          incoterm:
+            parsed.data.incoterm ?? productRequirement?.incoterm ?? null,
+          origin: parsed.data.origin ?? productRequirement?.origin ?? null,
+          destination:
+            parsed.data.destination ??
+            productRequirement?.destination ??
+            ([requirement.deliveryCity, requirement.deliveryCountryCode]
+              .filter(Boolean)
+              .join(", ") || null),
+          packaging: parsed.data.packaging || null,
+          minimumOrderQuantity: parsed.data.minimumOrderQuantity || null,
+          leadTimeDays: parsed.data.leadTimeDays ?? null,
+          paymentTerms: parsed.data.paymentTerms || null,
+          validUntil,
+          certifications: parsed.data.certifications,
+          sourceChannel: parsed.data.sourceChannel,
+          rawSourceText: parsed.data.sourceText,
+          status: "reviewed",
+          internalNotes: parsed.data.internalNotes || null,
+          createdByUserId: actorUserId,
+          receivedAt: now,
+          reviewedAt: now,
+          updatedAt: now,
+        })
+        .returning();
+
+      await Promise.all([
+        db
+          .update(industrialRequirementSupplierMatches)
+          .set({ status: "shortlisted", updatedAt: now })
+          .where(
+            and(
+              eq(
+                industrialRequirementSupplierMatches.id,
+                matched.match.id,
+              ),
+              eq(industrialRequirementSupplierMatches.tenantId, tenant.id),
+            ),
+          ),
+        db
+          .update(industrialRequirements)
+          .set({
+            status: "quote_preparation",
+            nextAction:
+              "Review supplier costs and prepare the internal commercial offer.",
+            nextActionAt: now,
+            updatedAt: now,
+          })
+          .where(
+            and(
+              eq(industrialRequirements.id, requirement.id),
+              eq(industrialRequirements.tenantId, tenant.id),
+            ),
+          ),
+      ]);
+      await db.insert(industrialAuditLogs).values({
+        tenantId: tenant.id,
+        actorUserId,
+        action: "industrial_supplier_quote.reviewed_recorded",
+        entityType: "industrial_supplier_quote",
+        entityId: quote.id,
+        reason: "A human reviewed and recorded the supplier source evidence.",
+        nextValue: {
+          status: quote.status,
+          supplierProfileId: quote.supplierProfileId,
+          referenceCode: quote.referenceCode,
+        },
+        metadata: {
+          requirementId: requirement.id,
+          internalOnly: true,
+          customerVisible: false,
+        },
+      });
+
+      return res.status(201).json({
+        ok: true,
+        supplierQuote: staffSupplierQuoteSummary(quote, matched.supplier),
+      });
+    } catch (error) {
+      console.error("[industrial] supplier quote capture failed", error);
+      return res.status(500).json({
+        ok: false,
+        message: "The supplier quotation could not be recorded.",
+      });
+    }
+  },
+);
+
+router.post(
+  "/admin/requirements/:requirementId/commercial-offers",
+  ensureTenantStaff,
+  async (req: any, res) => {
+    const tenant = resolveExportunityTenant(req, res);
+    if (!tenant) return;
+    const requirementId = String(req.params?.requirementId || "").trim();
+    if (!z.string().uuid().safeParse(requirementId).success) {
+      return res.status(400).json({
+        ok: false,
+        message: "Invalid industrial requirement identifier.",
+      });
+    }
+    const parsed = industrialCommercialOfferCreateSchema.safeParse(req.body || {});
+    if (!parsed.success) {
+      return res.status(400).json({
+        ok: false,
+        message: "A valid internal commercial offer is required.",
+        issues: parsed.error.flatten(),
+      });
+    }
+    const offerValidUntil = parseOptionalDate(parsed.data.offerValidUntil);
+    if (parsed.data.offerValidUntil && !offerValidUntil) {
+      return res.status(400).json({
+        ok: false,
+        message: "The commercial offer validity date is invalid.",
+      });
+    }
+
+    try {
+      const uniqueQuoteIds = Array.from(new Set(parsed.data.supplierQuoteIds));
+      const [requirement, supplierQuotes, existingOffers] = await Promise.all([
+        db.query.industrialRequirements.findFirst({
+          where: and(
+            eq(industrialRequirements.id, requirementId),
+            eq(industrialRequirements.tenantId, tenant.id),
+          ),
+        }),
+        db
+          .select()
+          .from(industrialSupplierQuotes)
+          .where(
+            and(
+              eq(industrialSupplierQuotes.tenantId, tenant.id),
+              eq(industrialSupplierQuotes.requirementId, requirementId),
+              inArray(industrialSupplierQuotes.id, uniqueQuoteIds),
+            ),
+          ),
+        db
+          .select({ version: industrialCommercialOffers.version })
+          .from(industrialCommercialOffers)
+          .where(
+            and(
+              eq(industrialCommercialOffers.tenantId, tenant.id),
+              eq(industrialCommercialOffers.requirementId, requirementId),
+            ),
+          )
+          .orderBy(desc(industrialCommercialOffers.version))
+          .limit(1),
+      ]);
+      if (!requirement) {
+        return res
+          .status(404)
+          .json({ ok: false, message: "Industrial requirement not found." });
+      }
+      if (supplierQuotes.length !== uniqueQuoteIds.length) {
+        return res.status(409).json({
+          ok: false,
+          message: "One or more supplier quotations are unavailable.",
+        });
+      }
+      if (supplierQuotes.some((quote) => quote.status !== "reviewed")) {
+        return res.status(409).json({
+          ok: false,
+          message: "Only human-reviewed supplier quotations can be priced.",
+        });
+      }
+      if (
+        supplierQuotes.some(
+          (quote) => quote.currencyCode !== parsed.data.currencyCode,
+        )
+      ) {
+        return res.status(409).json({
+          ok: false,
+          message:
+            "Supplier quotation currencies must match the commercial offer currency.",
+        });
+      }
+
+      let pricing;
+      try {
+        pricing = calculateIndustrialCommercialPricing({
+          supplierCosts: supplierQuotes.map((quote) => Number(quote.totalCost)),
+          additionalCosts: parsed.data.additionalCosts,
+          customerPrice: parsed.data.customerPrice,
+        });
+      } catch (error: any) {
+        return res.status(400).json({
+          ok: false,
+          message:
+            String(error?.message || "").trim() ||
+            "The internal pricing calculation is invalid.",
+        });
+      }
+
+      const now = new Date();
+      const actorUserId = actorIdFor(req);
+      const version = Number(existingOffers[0]?.version || 0) + 1;
+      const [offer] = await db
+        .insert(industrialCommercialOffers)
+        .values({
+          tenantId: tenant.id,
+          requirementId: requirement.id,
+          customerContactId: requirement.customerContactId || null,
+          referenceCode: makeReference("CO"),
+          version,
+          supplierQuoteIds: uniqueQuoteIds,
+          costStack: pricing.costStack,
+          totalCost: pricing.totalCost.toFixed(2),
+          internalMargin: pricing.internalMargin.toFixed(2),
+          marginPercent: pricing.marginPercent.toFixed(3),
+          customerPrice: pricing.customerPrice.toFixed(2),
+          currencyCode: parsed.data.currencyCode,
+          incoterm: parsed.data.incoterm || null,
+          deliveryEstimate: parsed.data.deliveryEstimate || null,
+          paymentTerms: parsed.data.paymentTerms || null,
+          offerValidUntil,
+          terms: parsed.data.terms || null,
+          status: "draft",
+          pricingPolicy: {
+            calculatedServerSide: true,
+            supplierQuoteCount: uniqueQuoteIds.length,
+            supplyPlanMode:
+              uniqueQuoteIds.length > 1
+                ? "combined_supplier_plan"
+                : "single_supplier_quote",
+            additionalCostLabels: Object.keys(parsed.data.additionalCosts),
+            approvalRequired: true,
+          },
+          createdByUserId: actorUserId,
+          updatedAt: now,
+        })
+        .returning();
+      await db
+        .update(industrialRequirements)
+        .set({
+          status: "quote_preparation",
+          nextAction:
+            "A tenant administrator must approve the internal price before a customer quote is created.",
+          nextActionAt: now,
+          updatedAt: now,
+        })
+        .where(
+          and(
+            eq(industrialRequirements.id, requirement.id),
+            eq(industrialRequirements.tenantId, tenant.id),
+          ),
+        );
+      await db.insert(industrialAuditLogs).values({
+        tenantId: tenant.id,
+        actorUserId,
+        action: "industrial_commercial_offer.draft_created",
+        entityType: "industrial_commercial_offer",
+        entityId: offer.id,
+        reason:
+          "The internal commercial price was calculated from reviewed supplier evidence.",
+        nextValue: {
+          status: offer.status,
+          version: offer.version,
+          referenceCode: offer.referenceCode,
+        },
+        metadata: {
+          requirementId: requirement.id,
+          supplierQuoteIds: uniqueQuoteIds,
+          internalOnly: true,
+          customerQuoteCreated: false,
+        },
+      });
+      return res.status(201).json({
+        ok: true,
+        commercialOffer: staffCommercialOfferSummary(offer),
+      });
+    } catch (error) {
+      console.error("[industrial] commercial offer creation failed", error);
+      return res.status(500).json({
+        ok: false,
+        message: "The internal commercial offer could not be prepared.",
+      });
+    }
+  },
+);
+
+router.post(
+  "/admin/commercial-offers/:offerId/approve",
+  ensureTenantAdmin,
+  async (req: any, res) => {
+    const tenant = resolveExportunityTenant(req, res);
+    if (!tenant) return;
+    const offerId = String(req.params?.offerId || "").trim();
+    if (!z.string().uuid().safeParse(offerId).success) {
+      return res.status(400).json({
+        ok: false,
+        message: "Invalid commercial offer identifier.",
+      });
+    }
+    const parsed = industrialCommercialOfferApprovalSchema.safeParse(req.body || {});
+    if (!parsed.success) {
+      return res.status(400).json({
+        ok: false,
+        message: "Human approval and a reason are required.",
+        issues: parsed.error.flatten(),
+      });
+    }
+    try {
+      const existing = await db.query.industrialCommercialOffers.findFirst({
+        where: and(
+          eq(industrialCommercialOffers.id, offerId),
+          eq(industrialCommercialOffers.tenantId, tenant.id),
+        ),
+      });
+      if (!existing) {
+        return res.status(404).json({
+          ok: false,
+          message: "Internal commercial offer not found.",
+        });
+      }
+      if (!['draft', 'under_review'].includes(existing.status)) {
+        return res.status(409).json({
+          ok: false,
+          message: "Only a draft or reviewed internal offer can be approved.",
+        });
+      }
+      const now = new Date();
+      const actorUserId = actorIdFor(req, "adminUser");
+      const [offer] = await db
+        .update(industrialCommercialOffers)
+        .set({
+          status: "approved",
+          approvedByUserId: actorUserId,
+          approvedAt: now,
+          updatedAt: now,
+        })
+        .where(
+          and(
+            eq(industrialCommercialOffers.id, existing.id),
+            eq(industrialCommercialOffers.tenantId, tenant.id),
+          ),
+        )
+        .returning();
+      await db.insert(industrialAuditLogs).values({
+        tenantId: tenant.id,
+        actorUserId,
+        action: "industrial_commercial_offer.approved",
+        entityType: "industrial_commercial_offer",
+        entityId: offer.id,
+        reason: parsed.data.reason,
+        previousValue: { status: existing.status },
+        nextValue: { status: offer.status, approvedAt: offer.approvedAt },
+        metadata: {
+          requirementId: offer.requirementId,
+          humanApproved: true,
+        },
+      });
+      return res.json({
+        ok: true,
+        commercialOffer: staffCommercialOfferSummary(offer),
+      });
+    } catch (error) {
+      console.error("[industrial] commercial offer approval failed", error);
+      return res.status(500).json({
+        ok: false,
+        message: "The internal commercial offer could not be approved.",
+      });
+    }
+  },
+);
+
+router.post(
+  "/admin/commercial-offers/:offerId/customer-quote",
+  ensureTenantStaff,
+  async (req: any, res) => {
+    const tenant = resolveExportunityTenant(req, res);
+    if (!tenant) return;
+    const offerId = String(req.params?.offerId || "").trim();
+    if (!z.string().uuid().safeParse(offerId).success) {
+      return res.status(400).json({
+        ok: false,
+        message: "Invalid commercial offer identifier.",
+      });
+    }
+    try {
+      const [offer, existingQuote] = await Promise.all([
+        db.query.industrialCommercialOffers.findFirst({
+          where: and(
+            eq(industrialCommercialOffers.id, offerId),
+            eq(industrialCommercialOffers.tenantId, tenant.id),
+          ),
+        }),
+        db.query.industrialQuotes.findFirst({
+          where: and(
+            eq(industrialQuotes.commercialOfferId, offerId),
+            eq(industrialQuotes.tenantId, tenant.id),
+          ),
+        }),
+      ]);
+      if (!offer) {
+        return res.status(404).json({
+          ok: false,
+          message: "Internal commercial offer not found.",
+        });
+      }
+      if (offer.status !== "approved" || !offer.approvedAt) {
+        return res.status(409).json({
+          ok: false,
+          message:
+            "The internal commercial offer must be human-approved first.",
+        });
+      }
+      if (existingQuote) {
+        return res.status(409).json({
+          ok: false,
+          message: "This internal offer already has a customer quotation.",
+          quoteId: existingQuote.id,
+        });
+      }
+      const [requirement, productRequirement] = await Promise.all([
+        db.query.industrialRequirements.findFirst({
+          where: and(
+            eq(industrialRequirements.id, offer.requirementId),
+            eq(industrialRequirements.tenantId, tenant.id),
+          ),
+        }),
+        db.query.industrialProductRequirements.findFirst({
+          where: and(
+            eq(
+              industrialProductRequirements.requirementId,
+              offer.requirementId,
+            ),
+            eq(industrialProductRequirements.tenantId, tenant.id),
+          ),
+        }),
+      ]);
+      if (!requirement) {
+        return res.status(409).json({
+          ok: false,
+          message: "The source industrial requirement is unavailable.",
+        });
+      }
+      const customerPrice = Number(offer.customerPrice);
+      const lineItems = buildCustomerQuoteSnapshot({
+        product: productRequirement?.productName || requirement.title,
+        specification: productRequirement?.specification,
+        quantity:
+          productRequirement?.quantityText || requirement.quantityText,
+        unit: productRequirement?.unit,
+        customerPrice,
+      });
+      const commercialTerms = [
+        offer.incoterm ? `Incoterm: ${offer.incoterm}` : null,
+        offer.paymentTerms ? `Payment terms: ${offer.paymentTerms}` : null,
+        offer.terms,
+      ]
+        .filter(Boolean)
+        .join("\n");
+      const now = new Date();
+      const actorUserId = actorIdFor(req);
+      const [quote] = await db
+        .insert(industrialQuotes)
+        .values({
+          tenantId: tenant.id,
+          requirementId: requirement.id,
+          requirementMatchId: null,
+          factoryId: null,
+          catalogItemId: null,
+          commercialOfferId: offer.id,
+          referenceCode: makeReference("QT"),
+          status: "draft",
+          currencyCode: offer.currencyCode,
+          totalAmount: offer.customerPrice,
+          lineItems,
+          leadTimeText: offer.deliveryEstimate,
+          validUntil: offer.offerValidUntil,
+          commercialTerms: commercialTerms || null,
+          customerNotes: null,
+          internalNotes: `Generated from approved internal commercial offer ${offer.referenceCode}.`,
+          visibility: "parties_to_transaction",
+          createdByUserId: actorUserId,
+          updatedAt: now,
+        })
+        .returning();
+      await db
+        .update(industrialRequirements)
+        .set({
+          status: "quote_preparation",
+          nextAction:
+            "Review the sanitized customer quotation, then move it through account-manager approval before issue.",
+          nextActionAt: now,
+          updatedAt: now,
+        })
+        .where(
+          and(
+            eq(industrialRequirements.id, requirement.id),
+            eq(industrialRequirements.tenantId, tenant.id),
+          ),
+        );
+      await db.insert(industrialAuditLogs).values({
+        tenantId: tenant.id,
+        actorUserId,
+        action: "industrial_quote.created_from_approved_offer",
+        entityType: "industrial_quote",
+        entityId: quote.id,
+        reason:
+          "A customer quotation was generated from a human-approved internal commercial offer.",
+        nextValue: {
+          status: quote.status,
+          referenceCode: quote.referenceCode,
+          commercialOfferId: offer.id,
+        },
+        metadata: {
+          requirementId: requirement.id,
+          supplierCostsExcluded: true,
+          marginExcluded: true,
+        },
+      });
+      return res.status(201).json({
+        ok: true,
+        quote: staffQuoteSummary(quote, requirement),
+      });
+    } catch (error) {
+      console.error("[industrial] customer quote conversion failed", error);
+      return res.status(500).json({
+        ok: false,
+        message: "The customer quotation could not be created.",
       });
     }
   },

@@ -39,6 +39,10 @@ import {
   formatPublicActionLabel,
   inferActionErrorCode,
 } from "./lifecycle";
+import {
+  externalCommunicationsEnabled,
+  isExternalCommunicationAction,
+} from "./externalCommunications";
 
 type ActionRequestRow = typeof actionRequests.$inferSelect;
 type ActionRunOutcome = "SUCCESS" | "FAILED" | "NO_EFFECT" | "APPROVAL_PENDING";
@@ -1407,6 +1411,58 @@ export async function runActionWorkerOnce() {
     });
     console.log(`${actionLogPrefix} status=DONE outcome=NO_EFFECT simulated=true`);
     return { ok: true, processed: 1, id: Number(next.id), simulated: true } as const;
+  }
+
+  if (
+    isExternalCommunicationAction(actionType) &&
+    !externalCommunicationsEnabled(process.env.FEATURE_EXTERNAL_COMMUNICATIONS)
+  ) {
+    const error = {
+      code: "EXTERNAL_COMMUNICATIONS_DISABLED",
+      message:
+        "External communications are disabled. Activate FEATURE_EXTERNAL_COMMUNICATIONS only through the approved external-communications runbook.",
+    };
+    await finalize({
+      action: next,
+      status: "FAILED",
+      actionType,
+      result: {
+        actionType,
+        blocked: true,
+        featureFlag: "FEATURE_EXTERNAL_COMMUNICATIONS",
+      },
+      error,
+      outcome: "FAILED",
+    });
+    await logAudit({
+      tenantId,
+      userId: requestedByUserId ? Number(requestedByUserId) : null,
+      action: "action_request.external_communication_blocked",
+      entityId: Number(next.id),
+      metadata: {
+        actionType,
+        mode,
+        correlationId,
+        featureFlag: "FEATURE_EXTERNAL_COMMUNICATIONS",
+        finishedAt: nowIso(),
+      },
+    });
+    await postActionOutcomeMessage({
+      action: next,
+      actionType,
+      correlationId,
+      conversationId,
+      success: false,
+      detail: error.message,
+    });
+    console.warn(`${actionLogPrefix} status=FAILED code=${error.code}`);
+    return {
+      ok: false,
+      processed: 1,
+      id: Number(next.id),
+      blocked: true,
+      error: error.message,
+    } as const;
   }
 
   const actionActorId = parseOptionalNumber(payload.agentId ?? payload.agent_id ?? meta.agentId ?? meta.agent_id);

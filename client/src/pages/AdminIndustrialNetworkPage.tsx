@@ -39,6 +39,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { IndustrialCommercialDealRoom } from "@/components/exportunity/IndustrialCommercialDealRoom";
 
 type ProspectRole =
   | "industrial_buyer"
@@ -667,6 +668,7 @@ export default function AdminIndustrialNetworkPage() {
                       ) : (
                         <p className="mt-2 text-xs font-semibold text-emerald-700">Commercial qualification captured</p>
                       )}
+                      <IndustrialCommercialDealRoom opportunity={opportunity} />
                     </div>
                   </article>
                 );

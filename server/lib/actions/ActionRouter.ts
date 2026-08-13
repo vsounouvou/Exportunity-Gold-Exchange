@@ -15,6 +15,10 @@ import {
 } from "./lifecycle";
 import { getMessagingHealth } from "../messaging/config";
 import { getSmtpRuntimeHealth } from "../mail/smtpProbe";
+import {
+  externalCommunicationsEnabled,
+  isExternalCommunicationAction,
+} from "./externalCommunications";
 
 export type ActionRequestStatus =
   | "PENDING"
@@ -67,6 +71,7 @@ export type CreateActionRequestInput = {
   relatedConversationId?: string | null;
   relatedThreadId?: number | null;
   isAdmin?: boolean;
+  forceApproval?: boolean;
 };
 
 async function logAudit(input: {
@@ -148,7 +153,9 @@ function inferInitialStatus(input: {
   payload: Record<string, unknown>;
   isAdmin: boolean;
   mailbox: { approvalRequired: boolean };
+  forceApproval?: boolean;
 }): ActionRequestStatus {
+  if (input.forceApproval) return "REQUIRES_APPROVAL";
   if (input.actionType === "SEND_EMAIL") {
     if (input.mailbox.approvalRequired && !input.isAdmin) return "REQUIRES_APPROVAL";
     return "QUEUED";
@@ -303,11 +310,12 @@ export async function createActionRequest(input: CreateActionRequestInput) {
   if (input.actionType === "SEND_EMAIL") {
     const smtpHealth = getSmtpRuntimeHealth();
     if (!smtpHealth.configured) {
-      initialStatus = "FAILED";
-      lifecycleState = "FAILED";
-      initialErrorCode = "MISSING_CONFIG";
-      initialErrorMessage =
-        smtpHealth.mode === "disabled"
+      initialStatus = input.forceApproval ? "REQUIRES_APPROVAL" : "FAILED";
+      lifecycleState = input.forceApproval ? "CREATED" : "FAILED";
+      initialErrorCode = input.forceApproval ? null : "MISSING_CONFIG";
+      initialErrorMessage = input.forceApproval
+        ? null
+        : smtpHealth.mode === "disabled"
           ? "Email disabled: SMTP is not configured."
           : `Email disabled: missing ${smtpHealth.missing.join(", ")}`;
       metadata.config = {
@@ -315,6 +323,7 @@ export async function createActionRequest(input: CreateActionRequestInput) {
         warnings: smtpHealth.warnings,
         mode: smtpHealth.mode,
         channel: "email",
+        setupRequiredBeforeApproval: Boolean(input.forceApproval),
       };
     } else {
       const agentKeyRaw = String(payload?.agentKey ?? payload?.agent ?? "").trim();
@@ -334,6 +343,7 @@ export async function createActionRequest(input: CreateActionRequestInput) {
         payload,
         isAdmin: Boolean(input.isAdmin),
         mailbox,
+        forceApproval: input.forceApproval,
       });
       policy = {
         approvalRequired: mailbox.approvalRequired,
@@ -469,32 +479,33 @@ export async function createActionRequest(input: CreateActionRequestInput) {
 
     if (!messagingHealth.configured) {
       const message = `Messaging disabled: missing ${messagingHealth.missing.join(", ")}`;
-      initialStatus = "FAILED";
-      lifecycleState = "FAILED";
-      initialErrorCode = "MISSING_CONFIG";
-      initialErrorMessage = message;
-      metadata.config = { missing: messagingHealth.missing, warnings: messagingHealth.warnings, channel };
+      initialStatus = input.forceApproval ? "REQUIRES_APPROVAL" : "FAILED";
+      lifecycleState = input.forceApproval ? "CREATED" : "FAILED";
+      initialErrorCode = input.forceApproval ? null : "MISSING_CONFIG";
+      initialErrorMessage = input.forceApproval ? null : message;
+      metadata.config = { missing: messagingHealth.missing, warnings: messagingHealth.warnings, channel, setupRequiredBeforeApproval: Boolean(input.forceApproval) };
     } else if (channel === "sms" && !messagingHealth.sms.enabled) {
       const message = "SMS disabled: missing TWILIO_SMS_FROM or TWILIO_MESSAGING_SERVICE_SID";
-      initialStatus = "FAILED";
-      lifecycleState = "FAILED";
-      initialErrorCode = "MISSING_CONFIG";
-      initialErrorMessage = message;
-      metadata.config = { missing: ["TWILIO_SMS_FROM|TWILIO_MESSAGING_SERVICE_SID"], warnings: messagingHealth.warnings, channel };
+      initialStatus = input.forceApproval ? "REQUIRES_APPROVAL" : "FAILED";
+      lifecycleState = input.forceApproval ? "CREATED" : "FAILED";
+      initialErrorCode = input.forceApproval ? null : "MISSING_CONFIG";
+      initialErrorMessage = input.forceApproval ? null : message;
+      metadata.config = { missing: ["TWILIO_SMS_FROM|TWILIO_MESSAGING_SERVICE_SID"], warnings: messagingHealth.warnings, channel, setupRequiredBeforeApproval: Boolean(input.forceApproval) };
     } else if (
       channel === "whatsapp" &&
       !String(messagingHealth.resolved.whatsappFrom || "").trim() &&
       !String(messagingHealth.resolved.messagingServiceSid || "").trim()
     ) {
       const message = "WhatsApp disabled: missing TWILIO_WHATSAPP_FROM or TWILIO_MESSAGING_SERVICE_SID";
-      initialStatus = "FAILED";
-      lifecycleState = "FAILED";
-      initialErrorCode = "MISSING_CONFIG";
-      initialErrorMessage = message;
+      initialStatus = input.forceApproval ? "REQUIRES_APPROVAL" : "FAILED";
+      lifecycleState = input.forceApproval ? "CREATED" : "FAILED";
+      initialErrorCode = input.forceApproval ? null : "MISSING_CONFIG";
+      initialErrorMessage = input.forceApproval ? null : message;
       metadata.config = {
         missing: ["TWILIO_WHATSAPP_FROM|TWILIO_MESSAGING_SERVICE_SID"],
         warnings: messagingHealth.warnings,
         channel,
+        setupRequiredBeforeApproval: Boolean(input.forceApproval),
       };
     }
   }
@@ -512,6 +523,14 @@ export async function createActionRequest(input: CreateActionRequestInput) {
 
   if (input.actionType === "UPDATE_AGENT_MODEL" && !modelSelectorEnabled) {
     throw new Error("Feature disabled: FEATURE_AGENT_MODEL_SELECTOR");
+  }
+
+  if (input.forceApproval) {
+    initialStatus = "REQUIRES_APPROVAL";
+    lifecycleState = "CREATED";
+    initialErrorCode = null;
+    initialErrorMessage = null;
+    policy = { ...policy, approvalRequired: true, forcedApproval: true };
   }
 
   if (initialStatus === "REQUIRES_APPROVAL") {
@@ -659,6 +678,21 @@ export async function createActionRequest(input: CreateActionRequestInput) {
 
 export async function approveActionRequest(opts: { tenantId: number; actionRequestId: number; approvedByUserId: number }) {
   const now = new Date();
+  const current = await db.query.actionRequests.findFirst({
+    where: and(
+      eq(actionRequests.tenantId, opts.tenantId),
+      eq(actionRequests.id, opts.actionRequestId),
+    ),
+  });
+  if (!current) throw new Error("Action request not found");
+  if (
+    isExternalCommunicationAction(current.actionType) &&
+    !externalCommunicationsEnabled(process.env.FEATURE_EXTERNAL_COMMUNICATIONS)
+  ) {
+    throw new Error(
+      "EXTERNAL_COMMUNICATIONS_DISABLED: activate FEATURE_EXTERNAL_COMMUNICATIONS only through the approved external-communications runbook.",
+    );
+  }
   const [row] = await db
     .update(actionRequests)
     .set({

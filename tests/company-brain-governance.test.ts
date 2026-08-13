@@ -87,6 +87,8 @@ test("the Company Brain governance route is admin-only and audits every mutation
   assert.match(route, /as review_preview/);
   assert.match(route, /pg_advisory_xact_lock\(hashtext\('company_brain_external_approval'\)/);
   assert.match(route, /Explicit confirmation is required/);
+  assert.match(route, /sources\/upload/);
+  assert.match(route, /source_manual_file_viewed/);
 });
 
 test("the Workspace OAuth callback router is mounted before the authenticated governance router", () => {

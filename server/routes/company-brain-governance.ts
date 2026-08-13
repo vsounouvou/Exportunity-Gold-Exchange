@@ -1,4 +1,6 @@
 import { Router } from "express";
+import multer from "multer";
+import { createReadStream } from "node:fs";
 import { db } from "@db";
 import {
   companyBrainAuditEvents,
@@ -12,9 +14,19 @@ import { and, eq, sql } from "drizzle-orm";
 import { bootstrapFounderAuthorizedCharter } from "../lib/company-brain/founderCharter";
 import { getCompanyBrainFeatureStatus, isCompanyBrainFeatureEnabled } from "../lib/company-brain/featureFlags";
 import { evaluateCompanyBrainClaimReview } from "../lib/company-brain/governancePolicy";
+import { persistManualCompanyBrainEvidence } from "../lib/company-brain/manualEvidence";
+import { resolvePrivateCompanyBrainEvidence } from "../lib/company-brain/manualEvidenceStorage";
 import { ensureTenantAdmin } from "./utils/auth";
 
 const router = Router();
+const manualEvidenceMaxBytesRaw = Number(process.env.COMPANY_BRAIN_UPLOAD_MAX_BYTES || 40 * 1024 * 1024);
+const manualEvidenceMaxBytes = Number.isFinite(manualEvidenceMaxBytesRaw)
+  ? Math.max(1 * 1024 * 1024, Math.min(50 * 1024 * 1024, Math.trunc(manualEvidenceMaxBytesRaw)))
+  : 40 * 1024 * 1024;
+const manualEvidenceUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: manualEvidenceMaxBytes, files: 1 },
+});
 
 function asText(value: unknown) {
   return typeof value === "string" ? value.trim() : String(value || "").trim();
@@ -236,6 +248,82 @@ router.get("/sources", async (req: any, res) => {
     res.json({ ok: true, sources: rowsOf(result) });
   } catch (error) {
     res.status(statusOf(error)).json({ message: error instanceof Error ? error.message : String(error) });
+  }
+});
+
+router.post("/sources/upload", manualEvidenceUpload.single("file"), async (req: any, res) => {
+  try {
+    assertCompanyBrainEnabled();
+    const file = req.file as Express.Multer.File | undefined;
+    if (!file) return res.status(400).json({ message: "Upload one evidence file under multipart field `file`." });
+    if (asText(req.body?.confirm).toLowerCase() !== "true") {
+      return res.status(400).json({ message: "Explicit confirmation is required." });
+    }
+    const result = await persistManualCompanyBrainEvidence({
+      tenantId: tenantIdFromReq(req),
+      userId: adminUserIdFromReq(req),
+      file,
+      title: req.body?.title,
+      businessRelevance: req.body?.businessRelevance,
+      confidentiality: req.body?.confidentiality,
+      provenanceNotes: asText(req.body?.provenanceNotes),
+    });
+    res.status(result.createdVersion ? 201 : 200).json({ ok: true, result });
+  } catch (error) {
+    res.status(statusOf(error)).json({ message: error instanceof Error ? error.message : String(error) });
+  }
+});
+
+router.get("/sources/:sourceId/file", async (req: any, res) => {
+  try {
+    assertCompanyBrainEnabled();
+    const tenantId = tenantIdFromReq(req);
+    const userId = adminUserIdFromReq(req);
+    const sourceId = positiveInt(req.params.sourceId, "sourceId");
+    const result = await db.execute(sql`
+      select s.id, s.title, s.mime_type, s.metadata ->> 'originalName' as original_name,
+        sv.id as version_id, sv.storage_ref
+      from company_brain_sources s
+      join lateral (
+        select id, storage_ref
+        from company_brain_source_versions
+        where source_id = s.id and storage_ref is not null
+        order by created_at desc
+        limit 1
+      ) sv on true
+      where s.id = ${sourceId} and s.tenant_id = ${tenantId} and s.connector_type = 'manual_upload'
+      limit 1
+    `);
+    const source = rowsOf(result)[0];
+    if (!source?.storage_ref) return res.status(404).json({ message: "Company Brain evidence file not found" });
+    const file = await resolvePrivateCompanyBrainEvidence(String(source.storage_ref));
+    const originalFileName = asText(source.original_name || source.title || "company-evidence").slice(0, 220);
+    const safeFileName = originalFileName.replace(/[^a-z0-9._-]+/gi, "_") || "company-evidence";
+    const encodedFileName = encodeURIComponent(originalFileName).replace(/[!'()*]/g, (character) =>
+      `%${character.charCodeAt(0).toString(16).toUpperCase()}`,
+    );
+    await audit({
+      tenantId,
+      userId,
+      eventType: "source_manual_file_viewed",
+      entityType: "company_brain_source_version",
+      entityId: source.version_id,
+      payload: { sourceId },
+    });
+    res.setHeader("Cache-Control", "no-store");
+    res.setHeader("Content-Security-Policy", "sandbox; default-src 'none'");
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    res.setHeader("Content-Type", asText(source.mime_type) || "application/octet-stream");
+    res.setHeader("Content-Length", String(file.sizeBytes));
+    res.setHeader("Content-Disposition", `inline; filename="${safeFileName}"; filename*=UTF-8''${encodedFileName}`);
+    const stream = createReadStream(file.absolutePath);
+    stream.on("error", () => {
+      if (!res.headersSent) res.status(404).json({ message: "Company Brain evidence file is unavailable" });
+      else res.end();
+    });
+    stream.pipe(res);
+  } catch (error) {
+    res.status(statusOf(error, 404)).json({ message: "Company Brain evidence file is unavailable" });
   }
 });
 

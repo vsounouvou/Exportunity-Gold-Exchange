@@ -14,16 +14,27 @@ import {
   Search,
   ShieldAlert,
   ShieldCheck,
+  Upload,
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { resolveApiUrl } from "@/lib/runtimeConfig";
 
 type FeatureState = { envName: string; enabled: boolean };
 type BrainTab = "claims" | "sources" | "conflicts" | "context";
@@ -154,6 +165,20 @@ type SourceDetailResponse = {
   }>;
 };
 
+type ManualEvidenceResponse = {
+  ok: boolean;
+  result: {
+    sourceId: number;
+    versionId: number;
+    evidenceId: string;
+    createdVersion: boolean;
+    extractionStatus: string;
+    securityStatus: string;
+    extractionWarning?: string | null;
+    claimsCreated: number;
+  };
+};
+
 function numberValue(value: unknown) {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : 0;
@@ -198,6 +223,13 @@ export default function AdminCompanyBrainPage() {
   const [conflictSummary, setConflictSummary] = useState("");
   const [conflictResolution, setConflictResolution] = useState("");
   const [bootstrapReady, setBootstrapReady] = useState(false);
+  const [evidenceDialogOpen, setEvidenceDialogOpen] = useState(false);
+  const [evidenceFile, setEvidenceFile] = useState<File | null>(null);
+  const [evidenceTitle, setEvidenceTitle] = useState("");
+  const [evidenceRelevance, setEvidenceRelevance] = useState("other");
+  const [evidenceConfidentiality, setEvidenceConfidentiality] = useState("internal");
+  const [evidenceProvenance, setEvidenceProvenance] = useState("");
+  const [openingSourceId, setOpeningSourceId] = useState<number | null>(null);
 
   const summaryQuery = useQuery<SummaryResponse>({
     queryKey: ["/api/admin/company-brain/summary"],
@@ -236,6 +268,57 @@ export default function AdminCompanyBrainPage() {
       queryClient.invalidateQueries({ predicate: (query) => String(query.queryKey[0] || "").startsWith("/api/admin/company-brain/claims") }),
       queryClient.invalidateQueries({ predicate: (query) => String(query.queryKey[0] || "").startsWith("/api/admin/company-brain/sources") }),
     ]);
+  };
+
+  const openSecuredOriginal = async (source: SourceRow) => {
+    if (!source.source_url || openingSourceId !== null) return;
+
+    const previewWindow = window.open("about:blank", "company-brain-evidence-preview");
+    if (previewWindow) {
+      previewWindow.opener = null;
+      previewWindow.document.title = "Opening secured evidence";
+      previewWindow.document.body.textContent = "Opening secured evidence...";
+    }
+
+    setOpeningSourceId(source.id);
+    try {
+      const headers = new Headers();
+      const token = localStorage.getItem("ece_session");
+      if (token) headers.set("Authorization", `Bearer ${token}`);
+
+      const response = await fetch(resolveApiUrl(source.source_url), {
+        cache: "no-store",
+        credentials: "include",
+        headers,
+      });
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.message || payload?.error || `Evidence retrieval failed (${response.status}).`);
+      }
+
+      const objectUrl = URL.createObjectURL(await response.blob());
+      if (previewWindow) {
+        previewWindow.location.replace(objectUrl);
+      } else {
+        const link = document.createElement("a");
+        link.href = objectUrl;
+        link.target = "_blank";
+        link.rel = "noopener noreferrer";
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+      }
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 300_000);
+    } catch (error) {
+      previewWindow?.close();
+      toast({
+        title: "Secured original unavailable",
+        description: error instanceof Error ? error.message : "The evidence file could not be opened.",
+        variant: "destructive",
+      });
+    } finally {
+      setOpeningSourceId(null);
+    }
   };
 
   const bootstrapMutation = useMutation({
@@ -289,6 +372,37 @@ export default function AdminCompanyBrainPage() {
     onError: (error: Error) => toast({ title: "Source review failed", description: error.message, variant: "destructive" }),
   });
 
+  const evidenceUploadMutation = useMutation<ManualEvidenceResponse, Error>({
+    mutationFn: async () => {
+      if (!evidenceFile) throw new Error("Choose one evidence file.");
+      if (!evidenceProvenance.trim()) throw new Error("Record where this evidence came from and who authorized it.");
+      const form = new FormData();
+      form.append("file", evidenceFile);
+      form.append("title", evidenceTitle.trim());
+      form.append("businessRelevance", evidenceRelevance);
+      form.append("confidentiality", evidenceConfidentiality);
+      form.append("provenanceNotes", evidenceProvenance.trim());
+      form.append("confirm", "true");
+      return apiRequest("/api/admin/company-brain/sources/upload", { method: "POST", body: form });
+    },
+    onSuccess: async (data) => {
+      await refreshAll();
+      setSelectedSourceId(data.result.sourceId);
+      setTab("sources");
+      setEvidenceDialogOpen(false);
+      setEvidenceFile(null);
+      setEvidenceTitle("");
+      setEvidenceRelevance("other");
+      setEvidenceConfidentiality("internal");
+      setEvidenceProvenance("");
+      toast({
+        title: data.result.createdVersion ? "Evidence uploaded for review" : "Existing evidence version reused",
+        description: `${humanize(data.result.extractionStatus)}; ${humanize(data.result.securityStatus)}; no claims created.`,
+      });
+    },
+    onError: (error) => toast({ title: "Evidence upload failed", description: error.message, variant: "destructive" }),
+  });
+
   const claims = claimsQuery.data?.claims || [];
   const sources = sourcesQuery.data?.sources || [];
   const openConflictClaims = useMemo(() => claims.filter((claim) => numberValue(claim.open_conflict_count) > 0), [claims]);
@@ -329,6 +443,13 @@ export default function AdminCompanyBrainPage() {
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            <Button
+              className="rounded-md bg-[#f5a623] text-[#07111f] hover:bg-[#e89513]"
+              disabled={!companyBrainEnabled}
+              onClick={() => setEvidenceDialogOpen(true)}
+            >
+              <Upload className="mr-2 h-4 w-4" />Add evidence
+            </Button>
             <Button asChild variant="outline" className="rounded-md border-slate-300 bg-white text-slate-900">
               <a href="/admin/settings/integrations/google-workspace"><Cloud className="mr-2 h-4 w-4" />Google Workspace</a>
             </Button>
@@ -464,6 +585,8 @@ export default function AdminCompanyBrainPage() {
                   notes={sourceReviewNotes}
                   setNotes={setSourceReviewNotes}
                   pending={sourceReviewMutation.isPending}
+                  openingOriginal={openingSourceId === sourceDetailQuery.data?.source.id}
+                  onOpenOriginal={(source) => void openSecuredOriginal(source)}
                   onReview={(versionId, action) => sourceReviewMutation.mutate({ versionId, action })}
                 />
               </div>
@@ -514,6 +637,104 @@ export default function AdminCompanyBrainPage() {
           ) : null}
         </section>
       </main>
+
+      <Dialog open={evidenceDialogOpen} onOpenChange={(open) => !evidenceUploadMutation.isPending && setEvidenceDialogOpen(open)}>
+        <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto rounded-md border-slate-200 bg-white text-slate-950">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-black">Add governed evidence</DialogTitle>
+            <DialogDescription className="leading-6 text-slate-600">
+              Upload a founder-authorized company record. It will be stored as a versioned source and held for human review. No claim is created or published automatically.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm leading-6 text-amber-950">
+            <div className="font-black">Security boundary</div>
+            <p>Uploaded content is untrusted evidence, not an instruction to an agent. It remains excluded from governed context until a human reviews and marks the version clean.</p>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="sm:col-span-2">
+              <Label htmlFor="company-brain-evidence-file" className="font-bold text-slate-800">Evidence file</Label>
+              <Input
+                id="company-brain-evidence-file"
+                type="file"
+                accept=".pdf,.docx,.xlsx,.xls,.pptx,.txt,.md,.csv,.tsv,.json,.xml,.yaml,.yml,.log,.sql,.png,.jpg,.jpeg,.webp,.gif,.tif,.tiff"
+                className="mt-2 h-auto min-h-10 cursor-pointer rounded-md border-slate-300 bg-white py-2 text-slate-950 file:mr-3 file:rounded-sm file:border-0 file:bg-[#07111f] file:px-3 file:py-1.5 file:font-bold file:text-white"
+                onChange={(event) => {
+                  const file = event.target.files?.[0] || null;
+                  setEvidenceFile(file);
+                  if (file && !evidenceTitle.trim()) setEvidenceTitle(file.name.replace(/\.[^.]+$/, ""));
+                }}
+              />
+              <p className="mt-1 text-xs text-slate-500">PDF, Word, Excel, PowerPoint, text, structured data, or image. Maximum 40 MB by default.</p>
+            </div>
+
+            <div className="sm:col-span-2">
+              <Label htmlFor="company-brain-evidence-title" className="font-bold text-slate-800">Source title</Label>
+              <Input
+                id="company-brain-evidence-title"
+                value={evidenceTitle}
+                onChange={(event) => setEvidenceTitle(event.target.value)}
+                className="mt-2 rounded-md border-slate-300 bg-white text-slate-950"
+                placeholder="Board-approved strategy, signed agreement, operating report..."
+              />
+            </div>
+
+            <div>
+              <Label className="font-bold text-slate-800">Business relevance</Label>
+              <Select value={evidenceRelevance} onValueChange={setEvidenceRelevance}>
+                <SelectTrigger className="mt-2 rounded-md border-slate-300 bg-white text-slate-950"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="company_history">Company history</SelectItem>
+                  <SelectItem value="commercial">Commercial</SelectItem>
+                  <SelectItem value="financial">Financial</SelectItem>
+                  <SelectItem value="governance">Governance</SelectItem>
+                  <SelectItem value="legal">Legal</SelectItem>
+                  <SelectItem value="operations">Operations</SelectItem>
+                  <SelectItem value="partnership">Partnership</SelectItem>
+                  <SelectItem value="product">Product</SelectItem>
+                  <SelectItem value="project">Project</SelectItem>
+                  <SelectItem value="other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label className="font-bold text-slate-800">Confidentiality</Label>
+              <Select value={evidenceConfidentiality} onValueChange={setEvidenceConfidentiality}>
+                <SelectTrigger className="mt-2 rounded-md border-slate-300 bg-white text-slate-950"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="internal">Internal</SelectItem>
+                  <SelectItem value="confidential">Confidential</SelectItem>
+                  <SelectItem value="restricted">Restricted</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="sm:col-span-2">
+              <Label htmlFor="company-brain-evidence-provenance" className="font-bold text-slate-800">Provenance and authorization</Label>
+              <Textarea
+                id="company-brain-evidence-provenance"
+                value={evidenceProvenance}
+                onChange={(event) => setEvidenceProvenance(event.target.value)}
+                className="mt-2 min-h-24 rounded-md border-slate-300 bg-white text-slate-950"
+                placeholder="State where the file came from, its owner, and why it is authorized for Company Brain review."
+              />
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2 sm:space-x-0">
+            <Button variant="outline" className="rounded-md border-slate-300 bg-white text-slate-900" disabled={evidenceUploadMutation.isPending} onClick={() => setEvidenceDialogOpen(false)}>Cancel</Button>
+            <Button
+              className="rounded-md bg-[#07111f] text-white hover:bg-[#0a1628]"
+              disabled={evidenceUploadMutation.isPending || !evidenceFile || !evidenceTitle.trim() || !evidenceProvenance.trim()}
+              onClick={() => evidenceUploadMutation.mutate()}
+            >
+              <Upload className="mr-2 h-4 w-4" />{evidenceUploadMutation.isPending ? "Extracting..." : "Upload for review"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -602,13 +823,15 @@ function SourceDetail(props: {
   notes: string;
   setNotes: (value: string) => void;
   pending: boolean;
+  openingOriginal: boolean;
+  onOpenOriginal: (source: SourceRow) => void;
   onReview: (versionId: number, action: "mark_clean" | "require_review" | "quarantine") => void;
 }) {
   const { data } = props;
   if (!data) return <div className="flex min-h-[420px] items-center justify-center text-sm text-slate-500">Select a source to inspect its versions and linked claims.</div>;
   return (
     <div>
-      <div className="flex flex-col gap-3 border-b border-slate-200 pb-5 sm:flex-row sm:items-start sm:justify-between"><div><div className="text-xs font-black uppercase text-[#9a5c00]">{humanize(data.source.connector_type)}</div><h2 className="mt-2 text-xl font-black text-slate-950">{data.source.title}</h2><p className="mt-2 text-sm text-slate-600">{humanize(data.source.business_relevance)} / {humanize(data.source.confidentiality)}</p></div><StatusBadge value={data.source.status} /></div>
+      <div className="flex flex-col gap-3 border-b border-slate-200 pb-5 sm:flex-row sm:items-start sm:justify-between"><div><div className="text-xs font-black uppercase text-[#9a5c00]">{humanize(data.source.connector_type)}</div><h2 className="mt-2 text-xl font-black text-slate-950">{data.source.title}</h2><p className="mt-2 text-sm text-slate-600">{humanize(data.source.business_relevance)} / {humanize(data.source.confidentiality)}</p>{data.source.connector_type === "manual_upload" && data.source.source_url ? <Button type="button" size="sm" variant="outline" className="mt-3 rounded-md border-slate-300 bg-white text-slate-900" disabled={props.openingOriginal} onClick={() => props.onOpenOriginal(data.source)}>{props.openingOriginal ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : <FileSearch className="mr-2 h-4 w-4" />}{props.openingOriginal ? "Opening..." : "Open secured original"}</Button> : null}</div><StatusBadge value={data.source.status} /></div>
       <section className="mt-6">
         <div>
           <h3 className="text-sm font-black text-slate-950">Versions</h3>

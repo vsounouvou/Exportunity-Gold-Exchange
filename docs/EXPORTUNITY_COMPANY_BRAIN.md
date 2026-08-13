@@ -101,6 +101,20 @@ External communications additionally require a recorded human approval object. A
 7. Make the global corporate experience the root while retaining `/industrial` as a vertical.
 8. Propose external email activation as a separate, founder-approved release.
 
+## Operator workflow
+
+The authenticated Company Brain console is available at `/admin/company-brain`. It provides:
+
+- source and source-version review with `clean`, `review_required`, and `quarantined` dispositions;
+- claim evidence, conflict, approval, and approved-wording review;
+- an idempotent founder-charter import that creates internal-only claims;
+- recent context-pack and audit-event visibility;
+- a direct path to the separate Google Workspace connector controls.
+
+A source version cannot enter agent context unless it belongs to the tenant, belongs to the cited source, is active, has an eligible extraction status, and has been marked clean. Every governance mutation is recorded in the Company Brain audit log.
+
 ## Current status
 
-As of 2026-08-12, the schema, feature gates, evidence-isolation helper, context-pack assembler, boot-time table assurance, and focused safety tests exist. Workspace ingestion and external communications are not enabled.
+As of 2026-08-13, the additive schema, feature gates, evidence-isolation helper, source and claim governance APIs, authenticated admin console, context-pack assembler, shared LLM gateway injection, read-only Google Workspace connector foundation, and 126-seat organization catalog exist. The founder charter remains internal-only until an administrator separately requests and approves public wording.
+
+Google Workspace ingestion is not active until an administrator connects the exact company account and enables each read-only service. External communications remain disabled and require a separate production release plus recorded human approval.

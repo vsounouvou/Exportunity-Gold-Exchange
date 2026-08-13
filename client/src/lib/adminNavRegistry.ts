@@ -205,6 +205,21 @@ const GOOGLE_WORKSPACE_NAV_ITEM: AdminNavRegistryItem = {
   visibleInNav: true,
 };
 
+const COMPANY_BRAIN_NAV_ITEM: AdminNavRegistryItem = {
+  route: "/admin/company-brain",
+  pageTitle: "Company Brain",
+  module: "Operations",
+  capabilityTag: "admin_company_brain_governance",
+  apiEndpointsCalled: [
+    "/api/admin/company-brain/summary",
+    "/api/admin/company-brain/sources",
+    "/api/admin/company-brain/claims",
+  ],
+  navEntryName: "Company Brain",
+  icon: "Brain",
+  visibleInNav: true,
+};
+
 const INDUSTRIAL_NETWORK_NAV_ITEM: AdminNavRegistryItem = {
   route: "/admin/industrial-network",
   pageTitle: "Industrial Network",
@@ -320,6 +335,7 @@ const CATEGORY_ITEM_ORDER: Record<AdminNavCategory, Record<string, number>> = {
     "/actions": 30,
     "/goals": 40,
     "/knowledge": 50,
+    "/admin/company-brain": 55,
     "/expert-clones": 60,
   },
   Trade: {
@@ -394,6 +410,7 @@ export function getAdminNavItems() {
   }
   if (!next.some((entry) => entry.route === GOOGLE_MAPS_NAV_ITEM.route)) next.push(GOOGLE_MAPS_NAV_ITEM);
   if (!next.some((entry) => entry.route === GOOGLE_WORKSPACE_NAV_ITEM.route)) next.push(GOOGLE_WORKSPACE_NAV_ITEM);
+  if (!next.some((entry) => entry.route === COMPANY_BRAIN_NAV_ITEM.route)) next.push(COMPANY_BRAIN_NAV_ITEM);
   return next;
 }
 

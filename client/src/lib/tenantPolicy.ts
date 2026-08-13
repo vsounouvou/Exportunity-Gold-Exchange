@@ -26,6 +26,7 @@ const EXPORTUNITY_ADMIN_NAV_ROUTES = new Set([
   "/knowledge",
   "/admin/inbox",
   "/admin/evidence",
+  "/admin/company-brain",
   "/admin/industrial-network",
   "/contracts",
   "/delivery/admin",

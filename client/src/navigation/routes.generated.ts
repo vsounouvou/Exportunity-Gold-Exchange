@@ -45,6 +45,7 @@ export const APP_ROUTE_PATHS = [
   "/admin/communications/twilio/logs",
   "/admin/communications/whatsapp",
   "/admin/communications/whatsapp/logs",
+  "/admin/company-brain",
   "/admin/contacts",
   "/admin/dashboard",
   "/admin/email",

@@ -387,6 +387,7 @@ const AdminTwilioControlCenterPage = lazyPage(
 );
 const AdminGooglePlacesIntegrationPage = lazyPage(() => import("@/pages/AdminGooglePlacesIntegrationPage"));
 const AdminGoogleWorkspaceIntegrationPage = lazyPage(() => import("@/pages/AdminGoogleWorkspaceIntegrationPage"));
+const AdminCompanyBrainPage = lazyPage(() => import("@/pages/AdminCompanyBrainPage"));
 const AdminTwilioLogsPage = lazyPage(() => import("@/pages/AdminTwilioLogsPage"));
   const AdminCommunicationsInboxPage = lazyPage(
     () => import("@/pages/AdminCommunicationsInboxPage"),
@@ -2036,6 +2037,12 @@ function App() {
         <Route path="/admin/settings/integrations/google-workspace">
           <ProtectedRoute>
             <AdminGoogleWorkspaceIntegrationPage />
+          </ProtectedRoute>
+        </Route>
+
+        <Route path="/admin/company-brain">
+          <ProtectedRoute>
+            <AdminCompanyBrainPage />
           </ProtectedRoute>
         </Route>
 

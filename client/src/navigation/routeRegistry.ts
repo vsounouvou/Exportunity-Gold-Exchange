@@ -589,6 +589,13 @@ const OVERRIDES: Record<string, Partial<RouteDef>> = {
     adminOnly: true,
     tags: ["company brain", "gmail", "drive", "contacts", "evidence"],
   },
+  "/admin/company-brain": {
+    title: "Company Brain",
+    group: "operations",
+    subgroup: "Knowledge",
+    icon: "Brain",
+    order: 55,
+  },
   "/admin/communications/twilio": {
     title: "Twilio Inbox",
     group: "settings",

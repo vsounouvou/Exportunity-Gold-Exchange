@@ -11,6 +11,7 @@ import {
 import { and, desc, eq, inArray, isNull, or } from "drizzle-orm";
 import type { AgentPolicy } from "../agent-os/registry";
 import { isCompanyBrainFeatureEnabled } from "./featureFlags";
+import { isCompanyBrainEvidenceEligible } from "./governancePolicy";
 import { secureUntrustedEvidence, type SecuredEvidence } from "./security";
 
 export { renderCompanyBrainContextPackForModel } from "./contextPackRenderer";
@@ -86,7 +87,11 @@ export type CompanyBrainContextPack = {
   available_tools: string[];
   required_approvals: ContextPackApproval[];
   known_conflicts: ContextPackConflict[];
-  open_questions: Array<{ reason: "conflict" | "missing_evidence"; claimId: number; question: string }>;
+  open_questions: Array<{
+    reason: "conflict" | "missing_evidence" | "security_review";
+    claimId: number;
+    question: string;
+  }>;
   source_citations: CompanyBrainCitation[];
   freshness: {
     assembledAt: string;
@@ -245,12 +250,15 @@ export async function loadCompanyBrainContextPack(input: LoadContextPackInput): 
           claimId: companyBrainClaimEvidence.claimId,
           excerpt: companyBrainClaimEvidence.excerpt,
           locator: companyBrainClaimEvidence.locator,
+          supportType: companyBrainClaimEvidence.supportType,
           sourceId: companyBrainSources.id,
           sourceTitle: companyBrainSources.title,
           sourceUrl: companyBrainSources.sourceUrl,
+          sourceStatus: companyBrainSources.status,
           sourceVersionId: companyBrainSourceVersions.id,
           contentHash: companyBrainSourceVersions.contentHash,
           extractedText: companyBrainSourceVersions.extractedText,
+          extractionStatus: companyBrainSourceVersions.extractionStatus,
           securityStatus: companyBrainSourceVersions.securityStatus,
           redactions: companyBrainSourceVersions.redactions,
         })
@@ -258,9 +266,15 @@ export async function loadCompanyBrainContextPack(input: LoadContextPackInput): 
         .innerJoin(companyBrainSources, eq(companyBrainClaimEvidence.sourceId, companyBrainSources.id))
         .innerJoin(
           companyBrainSourceVersions,
-          eq(companyBrainClaimEvidence.sourceVersionId, companyBrainSourceVersions.id),
+          and(
+            eq(companyBrainClaimEvidence.sourceVersionId, companyBrainSourceVersions.id),
+            eq(companyBrainSourceVersions.sourceId, companyBrainSources.id),
+          ),
         )
-        .where(inArray(companyBrainClaimEvidence.claimId, claimIds))
+        .where(and(
+          inArray(companyBrainClaimEvidence.claimId, claimIds),
+          eq(companyBrainSources.tenantId, input.tenantId),
+        ))
     : [];
   const conflictRows = claimIds.length
     ? await db
@@ -277,7 +291,9 @@ export async function loadCompanyBrainContextPack(input: LoadContextPackInput): 
     .filter((claim) => !isExternalPurpose || claim.conflictStatus === "clear")
     .filter((claim) => !isExternalPurpose || Boolean(claim.approvedExternalWording?.trim()))
     .map((claim) => {
-      const rows = evidenceRows.filter((row) => row.claimId === claim.id);
+      const rows = evidenceRows
+        .filter((row) => row.claimId === claim.id)
+        .filter(isCompanyBrainEvidenceEligible);
       const citations = uniqueCitations(
         rows.map((row) => ({
           sourceId: row.sourceId,
@@ -297,9 +313,6 @@ export async function loadCompanyBrainContextPack(input: LoadContextPackInput): 
           locator: row.locator,
           sourceUrl: row.sourceUrl,
         });
-        if (row.securityStatus === "quarantined") {
-          return { ...secured, securityStatus: "quarantined" as const };
-        }
         return secured;
       });
 
@@ -326,6 +339,16 @@ export async function loadCompanyBrainContextPack(input: LoadContextPackInput): 
   );
   const unsupportedClaims = contextClaims.filter(
     (claim) => claim.traceability !== "inference" && claim.citations.length === 0,
+  );
+  const claimsBlockedBySecurity = unsupportedClaims.filter((claim) =>
+    evidenceRows.some(
+      (row) =>
+        row.claimId === claim.id &&
+        (row.securityStatus !== "clean" || row.sourceStatus !== "active"),
+    ),
+  );
+  const claimsMissingEvidence = unsupportedClaims.filter(
+    (claim) => !claimsBlockedBySecurity.some((blocked) => blocked.id === claim.id),
   );
 
   const assembledAt = new Date();
@@ -356,7 +379,12 @@ export async function loadCompanyBrainContextPack(input: LoadContextPackInput): 
       claimId: conflict.claimId,
       question: `Resolve the open conflict for ${conflict.canonicalKey}: ${conflict.summary}`,
     })),
-    ...unsupportedClaims.map((claim) => ({
+    ...claimsBlockedBySecurity.map((claim) => ({
+      reason: "security_review" as const,
+      claimId: claim.id,
+      question: `Clear a supporting source through security review before relying on ${claim.canonicalKey}.`,
+    })),
+    ...claimsMissingEvidence.map((claim) => ({
       reason: "missing_evidence" as const,
       claimId: claim.id,
       question: `Attach a source before relying on ${claim.canonicalKey}.`,
@@ -365,6 +393,7 @@ export async function loadCompanyBrainContextPack(input: LoadContextPackInput): 
   const redactions = Array.from(
     new Map(
       evidenceRows
+        .filter(isCompanyBrainEvidenceEligible)
         .filter((row) => Array.isArray(row.redactions) && row.redactions.length > 0)
         .map((row) => [
           `${row.sourceId}:${row.sourceVersionId}`,

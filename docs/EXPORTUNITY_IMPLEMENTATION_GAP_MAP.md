@@ -35,6 +35,8 @@ Recorded on 2026-08-12 before Company Brain deployment:
 
 ## Confirmed gaps
 
+Status note (2026-08-13): this section preserves the audited baseline. Items completed since that audit are recorded in **Implemented after the baseline audit** below.
+
 ### P0 - release and identity
 
 1. The live `.net` root is intentionally configured to `/industrial`; this is not a stale service-worker symptom.
@@ -91,6 +93,19 @@ Release gate: build and test a global root before removing the redirect or noind
 - focused safety and contract tests;
 - this implementation and recovery documentation.
 
+## Implemented after the baseline audit
+
+- authenticated, tenant-admin-only Company Brain source, version, claim, conflict, and approval APIs;
+- a light-mode Company Brain admin console with source security dispositions and audit visibility;
+- an idempotent, founder-authorized charter source with six internal-only claims;
+- strict tenant/source/version integrity checks before evidence reaches agent context;
+- task-scoped context-pack injection through the existing shared LLM gateway;
+- separate least-privilege Google Drive, Gmail, and Contacts read-only connector contracts, with send and modify scopes rejected;
+- sensitive/personal source quarantine and business-relevance classification;
+- a 126-seat role catalog reconciled with the existing active agent organization;
+- serialized external approval requests and immutable governance audit events;
+- external communication feature gates retained in the disabled state.
+
 ## No-data-loss rules
 
 - No destructive migration is permitted.
@@ -102,11 +117,11 @@ Release gate: build and test a global root before removing the redirect or noind
 
 ## Remaining release gates
 
-1. Apply and verify the Company Brain schema in production.
-2. Build authenticated source/claim/conflict review APIs and UI.
-3. Implement read-only Workspace connectors and exact account display.
-4. Seed approved corporate charter and evidence only after source review.
-5. Implement the 126-seat role library and coverage UI.
-6. Build the global corporate root and preserve all industrial deep links.
-7. Run tenant, security, accessibility, desktop, tablet, mobile, and cross-role UX tests.
-8. Remove `.net` from noindex only when the global public root passes those gates.
+1. Deploy and verify the enabled Company Brain/context-pack runtime while keeping Workspace sync and external communication disabled.
+2. Connect the exact Exportunity Google Workspace account, verify identity, then enable only the approved read-only services.
+3. Review and import approved Drive, Gmail, and Contacts evidence through the visible connector workflow.
+4. Build the global corporate root and preserve all industrial deep links.
+5. Complete mobile executive Company Brain review and organization coverage UX.
+6. Run tenant, security, accessibility, desktop, tablet, mobile, and cross-role UX tests.
+7. Remove `.net` from noindex only when the global public root passes those gates.
+8. Propose external communication activation as a separate founder-approved release.

@@ -54,6 +54,7 @@ export type ContextPackSection =
 
 export type CompanyBrainContextPack = {
   version: "company-brain-context-v1";
+  contextPackId: number | null;
   tenantId: number;
   companyId: number | null;
   agentId: number | null;
@@ -408,6 +409,7 @@ export async function loadCompanyBrainContextPack(input: LoadContextPackInput): 
   const availableTools = availableToolsForPack(input.agentPolicy.permissions);
   const pack: CompanyBrainContextPack = {
     version: "company-brain-context-v1",
+    contextPackId: null,
     tenantId: input.tenantId,
     companyId: input.companyId ?? null,
     agentId: input.agentPolicy.agentId ?? null,
@@ -461,24 +463,34 @@ export async function loadCompanyBrainContextPack(input: LoadContextPackInput): 
   };
 
   if (input.persist !== false) {
-    await db.insert(companyBrainContextPacks).values({
-      tenantId: input.tenantId,
-      companyId: input.companyId ?? null,
-      agentId: input.agentPolicy.agentId ?? null,
-      conversationId: input.conversationId || null,
-      correlationId: input.correlationId || null,
-      taskKey: input.taskKey,
-      purpose,
-      authoritySnapshot: pack.authority,
-      payload: pack,
-      sourceCitations: pack.citations,
-      conflictSummaries: pack.conflicts,
-      freshness: pack.freshness,
-      redactions: pack.redactions,
-      status: "assembled",
-      createdAt: assembledAt,
-      expiresAt,
-    });
+    const [created] = await db
+      .insert(companyBrainContextPacks)
+      .values({
+        tenantId: input.tenantId,
+        companyId: input.companyId ?? null,
+        agentId: input.agentPolicy.agentId ?? null,
+        conversationId: input.conversationId || null,
+        correlationId: input.correlationId || null,
+        taskKey: input.taskKey,
+        purpose,
+        authoritySnapshot: pack.authority,
+        payload: pack,
+        sourceCitations: pack.citations,
+        conflictSummaries: pack.conflicts,
+        freshness: pack.freshness,
+        redactions: pack.redactions,
+        status: "assembled",
+        createdAt: assembledAt,
+        expiresAt,
+      })
+      .returning({ id: companyBrainContextPacks.id });
+    pack.contextPackId = created?.id ?? null;
+    if (pack.contextPackId) {
+      await db
+        .update(companyBrainContextPacks)
+        .set({ payload: pack })
+        .where(eq(companyBrainContextPacks.id, pack.contextPackId));
+    }
   }
 
   return pack;

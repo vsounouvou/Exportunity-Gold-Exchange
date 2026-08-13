@@ -198,6 +198,16 @@ type WorkforceRequest = {
   reason: string;
   evidence: Record<string, unknown> | null;
   evidence_items: Array<Record<string, unknown>> | null;
+  company_brain_context_pack_id: number | null;
+  governance_status: "pending" | "ready" | "review_required" | "unavailable" | string;
+  governance_snapshot: {
+    reason?: string;
+    citationCount?: number;
+    knownConflicts?: Array<Record<string, unknown>>;
+    openQuestions?: Array<Record<string, unknown>>;
+    assembledAt?: string;
+    expiresAt?: string | null;
+  } | null;
   demand_count: number;
   demand_threshold: number;
   signal_type: string;
@@ -293,6 +303,9 @@ export default function AdminAgentsOsPage() {
   const [editingRoleSeat, setEditingRoleSeat] = useState<RoleSeat | null>(null);
   const [reconciliationOpen, setReconciliationOpen] = useState(false);
   const [activationRequest, setActivationRequest] = useState<WorkforceRequest | null>(null);
+  const [workforceReviewRequest, setWorkforceReviewRequest] = useState<WorkforceRequest | null>(null);
+  const [workforceReviewDecision, setWorkforceReviewDecision] = useState<"approve" | "reject">("approve");
+  const [workforceReviewNote, setWorkforceReviewNote] = useState("");
   const [roleSeatDraft, setRoleSeatDraft] = useState({
     displayName: "",
     roleTitle: "",
@@ -470,9 +483,11 @@ export default function AdminAgentsOsPage() {
   });
 
   const reviewWorkforceRequest = useMutation({
-    mutationFn: async ({ id, decision }: { id: number; decision: "approve" | "reject" }) =>
-      apiRequest(`/api/admin/agents-os/workforce-requests/${id}/review`, "POST", { decision }),
+    mutationFn: async ({ id, decision, reviewNote }: { id: number; decision: "approve" | "reject"; reviewNote: string }) =>
+      apiRequest(`/api/admin/agents-os/workforce-requests/${id}/review`, "POST", { decision, reviewNote }),
     onSuccess: async (payload: any) => {
+      setWorkforceReviewRequest(null);
+      setWorkforceReviewNote("");
       await refreshAll();
       toast({
         title: payload?.item?.status === "approved" ? "Staffing need approved" : "Staffing need rejected",
@@ -1111,6 +1126,41 @@ export default function AdminAgentsOsPage() {
                           {item.commercial_intent ? <span>Intent: {item.commercial_intent}</span> : null}
                           {item.manager_display_name ? <span>Manager: {item.manager_display_name}</span> : null}
                         </div>
+                        <div className={`mt-3 flex max-w-2xl flex-col gap-2 rounded-md border p-3 text-xs sm:flex-row sm:items-center sm:justify-between ${
+                          item.governance_status === "ready"
+                            ? "border-emerald-200 bg-emerald-50 text-emerald-900"
+                            : "border-amber-200 bg-amber-50 text-amber-950"
+                        }`}>
+                          <div className="flex min-w-0 gap-2">
+                            {item.governance_status === "ready" ? (
+                              <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" />
+                            ) : (
+                              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                            )}
+                            <div>
+                              <div className="font-semibold">
+                                Company Brain: {item.governance_status === "ready" ? "evidence ready" : "review required"}
+                              </div>
+                              <div className="mt-0.5 leading-5 opacity-80">
+                                {item.governance_snapshot?.reason || "A fresh governed context pack will be assembled during review."}
+                              </div>
+                              <div className="mt-1 flex flex-wrap gap-x-3 opacity-75">
+                                <span>{Number(item.governance_snapshot?.citationCount || 0)} citations</span>
+                                <span>{item.governance_snapshot?.knownConflicts?.length || 0} conflicts</span>
+                                <span>{item.governance_snapshot?.openQuestions?.length || 0} open questions</span>
+                              </div>
+                            </div>
+                          </div>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="agents-os-secondary-action shrink-0"
+                            onClick={() => setLocation("/admin/company-brain")}
+                          >
+                            Review evidence
+                          </Button>
+                        </div>
                         {Array.isArray(item.evidence_items) && item.evidence_items.length ? (
                           <div className="mt-3 flex flex-wrap gap-2" aria-label="Commercial demand evidence">
                             {item.evidence_items.slice(0, 8).map((evidence, index) => {
@@ -1140,11 +1190,48 @@ export default function AdminAgentsOsPage() {
                       <div className="flex shrink-0 flex-wrap gap-2">
                         {item.status === "proposed" ? (
                           <>
-                            <Button size="sm" variant="outline" className="agents-os-secondary-action" onClick={() => reviewWorkforceRequest.mutate({ id: item.id, decision: "reject" })}>Reject</Button>
-                            <Button size="sm" className="bg-amber-500 text-slate-950 hover:bg-amber-400" onClick={() => reviewWorkforceRequest.mutate({ id: item.id, decision: "approve" })}>Approve need</Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="agents-os-secondary-action"
+                              onClick={() => {
+                                setWorkforceReviewRequest(item);
+                                setWorkforceReviewDecision("reject");
+                                setWorkforceReviewNote("");
+                              }}
+                            >
+                              Reject
+                            </Button>
+                            <Button
+                              size="sm"
+                              className="bg-amber-500 text-slate-950 hover:bg-amber-400"
+                              onClick={() => {
+                                setWorkforceReviewRequest(item);
+                                setWorkforceReviewDecision("approve");
+                                setWorkforceReviewNote("");
+                              }}
+                            >
+                              Review need
+                            </Button>
                           </>
                         ) : null}
-                        {item.status === "approved" && item.role_template_id ? (
+                        {item.status === "approved" && (
+                          item.governance_status !== "ready" ||
+                          !item.company_brain_context_pack_id ||
+                          !item.evidence?.decisionRecord
+                        ) ? (
+                          <Button
+                            size="sm"
+                            className="bg-amber-500 text-slate-950 hover:bg-amber-400"
+                            onClick={() => {
+                              setWorkforceReviewRequest(item);
+                              setWorkforceReviewDecision("approve");
+                              setWorkforceReviewNote("");
+                            }}
+                          >
+                            Re-review need
+                          </Button>
+                        ) : item.status === "approved" && item.role_template_id ? (
                           <Button size="sm" className="bg-slate-950 text-white hover:bg-slate-800" onClick={() => provisionRoleSeat.mutate({ templateId: Number(item.role_template_id), staffingRequestId: item.id })}>Create employee inactive</Button>
                         ) : null}
                         {item.provisioned_agent_id ? (
@@ -1733,6 +1820,103 @@ export default function AdminAgentsOsPage() {
             >
               <Link2 className="mr-2 h-4 w-4" />
               Confirm and link {coreTeamReconciliationQuery.data?.summary.ready || 0}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={Boolean(workforceReviewRequest)}
+        onOpenChange={(open) => {
+          if (!open && !reviewWorkforceRequest.isPending) {
+            setWorkforceReviewRequest(null);
+            setWorkforceReviewNote("");
+          }
+        }}
+      >
+        <DialogContent className="max-w-xl border-slate-200 bg-white text-slate-950">
+          <DialogHeader>
+            <DialogTitle>
+              {workforceReviewDecision === "approve" ? "Review staffing need" : "Reject staffing need"}
+            </DialogTitle>
+            <DialogDescription>
+              Record the evidence-based reason for this decision. The review is written to both the staffing audit and Company Brain.
+            </DialogDescription>
+          </DialogHeader>
+          {workforceReviewRequest ? (
+            <div className="space-y-4 py-2">
+              <div className="rounded-md border border-slate-200 bg-slate-50 p-3 text-sm">
+                <div className="font-semibold text-slate-950">{workforceReviewRequest.role_title}</div>
+                <div className="mt-1 text-slate-600">{workforceReviewRequest.reason}</div>
+                <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
+                  <span>Demand: {workforceReviewRequest.demand_count} / {workforceReviewRequest.demand_threshold}</span>
+                  <span>Department: {workforceReviewRequest.department_key}</span>
+                  <span>Company Brain: {workforceReviewRequest.governance_status || "pending refresh"}</span>
+                </div>
+              </div>
+              {workforceReviewDecision === "approve" ? (
+                <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm leading-6 text-amber-950">
+                  Approval assembles a fresh Company Brain context pack and checks its citations, conflicts, and open questions. It authorizes only a private role blueprint. No employee is created, activated, or allowed to contact anyone.
+                </div>
+              ) : (
+                <div className="rounded-md border border-slate-200 bg-slate-50 p-3 text-sm leading-6 text-slate-700">
+                  Rejection closes this proposal without changing existing employees, role seats, tasks, or communications.
+                </div>
+              )}
+              <div className="space-y-2">
+                <Label htmlFor="workforce-review-note">Decision rationale</Label>
+                <Textarea
+                  id="workforce-review-note"
+                  value={workforceReviewNote}
+                  onChange={(event) => setWorkforceReviewNote(event.target.value.slice(0, 1200))}
+                  placeholder={
+                    workforceReviewDecision === "approve"
+                      ? "Explain why current demand justifies this role and what evidence you reviewed."
+                      : "Explain why this role should not be created from the current evidence."
+                  }
+                  className="min-h-28 border-slate-300 bg-white text-slate-950"
+                  autoFocus
+                />
+                <div className="flex items-center justify-between text-xs text-slate-500">
+                  <span>Minimum 12 characters</span>
+                  <span>{workforceReviewNote.trim().length} / 1200</span>
+                </div>
+              </div>
+            </div>
+          ) : null}
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setWorkforceReviewRequest(null);
+                setWorkforceReviewNote("");
+              }}
+              disabled={reviewWorkforceRequest.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              className={
+                workforceReviewDecision === "approve"
+                  ? "bg-amber-500 text-slate-950 hover:bg-amber-400"
+                  : "bg-rose-700 text-white hover:bg-rose-600"
+              }
+              disabled={
+                reviewWorkforceRequest.isPending ||
+                !workforceReviewRequest ||
+                workforceReviewNote.trim().length < 12
+              }
+              onClick={() => workforceReviewRequest && reviewWorkforceRequest.mutate({
+                id: workforceReviewRequest.id,
+                decision: workforceReviewDecision,
+                reviewNote: workforceReviewNote.trim(),
+              })}
+            >
+              {reviewWorkforceRequest.isPending
+                ? "Recording decision..."
+                : workforceReviewDecision === "approve"
+                  ? "Approve role blueprint"
+                  : "Reject staffing need"}
             </Button>
           </DialogFooter>
         </DialogContent>

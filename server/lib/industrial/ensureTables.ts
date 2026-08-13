@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 
 import { db } from "@db";
+import { ensureCompanyBrainTables } from "../company-brain/ensureTables";
 
 let ensurePromise: Promise<void> | null = null;
 
@@ -8,6 +9,7 @@ export async function ensureIndustrialTables() {
   if (ensurePromise) return ensurePromise;
 
   ensurePromise = (async () => {
+    await ensureCompanyBrainTables();
     await db.execute(sql`CREATE EXTENSION IF NOT EXISTS pgcrypto`);
     await db.execute(sql`
       DO $$
@@ -519,6 +521,9 @@ export async function ensureIndustrialTables() {
         demand_threshold integer NOT NULL DEFAULT 1,
         signal_type text NOT NULL DEFAULT 'critical_capability_gap',
         evidence_items jsonb NOT NULL DEFAULT '[]'::jsonb,
+        company_brain_context_pack_id integer REFERENCES company_brain_context_packs(id) ON DELETE SET NULL,
+        governance_status text NOT NULL DEFAULT 'pending',
+        governance_snapshot jsonb NOT NULL DEFAULT '{}'::jsonb,
         last_signal_at timestamp,
         activated_by_user_id integer REFERENCES ece_users(id) ON DELETE SET NULL,
         activated_at timestamp,
@@ -535,6 +540,9 @@ export async function ensureIndustrialTables() {
         ADD COLUMN IF NOT EXISTS demand_threshold integer NOT NULL DEFAULT 1,
         ADD COLUMN IF NOT EXISTS signal_type text NOT NULL DEFAULT 'critical_capability_gap',
         ADD COLUMN IF NOT EXISTS evidence_items jsonb NOT NULL DEFAULT '[]'::jsonb,
+        ADD COLUMN IF NOT EXISTS company_brain_context_pack_id integer REFERENCES company_brain_context_packs(id) ON DELETE SET NULL,
+        ADD COLUMN IF NOT EXISTS governance_status text NOT NULL DEFAULT 'pending',
+        ADD COLUMN IF NOT EXISTS governance_snapshot jsonb NOT NULL DEFAULT '{}'::jsonb,
         ADD COLUMN IF NOT EXISTS last_signal_at timestamp,
         ADD COLUMN IF NOT EXISTS activated_by_user_id integer REFERENCES ece_users(id) ON DELETE SET NULL,
         ADD COLUMN IF NOT EXISTS activated_at timestamp,
@@ -558,6 +566,9 @@ export async function ensureIndustrialTables() {
     );
     await db.execute(
       sql`CREATE INDEX IF NOT EXISTS industrial_agent_staffing_requests_requirement_idx ON industrial_agent_staffing_requests(requirement_id, created_at)`,
+    );
+    await db.execute(
+      sql`CREATE INDEX IF NOT EXISTS industrial_agent_staffing_requests_governance_idx ON industrial_agent_staffing_requests(tenant_id, governance_status, updated_at)`,
     );
 
     await db.execute(sql`

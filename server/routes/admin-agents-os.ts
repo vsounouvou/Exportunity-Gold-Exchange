@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { sql } from "drizzle-orm";
 import { db } from "@db";
+import { companyBrainAuditEvents } from "@db/schema";
 import { ensureTenantAdmin } from "./utils/auth";
 import { ensureAgentsOsMarketplaceTables } from "../lib/agent-os/ensureMarketplaceCatalog";
 import { syncRuntimeAgentsToCatalog } from "../lib/agents/syncRuntimeAgentCatalog";
@@ -14,6 +15,11 @@ import {
 } from "../lib/company-brain/demandRoleSeat";
 import { ensureIndustrialTables } from "../lib/industrial/ensureTables";
 import { proposeCommercialStaffing } from "../lib/industrial/workforcePlanning";
+import {
+  assembleWorkforceGovernanceContext,
+  assertWorkforceGovernanceReady,
+  type WorkforceGovernanceSnapshot,
+} from "../lib/industrial/workforceGovernance";
 import { commercialStaffingSpecialistKey } from "../lib/industrial/workforcePlanningPolicy";
 import {
   EXPORTUNITY_ROLE_SEAT_DEPARTMENTS,
@@ -571,6 +577,9 @@ router.get("/admin/agents-os/workforce-requests", async (req: any, res) => {
         sr.demand_threshold,
         sr.signal_type,
         sr.evidence_items,
+        sr.company_brain_context_pack_id,
+        sr.governance_status,
+        sr.governance_snapshot,
         sr.last_signal_at,
         sr.activated_at,
         sr.paused_at,
@@ -764,6 +773,11 @@ router.post("/admin/agents-os/workforce-requests/:id(\\d+)/review", async (req: 
     if (!id || !["approve", "reject"].includes(decision)) {
       return res.status(400).json({ message: "Choose approve or reject." });
     }
+    if (reviewNote.length < 12) {
+      return res.status(400).json({
+        message: "Add a review note of at least 12 characters explaining this decision.",
+      });
+    }
     const beforeResult = await db.execute(sql`
       select * from industrial_agent_staffing_requests
       where id = ${id} and tenant_id = ${tenant.tenantId}
@@ -773,6 +787,29 @@ router.post("/admin/agents-os/workforce-requests/:id(\\d+)/review", async (req: 
     if (!before) return res.status(404).json({ message: "Workforce request not found" });
     if (!["proposed", "approved"].includes(String(before.status))) {
       return res.status(409).json({ message: `This workforce request is already ${before.status}.` });
+    }
+    let governanceForReview: WorkforceGovernanceSnapshot | null = null;
+    if (decision === "approve") {
+      governanceForReview = await assembleWorkforceGovernanceContext({
+        tenantId: tenant.tenantId,
+        companyId: Number(before.company_id || 0) || null,
+        requirementId: before.requirement_id ? String(before.requirement_id) : null,
+        referenceCode:
+          asString(before.evidence?.referenceCode || before.evidence?.reference_code) ||
+          `staffing-${id}`,
+        roleCode: asString(before.role_code),
+        roleTitle: asString(before.role_title),
+        proposedByAgentId: Number(before.proposed_by_agent_id || 0) || null,
+        staffingRequestId: id,
+      });
+      try {
+        assertWorkforceGovernanceReady(governanceForReview);
+      } catch (error) {
+        return res.status(409).json({
+          message: error instanceof Error ? error.message : "Company Brain review is required before approval.",
+          governance: governanceForReview,
+        });
+      }
     }
     const nextStatus = decision === "approve" ? "approved" : "rejected";
     const demandSeatBaseModel = asString(
@@ -792,6 +829,55 @@ router.post("/admin/agents-os/workforce-requests/:id(\\d+)/review", async (req: 
         conflict.statusCode = 409;
         throw conflict;
       }
+
+      const reviewedAt = new Date();
+      const decisionRecord = {
+        version: "workforce-decision-v1",
+        decision,
+        target: {
+          staffingRequestId: id,
+          roleCode: asString(locked.role_code),
+          roleTitle: asString(locked.role_title),
+          departmentKey: asString(locked.department_key),
+        },
+        supportingEvidence: {
+          demandCount: Number(locked.demand_count || 0),
+          demandThreshold: Number(locked.demand_threshold || 1),
+          requirementIds: Array.isArray(locked.evidence_items)
+            ? locked.evidence_items
+                .map((item: any) => asString(item?.requirementId || item?.requirement_id))
+                .filter(Boolean)
+            : [],
+          companyBrainContextPackId: governanceForReview?.contextPackId || null,
+          sourceCitations: governanceForReview?.sourceCitations || [],
+          knownConflicts: governanceForReview?.knownConflicts || [],
+        },
+        risk: {
+          class: "L2",
+          reversible: true,
+          externalCommunication: false,
+          spending: false,
+          productionAccess: false,
+        },
+        expectedEffect:
+          decision === "approve"
+            ? "Authorize a private role-seat blueprint only. Employee creation and activation remain separate gates."
+            : "Close this staffing proposal without creating or activating capacity.",
+        expiresAt:
+          decision === "approve"
+            ? new Date(reviewedAt.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString()
+            : null,
+        approver: {
+          userId: req.adminUser?.id ? Number(req.adminUser.id) : null,
+          role: resolveActorRole(req.adminUser),
+        },
+        reviewNote,
+        reviewedAt: reviewedAt.toISOString(),
+      };
+      const nextEvidence = {
+        ...(locked.evidence && typeof locked.evidence === "object" ? locked.evidence : {}),
+        decisionRecord,
+      };
 
       let roleTemplateId = Number(locked.role_template_id || 0) || null;
       let roleSeatCreated = false;
@@ -894,8 +980,17 @@ router.post("/admin/agents-os/workforce-requests/:id(\\d+)/review", async (req: 
         set status = ${nextStatus},
             role_template_id = coalesce(${roleTemplateId}, role_template_id),
             reviewed_by_user_id = ${req.adminUser?.id ? Number(req.adminUser.id) : null},
-            review_note = ${reviewNote || null},
-            reviewed_at = now(),
+            review_note = ${reviewNote},
+            evidence = ${JSON.stringify(nextEvidence)}::jsonb,
+            company_brain_context_pack_id = coalesce(
+              ${governanceForReview?.contextPackId || null},
+              company_brain_context_pack_id
+            ),
+            governance_status = ${governanceForReview?.status || locked.governance_status || "not_required"},
+            governance_snapshot = ${JSON.stringify(
+              governanceForReview || locked.governance_snapshot || {},
+            )}::jsonb,
+            reviewed_at = ${reviewedAt},
             updated_at = now()
         where id = ${id} and tenant_id = ${tenant.tenantId}
         returning *
@@ -920,8 +1015,39 @@ router.post("/admin/agents-os/workforce-requests/:id(\\d+)/review", async (req: 
         productionEnabled: false,
         roleSeatCreated: reviewResult.roleSeatCreated,
         roleTemplateId: reviewResult.roleTemplateId,
+        reviewNote,
+        riskClass: "L2",
+        companyBrainContextPackId: governanceForReview?.contextPackId || null,
+        governanceStatus: governanceForReview?.status || null,
+        citationCount: governanceForReview?.citationCount || 0,
+        conflictCount: governanceForReview?.knownConflicts.length || 0,
+        externalActionsStarted: false,
       },
       req,
+    });
+    await db.insert(companyBrainAuditEvents).values({
+      tenantId: tenant.tenantId,
+      companyId: Number(updated.company_id || 0) || null,
+      actorType: "user",
+      actorId: req.adminUser?.id ? String(req.adminUser.id) : null,
+      eventType:
+        decision === "approve"
+          ? "workforce_staffing_need_approved"
+          : "workforce_staffing_need_rejected",
+      entityType: "industrial_agent_staffing_request",
+      entityId: String(id),
+      correlationId: governanceForReview?.correlationId || null,
+      payload: {
+        decision,
+        reviewNote,
+        roleCode: updated.role_code,
+        roleTitle: updated.role_title,
+        roleTemplateId: reviewResult.roleTemplateId,
+        contextPackId: governanceForReview?.contextPackId || null,
+        governanceStatus: governanceForReview?.status || null,
+        citationCount: governanceForReview?.citationCount || 0,
+        externalActionsStarted: false,
+      },
     });
     res.json({
       ok: true,
@@ -1276,6 +1402,27 @@ router.post("/admin/agents/:id(\\d+)/provision", async (req: any, res) => {
       }
       if (String(staffingRequest.status) !== "approved") {
         return res.status(409).json({ message: `Approve this workforce request before provisioning. Current status: ${staffingRequest.status}.` });
+      }
+      if (
+        String(staffingRequest.governance_status || "") !== "ready" ||
+        !Number(staffingRequest.company_brain_context_pack_id || 0) ||
+        !staffingRequest.evidence?.decisionRecord
+      ) {
+        return res.status(409).json({
+          message: "Re-review this staffing need with Company Brain evidence before provisioning.",
+        });
+      }
+      const staffingDecisionExpiresAt = staffingRequest.evidence?.decisionRecord?.expiresAt
+        ? new Date(staffingRequest.evidence.decisionRecord.expiresAt)
+        : null;
+      if (
+        !staffingDecisionExpiresAt ||
+        !Number.isFinite(staffingDecisionExpiresAt.getTime()) ||
+        staffingDecisionExpiresAt <= new Date()
+      ) {
+        return res.status(409).json({
+          message: "This staffing approval expired. Re-review the need before provisioning.",
+        });
       }
     }
     const departmentKey = asString(profile.departmentKey || template.department_key || "operations");

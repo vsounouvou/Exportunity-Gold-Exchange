@@ -7,6 +7,7 @@ import {
   commercialStaffingRecommendations,
   type CommercialStaffingContext,
 } from "./workforcePlanningPolicy";
+import { assembleWorkforceGovernanceContext } from "./workforceGovernance";
 
 export {
   commercialStaffingRecommendations,
@@ -28,6 +29,8 @@ type StaffingProposal = {
   dynamicRoleSeat: boolean;
   existingRuntimeAgentId: number | null;
   assignmentTaskId: number | null;
+  governanceStatus: string;
+  companyBrainContextPackId: number | null;
 };
 
 function rows<T = any>(result: any): T[] {
@@ -268,6 +271,15 @@ export async function proposeCommercialStaffing(input: {
       : recommendation.signalType === "critical_capability_gap"
         ? `${input.referenceCode} exposed a critical execution gap for ${roleTitle}; human staffing review is required.`
         : `Verified demand is accumulating for ${roleTitle}. Review becomes available after ${recommendation.demandThreshold} distinct commercial requirements.`;
+    const governance = await assembleWorkforceGovernanceContext({
+      tenantId: input.tenantId,
+      companyId: input.companyId,
+      requirementId: input.requirementId,
+      referenceCode: input.referenceCode,
+      roleCode,
+      roleTitle,
+      proposedByAgentId: input.proposedByAgentId,
+    });
     const evidence = {
       source: "industrial_commercial_intake",
       requirementId: input.requirementId,
@@ -283,6 +295,13 @@ export async function proposeCommercialStaffing(input: {
       signalType: effectiveSignalType,
       rationale: recommendation.rationale,
       dynamicRoleSeat: Boolean(recommendation.dynamicRoleSeat || template?.role_profile?.dynamicRoleSeat),
+      companyBrain: {
+        contextPackId: governance.contextPackId,
+        governanceStatus: governance.status,
+        citationCount: governance.citationCount,
+        conflictCount: governance.knownConflicts.length,
+        openQuestionCount: governance.openQuestions.length,
+      },
       recordedAt: new Date().toISOString(),
     };
     const initialStatus = runtimeIsActive
@@ -297,7 +316,8 @@ export async function proposeCommercialStaffing(input: {
         tenant_id, company_id, requirement_id, role_template_id, role_code,
         role_title, department_key, reason, evidence, priority, status,
         proposed_by_agent_id, demand_count, demand_threshold, signal_type,
-        evidence_items, last_signal_at, activated_at, created_at, updated_at
+        evidence_items, company_brain_context_pack_id, governance_status,
+        governance_snapshot, last_signal_at, activated_at, created_at, updated_at
       ) values (
         ${input.tenantId}, ${input.companyId}, ${input.requirementId},
         ${Number(template?.id || 0) || null}, ${roleCode},
@@ -305,7 +325,8 @@ export async function proposeCommercialStaffing(input: {
         ${JSON.stringify(evidence)}::jsonb, 'high', ${initialStatus},
         ${input.proposedByAgentId || null}, 1,
         ${effectiveThreshold}, ${effectiveSignalType},
-        ${JSON.stringify(evidenceArray)}::jsonb, now(),
+        ${JSON.stringify(evidenceArray)}::jsonb, ${governance.contextPackId},
+        ${governance.status}, ${JSON.stringify(governance)}::jsonb, now(),
         ${runtimeIsActive ? new Date() : null}, now(), now()
       )
       on conflict (tenant_id, role_code)
@@ -313,7 +334,12 @@ export async function proposeCommercialStaffing(input: {
       do update set
         requirement_id = excluded.requirement_id,
         reason = excluded.reason,
-        evidence = excluded.evidence,
+        evidence = case
+          when industrial_agent_staffing_requests.status in ('approved', 'provisioned', 'active', 'paused')
+            then coalesce(industrial_agent_staffing_requests.evidence, '{}'::jsonb) ||
+              jsonb_build_object('latestDemandSignal', excluded.evidence)
+          else excluded.evidence
+        end,
         role_template_id = coalesce(industrial_agent_staffing_requests.role_template_id, excluded.role_template_id),
         provisioned_agent_id = coalesce(industrial_agent_staffing_requests.provisioned_agent_id, ${runtimeAgentId || null}),
         demand_count = industrial_agent_staffing_requests.demand_count +
@@ -324,6 +350,21 @@ export async function proposeCommercialStaffing(input: {
           end,
         demand_threshold = excluded.demand_threshold,
         signal_type = excluded.signal_type,
+        company_brain_context_pack_id = case
+          when industrial_agent_staffing_requests.status in ('approved', 'provisioned', 'active', 'paused')
+            then industrial_agent_staffing_requests.company_brain_context_pack_id
+          else excluded.company_brain_context_pack_id
+        end,
+        governance_status = case
+          when industrial_agent_staffing_requests.status in ('approved', 'provisioned', 'active', 'paused')
+            then industrial_agent_staffing_requests.governance_status
+          else excluded.governance_status
+        end,
+        governance_snapshot = case
+          when industrial_agent_staffing_requests.status in ('approved', 'provisioned', 'active', 'paused')
+            then industrial_agent_staffing_requests.governance_snapshot
+          else excluded.governance_snapshot
+        end,
         evidence_items = case
           when coalesce(industrial_agent_staffing_requests.evidence_items, '[]'::jsonb) @>
             ${JSON.stringify(requirementEvidence)}::jsonb
@@ -355,7 +396,8 @@ export async function proposeCommercialStaffing(input: {
         last_signal_at = now(),
         updated_at = now()
       returning id, role_code, role_title, department_key, reason, status, priority,
-        demand_count, demand_threshold, signal_type
+        demand_count, demand_threshold, signal_type, governance_status,
+        company_brain_context_pack_id
     `);
     const row = rows<any>(inserted)[0];
     if (!row?.id) continue;
@@ -395,6 +437,9 @@ export async function proposeCommercialStaffing(input: {
       dynamicRoleSeat: Boolean(recommendation.dynamicRoleSeat || template?.role_profile?.dynamicRoleSeat),
       existingRuntimeAgentId: runtimeAgentId || null,
       assignmentTaskId,
+      governanceStatus: String(row.governance_status || governance.status),
+      companyBrainContextPackId:
+        Number(row.company_brain_context_pack_id || governance.contextPackId || 0) || null,
     });
   }
   return proposals;

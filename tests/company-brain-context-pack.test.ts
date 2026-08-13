@@ -71,6 +71,7 @@ test("the existing Operations chat provider persists governed task context inste
 test("rendered context remains task-scoped and treats source evidence as untrusted data", () => {
   const pack: any = {
     version: "company-brain-context-v1",
+    contextPackId: 31,
     tenantId: 3,
     companyId: 7,
     agentId: 12,

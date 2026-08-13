@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useSearch } from "wouter";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { BarChart3, Bot, BrainCircuit, Building2, CopyPlus, Globe, Library, MoreHorizontal, Network, Pencil, Plus, RefreshCw, Search, Settings2, ShieldCheck, Sparkles, UsersRound } from "lucide-react";
+import { AlertTriangle, BarChart3, Bot, BrainCircuit, Building2, CheckCircle2, CopyPlus, Globe, Library, Link2, MoreHorizontal, Network, Pencil, Plus, RefreshCw, Search, Settings2, ShieldCheck, Sparkles, UsersRound } from "lucide-react";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -123,6 +123,8 @@ type RoleSeat = {
   runtime_agent_id: number | null;
   runtime_status: string | null;
   runtime_display_name: string | null;
+  runtime_role: string | null;
+  runtime_avatar_url: string | null;
   runtime_manager_id: number | null;
   runtime_manager_name: string | null;
   production_enabled: boolean;
@@ -151,6 +153,39 @@ type RoleSeatsResponse = {
     productionEnabled: number;
   };
   departments: RoleSeatDepartment[];
+};
+
+type CoreTeamReconciliationItem = {
+  organizationKey: string;
+  rationale: string;
+  status: "ready" | "already_linked" | "employee_missing" | "role_seat_missing" | "seat_occupied" | "employee_assigned_elsewhere";
+  blockingReason: string | null;
+  employee: {
+    id: number;
+    displayName: string;
+    role: string;
+    status: string;
+    productionEnabled: boolean;
+  } | null;
+  roleSeat: {
+    id: number | null;
+    code: string;
+    title: string;
+    roleTitle: string;
+    departmentKey: string | null;
+    runtimeAgentId: number | null;
+  };
+};
+
+type CoreTeamReconciliationResponse = {
+  ok: boolean;
+  mode: "preview" | "applied";
+  summary: { total: number; ready: number; linked: number; blocked: number };
+  items: CoreTeamReconciliationItem[];
+  linkedNow?: number;
+  permissionsChanged: false;
+  lifecycleChanged: false;
+  externalActionsStarted: false;
 };
 
 type WorkforceRequest = {
@@ -256,6 +291,7 @@ export default function AdminAgentsOsPage() {
   const [q, setQ] = useState("");
   const [organizationQuery, setOrganizationQuery] = useState("");
   const [editingRoleSeat, setEditingRoleSeat] = useState<RoleSeat | null>(null);
+  const [reconciliationOpen, setReconciliationOpen] = useState(false);
   const [activationRequest, setActivationRequest] = useState<WorkforceRequest | null>(null);
   const [roleSeatDraft, setRoleSeatDraft] = useState({
     displayName: "",
@@ -334,6 +370,14 @@ export default function AdminAgentsOsPage() {
     refetchOnWindowFocus: false,
     retry: 1,
   });
+  const coreTeamReconciliationQuery = useQuery<CoreTeamReconciliationResponse>({
+    queryKey: ["/api/admin/agents-os/core-team-reconciliation"],
+    queryFn: async () => apiRequest("/api/admin/agents-os/core-team-reconciliation", "GET"),
+    enabled: activeTab === "organization",
+    staleTime: 30_000,
+    refetchOnWindowFocus: false,
+    retry: 1,
+  });
   const workforceQuery = useQuery<WorkforceResponse>({
     queryKey: ["/api/admin/agents-os/workforce-requests"],
     queryFn: async () => apiRequest("/api/admin/agents-os/workforce-requests", "GET"),
@@ -382,6 +426,7 @@ export default function AdminAgentsOsPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/marketplace/agents"] }),
       queryClient.invalidateQueries({ queryKey: ["/api/marketplace/agents"] }),
       queryClient.invalidateQueries({ queryKey: ["/api/admin/agents-os/role-seats"] }),
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/agents-os/core-team-reconciliation"] }),
       queryClient.invalidateQueries({ queryKey: ["/api/admin/agents-os/workforce-requests"] }),
     ]);
   };
@@ -453,6 +498,27 @@ export default function AdminAgentsOsPage() {
       toast({
         title: "Demand evaluation failed",
         description: error?.message || "Current industrial opportunities could not be evaluated.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const reconcileCoreTeam = useMutation({
+    mutationFn: async () =>
+      apiRequest("/api/admin/agents-os/core-team-reconciliation/apply", "POST", { confirm: true }),
+    onSuccess: async (payload: CoreTeamReconciliationResponse) => {
+      setReconciliationOpen(false);
+      await refreshAll();
+      await queryClient.invalidateQueries({ queryKey: ["/api/admin/agents-os/governance"] });
+      toast({
+        title: "Current team linked to the organization",
+        description: `${payload.linkedNow || 0} employee${payload.linkedNow === 1 ? " was" : "s were"} linked to governed role seats. No permissions, lifecycle state, or external action changed.`,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Reconciliation stopped",
+        description: error?.message || "The current team could not be linked safely.",
         variant: "destructive",
       });
     },
@@ -792,6 +858,38 @@ export default function AdminAgentsOsPage() {
               ))}
             </div>
 
+            {coreTeamReconciliationQuery.data?.summary.ready || coreTeamReconciliationQuery.data?.summary.blocked ? (
+              <div className="border-b border-slate-200 bg-amber-50/70 p-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex min-w-0 items-start gap-3">
+                    {coreTeamReconciliationQuery.data.summary.blocked > 0 ? (
+                      <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-rose-600" />
+                    ) : (
+                      <Link2 className="mt-0.5 h-5 w-5 shrink-0 text-amber-700" />
+                    )}
+                    <div>
+                      <div className="text-sm font-semibold text-slate-950">Connect the current team to this organization</div>
+                      <p className="mt-0.5 text-xs leading-5 text-slate-600">
+                        {coreTeamReconciliationQuery.data.summary.ready} existing employee{coreTeamReconciliationQuery.data.summary.ready === 1 ? " has" : "s have"} a governed role-seat match based on stable organization identity. Review every link before applying it; identity, permissions, lifecycle, and production access remain unchanged.
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    variant="outline"
+                    className="agents-os-secondary-action shrink-0"
+                    onClick={() => setReconciliationOpen(true)}
+                  >
+                    Review {coreTeamReconciliationQuery.data.summary.total} matches
+                  </Button>
+                </div>
+              </div>
+            ) : coreTeamReconciliationQuery.data?.summary.linked ? (
+              <div className="flex items-center gap-2 border-b border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+                <CheckCircle2 className="h-4 w-4 shrink-0" />
+                {coreTeamReconciliationQuery.data.summary.linked} current employees are linked to governed role seats.
+              </div>
+            ) : null}
+
             {roleSeatsQuery.isLoading ? (
               <div className="p-6 text-sm text-slate-600">Loading the global organization...</div>
             ) : roleSeatsQuery.isError ? (
@@ -820,10 +918,11 @@ export default function AdminAgentsOsPage() {
                         const runtimeAgentId = Number(seat.runtime_agent_id || 0);
                         const runtimeActive = seat.runtime_status === "active" && seat.production_enabled;
                         const profile = seat.role_profile || {};
-                        const avatarUrl = String(seat.avatar_url || "").trim() || getAgentAvatarUrl({
+                        const employeeDisplayName = seat.runtime_display_name || seat.display_name;
+                        const avatarUrl = String(seat.runtime_avatar_url || seat.avatar_url || "").trim() || getAgentAvatarUrl({
                           id: runtimeAgentId || seat.id,
-                          name: seat.display_name,
-                          label: seat.display_name,
+                          name: employeeDisplayName,
+                          label: employeeDisplayName,
                           size: 80,
                         });
                         return (
@@ -831,13 +930,13 @@ export default function AdminAgentsOsPage() {
                             <div className="flex min-w-0 items-center gap-3">
                               <img
                                 src={avatarUrl}
-                                alt={`${seat.display_name} profile`}
+                                alt={`${employeeDisplayName} profile`}
                                 loading="lazy"
                                 className="h-10 w-10 shrink-0 rounded-full border border-slate-200 bg-slate-100 object-cover"
                               />
                               <div className="min-w-0">
                                 <div className="flex flex-wrap items-center gap-2">
-                                  <div className="truncate text-sm font-semibold text-slate-950">{seat.display_name}</div>
+                                  <div className="truncate text-sm font-semibold text-slate-950">{employeeDisplayName}</div>
                                   <Badge
                                     variant="outline"
                                     className={runtimeActive
@@ -854,7 +953,10 @@ export default function AdminAgentsOsPage() {
                                     </Badge>
                                   ) : null}
                                 </div>
-                                <div className="mt-0.5 truncate text-xs text-slate-600">{seat.role_title}</div>
+                                <div className="mt-0.5 truncate text-xs text-slate-600">
+                                  {seat.runtime_role || seat.role_title}
+                                  {seat.runtime_role && seat.runtime_role !== seat.role_title ? ` · governed seat: ${seat.role_title}` : ""}
+                                </div>
                                 {seat.runtime_manager_name ? (
                                   <div className="mt-0.5 text-xs text-slate-500">Reports to {seat.runtime_manager_name}</div>
                                 ) : profile.managerOrganizationKey ? (
@@ -1535,6 +1637,102 @@ export default function AdminAgentsOsPage() {
               onClick={() => updateRoleSeat.mutate()}
             >
               Save role seat
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={reconciliationOpen} onOpenChange={setReconciliationOpen}>
+        <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto border-slate-200 bg-white text-slate-950">
+          <DialogHeader>
+            <DialogTitle>Reconcile the current team</DialogTitle>
+            <DialogDescription>
+              These links use immutable organization keys, not names. Applying them only connects existing employee records to role seats; it does not create agents, enable tools, change status, or start external work.
+            </DialogDescription>
+          </DialogHeader>
+
+          {coreTeamReconciliationQuery.isLoading ? (
+            <div className="py-6 text-sm text-slate-600">Reviewing current employee identities...</div>
+          ) : coreTeamReconciliationQuery.isError ? (
+            <div className="rounded-md border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">
+              The reconciliation preview could not be loaded.
+            </div>
+          ) : (
+            <div className="space-y-3 py-2">
+              <div className="grid grid-cols-3 gap-px overflow-hidden rounded-md border border-slate-200 bg-slate-200 text-center">
+                {[
+                  ["Ready", coreTeamReconciliationQuery.data?.summary.ready ?? 0],
+                  ["Already linked", coreTeamReconciliationQuery.data?.summary.linked ?? 0],
+                  ["Blocked", coreTeamReconciliationQuery.data?.summary.blocked ?? 0],
+                ].map(([label, value]) => (
+                  <div key={String(label)} className="bg-white px-3 py-3">
+                    <div className="text-xs text-slate-500">{label}</div>
+                    <div className="mt-1 text-lg font-semibold text-slate-950">{value}</div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="divide-y divide-slate-100 rounded-md border border-slate-200">
+                {(coreTeamReconciliationQuery.data?.items || []).map((item) => {
+                  const isBlocked = !["ready", "already_linked"].includes(item.status);
+                  return (
+                    <div key={item.organizationKey} className="p-3">
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <div className="text-sm font-semibold text-slate-950">
+                              {item.employee?.displayName || item.organizationKey}
+                            </div>
+                            <Badge variant="outline" className={
+                              item.status === "already_linked"
+                                ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                                : isBlocked
+                                  ? "border-rose-200 bg-rose-50 text-rose-800"
+                                  : "border-amber-200 bg-amber-50 text-amber-800"
+                            }>
+                              {item.status.replace(/_/g, " ")}
+                            </Badge>
+                          </div>
+                          <div className="mt-1 text-xs text-slate-600">
+                            {item.employee?.role || "Employee unavailable"} <span className="mx-1 text-slate-300">→</span> {item.roleSeat.roleTitle}
+                          </div>
+                          <p className="mt-1 text-xs leading-5 text-slate-500">{item.blockingReason || item.rationale}</p>
+                        </div>
+                        {item.employee ? (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="agents-os-secondary-action shrink-0"
+                            onClick={() => setLocation(`/operations/agents/${item.employee!.id}?edit=1`)}
+                          >
+                            Review employee
+                          </Button>
+                        ) : null}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="rounded-md border border-slate-200 bg-slate-50 p-3 text-xs leading-5 text-slate-600">
+                Applying this preview writes one auditable organization-link event. It does not send messages, spend money, modify employee permissions, or activate dormant capacity.
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setReconciliationOpen(false)}>Cancel</Button>
+            <Button
+              className="bg-amber-500 text-slate-950 hover:bg-amber-400"
+              disabled={
+                reconcileCoreTeam.isPending ||
+                !coreTeamReconciliationQuery.data?.summary.ready ||
+                Boolean(coreTeamReconciliationQuery.data?.summary.blocked)
+              }
+              onClick={() => reconcileCoreTeam.mutate()}
+            >
+              <Link2 className="mr-2 h-4 w-4" />
+              Confirm and link {coreTeamReconciliationQuery.data?.summary.ready || 0}
             </Button>
           </DialogFooter>
         </DialogContent>

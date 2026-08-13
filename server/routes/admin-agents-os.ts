@@ -19,6 +19,10 @@ import {
   EXPORTUNITY_ROLE_SEAT_DEPARTMENTS,
   EXPORTUNITY_ROLE_SEAT_TOTAL,
 } from "../lib/company-brain/roleSeatCatalog";
+import {
+  EXPORTUNITY_CORE_AGENT_KEYS,
+  EXPORTUNITY_CORE_AGENT_ROLE_SEAT_BINDINGS,
+} from "../lib/company-brain/coreAgentRoleSeatBindings";
 
 const router = Router();
 const RUNTIME_SYNC_TTL_MS = 60_000;
@@ -284,6 +288,151 @@ async function resolveRoleSeatManager(input: {
     limit 1
   `);
   return getRows<any>(executiveFallback)[0] || null;
+}
+
+type CoreTeamReconciliationStatus =
+  | "ready"
+  | "already_linked"
+  | "employee_missing"
+  | "role_seat_missing"
+  | "seat_occupied"
+  | "employee_assigned_elsewhere";
+
+async function buildCoreTeamReconciliation(tenantId: number) {
+  const organizationKeys = EXPORTUNITY_CORE_AGENT_KEYS;
+  const roleSeatCodes = EXPORTUNITY_CORE_AGENT_ROLE_SEAT_BINDINGS.map(
+    (binding) => binding.roleSeatCode,
+  );
+  const employees = getRows<any>(
+    await db.execute(sql`
+      select
+        a.id,
+        coalesce(nullif(a.display_name, ''), a.name) as display_name,
+        a.role,
+        a.status::text as status,
+        coalesce(nullif(a.metadata->>'organizationKey', ''), production.agent_key) as organization_key,
+        coalesce(production.is_enabled, false) as production_enabled
+      from agents a
+      left join lateral (
+        select ap.agent_key, ap.is_enabled
+        from agents_production ap
+        where ap.tenant_id = ${tenantId}
+          and ap.agent_id = a.id
+        order by ap.is_enabled desc, ap.id asc
+        limit 1
+      ) production on true
+      where a.tenant_id = ${tenantId}
+        and coalesce(a.status::text, 'active') <> 'archived'
+        and coalesce(nullif(a.metadata->>'organizationKey', ''), production.agent_key) in (
+          ${sql.join(organizationKeys.map((key) => sql`${key}`), sql`, `)}
+        )
+      order by
+        coalesce(nullif(a.metadata->>'organizationKey', ''), production.agent_key),
+        case when a.status::text = 'active' then 0 else 1 end,
+        case when a.env = 'prod' then 0 else 1 end,
+        case when coalesce(a.is_visible, true) then 0 else 1 end,
+        production.is_enabled desc,
+        a.id asc
+    `),
+  );
+  const seats = getRows<any>(
+    await db.execute(sql`
+      select id, code, title, role_title, department_key, runtime_agent_id, seat_status
+      from ece_agent_templates
+      where tenant_id = ${tenantId}
+        and seat_type = 'role_seat'
+        and code in (${sql.join(roleSeatCodes.map((code) => sql`${code}`), sql`, `)})
+      order by id asc
+    `),
+  );
+  const linkedSeats = getRows<any>(
+    await db.execute(sql`
+      select id, code, title, role_title, runtime_agent_id
+      from ece_agent_templates
+      where tenant_id = ${tenantId}
+        and seat_type = 'role_seat'
+        and runtime_agent_id is not null
+    `),
+  );
+
+  const employeeByKey = new Map<string, any>();
+  for (const employee of employees) {
+    const key = asString(employee.organization_key).toLowerCase();
+    if (key && !employeeByKey.has(key)) employeeByKey.set(key, employee);
+  }
+  const seatByCode = new Map(seats.map((seat) => [asString(seat.code), seat]));
+  const linkedSeatByRuntime = new Map(
+    linkedSeats.map((seat) => [Number(seat.runtime_agent_id), seat]),
+  );
+
+  const items = EXPORTUNITY_CORE_AGENT_ROLE_SEAT_BINDINGS.map((binding) => {
+    const employee = employeeByKey.get(binding.organizationKey);
+    const seat = seatByCode.get(binding.roleSeatCode);
+    const employeeId = Number(employee?.id || 0);
+    const seatRuntimeId = Number(seat?.runtime_agent_id || 0);
+    const employeeSeat = employeeId > 0 ? linkedSeatByRuntime.get(employeeId) : null;
+    let status: CoreTeamReconciliationStatus = "ready";
+    let blockingReason: string | null = null;
+
+    if (!employeeId) {
+      status = "employee_missing";
+      blockingReason = `No current employee exposes the stable organization key ${binding.organizationKey}.`;
+    } else if (!seat?.id) {
+      status = "role_seat_missing";
+      blockingReason = `The governed role seat ${binding.roleSeatTitle} is unavailable.`;
+    } else if (seatRuntimeId === employeeId) {
+      status = "already_linked";
+    } else if (seatRuntimeId > 0) {
+      status = "seat_occupied";
+      blockingReason = `${binding.roleSeatTitle} is already assigned to runtime employee #${seatRuntimeId}.`;
+    } else if (employeeSeat?.id && Number(employeeSeat.id) !== Number(seat.id)) {
+      status = "employee_assigned_elsewhere";
+      blockingReason = `${employee.display_name} already fills ${employeeSeat.title || employeeSeat.role_title}.`;
+    }
+
+    return {
+      organizationKey: binding.organizationKey,
+      rationale: binding.rationale,
+      status,
+      blockingReason,
+      employee: employee
+        ? {
+            id: employeeId,
+            displayName: asString(employee.display_name),
+            role: asString(employee.role),
+            status: asString(employee.status),
+            productionEnabled: Boolean(employee.production_enabled),
+          }
+        : null,
+      roleSeat: seat
+        ? {
+            id: Number(seat.id),
+            code: asString(seat.code),
+            title: asString(seat.title),
+            roleTitle: asString(seat.role_title),
+            departmentKey: asString(seat.department_key),
+            runtimeAgentId: seatRuntimeId || null,
+          }
+        : {
+            id: null,
+            code: binding.roleSeatCode,
+            title: binding.roleSeatTitle,
+            roleTitle: binding.roleSeatTitle,
+            departmentKey: null,
+            runtimeAgentId: null,
+          },
+    };
+  });
+
+  return {
+    items,
+    summary: {
+      total: items.length,
+      ready: items.filter((item) => item.status === "ready").length,
+      linked: items.filter((item) => item.status === "already_linked").length,
+      blocked: items.filter((item) => !["ready", "already_linked"].includes(item.status)).length,
+    },
+  };
 }
 
 const AGENTS_OS_SEED_PRESET = [
@@ -865,7 +1014,9 @@ router.get("/admin/agents-os/role-seats", async (req: any, res) => {
         t.avatar_url,
         t.runtime_agent_id,
         a.status as runtime_status,
-        a.display_name as runtime_display_name,
+        coalesce(nullif(a.display_name, ''), a.name) as runtime_display_name,
+        a.role as runtime_role,
+        coalesce(nullif(a.avatar_url, ''), nullif(a.avatar, '')) as runtime_avatar_url,
         a.manager_id as runtime_manager_id,
         manager.display_name as runtime_manager_name,
         coalesce(ap.is_enabled, false) as production_enabled
@@ -922,6 +1073,153 @@ router.get("/admin/agents-os/role-seats", async (req: any, res) => {
     });
   } catch (error: any) {
     res.status(500).json({ message: error?.message || "Failed to load Exportunity role seats" });
+  }
+});
+
+router.get("/admin/agents-os/core-team-reconciliation", async (req: any, res) => {
+  try {
+    const tenant = resolveTenant(req, res);
+    if (!tenant) return;
+    if (tenant.tenantKey !== "exportunity") {
+      return res.status(404).json({ message: "Core-team reconciliation is not available for this tenant." });
+    }
+
+    await ensureExportunityRoleSeatCatalog();
+    await ensureAgentsProductionTables();
+    const reconciliation = await buildCoreTeamReconciliation(tenant.tenantId);
+    res.json({
+      ok: true,
+      mode: "preview",
+      ...reconciliation,
+      mutationsApplied: 0,
+      permissionsChanged: false,
+      lifecycleChanged: false,
+      externalActionsStarted: false,
+    });
+  } catch (error: any) {
+    res.status(500).json({ message: error?.message || "Failed to preview current-team reconciliation" });
+  }
+});
+
+router.post("/admin/agents-os/core-team-reconciliation/apply", async (req: any, res) => {
+  try {
+    const tenant = resolveTenant(req, res);
+    if (!tenant) return;
+    if (tenant.tenantKey !== "exportunity") {
+      return res.status(404).json({ message: "Core-team reconciliation is not available for this tenant." });
+    }
+    if (req.body?.confirm !== true) {
+      return res.status(400).json({ message: "Explicit confirmation is required before linking the current team." });
+    }
+
+    await ensureExportunityRoleSeatCatalog();
+    await ensureAgentsProductionTables();
+    const before = await buildCoreTeamReconciliation(tenant.tenantId);
+    if (before.summary.blocked > 0) {
+      return res.status(409).json({
+        message: "Resolve every blocked current-team match before applying reconciliation.",
+        ...before,
+      });
+    }
+
+    const ready = before.items.filter(
+      (item) => item.status === "ready" && item.employee?.id && item.roleSeat?.id,
+    );
+    if (ready.length > 0) {
+      await db.transaction(async (tx) => {
+        for (const item of ready) {
+          const templateId = Number(item.roleSeat.id);
+          const runtimeAgentId = Number(item.employee!.id);
+          const lockedResult = await tx.execute(sql`
+            select id, runtime_agent_id, approval_policy
+            from ece_agent_templates
+            where id = ${templateId}
+              and tenant_id = ${tenant.tenantId}
+              and seat_type = 'role_seat'
+            for update
+          `);
+          const locked = getRows<any>(lockedResult)[0];
+          if (!locked) throw new Error(`Role seat ${item.roleSeat.code} is unavailable`);
+          if (Number(locked.runtime_agent_id || 0) > 0) {
+            throw new Error(`${item.roleSeat.roleTitle} was assigned while reconciliation was in progress`);
+          }
+
+          const existingEmployeeSeat = getRows<any>(
+            await tx.execute(sql`
+              select id, title
+              from ece_agent_templates
+              where tenant_id = ${tenant.tenantId}
+                and seat_type = 'role_seat'
+                and runtime_agent_id = ${runtimeAgentId}
+                and id <> ${templateId}
+              limit 1
+            `),
+          )[0];
+          if (existingEmployeeSeat?.id) {
+            throw new Error(`${item.employee!.displayName} was assigned to ${existingEmployeeSeat.title} while reconciliation was in progress`);
+          }
+
+          const approvalPolicy = {
+            ...(locked.approval_policy && typeof locked.approval_policy === "object" ? locked.approval_policy : {}),
+            runtimeAgentId,
+            activationState: item.employee!.status,
+            reconciliationSource: "existing_core_team",
+            reconciledOrganizationKey: item.organizationKey,
+            reconciledAt: new Date().toISOString(),
+            productionEnablement: "human_approval_required",
+            externalCommunication: "human_approval_required",
+          };
+          await tx.execute(sql`
+            update ece_agent_templates
+            set runtime_agent_id = ${runtimeAgentId},
+                seat_status = 'provisioned',
+                approval_policy = ${JSON.stringify(approvalPolicy)}::jsonb,
+                updated_by_user_id = ${req.adminUser?.id ? Number(req.adminUser.id) : null},
+                updated_at = now()
+            where id = ${templateId} and tenant_id = ${tenant.tenantId}
+          `);
+        }
+      });
+    }
+
+    const after = await buildCoreTeamReconciliation(tenant.tenantId);
+    await writeAudit({
+      tenantId: tenant.tenantId,
+      actor: req.adminUser,
+      action: "CORE_TEAM_ROLE_SEATS_RECONCILED",
+      entityType: "agent_organization",
+      entityId: null,
+      before: before.summary,
+      after: {
+        ...after.summary,
+        linkedNow: ready.length,
+        roleSeatLinks: ready.map((item) => ({
+          organizationKey: item.organizationKey,
+          runtimeAgentId: item.employee?.id,
+          roleSeatId: item.roleSeat.id,
+          roleSeatCode: item.roleSeat.code,
+        })),
+      },
+      metadata: {
+        source: "explicit_admin_reconciliation",
+        permissionsChanged: false,
+        lifecycleChanged: false,
+        externalActionsStarted: false,
+      },
+      req,
+    });
+
+    res.json({
+      ok: true,
+      mode: "applied",
+      ...after,
+      linkedNow: ready.length,
+      permissionsChanged: false,
+      lifecycleChanged: false,
+      externalActionsStarted: false,
+    });
+  } catch (error: any) {
+    res.status(500).json({ message: error?.message || "Failed to reconcile the current team" });
   }
 });
 

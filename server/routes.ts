@@ -4581,6 +4581,11 @@ ${governanceContext}`;
                 .filter((p: any) => p.name && p.role),
               agentDirectory,
               companyContext: isExportunityTenant ? EXPORTUNITY_COMPANY_CONTEXT : undefined,
+              taskKey: `operations-channel:${channelId}:message:${Number((userRow as any)?.id || 0)}`,
+              conversationId: String(conversationId),
+              correlationId:
+                clientMessageId ||
+                `operations-channel:${conversationId}:message:${Number((userRow as any)?.id || 0)}`,
               agentMission: typeof responderAgent?.mission === "string" ? responderAgent.mission : undefined,
               agentResponsibilities: Array.isArray(responderAgent?.responsibilities)
                 ? responderAgent.responsibilities.map((item: unknown) => String(item)).filter(Boolean)
@@ -4881,6 +4886,11 @@ ${governanceContext}`;
                 .filter((p): p is { name: string; role: string } => !!p),
               agentDirectory,
               companyContext: isExportunityTenant ? EXPORTUNITY_COMPANY_CONTEXT : undefined,
+              taskKey: `operations-channel:${channelId}:message:${Number((userRow as any)?.id || 0)}`,
+              conversationId: String(conversationId),
+              correlationId:
+                clientMessageId ||
+                `operations-channel:${conversationId}:message:${Number((userRow as any)?.id || 0)}`,
               agentMission: typeof responderAgent?.mission === "string" ? responderAgent.mission : undefined,
               agentResponsibilities: Array.isArray(responderAgent?.responsibilities)
                 ? responderAgent.responsibilities.map((item: unknown) => String(item)).filter(Boolean)

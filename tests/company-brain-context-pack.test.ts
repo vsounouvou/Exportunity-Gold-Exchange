@@ -51,6 +51,23 @@ test("the shared LLM gateway assembles task-scoped Company Brain context when ex
   assert.doesNotMatch(gateway, /catch\s*\([^)]*\)[\s\S]{0,180}contextPack\s*=\s*null/);
 });
 
+test("the existing Operations chat provider persists governed task context instead of bypassing Company Brain", () => {
+  const provider = read("server/lib/ai-provider.ts");
+  const routes = read("server/routes.ts");
+
+  assert.match(provider, /context\.tenantKey === "exportunity"/);
+  assert.match(provider, /getAgentPolicy\(options\.agentId\)/);
+  assert.match(provider, /loadCompanyBrainContextPack\(\{/);
+  assert.match(provider, /renderCompanyBrainContextPackForModel\(pack\)/);
+  assert.doesNotMatch(
+    provider,
+    /loadCompanyBrainContextPack\([\s\S]{0,500}catch\s*\([^)]*\)[\s\S]{0,120}(?:ignore|fallback|null)/i,
+  );
+  assert.match(routes, /taskKey: `operations-channel:\$\{channelId\}:message:/);
+  assert.match(routes, /conversationId: String\(conversationId\)/);
+  assert.match(routes, /clientMessageId \|\|[\s\S]{0,160}`operations-channel:/);
+});
+
 test("rendered context remains task-scoped and treats source evidence as untrusted data", () => {
   const pack: any = {
     version: "company-brain-context-v1",

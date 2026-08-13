@@ -7,6 +7,12 @@ import { agents, companies } from "@db/schema";
 import { eq } from "drizzle-orm";
 import { EXPORTUNITY_COMPANY_CONTEXT } from "./industrial/companyContext";
 import { applyTenantResponsePolicy } from "./tenant-ai-policy";
+import { getAgentPolicy } from "./agent-os/registry";
+import {
+  loadCompanyBrainContextPack,
+  renderCompanyBrainContextPackForModel,
+} from "./company-brain/contextAssembler";
+import { isCompanyBrainFeatureEnabled } from "./company-brain/featureFlags";
 
 export type AIProvider = 'openai' | 'claude' | 'gemini';
 export type AgentEmailContext = {
@@ -47,6 +53,9 @@ type AgentResponseContext = {
   agentResponsibilities?: string[];
   approvalRules?: Record<string, unknown>;
   emailContext?: AgentEmailContext;
+  taskKey?: string;
+  conversationId?: string | null;
+  correlationId?: string | null;
 };
 
 type AgentResponseOptions = {
@@ -159,6 +168,7 @@ async function hydrateAgentResponseOptions(options: AgentResponseOptions): Promi
           name: true,
           role: true,
           companyId: true,
+          tenantId: true,
           metadata: true,
           mission: true,
           responsibilities: true,
@@ -198,6 +208,36 @@ async function hydrateAgentResponseOptions(options: AgentResponseOptions): Promi
   }
   if (!context.approvalRules && agentRow?.approvalRules && typeof agentRow.approvalRules === "object") {
     context.approvalRules = agentRow.approvalRules as Record<string, unknown>;
+  }
+
+  if (
+    context.tenantKey === "exportunity" &&
+    options.agentId &&
+    agentRow?.tenantId &&
+    isCompanyBrainFeatureEnabled("companyBrain") &&
+    isCompanyBrainFeatureEnabled("contextPacks")
+  ) {
+    const policy = await getAgentPolicy(options.agentId);
+    const correlationId = String(context.correlationId || "").trim() || null;
+    const taskKey =
+      String(context.taskKey || "").trim() ||
+      correlationId ||
+      `agent-response:${options.agentId}:${context.roomType || "conversation"}:${context.roomName || "general"}`;
+    const pack = await loadCompanyBrainContextPack({
+      tenantId: Number(agentRow.tenantId),
+      companyId: effectiveCompanyId,
+      agentPolicy: policy,
+      taskKey,
+      purpose: "internal",
+      conversationId: String(context.conversationId || "").trim() || null,
+      correlationId,
+    });
+    context.companyContext = [
+      context.companyContext,
+      renderCompanyBrainContextPackForModel(pack),
+    ]
+      .filter(Boolean)
+      .join("\n\n");
   }
 
   return {

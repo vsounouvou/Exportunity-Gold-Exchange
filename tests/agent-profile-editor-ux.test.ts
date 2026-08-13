@@ -71,6 +71,9 @@ test("Agents OS tabs use the canonical route and legacy links preserve tab state
   assert.match(app, /function AgentsOsAliasRedirect\(\)/);
   assert.match(app, /String\(window\.location\.search \|\| ""\)/);
   assert.match(app, /<Redirect to=\{`\/agents-os\$\{search\}`\} \/>/);
+  assert.match(agentsOs, /import \{ useLocation, useSearch \} from "wouter"/);
+  assert.match(agentsOs, /const search = useSearch\(\)/);
+  assert.doesNotMatch(agentsOs, /const search = typeof window/);
   assert.match(agentsOs, /setLocation\(`\/agents-os\?tab=\$\{safe\}`/);
   assert.match(agentsOs, /<TabsTrigger value="workforce">/);
   assert.match(agentsOs, /<TabsContent value="workforce"/);

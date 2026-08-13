@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useLocation } from "wouter";
+import { useLocation, useSearch } from "wouter";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { BarChart3, Bot, BrainCircuit, Building2, CopyPlus, Globe, Library, MoreHorizontal, Network, Pencil, Plus, RefreshCw, Search, Settings2, ShieldCheck, Sparkles, UsersRound } from "lucide-react";
 
@@ -216,7 +216,7 @@ function parseTab(search: string): AgentsOsTab {
 export default function AdminAgentsOsPage() {
   const { toast } = useToast();
   const [location, setLocation] = useLocation();
-  const search = typeof window !== "undefined" ? window.location.search : "";
+  const search = useSearch();
   const activeTab = parseTab(search);
 
   const [q, setQ] = useState("");

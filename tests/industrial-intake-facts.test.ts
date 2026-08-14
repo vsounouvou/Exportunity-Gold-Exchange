@@ -86,7 +86,7 @@ test("palm-oil sourcing is a commercial raw-material request, never a CAD workfl
 
 test("qualified palm-oil sourcing captures commercial terms already supplied", () => {
   const preview = classifyIndustrialIntake(
-    "Je veux acheter 20 tonnes d'huile de palme raffinee, livrer a Abidjan, chaque mois, CIF.",
+    "Je veux acheter 20 tonnes d'huile de palme raffinee, livrer a Abidjan, chaque mois, CIF, budget 750 USD/tonne.",
     "fr",
   );
 
@@ -97,6 +97,8 @@ test("qualified palm-oil sourcing captures commercial terms already supplied", (
   assert.equal(preview.facts.deliveryDestination, "Abidjan");
   assert.equal(preview.frequency, "Chaque mois");
   assert.equal(preview.incoterm, "CIF");
+  assert.equal(preview.targetPrice, "750 USD/tonne");
+  assert.equal(preview.currency, "USD");
   assert.deepEqual(preview.missingFields, []);
   assert.equal(preview.suggestedAction, "ACT");
 });
@@ -113,6 +115,8 @@ test("refined palm-oil demand keeps supplied facts and asks only for missing tra
   assert.equal(preview.product.unit, "tonnes");
   assert.equal(preview.product.specification, "refined");
   assert.equal(preview.facts.deliveryDestination, "Abidjan");
+  assert.equal(preview.targetPrice, undefined);
+  assert.equal(preview.currency, undefined);
   assert.deepEqual(preview.missingFields, ["frequency", "incoterm"]);
   assert.equal(preview.suggestedAction, "ASK");
   assert.doesNotMatch(preview.response, /CAD|plan|photo/i);

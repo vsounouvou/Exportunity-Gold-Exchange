@@ -206,16 +206,46 @@ function extractIncoterm(message: string) {
 }
 
 function extractTargetPrice(message: string) {
-  const match = compact(message).match(
-    /(?:budget|prix(?:\s+cible)?|target price|price|a|at)?\s*(?:de|of|:|=)?\s*([$EURGBP]{1,3}|USD|EUR|GBP|XOF|FCFA|AED)?\s*(\d[\d\s.,]*)(?:\s*([$EURGBP]{1,3}|USD|EUR|GBP|XOF|FCFA|AED))?(?:\s*(?:\/|par|per)\s*([a-zA-Z]+))?/iu,
+  const text = compact(message);
+  const currencyToken = "(?:\\$|€|£|USD|EUR|GBP|XOF|FCFA|AED)";
+  const amountToken = "\\d(?:[\\d\\s.,]*\\d)?";
+  const cueMatch = text.match(
+    new RegExp(
+      `(?:budget|prix(?:\\s+cible)?|target price|price)\\s*(?:de|of|:|=|a|à|at)?\\s*(${currencyToken})?\\s*(${amountToken})(?:\\s*(${currencyToken}))?(?:\\s*(?:/|par|per)\\s*([a-zA-Z]+))?`,
+      "iu",
+    ),
   );
-  if (!match || (!match[1] && !match[3])) return {};
-  const currency = compact(match[1] || match[3]).toUpperCase();
+  const currencyMatch = cueMatch
+    ? null
+    : text.match(
+        new RegExp(
+          `(?:(${currencyToken})\\s*(${amountToken})|(${amountToken})\\s*(${currencyToken}))(?:\\s*(?:/|par|per)\\s*([a-zA-Z]+))?`,
+          "iu",
+        ),
+      );
+  if (!cueMatch && !currencyMatch) return {};
+
+  const amount = compact(
+    cueMatch?.[2] || currencyMatch?.[2] || currencyMatch?.[3],
+  );
+  const currency = compact(
+    cueMatch?.[1] ||
+      cueMatch?.[3] ||
+      currencyMatch?.[1] ||
+      currencyMatch?.[4],
+  ).toUpperCase();
+  const unit = compact(cueMatch?.[4] || currencyMatch?.[5]);
   const normalizedCurrency =
-    currency === "$" ? "USD" : currency === "EUR" ? "EUR" : currency;
+    currency === "$"
+      ? "USD"
+      : currency === "€"
+        ? "EUR"
+        : currency === "£"
+          ? "GBP"
+          : currency || undefined;
   return {
     targetPrice: compact(
-      `${match[2]} ${normalizedCurrency}${match[4] ? `/${match[4]}` : ""}`,
+      `${amount}${normalizedCurrency ? ` ${normalizedCurrency}` : ""}${unit ? `/${unit}` : ""}`,
     ),
     currency: normalizedCurrency,
   };

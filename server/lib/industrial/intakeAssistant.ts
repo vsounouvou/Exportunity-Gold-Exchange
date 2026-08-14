@@ -196,7 +196,18 @@ function extractDeliveryDestination(message: string) {
   const routed = compact.match(
     /\b(?:livrer|livre|livr[eé]e?|exp[eé]dier|acheminer|deliver|delivered|ship|shipping)\s+(?:a|à|au|aux|vers|to|in)\s+([^,.;\n]{2,80})/iu,
   );
-  const value = explicit?.[1] || routed?.[1] || "";
+  const incotermRoute = compact.match(
+    /\b(?:livraison|delivery)\s+(?:(?:sous|under)\s+)?(?:EXW|FCA|CPT|CIP|DAP|DPU|DDP|FAS|FOB|CFR|CIF)\s+(?:(?:a|\u00e0|au|aux|vers|to|in)\s+)?([^,.;\n]{2,80})/iu,
+  );
+  const labelledRoute = compact.match(
+    /\b(?:livraison|delivery)\s+(?:a|\u00e0|au|aux|vers|to|in)\s+([^,.;\n]{2,80})/iu,
+  );
+  const value =
+    explicit?.[1] ||
+    routed?.[1] ||
+    incotermRoute?.[1] ||
+    labelledRoute?.[1] ||
+    "";
   return (
     compactCapturedValue(
       value.split(

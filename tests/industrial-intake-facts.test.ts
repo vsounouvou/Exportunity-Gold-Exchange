@@ -103,6 +103,42 @@ test("qualified palm-oil sourcing captures commercial terms already supplied", (
   assert.equal(preview.suggestedAction, "ACT");
 });
 
+test("palm-oil sourcing reads a destination placed after the Incoterm", () => {
+  const preview = classifyIndustrialIntake(
+    "Je veux sourcer 100 tonnes d'huile de palme raffinee RBD, livraison CIF Abidjan, commande ponctuelle pour le 30 septembre 2026.",
+    "fr",
+  );
+
+  assert.equal(preview.intent, "SOURCE_PRODUCT");
+  assert.equal(preview.product.name, "Huile de palme");
+  assert.equal(preview.product.quantity, "100");
+  assert.equal(preview.product.unit, "tonnes");
+  assert.equal(preview.product.specification, "refined");
+  assert.equal(preview.facts.deliveryDestination, "Abidjan");
+  assert.equal(preview.frequency, "Achat ponctuel");
+  assert.equal(preview.incoterm, "CIF");
+  assert.deepEqual(preview.missingFields, []);
+  assert.equal(preview.suggestedAction, "ACT");
+});
+
+test("the master palm-oil acceptance message is ready for internal action", () => {
+  const preview = classifyIndustrialIntake(
+    "I need 100 tonnes of refined palm oil delivered to Abidjan, one-time, CIF.",
+    "en",
+  );
+
+  assert.equal(preview.intent, "BUY_PRODUCT");
+  assert.equal(preview.product.name, "Palm oil");
+  assert.equal(preview.product.quantity, "100");
+  assert.equal(preview.product.unit, "tonnes");
+  assert.equal(preview.product.specification, "refined");
+  assert.equal(preview.facts.deliveryDestination, "Abidjan");
+  assert.equal(preview.frequency, "One-time purchase");
+  assert.equal(preview.incoterm, "CIF");
+  assert.deepEqual(preview.missingFields, []);
+  assert.equal(preview.suggestedAction, "ACT");
+});
+
 test("refined palm-oil demand keeps supplied facts and asks only for missing trade terms", () => {
   const preview = classifyIndustrialIntake(
     "Je cherche 100 tonnes d'huile de palme raffinée à livrer à Abidjan.",

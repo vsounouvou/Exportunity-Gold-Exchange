@@ -829,7 +829,36 @@ async function postActionOutcomeMessage(opts: {
   }
 }
 
-async function dequeueNextQueuedAction(): Promise<ActionRequestRow | null> {
+export type ActionWorkerDequeueOptions = {
+  tenantId?: number;
+  workerScope?: "tenant";
+};
+
+async function dequeueNextQueuedAction(
+  options: ActionWorkerDequeueOptions = {},
+): Promise<ActionRequestRow | null> {
+  const tenantId = Number(options.tenantId || 0);
+  const hasTenantId = Number.isInteger(tenantId) && tenantId > 0;
+  if (options.workerScope === "tenant" && !hasTenantId) {
+    throw new Error("Tenant-scoped action work requires a valid tenantId.");
+  }
+  const tenantFilter = hasTenantId
+    ? sql`and tenant_id = ${tenantId}`
+    : sql``;
+  const scopeFilter =
+    options.workerScope === "tenant"
+      ? sql`
+          and action_type = 'RUN_AGENT_TASK'
+          and metadata->>'workerScope' = 'tenant'
+        `
+      : sql`
+          and coalesce(metadata->>'workerScope', '') <> 'tenant'
+          and (
+            (metadata->>'runAt') is null
+            or (metadata->>'runAt')::timestamptz <= now()
+          )
+        `;
+
   // Atomic lease claim: QUEUED -> RUNNING, pick highest priority first, oldest first.
   const rows = await db.execute(sql`
     with next as (
@@ -839,10 +868,8 @@ async function dequeueNextQueuedAction(): Promise<ActionRequestRow | null> {
         and coalesce(lifecycle_state, 'QUEUED') = 'QUEUED'
         and (claimed_until is null or claimed_until < now())
         and (next_retry_at is null or next_retry_at <= now())
-        and (
-          (metadata->>'runAt') is null
-          or (metadata->>'runAt')::timestamptz <= now()
-        )
+        ${tenantFilter}
+        ${scopeFilter}
       order by priority desc, created_at asc
       limit 1
       for update skip locked
@@ -1307,8 +1334,10 @@ async function queueRecurringMeetingActionsFromTask(opts: {
   return queuedIds;
 }
 
-export async function runActionWorkerOnce() {
-  const next = await dequeueNextQueuedAction();
+export async function runActionWorkerOnce(
+  options: ActionWorkerDequeueOptions = {},
+) {
+  const next = await dequeueNextQueuedAction(options);
   if (!next) return { ok: true, processed: 0 } as const;
 
   const tenantId = Number((next as any).tenant_id ?? (next as any).tenantId);

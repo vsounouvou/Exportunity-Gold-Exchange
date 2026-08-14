@@ -45,32 +45,69 @@ export function startActionsWorkerScheduler() {
   schedulerStatus.running = true;
 
   let running = false;
+  let resolvedTenantId: number | null = null;
+
+  const resolveTenantId = async () => {
+    if (resolvedTenantId) return resolvedTenantId;
+    const tenantKey = String(
+      process.env.DEPLOY_TENANT || process.env.TENANT_DEFAULT || "",
+    ).trim();
+    if (!tenantKey) {
+      throw new Error("ACTIONS_WORKER_TENANT_REQUIRED: set DEPLOY_TENANT or TENANT_DEFAULT.");
+    }
+    const result = await db.execute(sql`
+      select id
+      from tenants
+      where lower(key) = lower(${tenantKey})
+      limit 1
+    `);
+    const tenantId = Number(firstRow(result)?.id || 0);
+    if (!Number.isInteger(tenantId) || tenantId <= 0) {
+      throw new Error(`ACTIONS_WORKER_TENANT_NOT_FOUND: ${tenantKey}`);
+    }
+    resolvedTenantId = tenantId;
+    return tenantId;
+  };
 
   const runBatch = async () => {
     if (running) return;
     running = true;
     const startedAt = Date.now();
-    let lockAcquired = false;
+    let globalLockAcquired = false;
+    let processed = 0;
+    let failures = 0;
 
     try {
-      const lockResult = await db.execute(sql`select pg_try_advisory_lock(${ACTIONS_RUNNER_LEADER_LOCK_KEY}) as locked`);
-      lockAcquired = Boolean(firstRow(lockResult)?.locked);
-      if (!lockAcquired) {
-        schedulerStatus.lastHeartbeatAt = new Date().toISOString();
-        schedulerStatus.lastError = null;
-        return;
-      }
-
-      let processed = 0;
-      let failures = 0;
-
+      const tenantId = await resolveTenantId();
       for (let i = 0; i < maxBatch; i++) {
+        // The row-level lease is the lock for tenant-scoped work. Legacy workers
+        // cannot see these future-dated actions, while this tenant claims them atomically.
         // eslint-disable-next-line no-await-in-loop
-        const res = await runActionWorkerOnce();
+        const res = await runActionWorkerOnce({
+          tenantId,
+          workerScope: "tenant",
+        });
         if (!res || res.processed <= 0) break;
         processed += res.processed;
         schedulerStatus.lastJobAt = new Date().toISOString();
         if ((res as any).ok === false) failures += 1;
+      }
+
+      if (processed < maxBatch) {
+        const globalLockResult = await db.execute(
+          sql`select pg_try_advisory_lock(${ACTIONS_RUNNER_LEADER_LOCK_KEY}) as locked`,
+        );
+        globalLockAcquired = Boolean(firstRow(globalLockResult)?.locked);
+        if (globalLockAcquired) {
+          for (let i = processed; i < maxBatch; i++) {
+            // eslint-disable-next-line no-await-in-loop
+            const res = await runActionWorkerOnce({ tenantId });
+            if (!res || res.processed <= 0) break;
+            processed += res.processed;
+            schedulerStatus.lastJobAt = new Date().toISOString();
+            if ((res as any).ok === false) failures += 1;
+          }
+        }
       }
 
       if (processed > 0 || failures > 0) {
@@ -89,7 +126,7 @@ export function startActionsWorkerScheduler() {
       schedulerStatus.lastError = String(error?.message || error || "unknown_error");
       console.error("[actions-worker] batch failure:", schedulerStatus.lastError);
     } finally {
-      if (lockAcquired) {
+      if (globalLockAcquired) {
         try {
           await db.execute(sql`select pg_advisory_unlock(${ACTIONS_RUNNER_LEADER_LOCK_KEY})`);
         } catch {

@@ -24,6 +24,19 @@ import {
 export const INDUSTRIAL_AGENT_TASK_INTENT =
   "industrial_opportunity_workstream";
 
+const TENANT_SCOPED_AGENT_WORK_RUN_AT = "2100-01-01T00:00:00.000Z";
+
+function tenantScopedAgentWorkMetadata(tenantId: number) {
+  return {
+    workerScope: "tenant",
+    workerTenantId: tenantId,
+    workerTenantKey:
+      process.env.DEPLOY_TENANT || process.env.TENANT_DEFAULT || "exportunity",
+    runAt: TENANT_SCOPED_AGENT_WORK_RUN_AT,
+    runReason: "tenant_scoped_agent_work",
+  };
+}
+
 type TextValue = string | null | undefined;
 
 export type IndustrialAgentWorkFacts = {
@@ -232,6 +245,7 @@ export async function queueIndustrialOpportunityAgentWork(input: {
       idempotencyKey: `industrial-agent-task:${workstream.taskId}:v1`,
       correlationId: `industrial-requirement:${input.requirementId}`,
       relatedConversationId: input.sourceConversationId || null,
+      metadata: tenantScopedAgentWorkMetadata(input.tenantId),
       isAdmin: true,
     });
     queued.push(
@@ -396,6 +410,7 @@ export async function queueIndustrialOpportunityWorkstream(input: {
       idempotencyKey: `industrial-agent-task:${input.taskId}:run:${runNumber}`,
       correlationId: `industrial-requirement:${input.requirementId}`,
       relatedConversationId: input.sourceConversationId || null,
+      metadata: tenantScopedAgentWorkMetadata(input.tenantId),
       isAdmin: true,
     });
   } catch (error) {

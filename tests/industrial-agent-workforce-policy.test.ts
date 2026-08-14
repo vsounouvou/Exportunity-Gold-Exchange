@@ -231,6 +231,7 @@ test("qualified opportunities dispatch visible employee work through the governe
   const route = readRepoFile("server/routes/industrial.ts");
   const actionRouter = readRepoFile("server/lib/actions/ActionRouter.ts");
   const worker = readRepoFile("server/lib/actions/worker.ts");
+  const scheduler = readRepoFile("server/lib/actions/scheduler.ts");
   const execution = readRepoFile(
     "server/lib/industrial/agentWorkExecution.ts",
   );
@@ -242,6 +243,13 @@ test("qualified opportunities dispatch visible employee work through the governe
   assert.match(actionRouter, /RUN_AGENT_TASK/);
   assert.match(worker, /executeIndustrialOpportunityAgentWork/);
   assert.match(worker, /actionType === "RUN_AGENT_TASK"/);
+  assert.match(worker, /metadata->>'workerScope' = 'tenant'/);
+  assert.match(worker, /coalesce\(metadata->>'workerScope', ''\) <> 'tenant'/);
+  assert.match(execution, /workerScope: "tenant"/);
+  assert.match(execution, /runReason: "tenant_scoped_agent_work"/);
+  assert.match(scheduler, /workerScope: "tenant"/);
+  assert.match(scheduler, /row-level lease is the lock for tenant-scoped work/);
+  assert.match(scheduler, /runActionWorkerOnce\(\{ tenantId \}\)/);
   assert.match(execution, /buildIndustrialAgentTaskInstruction/);
   assert.match(execution, /Do not invent suppliers, prices, stock/);
   assert.match(execution, /externalActionStarted: false/);

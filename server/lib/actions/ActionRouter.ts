@@ -71,6 +71,7 @@ export type CreateActionRequestInput = {
   correlationId?: string | null;
   relatedConversationId?: string | null;
   relatedThreadId?: number | null;
+  metadata?: Record<string, unknown>;
   isAdmin?: boolean;
   forceApproval?: boolean;
 };
@@ -269,7 +270,7 @@ export async function createActionRequest(input: CreateActionRequestInput) {
 
   let initialStatus: ActionRequestStatus = "QUEUED";
   let policy: Record<string, unknown> = {};
-  let metadata: Record<string, unknown> = {};
+  let metadata: Record<string, unknown> = { ...(input.metadata || {}) };
   let lifecycleState = "QUEUED";
   let initialErrorCode: string | null = null;
   let initialErrorMessage: string | null = null;

@@ -37,6 +37,7 @@ import { hydrateTenantUserAccess } from "../lib/tenantUserAccess";
 import { getOrCreateWalletAccount } from "../lib/wallet/wallet";
 import { getDefaultEceOnboardingConfig, getEceOnboardingConfig } from "../lib/ece-onboarding";
 import { ensureEceAgentsTables } from "../lib/ece-agents/ensureTables";
+import { isPublishedSeedCredential } from "../lib/auth/publishedSeedCredential";
 import {
   getWhatsAppOtpHealth,
   isOtpCode,
@@ -1770,6 +1771,49 @@ router.post("/auth/login", async (req, res) => {
         userAgent: req.headers["user-agent"],
       });
       return res.status(403).json({ message: "Account is disabled" });
+    }
+
+    if (
+      isPublishedSeedCredential({
+        email: emailLower,
+        password,
+        nodeEnv: process.env.NODE_ENV,
+      })
+    ) {
+      const metadata = {
+        ...normalizeMetadata((user as any).metadata),
+        mustChangePassword: true,
+        credentialRotationReason: "published_seed_credential",
+      };
+
+      await db
+        .update(eceUsers)
+        .set({ metadata, updatedAt: new Date() })
+        .where(eq(eceUsers.id, user.id));
+
+      await db.insert(auditLogs).values({
+        tenantId,
+        userId: user.id,
+        userRole: (user as any).currentMode || "admin",
+        action: "login_blocked_published_seed_credential",
+        entityType: "user",
+        entityId: user.id,
+        ipAddress: req.ip,
+        userAgent: req.headers["user-agent"],
+      });
+
+      console.warn("[ECE] Login blocked: published setup credential", {
+        tenantId,
+        userId: user.id,
+        email: maskedEmail,
+        ip: req.ip,
+        userAgent: req.headers["user-agent"],
+      });
+
+      return res.status(403).json({
+        message: "This administrator password has been retired. Use an existing signed-in session to change it, or request a one-time setup link.",
+        code: "PASSWORD_ROTATION_REQUIRED",
+      });
     }
 
     const effectiveUser = await hydrateTenantUserAccess(user, tenantId);

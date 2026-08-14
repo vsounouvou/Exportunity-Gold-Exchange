@@ -82,13 +82,13 @@ export function AdminPasswordChangePage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 flex items-center justify-center p-6">
-      <Card className="w-full max-w-md bg-gray-900 border-gray-800">
+    <div className="flex min-h-screen items-center justify-center bg-[#F7F8FA] p-6 text-slate-950">
+      <Card className="w-full max-w-md border-slate-200 bg-white shadow-[0_20px_55px_rgba(15,23,42,0.12)]">
         <CardHeader className="text-center space-y-3">
           <BrandLockup subtitle="Admin Console" />
-          <CardTitle className="text-2xl text-white">Change Password</CardTitle>
-          <CardDescription className="text-gray-400">
-            Your account requires a password update before continuing.
+          <CardTitle className="text-2xl text-slate-950">Secure your administrator account</CardTitle>
+          <CardDescription className="text-slate-600">
+            Replace the initial setup password before returning to the Operations Center.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -99,12 +99,12 @@ export function AdminPasswordChangePage() {
                 name="currentPassword"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-gray-300">Current password</FormLabel>
+                    <FormLabel className="text-slate-700">Current password</FormLabel>
                     <FormControl>
                       <Input
                         type="password"
                         placeholder="Enter current password"
-                        className="bg-gray-800 border-gray-700 text-white"
+                        className="border-slate-300 bg-white text-slate-950"
                         {...field}
                       />
                     </FormControl>
@@ -118,12 +118,12 @@ export function AdminPasswordChangePage() {
                 name="newPassword"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-gray-300">New password</FormLabel>
+                    <FormLabel className="text-slate-700">New password</FormLabel>
                     <FormControl>
                       <Input
                         type="password"
                         placeholder="Create a new password"
-                        className="bg-gray-800 border-gray-700 text-white"
+                        className="border-slate-300 bg-white text-slate-950"
                         {...field}
                       />
                     </FormControl>
@@ -137,12 +137,12 @@ export function AdminPasswordChangePage() {
                 name="confirmPassword"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-gray-300">Confirm new password</FormLabel>
+                    <FormLabel className="text-slate-700">Confirm new password</FormLabel>
                     <FormControl>
                       <Input
                         type="password"
                         placeholder="Confirm new password"
-                        className="bg-gray-800 border-gray-700 text-white"
+                        className="border-slate-300 bg-white text-slate-950"
                         {...field}
                       />
                     </FormControl>

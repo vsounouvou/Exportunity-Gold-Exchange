@@ -217,6 +217,12 @@ test("product and quote journeys use Awa's progressive commercial conversation",
   );
   assert.match(assistant, /data-conversation-mode=/);
   assert.match(assistant, /exportunity_ai_product_order/);
+  assert.match(
+    assistant,
+    /intent: "BUY_PRODUCT"[\s\S]*?missingFields: \["product\.quantity", "destination"\]/,
+  );
+  assert.match(assistant, /nextCommercialQualificationStep/);
+  assert.match(assistant, /unresolvedCommercialQualificationFields/);
   assert.match(hub, /const withSelectedMarket = \(href: string\)/);
   assert.match(
     hub,

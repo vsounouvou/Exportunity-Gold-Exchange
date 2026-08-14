@@ -9,6 +9,12 @@ import {
 } from "lucide-react";
 
 import { VoiceToTextButton } from "@/components/chat/VoiceToTextButton";
+import {
+  nextCommercialQualificationStep,
+  unresolvedCommercialQualificationFields,
+  type CommercialQualificationStep,
+  type CommercialQualificationValues,
+} from "@/components/exportunity/commercialQualification";
 import { cn } from "@/lib/utils";
 
 type Language = "fr" | "en";
@@ -90,6 +96,7 @@ type IntakePreview = {
 
 type ConversationStep =
   | "need"
+  | "product"
   | "quantity"
   | "destination"
   | "timing"
@@ -479,6 +486,8 @@ export function IndustrialAssistantChat({
             "fichiers techniques joints comme elements de preuve prives pour la revue interne",
           submissionError:
             "Le dossier n'a pas pu etre enregistre. Verifiez les informations puis reessayez.",
+          productQuestion:
+            "Quel produit, composant ou equipement recherchez-vous exactement ?",
           quantityQuestion:
             "Quelle quantite ou quel volume souhaitez-vous commander ?",
           destinationQuestion:
@@ -558,6 +567,7 @@ export function IndustrialAssistantChat({
           noteAdded:
             "J'ajoute cette precision au dossier. Confirmez lorsque le recapitulatif vous convient.",
           summary: "Votre demande",
+          productLabel: "Produit",
           quantity: "Quantite",
           destination: "Livraison",
           timing: "Delai souhaite",
@@ -623,6 +633,8 @@ export function IndustrialAssistantChat({
             "technical files attached as private evidence for internal review",
           submissionError:
             "The case could not be saved. Check the information and try again.",
+          productQuestion:
+            "Which exact product, component, or equipment are you looking for?",
           quantityQuestion: "What quantity or volume would you like to order?",
           destinationQuestion:
             "Where should the order be delivered? Enter a city, country, or port.",
@@ -697,6 +709,7 @@ export function IndustrialAssistantChat({
           noteAdded:
             "I added that detail to the case. Confirm when the summary looks right.",
           summary: "Your request",
+          productLabel: "Product",
           quantity: "Quantity",
           destination: "Delivery",
           timing: "Needed by",
@@ -786,6 +799,16 @@ export function IndustrialAssistantChat({
             ? `Commande de ${product.name}`
             : `Order for ${product.name}`,
         urgency: "standard",
+        intent: "BUY_PRODUCT",
+        confidence: 0.99,
+        commercial: true,
+        product: {
+          name: product.name,
+          category: product.categoryCode,
+          unit: product.unitOfMeasure || undefined,
+        },
+        missingFields: ["product.quantity", "destination"],
+        suggestedAction: "ASK",
       }
     : null;
   const initialStep: ConversationStep = product ? "quantity" : "need";
@@ -797,6 +820,7 @@ export function IndustrialAssistantChat({
   const [intake, setIntake] = useState<IntakePreview | null>(initialIntake);
   const [step, setStep] = useState<ConversationStep>(initialStep);
   const [initialNeed, setInitialNeed] = useState("");
+  const [productName, setProductName] = useState(product?.name || "");
   const [quantityText, setQuantityText] = useState("");
   const [destination, setDestination] = useState("");
   const [requiredBy, setRequiredBy] = useState("");
@@ -839,6 +863,7 @@ export function IndustrialAssistantChat({
     setIntake(initialIntake);
     setStep(initialStep);
     setInitialNeed("");
+    setProductName(product?.name || "");
     setQuantityText("");
     setDestination("");
     setRequiredBy("");
@@ -856,7 +881,7 @@ export function IndustrialAssistantChat({
     setCaseAssignee(null);
     setAttachmentSession(null);
     setError(null);
-  }, [activeGreeting, language, product?.id]);
+  }, [activeGreeting, language, product?.id, product?.name]);
 
   useEffect(() => {
     if (requester?.displayName) setRequesterName(requester.displayName);
@@ -903,45 +928,67 @@ export function IndustrialAssistantChat({
     ask("company", copy.companyQuestion);
   };
 
-  const continueAfterCoreRequirement = () => {
-    const requiresTradeQualification =
-      globalTradeIntake ||
-      Boolean(
-        intake?.commercial &&
-          ["raw_material", "export_quotation"].includes(
-            intake.requirementType,
-          ),
-      );
-    if (requiresTradeQualification) {
-      if (!frequency) {
-        ask("frequency", copy.frequencyQuestion);
-        return;
-      }
-      if (!originPreference) {
-        ask("origin", copy.originQuestion);
-        return;
-      }
-      if (!qualityRequirements) {
-        ask("quality", copy.qualityQuestion);
-        return;
-      }
-      if (!incoterm) {
-        ask("incoterm", copy.incotermQuestion);
-        return;
-      }
-      if (!budget) {
-        ask("budget", copy.budgetQuestion);
-        return;
-      }
-      if (!confidentiality) {
-        ask("confidentiality", copy.confidentialityQuestion);
-        return;
-      }
-      if (!preferredCommunication) {
-        ask("communication", copy.communicationQuestion);
-        return;
-      }
-      continueToContact();
+  const qualificationValues = (
+    overrides: Partial<CommercialQualificationValues> = {},
+  ): CommercialQualificationValues => ({
+    productName:
+      overrides.productName !== undefined
+        ? overrides.productName
+        : productName || intake?.product?.name || product?.name || "",
+    quantity:
+      overrides.quantity !== undefined ? overrides.quantity : quantityText,
+    destination:
+      overrides.destination !== undefined
+        ? overrides.destination
+        : destination,
+    deadline:
+      overrides.deadline !== undefined ? overrides.deadline : requiredBy,
+    origin:
+      overrides.origin !== undefined ? overrides.origin : originPreference,
+    specification:
+      overrides.specification !== undefined
+        ? overrides.specification
+        : qualityRequirements || intake?.product?.specification || "",
+    frequency:
+      overrides.frequency !== undefined ? overrides.frequency : frequency,
+    incoterm:
+      overrides.incoterm !== undefined ? overrides.incoterm : incoterm,
+    targetPrice:
+      overrides.targetPrice !== undefined ? overrides.targetPrice : budget,
+  });
+
+  const qualificationQuestion = (next: CommercialQualificationStep) => {
+    switch (next) {
+      case "product":
+        return copy.productQuestion;
+      case "quantity":
+        return activeQuantityQuestion;
+      case "destination":
+        return copy.destinationQuestion;
+      case "timing":
+        return copy.timingQuestion;
+      case "origin":
+        return copy.originQuestion;
+      case "quality":
+        return copy.qualityQuestion;
+      case "frequency":
+        return copy.frequencyQuestion;
+      case "incoterm":
+        return copy.incotermQuestion;
+      case "budget":
+        return copy.budgetQuestion;
+    }
+  };
+
+  const continueAfterCoreRequirement = (
+    overrides: Partial<CommercialQualificationValues> = {},
+  ) => {
+    const nextQualification = nextCommercialQualificationStep(
+      intake?.missingFields,
+      qualificationValues(overrides),
+    );
+    if (nextQualification) {
+      ask(nextQualification, qualificationQuestion(nextQualification));
       return;
     }
     continueToContact();
@@ -949,7 +996,7 @@ export function IndustrialAssistantChat({
 
   const requirementDetails = () =>
     [
-      product ? `Product: ${product.name}` : initialNeed,
+      productName ? `Product: ${productName}` : initialNeed,
       product?.factoryName ? `Producer: ${product.factoryName}` : "",
       product?.reference ? `Reference: ${product.reference}` : "",
       quantityText ? `Quantity: ${quantityText}` : "",
@@ -986,6 +1033,16 @@ export function IndustrialAssistantChat({
     let createdReference: string | null = null;
     let activeAttachmentSession: AttachmentSession | null = null;
     try {
+      const unresolvedQualification =
+        unresolvedCommercialQualificationFields(
+          intake.missingFields,
+          qualificationValues(),
+        );
+      const resolvedSuggestedAction = intake.commercial
+        ? unresolvedQualification.length
+          ? "ASK"
+          : "ACT"
+        : intake.suggestedAction || "ANSWER";
       const technicalDetails: Record<string, string> = {
         intakeSource: product
           ? "exportunity_ai_product_order"
@@ -1009,11 +1066,12 @@ export function IndustrialAssistantChat({
         commercialIntent: intake.intent || "GENERAL_QUESTION",
         commercialStage: "QUALIFYING",
         intentConfidence: String(intake.confidence || 0),
-        suggestedAction: intake.suggestedAction || "ASK",
-        missingFields: (intake.missingFields || []).join(","),
+        suggestedAction: resolvedSuggestedAction,
+        missingFields: unresolvedQualification.join(","),
       };
-      if (intake.product?.name)
-        technicalDetails.detectedProductName = intake.product.name;
+      if (intake.product?.name || productName)
+        technicalDetails.detectedProductName =
+          intake.product?.name || productName;
       if (intake.product?.category)
         technicalDetails.detectedProductCategory = intake.product.category;
       if (intake.product?.specification)
@@ -1070,9 +1128,10 @@ export function IndustrialAssistantChat({
           commercialContext: {
             intent: intake.intent || "GENERAL_QUESTION",
             confidence: intake.confidence || 0,
-            suggestedAction: intake.suggestedAction || "ASK",
+            suggestedAction: resolvedSuggestedAction,
             product: {
-              name: intake.product?.name || product?.name || undefined,
+              name:
+                intake.product?.name || productName || product?.name || undefined,
               category: intake.product?.category || undefined,
               specification:
                 intake.product?.specification || qualityRequirements || undefined,
@@ -1087,7 +1146,7 @@ export function IndustrialAssistantChat({
             frequency: intake.frequency || frequency || undefined,
             incoterm: intake.incoterm || incoterm || undefined,
             customerType: intake.customerType || undefined,
-            missingFields: intake.missingFields || [],
+            missingFields: unresolvedQualification,
             sourceConversationId: conversationIdRef.current,
           },
         }),
@@ -1208,6 +1267,8 @@ export function IndustrialAssistantChat({
         const nextIncoterm = String(nextIntake.incoterm || "");
         const nextBudget = String(nextIntake.targetPrice || "");
         setIntake(nextIntake);
+        if (nextIntake.product?.name)
+          setProductName(nextIntake.product.name);
         if (nextQuantity) setQuantityText(nextQuantity);
         if (nextDestination) setDestination(nextDestination);
         if (nextRequiredBy) setRequiredBy(nextRequiredBy);
@@ -1238,7 +1299,39 @@ export function IndustrialAssistantChat({
 
         let nextStep: ConversationStep;
         let nextQuestion: string;
-        if (!nextQuantity) {
+        const commercialQualificationStep = nextCommercialQualificationStep(
+          nextIntake.missingFields,
+          {
+            productName:
+              nextIntake.product?.name || productName || product?.name || "",
+            quantity: nextQuantity,
+            destination: nextDestination,
+            deadline: nextRequiredBy,
+            origin: nextOrigin,
+            specification: nextQuality,
+            frequency: nextFrequency,
+            incoterm: nextIncoterm,
+            targetPrice: nextBudget,
+          },
+        );
+        if (
+          (nextIntake.commercial || globalTradeIntake) &&
+          commercialQualificationStep
+        ) {
+          nextStep = commercialQualificationStep;
+          nextQuestion = qualificationQuestion(commercialQualificationStep);
+        } else if (nextIntake.commercial || globalTradeIntake) {
+          nextStep = requesterName.trim()
+            ? requesterEmail.trim()
+              ? "company"
+              : "email"
+            : "name";
+          nextQuestion = requesterName.trim()
+            ? requesterEmail.trim()
+              ? copy.companyQuestion
+              : copy.emailQuestion
+            : copy.nameQuestion;
+        } else if (!nextQuantity) {
           nextStep = "quantity";
           nextQuestion = quantityQuestionForRequirement(
             nextIntake.requirementType,
@@ -1253,34 +1346,6 @@ export function IndustrialAssistantChat({
         } else if (!nextPriority) {
           nextStep = "priority";
           nextQuestion = copy.priorityQuestion;
-        } else if (
-          globalTradeIntake ||
-          Boolean(
-            nextIntake.commercial &&
-              ["raw_material", "export_quotation"].includes(
-                nextIntake.requirementType,
-              ),
-          )
-        ) {
-          if (!nextFrequency) {
-            nextStep = "frequency";
-            nextQuestion = copy.frequencyQuestion;
-          } else if (!nextOrigin) {
-            nextStep = "origin";
-            nextQuestion = copy.originQuestion;
-          } else if (!nextQuality) {
-            nextStep = "quality";
-            nextQuestion = copy.qualityQuestion;
-          } else if (!nextIncoterm) {
-            nextStep = "incoterm";
-            nextQuestion = copy.incotermQuestion;
-          } else if (!nextBudget) {
-            nextStep = "budget";
-            nextQuestion = copy.budgetQuestion;
-          } else {
-            nextStep = "confidentiality";
-            nextQuestion = copy.confidentialityQuestion;
-          }
         } else {
           nextStep = requesterName.trim()
             ? requesterEmail.trim()
@@ -1313,8 +1378,26 @@ export function IndustrialAssistantChat({
       return;
     }
 
+    if (step === "product") {
+      setProductName(message);
+      setIntake((current) =>
+        current
+          ? {
+              ...current,
+              product: { ...current.product, name: message },
+            }
+          : current,
+      );
+      continueAfterCoreRequirement({ productName: message });
+      return;
+    }
+
     if (step === "quantity") {
       setQuantityText(message);
+      if (intake?.commercial || globalTradeIntake) {
+        continueAfterCoreRequirement({ quantity: message });
+        return;
+      }
       if (!destination) ask("destination", copy.destinationQuestion);
       else if (!requiredBy) ask("timing", copy.timingQuestion);
       else if (!purchasePriority) ask("priority", copy.priorityQuestion);
@@ -1324,6 +1407,10 @@ export function IndustrialAssistantChat({
 
     if (step === "destination") {
       setDestination(message);
+      if (intake?.commercial || globalTradeIntake) {
+        continueAfterCoreRequirement({ destination: message });
+        return;
+      }
       if (!requiredBy) ask("timing", copy.timingQuestion);
       else if (!purchasePriority) ask("priority", copy.priorityQuestion);
       else continueAfterCoreRequirement();
@@ -1332,6 +1419,10 @@ export function IndustrialAssistantChat({
 
     if (step === "timing") {
       setRequiredBy(message);
+      if (intake?.commercial || globalTradeIntake) {
+        continueAfterCoreRequirement({ deadline: message });
+        return;
+      }
       if (!purchasePriority) ask("priority", copy.priorityQuestion);
       else continueAfterCoreRequirement();
       return;
@@ -1345,31 +1436,31 @@ export function IndustrialAssistantChat({
 
     if (step === "frequency") {
       setFrequency(message);
-      ask("origin", copy.originQuestion);
+      continueAfterCoreRequirement({ frequency: message });
       return;
     }
 
     if (step === "origin") {
       setOriginPreference(message);
-      ask("quality", copy.qualityQuestion);
+      continueAfterCoreRequirement({ origin: message });
       return;
     }
 
     if (step === "quality") {
       setQualityRequirements(message);
-      ask("incoterm", copy.incotermQuestion);
+      continueAfterCoreRequirement({ specification: message });
       return;
     }
 
     if (step === "incoterm") {
       setIncoterm(message);
-      ask("budget", copy.budgetQuestion);
+      continueAfterCoreRequirement({ incoterm: message });
       return;
     }
 
     if (step === "budget") {
       setBudget(message);
-      ask("confidentiality", copy.confidentialityQuestion);
+      continueAfterCoreRequirement({ targetPrice: message });
       return;
     }
 
@@ -1691,6 +1782,16 @@ export function IndustrialAssistantChat({
             ) : null}
           </div>
           <dl className="mt-2 grid gap-x-3 gap-y-1.5 text-xs sm:grid-cols-2">
+            {productName ? (
+              <div className="min-w-0">
+                <dt className="text-slate-500 dark:text-slate-400">
+                  {copy.productLabel}
+                </dt>
+                <dd className="truncate font-medium text-slate-900 dark:text-white">
+                  {productName}
+                </dd>
+              </div>
+            ) : null}
             {product?.factoryName ? (
               <div className="min-w-0">
                 <dt className="text-slate-500 dark:text-slate-400">

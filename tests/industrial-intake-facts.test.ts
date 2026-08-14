@@ -6,6 +6,10 @@ import {
   extractIndustrialIntakeFacts,
 } from "../server/lib/industrial/intakeAssistant";
 import { resolveCommercialQualification } from "../server/lib/industrial/commercialIntentEngine";
+import {
+  nextCommercialQualificationStep,
+  unresolvedCommercialQualificationFields,
+} from "../client/src/components/exportunity/commercialQualification";
 import { scoreIndustrialSupplierCapabilityMatch } from "../server/lib/industrial/supplierCapabilities";
 import {
   buildCustomerQuoteSnapshot,
@@ -112,6 +116,76 @@ test("refined palm-oil demand keeps supplied facts and asks only for missing tra
   assert.deepEqual(preview.missingFields, ["frequency", "incoterm"]);
   assert.equal(preview.suggestedAction, "ASK");
   assert.doesNotMatch(preview.response, /CAD|plan|photo/i);
+});
+
+test("the buyer conversation asks only unresolved palm-oil terms", () => {
+  const missingFields = ["frequency", "incoterm"];
+
+  assert.equal(
+    nextCommercialQualificationStep(missingFields, {
+      productName: "Huile de palme",
+      quantity: "100 tonnes",
+      destination: "Abidjan",
+      specification: "refined",
+    }),
+    "frequency",
+  );
+  assert.equal(
+    nextCommercialQualificationStep(missingFields, {
+      productName: "Huile de palme",
+      quantity: "100 tonnes",
+      destination: "Abidjan",
+      specification: "refined",
+      frequency: "Achat ponctuel",
+    }),
+    "incoterm",
+  );
+  assert.deepEqual(
+    unresolvedCommercialQualificationFields(missingFields, {
+      productName: "Huile de palme",
+      quantity: "100 tonnes",
+      destination: "Abidjan",
+      specification: "refined",
+      frequency: "Achat ponctuel",
+      incoterm: "CIF",
+    }),
+    [],
+  );
+});
+
+test("ordinary parts and machinery avoid irrelevant commodity trade questions", () => {
+  const part = classifyIndustrialIntake(
+    "I need a replacement bearing housing.",
+    "en",
+  );
+  const machine = classifyIndustrialIntake(
+    "I need a packaging machine.",
+    "en",
+  );
+
+  assert.equal(part.intent, "BUY_PRODUCT");
+  assert.deepEqual(part.missingFields, [
+    "product.name",
+    "product.quantity",
+    "destination",
+  ]);
+  assert.equal(machine.intent, "FIND_MACHINERY");
+  assert.deepEqual(machine.missingFields, [
+    "product.name",
+    "product.quantity",
+    "destination",
+  ]);
+});
+
+test("unknown future qualification fields remain unresolved", () => {
+  assert.deepEqual(
+    unresolvedCommercialQualificationFields(["future.approval"], {}),
+    ["future.approval"],
+  );
+  assert.equal(
+    nextCommercialQualificationStep(["future.approval"], {}),
+    null,
+  );
 });
 
 test("server qualification trusts completed conversation answers, not stale preview gaps", () => {

@@ -148,11 +148,23 @@ function compact(value: unknown) {
   return String(value || "").replace(/\s+/g, " ").trim();
 }
 
+function includesProductTerm(normalized: string, term: string) {
+  const escaped = normalizeIndustrialText(term).replace(
+    /[.*+?^${}()|[\]\\]/g,
+    "\\$&",
+  );
+  return new RegExp(`(?:^|[^a-z0-9])${escaped}(?:$|[^a-z0-9])`, "u").test(
+    normalized,
+  );
+}
+
 function detectedProduct(
   normalized: string,
   language: "fr" | "en",
 ): CommercialProductIntent {
-  const match = PRODUCTS.find((entry) => includesAny(normalized, entry.terms));
+  const match = PRODUCTS.find((entry) =>
+    entry.terms.some((term) => includesProductTerm(normalized, term)),
+  );
   if (!match) return {};
   return {
     name: match.name[language],
@@ -278,6 +290,7 @@ export function missingFieldsForCommercialIntent(input: {
   const transactional = new Set<CommercialIntent>([
     "SOURCE_PRODUCT",
     "BUY_PRODUCT",
+    "FIND_MACHINERY",
     "FIND_RAW_MATERIAL",
     "REQUEST_QUOTE",
     "PLACE_ORDER",
@@ -290,8 +303,11 @@ export function missingFieldsForCommercialIntent(input: {
   if (!input.destination) missing.push("destination");
   if (input.product.category === "palm_oil" && !input.product.specification)
     missing.push("product.specification");
-  if (!input.frequency) missing.push("frequency");
-  if (!input.incoterm) missing.push("incoterm");
+  const commodityTradeTerms = PRODUCTS.some(
+    (product) => product.category === input.product.category,
+  );
+  if (commodityTradeTerms && !input.frequency) missing.push("frequency");
+  if (commodityTradeTerms && !input.incoterm) missing.push("incoterm");
   return missing;
 }
 

@@ -144,6 +144,14 @@ async function main() {
   checks.meetingCreated = createResponse.ok && Boolean(meetingId) && conversationId.startsWith("meeting:");
   if (!checks.meetingCreated) throw new Error(`Meeting creation failed (${createResponse.status})`);
 
+  const startResponse = await requestJson(`/api/meetings/${meetingId}/start`, {
+    method: "POST",
+    body: JSON.stringify({}),
+  });
+  checks.meetingStarted =
+    startResponse.ok && String(startResponse.body?.meeting?.status || "") === "in_progress";
+  if (!checks.meetingStarted) throw new Error(`Meeting start failed (${startResponse.status})`);
+
   const membersResponse = await requestJson(`/api/chatrooms/${encodeURIComponent(conversationId)}/members`);
   const members = asArray(membersResponse.body?.members || membersResponse.body);
   checks.agentMembership = membersResponse.ok && members.some((member) => positiveId(member?.agentId ?? member?.agent?.id) === agentId);
@@ -189,8 +197,11 @@ async function main() {
     method: "POST",
     body: JSON.stringify({}),
   });
-  closeStatus = String(endResponse.body?.meeting?.status || "");
-  checks.meetingClosed = endResponse.ok && closeStatus === "completed";
+  const finalMeetingResponse = await requestJson(`/api/meetings/${meetingId}`);
+  closeStatus = String(
+    endResponse.body?.meeting?.status || finalMeetingResponse.body?.status || "",
+  );
+  checks.meetingClosed = endResponse.ok && finalMeetingResponse.ok && closeStatus === "completed";
 
   const ok = Object.values(checks).every(Boolean);
   const report = {

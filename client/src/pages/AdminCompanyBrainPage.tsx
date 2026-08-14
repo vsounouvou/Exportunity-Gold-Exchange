@@ -1,14 +1,22 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
+import { Link } from "wouter";
 import {
   AlertTriangle,
   Brain,
+  Building2,
   CheckCircle2,
   ChevronRight,
+  Clock3,
   Cloud,
+  ExternalLink,
   FileCheck2,
   FileSearch,
   History,
+  LockKeyhole,
+  Mail,
+  MessageSquareText,
+  Network,
   RefreshCw,
   Scale,
   Search,
@@ -37,7 +45,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { resolveApiUrl } from "@/lib/runtimeConfig";
 
 type FeatureState = { envName: string; enabled: boolean };
-type BrainTab = "claims" | "sources" | "conflicts" | "context";
+type BrainTab = "claims" | "sources" | "conflicts" | "relationships" | "context";
 
 type SummaryResponse = {
   ok: boolean;
@@ -63,6 +71,43 @@ type SummaryResponse = {
     payload?: Record<string, unknown>;
     created_at: string;
   }>;
+};
+
+type RelationshipCandidate = {
+  id: string;
+  kind: "stalled_requirement" | "dormant_factory_relationship" | "awaiting_email_reply" | "unresolved_conversation";
+  title: string;
+  organization?: string | null;
+  person?: string | null;
+  stage?: string | null;
+  priority: "high" | "medium" | "low" | "restricted";
+  relevanceScore: number;
+  reason: string;
+  lastActivityAt?: string | null;
+  dueAt?: string | null;
+  recommendedAction: string;
+  evidence: Array<{ entityType: string; entityId: string; label: string }>;
+  restrictions: {
+    consentStatus: string;
+    isDnc: boolean;
+    externalCommunicationAllowed: false;
+    blockers: string[];
+  };
+  openPath?: string | null;
+};
+
+type RelationshipReconstructionResponse = {
+  ok: boolean;
+  mode: "read_only";
+  externalCommunicationAllowed: false;
+  candidates: RelationshipCandidate[];
+  summary: {
+    total: number;
+    highPriority: number;
+    restricted: number;
+    byKind: Record<RelationshipCandidate["kind"], number>;
+  };
+  warnings: string[];
 };
 
 type ClaimRow = {
@@ -240,6 +285,9 @@ export default function AdminCompanyBrainPage() {
   const sourcesQuery = useQuery<{ ok: boolean; sources: SourceRow[] }>({
     queryKey: [`/api/admin/company-brain/sources?search=${encodeURIComponent(search)}`],
   });
+  const relationshipsQuery = useQuery<RelationshipReconstructionResponse>({
+    queryKey: [`/api/admin/company-brain/relationship-reconstruction?search=${encodeURIComponent(search)}&limit=120`],
+  });
   const claimDetailQuery = useQuery<ClaimDetailResponse>({
     queryKey: [`/api/admin/company-brain/claims/${selectedClaimId || 0}`],
     enabled: Boolean(selectedClaimId),
@@ -267,6 +315,7 @@ export default function AdminCompanyBrainPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/company-brain/summary"] }),
       queryClient.invalidateQueries({ predicate: (query) => String(query.queryKey[0] || "").startsWith("/api/admin/company-brain/claims") }),
       queryClient.invalidateQueries({ predicate: (query) => String(query.queryKey[0] || "").startsWith("/api/admin/company-brain/sources") }),
+      queryClient.invalidateQueries({ predicate: (query) => String(query.queryKey[0] || "").startsWith("/api/admin/company-brain/relationship-reconstruction") }),
     ]);
   };
 
@@ -405,6 +454,7 @@ export default function AdminCompanyBrainPage() {
 
   const claims = claimsQuery.data?.claims || [];
   const sources = sourcesQuery.data?.sources || [];
+  const relationshipCandidates = relationshipsQuery.data?.candidates || [];
   const openConflictClaims = useMemo(() => claims.filter((claim) => numberValue(claim.open_conflict_count) > 0), [claims]);
   const counts = summaryQuery.data?.counts || {};
   const companyBrainEnabled = summaryQuery.data?.flags?.companyBrain?.enabled === true;
@@ -421,6 +471,7 @@ export default function AdminCompanyBrainPage() {
     { id: "claims", label: "Claims", icon: FileCheck2, count: numberValue(counts.claims) },
     { id: "sources", label: "Sources", icon: FileSearch, count: numberValue(counts.sources) },
     { id: "conflicts", label: "Conflicts", icon: Scale, count: numberValue(counts.open_conflicts) },
+    { id: "relationships", label: "Relationships", icon: Network, count: relationshipsQuery.data?.summary?.total || 0 },
     { id: "context", label: "Agent context", icon: Brain, count: summaryQuery.data?.recentContextPacks?.length || 0 },
   ];
 
@@ -605,6 +656,124 @@ export default function AdminCompanyBrainPage() {
                 ))}
                 {!openConflictClaims.length ? <div className="py-12 text-center"><CheckCircle2 className="mx-auto h-8 w-8 text-emerald-500" /><p className="mt-3 font-bold text-slate-700">No open conflicts</p></div> : null}
               </div>
+            </div>
+          ) : null}
+
+          {tab === "relationships" ? (
+            <div className="p-4 sm:p-6">
+              <div className="flex flex-col gap-4 border-b border-slate-200 pb-5 lg:flex-row lg:items-start lg:justify-between">
+                <div className="max-w-3xl">
+                  <h2 className="text-lg font-black text-slate-950">Relationship intelligence</h2>
+                  <p className="mt-1 text-sm leading-6 text-slate-600">
+                    Read-only reconstruction from canonical contacts, industrial requirements, factory relationships, recorded email threads and website conversations. Every signal remains a review candidate until a person confirms its meaning.
+                  </p>
+                </div>
+                <div className="flex shrink-0 items-center gap-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-950">
+                  <LockKeyhole className="h-4 w-4" />
+                  External communication disabled
+                </div>
+              </div>
+
+              {relationshipsQuery.data?.warnings?.length ? (
+                <div className="mt-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+                  <div className="font-black">Some evidence sources are unavailable</div>
+                  <div className="mt-1 leading-6">{relationshipsQuery.data.warnings.join(" ")}</div>
+                </div>
+              ) : null}
+
+              <div className="mt-5 grid gap-3 sm:grid-cols-3" aria-label="Relationship reconstruction summary">
+                <div className="border-l-4 border-[#f5a623] bg-slate-50 px-4 py-3">
+                  <div className="text-xs font-bold uppercase text-slate-500">Review candidates</div>
+                  <div className="mt-1 text-2xl font-black text-slate-950">{relationshipsQuery.data?.summary?.total || 0}</div>
+                </div>
+                <div className="border-l-4 border-red-500 bg-slate-50 px-4 py-3">
+                  <div className="text-xs font-bold uppercase text-slate-500">High priority</div>
+                  <div className="mt-1 text-2xl font-black text-slate-950">{relationshipsQuery.data?.summary?.highPriority || 0}</div>
+                </div>
+                <div className="border-l-4 border-slate-500 bg-slate-50 px-4 py-3">
+                  <div className="text-xs font-bold uppercase text-slate-500">Contact restricted</div>
+                  <div className="mt-1 text-2xl font-black text-slate-950">{relationshipsQuery.data?.summary?.restricted || 0}</div>
+                </div>
+              </div>
+
+              {relationshipsQuery.isLoading ? (
+                <div className="flex min-h-[360px] items-center justify-center text-sm text-slate-500">
+                  <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> Reconstructing relationship signals from recorded evidence...
+                </div>
+              ) : relationshipsQuery.isError ? (
+                <div className="mt-5 rounded-md border border-red-200 bg-red-50 p-5 text-sm text-red-900">
+                  Relationship reconstruction could not be loaded. Confirm the administrator session and Company Brain feature status.
+                </div>
+              ) : relationshipCandidates.length ? (
+                <div className="mt-5 divide-y divide-slate-200 border-y border-slate-200">
+                  {relationshipCandidates.map((candidate) => {
+                    const CandidateIcon = candidate.kind === "stalled_requirement"
+                      ? Clock3
+                      : candidate.kind === "dormant_factory_relationship"
+                        ? Building2
+                        : candidate.kind === "awaiting_email_reply"
+                          ? Mail
+                          : MessageSquareText;
+                    const priorityClass = candidate.priority === "high"
+                      ? "border-red-200 bg-red-50 text-red-800"
+                      : candidate.priority === "restricted"
+                        ? "border-slate-300 bg-slate-100 text-slate-700"
+                        : candidate.priority === "medium"
+                          ? "border-amber-200 bg-amber-50 text-amber-900"
+                          : "border-emerald-200 bg-emerald-50 text-emerald-800";
+                    return (
+                      <article key={candidate.id} className="py-5">
+                        <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
+                          <div className="flex min-w-0 flex-1 gap-3">
+                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-[#07111f] text-[#f5a623]">
+                              <CandidateIcon className="h-5 w-5" />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <h3 className="break-words font-black text-slate-950">{candidate.title}</h3>
+                                <span className={`rounded-full border px-2 py-0.5 text-[11px] font-black uppercase ${priorityClass}`}>{candidate.priority}</span>
+                                <span className="text-xs font-bold text-slate-500">Relevance {candidate.relevanceScore}/100</span>
+                              </div>
+                              {(candidate.organization || candidate.person) ? (
+                                <div className="mt-1 text-sm text-slate-600">{[candidate.organization, candidate.person].filter(Boolean).join(" / ")}</div>
+                              ) : null}
+                              <p className="mt-3 max-w-4xl text-sm leading-6 text-slate-700">{candidate.reason}</p>
+                              <div className="mt-3 border-l-2 border-[#f5a623] pl-3">
+                                <div className="text-xs font-black uppercase text-slate-500">Recommended internal action</div>
+                                <p className="mt-1 text-sm leading-6 text-slate-800">{candidate.recommendedAction}</p>
+                              </div>
+                              <div className="mt-3 flex flex-wrap gap-2">
+                                {candidate.evidence.map((evidence) => (
+                                  <span key={`${candidate.id}:${evidence.entityType}:${evidence.entityId}`} className="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-bold text-slate-600">
+                                    {evidence.label} #{evidence.entityId}
+                                  </span>
+                                ))}
+                              </div>
+                              <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-slate-500">
+                                {candidate.stage ? <span>Stage: <strong className="text-slate-700">{humanize(candidate.stage)}</strong></span> : null}
+                                {candidate.lastActivityAt ? <span>Last recorded activity: <strong className="text-slate-700">{formatDate(candidate.lastActivityAt)}</strong></span> : null}
+                                <span>Consent: <strong className="text-slate-700">{humanize(candidate.restrictions.consentStatus)}</strong></span>
+                                {candidate.restrictions.isDnc ? <span className="font-black text-red-700">Do not contact</span> : null}
+                              </div>
+                            </div>
+                          </div>
+                          {candidate.openPath ? (
+                            <Button asChild variant="outline" className="shrink-0 rounded-md border-slate-300 bg-white text-slate-800 hover:bg-slate-50">
+                              <Link href={candidate.openPath}>Open record <ExternalLink className="ml-2 h-4 w-4" /></Link>
+                            </Button>
+                          ) : null}
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="py-16 text-center">
+                  <CheckCircle2 className="mx-auto h-9 w-9 text-emerald-500" />
+                  <h3 className="mt-3 font-black text-slate-900">No relationship review candidates</h3>
+                  <p className="mt-2 text-sm text-slate-500">No supported dormant or unresolved record matches the current filter.</p>
+                </div>
+              )}
             </div>
           ) : null}
 

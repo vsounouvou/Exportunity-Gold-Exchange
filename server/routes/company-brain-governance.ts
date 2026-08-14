@@ -16,6 +16,12 @@ import { getCompanyBrainFeatureStatus, isCompanyBrainFeatureEnabled } from "../l
 import { evaluateCompanyBrainClaimReview } from "../lib/company-brain/governancePolicy";
 import { persistManualCompanyBrainEvidence } from "../lib/company-brain/manualEvidence";
 import { resolvePrivateCompanyBrainEvidence } from "../lib/company-brain/manualEvidenceStorage";
+import {
+  buildRelationshipCandidate,
+  RELATIONSHIP_RECONSTRUCTION_MODE,
+  summarizeRelationshipCandidates,
+  type RelationshipCandidate,
+} from "../lib/company-brain/relationshipReconstruction";
 import { ensureTenantAdmin } from "./utils/auth";
 
 const router = Router();
@@ -81,6 +87,19 @@ function assertCompanyBrainEnabled() {
     const error = new Error("Company Brain is disabled. Enable FEATURE_COMPANY_BRAIN first.");
     (error as any).status = 503;
     throw error;
+  }
+}
+
+async function safelyReadRelationshipRows(
+  source: string,
+  reader: () => Promise<any>,
+  warnings: string[],
+) {
+  try {
+    return rowsOf(await reader());
+  } catch {
+    warnings.push(`${source} records are not available in this environment.`);
+    return [];
   }
 }
 
@@ -211,6 +230,308 @@ router.get("/summary", async (req: any, res) => {
     });
   } catch (error) {
     res.status(statusOf(error)).json({ message: error instanceof Error ? error.message : String(error) });
+  }
+});
+
+router.get("/relationship-reconstruction", async (req: any, res) => {
+  try {
+    assertCompanyBrainEnabled();
+    const tenantId = tenantIdFromReq(req);
+    const search = asText(req.query.search).slice(0, 160).toLowerCase();
+    const requestedLimit = Number(req.query.limit || 100);
+    const limit = Number.isFinite(requestedLimit)
+      ? Math.max(1, Math.min(200, Math.trunc(requestedLimit)))
+      : 100;
+    const sourceLimit = Math.min(250, Math.max(limit * 2, 50));
+    const warnings: string[] = [];
+
+    const [requirementRows, factoryRows, emailRows, conversationRows] = await Promise.all([
+      safelyReadRelationshipRows("Industrial requirement", () => db.execute(sql`
+        select
+          ir.id::text as entity_id,
+          ir.reference_code,
+          ir.title,
+          ir.requester_company,
+          ir.requester_name,
+          ir.customer_contact_id,
+          ir.status::text,
+          ir.next_action,
+          ir.next_action_at,
+          ir.updated_at,
+          ir.source_conversation_id,
+          ipr.product_name,
+          ipr.quantity_text as product_quantity,
+          ipr.destination,
+          coalesce(tc.consent_status::text, c.consent_status::text, 'unknown') as consent_status,
+          coalesce(tc.is_dnc, c.is_dnc, false) as is_dnc,
+          (select count(*)::int from industrial_quotes iq where iq.requirement_id = ir.id and iq.tenant_id = ir.tenant_id) as quote_count,
+          (select count(*)::int from industrial_commercial_offers ico where ico.requirement_id = ir.id and ico.tenant_id = ir.tenant_id) as offer_count
+        from industrial_requirements ir
+        left join industrial_product_requirements ipr
+          on ipr.requirement_id = ir.id and ipr.tenant_id = ir.tenant_id
+        left join contacts c on c.id = ir.customer_contact_id
+        left join tenant_contacts tc
+          on tc.tenant_id = ir.tenant_id and tc.contact_id = ir.customer_contact_id
+        where ir.tenant_id = ${tenantId}
+          and ir.status not in ('closed'::industrial_requirement_status, 'cancelled'::industrial_requirement_status)
+          and (
+            (ir.next_action_at is not null and ir.next_action_at <= now())
+            or ir.updated_at <= now() - interval '14 days'
+          )
+        order by ir.next_action_at asc nulls last, ir.updated_at asc
+        limit ${sourceLimit}
+      `), warnings),
+      safelyReadRelationshipRows("Factory relationship", () => db.execute(sql`
+        select
+          rel.id::text as entity_id,
+          rel.factory_id::text,
+          rel.stage::text,
+          rel.next_action,
+          rel.next_review_at,
+          rel.last_contacted_at,
+          rel.updated_at,
+          f.display_name,
+          f.legal_name,
+          f.city,
+          f.country_code,
+          f.primary_industry
+        from industrial_factory_relationships rel
+        join industrial_factories f
+          on f.id = rel.factory_id and f.tenant_id = rel.tenant_id
+        where rel.tenant_id = ${tenantId}
+          and rel.stage <> 'disqualified'::industrial_factory_relationship_stage
+          and (
+            rel.stage = 'dormant'::industrial_factory_relationship_stage
+            or (rel.next_review_at is not null and rel.next_review_at <= now())
+            or (
+              rel.last_contacted_at is not null
+              and rel.last_contacted_at <= now() - interval '90 days'
+            )
+          )
+        order by rel.next_review_at asc nulls last, rel.last_contacted_at asc nulls last
+        limit ${sourceLimit}
+      `), warnings),
+      safelyReadRelationshipRows("Email thread", () => db.execute(sql`
+        with latest_message as (
+          select distinct on (em.thread_id)
+            em.thread_id,
+            em.id,
+            em.direction,
+            em.status,
+            em.from_email,
+            em.to_json,
+            em.subject,
+            em.created_at
+          from email_messages em
+          where em.tenant_id = ${tenantId} and em.thread_id is not null
+          order by em.thread_id, em.created_at desc, em.id desc
+        )
+        select
+          et.id::text as entity_id,
+          coalesce(lm.subject, et.subject, 'Email conversation') as subject,
+          lm.created_at as last_message_at,
+          coalesce(lm.to_json ->> 0, '') as peer_email,
+          c.id as contact_id,
+          coalesce(c.display_name, trim(concat_ws(' ', c.given_name, c.family_name)), trim(concat_ws(' ', c.first_name, c.last_name))) as contact_name,
+          c.company as contact_company,
+          coalesce(tc.consent_status::text, c.consent_status::text, 'unknown') as consent_status,
+          coalesce(tc.is_dnc, c.is_dnc, false) as is_dnc
+        from email_threads et
+        join latest_message lm on lm.thread_id = et.id
+        left join lateral (
+          select person.*
+          from contacts person
+          join tenant_contacts tenant_person
+            on tenant_person.contact_id = person.id and tenant_person.tenant_id = ${tenantId}
+          where lower(coalesce(person.primary_email, person.email, '')) = lower(coalesce(lm.to_json ->> 0, ''))
+          order by person.updated_at desc
+          limit 1
+        ) c on true
+        left join tenant_contacts tc on tc.tenant_id = ${tenantId} and tc.contact_id = c.id
+        where et.tenant_id = ${tenantId}
+          and lm.direction = 'outbound'
+          and lm.status = 'sent'
+          and lm.created_at <= now() - interval '7 days'
+        order by lm.created_at asc
+        limit ${sourceLimit}
+      `), warnings),
+      safelyReadRelationshipRows("Website conversation", () => db.execute(sql`
+        select
+          lead.id::text as entity_id,
+          lead.intent,
+          lead.name,
+          lead.email,
+          lead.country,
+          lead.summary,
+          lead.status::text,
+          lead.updated_at,
+          c.id as contact_id,
+          c.company as contact_company,
+          coalesce(tc.consent_status::text, c.consent_status::text, 'unknown') as consent_status,
+          coalesce(tc.is_dnc, c.is_dnc, false) as is_dnc
+        from chat_leads lead
+        left join lateral (
+          select person.*
+          from contacts person
+          join tenant_contacts tenant_person
+            on tenant_person.contact_id = person.id and tenant_person.tenant_id = ${tenantId}
+          where lead.email is not null
+            and lower(coalesce(person.primary_email, person.email, '')) = lower(lead.email)
+          order by person.updated_at desc
+          limit 1
+        ) c on true
+        left join tenant_contacts tc on tc.tenant_id = ${tenantId} and tc.contact_id = c.id
+        where lead.tenant_id = ${tenantId}
+          and lead.status in ('new'::chat_lead_status, 'triaged'::chat_lead_status)
+          and lead.updated_at <= now() - interval '1 day'
+        order by lead.updated_at asc
+        limit ${sourceLimit}
+      `), warnings),
+    ]);
+
+    const candidates: RelationshipCandidate[] = [];
+    for (const row of requirementRows) {
+      const quoteCount = Number(row.quote_count || 0);
+      const offerCount = Number(row.offer_count || 0);
+      const facts = [
+        `The requirement ${row.reference_code} remains in ${String(row.status || "open").replaceAll("_", " ")} status.`,
+        quoteCount ? `${quoteCount} customer quote record(s) are linked.` : "",
+        offerCount ? `${offerCount} internal commercial offer record(s) are linked.` : "",
+      ].filter(Boolean);
+      candidates.push(buildRelationshipCandidate({
+        id: `requirement:${row.entity_id}`,
+        kind: "stalled_requirement",
+        title: row.product_name || row.title || `Requirement ${row.reference_code}`,
+        organization: row.requester_company,
+        person: row.requester_name,
+        stage: row.status,
+        lastActivityAt: row.updated_at,
+        dueAt: row.next_action_at,
+        nextAction: row.next_action,
+        facts,
+        evidence: [
+          { entityType: "industrial_requirement", entityId: String(row.entity_id), label: String(row.reference_code) },
+          ...(row.customer_contact_id
+            ? [{ entityType: "contact", entityId: String(row.customer_contact_id), label: "Canonical contact" }]
+            : []),
+          ...(row.source_conversation_id
+            ? [{ entityType: "conversation", entityId: String(row.source_conversation_id), label: "Source conversation" }]
+            : []),
+        ],
+        consentStatus: row.consent_status,
+        isDnc: row.is_dnc,
+        commercialEvidenceCount: quoteCount + offerCount,
+        openPath: `/admin/industrial-network?requirement=${encodeURIComponent(String(row.entity_id))}`,
+      }));
+    }
+
+    for (const row of factoryRows) {
+      const location = [row.city, row.country_code].filter(Boolean).join(", ");
+      candidates.push(buildRelationshipCandidate({
+        id: `factory-relationship:${row.entity_id}`,
+        kind: "dormant_factory_relationship",
+        title: `${row.display_name || row.legal_name || "Factory"} relationship review`,
+        organization: row.display_name || row.legal_name,
+        stage: row.stage,
+        lastActivityAt: row.last_contacted_at || row.updated_at,
+        dueAt: row.next_review_at,
+        nextAction: row.next_action,
+        facts: [
+          `The recorded factory relationship is ${String(row.stage || "unreviewed").replaceAll("_", " ")}.`,
+          location ? `The factory record is located in ${location}.` : "",
+          row.primary_industry ? `Its recorded industry is ${row.primary_industry}.` : "",
+        ].filter(Boolean),
+        evidence: [
+          { entityType: "industrial_factory_relationship", entityId: String(row.entity_id), label: "Relationship record" },
+          { entityType: "industrial_factory", entityId: String(row.factory_id), label: "Factory record" },
+        ],
+        consentStatus: "unknown",
+        isDnc: false,
+        openPath: "/admin/industrial-network",
+      }));
+    }
+
+    for (const row of emailRows) {
+      candidates.push(buildRelationshipCandidate({
+        id: `email-thread:${row.entity_id}`,
+        kind: "awaiting_email_reply",
+        title: row.subject || "Email conversation",
+        organization: row.contact_company,
+        person: row.contact_name || row.peer_email,
+        stage: "awaiting_review",
+        lastActivityAt: row.last_message_at,
+        facts: [
+          "The latest stored message in this thread is a sent outbound email, and no later inbound message is recorded in the thread.",
+        ],
+        evidence: [
+          { entityType: "email_thread", entityId: String(row.entity_id), label: "Recorded email thread" },
+          ...(row.contact_id
+            ? [{ entityType: "contact", entityId: String(row.contact_id), label: "Matched canonical contact" }]
+            : []),
+        ],
+        consentStatus: row.consent_status,
+        isDnc: row.is_dnc,
+      }));
+    }
+
+    for (const row of conversationRows) {
+      candidates.push(buildRelationshipCandidate({
+        id: `conversation:${row.entity_id}`,
+        kind: "unresolved_conversation",
+        title: row.intent || "Unresolved website conversation",
+        organization: row.contact_company,
+        person: row.name || row.email,
+        stage: row.status,
+        lastActivityAt: row.updated_at,
+        facts: [
+          `The website conversation remains ${String(row.status || "open").replaceAll("_", " ")} and has no recorded closure.`,
+          row.country ? `The visitor recorded ${row.country} as the market context.` : "",
+        ].filter(Boolean),
+        evidence: [
+          { entityType: "chat_lead", entityId: String(row.entity_id), label: "Website conversation" },
+          ...(row.contact_id
+            ? [{ entityType: "contact", entityId: String(row.contact_id), label: "Matched canonical contact" }]
+            : []),
+        ],
+        consentStatus: row.consent_status,
+        isDnc: row.is_dnc,
+      }));
+    }
+
+    const priorityOrder: Record<RelationshipCandidate["priority"], number> = {
+      high: 0,
+      medium: 1,
+      low: 2,
+      restricted: 3,
+    };
+    const filtered = candidates
+      .filter((candidate) => {
+        if (!search) return true;
+        return [candidate.title, candidate.organization, candidate.person, candidate.reason, candidate.stage]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase()
+          .includes(search);
+      })
+      .sort((left, right) =>
+        priorityOrder[left.priority] - priorityOrder[right.priority]
+        || right.relevanceScore - left.relevanceScore
+        || String(left.lastActivityAt || "").localeCompare(String(right.lastActivityAt || "")),
+      )
+      .slice(0, limit);
+
+    return res.json({
+      ok: true,
+      mode: RELATIONSHIP_RECONSTRUCTION_MODE,
+      externalCommunicationAllowed: false,
+      candidates: filtered,
+      summary: summarizeRelationshipCandidates(filtered),
+      warnings,
+    });
+  } catch (error) {
+    return res.status(statusOf(error)).json({
+      message: error instanceof Error ? error.message : String(error),
+    });
   }
 });
 

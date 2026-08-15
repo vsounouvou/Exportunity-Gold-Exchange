@@ -42,6 +42,11 @@ function isExportunityMarketingHost(host: unknown, search: unknown) {
   return false;
 }
 
+function isExportunityPlatformHost(host: unknown) {
+  const normalized = normalizeHost(host);
+  return normalized === "exportunity.net" || normalized === "www.exportunity.net";
+}
+
 function isMindbaseHost(host: unknown) {
   const normalized = normalizeHost(host);
   return (
@@ -81,6 +86,7 @@ function isBdoHost(host: unknown) {
 export function canonicalizePath(pathname: string, ctx?: { host?: string; search?: string }) {
   const nextPath = pathname || "/";
   const marketingHost = isExportunityMarketingHost(ctx?.host, ctx?.search);
+  const exportunityPlatformHost = isExportunityPlatformHost(ctx?.host);
   const mindbaseHost = isMindbaseHost(ctx?.host);
   const vsHost = isVsHost(ctx?.host);
   const hozHost = isHozHost(ctx?.host);
@@ -135,7 +141,7 @@ export function canonicalizePath(pathname: string, ctx?: { host?: string; search
     return nextPath;
   }
 
-  if (nextPath === "/") return marketingHost ? "/" : "/zone";
+  if (nextPath === "/") return marketingHost || exportunityPlatformHost ? "/" : "/zone";
   if (nextPath === "/retail") return "/zone";
   if (nextPath.startsWith("/retail/")) return `/zone${nextPath.slice("/retail".length)}`;
   if (nextPath === "/about") return marketingHost ? "/our-journey" : "/about";

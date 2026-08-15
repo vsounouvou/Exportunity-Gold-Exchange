@@ -1,34 +1,45 @@
-# PME Exchange Gap Analysis
+# Industrial Supplier And PME Lead Engine Gap Analysis
 
-## Built In This Pass
+Date: 2026-08-15
 
-- PME lead database schema and migration.
-- Runtime schema guard for live environments that do not auto-run migrations.
-- Google Places client with field masks, rate/day limiter, Text Search, Nearby Search, and Details helper.
-- Google Places mapper/enrichment layer.
-- Curated Abidjan/Cotonou data engine with 200 realistic marketplace/wholesale leads.
-- Intent-aware curated fallback search for buyer and sourcing queries such as breakfast, bread, coffee, groceries, pharmacy, building materials, cement, wholesale suppliers, machinery, packaging, agricultural inputs, logistics, cold storage, manufacturers, and textiles.
-- Public `/api/maps/public-config` and `/api/places/nearby`.
-- Admin `/api/admin/pme-exchange/*` routes for status, summary, leads, map, import, Google tests, campaigns, conversations, profiles, and audit.
-- Admin PME Exchange UI with light-mode dashboard, map, import preview, lead selection, and approval-gated campaign drafts.
-- Public commerce copy now uses Retail marketplace, Wholesale, and Ready for export rather than public-facing PME Exchange language.
+## Current Product Position
 
-## Remaining Gaps
+The PME Exchange code is retained as an internal supplier/lead capability. It is not the public Exportunity homepage and must not reposition the company as a retail marketplace, crypto exchange, or public investment exchange.
 
-- Real Google Place Photos are not yet rendered in the PME admin table/map.
-- Durable cache table for Google Places responses is not yet implemented; the importer uses live API calls plus in-memory rate limiting.
-- Production Twilio send/approve flow for PME campaigns is not connected to a send button; only approval-required drafts are created.
-- Inbound WhatsApp replies are not yet automatically linked back to `pme_agent_conversations`.
-- PME Acquisition Agent can be represented in the workflow, but autonomous reply handling and structured answer extraction need a follow-up implementation.
-- Public investment listing is intentionally not enabled.
-- Back-office global color cleanup is still incomplete outside the new PME Exchange page.
-- Current live Google Maps renderer still needs a Google Map ID; current live Google Places import still needs a server Places API key and enable flag.
+Public Exportunity focuses on:
 
-## Recommended Next Slice
+- Industrial buyers and documented demand.
+- Factories and export-ready producers.
+- Machinery, spare parts, raw materials, logistics, and technical services.
+- Supplier qualification, commercial review, ordering, payment, and delivery.
 
-1. Add `google_places_cache` or reuse an existing cache/settings table with TTL and attribution.
-2. Link Twilio inbound webhook payloads to `pme_outreach_messages` and `pme_agent_conversations` by phone/campaign.
-3. Add an approval page action: approve one drafted outreach message, then send through the existing Twilio tenant sender.
-4. Add opt-out suppression table or reuse contact suppression records.
-5. Add PME profile promotion from qualified lead to internal review profile.
-6. Add agent extraction of activity, products/services, monthly sales estimate, delivery capability, and financing interest from replies.
+Any financing, royalty, revenue-share, or investment-readiness data remains admin-only and compliance-gated.
+
+## Capability Retained
+
+- Structured lead, outreach campaign, message, agent conversation, and company profile schema.
+- Server-side Google Places client with field masks, text/nearby search, mapping, enrichment, and rate controls.
+- Curated fallback records for Abidjan and Cotonou.
+- Admin lead, map, import, campaign, conversation, profile, and audit routes.
+- Draft-first outreach with approval intent.
+- Lead status and qualification foundations that can be reused for industrial suppliers and factories.
+
+## Gaps Before Industrial Use
+
+- Rename remaining public/admin retail PME language to industrial supplier, factory, exporter, or verified company language where appropriate.
+- Restrict discovery taxonomy to factories, industrial zones, manufacturers, distributors, warehouses, logistics providers, machinery, raw materials, spare parts, and export-ready producers.
+- Add durable Google response cache and atomic quota accounting.
+- Configure Google Places server credentials before live import.
+- Link imported leads to industrial requirements, sourcing cases, supplier quotes, and commercial reviews.
+- Link inbound approved-channel replies to the correct lead, company, conversation, task, and next action.
+- Add explicit consent, suppression, quiet-hour, duplicate-contact, daily-limit, and audit enforcement before any campaign can send.
+- Keep profile promotion and all financing-readiness fields internal until legal approval.
+
+## Recommended Industrial Slice
+
+1. Connect Google Workspace OAuth for evidence-backed supplier relationship reconstruction.
+2. Configure Google Places and import only industrial categories and free-zone companies.
+3. Deduplicate imported records against existing contacts, factories, suppliers, domains, phones, and prior Workspace relationships.
+4. Route qualified companies to the Sourcing Agent and Awa Kouadio for reviewed commercial follow-up.
+5. Keep outreach in draft until the Chairman approves the exact recipients, message, channel, and limits.
+6. Convert positive replies into persistent opportunities, meetings, tasks, quotes, actions, and Company Brain evidence.

@@ -1,30 +1,38 @@
-# Production Blockers
+# Exportunity Production Blockers
 
-Date: 2026-06-15
+Date: 2026-08-15
 
-## Critical
+## Release Gate
 
-- Google Maps is not visibly live until a browser-restricted Maps JavaScript API key and Google Map ID are configured. Current live config has the browser key present but no Map ID.
-- Google Places import is not live until `GOOGLE_PLACES_ENABLED=true` or `GOOGLE_IMPORT_ENABLED=true` and a server-side `GOOGLE_PLACES_API_KEY` is configured with correct API restrictions.
-- PME outreach must not send bulk WhatsApp/SMS messages until Twilio sender verification, approved templates, opt-out handling, and admin approval are confirmed in production.
-- Public investment/royalty listing remains disabled unless `PME_INVESTMENT_FEATURES_ENABLED=true` after legal/compliance approval.
+- Deploy the root canonical/indexing correction and confirm that `https://exportunity.net/` no longer sends `X-Robots-Tag: noindex`.
+- Confirm unknown `/api/*` requests return JSON 404 instead of the application HTML shell.
+- Run type validation, the focused test suite, and the production build.
+- Verify the deployed build ID, commit, root identity, public industrial routes, and production feature flags after container recreation.
 
-## High
+## Promotion And Operations Gaps
 
-- Migrations should be applied cleanly in production; the PME route also has guarded runtime schema creation to avoid a hard outage, but migrations remain the source of truth.
-- Google quota and spend controls must be configured in Google Cloud before high-volume import.
-- Do-not-contact and duplicate outreach suppression must be reviewed before live outreach.
+- Authenticated Operations Center browser smoke cannot be rerun without a dedicated test login or supplied authenticated session. Existing database and automated lifecycle evidence confirms persistence, but this does not replace a release-browser check.
+- The local in-app browser test runtime is unavailable. Desktop, tablet, and mobile visual acceptance must be rerun when that runtime is repaired.
+- Google Workspace OAuth credentials are missing. Evidence sync from Gmail, Drive, and Contacts is therefore not active.
+- Google Maps has no Map ID and Google Places has no server import key. The public map must continue to use the polished Leaflet/OpenStreetMap and curated industrial-data fallback.
 
-## Medium
+## Transaction Gaps
 
-- Admin Twilio screens still need a full light-mode refresh outside the PME Exchange page.
-- Operations Center attachment intelligence and deep agent autonomy remain broader platform work.
-- The public homepage currently uses Leaflet/OpenStreetMap plus curated city data until Google browser map config and Places import config are complete.
+- Tenant-aware Flutterwave v4 configuration is present and contract-tested, but no real charge was made during audit.
+- Exportunity-specific KKiaPay credentials are absent. Do not display KKiaPay as available for Exportunity until configured and tested.
+- The old generic `/api/payment/*` orchestrator is intentionally disabled unless its legacy v3 adapter is configured. Current checkout work should use `/api/payments/flutterwave/*`.
 
-## Current Safe Defaults
+## Communication And Compliance Gates
 
-- Google disabled or rejected falls back to OpenStreetMap plus curated city data.
-- Seeded intent matching returns relevant marketplace/wholesale businesses for breakfast, bread, mixed category, cement, and supplier queries.
-- PME campaigns default to test/draft mode.
-- Outreach messages are logged as approval-required drafts.
-- Investment features are internal-review-only.
+- `FEATURE_EXTERNAL_COMMUNICATIONS=false` must remain the production default.
+- No email, WhatsApp, SMS, voice, LinkedIn, or social campaign may send without explicit human approval.
+- First-contact WhatsApp outreach requires consent or an approved template, opt-out processing, quiet hours, duplicate suppression, daily limits, and an immutable audit trail.
+- Public financing, royalty, or investment offers remain disabled until legal and compliance approval.
+
+## Safe Current Defaults
+
+- Demand-driven roles remain available rather than creating 100 idle runtime agents.
+- Specialist findings return to the Commercial Director for customer-facing review.
+- Agent-created tasks and external actions remain approval-gated.
+- Curated industrial data remains available when Google providers are unavailable.
+- Synthetic production QA records have been removed through an exact, tenant-scoped cleanup.

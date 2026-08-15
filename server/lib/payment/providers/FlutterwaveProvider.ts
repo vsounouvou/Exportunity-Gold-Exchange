@@ -356,7 +356,7 @@ export class FlutterwaveProvider implements PaymentProvider {
 /**
  * Initialize and register Flutterwave provider
  */
-export function initializeFlutterwaveProvider() {
+export function initializeFlutterwaveProvider(): boolean {
   const config: FlutterwaveConfig = {
     publicKey: process.env.FLUTTERWAVE_PUBLIC_KEY || '',
     secretKey: process.env.FLUTTERWAVE_SECRET_KEY || '',
@@ -369,7 +369,9 @@ export function initializeFlutterwaveProvider() {
     const { PaymentProviderFactory } = require('../PaymentProvider');
     PaymentProviderFactory.registerProvider('flutterwave', provider);
     console.log('[Payment] Flutterwave provider registered');
+    return true;
   } else {
-    console.warn('[Payment] Flutterwave provider not registered - missing API keys');
+    console.warn('[Payment] Legacy Flutterwave v3 adapter not registered; tenant-aware Flutterwave routes are configured separately');
+    return false;
   }
 }

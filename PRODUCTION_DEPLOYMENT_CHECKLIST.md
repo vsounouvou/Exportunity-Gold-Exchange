@@ -1,45 +1,63 @@
-# Production Deployment Checklist
+# Exportunity Production Deployment Checklist
 
-## Verification
+## Preflight
 
+- Confirm the release branch is `codex/exportunity-industrial-20260801`.
+- Confirm `APP_BASE_URL=https://exportunity.net` and `PUBLIC_BASE_URL=https://exportunity.net` in the target release environment.
+- Confirm `FEATURE_EXTERNAL_COMMUNICATIONS=false`.
+- Review `git status` and preserve all unrelated user work.
+- Run focused industrial, Operations Center, Company Brain, workforce, payment, SEO, and security-boundary tests.
 - Run `npm run check`.
 - Run `npm run build`.
-- Confirm route verification includes `/admin/pme-exchange` and child routes.
-- Confirm `/api/places/nearby` works without Google keys by returning curated city data.
-- Confirm `/api/admin/pme-exchange/status` works for an authenticated admin.
 
-## Environment
+## Release
 
-- `PME_EXCHANGE_ENABLED=true`
-- `GOOGLE_PLACES_ENABLED=true` only after server key restrictions are configured.
-- `GOOGLE_PLACES_IMPORT_ENABLED=true` only after quota/spend controls are configured.
-- `GOOGLE_PLACES_API_KEY` or `GOOGLE_MAPS_API_KEY`
-- `GOOGLE_MAPS_BROWSER_API_KEY` if browser Google Maps is enabled.
-- `GOOGLE_MAPS_MAP_ID` or `GOOGLE_MAPS_MAP_ID_LIGHT` if Google Advanced Markers/styling are used.
-- `PME_OUTREACH_ENABLED=false` until production approval flow is verified.
-- `PME_OUTREACH_TEST_MODE=true`
-- `PME_INVESTMENT_FEATURES_ENABLED=false`
-- Twilio sender env vars only after approved sender/template setup.
+Use the guarded Exportunity deployment path:
 
-## Database
+```bash
+scripts/ops/deploy-release.sh exportunity --build-artifact
+```
 
-- Apply `db/migrations/20270317_pme_exchange.sql`.
-- Confirm `pme_leads`, `pme_outreach_campaigns`, `pme_outreach_messages`, `pme_agent_conversations`, and `pme_exchange_profiles` exist.
-- Confirm runtime schema guard does not report errors in server logs.
+The deploy must stop before traffic switching if tenant identity, base URL, build metadata, or health verification fails.
 
-## Smoke Routes
+## Live Verification
 
-- `/marketplace`
-- `/map`
-- `/wholesale`
-- `/pme-exchange`
-- `/admin/pme-exchange`
-- `/admin/pme-exchange/map`
-- `/admin/pme-exchange/import`
-- `/admin/pme-exchange/leads`
+- `GET /build.json` identifies the new build and commit.
+- `GET /api/system/version` agrees with the public build.
+- `GET /` has Exportunity title/canonical metadata and does not identify Zone.
+- `HEAD /` does not include a noindex `X-Robots-Tag`.
+- `GET /robots.txt` allows public crawling while disallowing private application routes.
+- `GET /api/.env` returns HTTP 404 JSON and never returns the application shell or secret content.
+- `/industrial`, `/factories`, `/map`, `/export-products`, `/industrial-supply`, `/machinery`, and `/request-quote` return successfully.
+- Public industrial intake opens the persistent Awa conversation and can create a governed requirement.
+- Factory/map selection exposes documented factories and products without hiding the assistant.
+- Production has 126 governed role seats and the expected active agent roster.
+- All retained meetings still have conversation IDs and persisted messages.
+- `FEATURE_EXTERNAL_COMMUNICATIONS=false` is loaded by the recreated container.
+- Startup logs contain no recurring missing-audio-directory error.
+
+## Integration Status To Record
+
+- OpenAI Responses models: available.
+- Flutterwave v4: configured; no real charge in smoke.
+- KKiaPay for Exportunity: not configured.
+- Twilio WhatsApp: configured but outbound use remains approval-gated and globally disabled.
+- Google Maps: browser key present, Map ID absent.
+- Google Places: server key absent, import disabled.
+- Google Workspace: OAuth credentials absent, no active connector.
+
+## Local Disk Hygiene
+
+After a successful deploy, preview and remove only ignored release output:
+
+- `.build-meta.json`
+- `dist/`
+- `ops/local-releases/`
+
+Do not remove source, credentials, dependencies, dirty worktrees, or another tenant's release files. The committed branch on GitHub is the source backup.
 
 ## Rollback
 
-- Disable PME Exchange route exposure by hiding the admin nav and turning off `PME_EXCHANGE_ENABLED`.
-- Keep public marketplace fallback active through curated city data.
-- Revert to previous deploy artifact if route load or server startup fails.
+- Keep the previous server artifact until live checks pass.
+- Switch traffic back to the immediately previous verified Exportunity release if root identity, API boundary, startup, or tenant checks fail.
+- Do not roll back shared database state across tenants. Use forward-compatible application rollback and exact migrations only.

@@ -1,58 +1,104 @@
-# Exportunity Audit Report
+# Exportunity Production Audit
 
-Date: 2026-06-15
+Date: 2026-08-15
 
-## Scope
+## Product Boundary
 
-This audit covers the Exportunity marketplace entry, route wiring, map/commerce component, Google Places surface, WhatsApp/Twilio surface, agent/task foundations, and deployment path visible in this repository.
+Exportunity is now implemented as an industrial trade operating system for factories, exporters, suppliers, logistics partners, and industrial buyers. The public experience is industrial and global. Retail marketplace and public investment-exchange concepts are not the active product direction.
 
-## Current Architecture Observed
+The operating model is:
 
-- `/marketplace`, `/map`, `/marketplace/map`, `/wholesale`, and `/ready-for-export` route through `StoreRoute` in `client/src/App.tsx`.
-- `StoreRoute` passes `initialSpace` and `shellMode` into `StorePage`, then `ZoneInterface`, then `BuyerHomePage`.
-- `BuyerHomePage` now renders `ExportunityNeighbourhoodCommerce` for the Exportunity commerce routes.
-- Legacy `ExportunityConversationalCommerce` remains in the codebase as fallback and type source.
-- Seeded business data exists in `client/src/components/exportunity/seededBusinessData.ts`.
-- PME Exchange now has a backend vertical slice: schema, migration, server-side Google Places client, public places endpoint, admin PME routes, and an admin control page.
+1. Capture a real industrial need.
+2. Qualify the technical and commercial requirement through Awa Kouadio, Commercial Director.
+3. Route specialist work to governed agents.
+4. Source, quote, review, approve, order, pay, deliver, and retain evidence.
+5. Expand the workforce only when governed demand signals justify a role.
 
-## Findings
+## Architecture Verified
 
-1. Marketplace UX was too map-first for buyer intent. The live route now uses a product-first center, contextual map, and fixed assistant/shop-agent pane.
-2. `/api/maps/public-config` and `/api/places/nearby` are now backed by `server/routes/places.ts`, using Google Places when configured and curated city data otherwise.
-3. Wholesale and Ready for export are routeable states; the backend stores PME/seller leads and drafts outreach campaigns, but deeper supplier quote automation remains staged behind approval.
-4. WhatsApp/Twilio code exists, including webhook and production messaging tests; PME outreach drafts are created with approval required and no automatic blast path.
-5. The agent system has task/action foundations. The PME Acquisition Agent context is represented in workflow and docs, but deeper autonomous reply handling still needs production hardening.
-6. Retail shop selection now hands context to the shop Front Desk and the full shop view prioritizes product shelves, quantity controls, the order panel, owner/trust proof, and `Place order`.
+- Public industrial routes use the dedicated Exportunity industrial shell and persistent assistant, not the retired retail shell.
+- The factory and map journeys expose documented industrial zones, factories, products, spare parts, export products, and technical-request entry points.
+- Awa Kouadio is the public commercial closer. Specialist agents hand reviewed work back to the Commercial Director instead of independently closing customer deals.
+- The Operations Center reuses persistent meetings, conversations, attachments, decisions, objectives, tasks, actions, and agent membership.
+- Agent profiles expose identity and face editing, memory, permissions, skills, runtime model, tools, temperature, test execution, and direct chat.
+- The Company Brain has governed evidence sources, context packs, founder charter, security rules, relationship reconstruction, and Google Workspace ingestion services.
+- Demand-driven staffing uses a catalog of 126 governed role seats across 14 departments. Seats remain available until demand and governance justify provisioning.
+- The configured OpenAI account exposes the selected `gpt-5.6-sol`, `gpt-5.6-terra`, and `gpt-5.6-luna` Responses API models.
+- Tenant-aware Flutterwave v4 checkout is configured. The unrelated legacy v3 orchestrator is now reported as unavailable instead of appearing ready and failing later.
 
-## Files Changed In This Pass
+## Production Data Snapshot
 
-- `client/src/components/exportunity/ExportunityNeighbourhoodCommerce.tsx`
-- `client/src/pages/BuyerHomePage.tsx`
-- `client/src/pages/AdminPmeExchangePage.tsx`
-- `server/routes/admin-pme-exchange.ts`
-- `server/routes/places.ts`
-- `server/lib/google/placesClient.ts`
-- `server/lib/google/placesMapper.ts`
-- `server/lib/google/placeEnrichment.ts`
-- `server/lib/google/placeImportLimiter.ts`
-- `server/lib/pme-exchange/repository.ts`
-- `server/lib/pme-exchange/seed.ts`
-- `db/schema/pme-exchange.ts`
-- `db/migrations/20270317_pme_exchange.sql`
-- Audit and release docs listed in the release checklist.
+The Exportunity tenant was audited after guarded removal of synthetic QA records:
 
-## Verification
+- 12 active visible agents.
+- 126 current governed role seats: 12 provisioned and 114 available.
+- 14 persisted meetings, each linked to a conversation.
+- 92 tenant messages across 10 conversations, including 35 agent messages.
+- 9 retained tasks, 8 awaiting approval.
+- 8 retained company goals covering demand, supplier network, spare parts, scan-to-manufacture, commercial pipeline, execution review, intake, and one user meeting.
+- 4 retained Company Brain context packs.
+- No identified synthetic QA meetings, tasks, actions, chat rooms, requirements, or contacts remain.
 
-- `npm run check` passed after the current marketplace/shop changes.
-- Live build `1781556326659` / git `e37ed6552d03` was deployed to `https://exportunity.net`.
-- Live smoke check confirmed `/marketplace`, `/map`, `/wholesale`, and `/ready-for-export` render interactive Leaflet/OpenStreetMap maps with curated markers while Google setup is incomplete.
-- Live API smoke confirmed seeded fallback searches return relevant results for `breakfast`, `bread`, mixed marketplace categories, `cement`, and wholesale supplier queries.
-- Live smoke check confirmed shop entry shows product shelves, quantity controls, order panel, owner/trust layer, and the shop Front Desk agent; `Quick add` public wording was removed.
+The cleanup was executed with `scripts/ops/cleanup-exportunity-production-qa.cjs`, which defaults to dry-run, validates tenant/company/record identifiers, uses a transaction and advisory lock, and does not touch other tenants.
+
+## Production Configuration Audit
+
+### Ready
+
+- AI is enabled and the OpenAI credential is present.
+- Company Brain and context-pack features are enabled.
+- Google Workspace connector code and read feature flags are enabled.
+- Twilio account, token, and WhatsApp sender configuration are present.
+- Tenant-aware Flutterwave v4 client, encryption, and webhook configuration is present.
+- External communications are disabled globally.
+- The approved Exportunity AI logo pack is integrated into tenant identity assets.
+
+### Setup Required
+
+- Google Workspace OAuth client ID, client secret, and redirect URI are absent, so no Workspace connector can be activated yet.
+- Google Maps has a browser key but no production Map ID.
+- Google Places has no server key and import is not enabled.
+- Exportunity-specific KKiaPay credentials are absent.
+- No authenticated end-to-end browser credentials are available for a fresh Operations Center release smoke test.
+
+## Defects Corrected In This Release
+
+- `exportunity.net` was incorrectly classified as a noindex staging host in both HTTP headers and `robots.txt`. Only clone hosts are now noindex.
+- The root SEO resolver previously canonicalized the live Exportunity root to the Zone tenant. The live root now resolves to Exportunity with `/` as canonical.
+- Unknown `/api/*` paths previously fell through to the SPA with HTTP 200. They now return non-cacheable JSON 404 responses.
+- Missing `/public/audio` caused recurring cleanup errors. A missing audio directory is now treated as an empty state.
+- The legacy Flutterwave adapter reported missing keys despite valid tenant-aware v4 configuration. It now reports its actual legacy-only state, and legacy endpoints remain disabled unless that adapter is configured.
+
+## Current Release Files
+
+- `server/index.ts`
+- `server/routes.ts`
+- `server/routes/public.ts`
+- `server/lib/audioCleanup.ts`
+- `server/lib/http/unknownApiHandler.ts`
+- `server/lib/payment/providers/FlutterwaveProvider.ts`
+- `server/lib/seo/hostIndexingPolicy.ts`
+- `server/lib/seo/runtimeSeo.ts`
+- `scripts/site/marketing-quality-gate.mjs`
+- `scripts/ops/cleanup-exportunity-production-qa.cjs`
+- `tests/audio-cleanup.test.ts`
+- `tests/exportunity-root-seo.test.ts`
+- `tests/host-indexing-policy.test.ts`
+- `tests/unknown-api-handler.test.ts`
+- Production audit and deployment documents.
+
+## Verification Evidence
+
+- All 149 focused assertions passed across the industrial, Operations Center, Company Brain, workforce, agent, attachment, catalog, payment, SEO, host-policy, API-boundary, and audio-cleanup suites. The two database-importing catalog assertions were run with an inert local-only test URL and did not connect to production.
+- `npm run check` passed route and TypeScript validation.
+- `npm run build` passed, including the repository's browser-based marketing quality gate. The gate now runs in an isolated database-free startup mode and terminates its preview server after the audit.
+- Public route and database smoke checks were completed without modifying real customer records.
+- The in-app browser automation runtime is currently unavailable on this workstation. Visual browser acceptance remains an explicit release gap and was not replaced with an unapproved hidden browser process.
 
 ## Remaining Risks
 
-- Google Places requires server env configuration before live Google business discovery is active; otherwise the platform intentionally uses curated city data.
-- Current live config has a browser key present, but no Google Map ID and no server Places key/import flag. Google Maps will not visibly render until a browser-restricted key plus Map ID are configured; official Places import additionally requires the server Places key and enable flag.
-- Public investment/royalty features remain internal-review-only until legal/compliance approval.
-- Automated Twilio/WhatsApp sending is not enabled from PME campaigns; drafts require approval and existing Twilio setup.
-- Live visual verification and deployment smoke checks must be run after build/deploy.
+- A real authenticated Operations Center release smoke still requires a supplied non-production admin session or test credential.
+- A live Flutterwave charge was not created during audit; doing so would create a real financial transaction.
+- Google business discovery remains on curated/OSM fallback until Map ID and server Places credentials are configured.
+- Google Workspace evidence sync cannot run until OAuth credentials and an approved account connection exist.
+- External email, WhatsApp, voice, LinkedIn, or social outreach remains disabled. No outbound campaign should run without explicit approval, consent/template controls, quiet hours, suppression, and audit logging.

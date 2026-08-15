@@ -78,6 +78,8 @@ async function main() {
   const port = resolvePort();
   const baseUrl = `http://127.0.0.1:${port}`;
   const npmBin = process.platform === "win32" ? "npm.cmd" : "npm";
+  const auditDatabaseUrl =
+    process.env.DATABASE_URL || "postgres://quality-gate:quality-gate@127.0.0.1:5432/quality-gate";
 
   const serverScript = [
     "process.env.NODE_ENV='production';",
@@ -88,7 +90,13 @@ async function main() {
 
   const server = spawn(process.execPath, ["--input-type=module", "-e", serverScript], {
     stdio: "inherit",
-    env: { ...process.env, PORT: String(port), NODE_ENV: "production", STARTUP_MODE: "marketing-audit" },
+    env: {
+      ...process.env,
+      DATABASE_URL: auditDatabaseUrl,
+      PORT: String(port),
+      NODE_ENV: "production",
+      STARTUP_MODE: "marketing-audit",
+    },
   });
 
   const cleanup = async () => {

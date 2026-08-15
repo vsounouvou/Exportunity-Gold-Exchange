@@ -15,6 +15,7 @@ import { getContactNotificationConfig, sendContactNotification } from "../lib/co
 import { readBuildMeta } from "../lib/platform/buildMeta";
 import { renderAgentAvatarSvg } from "../lib/avatars/agentAvatar";
 import { verifyUnsubscribeToken } from "../lib/mail/unsubscribe";
+import { isProtectedExportunityStagingHost } from "../lib/seo/hostIndexingPolicy";
 
 const router = Router();
 const EXPORTUNITY_CANONICAL_HOST = "exportunity.com";
@@ -38,10 +39,6 @@ function isExportunityPublicMarketingHost(host: string) {
   );
 }
 
-function isExportunityStagingHost(host: string) {
-  return host === "clone.exportunity.net" || host === "www.clone.exportunity.net";
-}
-
 function isExportunityNetHost(host: string) {
   return host === "exportunity.net" || host === "www.exportunity.net";
 }
@@ -59,7 +56,7 @@ function isHozHost(host: string) {
 }
 
 function isExportunityFamilyHost(host: string) {
-  return isExportunityPublicMarketingHost(host) || isExportunityNetHost(host) || isExportunityStagingHost(host);
+  return isExportunityPublicMarketingHost(host) || isExportunityNetHost(host) || isProtectedExportunityStagingHost(host);
 }
 
 function requireTenant(req: any, res: any) {
@@ -227,7 +224,7 @@ router.get("/robots.txt", (req: any, res) => {
     return res.send(lines.join("\n"));
   }
 
-  if (isExportunityStagingHost(host) || isExportunityNetHost(host)) {
+  if (isProtectedExportunityStagingHost(host)) {
     res.setHeader("X-Robots-Tag", "noindex, nofollow, noarchive, nosnippet");
     return res.send(["User-agent: *", "Disallow: /", ""].join("\n"));
   }

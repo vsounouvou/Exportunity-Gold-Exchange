@@ -63,6 +63,12 @@ import { ensureExportunityRoleSeatCatalog } from "./lib/company-brain/ensureRole
 import { assertWhatsAppOtpConfigured, getWhatsAppOtpHealth } from "./services/whatsappOtp.service";
 import { getMessagingHealth } from "./lib/messaging/config";
 import { validateSmtpEnvAtBoot } from "./lib/mail/smtpProbe";
+import {
+  isProtectedExportunityStagingHost,
+  normalizeRequestHost,
+  shouldNoIndexExportunityHost,
+} from "./lib/seo/hostIndexingPolicy";
+import { registerUnknownApiHandler } from "./lib/http/unknownApiHandler";
 
 const app = express();
 let degradedNoDbMode = false;
@@ -70,16 +76,8 @@ let degradedNoDbReason = "";
 const allowStartWithoutDb =
   String(process.env.ALLOW_START_WITHOUT_DB || "").trim().toLowerCase() === "true";
 
-const CLONE_STAGING_HOSTS = new Set(["clone.exportunity.net", "www.clone.exportunity.net"]);
-const EXPORTUNITY_NON_CANONICAL_HOSTS = new Set([
-  ...CLONE_STAGING_HOSTS,
-  "exportunity.net",
-  "www.exportunity.net",
-]);
-
 function normalizeForwardedHostValue(value: unknown): string {
-  if (typeof value !== "string") return "";
-  return value.split(",")[0]?.split(":")[0]?.trim().toLowerCase() || "";
+  return normalizeRequestHost(value);
 }
 
 function resolveRequestHost(req: Request): string {
@@ -116,17 +114,17 @@ app.use(
 );
 app.use(express.urlencoded({ extended: false }));
 
-// Defense-in-depth: non-canonical Exportunity hosts are never indexable.
-// clone.exportunity.net is gated as protected staging.
+// Protected clone hosts are gated and never indexable. The live Exportunity
+// domain remains indexable and is governed by the page-level SEO policy.
 app.use((req: Request, res: Response, next: NextFunction) => {
   const host = resolveRequestHost(req);
   if (!host) return next();
 
-  if (EXPORTUNITY_NON_CANONICAL_HOSTS.has(host)) {
+  if (shouldNoIndexExportunityHost(host)) {
     res.setHeader("X-Robots-Tag", "noindex, nofollow, noarchive, nosnippet");
   }
 
-  if (!CLONE_STAGING_HOSTS.has(host)) return next();
+  if (!isProtectedExportunityStagingHost(host)) return next();
 
   res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
   res.setHeader("Pragma", "no-cache");
@@ -398,6 +396,30 @@ const errorHandler = (err: any, _req: Request, res: Response, _next: NextFunctio
 
 (async () => {
   try {
+    const startupMode = String(process.env.STARTUP_MODE || "").trim().toLowerCase();
+    if (startupMode === "marketing-audit" || startupMode === "quality-gate") {
+      // The build-time browser audit serves public pages only. Keep request
+      // middleware from resolving tenant/admin context through a database.
+      degradedNoDbMode = true;
+      degradedNoDbReason = `Database access disabled for ${startupMode}`;
+      const server = registerRoutes(app);
+      log(`Routes registered successfully (startupMode=${startupMode})`);
+
+      registerUnknownApiHandler(app);
+      app.use(errorHandler);
+
+      serveStatic(app);
+      log("Static serving configured for production");
+
+      const port = parseInt(process.env.PORT || "5000", 10);
+      server.listen(port, "0.0.0.0", () => {
+        log(`Server running on port ${port}`);
+      });
+
+      registerShutdown(server);
+      return;
+    }
+
     // Verify database connection first
     try {
       await checkDatabaseConnection();
@@ -415,6 +437,7 @@ const errorHandler = (err: any, _req: Request, res: Response, _next: NextFunctio
 
     if (degradedNoDbMode) {
       registerDegradedApiHandlers();
+      registerUnknownApiHandler(app);
       app.use(errorHandler);
 
       if (app.get("env") === "development") {
@@ -476,26 +499,6 @@ const errorHandler = (err: any, _req: Request, res: Response, _next: NextFunctio
       }
     } else {
       log(`[Email] SMTP transport ready (mode=${smtpHealth.mode})`);
-    }
-
-    const startupMode = String(process.env.STARTUP_MODE || "").trim().toLowerCase();
-    if (startupMode === "marketing-audit" || startupMode === "quality-gate") {
-      const server = registerRoutes(app);
-      log(`Routes registered successfully (startupMode=${startupMode})`);
-
-      // Register error handler
-      app.use(errorHandler);
-
-      serveStatic(app);
-      log("Static serving configured for production");
-
-      const port = parseInt(process.env.PORT || "5000", 10);
-      server.listen(port, "0.0.0.0", () => {
-        log(`Server running on port ${port}`);
-      });
-
-      registerShutdown(server);
-      return;
     }
 
     // Ensure agent enums are up-to-date (idempotent).
@@ -619,6 +622,8 @@ const errorHandler = (err: any, _req: Request, res: Response, _next: NextFunctio
     // Register routes and get HTTP server
     const server = registerRoutes(app);
     log("Routes registered successfully");
+
+    registerUnknownApiHandler(app);
 
     // Start audio cleanup scheduler
     startAudioCleanupScheduler();

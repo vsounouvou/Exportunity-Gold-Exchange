@@ -14333,7 +14333,7 @@ RESPONSE STYLE:
     try {
       // Initialize Flutterwave provider
       const { initializeFlutterwaveProvider } = await import('./lib/payment/providers/FlutterwaveProvider');
-      initializeFlutterwaveProvider();
+      const legacyProviderReady = initializeFlutterwaveProvider();
       
       // Load payment services
       const checkoutModule = await import('./lib/payment/CheckoutService');
@@ -14341,8 +14341,12 @@ RESPONSE STYLE:
       CheckoutService = checkoutModule.CheckoutService;
       PaymentOrchestrator = orchestratorModule.PaymentOrchestrator;
       
-      paymentServicesReady = true;
-      console.log('[Payment] Payment gateway initialized successfully');
+      paymentServicesReady = legacyProviderReady;
+      if (legacyProviderReady) {
+        console.log('[Payment] Legacy payment gateway initialized successfully');
+      } else {
+        console.warn('[Payment] Legacy payment endpoints disabled; use tenant-aware /api/payments routes');
+      }
     } catch (error: any) {
       console.error('[Payment] Failed to initialize payment gateway:', error.message);
       console.warn('[Payment] Payment endpoints will return 503 Service Unavailable');

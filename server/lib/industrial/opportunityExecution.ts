@@ -169,6 +169,9 @@ function taskKey(
       industrialSpecialistKeyForRole(task.agentRole, task.title) || "staffing"
     );
   }
+  if (task.executionType === "ind_commercial_review") {
+    return "commercial_review";
+  }
   if (task.executionType === "industrial_intake") return "commercial";
   return (
     industrialSpecialistKeyForRole(task.agentRole, task.title) ||
@@ -535,6 +538,12 @@ export function nextActionForIndustrialExecution(
     execution.workstreams.length &&
     execution.workstreams.every((task) => task.status === "done")
   ) {
+    const commercialReview = execution.workstreams.find(
+      (task) => task.key === "commercial_review",
+    );
+    if (commercialReview) {
+      return `${commercialReview.agentName || "Commercial Director"}'s commercial deal brief is ready for approval before any external action.`;
+    }
     return "Review the completed specialist findings and prepare the next controlled commercial action.";
   }
   const next = execution.workstreams.find((task) => task.status === "backlog");

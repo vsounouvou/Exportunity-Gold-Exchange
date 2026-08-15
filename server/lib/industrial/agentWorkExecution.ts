@@ -19,6 +19,7 @@ import type { IndustrialRequirementOperationsHandoffResult } from "./operationsH
 import {
   loadIndustrialOpportunityExecutions,
   nextActionForIndustrialExecution,
+  type IndustrialOpportunityExecution,
 } from "./opportunityExecution";
 
 export const INDUSTRIAL_AGENT_TASK_INTENT =
@@ -82,6 +83,11 @@ export type IndustrialAgentWorkFacts = {
     name: string;
     role: string;
   };
+  priorFindings?: Array<{
+    agentName: string;
+    workstreamKey: string;
+    summary: string;
+  }>;
 };
 
 export type QueuedIndustrialAgentWork = {
@@ -124,6 +130,9 @@ export function buildIndustrialAgentTaskInstruction(
     .map(cleanText)
     .filter(Boolean)
     .join(", ");
+  const priorFindings = (facts.priorFindings || [])
+    .filter((item) => cleanText(item.summary))
+    .slice(0, 10);
 
   return [
     "Execute this internal Exportunity commercial-opportunity workstream.",
@@ -155,6 +164,16 @@ export function buildIndustrialAgentTaskInstruction(
     formatFact("Requester", facts.requesterName),
     `Missing qualification fields: ${missingFields.length ? missingFields.join(", ") : "none recorded"}`,
     "",
+    ...(priorFindings.length
+      ? [
+          "COMPLETED SPECIALIST FINDINGS",
+          ...priorFindings.map(
+            (item) =>
+              `${item.agentName} (${item.workstreamKey}): ${summarizeIndustrialAgentOutput(item.summary, 900)}`,
+          ),
+          "",
+        ]
+      : []),
     "ASSIGNMENT",
     `Employee: ${facts.agent.name}`,
     `Role: ${facts.agent.role}`,
@@ -499,7 +518,12 @@ async function loadIndustrialAgentWorkContext(input: {
   const task = await db.query.tasks.findFirst({
     where: eq(tasks.id, input.taskId),
   });
-  if (!task || task.executionType !== "ind_workstream") {
+  if (
+    !task ||
+    !["ind_workstream", "ind_commercial_review"].includes(
+      cleanText(task.executionType),
+    )
+  ) {
     throw new Error("The selected task is not an industrial opportunity workstream.");
   }
   const handoff =
@@ -540,6 +564,42 @@ async function loadIndustrialAgentWorkContext(input: {
   ) {
     throw new Error("The assigned employee is not available to execute this workstream.");
   }
+  const completedReviews =
+    task.executionType === "ind_commercial_review"
+      ? await db.query.activityLog.findMany({
+          where: and(
+            eq(activityLog.companyId, Number(task.companyId)),
+            eq(activityLog.eventType, "industrial_agent_work_completed"),
+            eq(
+              sql<string>`${activityLog.metadata}->>'requirementId'`,
+              requirement.id,
+            ),
+          ),
+          columns: {
+            title: true,
+            description: true,
+            metadata: true,
+          },
+          orderBy: [desc(activityLog.createdAt)],
+          limit: 10,
+        })
+      : [];
+  const priorFindings = completedReviews
+    .map((review) => {
+      const metadata =
+        review.metadata && typeof review.metadata === "object"
+          ? (review.metadata as Record<string, unknown>)
+          : {};
+      return {
+        agentName:
+          cleanText(review.title).replace(/\s+completed\s+.*$/i, "") ||
+          "Assigned specialist",
+        workstreamKey:
+          cleanText(metadata.workstreamKey) || "specialist review",
+        summary: cleanText(metadata.output) || cleanText(review.description),
+      };
+    })
+    .filter((item) => item.summary);
 
   return {
     requirement,
@@ -591,6 +651,7 @@ async function loadIndustrialAgentWorkContext(input: {
         name: cleanText(agent.displayName) || agent.name,
         role: agent.role,
       },
+      priorFindings,
     } satisfies IndustrialAgentWorkFacts,
   };
 }
@@ -619,6 +680,200 @@ async function refreshIndustrialExecution(input: {
       ),
     );
   return { execution, nextAction };
+}
+
+async function queueIndustrialCommercialReview(input: {
+  tenantId: number;
+  requirementId: string;
+  referenceCode: string;
+  sourceConversationId?: string | null;
+  execution: IndustrialOpportunityExecution;
+}) {
+  if (input.execution.status !== "review_ready") return null;
+  if (
+    input.execution.workstreams.some(
+      (workstream) => workstream.key === "commercial_review",
+    )
+  ) {
+    return null;
+  }
+
+  const reviewTitle = `${input.referenceCode} - Commercial deal review`.slice(
+    0,
+    240,
+  );
+  const resolved = await db.transaction(async (tx) => {
+    await tx.execute(sql`
+      select pg_advisory_xact_lock(
+        hashtext('industrial_commercial_review'),
+        hashtext(${input.requirementId})
+      )
+    `);
+    const parentTask = await tx.query.tasks.findFirst({
+      where: eq(tasks.id, input.execution.parentTask?.id || 0),
+    });
+    if (
+      !parentTask?.id ||
+      !parentTask.agentId ||
+      !parentTask.companyId ||
+      parentTask.status === "done" ||
+      parentTask.status === "canceled"
+    ) {
+      return null;
+    }
+
+    let reviewTask = await tx.query.tasks.findFirst({
+      where: and(
+        eq(tasks.parentTaskId, Number(parentTask.id)),
+        eq(tasks.executionType, "ind_commercial_review"),
+      ),
+      orderBy: [desc(tasks.id)],
+    });
+    if (reviewTask?.status === "done" || reviewTask?.status === "in_progress") {
+      return null;
+    }
+
+    if (!reviewTask?.id) {
+      const [created] = await tx
+        .insert(tasks)
+        .values({
+          agentId: Number(parentTask.agentId),
+          companyId: Number(parentTask.companyId),
+          goalId: parentTask.goalId || null,
+          objectiveId: parentTask.objectiveId || parentTask.goalId || null,
+          parentTaskId: Number(parentTask.id),
+          title: reviewTitle,
+          description: [
+            `Commercial Director review for ${input.referenceCode}.`,
+            "Synthesize the completed sourcing, quality, logistics, compliance, finance, and technical findings that exist for this case.",
+            "Identify deal blockers, qualification questions, approval-gated next actions, and the clearest path to a real transaction.",
+            "Do not contact any external party, promise price or availability, accept terms, sign a contract, or move money.",
+          ].join("\n"),
+          priority: parentTask.priority || "high",
+          status: "backlog",
+          executionType: "ind_commercial_review",
+          urgencyScore: parentTask.urgencyScore || 7,
+          importanceScore: 9,
+          dependencyScore: 9,
+          isAutomated: true,
+          isGroupTask: false,
+          participantAgentIds: [Number(parentTask.agentId)],
+          approvalStatus: "approved",
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .returning();
+      reviewTask = created || null;
+    }
+    return reviewTask?.id ? { parentTask, reviewTask } : null;
+  });
+  if (!resolved) return null;
+  const { parentTask, reviewTask } = resolved;
+
+  const activeAction = await db.query.actionRequests.findFirst({
+    where: and(
+      eq(actionRequests.tenantId, input.tenantId),
+      eq(actionRequests.actionType, "RUN_AGENT_TASK"),
+      inArray(actionRequests.status, ["PENDING", "QUEUED", "RUNNING"]),
+      eq(
+        sql<string>`${actionRequests.payload}->>'taskId'`,
+        String(reviewTask.id),
+      ),
+    ),
+    orderBy: [desc(actionRequests.id)],
+  });
+  if (activeAction?.id) return null;
+
+  const previousAction = await db.query.actionRequests.findFirst({
+    where: and(
+      eq(actionRequests.tenantId, input.tenantId),
+      eq(actionRequests.actionType, "RUN_AGENT_TASK"),
+      eq(
+        sql<string>`${actionRequests.payload}->>'taskId'`,
+        String(reviewTask.id),
+      ),
+    ),
+    orderBy: [desc(actionRequests.id)],
+    columns: { id: true },
+  });
+  const runNumber = Number(previousAction?.id || 0) + 1;
+  const row = await createActionRequest({
+    tenantId: input.tenantId,
+    requestedByUserId: null,
+    requestedByAgentKey: "commercial",
+    actionType: "RUN_AGENT_TASK",
+    payload: {
+      agentId: Number(parentTask.agentId),
+      companyId: Number(parentTask.companyId),
+      taskId: Number(reviewTask.id),
+      requirementId: input.requirementId,
+      referenceCode: input.referenceCode,
+      workstreamKey: "commercial_review",
+      executionScope: "industrial_opportunity",
+    },
+    mode: "REAL",
+    priority: 85,
+    idempotencyKey: `industrial-agent-task:${reviewTask.id}:commercial-review:${runNumber}`,
+    correlationId: `industrial-requirement:${input.requirementId}`,
+    relatedConversationId: input.sourceConversationId || null,
+    metadata: tenantScopedAgentWorkMetadata(input.tenantId),
+    isAdmin: true,
+  });
+
+  const now = new Date();
+  await Promise.all([
+    db
+      .update(tasks)
+      .set({
+        status: "in_progress",
+        approvalStatus: "approved",
+        isAutomated: true,
+        updatedAt: now,
+      })
+      .where(eq(tasks.id, Number(reviewTask.id))),
+    db.insert(activityLog).values({
+      companyId: Number(parentTask.companyId),
+      agentId: Number(parentTask.agentId),
+      eventType: "industrial_commercial_review_queued",
+      eventCategory: "operations",
+      title: `Commercial review queued for ${input.referenceCode}`,
+      description:
+        "The Commercial Director was assigned to synthesize completed internal findings before any external action.",
+      metadata: {
+        taskId: Number(reviewTask.id),
+        parentTaskId: Number(parentTask.id),
+        requirementId: input.requirementId,
+        actionRequestId: Number(row.id),
+        externalActionStarted: false,
+      } as any,
+      createdAt: now,
+    }),
+    db.insert(industrialAuditLogs).values({
+      tenantId: input.tenantId,
+      action: "industrial_requirement.commercial_review_queued",
+      entityType: "industrial_requirement",
+      entityId: input.requirementId,
+      nextValue: {
+        taskId: Number(reviewTask.id),
+        actionRequestId: Number(row.id),
+        status: "in_progress",
+      },
+      metadata: {
+        parentTaskId: Number(parentTask.id),
+        agentId: Number(parentTask.agentId),
+        workstreamKey: "commercial_review",
+        externalActionStarted: false,
+      },
+    }),
+  ]);
+
+  return queuedWorkFromAction({
+    row,
+    taskId: Number(reviewTask.id),
+    agentId: Number(parentTask.agentId),
+    agentName: input.execution.parentTask?.agentName || "Commercial Director",
+    workstreamKey: "commercial_review",
+  });
 }
 
 export async function executeIndustrialOpportunityAgentWork(input: {
@@ -736,11 +991,67 @@ export async function executeIndustrialOpportunityAgentWork(input: {
         },
       }),
     ]);
-    const refreshed = await refreshIndustrialExecution({
+    let refreshed = await refreshIndustrialExecution({
       tenantId: input.tenantId,
       requirementId: input.requirementId,
       metadata: context.requirement.metadata,
     });
+    let commercialReview: QueuedIndustrialAgentWork | null = null;
+    let commercialReviewError: string | null = null;
+    if (refreshed?.execution) {
+      try {
+        commercialReview = await queueIndustrialCommercialReview({
+          tenantId: input.tenantId,
+          requirementId: input.requirementId,
+          referenceCode: context.requirement.referenceCode,
+          sourceConversationId: input.conversationId || null,
+          execution: refreshed.execution,
+        });
+      } catch (error) {
+        commercialReviewError =
+          error instanceof Error
+            ? error.message
+            : "The commercial review could not be queued.";
+        await Promise.allSettled([
+          db.insert(activityLog).values({
+            companyId: Number(context.task.companyId),
+            agentId: Number(context.agent.id),
+            eventType: "industrial_commercial_review_queue_blocked",
+            eventCategory: "operations",
+            title: "Commercial review could not be queued",
+            description: commercialReviewError,
+            metadata: {
+              taskId: input.taskId,
+              requirementId: input.requirementId,
+              externalActionStarted: false,
+            } as any,
+            createdAt: new Date(),
+          }),
+          db.insert(industrialAuditLogs).values({
+            tenantId: input.tenantId,
+            action: "industrial_requirement.commercial_review_queue_blocked",
+            entityType: "industrial_requirement",
+            entityId: input.requirementId,
+            nextValue: {
+              specialistTaskId: input.taskId,
+              specialistStatus: "done",
+              reviewStatus: "blocked",
+            },
+            metadata: {
+              error: commercialReviewError,
+              externalActionStarted: false,
+            },
+          }),
+        ]);
+      }
+    }
+    if (commercialReview) {
+      refreshed = await refreshIndustrialExecution({
+        tenantId: input.tenantId,
+        requirementId: input.requirementId,
+        metadata: context.requirement.metadata,
+      });
+    }
     return {
       actionType: "RUN_AGENT_TASK",
       requirementId: input.requirementId,
@@ -756,6 +1067,8 @@ export async function executeIndustrialOpportunityAgentWork(input: {
       model: cleanText(result.output.model) || null,
       executionStatus: refreshed?.execution.status || null,
       nextAction: refreshed?.nextAction || null,
+      commercialReview,
+      commercialReviewError,
       reviewRequired: true,
       externalActionStarted: false,
     };

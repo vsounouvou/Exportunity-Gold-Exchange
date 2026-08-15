@@ -235,6 +235,9 @@ test("qualified opportunities dispatch visible employee work through the governe
   const execution = readRepoFile(
     "server/lib/industrial/agentWorkExecution.ts",
   );
+  const opportunityExecution = readRepoFile(
+    "server/lib/industrial/opportunityExecution.ts",
+  );
   const agentRouter = readRepoFile("server/lib/agent-os/router.ts");
   const room = readRepoFile(
     "client/src/components/exportunity/IndustrialCommercialDealRoom.tsx",
@@ -251,6 +254,20 @@ test("qualified opportunities dispatch visible employee work through the governe
   assert.match(scheduler, /row-level lease is the lock for tenant-scoped work/);
   assert.match(scheduler, /runActionWorkerOnce\(\{ tenantId \}\)/);
   assert.match(execution, /buildIndustrialAgentTaskInstruction/);
+  assert.match(execution, /COMPLETED SPECIALIST FINDINGS/);
+  assert.match(execution, /ind_commercial_review/);
+  assert.match(execution, /pg_advisory_xact_lock/);
+  assert.match(execution, /Promise\.allSettled/);
+  assert.match(
+    execution,
+    /industrial_requirement\.commercial_review_queued/,
+  );
+  assert.match(execution, /workstreamKey: "commercial_review"/);
+  assert.match(opportunityExecution, /return "commercial_review"/);
+  assert.match(
+    opportunityExecution,
+    /commercial deal brief is ready for approval before any external action/,
+  );
   assert.match(execution, /Do not invent suppliers, prices, stock/);
   assert.match(execution, /externalActionStarted: false/);
   assert.match(agentRouter, /industrial_opportunity_workstream/);

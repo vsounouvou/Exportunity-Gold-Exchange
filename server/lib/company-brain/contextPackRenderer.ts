@@ -30,6 +30,10 @@ export function renderCompanyBrainContextPackForModel(pack: CompanyBrainContextP
         related_entities: renderClaims(pack.related_entities),
         relationship_history: renderClaims(pack.relationship_history),
         project_or_opportunity_state: renderClaims(pack.project_or_opportunity_state),
+        task_evidence: (pack.task_evidence ?? []).map((item) => ({
+          ...item,
+          evidence: renderUntrustedEvidenceForModel(item.evidence),
+        })),
       },
       null,
       2,

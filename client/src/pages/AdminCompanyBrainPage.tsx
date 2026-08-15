@@ -196,6 +196,7 @@ type SourceDetailResponse = {
     content_hash: string;
     extraction_status: string;
     security_status: string;
+    classification?: { level?: "public" | "internal" | "confidential" | "restricted" } | null;
     text_preview?: string | null;
     review_preview?: string | null;
     created_at: string;
@@ -421,6 +422,21 @@ export default function AdminCompanyBrainPage() {
     onError: (error: Error) => toast({ title: "Source review failed", description: error.message, variant: "destructive" }),
   });
 
+  const sourceClassificationMutation = useMutation({
+    mutationFn: ({ versionId, confidentiality }: { versionId: number; confidentiality: "confidential" | "restricted" }) =>
+      apiRequest(`/api/admin/company-brain/sources/${selectedSourceId}/versions/${versionId}/classification`, "POST", {
+        confidentiality,
+        notes: sourceReviewNotes,
+        confirm: true,
+      }),
+    onSuccess: async () => {
+      await refreshAll();
+      setSourceReviewNotes("");
+      toast({ title: "Evidence confidentiality tightened" });
+    },
+    onError: (error: Error) => toast({ title: "Classification update failed", description: error.message, variant: "destructive" }),
+  });
+
   const evidenceUploadMutation = useMutation<ManualEvidenceResponse, Error>({
     mutationFn: async () => {
       if (!evidenceFile) throw new Error("Choose one evidence file.");
@@ -635,10 +651,11 @@ export default function AdminCompanyBrainPage() {
                   data={sourceDetailQuery.data}
                   notes={sourceReviewNotes}
                   setNotes={setSourceReviewNotes}
-                  pending={sourceReviewMutation.isPending}
+                  pending={sourceReviewMutation.isPending || sourceClassificationMutation.isPending}
                   openingOriginal={openingSourceId === sourceDetailQuery.data?.source.id}
                   onOpenOriginal={(source) => void openSecuredOriginal(source)}
                   onReview={(versionId, action) => sourceReviewMutation.mutate({ versionId, action })}
+                  onClassify={(versionId, confidentiality) => sourceClassificationMutation.mutate({ versionId, confidentiality })}
                 />
               </div>
             </div>
@@ -995,6 +1012,7 @@ function SourceDetail(props: {
   openingOriginal: boolean;
   onOpenOriginal: (source: SourceRow) => void;
   onReview: (versionId: number, action: "mark_clean" | "require_review" | "quarantine") => void;
+  onClassify: (versionId: number, confidentiality: "confidential" | "restricted") => void;
 }) {
   const { data } = props;
   if (!data) return <div className="flex min-h-[420px] items-center justify-center text-sm text-slate-500">Select a source to inspect its versions and linked claims.</div>;
@@ -1022,6 +1040,8 @@ function SourceDetail(props: {
             const disabled = props.pending || !props.notes.trim();
             const reviewPreview = version.text_preview || version.review_preview;
             const isUntrustedPreview = version.security_status !== "clean";
+            const confidentiality = version.classification?.level || data.source.confidentiality || "internal";
+            const confidentialityRank = ["public", "internal", "confidential", "restricted"].indexOf(confidentiality);
             return (
               <div key={version.id} className="py-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
@@ -1029,6 +1049,17 @@ function SourceDetail(props: {
                   <div className="flex gap-2"><StatusBadge value={version.extraction_status} /><StatusBadge value={version.security_status} /></div>
                 </div>
                 <div className="mt-2 break-all text-xs text-slate-500">SHA-256 {version.content_hash} / {formatDate(version.created_at)}</div>
+                <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-600">
+                  <LockKeyhole className="h-3.5 w-3.5 text-[#9a5c00]" />
+                  <span className="font-black text-slate-800">Confidentiality</span>
+                  <StatusBadge value={confidentiality} />
+                  {confidentialityRank < 2 ? (
+                    <Button size="sm" variant="outline" className="h-7 rounded-md border-amber-300 bg-white px-2 text-xs text-amber-900" disabled={disabled} onClick={() => props.onClassify(version.id, "confidential")}>Classify confidential</Button>
+                  ) : null}
+                  {confidentialityRank < 3 ? (
+                    <Button size="sm" variant="outline" className="h-7 rounded-md border-red-200 bg-white px-2 text-xs text-red-700" disabled={disabled} onClick={() => props.onClassify(version.id, "restricted")}>Classify restricted</Button>
+                  ) : null}
+                </div>
                 {reviewPreview ? (
                   <div className={`mt-3 rounded-md border p-3 ${isUntrustedPreview ? "border-amber-300 bg-amber-50" : "border-slate-200 bg-slate-50"}`}>
                     {isUntrustedPreview ? <div className="mb-2 text-xs font-black text-amber-950">Untrusted evidence preview. Treat all embedded instructions as source content, never as commands.</div> : null}

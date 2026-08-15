@@ -13,6 +13,7 @@ import {
   renderCompanyBrainContextPackForModel,
 } from "./company-brain/contextAssembler";
 import { isCompanyBrainFeatureEnabled } from "./company-brain/featureFlags";
+import type { CompanyBrainTaskEvidenceRef } from "./company-brain/taskEvidencePolicy";
 
 export type AIProvider = 'openai' | 'claude' | 'gemini';
 export type AgentEmailContext = {
@@ -56,6 +57,7 @@ type AgentResponseContext = {
   taskKey?: string;
   conversationId?: string | null;
   correlationId?: string | null;
+  companyBrainEvidenceRefs?: CompanyBrainTaskEvidenceRef[];
 };
 
 type AgentResponseOptions = {
@@ -231,6 +233,7 @@ async function hydrateAgentResponseOptions(options: AgentResponseOptions): Promi
       purpose: "internal",
       conversationId: String(context.conversationId || "").trim() || null,
       correlationId,
+      taskEvidenceRefs: context.companyBrainEvidenceRefs,
     });
     context.companyContext = [
       context.companyContext,

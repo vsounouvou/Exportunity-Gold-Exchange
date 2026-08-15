@@ -13,6 +13,10 @@ import type { AgentPolicy } from "../agent-os/registry";
 import { isCompanyBrainFeatureEnabled } from "./featureFlags";
 import { isCompanyBrainEvidenceEligible } from "./governancePolicy";
 import { secureUntrustedEvidence, type SecuredEvidence } from "./security";
+import {
+  normalizeCompanyBrainTaskEvidenceRefs,
+  type CompanyBrainTaskEvidenceRef,
+} from "./taskEvidencePolicy";
 
 export { renderCompanyBrainContextPackForModel } from "./contextPackRenderer";
 
@@ -83,6 +87,12 @@ export type CompanyBrainContextPack = {
   related_entities: ContextPackClaim[];
   relationship_history: ContextPackClaim[];
   project_or_opportunity_state: ContextPackClaim[];
+  task_evidence: Array<{
+    confidentiality: string;
+    businessRelevance: string;
+    citation: CompanyBrainCitation;
+    evidence: SecuredEvidence;
+  }>;
   approved_playbooks: string[];
   applicable_policies: Array<{ id: string; rule: string }>;
   available_tools: string[];
@@ -121,6 +131,7 @@ export type LoadContextPackInput = {
   conversationId?: string | null;
   correlationId?: string | null;
   includeProposedInternalClaims?: boolean;
+  taskEvidenceRefs?: CompanyBrainTaskEvidenceRef[];
   persist?: boolean;
 };
 
@@ -222,6 +233,12 @@ export async function loadCompanyBrainContextPack(input: LoadContextPackInput): 
 
   const purpose = input.purpose || "internal";
   const isExternalPurpose = purpose !== "internal";
+  const taskEvidenceRefs = normalizeCompanyBrainTaskEvidenceRefs(input.taskEvidenceRefs);
+  if (isExternalPurpose && taskEvidenceRefs.length) {
+    const error = new Error("Explicit task evidence is restricted to internal Company Brain context packs.");
+    (error as any).status = 409;
+    throw error;
+  }
   const allowedStatuses = isExternalPurpose
     ? ["approved_external"]
     : input.includeProposedInternalClaims
@@ -287,6 +304,88 @@ export async function loadCompanyBrainContextPack(input: LoadContextPackInput): 
         .from(companyBrainClaimConflicts)
         .where(and(inArray(companyBrainClaimConflicts.claimId, claimIds), eq(companyBrainClaimConflicts.status, "open")))
     : [];
+
+  const taskEvidenceRows = taskEvidenceRefs.length
+    ? await db
+        .select({
+          sourceId: companyBrainSources.id,
+          sourceTitle: companyBrainSources.title,
+          sourceUrl: companyBrainSources.sourceUrl,
+          sourceStatus: companyBrainSources.status,
+          sourceCompanyId: companyBrainSources.companyId,
+          confidentiality: companyBrainSources.confidentiality,
+          businessRelevance: companyBrainSources.businessRelevance,
+          sourceVersionId: companyBrainSourceVersions.id,
+          contentHash: companyBrainSourceVersions.contentHash,
+          extractedText: companyBrainSourceVersions.extractedText,
+          extractionStatus: companyBrainSourceVersions.extractionStatus,
+          securityStatus: companyBrainSourceVersions.securityStatus,
+          redactions: companyBrainSourceVersions.redactions,
+        })
+        .from(companyBrainSourceVersions)
+        .innerJoin(companyBrainSources, eq(companyBrainSourceVersions.sourceId, companyBrainSources.id))
+        .where(
+          and(
+            eq(companyBrainSources.tenantId, input.tenantId),
+            inArray(companyBrainSources.id, taskEvidenceRefs.map((ref) => ref.sourceId)),
+            inArray(companyBrainSourceVersions.id, taskEvidenceRefs.map((ref) => ref.sourceVersionId)),
+          ),
+        )
+    : [];
+  const requestedTaskEvidenceKeys = new Set(
+    taskEvidenceRefs.map((ref) => `${ref.sourceId}:${ref.sourceVersionId}`),
+  );
+  const selectedTaskEvidenceRows = taskEvidenceRows.filter((row) =>
+    requestedTaskEvidenceKeys.has(`${row.sourceId}:${row.sourceVersionId}`),
+  );
+  if (selectedTaskEvidenceRows.length !== taskEvidenceRefs.length) {
+    const error = new Error("One or more selected Company Brain evidence versions do not belong to this tenant.");
+    (error as any).status = 404;
+    throw error;
+  }
+  const wrongCompanyEvidence = selectedTaskEvidenceRows.find(
+    (row) => row.sourceCompanyId != null && Number(row.sourceCompanyId) !== Number(input.companyId || 0),
+  );
+  if (wrongCompanyEvidence) {
+    const error = new Error("Selected Company Brain evidence belongs to a different company context.");
+    (error as any).status = 409;
+    throw error;
+  }
+  const restrictedEvidence = selectedTaskEvidenceRows.find(
+    (row) => String(row.confidentiality || "internal").toLowerCase() === "restricted",
+  );
+  if (restrictedEvidence && !input.agentPolicy.permissions.includes("company_brain:read_restricted")) {
+    const error = new Error("The selected restricted evidence exceeds this agent's authority.");
+    (error as any).status = 403;
+    throw error;
+  }
+  const ineligibleTaskEvidence = selectedTaskEvidenceRows.find((row) => !isCompanyBrainEvidenceEligible(row));
+  if (ineligibleTaskEvidence) {
+    const error = new Error("Selected Company Brain evidence must be active, extracted, and marked clean before use.");
+    (error as any).status = 409;
+    throw error;
+  }
+  const taskEvidence = selectedTaskEvidenceRows.map((row) => {
+    const citation: CompanyBrainCitation = {
+      sourceId: row.sourceId,
+      sourceVersionId: row.sourceVersionId,
+      title: row.sourceTitle,
+      sourceUrl: row.sourceUrl || undefined,
+      contentHash: row.contentHash,
+    };
+    return {
+      confidentiality: String(row.confidentiality || "internal"),
+      businessRelevance: String(row.businessRelevance || "general"),
+      citation,
+      evidence: secureUntrustedEvidence({
+        sourceId: row.sourceId,
+        sourceVersionId: row.sourceVersionId,
+        title: row.sourceTitle,
+        text: row.extractedText || "",
+        sourceUrl: row.sourceUrl,
+      }),
+    };
+  });
 
   const contextClaims: ContextPackClaim[] = claims
     .filter((claim) => !isExternalPurpose || claim.conflictStatus === "clear")
@@ -354,7 +453,10 @@ export async function loadCompanyBrainContextPack(input: LoadContextPackInput): 
 
   const assembledAt = new Date();
   const expiresAt = new Date(assembledAt.getTime() + 15 * 60 * 1000);
-  const citations = uniqueCitations(supportedClaims.flatMap((claim) => claim.citations));
+  const citations = uniqueCitations([
+    ...supportedClaims.flatMap((claim) => claim.citations),
+    ...taskEvidence.map((item) => item.citation),
+  ]);
   const sectioned = supportedClaims.reduce<Record<ContextPackSection, ContextPackClaim[]>>(
     (result, claim) => {
       result[classifyCompanyBrainClaimSection(claim)].push(claim);
@@ -393,7 +495,7 @@ export async function loadCompanyBrainContextPack(input: LoadContextPackInput): 
   ];
   const redactions = Array.from(
     new Map(
-      evidenceRows
+      [...evidenceRows, ...selectedTaskEvidenceRows]
         .filter(isCompanyBrainEvidenceEligible)
         .filter((row) => Array.isArray(row.redactions) && row.redactions.length > 0)
         .map((row) => [
@@ -438,11 +540,13 @@ export async function loadCompanyBrainContextPack(input: LoadContextPackInput): 
     related_entities: sectioned.related_entities,
     relationship_history: sectioned.relationship_history,
     project_or_opportunity_state: sectioned.project_or_opportunity_state,
+    task_evidence: taskEvidence,
     approved_playbooks: [...input.agentPolicy.defaultPlaybooks],
     applicable_policies: [
       { id: "company_brain.evidence_required", rule: "Use only source-backed facts or explicitly labelled inferences." },
       { id: "company_brain.conflict_preservation", rule: "Preserve open conflicts and escalate before relying on them." },
       { id: "agent_os.task_scoped_context", rule: "Use this pack only for the visible task identified in task.key." },
+      { id: "company_brain.explicit_task_evidence", rule: "Use task_evidence only for this task; do not convert it into a company claim or external statement." },
       { id: "agent_os.external_approval", rule: "External communications, commitments and public claims require recorded human approval." },
     ],
     available_tools: availableTools,

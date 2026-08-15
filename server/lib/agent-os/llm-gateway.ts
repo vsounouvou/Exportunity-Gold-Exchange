@@ -9,6 +9,7 @@ import {
   type ContextPackPurpose,
 } from "../company-brain/contextAssembler";
 import { isCompanyBrainFeatureEnabled } from "../company-brain/featureFlags";
+import type { CompanyBrainTaskEvidenceRef } from "../company-brain/taskEvidencePolicy";
 
 export type LlmProvider = "openai" | "anthropic";
 export type LlmTier = "fast" | "balanced" | "quality";
@@ -100,6 +101,7 @@ export async function generateText(params: {
   correlationId?: string | null;
   contextPack?: CompanyBrainContextPack | null;
   contextPurpose?: ContextPackPurpose;
+  taskEvidenceRefs?: CompanyBrainTaskEvidenceRef[];
 }): Promise<{
   text: string;
   provider: LlmProvider;
@@ -122,6 +124,7 @@ export async function generateText(params: {
       purpose: params.contextPurpose || inferContextPurpose(params.purpose),
       conversationId: params.conversationId || null,
       correlationId: params.correlationId || params.jobId,
+      taskEvidenceRefs: params.taskEvidenceRefs,
     });
   }
   const messages = injectCompanyContext(params.policy, params.messages, contextPack);

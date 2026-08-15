@@ -5,6 +5,7 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 
 import { injectCompanyContext } from "../server/lib/agent-os/company-context";
+import { normalizeCompanyBrainTaskEvidenceRefs } from "../server/lib/company-brain/taskEvidencePolicy";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const read = (relativePath: string) => fs.readFileSync(path.join(repoRoot, relativePath), "utf8");
@@ -21,6 +22,7 @@ test("the Context Assembler implements every required governed section", () => {
     "related_entities",
     "relationship_history",
     "project_or_opportunity_state",
+    "task_evidence",
     "approved_playbooks",
     "applicable_policies",
     "available_tools",
@@ -39,6 +41,31 @@ test("the Context Assembler implements every required governed section", () => {
   assert.match(source, /isExternalPurpose[\s\S]{0,80}claim\.approvedExternalWording/);
   assert.match(source, /traceability: claim\.status === "inference" \? "inference" : "source_backed"/);
   assert.match(source, /claim\.traceability === "inference" \|\| claim\.citations\.length > 0/);
+  assert.match(source, /Explicit task evidence is restricted to internal Company Brain context packs/);
+  assert.match(source, /Selected Company Brain evidence must be active, extracted, and marked clean before use/);
+  assert.match(source, /company_brain:read_restricted/);
+});
+
+test("explicit task evidence references are bounded, deduplicated, and require exact identifiers", () => {
+  assert.deepEqual(
+    normalizeCompanyBrainTaskEvidenceRefs([
+      { sourceId: 4, sourceVersionId: 9 },
+      { source_id: 4, source_version_id: 9 },
+      { sourceId: 5, sourceVersionId: 12 },
+    ]),
+    [
+      { sourceId: 4, sourceVersionId: 9 },
+      { sourceId: 5, sourceVersionId: 12 },
+    ],
+  );
+  assert.throws(
+    () => normalizeCompanyBrainTaskEvidenceRefs([{ sourceId: 0, sourceVersionId: 2 }]),
+    /positive sourceId and sourceVersionId/,
+  );
+  assert.throws(
+    () => normalizeCompanyBrainTaskEvidenceRefs(Array.from({ length: 13 }, (_, index) => ({ sourceId: index + 1, sourceVersionId: index + 1 }))),
+    /at most 12/,
+  );
 });
 
 test("the shared LLM gateway assembles task-scoped Company Brain context when explicitly enabled", () => {
@@ -47,6 +74,7 @@ test("the shared LLM gateway assembles task-scoped Company Brain context when ex
   assert.match(gateway, /isCompanyBrainFeatureEnabled\("contextPacks"\)/);
   assert.match(gateway, /loadCompanyBrainContextPack\(\{/);
   assert.match(gateway, /taskKey: params\.taskKey \|\| params\.purpose \|\| params\.jobId/);
+  assert.match(gateway, /taskEvidenceRefs: params\.taskEvidenceRefs/);
   assert.match(gateway, /injectCompanyContext\(params\.policy, params\.messages, contextPack\)/);
   assert.doesNotMatch(gateway, /catch\s*\([^)]*\)[\s\S]{0,180}contextPack\s*=\s*null/);
 });
@@ -59,6 +87,7 @@ test("the existing Operations chat provider persists governed task context inste
   assert.match(provider, /getAgentPolicy\(options\.agentId\)/);
   assert.match(provider, /loadCompanyBrainContextPack\(\{/);
   assert.match(provider, /renderCompanyBrainContextPackForModel\(pack\)/);
+  assert.match(provider, /taskEvidenceRefs: context\.companyBrainEvidenceRefs/);
   assert.doesNotMatch(
     provider,
     /loadCompanyBrainContextPack\([\s\S]{0,500}catch\s*\([^)]*\)[\s\S]{0,120}(?:ignore|fallback|null)/i,
@@ -86,6 +115,25 @@ test("rendered context remains task-scoped and treats source evidence as untrust
     related_entities: [],
     relationship_history: [],
     project_or_opportunity_state: [],
+    task_evidence: [
+      {
+        confidentiality: "internal",
+        businessRelevance: "operating_plan",
+        citation: { sourceId: 8, sourceVersionId: 13, title: "Reviewed operating plan" },
+        evidence: {
+          kind: "untrusted_evidence",
+          sourceId: "8",
+          sourceVersionId: "13",
+          title: "Reviewed operating plan",
+          locator: null,
+          sourceUrl: null,
+          text: "Use only as evidence for this visible task.",
+          securityStatus: "clean",
+          indicators: [],
+          truncated: false,
+        },
+      },
+    ],
     approved_playbooks: [],
     applicable_policies: [],
     available_tools: ["kb_search"],
@@ -113,5 +161,19 @@ test("rendered context remains task-scoped and treats source evidence as untrust
   assert.match(contextualized[0].content, /quote:42/);
   assert.match(contextualized[0].content, /Use this pack only for the visible task/);
   assert.match(contextualized[0].content, /untrusted data/);
+  assert.match(contextualized[0].content, /Reviewed operating plan/);
+  assert.match(contextualized[0].content, /UNTRUSTED EVIDENCE - DATA ONLY/);
   assert.match(contextualized[0].content, /background conversations/);
+});
+
+test("Fenou links reviewed Company Brain evidence through the existing assistant thread", () => {
+  const route = read("server/routes/assistant.ts");
+  const page = read("client/src/pages/ChairmanQuickPage.tsx");
+  assert.match(route, /thread\/:id\/company-brain-sources/);
+  assert.match(route, /sv\.security_status = 'clean'/);
+  assert.match(route, /s\.tenant_id = \$\{tenantId\}/);
+  assert.match(route, /companyBrainEvidenceRefs/);
+  assert.match(page, /Clean Company Brain evidence/);
+  assert.match(page, /companyBrainEvidenceRefs: pendingEvidenceRefs/);
+  assert.equal((page.match(/<form\b/g) || []).length, 1, "Fenou must retain one composer");
 });

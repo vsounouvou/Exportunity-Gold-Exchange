@@ -14,6 +14,7 @@ import { createActionRun } from "../lib/actions/actionRuns";
 import { createActionRequest, isKnownActionType, type ActionType } from "../lib/actions/ActionRouter";
 import { resolveChairmanConsoleActor } from "./utils/chairman-console-auth";
 import { persistChatAttachment } from "../lib/uploads/chatAttachments";
+import { normalizeCompanyBrainTaskEvidenceRefs } from "../lib/company-brain/taskEvidencePolicy";
 
 const router = Router();
 const assistantAttachmentMaxBytesRaw = Number(process.env.CHAT_ATTACHMENT_MAX_BYTES || 20 * 1024 * 1024);
@@ -395,6 +396,54 @@ router.post("/thread/:id/attachments", (req, res) => {
   });
 });
 
+router.get("/thread/:id/company-brain-sources", async (req, res) => {
+  const auth = await resolveChairmanConsoleActor(req, { allowAdminOverride: true });
+  if (!auth.ok) return res.status(auth.status).json({ message: auth.message });
+  const tenantId = Number(req.tenant?.id);
+  if (!Number.isFinite(tenantId) || tenantId <= 0) {
+    return res.status(400).json({ message: "Tenant not resolved" });
+  }
+  const threadId = parseIntSafe(req.params.id);
+  if (!threadId) return res.status(400).json({ message: "Invalid thread id" });
+  const thread = await db.query.assistantThreads.findFirst({
+    where: and(
+      eq(assistantThreads.id, threadId),
+      eq(assistantThreads.tenantId, tenantId),
+      eq(assistantThreads.userId, Number(auth.user.id)),
+    ),
+  });
+  if (!thread) return res.status(404).json({ message: "Thread not found" });
+
+  const search = String(req.query?.search || "").trim().slice(0, 120);
+  const result = await db.execute(sql`
+    select
+      s.id as source_id,
+      latest.id as source_version_id,
+      s.title,
+      s.business_relevance,
+      s.confidentiality,
+      latest.extraction_status,
+      latest.security_status
+    from company_brain_sources s
+    join lateral (
+      select sv.id, sv.extraction_status, sv.security_status, sv.created_at
+      from company_brain_source_versions sv
+      where sv.source_id = s.id
+        and sv.security_status = 'clean'
+        and sv.extraction_status in ('extracted', 'metadata_only', 'manual')
+      order by sv.created_at desc
+      limit 1
+    ) latest on true
+    where s.tenant_id = ${tenantId}
+      and s.status = 'active'
+      and s.confidentiality <> 'restricted'
+      and (${search} = '' or s.title ilike ${`%${search}%`} or s.business_relevance ilike ${`%${search}%`})
+    order by s.updated_at desc
+    limit 40
+  `);
+  res.json({ ok: true, sources: rows(result) });
+});
+
 router.post("/message", async (req, res) => {
   const auth = await resolveChairmanConsoleActor(req, { allowAdminOverride: true });
   if (!auth.ok) return res.status(auth.status).json({ message: auth.message });
@@ -406,11 +455,26 @@ router.post("/message", async (req, res) => {
   const content = String(req.body?.content || req.body?.message || "").trim();
   const rawAttachments = Array.isArray(req.body?.attachments) ? req.body.attachments : [];
   const attachments = rawAttachments.map((entry: any, index: number) => toAttachment(entry, index)).filter(Boolean);
-  if (!content && attachments.length === 0) return res.status(400).json({ message: "Message content is required" });
-  const effectiveContent = content || `Shared ${attachments.length} attachment(s). Please review.`;
   const userMetadata = toObject(req.body?.metadata ?? {});
+  let companyBrainEvidenceRefs;
+  try {
+    companyBrainEvidenceRefs = normalizeCompanyBrainTaskEvidenceRefs(
+      req.body?.companyBrainEvidenceRefs ?? req.body?.company_brain_evidence_refs ?? userMetadata.companyBrainEvidenceRefs,
+    );
+  } catch (error: any) {
+    return res.status(Number(error?.status || 400)).json({ message: error?.message || "Invalid Company Brain evidence selection" });
+  }
+  if (!content && attachments.length === 0 && companyBrainEvidenceRefs.length === 0) {
+    return res.status(400).json({ message: "Message content is required" });
+  }
+  const effectiveContent = content || (companyBrainEvidenceRefs.length
+    ? "Review the selected Company Brain evidence for this task."
+    : `Shared ${attachments.length} attachment(s). Please review.`);
   if (attachments.length) {
     (userMetadata as any).attachments = attachments;
+  }
+  if (companyBrainEvidenceRefs.length) {
+    (userMetadata as any).companyBrainEvidenceRefs = companyBrainEvidenceRefs;
   }
 
   const assistant = await resolveChairmanAssistant(tenantId);
@@ -444,6 +508,8 @@ router.post("/message", async (req, res) => {
   const contextMessages = buildRecentContext(recentMessages, assistant, auth.user);
 
   try {
+    const conversationId = `assistant-thread:${thread.id}`;
+    const correlationId = `${conversationId}:message:${userMessage.id}`;
     const aiResult = await generateAgentResponse(effectiveContent, {
       role: assistant.role,
       agentId: assistant.id,
@@ -452,6 +518,10 @@ router.post("/message", async (req, res) => {
         recentMessages: contextMessages,
         roomName: "Chairman Assistant",
         roomType: "assistant-thread",
+        taskKey: correlationId,
+        conversationId,
+        correlationId,
+        companyBrainEvidenceRefs,
       },
     });
 

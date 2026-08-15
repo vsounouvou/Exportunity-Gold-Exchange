@@ -16,6 +16,7 @@ import { getCompanyBrainFeatureStatus, isCompanyBrainFeatureEnabled } from "../l
 import { evaluateCompanyBrainClaimReview } from "../lib/company-brain/governancePolicy";
 import { persistManualCompanyBrainEvidence } from "../lib/company-brain/manualEvidence";
 import { resolvePrivateCompanyBrainEvidence } from "../lib/company-brain/manualEvidenceStorage";
+import { reclassifyCompanyBrainSourceVersion } from "../lib/company-brain/sourceClassification";
 import {
   buildRelationshipCandidate,
   RELATIONSHIP_RECONSTRUCTION_MODE,
@@ -817,6 +818,25 @@ router.post("/sources/:sourceId/versions/:versionId/review", async (req: any, re
       }, tx);
     });
     res.json({ ok: true, sourceId, versionId, securityStatus: nextStatus });
+  } catch (error) {
+    res.status(statusOf(error)).json({ message: error instanceof Error ? error.message : String(error) });
+  }
+});
+
+router.post("/sources/:sourceId/versions/:versionId/classification", async (req: any, res) => {
+  try {
+    assertCompanyBrainEnabled();
+    const body = asRecord(req.body);
+    if (body.confirm !== true) return res.status(400).json({ message: "Explicit confirmation is required" });
+    const result = await reclassifyCompanyBrainSourceVersion({
+      tenantId: tenantIdFromReq(req),
+      userId: adminUserIdFromReq(req),
+      sourceId: positiveInt(req.params.sourceId, "sourceId"),
+      versionId: positiveInt(req.params.versionId, "versionId"),
+      confidentiality: body.confidentiality,
+      notes: asText(body.notes),
+    });
+    res.json({ ok: true, result });
   } catch (error) {
     res.status(statusOf(error)).json({ message: error instanceof Error ? error.message : String(error) });
   }

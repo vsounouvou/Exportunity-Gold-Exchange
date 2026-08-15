@@ -10,6 +10,10 @@ import {
   mimeTypeForManualEvidenceExtension,
   validateManualEvidenceFile,
 } from "../server/lib/company-brain/manualEvidencePolicy";
+import {
+  assertCompanyBrainClassificationDoesNotDowngrade,
+  normalizeCompanyBrainConfidentiality,
+} from "../server/lib/company-brain/sourceClassificationPolicy";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const read = (relativePath: string) => fs.readFileSync(path.join(repoRoot, relativePath), "utf8");
@@ -40,6 +44,32 @@ test("manual evidence classifications are constrained to explicit governance val
   assert.ok(!MANUAL_EVIDENCE_RELEVANCE.has("publicly_approved"));
 });
 
+test("evidence classification corrections can only preserve or tighten confidentiality", () => {
+  assert.equal(normalizeCompanyBrainConfidentiality(" CONFIDENTIAL "), "confidential");
+  assert.deepEqual(
+    assertCompanyBrainClassificationDoesNotDowngrade({
+      currentSourceLevel: "internal",
+      currentVersionLevel: "internal",
+      nextLevel: "confidential",
+    }),
+    {
+      sourceLevel: "internal",
+      versionLevel: "internal",
+      currentLevel: "internal",
+      nextLevel: "confidential",
+    },
+  );
+  assert.throws(
+    () => assertCompanyBrainClassificationDoesNotDowngrade({
+      currentSourceLevel: "confidential",
+      currentVersionLevel: "confidential",
+      nextLevel: "internal",
+    }),
+    /cannot be downgraded/i,
+  );
+  assert.throws(() => normalizeCompanyBrainConfidentiality("secret"), /Unsupported/);
+});
+
 test("manual intake is admin-only, private, review-gated, audited, and creates no claims", () => {
   const route = read("server/routes/company-brain-governance.ts");
   const service = read("server/lib/company-brain/manualEvidence.ts");
@@ -54,6 +84,8 @@ test("manual intake is admin-only, private, review-gated, audited, and creates n
   assert.match(route, /Content-Security-Policy", "sandbox; default-src 'none'"/);
   assert.match(route, /filename\*=UTF-8''/);
   assert.match(route, /router\.get\("\/sources\/:sourceId\/file"[\s\S]*?assertCompanyBrainEnabled\(\)/);
+  assert.match(route, /router\.post\("\/sources\/:sourceId\/versions\/:versionId\/classification"/);
+  assert.match(route, /reclassifyCompanyBrainSourceVersion/);
   assert.match(service, /const securityStatus = secured\.securityStatus === "quarantined" \? "quarantined" : "review_required"/);
   assert.match(service, /claimsCreated: 0/);
   assert.doesNotMatch(service, /companyBrainClaims/);
@@ -68,4 +100,6 @@ test("manual intake is admin-only, private, review-gated, audited, and creates n
   assert.match(ui, /localStorage\.getItem\("ece_session"\)/);
   assert.match(ui, /headers\.set\("Authorization", `Bearer \$\{token\}`\)/);
   assert.match(ui, /fetch\(resolveApiUrl\(source\.source_url\)/);
+  assert.match(ui, /Classify confidential/);
+  assert.match(ui, /Classify restricted/);
 });

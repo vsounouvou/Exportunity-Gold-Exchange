@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { resolveApiUrl } from "@/lib/runtimeConfig";
 import { useToast } from "@/hooks/use-toast";
 import { VoiceToTextButton } from "@/components/chat/VoiceToTextButton";
-import { FileUp, Loader2, Paperclip, PhoneCall, Send, Sparkles, X } from "lucide-react";
+import { Brain, FileUp, Loader2, Paperclip, PhoneCall, Send, Sparkles, X } from "lucide-react";
 import { useLocation } from "wouter";
 
 type ChatAttachment = {
@@ -16,6 +16,20 @@ type ChatAttachment = {
   size?: number;
   version?: number;
   url?: string;
+};
+
+type CompanyBrainSource = {
+  source_id: number;
+  source_version_id: number;
+  title: string;
+  business_relevance: string;
+  confidentiality: string;
+};
+
+type CompanyBrainEvidenceRef = {
+  sourceId: number;
+  sourceVersionId: number;
+  title: string;
 };
 
 type QuickMessage = {
@@ -65,6 +79,21 @@ function statusTone(status: string) {
 function extractAttachments(message?: QuickMessage | null): ChatAttachment[] {
   const raw = Array.isArray(message?.metadata?.attachments) ? message?.metadata?.attachments : [];
   return raw.filter((entry: any) => entry && typeof entry === "object" && typeof entry.name === "string");
+}
+
+function extractCompanyBrainEvidenceRefs(message?: QuickMessage | null): CompanyBrainEvidenceRef[] {
+  const raw = Array.isArray(message?.metadata?.companyBrainEvidenceRefs)
+    ? message?.metadata?.companyBrainEvidenceRefs
+    : [];
+  return raw
+    .map((entry: any) => ({
+      sourceId: Number(entry?.sourceId || 0),
+      sourceVersionId: Number(entry?.sourceVersionId || 0),
+      title: typeof entry?.title === "string" && entry.title.trim()
+        ? entry.title.trim()
+        : `Company Brain evidence #${Number(entry?.sourceId || 0)}`,
+    }))
+    .filter((entry) => entry.sourceId > 0 && entry.sourceVersionId > 0);
 }
 
 const LEGACY_INTERNAL_PATH_ALIASES: Record<string, string> = {
@@ -122,6 +151,10 @@ export function ChairmanQuickPage() {
   const [runs, setRuns] = useState<QuickRun[]>([]);
   const [message, setMessage] = useState("");
   const [pendingAttachments, setPendingAttachments] = useState<ChatAttachment[]>([]);
+  const [companyBrainSources, setCompanyBrainSources] = useState<CompanyBrainSource[]>([]);
+  const [pendingEvidenceRefs, setPendingEvidenceRefs] = useState<CompanyBrainEvidenceRef[]>([]);
+  const [evidencePickerOpen, setEvidencePickerOpen] = useState(false);
+  const [loadingEvidenceSources, setLoadingEvidenceSources] = useState(false);
   const [redeemError, setRedeemError] = useState<string | null>(null);
   const [composerError, setComposerError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -263,7 +296,7 @@ export function ChairmanQuickPage() {
 
   const sendMessage = async () => {
     const content = message.trim();
-    if (!content && pendingAttachments.length === 0) return;
+    if (!content && pendingAttachments.length === 0 && pendingEvidenceRefs.length === 0) return;
     setSending(true);
     setAssistantThinking(true);
     setComposerError(null);
@@ -290,9 +323,12 @@ export function ChairmanQuickPage() {
         id: optimisticId,
         senderType: "user",
         senderName: "You",
-        content: content || `Shared ${pendingAttachments.length} attachment(s).`,
+        content: content || (pendingEvidenceRefs.length ? "Review the selected Company Brain evidence for this task." : `Shared ${pendingAttachments.length} attachment(s).`),
         createdAt: new Date().toISOString(),
-        metadata: pendingAttachments.length ? { attachments: pendingAttachments } : null,
+        metadata: {
+          ...(pendingAttachments.length ? { attachments: pendingAttachments } : {}),
+          ...(pendingEvidenceRefs.length ? { companyBrainEvidenceRefs: pendingEvidenceRefs } : {}),
+        },
       },
     ]);
     try {
@@ -302,6 +338,8 @@ export function ChairmanQuickPage() {
           threadId,
           content,
           attachments: pendingAttachments,
+          companyBrainEvidenceRefs: pendingEvidenceRefs.map(({ sourceId, sourceVersionId }) => ({ sourceId, sourceVersionId })),
+          metadata: pendingEvidenceRefs.length ? { companyBrainEvidenceRefs: pendingEvidenceRefs } : undefined,
         }),
       });
       setMessages((prev) => prev.filter((entry) => entry.id !== optimisticId));
@@ -313,6 +351,8 @@ export function ChairmanQuickPage() {
       }
       setMessage("");
       setPendingAttachments([]);
+      setPendingEvidenceRefs([]);
+      setEvidencePickerOpen(false);
       setComposerError(null);
       await Promise.all([refreshMessages(threadId), refreshRuns()]);
     } catch (error: any) {
@@ -328,6 +368,30 @@ export function ChairmanQuickPage() {
     } finally {
       setAssistantThinking(false);
       setSending(false);
+    }
+  };
+
+  const toggleCompanyBrainEvidence = async () => {
+    if (evidencePickerOpen) {
+      setEvidencePickerOpen(false);
+      return;
+    }
+    let threadId: number;
+    try {
+      threadId = await ensureThread();
+    } catch (error: any) {
+      setComposerError(error?.message || "Thread is not available yet.");
+      return;
+    }
+    setLoadingEvidenceSources(true);
+    try {
+      const payload = await apiQuick(`/api/assistant/thread/${threadId}/company-brain-sources`);
+      setCompanyBrainSources(Array.isArray(payload?.sources) ? payload.sources : []);
+      setEvidencePickerOpen(true);
+    } catch (error: any) {
+      setComposerError(error?.message || "Company Brain evidence is unavailable.");
+    } finally {
+      setLoadingEvidenceSources(false);
     }
   };
 
@@ -579,6 +643,16 @@ export function ChairmanQuickPage() {
                       ))}
                     </div>
                   ) : null}
+                  {extractCompanyBrainEvidenceRefs(msg).length > 0 ? (
+                    <div className="mt-2 space-y-1">
+                      {extractCompanyBrainEvidenceRefs(msg).map((evidence) => (
+                        <div key={`${msg.id}:${evidence.sourceId}:${evidence.sourceVersionId}`} className="flex items-center gap-1 rounded-lg border border-amber-300/30 bg-amber-300/10 px-2 py-1 text-[11px] text-amber-100">
+                          <Brain className="h-3 w-3" />
+                          <span className="truncate">{evidence.title}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
                 </div>
               </div>
             ))
@@ -596,7 +670,33 @@ export function ChairmanQuickPage() {
           ) : null}
         </div>
 
-        {pendingAttachments.length > 0 ? (
+        {evidencePickerOpen ? (
+          <div className="max-h-44 overflow-y-auto rounded-lg border border-white/15 bg-[#0d1420] p-2">
+            <div className="mb-2 flex items-center justify-between gap-2 px-1 text-xs font-semibold text-white/75">
+              <span>Clean Company Brain evidence</span>
+              <button type="button" className="text-white/50 hover:text-white" onClick={() => setEvidencePickerOpen(false)}><X className="h-3.5 w-3.5" /></button>
+            </div>
+            {companyBrainSources.map((source) => {
+              const selected = pendingEvidenceRefs.some((item) => item.sourceId === source.source_id && item.sourceVersionId === source.source_version_id);
+              return (
+                <button
+                  key={`${source.source_id}:${source.source_version_id}`}
+                  type="button"
+                  className={`mb-1 flex w-full items-start justify-between gap-2 rounded-md px-2 py-2 text-left text-xs ${selected ? "bg-amber-300/15 text-amber-100" : "bg-white/5 text-white/75 hover:bg-white/10"}`}
+                  onClick={() => setPendingEvidenceRefs((current) => selected
+                    ? current.filter((item) => !(item.sourceId === source.source_id && item.sourceVersionId === source.source_version_id))
+                    : [...current, { sourceId: source.source_id, sourceVersionId: source.source_version_id, title: source.title }])}
+                >
+                  <span className="min-w-0"><span className="block truncate font-semibold">{source.title}</span><span className="mt-0.5 block text-[10px] opacity-60">{source.business_relevance} · {source.confidentiality}</span></span>
+                  <span className="shrink-0">{selected ? "Linked" : "Link"}</span>
+                </button>
+              );
+            })}
+            {!companyBrainSources.length ? <div className="px-2 py-4 text-center text-xs text-white/50">No clean evidence is available. Review a source in Company Brain first.</div> : null}
+          </div>
+        ) : null}
+
+        {pendingAttachments.length > 0 || pendingEvidenceRefs.length > 0 ? (
           <div className="flex gap-2 overflow-x-auto pb-1">
             {pendingAttachments.map((attachment) => (
               <div
@@ -616,6 +716,13 @@ export function ChairmanQuickPage() {
                 >
                   <X className="h-3 w-3" />
                 </button>
+              </div>
+            ))}
+            {pendingEvidenceRefs.map((evidence) => (
+              <div key={`${evidence.sourceId}:${evidence.sourceVersionId}`} className="inline-flex shrink-0 items-center gap-2 rounded-full border border-amber-300/30 bg-amber-300/10 px-2 py-1 text-xs text-amber-100">
+                <Brain className="h-3 w-3" />
+                <span className="max-w-[180px] truncate">{evidence.title}</span>
+                <button type="button" className="text-amber-100/60 hover:text-amber-100" onClick={() => setPendingEvidenceRefs((current) => current.filter((item) => !(item.sourceId === evidence.sourceId && item.sourceVersionId === evidence.sourceVersionId)))}><X className="h-3 w-3" /></button>
               </div>
             ))}
           </div>
@@ -640,6 +747,17 @@ export function ChairmanQuickPage() {
               if (file) void uploadAttachment(file);
             }}
           />
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            title="Link reviewed Company Brain evidence"
+            className="h-11 w-11 border-white/15 text-white/80"
+            onClick={() => void toggleCompanyBrainEvidence()}
+            disabled={loadingEvidenceSources}
+          >
+            {loadingEvidenceSources ? <Loader2 className="h-4 w-4 animate-spin" /> : <Brain className="h-4 w-4" />}
+          </Button>
           <Button
             type="button"
             variant="outline"
@@ -672,7 +790,7 @@ export function ChairmanQuickPage() {
           <Button
             type="submit"
             className="h-11 w-11 p-0"
-            disabled={loading || sending || (!message.trim() && pendingAttachments.length === 0)}
+            disabled={loading || sending || (!message.trim() && pendingAttachments.length === 0 && pendingEvidenceRefs.length === 0)}
           >
             {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
           </Button>

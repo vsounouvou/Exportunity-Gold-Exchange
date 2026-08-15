@@ -100,10 +100,58 @@ function guidedResponseForRequirement(
   const typeLabel = TYPE_LABELS[language][requirementType];
   const productName = commercialIntent?.product?.name;
 
+  const nextCommercialQuestion = (() => {
+    const nextField = commercialIntent?.missingFields?.[0];
+    if (!nextField) return "";
+
+    const questions: Record<string, Record<IndustrialIntakeLanguage, string>> = {
+      "product.name": {
+        fr: "Quel produit recherchez-vous exactement ?",
+        en: "Which product do you need exactly?",
+      },
+      "product.quantity": {
+        fr: "De quelle quantite avez-vous besoin ?",
+        en: "What quantity do you need?",
+      },
+      destination: {
+        fr: "Dans quelle ville ou quel pays la marchandise doit-elle etre livree ?",
+        en: "In which city or country should the goods be delivered?",
+      },
+      "product.specification": {
+        fr: "Quelle specification ou qualite recherchez-vous ?",
+        en: "Which specification or grade do you require?",
+      },
+      frequency: {
+        fr: "S'agit-il d'un achat ponctuel ou d'un besoin recurrent ?",
+        en: "Is this a one-time purchase or a recurring requirement?",
+      },
+      incoterm: {
+        fr: "Avez-vous un Incoterm prefere, par exemple CIF, FOB ou DDP ?",
+        en: "Do you have a preferred Incoterm, such as CIF, FOB, or DDP?",
+      },
+    };
+
+    return questions[nextField]?.[language] || "";
+  })();
+
+  if (commercialIntent?.commercial && nextCommercialQuestion) {
+    const requestSummary =
+      requirementType === "raw_material"
+        ? language === "fr"
+          ? `votre demande d'approvisionnement${productName ? ` en ${productName}` : ""}`
+          : `your sourcing request${productName ? ` for ${productName}` : ""}`
+        : language === "fr"
+          ? `votre demande${productName ? ` pour ${productName}` : " commerciale"}`
+          : `your request${productName ? ` for ${productName}` : ""}`;
+    return language === "fr"
+      ? `J'ai bien note ${requestSummary}. ${nextCommercialQuestion}`
+      : `I have noted ${requestSummary}. ${nextCommercialQuestion}`;
+  }
+
   if (requirementType === "raw_material") {
     return language === "fr"
-      ? `J'ai identifie une demande d'approvisionnement${productName ? ` en ${productName}` : " en matiere premiere"}. Je vais qualifier le volume, la destination et la specification avant de mobiliser l'equipe de sourcing; aucun fournisseur ne sera contacte sans validation.`
-      : `I identified a sourcing request${productName ? ` for ${productName}` : " for a raw material"}. I will qualify the volume, destination, and specification before mobilizing the sourcing team; no supplier is contacted without approval.`;
+      ? `J'ai bien note votre demande d'approvisionnement${productName ? ` en ${productName}` : " en matiere premiere"}. Les elements commerciaux essentiels sont complets; je peux maintenant preparer le dossier pour votre validation.`
+      : `I have noted your sourcing request${productName ? ` for ${productName}` : " for a raw material"}. The essential commercial details are complete, so I can now prepare the case for your review.`;
   }
   if (requirementType === "export_quotation") {
     return language === "fr"
@@ -592,6 +640,18 @@ export async function generateIndustrialIntakeReply(
         ),
       }
     : classifiedPreview;
+
+  // Qualification questions must stay grounded in deterministic extraction.
+  // This prevents an optional model reply from asking the buyer to repeat facts.
+  if (
+    agentMode === "commercial" &&
+    preview.commercial &&
+    preview.suggestedAction === "ASK" &&
+    preview.missingFields.length > 0
+  ) {
+    return { ...preview, responseMode: "guided" };
+  }
+
   const policy = getExportunityAgentModelPolicy(
     agentMode === "commercial" ? "commercial" : "tassi",
   );

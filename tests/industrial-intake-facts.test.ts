@@ -82,6 +82,7 @@ test("palm-oil sourcing is a commercial raw-material request, never a CAD workfl
   ]);
   assert.doesNotMatch(preview.response, /CAD|plan|photo/i);
   assert.match(preview.response, /approvisionnement|sourcing/i);
+  assert.match(preview.response, /quantit[eé]|volume/i);
 });
 
 test("qualified palm-oil sourcing captures commercial terms already supplied", () => {
@@ -156,6 +157,8 @@ test("refined palm-oil demand keeps supplied facts and asks only for missing tra
   assert.deepEqual(preview.missingFields, ["frequency", "incoterm"]);
   assert.equal(preview.suggestedAction, "ASK");
   assert.doesNotMatch(preview.response, /CAD|plan|photo/i);
+  assert.match(preview.response, /ponctuel|r[eé]current/i);
+  assert.doesNotMatch(preview.response, /qualifier le volume|qualify the volume/i);
 });
 
 test("the buyer conversation asks only unresolved palm-oil terms", () => {

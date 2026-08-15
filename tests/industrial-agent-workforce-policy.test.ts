@@ -6,6 +6,9 @@ import {
   resolveIndustrialRequirementHandoffPlan,
 } from "../server/lib/industrial/operationsHandoffPolicy";
 import {
+  commercialStaffingCapacityExpansionThreshold,
+  commercialStaffingCapacityRoleCode,
+  commercialStaffingCaseCapacity,
   commercialStaffingSpecialistKey,
   commercialStaffingRecommendations,
   commercialStaffingRoleTitles,
@@ -153,6 +156,39 @@ test("known product names repair generic categories without turning arbitrary te
   );
 });
 
+test("employee capacity is bounded and expansion seats have stable governed identities", () => {
+  assert.equal(commercialStaffingCaseCapacity("Specification Agent"), 4);
+  assert.equal(commercialStaffingCaseCapacity("Supplier Discovery Agent"), 8);
+  assert.equal(commercialStaffingCaseCapacity("Palm Oil Desk Agent"), 6);
+  assert.equal(commercialStaffingCapacityExpansionThreshold(), 2);
+  assert.equal(
+    commercialStaffingCapacityRoleCode(
+      "exportunity-seat-sourcing-procurement-02-supplier-discovery-agent",
+      2,
+    ),
+    "exportunity-demand-seat-capacity-exportunity-seat-sourcing-procurement-02-supplier-discovery-agent-02",
+  );
+});
+
+test("sustained overload creates a governed additional seat instead of unlimited assignment", () => {
+  const planner = readRepoFile("server/lib/industrial/workforcePlanning.ts");
+  const routes = readRepoFile("server/routes/admin-agents-os.ts");
+  const ui = readRepoFile("client/src/pages/AdminAgentsOsPage.tsx");
+
+  assert.match(planner, /resolveRoleCapacityPlan/);
+  assert.match(planner, /openCaseCount < capacityLimit/);
+  assert.match(planner, /mode: "expand"/);
+  assert.match(planner, /"capacity_expansion"/);
+  assert.match(planner, /baseRoleCode/);
+  assert.match(planner, /least-loaded qualified employee/);
+  assert.match(routes, /workforceCaseCapacity/);
+  assert.match(routes, /specialistFunctionKey/);
+  assert.match(routes, /open_case_count/);
+  assert.match(ui, /additional seat/);
+  assert.match(ui, /Employee case load/);
+  assert.match(ui, /Sustained overflow opens a governed additional-seat review/);
+});
+
 test("new matching demand reuses an active employee through linked internal work", () => {
   const planner = readRepoFile("server/lib/industrial/workforcePlanning.ts");
   const route = readRepoFile("server/routes/industrial.ts");
@@ -180,7 +216,10 @@ test("historical demand evaluation records governed signals without silently ass
   assert.match(route, /employeesCreated: 0/);
   assert.match(route, /employeesActivated: 0/);
   assert.match(route, /externalActionsStarted: false/);
-  assert.match(planner, /input\.assignmentMode === "signal_only" && runtimeIsActive/);
+  assert.match(
+    planner,
+    /input\.assignmentMode === "signal_only" && capacityPlan\.mode === "active"/,
+  );
   assert.match(planner, /runtimeIsActive && input\.assignmentMode !== "signal_only"/);
   assert.match(ui, /Evaluate current demand/);
   assert.match(ui, /No employee is created or activated/);

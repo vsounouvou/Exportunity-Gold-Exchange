@@ -4,6 +4,9 @@ import { db } from "@db";
 import { ensureExportunityRoleSeatCatalog } from "../company-brain/ensureRoleSeatCatalog";
 import { EXPORTUNITY_ROLE_SEATS } from "../company-brain/roleSeatCatalog";
 import {
+  commercialStaffingCapacityExpansionThreshold,
+  commercialStaffingCapacityRoleCode,
+  commercialStaffingCaseCapacity,
   commercialStaffingRecommendations,
   type CommercialStaffingContext,
 } from "./workforcePlanningPolicy";
@@ -31,11 +34,239 @@ type StaffingProposal = {
   assignmentTaskId: number | null;
   governanceStatus: string;
   companyBrainContextPackId: number | null;
+  capacityLimit: number;
+  openCaseCount: number;
+  activeEmployeeCount: number;
+  capacityExpansion: boolean;
 };
 
 function rows<T = any>(result: any): T[] {
   if (Array.isArray(result?.rows)) return result.rows as T[];
   return Array.isArray(result) ? (result as T[]) : [];
+}
+
+type EmployeeCapacity = {
+  agentId: number;
+  runtimeStatus: string;
+  managerId: number | null;
+  roleCode: string;
+  roleTemplateId: number | null;
+  staffingRequestId: number | null;
+  openCaseCount: number;
+};
+
+type CapacityRequest = {
+  id: number;
+  roleCode: string;
+  roleTemplateId: number | null;
+  provisionedAgentId: number | null;
+  status: string;
+  capacityOrdinal: number;
+  demandThreshold: number;
+};
+
+type RoleCapacityPlan = {
+  mode: "unprovisioned" | "active" | "inactive" | "expand";
+  baseRoleCode: string;
+  targetRoleCode: string;
+  targetRoleTemplateId: number | null;
+  targetStaffingRequestId: number | null;
+  runtimeAgentId: number | null;
+  runtimeStatus: string;
+  openCaseCount: number;
+  teamOpenCaseCount: number;
+  activeEmployeeCount: number;
+  capacityLimit: number;
+  capacityOrdinal: number;
+  expansionDemandThreshold: number;
+};
+
+async function loadEmployeeCapacity(input: {
+  tenantId: number;
+  agentId: number;
+  roleCode: string;
+  roleTemplateId?: number | null;
+  staffingRequestId?: number | null;
+}): Promise<EmployeeCapacity | null> {
+  if (!input.agentId) return null;
+  const result = await db.execute(sql`
+    select
+      a.id,
+      a.status,
+      a.manager_id,
+      count(t.id) filter (
+        where t.execution_type = 'workforce_activation'
+          and t.status in ('backlog', 'in_progress', 'blocked')
+      )::integer as open_case_count
+    from agents a
+    left join tasks t on t.agent_id = a.id
+    where a.id = ${input.agentId}
+      and a.tenant_id = ${input.tenantId}
+    group by a.id, a.status, a.manager_id
+    limit 1
+  `);
+  const row = rows<any>(result)[0];
+  if (!row?.id) return null;
+  return {
+    agentId: Number(row.id),
+    runtimeStatus: String(row.status || ""),
+    managerId: Number(row.manager_id || 0) || null,
+    roleCode: input.roleCode,
+    roleTemplateId: Number(input.roleTemplateId || 0) || null,
+    staffingRequestId: Number(input.staffingRequestId || 0) || null,
+    openCaseCount: Number(row.open_case_count || 0),
+  };
+}
+
+async function resolveRoleCapacityPlan(input: {
+  tenantId: number;
+  baseRoleCode: string;
+  baseRoleTemplateId: number | null;
+  baseRuntimeAgentId: number | null;
+  roleTitle: string;
+}): Promise<RoleCapacityPlan> {
+  const capacityLimit = commercialStaffingCaseCapacity(input.roleTitle);
+  const expansionDemandThreshold = commercialStaffingCapacityExpansionThreshold();
+  const expansionResult = await db.execute(sql`
+    select
+      id,
+      role_code,
+      role_template_id,
+      provisioned_agent_id,
+      status,
+      demand_threshold,
+      coalesce(nullif(evidence->>'capacityOrdinal', '')::integer, 2) as capacity_ordinal
+    from industrial_agent_staffing_requests
+    where tenant_id = ${input.tenantId}
+      and evidence->>'baseRoleCode' = ${input.baseRoleCode}
+      and status in ('monitoring', 'proposed', 'approved', 'provisioned', 'active', 'paused')
+    order by coalesce(nullif(evidence->>'capacityOrdinal', '')::integer, 2) asc, id asc
+  `);
+  const expansionRequests = rows<any>(expansionResult).map((row): CapacityRequest => ({
+    id: Number(row.id),
+    roleCode: String(row.role_code),
+    roleTemplateId: Number(row.role_template_id || 0) || null,
+    provisionedAgentId: Number(row.provisioned_agent_id || 0) || null,
+    status: String(row.status || ""),
+    capacityOrdinal: Math.max(2, Number(row.capacity_ordinal || 2)),
+    demandThreshold: Math.max(1, Number(row.demand_threshold || expansionDemandThreshold)),
+  }));
+
+  const employees: EmployeeCapacity[] = [];
+  const baseEmployee = await loadEmployeeCapacity({
+    tenantId: input.tenantId,
+    agentId: Number(input.baseRuntimeAgentId || 0),
+    roleCode: input.baseRoleCode,
+    roleTemplateId: input.baseRoleTemplateId,
+  });
+  if (baseEmployee) employees.push(baseEmployee);
+  for (const request of expansionRequests) {
+    if (!request.provisionedAgentId) continue;
+    if (employees.some((employee) => employee.agentId === request.provisionedAgentId)) continue;
+    const employee = await loadEmployeeCapacity({
+      tenantId: input.tenantId,
+      agentId: request.provisionedAgentId,
+      roleCode: request.roleCode,
+      roleTemplateId: request.roleTemplateId,
+      staffingRequestId: request.id,
+    });
+    if (employee) employees.push(employee);
+  }
+
+  const activeEmployees = employees
+    .filter((employee) => employee.runtimeStatus === "active" && employee.managerId)
+    .sort((left, right) => left.openCaseCount - right.openCaseCount || left.agentId - right.agentId);
+  const teamOpenCaseCount = activeEmployees.reduce(
+    (total, employee) => total + employee.openCaseCount,
+    0,
+  );
+  const availableEmployee = activeEmployees.find(
+    (employee) => employee.openCaseCount < capacityLimit,
+  );
+  if (availableEmployee) {
+    return {
+      mode: "active",
+      baseRoleCode: input.baseRoleCode,
+      targetRoleCode: availableEmployee.roleCode,
+      targetRoleTemplateId: availableEmployee.roleTemplateId,
+      targetStaffingRequestId: availableEmployee.staffingRequestId,
+      runtimeAgentId: availableEmployee.agentId,
+      runtimeStatus: availableEmployee.runtimeStatus,
+      openCaseCount: availableEmployee.openCaseCount,
+      teamOpenCaseCount,
+      activeEmployeeCount: activeEmployees.length,
+      capacityLimit,
+      capacityOrdinal:
+        expansionRequests.find((request) => request.id === availableEmployee.staffingRequestId)
+          ?.capacityOrdinal || 1,
+      expansionDemandThreshold,
+    };
+  }
+
+  const inactiveEmployee = employees.find(
+    (employee) => employee.runtimeStatus !== "active",
+  );
+  if (inactiveEmployee) {
+    return {
+      mode: "inactive",
+      baseRoleCode: input.baseRoleCode,
+      targetRoleCode: inactiveEmployee.roleCode,
+      targetRoleTemplateId: inactiveEmployee.roleTemplateId,
+      targetStaffingRequestId: inactiveEmployee.staffingRequestId,
+      runtimeAgentId: inactiveEmployee.agentId,
+      runtimeStatus: inactiveEmployee.runtimeStatus,
+      openCaseCount: inactiveEmployee.openCaseCount,
+      teamOpenCaseCount,
+      activeEmployeeCount: activeEmployees.length,
+      capacityLimit,
+      capacityOrdinal:
+        expansionRequests.find((request) => request.id === inactiveEmployee.staffingRequestId)
+          ?.capacityOrdinal || 1,
+      expansionDemandThreshold,
+    };
+  }
+
+  if (activeEmployees.length) {
+    const pendingExpansion = expansionRequests.find(
+      (request) => !request.provisionedAgentId || request.status !== "active",
+    );
+    const nextOrdinal = pendingExpansion?.capacityOrdinal ||
+      Math.max(1, ...expansionRequests.map((request) => request.capacityOrdinal)) + 1;
+    return {
+      mode: "expand",
+      baseRoleCode: input.baseRoleCode,
+      targetRoleCode:
+        pendingExpansion?.roleCode ||
+        commercialStaffingCapacityRoleCode(input.baseRoleCode, nextOrdinal),
+      targetRoleTemplateId: pendingExpansion?.roleTemplateId || null,
+      targetStaffingRequestId: pendingExpansion?.id || null,
+      runtimeAgentId: null,
+      runtimeStatus: "",
+      openCaseCount: capacityLimit,
+      teamOpenCaseCount,
+      activeEmployeeCount: activeEmployees.length,
+      capacityLimit,
+      capacityOrdinal: nextOrdinal,
+      expansionDemandThreshold:
+        pendingExpansion?.demandThreshold || expansionDemandThreshold,
+    };
+  }
+
+  return {
+    mode: input.baseRuntimeAgentId ? "inactive" : "unprovisioned",
+    baseRoleCode: input.baseRoleCode,
+    targetRoleCode: input.baseRoleCode,
+    targetRoleTemplateId: input.baseRoleTemplateId,
+    targetStaffingRequestId: null,
+    runtimeAgentId: input.baseRuntimeAgentId,
+    runtimeStatus: baseEmployee?.runtimeStatus || "",
+    openCaseCount: baseEmployee?.openCaseCount || 0,
+    teamOpenCaseCount: 0,
+    activeEmployeeCount: 0,
+    capacityLimit,
+    capacityOrdinal: 1,
+    expansionDemandThreshold,
+  };
 }
 
 async function assignActiveEmployeeToRequirement(input: {
@@ -230,47 +461,67 @@ export async function proposeCommercialStaffing(input: {
   for (const recommendation of recommendations) {
     const roleTitle = recommendation.roleTitle;
     const seat = EXPORTUNITY_ROLE_SEATS.find((item) => item.role === roleTitle);
-    const roleCode = seat?.immutableAgentId || recommendation.roleCode;
+    const baseRoleCode = seat?.immutableAgentId || recommendation.roleCode;
     const departmentKey = seat?.departmentKey || recommendation.departmentKey;
-    if (!roleCode || !departmentKey) continue;
-    const templateResult = await db.execute(sql`
+    if (!baseRoleCode || !departmentKey) continue;
+    const baseTemplateResult = await db.execute(sql`
       select id, runtime_agent_id, seat_status, role_profile
       from ece_agent_templates
       where tenant_id = ${input.tenantId}
-        and code = ${roleCode}
+        and code = ${baseRoleCode}
       limit 1
     `);
-    const template = rows<any>(templateResult)[0];
-    const runtimeAgentId = Number(template?.runtime_agent_id || 0);
-    let runtimeStatus = "";
-    if (runtimeAgentId > 0) {
-      const runtimeResult = await db.execute(sql`
-        select id, status
-        from agents
-        where id = ${runtimeAgentId} and tenant_id = ${input.tenantId}
+    const baseTemplate = rows<any>(baseTemplateResult)[0];
+    const capacityPlan = await resolveRoleCapacityPlan({
+      tenantId: input.tenantId,
+      baseRoleCode,
+      baseRoleTemplateId: Number(baseTemplate?.id || 0) || null,
+      baseRuntimeAgentId: Number(baseTemplate?.runtime_agent_id || 0) || null,
+      roleTitle,
+    });
+    const roleCode = capacityPlan.targetRoleCode;
+    let template = baseTemplate;
+    if (roleCode !== baseRoleCode) {
+      const targetTemplateResult = await db.execute(sql`
+        select id, runtime_agent_id, seat_status, role_profile
+        from ece_agent_templates
+        where tenant_id = ${input.tenantId}
+          and (
+            id = ${capacityPlan.targetRoleTemplateId}
+            or code = ${roleCode}
+          )
+        order by case when id = ${capacityPlan.targetRoleTemplateId} then 0 else 1 end
         limit 1
       `);
-      const runtime = rows<any>(runtimeResult)[0];
-      runtimeStatus = String(runtime?.status || "");
+      template = rows<any>(targetTemplateResult)[0];
     }
 
-    const runtimeIsActive = runtimeStatus === "active";
-    if (input.assignmentMode === "signal_only" && runtimeIsActive) {
+    const runtimeAgentId = Number(capacityPlan.runtimeAgentId || 0);
+    const runtimeIsActive = capacityPlan.mode === "active";
+    if (input.assignmentMode === "signal_only" && capacityPlan.mode === "active") {
       continue;
     }
-    const effectiveSignalType = runtimeAgentId > 0
-      ? runtimeIsActive
-        ? "active_capacity"
-        : "inactive_capacity"
-      : recommendation.signalType;
-    const effectiveThreshold = runtimeAgentId > 0 ? 1 : recommendation.demandThreshold;
-    const reason = runtimeAgentId > 0
-      ? runtimeIsActive
-        ? `${roleTitle} already has an active employee. ${input.referenceCode} is added to that employee's demand-backed workload.`
-        : `${roleTitle} is provisioned but inactive while ${input.referenceCode} requires this specialist capability.`
-      : recommendation.signalType === "critical_capability_gap"
-        ? `${input.referenceCode} exposed a critical execution gap for ${roleTitle}; human staffing review is required.`
-        : `Verified demand is accumulating for ${roleTitle}. Review becomes available after ${recommendation.demandThreshold} distinct commercial requirements.`;
+    const effectiveSignalType = capacityPlan.mode === "active"
+      ? "active_capacity"
+      : capacityPlan.mode === "inactive"
+        ? "inactive_capacity"
+        : capacityPlan.mode === "expand"
+          ? "capacity_expansion"
+          : recommendation.signalType;
+    const effectiveThreshold = capacityPlan.mode === "expand"
+      ? capacityPlan.expansionDemandThreshold
+      : runtimeAgentId > 0
+        ? 1
+        : recommendation.demandThreshold;
+    const reason = capacityPlan.mode === "active"
+      ? `${roleTitle} has available capacity. ${input.referenceCode} is assigned to the least-loaded qualified employee (${capacityPlan.openCaseCount}/${capacityPlan.capacityLimit} open cases before assignment).`
+      : capacityPlan.mode === "inactive"
+        ? `${roleTitle} has provisioned but inactive capacity while ${input.referenceCode} requires this specialist capability.`
+        : capacityPlan.mode === "expand"
+          ? `${capacityPlan.activeEmployeeCount} active ${roleTitle} employee${capacityPlan.activeEmployeeCount === 1 ? " is" : "s are"} at capacity. ${input.referenceCode} is an overflow signal for governed capacity seat ${capacityPlan.capacityOrdinal}.`
+          : recommendation.signalType === "critical_capability_gap"
+            ? `${input.referenceCode} exposed a critical execution gap for ${roleTitle}; human staffing review is required.`
+            : `Verified demand is accumulating for ${roleTitle}. Review becomes available after ${recommendation.demandThreshold} distinct commercial requirements.`;
     const governance = await assembleWorkforceGovernanceContext({
       tenantId: input.tenantId,
       companyId: input.companyId,
@@ -294,7 +545,18 @@ export async function proposeCommercialStaffing(input: {
       assignmentMode: input.assignmentMode || "assign_active_employee",
       signalType: effectiveSignalType,
       rationale: recommendation.rationale,
-      dynamicRoleSeat: Boolean(recommendation.dynamicRoleSeat || template?.role_profile?.dynamicRoleSeat),
+      dynamicRoleSeat: Boolean(
+        capacityPlan.mode === "expand" ||
+          recommendation.dynamicRoleSeat ||
+          template?.role_profile?.dynamicRoleSeat
+      ),
+      baseRoleCode,
+      capacityOrdinal: capacityPlan.capacityOrdinal,
+      capacityLimit: capacityPlan.capacityLimit,
+      openCaseCount: capacityPlan.openCaseCount,
+      teamOpenCaseCount: capacityPlan.teamOpenCaseCount,
+      activeEmployeeCount: capacityPlan.activeEmployeeCount,
+      capacityExpansion: capacityPlan.mode === "expand",
       companyBrain: {
         contextPackId: governance.contextPackId,
         governanceStatus: governance.status,
@@ -434,12 +696,20 @@ export async function proposeCommercialStaffing(input: {
       demandThreshold: Number(row.demand_threshold || 1),
       signalType: String(row.signal_type || effectiveSignalType),
       reviewReady: String(row.status) === "proposed",
-      dynamicRoleSeat: Boolean(recommendation.dynamicRoleSeat || template?.role_profile?.dynamicRoleSeat),
+      dynamicRoleSeat: Boolean(
+        capacityPlan.mode === "expand" ||
+          recommendation.dynamicRoleSeat ||
+          template?.role_profile?.dynamicRoleSeat
+      ),
       existingRuntimeAgentId: runtimeAgentId || null,
       assignmentTaskId,
       governanceStatus: String(row.governance_status || governance.status),
       companyBrainContextPackId:
         Number(row.company_brain_context_pack_id || governance.contextPackId || 0) || null,
+      capacityLimit: capacityPlan.capacityLimit,
+      openCaseCount: capacityPlan.openCaseCount,
+      activeEmployeeCount: capacityPlan.activeEmployeeCount,
+      capacityExpansion: capacityPlan.mode === "expand",
     });
   }
   return proposals;

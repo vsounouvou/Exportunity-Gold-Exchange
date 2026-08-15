@@ -225,6 +225,11 @@ type WorkforceRequest = {
   manager_id: number | null;
   manager_display_name: string | null;
   production_enabled: boolean;
+  open_case_count: number;
+  capacity_limit: number;
+  capacity_ordinal: number;
+  base_role_code: string;
+  capacity_expansion: boolean;
   reference_code: string | null;
   requirement_title: string | null;
   commercial_intent: string | null;
@@ -1097,6 +1102,11 @@ export default function AdminAgentsOsPage() {
                         {item.dynamic_role_seat || Boolean(item.evidence?.dynamicRoleSeat) ? (
                             <Badge variant="outline" className="border-violet-200 bg-violet-50 text-violet-800">demand-created role</Badge>
                           ) : null}
+                          {item.capacity_expansion ? (
+                            <Badge variant="outline" className="border-blue-200 bg-blue-50 text-blue-800">
+                              additional seat {item.capacity_ordinal}
+                            </Badge>
+                          ) : null}
                           <Badge variant="outline" className={item.status === "active"
                             ? "border-emerald-200 bg-emerald-50 text-emerald-800"
                             : item.status === "proposed"
@@ -1105,11 +1115,17 @@ export default function AdminAgentsOsPage() {
                           >{item.status === "monitoring" ? "watching demand" : item.status}</Badge>
                         </div>
                         <p className="mt-1 text-sm text-slate-700">{item.reason}</p>
-                        {["recurring_demand", "active_capacity"].includes(item.signal_type) ? (
+                        {["recurring_demand", "active_capacity", "capacity_expansion"].includes(item.signal_type) ? (
                           <div className="mt-3 max-w-xl">
                             <div className="mb-1 flex items-center justify-between text-xs font-medium text-slate-600">
                               <span>{item.demand_count} distinct demand signal{item.demand_count === 1 ? "" : "s"}</span>
-                              <span>{item.signal_type === "active_capacity" ? "Assigned to active capacity" : `Review at ${item.demand_threshold}`}</span>
+                              <span>
+                                {item.signal_type === "active_capacity"
+                                  ? "Assigned to least-loaded employee"
+                                  : item.signal_type === "capacity_expansion"
+                                    ? `Expansion review at ${item.demand_threshold}`
+                                    : `Review at ${item.demand_threshold}`}
+                              </span>
                             </div>
                             <div className="h-2 overflow-hidden rounded-full bg-slate-100">
                               <div
@@ -1126,6 +1142,29 @@ export default function AdminAgentsOsPage() {
                           {item.commercial_intent ? <span>Intent: {item.commercial_intent}</span> : null}
                           {item.manager_display_name ? <span>Manager: {item.manager_display_name}</span> : null}
                         </div>
+                        {item.provisioned_agent_id ? (
+                          <div className="mt-3 max-w-xl rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
+                            <div className="flex items-center justify-between gap-3 text-xs font-medium text-slate-700">
+                              <span>Employee case load</span>
+                              <span>{Number(item.open_case_count || 0)} / {Math.max(1, Number(item.capacity_limit || 6))} open</span>
+                            </div>
+                            <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-white ring-1 ring-slate-200">
+                              <div
+                                className={`h-full rounded-full transition-all ${
+                                  Number(item.open_case_count || 0) >= Math.max(1, Number(item.capacity_limit || 6))
+                                    ? "bg-rose-500"
+                                    : Number(item.open_case_count || 0) >= Math.max(1, Number(item.capacity_limit || 6)) * 0.75
+                                      ? "bg-amber-500"
+                                      : "bg-emerald-500"
+                                }`}
+                                style={{ width: `${Math.min(100, Math.round((Number(item.open_case_count || 0) / Math.max(1, Number(item.capacity_limit || 6))) * 100))}%` }}
+                              />
+                            </div>
+                            <div className="mt-1 text-[11px] leading-4 text-slate-500">
+                              New matching work goes to the qualified employee with the most headroom. Sustained overflow opens a governed additional-seat review.
+                            </div>
+                          </div>
+                        ) : null}
                         <div className={`mt-3 flex max-w-2xl flex-col gap-2 rounded-md border p-3 text-xs sm:flex-row sm:items-center sm:justify-between ${
                           item.governance_status === "ready"
                             ? "border-emerald-200 bg-emerald-50 text-emerald-900"

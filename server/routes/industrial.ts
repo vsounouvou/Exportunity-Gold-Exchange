@@ -7068,6 +7068,11 @@ router.post("/requirements", async (req: any, res) => {
                 requestId: item.id,
                 count: item.demandCount,
                 threshold: item.demandThreshold,
+                signalType: item.signalType,
+                capacityLimit: item.capacityLimit,
+                openCaseCount: item.openCaseCount,
+                activeEmployeeCount: item.activeEmployeeCount,
+                capacityExpansion: item.capacityExpansion,
               })),
               activeEmployeeAssignments: staffingProposals
                 .filter((item) => item.assignmentTaskId)
@@ -7150,6 +7155,11 @@ router.post("/requirements", async (req: any, res) => {
           demandCount: item.demandCount,
           demandThreshold: item.demandThreshold,
           dynamicRoleSeat: item.dynamicRoleSeat,
+          signalType: item.signalType,
+          capacityLimit: item.capacityLimit,
+          openCaseCount: item.openCaseCount,
+          activeEmployeeCount: item.activeEmployeeCount,
+          capacityExpansion: item.capacityExpansion,
           existingRuntimeAgentId: item.existingRuntimeAgentId,
           assignmentTaskId: item.assignmentTaskId,
         })),

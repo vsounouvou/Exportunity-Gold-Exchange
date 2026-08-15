@@ -592,6 +592,21 @@ router.get("/admin/agents-os/workforce-requests", async (req: any, res) => {
         a.manager_id,
         manager.display_name as manager_display_name,
         coalesce(ap.is_enabled, false) as production_enabled,
+        coalesce(workload.open_case_count, 0)::integer as open_case_count,
+        case
+          when coalesce(sr.evidence->>'capacityLimit', '') ~ '^[0-9]+$'
+            then (sr.evidence->>'capacityLimit')::integer
+          when coalesce(sr.evidence->'latestDemandSignal'->>'capacityLimit', '') ~ '^[0-9]+$'
+            then (sr.evidence->'latestDemandSignal'->>'capacityLimit')::integer
+          else 6
+        end as capacity_limit,
+        case
+          when coalesce(sr.evidence->>'capacityOrdinal', '') ~ '^[0-9]+$'
+            then (sr.evidence->>'capacityOrdinal')::integer
+          else 1
+        end as capacity_ordinal,
+        coalesce(nullif(sr.evidence->>'baseRoleCode', ''), sr.role_code) as base_role_code,
+        coalesce((sr.evidence->>'capacityExpansion')::boolean, false) as capacity_expansion,
         sr.created_at,
         sr.updated_at,
         ir.reference_code,
@@ -604,6 +619,13 @@ router.get("/admin/agents-os/workforce-requests", async (req: any, res) => {
       left join agents a on a.id = sr.provisioned_agent_id and a.tenant_id = sr.tenant_id
       left join agents manager on manager.id = a.manager_id and manager.tenant_id = sr.tenant_id
       left join agents_production ap on ap.agent_id = sr.provisioned_agent_id and ap.tenant_id = sr.tenant_id
+      left join lateral (
+        select count(*)::integer as open_case_count
+        from tasks task
+        where task.agent_id = sr.provisioned_agent_id
+          and task.execution_type = 'workforce_activation'
+          and task.status in ('backlog', 'in_progress', 'blocked')
+      ) workload on true
       where sr.tenant_id = ${tenant.tenantId}
       order by
         case sr.status when 'proposed' then 0 when 'approved' then 1 when 'provisioned' then 2 when 'active' then 3 when 'monitoring' then 4 else 5 end,
@@ -1425,6 +1447,21 @@ router.post("/admin/agents/:id(\\d+)/provision", async (req: any, res) => {
         });
       }
     }
+    const capacityBaseRoleCode = asString(staffingRequest?.evidence?.baseRoleCode);
+    const capacityOrdinal = Math.max(
+      1,
+      Number(staffingRequest?.evidence?.capacityOrdinal || 1),
+    );
+    const capacityLimit = Math.max(
+      1,
+      Number(staffingRequest?.evidence?.capacityLimit || 6),
+    );
+    const isCapacityExpansion = Boolean(
+      staffingRequest?.evidence?.capacityExpansion || capacityOrdinal > 1,
+    );
+    const runtimeOrganizationKey = isCapacityExpansion
+      ? asString(template.code)
+      : specialistOrganizationKey || asString(template.code);
     const departmentKey = asString(profile.departmentKey || template.department_key || "operations");
     const departmentName = asString(profile.departmentName || "Operations");
     const existingDepartmentResult = await db.execute(sql`
@@ -1491,12 +1528,16 @@ router.post("/admin/agents/:id(\\d+)/provision", async (req: any, res) => {
       const linkedRuntimeId = Number(locked.runtime_agent_id || 0);
       if (linkedRuntimeId > 0) {
         const reuseMetadata = {
+          organizationKey: runtimeOrganizationKey,
           ...(specialistOrganizationKey
-            ? { organizationKey: specialistOrganizationKey }
+            ? { specialistFunctionKey: specialistOrganizationKey }
             : {}),
           roleSeatTemplateId: templateId,
           departmentKey,
           managerOrganizationKey,
+          workforceBaseRoleCode: capacityBaseRoleCode || asString(template.code),
+          workforceCapacityOrdinal: capacityOrdinal,
+          workforceCaseCapacity: capacityLimit,
           ...(staffingRequestId > 0
             ? {
                 staffingRequestId,
@@ -1549,8 +1590,10 @@ router.post("/admin/agents/:id(\\d+)/provision", async (req: any, res) => {
         backgroundAutonomy: "disabled",
       };
       const metadata = {
-        organizationKey:
-          specialistOrganizationKey || asString(locked.code),
+        organizationKey: runtimeOrganizationKey,
+        ...(specialistOrganizationKey
+          ? { specialistFunctionKey: specialistOrganizationKey }
+          : {}),
         organizationVersion: asString(locked.organization_version),
         operatingModel: "exportunity-global-trade-os",
         roleSeatTemplateId: templateId,
@@ -1561,6 +1604,9 @@ router.post("/admin/agents/:id(\\d+)/provision", async (req: any, res) => {
         departmentKey,
         managerOrganizationKey,
         managerAgentId: Number(manager.id),
+        workforceBaseRoleCode: capacityBaseRoleCode || asString(locked.code),
+        workforceCapacityOrdinal: capacityOrdinal,
+        workforceCaseCapacity: capacityLimit,
         companyContext: "Exportunity is a global AI-managed trade, sourcing, industrial supply, and market expansion platform.",
         activationState: "inactive",
         roleSeatProfile: roleProfile,
@@ -1769,11 +1815,38 @@ router.post("/admin/agents-os/workforce-requests/:id(\\d+)/lifecycle", async (re
     const specialistOrganizationKey = commercialStaffingSpecialistKey(
       before.runtime_role || before.role_title,
     );
+    const isCapacityExpansion = Boolean(
+      before.evidence?.capacityExpansion ||
+        Number(before.evidence?.capacityOrdinal || 1) > 1,
+    );
     const nextRuntimeMetadata = {
       ...runtimeMetadata,
+      organizationKey: isCapacityExpansion
+        ? asString(runtimeMetadata.organizationKey || before.role_code)
+        : specialistOrganizationKey ||
+          asString(runtimeMetadata.organizationKey || before.role_code),
       ...(specialistOrganizationKey
-        ? { organizationKey: specialistOrganizationKey }
+        ? { specialistFunctionKey: specialistOrganizationKey }
         : {}),
+      workforceBaseRoleCode:
+        asString(before.evidence?.baseRoleCode) ||
+        asString(runtimeMetadata.workforceBaseRoleCode || before.role_code),
+      workforceCapacityOrdinal: Math.max(
+        1,
+        Number(
+          before.evidence?.capacityOrdinal ||
+            runtimeMetadata.workforceCapacityOrdinal ||
+            1,
+        ),
+      ),
+      workforceCaseCapacity: Math.max(
+        1,
+        Number(
+          before.evidence?.capacityLimit ||
+            runtimeMetadata.workforceCaseCapacity ||
+            6,
+        ),
+      ),
       activationState: action === "activate" ? "active" : "paused",
       activationSource: "human_workforce_approval",
     };
@@ -1789,7 +1862,8 @@ router.post("/admin/agents-os/workforce-requests/:id(\\d+)/lifecycle", async (re
       backgroundConversations: "disabled",
       eventDrivenExecution: true,
       organizationKey:
-        specialistOrganizationKey || asString(runtimeMetadata.organizationKey) || null,
+        asString(nextRuntimeMetadata.organizationKey) || null,
+      specialistFunctionKey: specialistOrganizationKey || null,
       modelPolicy: {
         model,
         reasoningEffort: roleLevel >= 4 ? "high" : roleLevel >= 3 ? "medium" : "low",

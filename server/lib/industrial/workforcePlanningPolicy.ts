@@ -10,7 +10,8 @@ export type CommercialStaffingSignalType =
   | "recurring_demand"
   | "critical_capability_gap"
   | "inactive_capacity"
-  | "active_capacity";
+  | "active_capacity"
+  | "capacity_expansion";
 
 export type CommercialStaffingRecommendation = {
   roleTitle: string;
@@ -30,6 +31,21 @@ const RECURRING_DEMAND_THRESHOLDS: Record<string, number> = {
   "Machinery and Industrial Equipment Desk Agent": 5,
   "Buyer Intelligence Lead": 5,
 };
+
+const CASE_CAPACITY_BY_ROLE: Record<string, number> = {
+  "Machinery and Industrial Equipment Desk Agent": 4,
+  "Specification Agent": 4,
+  "Quality Documentation Agent": 4,
+  "Trade Compliance Agent": 4,
+  "Commercial Finance Agent": 6,
+  "Freight Routing Agent": 6,
+  "Account Executive": 8,
+  "Supplier Discovery Agent": 8,
+  "Buyer Intelligence Lead": 8,
+};
+
+const DEFAULT_CASE_CAPACITY = 6;
+const CAPACITY_EXPANSION_DEMAND_THRESHOLD = 2;
 
 const MISSING_SPECIALIST_ROLES: Record<string, string> = {
   commercial: "Account Executive",
@@ -105,6 +121,28 @@ function slugify(value: unknown) {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 64);
+}
+
+export function commercialStaffingCaseCapacity(roleTitle: unknown) {
+  return CASE_CAPACITY_BY_ROLE[String(roleTitle || "").trim()] || DEFAULT_CASE_CAPACITY;
+}
+
+export function commercialStaffingCapacityExpansionThreshold() {
+  return CAPACITY_EXPANSION_DEMAND_THRESHOLD;
+}
+
+export function commercialStaffingCapacityRoleCode(
+  baseRoleCode: unknown,
+  ordinal: number,
+) {
+  const safeBase = normalize(baseRoleCode)
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 92) || "specialist";
+  const safeOrdinal = Math.max(2, Math.trunc(Number(ordinal) || 2));
+  return `exportunity-demand-seat-capacity-${safeBase}-${String(safeOrdinal).padStart(2, "0")}`;
 }
 
 function titleizeCategory(value: unknown) {

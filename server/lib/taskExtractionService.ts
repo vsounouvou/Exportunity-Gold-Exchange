@@ -103,7 +103,7 @@ Rules:
 
 export async function createTasksFromExtraction(
   extraction: TaskExtractionResult,
-  roomId: number,
+  sourceMeetingId: number,
   companyId: number,
   goalId?: number
 ): Promise<number[]> {
@@ -137,7 +137,7 @@ export async function createTasksFromExtraction(
       description: extractedTask.description,
       priority: extractedTask.priority,
       status: "pending",
-      sourceMeetingId: roomId,
+      sourceMeetingId,
       approvalStatus: manager ? "pending" : "approved",
       dueDate: extractedTask.dueDate ? new Date(extractedTask.dueDate) : null,
     }).returning();
@@ -153,7 +153,7 @@ export async function createTasksFromExtraction(
       description: `Extracted from meeting, assigned to ${assignedAgent.name}`,
       metadata: {
         taskId: newTask.id,
-        meetingId: roomId,
+        meetingId: sourceMeetingId,
       },
     });
   }

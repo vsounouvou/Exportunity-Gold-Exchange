@@ -32,6 +32,7 @@ import { analyzeSentiment } from "./lib/sentiment";
 import { handleNewMemberJoined, initializeChatBehavior } from "./lib/chatBehavior";
 import { generateAndStoreSummary } from "./lib/meetingSummary";
 import { generateAndStoreMeetingOutputs } from "./lib/meetingOutputs";
+import { reconcileTenantMeetingLifecycle } from "./lib/meetingLifecycle";
 import { buildConversationAccountabilityTask } from "./lib/conversation-accountability";
 import { generateMeetingAgenda, updateMeetingWithAgenda } from "./lib/agendaGenerator";
 import { analyzeMeetingPriority, suggestOptimalSlots } from "./lib/priorityMatrix";
@@ -6089,6 +6090,8 @@ ${governanceContext}`;
       const tenantId = parsePositiveInt((req as any)?.tenant?.id);
       if (!tenantId) return res.status(400).json({ message: "Tenant context required" });
 
+      await reconcileTenantMeetingLifecycle(tenantId);
+
       const typeParam = String(req.query?.type || "").trim().toLowerCase();
       const includeBackground =
         ["1", "true", "yes", "y", "on"].includes(String(req.query?.includeBackground || "").trim().toLowerCase());
@@ -9250,6 +9253,8 @@ Respond helpfully with your full platform awareness.`,
       const tenantId = (req as any)?.tenant?.id ? Number((req as any).tenant.id) : null;
       if (!tenantId) return res.status(400).json({ message: "tenant required" });
 
+      await reconcileTenantMeetingLifecycle(tenantId);
+
       const { start, end, status, companyId, room_id, roomId, type, meeting_type, meetingType } = req.query as any;
       const where: any[] = [];
 
@@ -11088,14 +11093,19 @@ Agent context:
   });
   
   // Extract tasks from a meeting conversation
-  app.post("/api/chatrooms/:roomId/extract-tasks", async (req, res) => {
+  app.post("/api/chatrooms/:roomId/extract-tasks", ensureTenantAdmin, async (req, res) => {
     try {
       const roomId = parseInt(req.params.roomId);
-      
-      const room = await db.query.chatRooms.findFirst({
+      const tenantId = parsePositiveInt((req as any)?.tenant?.id);
+      if (!tenantId) return res.status(400).json({ message: "Tenant context required" });
+
+      const roomCandidate = await db.query.chatRooms.findFirst({
         where: eq(chatRooms.id, roomId),
       });
-      
+      const room = roomCandidate
+        ? await getTenantScopedChatRoomByConversationId(roomCandidate.conversationId, tenantId)
+        : null;
+
       if (!room) {
         return res.status(404).json({ message: "Room not found" });
       }
@@ -11108,6 +11118,20 @@ Agent context:
       const requestedGoalId = toPositiveInt(req.body?.goalId);
       const existingGoalId = toPositiveInt((room.metadata as any)?.goalId);
       const goalId = requestedGoalId ?? existingGoalId;
+      const linkedMeetingId =
+        toPositiveInt((room.metadata as any)?.meetingId) ??
+        toPositiveInt(
+          (
+            await db.query.meetings.findFirst({
+              where: and(
+                eq(meetings.conversationId, room.conversationId),
+                or(eq(meetings.tenantId, tenantId), isNull(meetings.tenantId)),
+              ),
+              columns: { id: true },
+            })
+          )?.id,
+        );
+      const taskSourceMeetingId = linkedMeetingId ?? roomId;
       
       // Find the company from agents in the room
       const members = await db.query.roomMemberships.findMany({
@@ -11213,7 +11237,7 @@ Agent context:
 
       const createdTaskIds =
         extraction.tasks.length > 0
-          ? await createTasksFromExtraction(extraction, roomId, companyId, goalId ?? undefined)
+          ? await createTasksFromExtraction(extraction, taskSourceMeetingId, companyId, goalId ?? undefined)
           : [];
 
       const now = new Date();
@@ -11255,7 +11279,7 @@ Agent context:
   });
 
   // Set or clear the goal linked to a meeting room (chat room)
-  app.post("/api/chatrooms/:roomId/goal", async (req, res) => {
+  app.post("/api/chatrooms/:roomId/goal", ensureTenantAdmin, async (req, res) => {
     try {
       const roomId = parseInt(req.params.roomId);
       if (!Number.isInteger(roomId) || roomId <= 0) {
@@ -11266,7 +11290,12 @@ Agent context:
       const goalIdNum = typeof goalIdRaw === "number" ? goalIdRaw : typeof goalIdRaw === "string" ? Number(goalIdRaw) : NaN;
       const goalId = Number.isInteger(goalIdNum) && goalIdNum > 0 ? goalIdNum : null;
 
-      const room = await db.query.chatRooms.findFirst({ where: eq(chatRooms.id, roomId) });
+      const tenantId = parsePositiveInt((req as any)?.tenant?.id);
+      if (!tenantId) return res.status(400).json({ message: "Tenant context required" });
+      const roomCandidate = await db.query.chatRooms.findFirst({ where: eq(chatRooms.id, roomId) });
+      const room = roomCandidate
+        ? await getTenantScopedChatRoomByConversationId(roomCandidate.conversationId, tenantId)
+        : null;
       if (!room) return res.status(404).json({ message: "Room not found" });
 
       const now = new Date();
@@ -11292,12 +11321,22 @@ Agent context:
   });
 
   // Close a meeting room (requires a linked goal + at least one task)
-  app.post("/api/chatrooms/:roomId/close", async (req, res) => {
+  app.post("/api/chatrooms/:roomId/close", ensureTenantAdmin, async (req, res) => {
     try {
       const roomId = parseInt(req.params.roomId);
       if (!Number.isInteger(roomId) || roomId <= 0) {
         return res.status(400).json({ message: "Invalid roomId" });
       }
+
+      const tenantId = parsePositiveInt((req as any)?.tenant?.id);
+      if (!tenantId) return res.status(400).json({ message: "Tenant context required" });
+      const roomCandidate = await db.query.chatRooms.findFirst({
+        where: eq(chatRooms.id, roomId),
+      });
+      const tenantRoom = roomCandidate
+        ? await getTenantScopedChatRoomByConversationId(roomCandidate.conversationId, tenantId)
+        : null;
+      if (!tenantRoom) return res.status(404).json({ message: "Room not found" });
 
       const room = await db.query.chatRooms.findFirst({
         where: eq(chatRooms.id, roomId),
@@ -11329,8 +11368,25 @@ Agent context:
         return res.status(400).json({ message: "Could not determine company for room" });
       }
 
+      const linkedMeetingId =
+        toPositiveInt((room.metadata as any)?.meetingId) ??
+        toPositiveInt(
+          (
+            await db.query.meetings.findFirst({
+              where: and(
+                eq(meetings.conversationId, room.conversationId),
+                or(eq(meetings.tenantId, tenantId), isNull(meetings.tenantId)),
+              ),
+              columns: { id: true },
+            })
+          )?.id,
+        );
+      const sourceMeetingIds = Array.from(
+        new Set([linkedMeetingId, roomId].filter((value): value is number => Boolean(value))),
+      );
+
       const meetingTasks = await db.query.tasks.findMany({
-        where: and(eq(tasks.sourceMeetingId, roomId), eq(tasks.companyId, companyId)),
+        where: and(inArray(tasks.sourceMeetingId, sourceMeetingIds), eq(tasks.companyId, companyId)),
         with: { agent: true, goal: true },
         orderBy: [desc(tasks.createdAt)],
         limit: 200,
@@ -11424,6 +11480,33 @@ Agent context:
           updatedAt: now,
         })
         .where(eq(chatRooms.id, roomId));
+
+      if (linkedMeetingId) {
+        await db
+          .update(meetings)
+          .set({
+            status: "completed",
+            actualStartAt: sql`coalesce(${meetings.actualStartAt}, ${meetings.startTime}, ${now})`,
+            actualEndAt: now,
+            metadata: {
+              ...(((await db.query.meetings.findFirst({
+                where: eq(meetings.id, linkedMeetingId),
+                columns: { metadata: true },
+              }))?.metadata as Record<string, unknown> | null) || {}),
+              lifecycleState: "completed",
+              completedVia: "operations-center",
+              completedAt: now.toISOString(),
+              roomId,
+            } as any,
+            updatedAt: now,
+          } as any)
+          .where(
+            and(
+              eq(meetings.id, linkedMeetingId),
+              or(eq(meetings.tenantId, tenantId), isNull(meetings.tenantId)),
+            ),
+          );
+      }
 
       try {
         const { activityLog } = await import("@db/schema");

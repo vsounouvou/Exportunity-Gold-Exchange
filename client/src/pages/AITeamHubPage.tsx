@@ -1111,7 +1111,9 @@ export function AITeamHubPage() {
 
   const channelConversationId = !currentMeeting && workspaceCompanyId ? `channel:${workspaceCompanyId}:all-team` : null;
   const currentConversationId = currentMeeting?.conversationId || channelConversationId || null;
-  const currentMeetingId = currentMeeting ? asPositiveInt((currentMeeting as any).id) : null;
+  const currentMeetingId = currentMeeting
+    ? asPositiveInt((currentMeeting as any)?.metadata?.meetingId)
+    : null;
   const membershipAuditKey = currentConversationId
     ? `/api/chatrooms/${encodeURIComponent(currentConversationId)}/membership-audit`
     : "";
@@ -1647,8 +1649,11 @@ export function AITeamHubPage() {
     }
   };
 
-  const meetingTasks = currentMeeting && meetingRoomId
-    ? companyTasks.filter((task) => task.sourceMeetingId === meetingRoomId)
+  const meetingTaskSourceIds = new Set(
+    [currentMeetingId, meetingRoomId].filter((value): value is number => Boolean(value)),
+  );
+  const meetingTasks = currentMeeting && meetingTaskSourceIds.size > 0
+    ? companyTasks.filter((task) => meetingTaskSourceIds.has(Number(task.sourceMeetingId)))
     : [];
   const visibleWorkspaceTasks = currentMeeting ? meetingTasks : companyTasks;
 

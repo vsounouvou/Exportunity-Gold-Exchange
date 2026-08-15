@@ -4,6 +4,7 @@ import { and, asc, eq, gte, inArray, isNull, lte, or, sql } from "drizzle-orm";
 import { db } from "@db";
 import { agents, chatRooms, goals, meetingParticipants, meetingRooms, meetings, roomMemberships } from "@db/schema";
 import { ensureTenantAdmin, ensureTenantStaff, isChairmanAssistantUser } from "./utils/auth";
+import { reconcileTenantMeetingLifecycle } from "../lib/meetingLifecycle";
 
 const router = Router();
 
@@ -482,6 +483,8 @@ router.get("/agenda-events", ensureTenantStaff, async (req: any, res) => {
   try {
     const tenantId = toInt(req?.tenant?.id);
     if (!tenantId) return res.status(400).json({ message: "tenant required" });
+
+    await reconcileTenantMeetingLifecycle(tenantId);
 
     const from = parseDate(req.query?.from);
     const to = parseDate(req.query?.to);

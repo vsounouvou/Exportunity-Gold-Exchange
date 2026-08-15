@@ -20,6 +20,9 @@ test("Exportunity industrial home leads with Awa's case-backed commercial conver
   const assistant = readRepoFile(
     "client/src/components/exportunity/IndustrialAssistantChat.tsx",
   );
+  const industrialTables = readRepoFile(
+    "server/lib/industrial/ensureTables.ts",
+  );
   const homeStart = hub.indexOf('{view === "home" ? (');
   const homeAssistantIndex = hub.indexOf("<IndustrialAssistantChat", homeStart);
   const publicDirectoryStart = hub.indexOf('{view !== "map"', homeStart);
@@ -72,6 +75,10 @@ test("Exportunity industrial home leads with Awa's case-backed commercial conver
   assert.match(assistant, /communicationReplies: \["Email", "WhatsApp"\]/);
   assert.match(assistant, /requesterPhone: requesterPhone\.trim\(\) \|\| null/);
   assert.match(assistant, /!requesterEmail\.trim\(\) && !requesterPhone\.trim\(\)/);
+  assert.match(
+    industrialTables,
+    /ALTER COLUMN requester_email DROP NOT NULL/,
+  );
   assert.match(assistant, /Exportunity AI/);
   assert.match(assistant, /VoiceToTextButton/);
   assert.match(assistant, /discoveryReplies\?: string\[\]/);

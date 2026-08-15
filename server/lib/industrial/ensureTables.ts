@@ -401,7 +401,7 @@ export async function ensureIndustrialTables() {
         urgency text NOT NULL DEFAULT 'standard',
         requester_company text,
         requester_name text NOT NULL,
-        requester_email text NOT NULL,
+        requester_email text,
         requester_phone text,
         status industrial_requirement_status NOT NULL DEFAULT 'draft',
         visibility industrial_visibility NOT NULL DEFAULT 'exportunity_internal',
@@ -423,6 +423,7 @@ export async function ensureIndustrialTables() {
     );
     await db.execute(sql`
       ALTER TABLE industrial_requirements
+        ALTER COLUMN requester_email DROP NOT NULL,
         ADD COLUMN IF NOT EXISTS machine_id uuid,
         ADD COLUMN IF NOT EXISTS assembly_id uuid,
         ADD COLUMN IF NOT EXISTS component_id uuid,

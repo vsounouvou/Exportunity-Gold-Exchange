@@ -18,14 +18,14 @@ export async function ensureIndustrialCustomerContact(input: {
   tenantId: number;
   requesterName: string;
   requesterCompany?: string | null;
-  requesterEmail: string;
+  requesterEmail?: string | null;
   requesterPhone?: string | null;
 }) {
   return db.transaction(async (tx) => {
     const contact = await upsertCanonicalContact(tx, {
       displayName: input.requesterName,
       company: input.requesterCompany || null,
-      emails: [input.requesterEmail],
+      emails: input.requesterEmail ? [input.requesterEmail] : [],
       phones: input.requesterPhone ? [input.requesterPhone] : [],
       source: "Exportunity industrial conversation",
       sourceSystem: "exportunity_industrial_intake",

@@ -526,8 +526,18 @@ const industrialRequirementSchema = z.object({
   urgency: z.enum(["standard", "urgent", "planned"]).default("standard"),
   requesterCompany: z.string().trim().max(240).optional().nullable(),
   requesterName: z.string().trim().min(2).max(180),
-  requesterEmail: z.string().trim().email().max(240),
-  requesterPhone: z.string().trim().max(80).optional().nullable(),
+  requesterEmail: z.string().trim().email().max(240).optional().nullable(),
+  requesterPhone: z
+    .string()
+    .trim()
+    .min(8)
+    .max(80)
+    .refine((value) => {
+      const digits = value.replace(/\D/g, "");
+      return digits.length >= 8 && digits.length <= 15;
+    }, "Provide a valid international phone number.")
+    .optional()
+    .nullable(),
   factoryId: z.string().uuid().optional().nullable(),
   technicalDetails: z
     .record(z.string(), z.string().trim().max(600))
@@ -560,7 +570,13 @@ const industrialRequirementSchema = z.object({
       sourceConversationId: z.string().trim().max(160).optional(),
     })
     .optional(),
-});
+}).refine(
+  (value) => Boolean(value.requesterEmail || value.requesterPhone),
+  {
+    message: "Provide an email address or WhatsApp phone number.",
+    path: ["requesterEmail"],
+  },
+);
 
 const factoryReviewSchema = z.object({
   action: z.enum(["verify", "request_changes", "suspend", "archive"]),
@@ -6739,7 +6755,7 @@ router.post("/requirements", async (req: any, res) => {
       tenantId: tenant.id,
       requesterName: parsed.data.requesterName,
       requesterCompany: parsed.data.requesterCompany,
-      requesterEmail: parsed.data.requesterEmail,
+      requesterEmail: parsed.data.requesterEmail || null,
       requesterPhone: parsed.data.requesterPhone,
     });
     const nextAction = commercialContext
@@ -6769,7 +6785,7 @@ router.post("/requirements", async (req: any, res) => {
         urgency: parsed.data.urgency,
         requesterCompany: parsed.data.requesterCompany || null,
         requesterName: parsed.data.requesterName,
-        requesterEmail: parsed.data.requesterEmail,
+        requesterEmail: parsed.data.requesterEmail || null,
         requesterPhone: parsed.data.requesterPhone || null,
         commercialIntent: commercialContext?.intent || null,
         commercialActionMode: commercialContext?.suggestedAction || null,

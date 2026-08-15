@@ -750,7 +750,7 @@ export const industrialRequirements = pgTable(
     urgency: text("urgency").notNull().default("standard"),
     requesterCompany: text("requester_company"),
     requesterName: text("requester_name").notNull(),
-    requesterEmail: text("requester_email").notNull(),
+    requesterEmail: text("requester_email"),
     requesterPhone: text("requester_phone"),
     commercialIntent: text("commercial_intent"),
     commercialActionMode: text("commercial_action_mode"),

@@ -69,6 +69,9 @@ test("Exportunity industrial home leads with Awa's case-backed commercial conver
   assert.match(assistant, /commercialOwner/);
   assert.match(assistant, /consultative_discovery_summary_next_step/);
   assert.match(assistant, /priorityQuestion/);
+  assert.match(assistant, /communicationReplies: \["Email", "WhatsApp"\]/);
+  assert.match(assistant, /requesterPhone: requesterPhone\.trim\(\) \|\| null/);
+  assert.match(assistant, /!requesterEmail\.trim\(\) && !requesterPhone\.trim\(\)/);
   assert.match(assistant, /Exportunity AI/);
   assert.match(assistant, /VoiceToTextButton/);
   assert.match(assistant, /discoveryReplies\?: string\[\]/);
@@ -223,6 +226,14 @@ test("product and quote journeys use Awa's progressive commercial conversation",
   );
   assert.match(assistant, /nextCommercialQualificationStep/);
   assert.match(assistant, /unresolvedCommercialQualificationFields/);
+  assert.match(
+    industrialRoutes,
+    /Boolean\(value\.requesterEmail \|\| value\.requesterPhone\)/,
+  );
+  assert.match(
+    industrialRoutes,
+    /Provide an email address or WhatsApp phone number/,
+  );
   assert.match(hub, /const withSelectedMarket = \(href: string\)/);
   assert.match(
     hub,

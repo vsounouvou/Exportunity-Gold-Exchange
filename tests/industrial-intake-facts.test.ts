@@ -10,6 +10,11 @@ import {
   nextCommercialQualificationStep,
   unresolvedCommercialQualificationFields,
 } from "../client/src/components/exportunity/commercialQualification";
+import {
+  commercialContactChannelFor,
+  isCommercialContactEmail,
+  isCommercialContactPhone,
+} from "../client/src/components/exportunity/commercialContact";
 import { scoreIndustrialSupplierCapabilityMatch } from "../server/lib/industrial/supplierCapabilities";
 import {
   buildCustomerQuoteSnapshot,
@@ -194,6 +199,24 @@ test("the buyer conversation asks only unresolved palm-oil terms", () => {
     }),
     [],
   );
+});
+
+test("commercial contact capture accepts either email or an international WhatsApp number", () => {
+  assert.equal(commercialContactChannelFor("Email"), "email");
+  assert.equal(
+    commercialContactChannelFor("buyer@example.com"),
+    "email",
+  );
+  assert.equal(commercialContactChannelFor("WhatsApp"), "whatsapp");
+  assert.equal(
+    commercialContactChannelFor("+225 07 00 00 00 00"),
+    "whatsapp",
+  );
+  assert.equal(commercialContactChannelFor("messagerie"), null);
+  assert.equal(isCommercialContactEmail("buyer@example.com"), true);
+  assert.equal(isCommercialContactEmail("buyer@"), false);
+  assert.equal(isCommercialContactPhone("+229 01 90 00 00 00"), true);
+  assert.equal(isCommercialContactPhone("1234"), false);
 });
 
 test("ordinary parts and machinery avoid irrelevant commodity trade questions", () => {

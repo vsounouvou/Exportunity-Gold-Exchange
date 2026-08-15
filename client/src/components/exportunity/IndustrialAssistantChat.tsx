@@ -15,6 +15,11 @@ import {
   type CommercialQualificationStep,
   type CommercialQualificationValues,
 } from "@/components/exportunity/commercialQualification";
+import {
+  commercialContactChannelFor as contactChannelFor,
+  isCommercialContactEmail as isEmail,
+  isCommercialContactPhone as isContactPhone,
+} from "@/components/exportunity/commercialContact";
 import { cn } from "@/lib/utils";
 
 type Language = "fr" | "en";
@@ -110,6 +115,7 @@ type ConversationStep =
   | "communication"
   | "name"
   | "email"
+  | "phone"
   | "company"
   | "confirm"
   | "complete";
@@ -148,10 +154,6 @@ async function uploadAttachments(session: AttachmentSession, files: File[]) {
     uploaded += 1;
   }
   return uploaded;
-}
-
-function isEmail(value: string) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
 }
 
 function normalizedAnswer(value: string) {
@@ -442,7 +444,11 @@ export function IndustrialAssistantChat({
   className,
 }: {
   language: Language;
-  requester?: { displayName?: string | null; email?: string | null } | null;
+  requester?: {
+    displayName?: string | null;
+    email?: string | null;
+    phone?: string | null;
+  } | null;
   context?: IndustrialAssistantContext | null;
   product?: IndustrialAssistantProductContext | null;
   mode?: "concierge" | "commercial";
@@ -545,13 +551,10 @@ export function IndustrialAssistantChat({
             "Accord de confidentialite requis",
           ],
           communicationQuestion:
-            "Quel canal preferez-vous pour le suivi commercial ?",
-          communicationReplies: [
-            "Email",
-            "WhatsApp",
-            "Telephone",
-            "Messagerie Exportunity",
-          ],
+            "Comment souhaitez-vous recevoir le suivi commercial ?",
+          communicationReplies: ["Email", "WhatsApp"],
+          invalidCommunication:
+            "Choisissez Email ou WhatsApp pour que je puisse assurer le suivi de ce dossier.",
           nameQuestion:
             "Quel nom dois-je inscrire comme contact pour ce dossier ?",
           invalidName:
@@ -560,6 +563,10 @@ export function IndustrialAssistantChat({
             "Quelle adresse email professionnelle doit recevoir le suivi ?",
           invalidEmail:
             "Cette adresse email ne semble pas complete. Pouvez-vous la verifier ?",
+          phoneQuestion:
+            "Quel numero WhatsApp avec indicatif pays doit recevoir le suivi ? Exemple : +225 07 00 00 00 00.",
+          invalidPhone:
+            "Ce numero semble incomplet. Ajoutez l'indicatif pays et au moins huit chiffres.",
           companyQuestion:
             "Quelle entreprise representez-vous ? Vous pouvez repondre Passer.",
           confirmationQuestion:
@@ -689,19 +696,20 @@ export function IndustrialAssistantChat({
             "NDA required",
           ],
           communicationQuestion:
-            "Which channel do you prefer for commercial follow-up?",
-          communicationReplies: [
-            "Email",
-            "WhatsApp",
-            "Phone",
-            "Exportunity messaging",
-          ],
+            "How would you like to receive commercial follow-up?",
+          communicationReplies: ["Email", "WhatsApp"],
+          invalidCommunication:
+            "Choose Email or WhatsApp so I can follow up on this case.",
           nameQuestion: "What contact name should I put on this case?",
           invalidName: "I need a contact name with at least two characters.",
           emailQuestion:
             "Which work email address should receive the follow-up?",
           invalidEmail:
             "That email address does not look complete. Could you check it?",
+          phoneQuestion:
+            "Which WhatsApp number, including country code, should receive the follow-up? Example: +225 07 00 00 00 00.",
+          invalidPhone:
+            "That number looks incomplete. Include the country code and at least eight digits.",
           companyQuestion:
             "Which company do you represent? You can answer Skip.",
           confirmationQuestion:
@@ -837,6 +845,7 @@ export function IndustrialAssistantChat({
     requester?.displayName || "",
   );
   const [requesterEmail, setRequesterEmail] = useState(requester?.email || "");
+  const [requesterPhone, setRequesterPhone] = useState(requester?.phone || "");
   const [requesterCompany, setRequesterCompany] = useState("");
   const [isPreviewing, setIsPreviewing] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
@@ -886,7 +895,8 @@ export function IndustrialAssistantChat({
   useEffect(() => {
     if (requester?.displayName) setRequesterName(requester.displayName);
     if (requester?.email) setRequesterEmail(requester.email);
-  }, [requester?.displayName, requester?.email]);
+    if (requester?.phone) setRequesterPhone(requester.phone);
+  }, [requester?.displayName, requester?.email, requester?.phone]);
 
   useEffect(() => {
     const log = messageLogRef.current;
@@ -916,16 +926,44 @@ export function IndustrialAssistantChat({
     appendAssistant(question);
   };
 
-  const continueToContact = () => {
-    if (!requesterName.trim()) {
+  const contactPrompt = (
+    overrides: {
+      name?: string;
+      communication?: string;
+      email?: string;
+      phone?: string;
+    } = {},
+  ): { step: ConversationStep; question: string } => {
+    const name = overrides.name ?? requesterName;
+    const communication =
+      overrides.communication ?? preferredCommunication;
+    const email = overrides.email ?? requesterEmail;
+    const phone = overrides.phone ?? requesterPhone;
+    if (!name.trim()) return { step: "name", question: copy.nameQuestion };
+    const channel = contactChannelFor(communication);
+    if (!channel)
+      return { step: "communication", question: copy.communicationQuestion };
+    if (channel === "email" && !email.trim())
+      return { step: "email", question: copy.emailQuestion };
+    if (channel === "whatsapp" && !phone.trim())
+      return { step: "phone", question: copy.phoneQuestion };
+    return { step: "company", question: copy.companyQuestion };
+  };
+
+  const continueToContact = (
+    overrides: {
+      name?: string;
+      communication?: string;
+      email?: string;
+      phone?: string;
+    } = {},
+  ) => {
+    const next = contactPrompt(overrides);
+    if (next.step === "name") {
       ask("name", copy.nameQuestion);
       return;
     }
-    if (!requesterEmail.trim()) {
-      ask("email", copy.emailQuestion);
-      return;
-    }
-    ask("company", copy.companyQuestion);
+    ask(next.step, next.question);
   };
 
   const qualificationValues = (
@@ -1024,7 +1062,7 @@ export function IndustrialAssistantChat({
       !intake ||
       isCreating ||
       !requesterName.trim() ||
-      !requesterEmail.trim()
+      (!requesterEmail.trim() && !requesterPhone.trim())
     )
       return;
 
@@ -1122,7 +1160,8 @@ export function IndustrialAssistantChat({
           urgency: inferUrgency(requiredBy || initialNeed),
           requesterCompany: requesterCompany.trim() || null,
           requesterName: requesterName.trim(),
-          requesterEmail: requesterEmail.trim(),
+          requesterEmail: requesterEmail.trim() || null,
+          requesterPhone: requesterPhone.trim() || null,
           factoryId: product?.factoryId || null,
           technicalDetails,
           commercialContext: {
@@ -1321,16 +1360,9 @@ export function IndustrialAssistantChat({
           nextStep = commercialQualificationStep;
           nextQuestion = qualificationQuestion(commercialQualificationStep);
         } else if (nextIntake.commercial || globalTradeIntake) {
-          nextStep = requesterName.trim()
-            ? requesterEmail.trim()
-              ? "company"
-              : "email"
-            : "name";
-          nextQuestion = requesterName.trim()
-            ? requesterEmail.trim()
-              ? copy.companyQuestion
-              : copy.emailQuestion
-            : copy.nameQuestion;
+          const nextContact = contactPrompt();
+          nextStep = nextContact.step;
+          nextQuestion = nextContact.question;
         } else if (!nextQuantity) {
           nextStep = "quantity";
           nextQuestion = quantityQuestionForRequirement(
@@ -1347,16 +1379,9 @@ export function IndustrialAssistantChat({
           nextStep = "priority";
           nextQuestion = copy.priorityQuestion;
         } else {
-          nextStep = requesterName.trim()
-            ? requesterEmail.trim()
-              ? "company"
-              : "email"
-            : "name";
-          nextQuestion = requesterName.trim()
-            ? requesterEmail.trim()
-              ? copy.companyQuestion
-              : copy.emailQuestion
-            : copy.nameQuestion;
+          const nextContact = contactPrompt();
+          nextStep = nextContact.step;
+          nextQuestion = nextContact.question;
         }
         setStep(nextStep);
         appendAssistant(
@@ -1471,8 +1496,22 @@ export function IndustrialAssistantChat({
     }
 
     if (step === "communication") {
-      setPreferredCommunication(message);
-      continueToContact();
+      const channel = contactChannelFor(message);
+      if (!channel) {
+        appendAssistant(copy.invalidCommunication);
+        return;
+      }
+      const communication = channel === "email" ? "Email" : "WhatsApp";
+      setPreferredCommunication(communication);
+      if (isEmail(message)) {
+        setRequesterEmail(message);
+        continueToContact({ communication, email: message });
+      } else if (isContactPhone(message)) {
+        setRequesterPhone(message);
+        continueToContact({ communication, phone: message });
+      } else {
+        continueToContact({ communication });
+      }
       return;
     }
 
@@ -1482,8 +1521,7 @@ export function IndustrialAssistantChat({
         return;
       }
       setRequesterName(message);
-      if (requesterEmail.trim()) ask("company", copy.companyQuestion);
-      else ask("email", copy.emailQuestion);
+      continueToContact({ name: message });
       return;
     }
 
@@ -1493,7 +1531,17 @@ export function IndustrialAssistantChat({
         return;
       }
       setRequesterEmail(message);
-      ask("company", copy.companyQuestion);
+      continueToContact({ communication: "Email", email: message });
+      return;
+    }
+
+    if (step === "phone") {
+      if (!isContactPhone(message)) {
+        appendAssistant(copy.invalidPhone);
+        return;
+      }
+      setRequesterPhone(message);
+      continueToContact({ communication: "WhatsApp", phone: message });
       return;
     }
 
@@ -1870,13 +1918,15 @@ export function IndustrialAssistantChat({
                 </dd>
               </div>
             ) : null}
-            {requesterName || requesterEmail ? (
+            {requesterName || requesterEmail || requesterPhone ? (
               <div className="min-w-0">
                 <dt className="text-slate-500 dark:text-slate-400">
                   {copy.contact}
                 </dt>
                 <dd className="truncate font-medium text-slate-900 dark:text-white">
-                  {[requesterName, requesterEmail].filter(Boolean).join(" | ")}
+                  {[requesterName, requesterEmail || requesterPhone]
+                    .filter(Boolean)
+                    .join(" | ")}
                 </dd>
               </div>
             ) : null}

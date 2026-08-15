@@ -1,11 +1,13 @@
 import { expect, test, type Page } from "@playwright/test";
 
 async function expectNoBrokenImages(page: Page) {
-  const broken = await page.locator("img").evaluateAll((images) =>
-    images
-      .filter((image) => image.complete && image.naturalWidth === 0)
-      .map((image) => image.getAttribute("src")),
-  );
+  const broken = await page
+    .locator("img")
+    .evaluateAll((images) =>
+      images
+        .filter((image) => image.complete && image.naturalWidth === 0)
+        .map((image) => image.getAttribute("src")),
+    );
   expect(broken).toEqual([]);
 }
 
@@ -31,7 +33,9 @@ test.describe("Exportunity industrial launch experience", () => {
     await expect(page.locator(".leaflet-container")).toBeVisible();
     await expect(page.locator('nav a[aria-current="page"]')).toHaveCount(0);
     await expect(
-      page.locator('input[placeholder*="Search"], input[placeholder*="Rechercher"]'),
+      page.locator(
+        'input[placeholder*="Search"], input[placeholder*="Rechercher"]',
+      ),
     ).toHaveCount(0);
 
     const mapBox = await page.locator(".leaflet-container").boundingBox();
@@ -51,11 +55,50 @@ test.describe("Exportunity industrial launch experience", () => {
       .first();
     await firstRequest.click();
     await expect(
-      chat.getByText(/prepared a spare-part request|pr.par. une demande de pi.ce d.tach.e/i),
+      chat.getByText(
+        /which product do you need exactly|quel produit recherchez-vous exactement/i,
+      ),
+    ).toBeVisible();
+    await expect(chat.locator("textarea")).toBeEditable();
+  });
+
+  test("Awa qualifies palm oil and offers one governed contact choice", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1280, height: 720 });
+    await page.goto("/industrial", { waitUntil: "networkidle" });
+
+    const chat = page.getByTestId("exportunity-ai-chat");
+    const log = chat.getByRole("log");
+    const composer = chat.locator("textarea");
+    const send = chat.getByRole("button", { name: /send to Awa|envoyer/i });
+
+    await composer.fill(
+      "Je cherche 100 tonnes d'huile de palme raffinée à livrer à Abidjan.",
+    );
+    await send.click();
+
+    await expect(log).toContainText(/palm oil|huile de palme/i);
+    await expect(log).toContainText(/100 tonnes/i);
+    await expect(log).toContainText(/Abidjan/i);
+    await expect(log).not.toContainText(/CAD/i);
+
+    await chat
+      .getByRole("button", { name: /one-time purchase|commande ponctuelle/i })
+      .click();
+    await expect(log).toContainText(/Incoterm/i);
+    await chat.getByRole("button", { name: "CIF", exact: true }).click();
+    await expect(log).toContainText(/contact name|nom.*contact/i);
+
+    await composer.fill("UX audit");
+    await send.click();
+    await expect(
+      chat.getByRole("button", { name: "Email", exact: true }),
     ).toBeVisible();
     await expect(
-      chat.getByRole("button", { name: /1 unit/i }),
+      chat.getByRole("button", { name: "WhatsApp", exact: true }),
     ).toBeVisible();
+    await expect(chat).not.toContainText(/EXP-[A-Z0-9-]+/);
   });
 
   test("mobile preserves a usable composer and a full-width interactive map", async ({
@@ -87,7 +130,9 @@ test.describe("Exportunity industrial launch experience", () => {
       .click();
     await expect(
       page
-        .getByText(/GDIZ\s*-\s*Zone Industrielle de Glo-Djigbe|Glo-Djigb. Industrial Zone/i)
+        .getByText(
+          /GDIZ\s*-\s*Zone Industrielle de Glo-Djigbe|Glo-Djigb. Industrial Zone/i,
+        )
         .last(),
     ).toBeVisible();
     await page.screenshot({
@@ -97,11 +142,8 @@ test.describe("Exportunity industrial launch experience", () => {
   });
 
   test("primary industrial routes render without application errors", async ({
-    page,
+    context,
   }) => {
-    const errors: string[] = [];
-    page.on("pageerror", (error) => errors.push(error.message));
-
     for (const route of [
       "/factories",
       "/map",
@@ -110,15 +152,21 @@ test.describe("Exportunity industrial launch experience", () => {
       "/machinery",
       "/request-quote",
     ]) {
-      const response = await page.goto(route, {
-        waitUntil: "load",
+      const routePage = await context.newPage();
+      const errors: string[] = [];
+      routePage.on("pageerror", (error) => errors.push(error.message));
+
+      const response = await routePage.goto(route, {
+        waitUntil: "domcontentloaded",
         timeout: 45_000,
       });
       expect(response?.status(), route).toBeLessThan(400);
-      await expect(page.locator("main")).toBeVisible({ timeout: 30_000 });
-      await expect(page.locator("body")).not.toContainText(/application error/i);
+      await expect(routePage.locator("main")).toBeVisible({ timeout: 30_000 });
+      await expect(routePage.locator("body")).not.toContainText(
+        /application error/i,
+      );
+      expect(errors, route).toEqual([]);
+      await routePage.close();
     }
-
-    expect(errors).toEqual([]);
   });
 });

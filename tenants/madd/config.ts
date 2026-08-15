@@ -54,8 +54,8 @@ export const maddTenantConfig: TenantConfig = {
     ],
   },
   assets: {
-    logoPath: "/tenants/exportunity/logo.svg",
-    faviconPath: "/tenants/exportunity/favicon.svg",
+    logoPath: "/tenants/exportunity/official/logo-long-transparent.png",
+    faviconPath: "/tenants/exportunity/official/favicon-64.png",
     placeholderProduct: "/tenants/exportunity/placeholder-product.svg",
     heroImages: ["/tenants/exportunity/hero-1.svg"],
   },

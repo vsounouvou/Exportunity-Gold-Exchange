@@ -1647,7 +1647,7 @@ export function IndustrialAssistantChat({
               src={
                 commercialMode
                   ? "/tenants/exportunity/industrial/awa-kouadio.webp"
-                  : "/tenants/exportunity/logo.svg"
+                  : "/tenants/exportunity/official/icon-transparent-2048.png"
               }
               alt=""
               className={cn(

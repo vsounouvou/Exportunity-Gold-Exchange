@@ -65,8 +65,8 @@ export const exportunityTenantConfig: TenantConfig = {
     ],
   },
   assets: {
-    logoPath: "/tenants/exportunity/logo.svg?v=20260731-company",
-    faviconPath: "/tenants/exportunity/favicon.svg",
+    logoPath: "/tenants/exportunity/official/logo-long-transparent.png",
+    faviconPath: "/tenants/exportunity/official/favicon-64.png",
     heroImages: ["/tenants/exportunity/industrial/machinery-team.png"],
   },
 };

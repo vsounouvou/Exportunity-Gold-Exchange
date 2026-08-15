@@ -890,11 +890,15 @@ export default function GlobalTradeHomePage() {
       <header className="sticky top-0 z-[1100] border-b border-slate-200 bg-white/95 backdrop-blur-xl dark:border-white/10 dark:bg-[#05070B]/95">
         <div className="mx-auto flex h-[68px] max-w-[1680px] items-center gap-2 px-3 sm:gap-4 sm:px-6">
           <Link href="/" className="shrink-0" aria-label="Exportunity home">
-            <span className="flex h-9 w-[104px] items-center rounded-md bg-[#07111F] px-2 shadow-sm sm:h-10 sm:w-[138px] sm:px-2.5">
+            <span className="flex h-9 w-[112px] items-center overflow-hidden rounded-md bg-white shadow-sm dark:bg-[#07111F] sm:h-10 sm:w-[154px]">
               <img
-                src="/tenants/exportunity/logo.svg?v=20260731-company"
+                src={
+                  theme === "dark"
+                    ? "/tenants/exportunity/official/logo-long-transparent.png"
+                    : "/tenants/exportunity/official/logo-long-light.png"
+                }
                 alt="Exportunity AI"
-                className="h-auto w-full"
+                className="h-full w-full object-contain"
               />
             </span>
           </Link>

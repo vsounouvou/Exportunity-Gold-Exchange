@@ -808,7 +808,7 @@ function RouteLoadingFallback() {
       >
         <div className="flex max-w-sm flex-col items-center text-center">
           <img
-            src="/tenants/exportunity/logo.svg"
+            src="/tenants/exportunity/official/logo-long-light.png"
             alt="Exportunity AI"
             className="h-12 w-auto max-w-[230px]"
           />

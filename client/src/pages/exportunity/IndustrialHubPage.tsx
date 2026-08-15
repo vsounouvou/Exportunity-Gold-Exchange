@@ -8054,13 +8054,17 @@ export default function IndustrialHubPage() {
           <div className="mx-auto flex min-h-14 max-w-[1560px] items-center gap-4 px-4 lg:px-7">
             <Link
               href="/industrial"
-              className="flex h-8 shrink-0 items-center overflow-hidden rounded-md bg-[#07111F] px-1.5 shadow-[0_6px_16px_rgba(7,17,31,0.14)]"
+              className="flex h-9 w-[138px] shrink-0 items-center overflow-hidden rounded-md bg-white shadow-[0_6px_16px_rgba(7,17,31,0.12)] dark:bg-[#07111F] sm:w-[154px]"
               aria-label="Exportunity AI"
             >
               <img
-                src="/tenants/exportunity/logo.svg"
+                src={
+                  isDark
+                    ? "/tenants/exportunity/official/logo-long-transparent.png"
+                    : "/tenants/exportunity/official/logo-long-light.png"
+                }
                 alt="Exportunity AI"
-                className="h-full w-auto max-w-[132px] object-contain"
+                className="h-full w-full object-contain"
               />
             </Link>
             <nav className="hidden flex-1 items-center justify-center gap-1 xl:flex">

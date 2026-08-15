@@ -14,7 +14,18 @@ function readRepoFile(relativePath: string) {
 }
 
 test("the industrial platform uses the approved Exportunity AI master mark", () => {
-  const logo = readRepoFile("client/public/tenants/exportunity/logo.svg");
+  const approvedLogoPath = path.join(
+    repoRoot,
+    "client/public/tenants/exportunity/official/logo-long-light.png",
+  );
+  const approvedIconPath = path.join(
+    repoRoot,
+    "client/public/tenants/exportunity/official/icon-transparent-2048.png",
+  );
+  const approvedFaviconPath = path.join(
+    repoRoot,
+    "client/public/tenants/exportunity/official/favicon.ico",
+  );
   const app = readRepoFile("client/src/App.tsx");
   const hub = readRepoFile(
     "client/src/pages/exportunity/IndustrialHubPage.tsx",
@@ -23,18 +34,20 @@ test("the industrial platform uses the approved Exportunity AI master mark", () 
     "client/src/components/exportunity/IndustrialAssistantChat.tsx",
   );
 
-  assert.match(logo, /Exportunity AI/);
-  assert.match(logo, /EXPORTUNITY/);
-  assert.match(logo, />AI</);
-  assert.match(logo, /stroke="#F5A623"/);
-  assert.match(hub, /src="\/tenants\/exportunity\/logo\.svg"/);
+  assert.ok(fs.existsSync(approvedLogoPath));
+  assert.ok(fs.statSync(approvedLogoPath).size > 100_000);
+  assert.ok(fs.existsSync(approvedIconPath));
+  assert.ok(fs.existsSync(approvedFaviconPath));
+  assert.match(hub, /official\/logo-long-light\.png/);
+  assert.match(hub, /official\/logo-long-transparent\.png/);
   assert.match(hub, /alt="Exportunity AI"/);
   assert.doesNotMatch(hub, /src="\/tenants\/exportunity\/machinery-logo\.svg"/);
   assert.doesNotMatch(assistant, /tenants\/exportunity\/machinery-logo\.svg/);
+  assert.match(assistant, /official\/icon-transparent-2048\.png/);
   assert.match(app, /function RouteLoadingFallback\(\)/);
   assert.match(
     app,
-    /tenant\.key === "exportunity"[\s\S]*?\/tenants\/exportunity\/logo\.svg[\s\S]*?Opening the global trade network/,
+    /tenant\.key === "exportunity"[\s\S]*?\/tenants\/exportunity\/official\/logo-long-light\.png[\s\S]*?Opening the global trade network/,
   );
   assert.match(app, /fallback=\{<RouteLoadingFallback \/>\}/);
 });
@@ -84,7 +97,7 @@ test("the homepage presents current corridors as one expanding industrial networ
     hub,
     /industrialContextsForTerritory\(territoryCode\)[\s\S]*?\.map\(\(context\) => context\.markerLabel\)/,
   );
-  assert.match(hub, /max-w-\[132px\]/);
+  assert.match(hub, /sm:w-\[154px\]/);
   assert.match(hub, /mb-3[\s\S]*?xl:hidden/);
   assert.match(hub, /hidden[\s\S]*?xl:block/);
   assert.match(hub, /"Reseau en expansion"/);

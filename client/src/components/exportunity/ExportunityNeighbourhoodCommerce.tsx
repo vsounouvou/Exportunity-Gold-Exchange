@@ -2810,7 +2810,11 @@ function Header({
   return (
     <header className={cn("z-40 flex h-[74px] shrink-0 items-center gap-4 border-b px-4 shadow-[0_18px_50px_rgba(5,7,11,.16)] lg:px-6", dark ? "border-white/10 bg-[#05070B] text-white" : "border-slate-200 bg-[#F7F8FA] text-slate-900")}>
       <button type="button" onClick={() => setSpace("city")} className="flex min-w-[210px] items-center gap-3" aria-label="Exportunity marketplace">
-        <img src="/tenants/exportunity/logo.svg" alt="Exportunity AI" className="h-11 w-auto max-w-[220px]" />
+        <img
+          src={dark ? "/tenants/exportunity/official/logo-long-transparent.png" : "/tenants/exportunity/official/logo-long-light.png"}
+          alt="Exportunity AI"
+          className="h-11 w-auto max-w-[220px] object-contain"
+        />
       </button>
       <nav className="hidden min-w-0 flex-1 items-center justify-center gap-1 lg:flex">
         {nav.map(({ label, space, Icon, href }) => (

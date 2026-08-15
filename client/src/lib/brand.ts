@@ -86,7 +86,7 @@ export const BRAND_MAP: Record<TenantKey, BrandInfo> = {
       "Exportunity connects industrial demand to technical intake, verified sourcing, local manufacturing, quality control, logistics, and export readiness across Africa.",
     complianceNotice: "Access subject to Exportunity compliance controls.",
     tagline: "Industrial sourcing, manufacturing, and trade facilitation",
-    faviconPath: "/tenants/exportunity/favicon.svg",
+    faviconPath: "/tenants/exportunity/official/favicon-64.png",
     productScope: "MULTI_CATEGORY",
     conciergeScope: "MULTI_CATEGORY",
     landing: "browse-first",

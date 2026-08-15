@@ -33,6 +33,7 @@ test("the industrial platform uses the approved Exportunity AI master mark", () 
   const assistant = readRepoFile(
     "client/src/components/exportunity/IndustrialAssistantChat.tsx",
   );
+  const indexHtml = readRepoFile("client/index.html");
 
   assert.ok(fs.existsSync(approvedLogoPath));
   assert.ok(fs.statSync(approvedLogoPath).size > 100_000);
@@ -44,6 +45,9 @@ test("the industrial platform uses the approved Exportunity AI master mark", () 
   assert.doesNotMatch(hub, /src="\/tenants\/exportunity\/machinery-logo\.svg"/);
   assert.doesNotMatch(assistant, /tenants\/exportunity\/machinery-logo\.svg/);
   assert.match(assistant, /official\/icon-transparent-2048\.png/);
+  assert.match(indexHtml, /function iconMimeType\(path\)/);
+  assert.match(indexHtml, /favicon32\.setAttribute\("type", iconMimeType\(tenantFavicon32\)\)/);
+  assert.match(indexHtml, /favicon16\.setAttribute\("type", iconMimeType\(tenantFavicon16\)\)/);
   assert.match(app, /function RouteLoadingFallback\(\)/);
   assert.match(
     app,

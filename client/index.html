@@ -132,20 +132,39 @@
         var tenantFavicon32 = tenantMeta.icon32 || tenantMeta.icon || tenantFaviconSvg;
         var tenantAppleIcon = tenantMeta.appleIcon || tenantMeta.icon || tenantFaviconSvg;
 
+        function iconMimeType(path) {
+          var value = String(path || "").toLowerCase().split("?")[0];
+          if (value.endsWith(".png")) return "image/png";
+          if (value.endsWith(".ico")) return "image/x-icon";
+          return "image/svg+xml";
+        }
+
         var apple = document.getElementById("apple-touch-icon");
         if (apple) apple.setAttribute("href", withBuster(tenantAppleIcon));
 
         var favicon32 = document.getElementById("favicon-32");
-        if (favicon32) favicon32.setAttribute("href", withBuster(tenantFavicon32));
+        if (favicon32) {
+          favicon32.setAttribute("href", withBuster(tenantFavicon32));
+          favicon32.setAttribute("type", iconMimeType(tenantFavicon32));
+        }
 
         var favicon16 = document.getElementById("favicon-16");
-        if (favicon16) favicon16.setAttribute("href", withBuster(tenantFavicon16));
+        if (favicon16) {
+          favicon16.setAttribute("href", withBuster(tenantFavicon16));
+          favicon16.setAttribute("type", iconMimeType(tenantFavicon16));
+        }
 
         var faviconIco = document.getElementById("favicon-ico");
-        if (faviconIco) faviconIco.setAttribute("href", withBuster(tenantFaviconIco));
+        if (faviconIco) {
+          faviconIco.setAttribute("href", withBuster(tenantFaviconIco));
+          faviconIco.setAttribute("type", iconMimeType(tenantFaviconIco));
+        }
 
         var faviconSvg = document.getElementById("favicon-svg");
-        if (faviconSvg) faviconSvg.setAttribute("href", withBuster(tenantFaviconSvg));
+        if (faviconSvg) {
+          faviconSvg.setAttribute("href", withBuster(tenantFaviconSvg));
+          faviconSvg.setAttribute("type", iconMimeType(tenantFaviconSvg));
+        }
       })();
     </script>
   </head>

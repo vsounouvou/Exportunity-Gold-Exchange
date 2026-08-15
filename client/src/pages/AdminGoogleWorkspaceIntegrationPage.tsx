@@ -321,16 +321,45 @@ export default function AdminGoogleWorkspaceIntegrationPage() {
 
         {oauth && (!oauth.configured || !baseFeaturesEnabled) ? (
           <section className="rounded-md border border-amber-300 bg-amber-50 p-5">
-            <div className="flex items-start gap-3">
-              <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-700" />
-              <div>
-                <h2 className="font-black text-amber-950">Setup required before account authorization</h2>
-                <p className="mt-1 text-sm leading-6 text-amber-900">
-                  {!oauth.configured ? `Missing OAuth configuration: ${oauth.missing.join(", ") || "unknown"}. ` : ""}
-                  {!baseFeaturesEnabled ? "Company Brain and Workspace connector flags are currently off. " : ""}
-                  No background sync or external communication will start when these settings are enabled.
-                </p>
-                {oauth.redirectUri ? <code className="mt-2 block break-all rounded bg-white/70 px-3 py-2 text-xs text-amber-950">Redirect URI: {oauth.redirectUri}</code> : null}
+            <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+              <div className="flex min-w-0 items-start gap-3">
+                <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-700" />
+                <div className="min-w-0">
+                  <h2 className="font-black text-amber-950">Setup required before account authorization</h2>
+                  <p className="mt-1 text-sm leading-6 text-amber-900">
+                    {!oauth.configured ? `Missing OAuth configuration: ${oauth.missing.join(", ") || "unknown"}. ` : ""}
+                    {!baseFeaturesEnabled ? "Company Brain and Workspace connector flags are currently off. " : ""}
+                    No background sync or external communication will start when these settings are enabled.
+                  </p>
+                  {oauth.redirectUri ? (
+                    <code className="mt-3 block break-all rounded border border-amber-200 bg-white px-3 py-2 text-xs text-amber-950">
+                      Redirect URI: {oauth.redirectUri}
+                    </code>
+                  ) : null}
+                  <ol className="mt-4 grid gap-2 text-sm leading-6 text-amber-950 sm:grid-cols-2">
+                    <li><strong>1.</strong> Sign in to Google Cloud with the Exportunity company administrator.</li>
+                    <li><strong>2.</strong> Create an OAuth client for a Web application.</li>
+                    <li><strong>3.</strong> Register the redirect URI above exactly, then store the client ID and secret on the server.</li>
+                    <li><strong>4.</strong> Return here and authorize Drive first with a small approved source set.</li>
+                  </ol>
+                  <p className="mt-3 text-xs font-bold text-amber-900">
+                    Enter the Google password yourself. Never paste a password or OAuth client secret into chat.
+                  </p>
+                </div>
+              </div>
+              <div className="flex shrink-0 flex-col gap-2 sm:flex-row lg:flex-col">
+                <Button asChild className="bg-[#07111f] text-white hover:bg-[#0a1628]">
+                  <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noreferrer">
+                    Open Google Cloud
+                    <ExternalLink className="ml-2 h-4 w-4" />
+                  </a>
+                </Button>
+                <Button asChild variant="outline" className="border-amber-400 bg-white text-amber-950 hover:bg-amber-100">
+                  <a href="https://developers.google.com/identity/protocols/oauth2/web-server" target="_blank" rel="noreferrer">
+                    OAuth setup guide
+                    <ExternalLink className="ml-2 h-4 w-4" />
+                  </a>
+                </Button>
               </div>
             </div>
           </section>

@@ -75,7 +75,7 @@ type SummaryResponse = {
 
 type RelationshipCandidate = {
   id: string;
-  kind: "stalled_requirement" | "dormant_factory_relationship" | "awaiting_email_reply" | "unresolved_conversation";
+  kind: "stalled_requirement" | "dormant_factory_relationship" | "awaiting_email_reply" | "workspace_email_thread" | "unresolved_conversation";
   title: string;
   organization?: string | null;
   person?: string | null;
@@ -711,7 +711,7 @@ export default function AdminCompanyBrainPage() {
                       ? Clock3
                       : candidate.kind === "dormant_factory_relationship"
                         ? Building2
-                        : candidate.kind === "awaiting_email_reply"
+                        : candidate.kind === "awaiting_email_reply" || candidate.kind === "workspace_email_thread"
                           ? Mail
                           : MessageSquareText;
                     const priorityClass = candidate.priority === "high"

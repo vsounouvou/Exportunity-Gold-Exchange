@@ -4,6 +4,7 @@ export type RelationshipCandidateKind =
   | "stalled_requirement"
   | "dormant_factory_relationship"
   | "awaiting_email_reply"
+  | "workspace_email_thread"
   | "unresolved_conversation";
 
 export type RelationshipCandidatePriority = "high" | "medium" | "low" | "restricted";
@@ -75,6 +76,8 @@ function defaultAction(kind: RelationshipCandidateKind, restricted: boolean) {
       return "Review the documented relationship history and record a human decision on the next step.";
     case "awaiting_email_reply":
       return "Review the sent thread and its relationship context before proposing any follow-up.";
+    case "workspace_email_thread":
+      return "Review the imported business thread, match it to the correct relationship, and record a human-approved next step.";
     case "unresolved_conversation":
       return "Review the conversation and decide whether it should become a governed industrial requirement.";
   }
@@ -99,6 +102,7 @@ export function buildRelationshipCandidate(
   if (input.kind === "stalled_requirement") relevanceScore += 20;
   if (input.kind === "dormant_factory_relationship") relevanceScore += 12;
   if (input.kind === "awaiting_email_reply") relevanceScore += 15;
+  if (input.kind === "workspace_email_thread") relevanceScore += 8;
   if (input.kind === "unresolved_conversation") relevanceScore += 10;
   relevanceScore += Math.min(20, Math.floor(inactivityDays / 7) * 2);
   relevanceScore += Math.min(12, Math.floor(overdueDays / 7) * 3);
@@ -144,6 +148,7 @@ export function summarizeRelationshipCandidates(candidates: RelationshipCandidat
     stalled_requirement: 0,
     dormant_factory_relationship: 0,
     awaiting_email_reply: 0,
+    workspace_email_thread: 0,
     unresolved_conversation: 0,
   };
   let highPriority = 0;

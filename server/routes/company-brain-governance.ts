@@ -245,7 +245,7 @@ router.get("/relationship-reconstruction", async (req: any, res) => {
     const sourceLimit = Math.min(250, Math.max(limit * 2, 50));
     const warnings: string[] = [];
 
-    const [requirementRows, factoryRows, emailRows, conversationRows] = await Promise.all([
+    const [requirementRows, factoryRows, emailRows, workspaceEmailRows, conversationRows] = await Promise.all([
       safelyReadRelationshipRows("Industrial requirement", () => db.execute(sql`
         select
           ir.id::text as entity_id,
@@ -353,6 +353,59 @@ router.get("/relationship-reconstruction", async (req: any, res) => {
           and lm.status = 'sent'
           and lm.created_at <= now() - interval '7 days'
         order by lm.created_at asc
+        limit ${sourceLimit}
+      `), warnings),
+      safelyReadRelationshipRows("Google Workspace email evidence", () => db.execute(sql`
+        with workspace_gmail_messages as (
+          select
+            s.id::text as source_id,
+            coalesce(nullif(s.metadata ->> 'threadId', ''), s.provider_source_id) as thread_id,
+            s.title as subject,
+            s.source_url,
+            coalesce(latest.source_modified_at, s.updated_at) as last_message_at,
+            coalesce(nullif(s.metadata ->> 'direction', ''), 'unknown') as direction,
+            coalesce(s.metadata -> 'correspondentEmails' ->> 0, '') as peer_email,
+            s.metadata -> 'evidenceClassification' -> 'businessSignals' as business_signals,
+            count(*) over (
+              partition by coalesce(nullif(s.metadata ->> 'threadId', ''), s.provider_source_id)
+            )::int as message_count,
+            row_number() over (
+              partition by coalesce(nullif(s.metadata ->> 'threadId', ''), s.provider_source_id)
+              order by coalesce(latest.source_modified_at, s.updated_at) desc, s.id desc
+            ) as latest_rank
+          from company_brain_sources s
+          join lateral (
+            select sv.source_modified_at, sv.security_status
+            from company_brain_source_versions sv
+            where sv.source_id = s.id
+            order by sv.created_at desc, sv.id desc
+            limit 1
+          ) latest on latest.security_status = 'clean'
+          where s.tenant_id = ${tenantId}
+            and s.connector_type = 'google_gmail'
+            and s.status = 'active'
+        )
+        select
+          wm.*,
+          c.id as contact_id,
+          coalesce(c.display_name, trim(concat_ws(' ', c.given_name, c.family_name)), trim(concat_ws(' ', c.first_name, c.last_name))) as contact_name,
+          c.company as contact_company,
+          coalesce(tc.consent_status::text, c.consent_status::text, 'unknown') as consent_status,
+          coalesce(tc.is_dnc, c.is_dnc, false) as is_dnc
+        from workspace_gmail_messages wm
+        left join lateral (
+          select person.*
+          from contacts person
+          join tenant_contacts tenant_person
+            on tenant_person.contact_id = person.id and tenant_person.tenant_id = ${tenantId}
+          where wm.peer_email <> ''
+            and lower(coalesce(person.primary_email, person.email, '')) = lower(wm.peer_email)
+          order by person.updated_at desc
+          limit 1
+        ) c on true
+        left join tenant_contacts tc on tc.tenant_id = ${tenantId} and tc.contact_id = c.id
+        where wm.latest_rank = 1
+        order by wm.last_message_at desc
         limit ${sourceLimit}
       `), warnings),
       safelyReadRelationshipRows("Website conversation", () => db.execute(sql`
@@ -471,6 +524,40 @@ router.get("/relationship-reconstruction", async (req: any, res) => {
         ],
         consentStatus: row.consent_status,
         isDnc: row.is_dnc,
+      }));
+    }
+
+    for (const row of workspaceEmailRows) {
+      const businessSignals = Array.isArray(row.business_signals)
+        ? row.business_signals.map((value: unknown) => asText(value)).filter(Boolean).slice(0, 4)
+        : [];
+      const direction = ["inbound", "outbound"].includes(asText(row.direction))
+        ? asText(row.direction)
+        : "unknown";
+      const messageCount = Math.max(1, Number(row.message_count || 1));
+      candidates.push(buildRelationshipCandidate({
+        id: `workspace-email-thread:${row.thread_id}`,
+        kind: "workspace_email_thread",
+        title: row.subject || "Imported business email thread",
+        organization: row.contact_company,
+        person: row.contact_name || row.peer_email,
+        stage: `latest_${direction}`,
+        lastActivityAt: row.last_message_at,
+        facts: [
+          `${messageCount} read-only Google Workspace message${messageCount === 1 ? " is" : "s are"} indexed in this business thread.`,
+          `The latest safely indexed message direction is ${direction}.`,
+          businessSignals.length ? `Recorded business signals: ${businessSignals.join(", ")}.` : "",
+          "The relationship meaning and next step have not been confirmed by a person.",
+        ].filter(Boolean),
+        evidence: [
+          { entityType: "company_brain_source", entityId: String(row.source_id), label: "Read-only Gmail evidence" },
+          ...(row.contact_id
+            ? [{ entityType: "contact", entityId: String(row.contact_id), label: "Matched canonical contact" }]
+            : []),
+        ],
+        consentStatus: row.consent_status,
+        isDnc: row.is_dnc,
+        openPath: row.source_url || "/admin/company-brain",
       }));
     }
 

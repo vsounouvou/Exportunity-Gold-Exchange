@@ -18,6 +18,7 @@ import {
   type GoogleWorkspaceConnector,
 } from "./googleWorkspace";
 import { classifyWorkspaceEvidence, type WorkspaceEvidenceClassification } from "./workspaceClassification";
+import { buildWorkspaceEmailMetadata } from "./workspaceEmailMetadata";
 
 type SyncCounters = {
   scanned: number;
@@ -937,6 +938,12 @@ async function processGmailMessage(
     const payload = asRecord(message.payload);
     const headers = gmailHeaders(payload);
     const body = collectGmailBody(payload);
+    const relationshipMetadata = buildWorkspaceEmailMetadata({
+      accountEmail: connector.accountLabel,
+      from: headers.from,
+      to: headers.to,
+      cc: headers.cc,
+    });
     const classification = classifyWorkspaceEvidence({
       subject: headers.subject,
       text: body.text || message.snippet,
@@ -970,6 +977,7 @@ async function processGmailMessage(
         from: headers.from || null,
         to: headers.to || null,
         cc: headers.cc || null,
+        ...relationshipMetadata,
         attachments: body.attachments,
         attachmentPolicy: "metadata_only",
         policyFingerprint: connectorPolicyFingerprint(connector),

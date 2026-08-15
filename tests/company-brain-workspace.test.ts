@@ -12,12 +12,36 @@ import {
 } from "../server/lib/company-brain/workspaceScopes";
 import { classifyWorkspaceEvidence } from "../server/lib/company-brain/workspaceClassification";
 import {
+  buildWorkspaceEmailMetadata,
+  extractEmailAddresses,
+} from "../server/lib/company-brain/workspaceEmailMetadata";
+import {
   decryptIntegrationTokenPayload,
   encryptIntegrationTokenPayload,
 } from "../server/lib/integrations/tokenVault";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const read = (relativePath: string) => fs.readFileSync(path.join(repoRoot, relativePath), "utf8");
+
+test("Workspace email metadata identifies direction and counterpart addresses without modifying Gmail", () => {
+  assert.deepEqual(
+    extractEmailAddresses('Awa Kouadio <awa@exportunity.net>, Buyer <BUYER@EXAMPLE.COM>'),
+    ["awa@exportunity.net", "buyer@example.com"],
+  );
+  assert.deepEqual(buildWorkspaceEmailMetadata({
+    accountEmail: "awa@exportunity.net",
+    from: "Awa Kouadio <awa@exportunity.net>",
+    to: "Buyer <buyer@example.com>",
+    cc: "Engineering <engineering@example.com>",
+  }), {
+    accountEmail: "awa@exportunity.net",
+    fromEmails: ["awa@exportunity.net"],
+    toEmails: ["buyer@example.com"],
+    ccEmails: ["engineering@example.com"],
+    correspondentEmails: ["buyer@example.com", "engineering@example.com"],
+    direction: "outbound",
+  });
+});
 
 test("Workspace services request only identity plus the exact read-only service scope", () => {
   for (const service of ["drive", "gmail", "contacts"] as const) {

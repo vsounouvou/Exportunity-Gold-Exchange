@@ -75,6 +75,7 @@ test("relationship summaries preserve candidate kinds without inventing records"
   assert.equal(summary.byKind.stalled_requirement, 1);
   assert.equal(summary.byKind.dormant_factory_relationship, 1);
   assert.equal(summary.byKind.awaiting_email_reply, 0);
+  assert.equal(summary.byKind.workspace_email_thread, 0);
 });
 
 test("the admin route reconstructs only from canonical records and exposes no send mutation", () => {
@@ -88,6 +89,8 @@ test("the admin route reconstructs only from canonical records and exposes no se
   assert.match(reconstructionRoute, /from industrial_requirements/);
   assert.match(reconstructionRoute, /from industrial_factory_relationships/);
   assert.match(reconstructionRoute, /from email_messages/);
+  assert.match(reconstructionRoute, /from company_brain_sources/);
+  assert.match(reconstructionRoute, /connector_type = 'google_gmail'/);
   assert.match(reconstructionRoute, /from chat_leads/);
   assert.match(reconstructionRoute, /externalCommunicationAllowed: false/);
   assert.doesNotMatch(reconstructionRoute, /router\.(post|put|patch|delete)/);

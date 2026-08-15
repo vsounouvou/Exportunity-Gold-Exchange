@@ -3,6 +3,7 @@ import { and, eq, sql } from "drizzle-orm";
 
 const IN_PROGRESS_GRACE_MS = 2 * 60 * 60 * 1000;
 const SCHEDULED_EXPIRY_MS = 24 * 60 * 60 * 1000;
+const ORPHAN_ROOM_EXPIRY_MS = 24 * 60 * 60 * 1000;
 const RECONCILE_THROTTLE_MS = 60 * 1000;
 
 export type MeetingLifecycleSnapshot = {
@@ -21,6 +22,19 @@ export type MeetingLifecycleDecision = {
   reason: "stale_in_progress" | "elapsed_with_activity" | "elapsed_without_start";
   actualStartAt: Date | null;
   actualEndAt: Date | null;
+};
+
+export type OrphanMeetingRoomSnapshot = {
+  createdAt: Date | string;
+  updatedAt?: Date | string | null;
+  lastMessageAt?: Date | string | null;
+  messageCount?: number | null;
+};
+
+export type OrphanMeetingRoomDecision = {
+  lifecycleState: "completed" | "missed";
+  reason: "orphaned_stale_with_activity" | "orphaned_elapsed_without_activity";
+  completedAt: Date;
 };
 
 function asDate(value: Date | string | null | undefined): Date | null {
@@ -88,6 +102,26 @@ export function decideMeetingLifecycle(
   };
 }
 
+export function decideOrphanMeetingRoomLifecycle(
+  snapshot: OrphanMeetingRoomSnapshot,
+  now = new Date(),
+): OrphanMeetingRoomDecision | null {
+  const createdAt = asDate(snapshot.createdAt);
+  if (!createdAt) return null;
+
+  const updatedAt = asDate(snapshot.updatedAt);
+  const lastMessageAt = asDate(snapshot.lastMessageAt);
+  const activityAnchor = laterDate(createdAt, updatedAt, lastMessageAt) ?? createdAt;
+  if (activityAnchor.getTime() > now.getTime() - ORPHAN_ROOM_EXPIRY_MS) return null;
+
+  const hasActivity = Number(snapshot.messageCount || 0) > 0 || Boolean(lastMessageAt);
+  return {
+    lifecycleState: hasActivity ? "completed" : "missed",
+    reason: hasActivity ? "orphaned_stale_with_activity" : "orphaned_elapsed_without_activity",
+    completedAt: lastMessageAt ?? activityAnchor,
+  };
+}
+
 type LifecycleRow = {
   id: number;
   status: string;
@@ -101,6 +135,15 @@ type LifecycleRow = {
   last_message_at: Date | string | null;
 };
 
+type OrphanRoomRow = {
+  id: number;
+  metadata: Record<string, unknown> | null;
+  created_at: Date | string;
+  updated_at: Date | string | null;
+  last_message_at: Date | string | null;
+  message_count: number | string | null;
+};
+
 const lastReconcileAt = new Map<number, number>();
 const inFlightReconciliations = new Map<number, Promise<MeetingLifecycleReconcileResult>>();
 
@@ -108,6 +151,7 @@ export type MeetingLifecycleReconcileResult = {
   reconciled: number;
   completed: number;
   missed: number;
+  orphaned: number;
   throttled: boolean;
 };
 
@@ -122,13 +166,13 @@ export async function reconcileTenantMeetingLifecycle(
   options: { force?: boolean; now?: Date } = {},
 ): Promise<MeetingLifecycleReconcileResult> {
   if (!Number.isInteger(tenantId) || tenantId <= 0) {
-    return { reconciled: 0, completed: 0, missed: 0, throttled: false };
+    return { reconciled: 0, completed: 0, missed: 0, orphaned: 0, throttled: false };
   }
 
   const now = options.now ?? new Date();
   const lastRun = lastReconcileAt.get(tenantId) ?? 0;
   if (!options.force && now.getTime() - lastRun < RECONCILE_THROTTLE_MS) {
-    return { reconciled: 0, completed: 0, missed: 0, throttled: true };
+    return { reconciled: 0, completed: 0, missed: 0, orphaned: 0, throttled: true };
   }
 
   const existing = inFlightReconciliations.get(tenantId);
@@ -157,8 +201,45 @@ export async function reconcileTenantMeetingLifecycle(
       limit 500
     `);
 
+    const orphanResult = await db.execute(sql`
+      select
+        cr.id,
+        cr.metadata,
+        cr.created_at,
+        cr.updated_at,
+        max(msg.created_at) as last_message_at,
+        count(msg.id)::int as message_count
+      from chat_rooms cr
+      left join meetings linked_meeting on linked_meeting.conversation_id = cr.conversation_id
+      left join messages msg on msg.conversation_id = cr.conversation_id
+      where cr.type = 'meeting'
+        and cr.is_active = true
+        and linked_meeting.id is null
+        and (
+          coalesce(cr.metadata->>'tenantId', cr.metadata->>'tenant_id', '') = ${String(tenantId)}
+          or exists (
+            select 1
+            from room_memberships rm
+            join agents a on a.id = rm.agent_id
+            where rm.room_id = cr.id
+              and coalesce(rm.is_active, true) = true
+              and a.tenant_id = ${tenantId}
+          )
+          or exists (
+            select 1
+            from agents moderator
+            where moderator.id = cr.moderator_id
+              and moderator.tenant_id = ${tenantId}
+          )
+        )
+      group by cr.id
+      order by cr.created_at asc
+      limit 500
+    `);
+
     let completed = 0;
     let missed = 0;
+    let orphaned = 0;
 
     for (const row of rowsFromResult<LifecycleRow>(queryResult)) {
       const decision = decideMeetingLifecycle(
@@ -226,11 +307,46 @@ export async function reconcileTenantMeetingLifecycle(
       else completed += 1;
     }
 
+    for (const row of rowsFromResult<OrphanRoomRow>(orphanResult)) {
+      const decision = decideOrphanMeetingRoomLifecycle(
+        {
+          createdAt: row.created_at,
+          updatedAt: row.updated_at,
+          lastMessageAt: row.last_message_at,
+          messageCount: Number(row.message_count || 0),
+        },
+        now,
+      );
+      if (!decision) continue;
+
+      const [updatedRoom] = await db
+        .update(chatRooms)
+        .set({
+          isActive: false,
+          metadata: {
+            ...(row.metadata || {}),
+            status: decision.lifecycleState,
+            lifecycleState: decision.lifecycleState,
+            completedAt: decision.completedAt.toISOString(),
+            lifecycleReconciledAt: now.toISOString(),
+            lifecycleReconciledReason: decision.reason,
+          },
+          updatedAt: now,
+        })
+        .where(and(eq(chatRooms.id, Number(row.id)), eq(chatRooms.isActive, true)))
+        .returning({ id: chatRooms.id });
+
+      if (!updatedRoom) continue;
+      orphaned += 1;
+      if (decision.lifecycleState === "missed") missed += 1;
+      else completed += 1;
+    }
+
     lastReconcileAt.set(tenantId, now.getTime());
-    const result = { reconciled: completed + missed, completed, missed, throttled: false };
+    const result = { reconciled: completed + missed, completed, missed, orphaned, throttled: false };
     if (result.reconciled > 0) {
       console.info(
-        `[MeetingLifecycle] tenant=${tenantId} completed=${completed} missed=${missed}`,
+        `[MeetingLifecycle] tenant=${tenantId} completed=${completed} missed=${missed} orphaned=${orphaned}`,
       );
     }
     return result;

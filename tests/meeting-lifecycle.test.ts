@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { decideMeetingLifecycle } from "../server/lib/meetingLifecycle";
+import {
+  decideMeetingLifecycle,
+  decideOrphanMeetingRoomLifecycle,
+} from "../server/lib/meetingLifecycle";
 
 const NOW = new Date("2026-08-15T12:00:00.000Z");
 
@@ -85,4 +88,47 @@ test("completes an elapsed scheduled room when its conversation contains activit
   assert.equal(decision?.status, "completed");
   assert.equal(decision?.reason, "elapsed_with_activity");
   assert.equal(decision?.actualStartAt?.toISOString(), "2026-08-10T08:00:00.000Z");
+});
+
+test("keeps a recently created orphan meeting room active during recovery", () => {
+  const decision = decideOrphanMeetingRoomLifecycle(
+    {
+      createdAt: "2026-08-15T08:00:00.000Z",
+      updatedAt: "2026-08-15T11:30:00.000Z",
+      messageCount: 0,
+    },
+    NOW,
+  );
+
+  assert.equal(decision, null);
+});
+
+test("marks an abandoned empty orphan meeting room as missed", () => {
+  const decision = decideOrphanMeetingRoomLifecycle(
+    {
+      createdAt: "2026-08-10T08:00:00.000Z",
+      updatedAt: "2026-08-10T08:00:00.000Z",
+      messageCount: 0,
+    },
+    NOW,
+  );
+
+  assert.equal(decision?.lifecycleState, "missed");
+  assert.equal(decision?.reason, "orphaned_elapsed_without_activity");
+});
+
+test("completes a stale orphan meeting room that contains conversation history", () => {
+  const decision = decideOrphanMeetingRoomLifecycle(
+    {
+      createdAt: "2026-08-10T08:00:00.000Z",
+      updatedAt: "2026-08-10T08:10:00.000Z",
+      lastMessageAt: "2026-08-10T08:22:00.000Z",
+      messageCount: 3,
+    },
+    NOW,
+  );
+
+  assert.equal(decision?.lifecycleState, "completed");
+  assert.equal(decision?.reason, "orphaned_stale_with_activity");
+  assert.equal(decision?.completedAt.toISOString(), "2026-08-10T08:22:00.000Z");
 });

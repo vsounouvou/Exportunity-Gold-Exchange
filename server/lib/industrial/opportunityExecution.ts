@@ -169,7 +169,7 @@ function taskKey(
       industrialSpecialistKeyForRole(task.agentRole, task.title) || "staffing"
     );
   }
-  if (task.executionType === "ind_commercial_review") {
+  if (task.executionType === "ind_deal_review") {
     return "commercial_review";
   }
   if (task.executionType === "industrial_intake") return "commercial";

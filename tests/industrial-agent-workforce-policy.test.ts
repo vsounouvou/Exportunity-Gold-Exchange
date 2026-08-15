@@ -255,7 +255,7 @@ test("qualified opportunities dispatch visible employee work through the governe
   assert.match(scheduler, /runActionWorkerOnce\(\{ tenantId \}\)/);
   assert.match(execution, /buildIndustrialAgentTaskInstruction/);
   assert.match(execution, /COMPLETED SPECIALIST FINDINGS/);
-  assert.match(execution, /ind_commercial_review/);
+  assert.match(execution, /ind_deal_review/);
   assert.match(execution, /pg_advisory_xact_lock/);
   assert.match(execution, /Promise\.allSettled/);
   assert.match(

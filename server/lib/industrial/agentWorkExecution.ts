@@ -520,7 +520,7 @@ async function loadIndustrialAgentWorkContext(input: {
   });
   if (
     !task ||
-    !["ind_workstream", "ind_commercial_review"].includes(
+    !["ind_workstream", "ind_deal_review"].includes(
       cleanText(task.executionType),
     )
   ) {
@@ -565,7 +565,7 @@ async function loadIndustrialAgentWorkContext(input: {
     throw new Error("The assigned employee is not available to execute this workstream.");
   }
   const completedReviews =
-    task.executionType === "ind_commercial_review"
+    task.executionType === "ind_deal_review"
       ? await db.query.activityLog.findMany({
           where: and(
             eq(activityLog.companyId, Number(task.companyId)),
@@ -725,7 +725,7 @@ async function queueIndustrialCommercialReview(input: {
     let reviewTask = await tx.query.tasks.findFirst({
       where: and(
         eq(tasks.parentTaskId, Number(parentTask.id)),
-        eq(tasks.executionType, "ind_commercial_review"),
+        eq(tasks.executionType, "ind_deal_review"),
       ),
       orderBy: [desc(tasks.id)],
     });
@@ -751,7 +751,7 @@ async function queueIndustrialCommercialReview(input: {
           ].join("\n"),
           priority: parentTask.priority || "high",
           status: "backlog",
-          executionType: "ind_commercial_review",
+          executionType: "ind_deal_review",
           urgencyScore: parentTask.urgencyScore || 7,
           importanceScore: 9,
           dependencyScore: 9,

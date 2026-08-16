@@ -131,6 +131,31 @@ export function commercialStaffingCapacityExpansionThreshold() {
   return CAPACITY_EXPANSION_DEMAND_THRESHOLD;
 }
 
+export function commercialStaffingCapacityDecision(
+  openCaseCount: unknown,
+  capacityLimit: unknown,
+) {
+  const normalizedOpenCaseCount = Math.max(
+    0,
+    Math.trunc(Number(openCaseCount) || 0),
+  );
+  const normalizedCapacityLimit = Math.max(
+    1,
+    Math.trunc(Number(capacityLimit) || DEFAULT_CASE_CAPACITY),
+  );
+  const availableSlots = Math.max(
+    0,
+    normalizedCapacityLimit - normalizedOpenCaseCount,
+  );
+
+  return {
+    openCaseCount: normalizedOpenCaseCount,
+    capacityLimit: normalizedCapacityLimit,
+    availableSlots,
+    atCapacity: availableSlots === 0,
+  };
+}
+
 export function commercialStaffingCapacityRoleCode(
   baseRoleCode: unknown,
   ordinal: number,

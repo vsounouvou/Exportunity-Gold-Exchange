@@ -6,6 +6,7 @@ import {
   resolveIndustrialRequirementHandoffPlan,
 } from "../server/lib/industrial/operationsHandoffPolicy";
 import {
+  commercialStaffingCapacityDecision,
   commercialStaffingCapacityExpansionThreshold,
   commercialStaffingCapacityRoleCode,
   commercialStaffingCaseCapacity,
@@ -170,6 +171,27 @@ test("employee capacity is bounded and expansion seats have stable governed iden
   );
 });
 
+test("employee capacity decisions never expose negative or duplicate assignment slots", () => {
+  assert.deepEqual(commercialStaffingCapacityDecision(3, 4), {
+    openCaseCount: 3,
+    capacityLimit: 4,
+    availableSlots: 1,
+    atCapacity: false,
+  });
+  assert.deepEqual(commercialStaffingCapacityDecision(4, 4), {
+    openCaseCount: 4,
+    capacityLimit: 4,
+    availableSlots: 0,
+    atCapacity: true,
+  });
+  assert.deepEqual(commercialStaffingCapacityDecision(9, 4), {
+    openCaseCount: 9,
+    capacityLimit: 4,
+    availableSlots: 0,
+    atCapacity: true,
+  });
+});
+
 test("sustained overload creates a governed additional seat instead of unlimited assignment", () => {
   const planner = readRepoFile("server/lib/industrial/workforcePlanning.ts");
   const routes = readRepoFile("server/routes/admin-agents-os.ts");
@@ -181,6 +203,11 @@ test("sustained overload creates a governed additional seat instead of unlimited
   assert.match(planner, /"capacity_expansion"/);
   assert.match(planner, /baseRoleCode/);
   assert.match(planner, /least-loaded qualified employee/);
+  assert.match(planner, /pg_advisory_xact_lock/);
+  assert.match(planner, /workforce-capacity:/);
+  assert.match(planner, /select count\(\*\)::integer as open_case_count/);
+  assert.match(planner, /capacityDecision\.atCapacity/);
+  assert.match(planner, /CAPACITY_PLAN_STALE/);
   assert.match(routes, /workforceCaseCapacity/);
   assert.match(routes, /specialistFunctionKey/);
   assert.match(routes, /open_case_count/);

@@ -4,6 +4,7 @@ import { db } from "@db";
 import { ensureExportunityRoleSeatCatalog } from "../company-brain/ensureRoleSeatCatalog";
 import { EXPORTUNITY_ROLE_SEATS } from "../company-brain/roleSeatCatalog";
 import {
+  commercialStaffingCapacityDecision,
   commercialStaffingCapacityExpansionThreshold,
   commercialStaffingCapacityRoleCode,
   commercialStaffingCaseCapacity,
@@ -81,7 +82,13 @@ type RoleCapacityPlan = {
   expansionDemandThreshold: number;
 };
 
-async function loadEmployeeCapacity(input: {
+type ActiveEmployeeAssignmentResult = {
+  status: "assigned" | "capacity_full" | "unavailable";
+  taskId: number | null;
+  openCaseCount: number;
+};
+
+async function loadEmployeeCapacity(executor: any, input: {
   tenantId: number;
   agentId: number;
   roleCode: string;
@@ -89,7 +96,7 @@ async function loadEmployeeCapacity(input: {
   staffingRequestId?: number | null;
 }): Promise<EmployeeCapacity | null> {
   if (!input.agentId) return null;
-  const result = await db.execute(sql`
+  const result = await executor.execute(sql`
     select
       a.id,
       a.status,
@@ -118,7 +125,7 @@ async function loadEmployeeCapacity(input: {
   };
 }
 
-async function resolveRoleCapacityPlan(input: {
+async function resolveRoleCapacityPlan(executor: any, input: {
   tenantId: number;
   baseRoleCode: string;
   baseRoleTemplateId: number | null;
@@ -127,7 +134,7 @@ async function resolveRoleCapacityPlan(input: {
 }): Promise<RoleCapacityPlan> {
   const capacityLimit = commercialStaffingCaseCapacity(input.roleTitle);
   const expansionDemandThreshold = commercialStaffingCapacityExpansionThreshold();
-  const expansionResult = await db.execute(sql`
+  const expansionResult = await executor.execute(sql`
     select
       id,
       role_code,
@@ -153,7 +160,7 @@ async function resolveRoleCapacityPlan(input: {
   }));
 
   const employees: EmployeeCapacity[] = [];
-  const baseEmployee = await loadEmployeeCapacity({
+  const baseEmployee = await loadEmployeeCapacity(executor, {
     tenantId: input.tenantId,
     agentId: Number(input.baseRuntimeAgentId || 0),
     roleCode: input.baseRoleCode,
@@ -163,7 +170,7 @@ async function resolveRoleCapacityPlan(input: {
   for (const request of expansionRequests) {
     if (!request.provisionedAgentId) continue;
     if (employees.some((employee) => employee.agentId === request.provisionedAgentId)) continue;
-    const employee = await loadEmployeeCapacity({
+    const employee = await loadEmployeeCapacity(executor, {
       tenantId: input.tenantId,
       agentId: request.provisionedAgentId,
       roleCode: request.roleCode,
@@ -269,7 +276,7 @@ async function resolveRoleCapacityPlan(input: {
   };
 }
 
-async function assignActiveEmployeeToRequirement(input: {
+async function assignActiveEmployeeToRequirement(executor: any, input: {
   tenantId: number;
   companyId: number | null;
   staffingRequestId: number;
@@ -277,10 +284,13 @@ async function assignActiveEmployeeToRequirement(input: {
   referenceCode: string;
   runtimeAgentId: number;
   roleTitle: string;
-}): Promise<number | null> {
-  if (!input.companyId || !input.runtimeAgentId) return null;
+  capacityLimit: number;
+}): Promise<ActiveEmployeeAssignmentResult> {
+  if (!input.companyId || !input.runtimeAgentId) {
+    return { status: "unavailable", taskId: null, openCaseCount: 0 };
+  }
 
-  return db.transaction(async (tx) => {
+    const tx = executor;
     const agentResult = await tx.execute(sql`
       select id, company_id, manager_id, display_name, role, status
       from agents
@@ -292,7 +302,7 @@ async function assignActiveEmployeeToRequirement(input: {
     `);
     const agent = rows<any>(agentResult)[0];
     if (!agent || String(agent.status) !== "active" || !Number(agent.manager_id || 0)) {
-      return null;
+      return { status: "unavailable", taskId: null, openCaseCount: 0 };
     }
 
     const requirementResult = await tx.execute(sql`
@@ -303,7 +313,9 @@ async function assignActiveEmployeeToRequirement(input: {
       limit 1
     `);
     const requirement = rows<any>(requirementResult)[0];
-    if (!requirement) return null;
+    if (!requirement) {
+      return { status: "unavailable", taskId: null, openCaseCount: 0 };
+    }
 
     const metadata =
       requirement.metadata && typeof requirement.metadata === "object"
@@ -355,7 +367,32 @@ async function assignActiveEmployeeToRequirement(input: {
       limit 1
     `);
     const existingTaskId = Number(rows<any>(existingTaskResult)[0]?.id || 0);
-    if (existingTaskId) return existingTaskId;
+    if (existingTaskId) {
+      return {
+        status: "assigned",
+        taskId: existingTaskId,
+        openCaseCount: 0,
+      };
+    }
+
+    const workloadResult = await tx.execute(sql`
+      select count(*)::integer as open_case_count
+      from tasks
+      where agent_id = ${input.runtimeAgentId}
+        and execution_type = 'workforce_activation'
+        and status in ('backlog', 'in_progress', 'blocked')
+    `);
+    const capacityDecision = commercialStaffingCapacityDecision(
+      rows<any>(workloadResult)[0]?.open_case_count,
+      input.capacityLimit,
+    );
+    if (capacityDecision.atCapacity) {
+      return {
+        status: "capacity_full",
+        taskId: null,
+        openCaseCount: capacityDecision.openCaseCount,
+      };
+    }
 
     const createdTaskResult = await tx.execute(sql`
       insert into tasks (
@@ -380,7 +417,13 @@ async function assignActiveEmployeeToRequirement(input: {
       returning id
     `);
     const taskId = Number(rows<any>(createdTaskResult)[0]?.id || 0);
-    if (!taskId) return null;
+    if (!taskId) {
+      return {
+        status: "unavailable",
+        taskId: null,
+        openCaseCount: capacityDecision.openCaseCount,
+      };
+    }
 
     if (parentTaskId) {
       await tx.execute(sql`
@@ -440,8 +483,11 @@ async function assignActiveEmployeeToRequirement(input: {
         ${JSON.stringify(assignmentMetadata)}::jsonb, now()
       )
     `);
-    return taskId;
-  });
+    return {
+      status: "assigned",
+      taskId,
+      openCaseCount: capacityDecision.openCaseCount + 1,
+    };
 }
 
 export async function proposeCommercialStaffing(input: {
@@ -464,7 +510,24 @@ export async function proposeCommercialStaffing(input: {
     const baseRoleCode = seat?.immutableAgentId || recommendation.roleCode;
     const departmentKey = seat?.departmentKey || recommendation.departmentKey;
     if (!baseRoleCode || !departmentKey) continue;
-    const baseTemplateResult = await db.execute(sql`
+    const governance = await assembleWorkforceGovernanceContext({
+      tenantId: input.tenantId,
+      companyId: input.companyId,
+      requirementId: input.requirementId,
+      referenceCode: input.referenceCode,
+      roleCode: baseRoleCode,
+      roleTitle,
+      proposedByAgentId: input.proposedByAgentId,
+    });
+    const persistProposal = () => db.transaction(
+      async (tx): Promise<StaffingProposal | null> => {
+    await tx.execute(sql`
+      select pg_advisory_xact_lock(
+        ${input.tenantId},
+        hashtext(${`workforce-capacity:${baseRoleCode}`})
+      )
+    `);
+    const baseTemplateResult = await tx.execute(sql`
       select id, runtime_agent_id, seat_status, role_profile
       from ece_agent_templates
       where tenant_id = ${input.tenantId}
@@ -472,7 +535,7 @@ export async function proposeCommercialStaffing(input: {
       limit 1
     `);
     const baseTemplate = rows<any>(baseTemplateResult)[0];
-    const capacityPlan = await resolveRoleCapacityPlan({
+    const capacityPlan = await resolveRoleCapacityPlan(tx, {
       tenantId: input.tenantId,
       baseRoleCode,
       baseRoleTemplateId: Number(baseTemplate?.id || 0) || null,
@@ -482,7 +545,7 @@ export async function proposeCommercialStaffing(input: {
     const roleCode = capacityPlan.targetRoleCode;
     let template = baseTemplate;
     if (roleCode !== baseRoleCode) {
-      const targetTemplateResult = await db.execute(sql`
+      const targetTemplateResult = await tx.execute(sql`
         select id, runtime_agent_id, seat_status, role_profile
         from ece_agent_templates
         where tenant_id = ${input.tenantId}
@@ -499,7 +562,7 @@ export async function proposeCommercialStaffing(input: {
     const runtimeAgentId = Number(capacityPlan.runtimeAgentId || 0);
     const runtimeIsActive = capacityPlan.mode === "active";
     if (input.assignmentMode === "signal_only" && capacityPlan.mode === "active") {
-      continue;
+      return null;
     }
     const effectiveSignalType = capacityPlan.mode === "active"
       ? "active_capacity"
@@ -522,15 +585,6 @@ export async function proposeCommercialStaffing(input: {
           : recommendation.signalType === "critical_capability_gap"
             ? `${input.referenceCode} exposed a critical execution gap for ${roleTitle}; human staffing review is required.`
             : `Verified demand is accumulating for ${roleTitle}. Review becomes available after ${recommendation.demandThreshold} distinct commercial requirements.`;
-    const governance = await assembleWorkforceGovernanceContext({
-      tenantId: input.tenantId,
-      companyId: input.companyId,
-      requirementId: input.requirementId,
-      referenceCode: input.referenceCode,
-      roleCode,
-      roleTitle,
-      proposedByAgentId: input.proposedByAgentId,
-    });
     const evidence = {
       source: "industrial_commercial_intake",
       requirementId: input.requirementId,
@@ -573,7 +627,7 @@ export async function proposeCommercialStaffing(input: {
       : "monitoring";
     const evidenceArray = [evidence];
     const requirementEvidence = [{ requirementId: input.requirementId }];
-    const inserted = await db.execute(sql`
+    const inserted = await tx.execute(sql`
       insert into industrial_agent_staffing_requests (
         tenant_id, company_id, requirement_id, role_template_id, role_code,
         role_title, department_key, reason, evidence, priority, status,
@@ -662,29 +716,25 @@ export async function proposeCommercialStaffing(input: {
         company_brain_context_pack_id
     `);
     const row = rows<any>(inserted)[0];
-    if (!row?.id) continue;
+    if (!row?.id) return null;
     let assignmentTaskId: number | null = null;
     if (runtimeIsActive && input.assignmentMode !== "signal_only") {
-      try {
-        assignmentTaskId = await assignActiveEmployeeToRequirement({
-          tenantId: input.tenantId,
-          companyId: input.companyId,
-          staffingRequestId: Number(row.id),
-          requirementId: input.requirementId,
-          referenceCode: input.referenceCode,
-          runtimeAgentId,
-          roleTitle,
-        });
-      } catch (error) {
-        console.error("industrial_active_employee_assignment_failed", {
-          requirementId: input.requirementId,
-          staffingRequestId: Number(row.id),
-          runtimeAgentId,
-          message: error instanceof Error ? error.message : "unknown error",
-        });
+      const assignment = await assignActiveEmployeeToRequirement(tx, {
+        tenantId: input.tenantId,
+        companyId: input.companyId,
+        staffingRequestId: Number(row.id),
+        requirementId: input.requirementId,
+        referenceCode: input.referenceCode,
+        runtimeAgentId,
+        roleTitle,
+        capacityLimit: capacityPlan.capacityLimit,
+      });
+      if (assignment.status === "capacity_full") {
+        throw new Error("CAPACITY_PLAN_STALE");
       }
+      assignmentTaskId = assignment.taskId;
     }
-    proposals.push({
+    return {
       id: Number(row.id),
       roleCode: String(row.role_code),
       roleTitle: String(row.role_title),
@@ -710,7 +760,20 @@ export async function proposeCommercialStaffing(input: {
       openCaseCount: capacityPlan.openCaseCount,
       activeEmployeeCount: capacityPlan.activeEmployeeCount,
       capacityExpansion: capacityPlan.mode === "expand",
-    });
+    };
+      },
+    );
+    let proposal: StaffingProposal | null = null;
+    try {
+      proposal = await persistProposal();
+    } catch (error) {
+      console.error("industrial_workforce_capacity_transaction_failed", {
+        requirementId: input.requirementId,
+        baseRoleCode,
+        message: error instanceof Error ? error.message : "unknown error",
+      });
+    }
+    if (proposal) proposals.push(proposal);
   }
   return proposals;
 }

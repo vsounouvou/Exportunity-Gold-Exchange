@@ -92,9 +92,18 @@ test("the current Marketplace absorbs Zone as a proximity-first layer", () => {
   assert.match(marketplaceSource, /Approved seller listing/);
   assert.match(marketplaceSource, /Documented reference; supplier and stock to qualify/);
   assert.match(marketplaceSource, /data-testid="marketplace-primary-grid"/);
+  assert.match(marketplaceSource, /data-testid="marketplace-toolbar"/);
   assert.match(marketplaceSource, /<main className="contents">/);
-  assert.match(marketplaceSource, /order-2 min-w-0 lg:col-start-1 lg:row-start-2/);
-  assert.match(marketplaceSource, /Marketplace proximity map[\s\S]*?lg:col-start-1 lg:row-start-3|lg:col-start-1 lg:row-start-3[\s\S]*?Marketplace proximity map/);
+  assert.match(marketplaceSource, /order-3 min-w-0 lg:col-start-1 lg:row-start-3/);
+  assert.match(marketplaceSource, /Marketplace proximity map[\s\S]*?lg:col-start-1 lg:row-start-2|lg:col-start-1 lg:row-start-2[\s\S]*?Marketplace proximity map/);
+  assert.ok(
+    marketplaceSource.indexOf('data-testid="marketplace-toolbar"') <
+      marketplaceSource.indexOf('aria-label="Marketplace proximity map"'),
+  );
+  assert.ok(
+    marketplaceSource.indexOf('aria-label="Marketplace proximity map"') <
+      marketplaceSource.indexOf('aria-labelledby="marketplace-results-title"'),
+  );
   assert.doesNotMatch(marketplaceSource, /lg:col-span-2 lg:row-start-2/);
   assert.match(marketplaceSource, /expandedScopeFallback/);
   assert.match(marketplaceSource, /No listing with a verified distance is available inside/);

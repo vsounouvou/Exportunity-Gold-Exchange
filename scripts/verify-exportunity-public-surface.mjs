@@ -7,9 +7,9 @@ const root = process.cwd();
 const requireDist = process.argv.includes("--dist");
 const expectedSurface = "global-trade-network";
 const expectedSchemaVersion = 2;
-const expectedSurfaceRevision = 6;
+const expectedSurfaceRevision = 7;
 const expectedHomepageSourceSha256 =
-  "7da9d4f50c91eefc2770d91aa71d92e8d08fb0ffa503fc30cc9224dfd05016f7";
+  "2e8f0d2e5f65b72be86c78a981157f5e5f56d4fe2177639f9199187215902c70";
 
 function readText(relativePath) {
   const absolutePath = path.join(root, relativePath);

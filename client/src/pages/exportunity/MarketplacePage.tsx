@@ -778,9 +778,72 @@ export default function MarketplacePage() {
                 ))}
               </div>
             </div>
+
+            <div
+              className="mt-4 border-y border-slate-200 py-4 dark:border-white/10"
+              data-testid="marketplace-toolbar"
+            >
+              <div className="flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
+                <div>
+                  <p className="text-[11px] font-bold uppercase text-[#9A6200] dark:text-[#F5A623]">
+                    {language === "fr" ? "Marketplace unifie" : "Unified marketplace"}
+                  </p>
+                  <h2 id="marketplace-results-title" className="mt-1 text-xl font-semibold text-[#07111F] dark:text-white">
+                    {userLocation
+                      ? language === "fr"
+                        ? "Du plus proche au plus eloigne"
+                        : "Nearest first"
+                      : language === "fr"
+                        ? "Catalogue disponible — activez la proximite"
+                        : "Available catalog — enable proximity"}
+                  </h2>
+                  <p className="mt-1 max-w-3xl text-xs leading-5 text-slate-500 dark:text-slate-300">
+                    {language === "fr"
+                      ? "Les annonces approuvees restent distinctes des references documentees. Prix, stock et capacite sont confirmes dans le dossier avant engagement."
+                      : "Approved listings remain distinct from documented references. Price, stock, and capacity are confirmed in the case before commitment."}
+                  </p>
+                </div>
+                <label className="flex min-h-10 w-full items-center gap-2 rounded-md border border-slate-200 bg-white px-3 text-slate-500 dark:border-white/15 dark:bg-[#0A1628] dark:text-slate-300 xl:w-[340px]">
+                  <Search className="h-4 w-4 shrink-0" />
+                  <input
+                    value={query}
+                    onChange={(event) => setQuery(event.target.value)}
+                    placeholder={language === "fr" ? "Produit, commerce, usine..." : "Product, shop, factory..."}
+                    className="min-w-0 flex-1 bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-400 dark:text-white"
+                  />
+                </label>
+              </div>
+
+              <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
+                {[
+                  { slug: "all", label: language === "fr" ? "Tout" : "All", icon: Globe2 },
+                  { slug: "marketplace", label: language === "fr" ? "Commerces et produits" : "Shops and products", icon: ShoppingBag },
+                  { slug: "industrial", label: language === "fr" ? "Industrie" : "Industrial", icon: Factory },
+                  ...(categoriesQuery.data || []).map((item) => ({ ...item, label: item.name, icon: PackageSearch })),
+                ].map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <button
+                      key={item.slug}
+                      type="button"
+                      onClick={() => setCategory(item.slug)}
+                      className={cn(
+                        "inline-flex min-h-10 shrink-0 items-center gap-2 rounded-md border px-3 text-xs font-semibold transition",
+                        category === item.slug
+                          ? "border-[#F5A623] bg-[#FFF8E8] text-[#7A4D00] dark:bg-[#F5A623]/12 dark:text-[#F8C45B]"
+                          : "border-slate-200 bg-white text-slate-600 hover:border-[#F5A623]/70 dark:border-white/15 dark:bg-[#0A1628] dark:text-slate-300",
+                      )}
+                    >
+                      <Icon className="h-4 w-4" />
+                      {item.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           </section>
 
-          <section className="order-3 min-w-0 overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-white/10 dark:bg-[#0A1628] lg:col-start-1 lg:row-start-3" aria-label="Marketplace proximity map">
+          <section className="order-2 min-w-0 overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-white/10 dark:bg-[#0A1628] lg:col-start-1 lg:row-start-2" aria-label="Marketplace proximity map">
             <div className="relative h-[420px] sm:h-[500px]">
               <MapContainer
                 center={AFRICA_CENTER}
@@ -911,67 +974,7 @@ export default function MarketplacePage() {
           />
         </aside>
 
-        <section className="order-2 min-w-0 lg:col-start-1 lg:row-start-2" aria-labelledby="marketplace-results-title">
-          <div className="mt-4 border-y border-slate-200 py-4 dark:border-white/10">
-            <div className="flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
-              <div>
-                <p className="text-[11px] font-bold uppercase text-[#9A6200] dark:text-[#F5A623]">
-                  {language === "fr" ? "Marketplace unifie" : "Unified marketplace"}
-                </p>
-                <h2 id="marketplace-results-title" className="mt-1 text-xl font-semibold text-[#07111F] dark:text-white">
-                  {userLocation
-                    ? language === "fr"
-                      ? "Du plus proche au plus eloigne"
-                      : "Nearest first"
-                    : language === "fr"
-                      ? "Catalogue disponible — activez la proximite"
-                      : "Available catalog — enable proximity"}
-                </h2>
-                <p className="mt-1 max-w-3xl text-xs leading-5 text-slate-500 dark:text-slate-300">
-                  {language === "fr"
-                    ? "Les annonces approuvees restent distinctes des references documentees. Prix, stock et capacite sont confirmes dans le dossier avant engagement."
-                    : "Approved listings remain distinct from documented references. Price, stock, and capacity are confirmed in the case before commitment."}
-                </p>
-              </div>
-              <label className="flex min-h-10 w-full items-center gap-2 rounded-md border border-slate-200 bg-white px-3 text-slate-500 dark:border-white/15 dark:bg-[#0A1628] dark:text-slate-300 xl:w-[340px]">
-                <Search className="h-4 w-4 shrink-0" />
-                <input
-                  value={query}
-                  onChange={(event) => setQuery(event.target.value)}
-                  placeholder={language === "fr" ? "Produit, commerce, usine..." : "Product, shop, factory..."}
-                  className="min-w-0 flex-1 bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-400 dark:text-white"
-                />
-              </label>
-            </div>
-
-            <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
-              {[
-                { slug: "all", label: language === "fr" ? "Tout" : "All", icon: Globe2 },
-                { slug: "marketplace", label: language === "fr" ? "Commerces et produits" : "Shops and products", icon: ShoppingBag },
-                { slug: "industrial", label: language === "fr" ? "Industrie" : "Industrial", icon: Factory },
-                ...(categoriesQuery.data || []).map((item) => ({ ...item, label: item.name, icon: PackageSearch })),
-              ].map((item) => {
-                const Icon = item.icon;
-                return (
-                  <button
-                    key={item.slug}
-                    type="button"
-                    onClick={() => setCategory(item.slug)}
-                    className={cn(
-                      "inline-flex min-h-10 shrink-0 items-center gap-2 rounded-md border px-3 text-xs font-semibold transition",
-                      category === item.slug
-                        ? "border-[#F5A623] bg-[#FFF8E8] text-[#7A4D00] dark:bg-[#F5A623]/12 dark:text-[#F8C45B]"
-                        : "border-slate-200 bg-white text-slate-600 hover:border-[#F5A623]/70 dark:border-white/15 dark:bg-[#0A1628] dark:text-slate-300",
-                    )}
-                  >
-                    <Icon className="h-4 w-4" />
-                    {item.label}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
+        <section className="order-3 min-w-0 lg:col-start-1 lg:row-start-3" aria-labelledby="marketplace-results-title">
           {nearbyQuery.data?.fallback?.used ? (
             <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900 dark:border-amber-300/20 dark:bg-amber-300/10 dark:text-amber-100">
               {language === "fr"

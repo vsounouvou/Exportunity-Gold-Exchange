@@ -103,10 +103,10 @@ if [[ "$CANONICAL_TENANT" == "exportunity" ]]; then
     const marker = JSON.parse(process.argv[1]);
     if (
       marker.schemaVersion !== 2 ||
-      marker.surfaceRevision !== 6 ||
+      marker.surfaceRevision !== 7 ||
       marker.canonicalSurface !== "global-trade-network" ||
       marker.homepageComponent !== "MarketplacePage" ||
-      marker.homepageSourceSha256 !== "7da9d4f50c91eefc2770d91aa71d92e8d08fb0ffa503fc30cc9224dfd05016f7" ||
+      marker.homepageSourceSha256 !== "2e8f0d2e5f65b72be86c78a981157f5e5f56d4fe2177639f9199187215902c70" ||
       marker.legacyHomepageRetired !== true
     ) {
       console.error("[ops][error] Exportunity artifact does not match the exact approved Global Trade Network surface lock");

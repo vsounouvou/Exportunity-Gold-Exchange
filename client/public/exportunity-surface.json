@@ -1,8 +1,8 @@
 {
   "schemaVersion": 2,
-  "surfaceRevision": 5,
+  "surfaceRevision": 6,
   "canonicalSurface": "global-trade-network",
   "homepageComponent": "MarketplacePage",
-  "homepageSourceSha256": "0c40d6a498340288889fc3d9e112df085442cbc0f7018ce41b131deb014c2816",
+  "homepageSourceSha256": "7da9d4f50c91eefc2770d91aa71d92e8d08fb0ffa503fc30cc9224dfd05016f7",
   "legacyHomepageRetired": true
 }

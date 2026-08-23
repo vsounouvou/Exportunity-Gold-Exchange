@@ -3,9 +3,9 @@ import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import test from "node:test";
 
-const EXPECTED_SURFACE_REVISION = 5;
+const EXPECTED_SURFACE_REVISION = 6;
 const EXPECTED_HOME_SHA256 =
-  "0c40d6a498340288889fc3d9e112df085442cbc0f7018ce41b131deb014c2816";
+  "7da9d4f50c91eefc2770d91aa71d92e8d08fb0ffa503fc30cc9224dfd05016f7";
 
 function read(relativePath: string) {
   return readFileSync(new URL(`../${relativePath}`, import.meta.url), "utf8");

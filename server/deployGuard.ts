@@ -13,9 +13,9 @@ type ClientBuild = {
   legacyHomepageRetired?: boolean;
 };
 
-const EXPORTUNITY_PUBLIC_SURFACE_REVISION = 5;
+const EXPORTUNITY_PUBLIC_SURFACE_REVISION = 6;
 const EXPORTUNITY_HOMEPAGE_SOURCE_SHA256 =
-  "0c40d6a498340288889fc3d9e112df085442cbc0f7018ce41b131deb014c2816";
+  "7da9d4f50c91eefc2770d91aa71d92e8d08fb0ffa503fc30cc9224dfd05016f7";
 
 function nonEmptyString(value: unknown): value is string {
   return typeof value === "string" && value.trim().length > 0;

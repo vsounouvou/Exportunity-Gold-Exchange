@@ -526,33 +526,38 @@ export default function MarketplacePage() {
     });
   }, [catalogQuery.data?.items, factories, language, shops, userLocation]);
 
-  const visibleListings = useMemo(() => {
+  const { visibleListings, expandedScopeFallback } = useMemo(() => {
     const normalizedQuery = query.trim().toLocaleLowerCase(language);
-    return unifiedListings
-      .filter((listing) => {
-        if (
-          userLocation &&
-          scope !== "global" &&
-          (listing.distanceKm === null || listing.distanceKm > scope)
-        ) {
-          return false;
-        }
-        if (category === "marketplace" && listing.source !== "marketplace") return false;
-        if (category === "industrial" && listing.source !== "industrial") return false;
-        if (
-          category !== "all" &&
-          category !== "marketplace" &&
-          category !== "industrial" &&
-          listing.categoryCode !== category
-        ) {
-          return false;
-        }
-        if (!normalizedQuery) return true;
-        return `${listing.name} ${listing.description || ""} ${listing.organization} ${listing.location}`
-          .toLocaleLowerCase(language)
-          .includes(normalizedQuery);
-      })
-      .slice(0, 48);
+    const matchingListings = unifiedListings.filter((listing) => {
+      if (category === "marketplace" && listing.source !== "marketplace") return false;
+      if (category === "industrial" && listing.source !== "industrial") return false;
+      if (
+        category !== "all" &&
+        category !== "marketplace" &&
+        category !== "industrial" &&
+        listing.categoryCode !== category
+      ) {
+        return false;
+      }
+      if (!normalizedQuery) return true;
+      return `${listing.name} ${listing.description || ""} ${listing.organization} ${listing.location}`
+        .toLocaleLowerCase(language)
+        .includes(normalizedQuery);
+    });
+    const listingsInsideScope = matchingListings.filter((listing) => {
+      if (!userLocation || scope === "global") return true;
+      return listing.distanceKm !== null && listing.distanceKm <= scope;
+    });
+    const shouldShowExpandedScope =
+      Boolean(userLocation) &&
+      scope !== "global" &&
+      listingsInsideScope.length === 0 &&
+      matchingListings.length > 0;
+
+    return {
+      visibleListings: (shouldShowExpandedScope ? matchingListings : listingsInsideScope).slice(0, 48),
+      expandedScopeFallback: shouldShowExpandedScope,
+    };
   }, [category, language, query, scope, unifiedListings, userLocation]);
 
   const mappedFactories = useMemo(
@@ -701,9 +706,12 @@ export default function MarketplacePage() {
         </div>
       </header>
 
-      <div className="mx-auto grid max-w-[1680px] gap-4 px-4 py-4 sm:px-6 lg:grid-cols-[minmax(0,1fr)_370px] lg:items-start">
-        <main className="order-1 min-w-0 lg:col-start-1 lg:row-start-1">
-          <section className="border-b border-slate-200 pb-4 dark:border-white/10">
+      <div
+        className="mx-auto grid max-w-[1680px] gap-4 px-4 py-4 sm:px-6 lg:grid-cols-[minmax(0,1fr)_minmax(320px,370px)] lg:items-start"
+        data-testid="marketplace-primary-grid"
+      >
+        <main className="contents">
+          <section className="order-1 min-w-0 border-b border-slate-200 pb-4 dark:border-white/10 lg:col-start-1 lg:row-start-1">
             <p className="text-xs font-bold uppercase text-[#9A6200] dark:text-[#F5A623]">
               Exportunity marketplace · proximity first
             </p>
@@ -772,7 +780,7 @@ export default function MarketplacePage() {
             </div>
           </section>
 
-          <section className="mt-4 overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-white/10 dark:bg-[#0A1628]" aria-label="Marketplace proximity map">
+          <section className="order-3 min-w-0 overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-white/10 dark:bg-[#0A1628] lg:col-start-1 lg:row-start-3" aria-label="Marketplace proximity map">
             <div className="relative h-[420px] sm:h-[500px]">
               <MapContainer
                 center={AFRICA_CENTER}
@@ -877,7 +885,7 @@ export default function MarketplacePage() {
 
         <aside
           ref={assistantRef}
-          className="relative z-[100] isolate order-2 min-w-0 scroll-mt-20 lg:sticky lg:top-[84px] lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:h-[calc(100vh-100px)]"
+          className="relative z-[100] isolate order-4 min-w-0 scroll-mt-20 lg:sticky lg:top-[84px] lg:col-start-2 lg:row-span-3 lg:row-start-1 lg:h-[calc(100vh-100px)]"
           aria-label="Exportunity commercial assistant"
         >
           <div className="mb-2 flex items-center justify-between gap-3 lg:hidden">
@@ -903,7 +911,7 @@ export default function MarketplacePage() {
           />
         </aside>
 
-        <section className="order-3 min-w-0 pb-10 lg:col-span-2 lg:row-start-2" aria-labelledby="marketplace-results-title">
+        <section className="order-2 min-w-0 lg:col-start-1 lg:row-start-2" aria-labelledby="marketplace-results-title">
           <div className="mt-4 border-y border-slate-200 py-4 dark:border-white/10">
             <div className="flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
               <div>
@@ -969,6 +977,14 @@ export default function MarketplacePage() {
               {language === "fr"
                 ? "Aucune annonce vendeur approuvee n'est encore disponible dans ce rayon. Les premiers resultats plus lointains restent separes des references industrielles documentees."
                 : "No approved seller listing is available inside this radius yet. The nearest wider results remain separate from documented industrial references."}
+            </div>
+          ) : null}
+
+          {expandedScopeFallback ? (
+            <div className="mt-4 rounded-lg border border-sky-200 bg-sky-50 p-3 text-xs leading-5 text-sky-950 dark:border-sky-300/20 dark:bg-sky-300/10 dark:text-sky-100">
+              {language === "fr"
+                ? `Aucune annonce avec une distance verifiee dans le rayon de ${scopeLabel(scope, language)}. Les references plus larges ci-dessous sont affichees separement; leur distance, leur vendeur et leur stock restent a confirmer dans le dossier.`
+                : `No listing with a verified distance is available inside ${scopeLabel(scope, language)}. The wider references below are shown separately; their distance, seller, and stock still require confirmation in the case.`}
             </div>
           ) : null}
 

@@ -1011,6 +1011,54 @@ verified, the focused homepage and unit gates passed again, and C: retained
 approximately 10.17 GiB free. Source, release archives, production data, and
 remote rollback releases were unaffected.
 
+## Restored primary-flow proximity map — 2026-08-23
+
+- Source commit: `5bc58c39be84`
+- Active release: `/var/www/exportunity/releases/20260823-230007-5bc58c39be84`
+- Build ID: `1787526006573`
+- Runtime: Node `24.19.0`
+- Public-surface revision: `7`
+- Homepage component: `MarketplacePage`
+- Homepage source SHA-256:
+  `2e8f0d2e5f65b72be86c78a981157f5e5f56d4fe2177639f9199187215902c70`
+
+The revision-6 grid preserved the map but placed it in the row after the entire
+26-card catalogue, leaving it approximately 2,900 pixels below the initial
+viewport. Revision 7 moves the search, evidence wording, and category controls
+into the primary hero workspace, places the existing Leaflet proximity map in
+the next row, and starts the catalogue only after the map. No map data source,
+location logic, proximity circle, catalogue record, or Awa workflow was
+replaced.
+
+Live verification confirmed the sequence `controls -> map -> catalogue` at the
+normal 906-pixel viewport and a temporary 1440-pixel desktop breakpoint. At
+desktop width the grid resolved to `990.8px 370px`, Awa remained in the separate
+right column, the map began at 557 pixels, the catalogue began at 1,075 pixels,
+all 26 cards remained present, Leaflet rendered once, horizontal overflow was
+false, and the browser error log was empty. The temporary viewport override was
+reset after testing.
+
+The exact public-surface verifier, 43 focused homepage/public-surface tests,
+route checks, full TypeScript check, full unit gate, local production build,
+remote container build, production health recovery, and build-parity verifier
+passed. The local dependency tree was restored from the unchanged lockfile
+before the final checks. The lockfile's optional `@types/pg` peer was supplied
+from the exact `8.11.6` package archive for the compiler only; neither
+`package.json` nor `package-lock.json` changed.
+
+The documented `check:dependency-security` command is not currently present in
+`package.json`, and `npm audit --omit=dev --audit-level=moderate` reports an
+existing red runtime baseline across older direct and transitive packages. No
+automatic audit fix, forced upgrade, dependency-manifest change, or breaking
+runtime migration was made as part of this map release. That dependency audit
+must be handled as a separately reviewed security package rather than hidden in
+a visual regression fix.
+
+No provider setting, database record, payment, message, advertisement, supplier
+contact, or background process was created by this release. The local release
+archive retention remained bounded, `dist` measured approximately 338 MiB, and
+C: retained approximately 11.80 GiB free, so no further deletion was necessary.
+
 ## Rollback and recovery
 
 - Application rollback uses the previous release symlink and does not reverse

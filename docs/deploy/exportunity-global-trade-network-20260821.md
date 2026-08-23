@@ -944,8 +944,36 @@ messages, ads, or Instagram state, and it exposed no credential.
 The intended Edge session could be listed but could not be captured by the
 Windows-control runtime; the initial attempt and one refreshed-handle recovery
 both failed with Windows error `0x80004002`. No Edge input was issued after the
-required recovery stop. Company-email administration and remaining private Meta
-console evidence therefore remain external handoffs.
+required recovery stop.
+
+A later authenticated in-app Meta Business audit reached the business selector.
+The `Exportunity` portfolio currently reports zero Pages and one person, while
+the older `xportonapp` portfolio reports one Page and four people. Opening the
+Exportunity portfolio reached Meta's required reauthentication choice: passkey
+or SMS to the owner-controlled number ending in `29`. No code was requested or
+sent, no passkey was invoked, and no Page, person, permission, business asset,
+post, message, advertisement, billing setting, or provider record was changed.
+The tab remains at the human 2FA handoff before any company-ownership repair.
+
+## Company-owned administration and complaint-routing proof — 2026-08-23
+
+The deployed read-only company-control verifier returned `ok: true` for
+`exportunitygroup@gmail.com`. Production confirms that the identity exists, is
+active and email-verified, has global administrator access plus the Exportunity
+`TENANT_ADMIN` role, and that `CONTACT_NOTIFY_TO` includes the company Gmail.
+`CONTACT_NOTIFY_FROM` is `info@exportunity.net`. The application contact and Awa
+lead routes both consume this shared notifier rather than a personal-owner
+recipient.
+
+One explicitly owner/company-only production contact-routing test was submitted
+with source marker `codex-owner-only-complaint-routing-test-20260823`. The API
+persisted the contact record and returned notification state `sent`. A separate
+read-only Gmail verification under the authenticated `Exportunity GROUP`
+account found exactly one matching unread inbox message with the expected
+subject and tenant context. The temporary Gmail verification tab was closed.
+No customer or third-party address, SMS, WhatsApp message, social post,
+advertisement, payment, contract, supplier contact, or database migration was
+created by this test.
 
 ## Rollback and recovery
 

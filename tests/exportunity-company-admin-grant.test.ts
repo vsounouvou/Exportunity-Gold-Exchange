@@ -12,6 +12,9 @@ test("the Exportunity company administrator is a separate fixed company identity
   const identity = await read("tenants/exportunity/companyIdentity.ts");
   const workspacePage = await read("client/src/pages/AdminGoogleWorkspaceIntegrationPage.tsx");
   const twilioPage = await read("client/src/pages/AdminTwilioControlCenterPage.tsx");
+  const contactNotifier = await read("server/lib/contact/notifier.ts");
+  const publicRoutes = await read("server/routes/public.ts");
+  const talkRoutes = await read("server/routes/talk.ts");
   const envExample = await read(".env.example");
   const packageJson = await read("package.json");
 
@@ -35,6 +38,11 @@ test("the Exportunity company administrator is a separate fixed company identity
   assert.match(workspacePage, /EXPORTUNITY_COMPANY_IDENTITY\.adminEmail/);
   assert.match(twilioPage, /EXPORTUNITY_COMPANY_IDENTITY\.adminEmail/);
   assert.match(twilioPage, /Personal test recipients remain separate/);
+  assert.match(contactNotifier, /process\.env\.CONTACT_NOTIFY_TO/);
+  assert.match(contactNotifier, /process\.env\.CONTACT_NOTIFY_FROM/);
+  assert.doesNotMatch(contactNotifier, /vs@exportunity|vitalsounouvou/i);
+  assert.match(publicRoutes, /sendContactNotification\(\{ to: cfg\.to, from: cfg\.from/);
+  assert.match(talkRoutes, /sendContactNotification\(\{ to: cfg\.to, from: cfg\.from/);
   assert.match(envExample, /EXPORTUNITY_COMPANY_ADMIN_EMAIL=exportunitygroup@gmail\.com/);
   assert.match(
     packageJson,

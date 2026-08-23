@@ -975,6 +975,42 @@ No customer or third-party address, SMS, WhatsApp message, social post,
 advertisement, payment, contract, supplier contact, or database migration was
 created by this test.
 
+## Corrected proximity-marketplace layout release — 2026-08-23
+
+- Source commit: `579012950c99b85d16e3660070a6e58c60636dbf`
+- Active release: `/var/www/exportunity/releases/20260823-195928-579012950c99`
+- Build ID: `1787515167194`
+- Runtime: Node `24.19.0`
+- Public-surface revision: `6`
+- Homepage component: `MarketplacePage`
+- Homepage source SHA-256:
+  `7da9d4f50c91eefc2770d91aa71d92e8d08fb0ffa503fc30cc9224dfd05016f7`
+
+The production defect was a conflicting grid placement: the results surface
+spanned the column reserved for Awa, which created implicit columns and reduced
+the primary marketplace column to zero pixels. The corrected layout has two
+explicit production columns (`830.8px` and `370px` at the verified desktop
+viewport), places the searchable listing feed before the map, keeps Awa in the
+right-hand column, and has no horizontal overflow. The live page rendered 26
+wider catalog cards, kept `Commerces et produits` and `Industrie` as distinct
+filters, and showed the wider catalog only with an explicit warning that its
+distance, seller, and stock are not verified local facts. The browser error log
+was empty.
+
+The surface verifier, route checks, full TypeScript check, full unit gate, 51
+focused homepage/public-surface tests, local production build, remote container
+build, health recovery, and build-parity verifier passed. No provider setting,
+database record, payment, message, advertisement, supplier contact, or
+background process was created by this release.
+
+After deployment, only ignored/rebuildable local build output was removed. A
+cleanup target briefly expanded to the ignored dependency parent; it was
+stopped, and the exact dependency tree was restored from the unchanged
+`package-lock.json`. Critical React, TypeScript, Vite, and Drizzle packages were
+verified, the focused homepage and unit gates passed again, and C: retained
+approximately 10.17 GiB free. Source, release archives, production data, and
+remote rollback releases were unaffected.
+
 ## Rollback and recovery
 
 - Application rollback uses the previous release symlink and does not reverse

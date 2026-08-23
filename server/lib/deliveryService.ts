@@ -44,6 +44,7 @@ export interface WithdrawalInput {
 }
 
 export interface OrderInput {
+  externalOrderId?: string;
   companyId?: number;
   orderValue: number;
   deliveryFee: number;
@@ -65,6 +66,7 @@ export interface OrderInput {
   isFragile?: boolean;
   requiresSignature?: boolean;
   scheduledPickupTime?: Date;
+  metadata?: Record<string, unknown>;
 }
 
 export const deliveryService = {
@@ -384,14 +386,14 @@ export const deliveryService = {
   },
 
   async createOrder(input: OrderInput) {
-    const orderId = `DEL-${nanoid(10).toUpperCase()}`;
+    const orderId = input.externalOrderId || `DEL-${nanoid(10).toUpperCase()}`;
     const pickupQrCode = await QRCode.toDataURL(`pickup:${orderId}`);
     const deliveryQrCode = await QRCode.toDataURL(`delivery:${orderId}`);
 
     const platformFee = Number((input.deliveryFee * DELIVERY_COMMISSION_PERCENTAGE).toFixed(2));
     const agentEarnings = Number((input.deliveryFee - platformFee).toFixed(2));
 
-    const [order] = await db.insert(deliveryOrders).values({
+    const [createdOrder] = await db.insert(deliveryOrders).values({
       orderId,
       companyId: input.companyId,
       status: "pending",
@@ -418,8 +420,18 @@ export const deliveryService = {
       packageSize: input.packageSize as any,
       isFragile: input.isFragile,
       requiresSignature: input.requiresSignature,
-      scheduledPickupTime: input.scheduledPickupTime
-    }).returning();
+      scheduledPickupTime: input.scheduledPickupTime,
+      metadata: input.metadata || {}
+    }).onConflictDoNothing({ target: deliveryOrders.orderId }).returning();
+
+    let order: typeof deliveryOrders.$inferSelect | undefined = createdOrder;
+
+    if (!order && input.externalOrderId) {
+      order = await db.query.deliveryOrders.findFirst({
+        where: eq(deliveryOrders.orderId, input.externalOrderId),
+      });
+    }
+    if (!order) throw new Error("Delivery order could not be created");
 
     return order;
   },

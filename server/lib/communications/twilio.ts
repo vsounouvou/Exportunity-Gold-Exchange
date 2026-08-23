@@ -12,17 +12,30 @@ import {
   type SenderResolutionSource,
 } from "./sender-resolution";
 import { getMessagingHealth, resolveMessagingEnv, validateMessagingEnvAtBoot } from "../messaging/config";
+import { assertOutboundActionExecutionAllowed } from "./outboundDecisionService";
+import {
+  toSafeTwilioAccountVerification,
+  TwilioAccountVerificationError,
+} from "./twilioAccountVerification";
+
+export {
+  toSafeTwilioAccountVerification,
+  TwilioAccountVerificationError,
+} from "./twilioAccountVerification";
+import { resolveTwilioSendMaxAttempts } from "./twilioRetryPolicy";
 
 export type TwilioChannel = "sms" | "whatsapp";
 
 export type TwilioSendParams = {
   channel: TwilioChannel;
   toE164: string;
+  tenantKey?: string | null;
   body?: string;
   contentSid?: string | null;
   contentVariables?: Record<string, string> | null;
   mediaUrls?: string[] | null;
   statusCallbackUrl?: string | null;
+  maxProviderAttempts?: number;
 };
 
 export type TwilioSendResult = {
@@ -62,11 +75,13 @@ export type SendTenantMessageResult = TwilioSendResult & {
 type TwilioErrorContext = {
   sandboxMode?: boolean;
   sandboxFrom?: string | null;
+  destinationE164?: string | null;
 };
 
 type TwilioResolvedSendParams = {
   channel: TwilioChannel;
   toE164: string;
+  tenantKey?: string | null;
   body?: string | null;
   fromAddress?: string | null;
   messagingServiceSid?: string | null;
@@ -74,6 +89,7 @@ type TwilioResolvedSendParams = {
   contentVariables?: Record<string, string> | null;
   mediaUrls?: string[] | null;
   statusCallbackUrl?: string | null;
+  maxProviderAttempts?: number;
 };
 
 type ResolvedTemplateDispatch = {
@@ -103,10 +119,8 @@ export function resolveTwilioProviderErrorMessage(
   context?: TwilioErrorContext,
 ) {
   const direct = String(errorMessage || "").trim();
-  if (direct) return direct;
-
   const code = String(errorCode || "").trim();
-  if (!code) return null;
+  if (!code) return direct || null;
 
   const sandboxModeRaw = String(process.env.TWILIO_SANDBOX_MODE || "").trim().toLowerCase();
   const sandboxMode =
@@ -114,12 +128,17 @@ export function resolveTwilioProviderErrorMessage(
       ? context.sandboxMode
       : ["1", "true", "yes", "y", "on"].includes(sandboxModeRaw);
   const sandboxFrom = String(context?.sandboxFrom || process.env.TWILIO_WHATSAPP_FROM || "").trim();
+  const destinationE164 = String(context?.destinationE164 || "").trim();
+  const destinationRegion = destinationE164.startsWith("+225")
+    ? "Côte d'Ivoire (+225)"
+    : "the destination country";
 
   const hints: Record<string, string> = {
     "21211": "Invalid destination number. Use a real E.164 phone number (example: +2250100000229).",
     "21608": "Trial Twilio account can only message verified recipient numbers. Verify the destination number in Twilio Console.",
     "20003": "Twilio authentication failed. Verify TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN.",
     "20404": "Twilio resource not found. Check the sender, messaging service, or verify service configuration.",
+    "21408": `Twilio SMS geographic permission is disabled for ${destinationRegion}. Enable only that country in Twilio Console > Messaging > Settings > Geo Permissions, then retry the approved message.`,
     "63015": sandboxMode
       ? `WhatsApp delivery blocked because the recipient has not joined your Twilio WhatsApp Sandbox yet. Ask them to join the sandbox first, then retry. Sender: ${sandboxFrom}.`
       : "WhatsApp delivery blocked because the destination cannot receive this business-initiated WhatsApp message yet. Configure an approved production WhatsApp sender and use an approved template when required.",
@@ -128,7 +147,7 @@ export function resolveTwilioProviderErrorMessage(
       : "WhatsApp delivery blocked because there is no active 24-hour session. Use an approved WhatsApp template or wait for an inbound customer message.",
   };
 
-  return hints[code] || null;
+  return hints[code] || direct || null;
 }
 
 function parsePositiveInt(value: unknown, fallback: number) {
@@ -159,8 +178,11 @@ function isTransientTwilioError(error: any) {
   );
 }
 
-async function callTwilioWithRetry<T>(request: () => Promise<T>) {
-  const maxAttempts = parsePositiveInt(process.env.TWILIO_SEND_MAX_ATTEMPTS, 3);
+async function callTwilioWithRetry<T>(
+  request: () => Promise<T>,
+  maxAttemptsOverride?: number,
+) {
+  const maxAttempts = resolveTwilioSendMaxAttempts(maxAttemptsOverride);
   const baseDelayMs = parsePositiveInt(process.env.TWILIO_SEND_RETRY_BASE_MS, 350);
   let lastError: any = null;
 
@@ -224,8 +246,8 @@ export function resolveTwilioStatusCallbackUrl() {
   }
 }
 
-function getTwilioClient() {
-  const resolved = resolveMessagingEnv();
+function getTwilioClient(tenantKey?: string | null) {
+  const resolved = resolveMessagingEnv(tenantKey);
   const accountSid = String(resolved.accountSid || "").trim();
   const authToken = String(resolved.authToken || "").trim();
   if (!accountSid) throw new Error("TWILIO_ACCOUNT_SID missing");
@@ -239,9 +261,9 @@ function getTwilioClient() {
   return twilio(accountSid, authToken, clientOptions as any);
 }
 
-export function getTwilioConfig() {
-  const resolved = resolveMessagingEnv();
-  const health = getMessagingHealth();
+export function getTwilioConfig(tenantKey?: string | null) {
+  const resolved = resolveMessagingEnv(tenantKey);
+  const health = getMessagingHealth(tenantKey);
   const accountSid = String(resolved.accountSid || "").trim();
   const authToken = String(resolved.authToken || "").trim();
   const whatsappFrom = String(resolved.whatsappFrom || "").trim();
@@ -278,6 +300,38 @@ export function getTwilioConfig() {
     smsEnabled: health.sms.enabled,
     whatsappOtpEnabled: health.whatsappOtp.enabled,
   };
+}
+
+export async function verifyTwilioAccountReadOnly(input?: {
+  fetchAccount?: (accountSid: string) => Promise<unknown>;
+  verifiedAt?: Date;
+}) {
+  const cfg = getTwilioConfig();
+  if (!cfg.accountSid || !cfg.accountSidLooksValid || !cfg.authTokenPresent) {
+    throw new TwilioAccountVerificationError(
+      "Twilio account credentials are missing or malformed.",
+      "TWILIO_ACCOUNT_CONFIGURATION_REQUIRED",
+      503,
+    );
+  }
+
+  try {
+    const account = input?.fetchAccount
+      ? await input.fetchAccount(cfg.accountSid)
+      : await getTwilioClient().api.v2010.accounts(cfg.accountSid).fetch();
+    return toSafeTwilioAccountVerification({
+      expectedAccountSid: cfg.accountSid,
+      account,
+      verifiedAt: input?.verifiedAt,
+    });
+  } catch (error: any) {
+    if (error instanceof TwilioAccountVerificationError) throw error;
+    throw new TwilioAccountVerificationError(
+      "Twilio did not confirm the configured account credentials.",
+      "TWILIO_ACCOUNT_VERIFICATION_FAILED",
+      502,
+    );
+  }
 }
 
 function normalizeMediaUrls(value: unknown): string[] | null {
@@ -402,8 +456,8 @@ export function assertResolvedSenderForChannel(channel: ResolvableTwilioChannel,
 }
 
 async function sendResolvedTwilioMessage(params: TwilioResolvedSendParams): Promise<TwilioSendResult> {
+  const toE164 = normalizeE164(params.toE164);
   try {
-    const toE164 = normalizeE164(params.toE164);
     if (!toE164) {
       return {
         ok: false,
@@ -443,7 +497,7 @@ async function sendResolvedTwilioMessage(params: TwilioResolvedSendParams): Prom
       };
     }
 
-    const client = getTwilioClient();
+    const client = getTwilioClient(params.tenantKey);
     const payload: Record<string, unknown> = {
       ...(params.channel === "whatsapp" ? { to: toWhatsAppAddress(toE164) } : { to: toE164 }),
       ...(params.statusCallbackUrl ? { statusCallback: params.statusCallbackUrl } : {}),
@@ -467,12 +521,16 @@ async function sendResolvedTwilioMessage(params: TwilioResolvedSendParams): Prom
       payload.body = body;
     }
 
-    const msg = await callTwilioWithRetry(() => client.messages.create(payload as any));
+    const msg = await callTwilioWithRetry(
+      () => client.messages.create(payload as any),
+      params.maxProviderAttempts,
+    );
     const status = msg?.status ? String(msg.status).toLowerCase() : null;
     const errorCode = msg?.errorCode != null ? String(msg.errorCode) : null;
     const errorMessage = resolveTwilioProviderErrorMessage(errorCode, msg?.errorMessage != null ? String(msg.errorMessage) : null, {
       sandboxMode: params.channel === "whatsapp" ? isSandboxWhatsAppSender(params.fromAddress) : false,
       sandboxFrom: params.fromAddress ?? null,
+      destinationE164: toE164,
     });
     const providerRejected = !!errorCode || status === "failed" || status === "undelivered" || status === "canceled";
 
@@ -502,6 +560,7 @@ async function sendResolvedTwilioMessage(params: TwilioResolvedSendParams): Prom
       resolveTwilioProviderErrorMessage(errorCode, String(err?.message || "Twilio send failed"), {
         sandboxMode: params.channel === "whatsapp" ? isSandboxWhatsAppSender(params.fromAddress) : false,
         sandboxFrom: params.fromAddress ?? null,
+        destinationE164: toE164,
       }) || String(err?.message || "Twilio send failed");
     return {
       ok: false,
@@ -515,10 +574,11 @@ async function sendResolvedTwilioMessage(params: TwilioResolvedSendParams): Prom
 }
 
 export async function sendTwilioMessage(params: TwilioSendParams): Promise<TwilioSendResult> {
-  const cfg = getTwilioConfig();
+  const cfg = getTwilioConfig(params.tenantKey);
   return await sendResolvedTwilioMessage({
     channel: params.channel,
     toE164: params.toE164,
+    tenantKey: params.tenantKey,
     body: params.body ?? null,
     fromAddress: params.channel === "whatsapp" ? cfg.whatsappFrom : cfg.smsFrom,
     messagingServiceSid: params.channel === "sms" ? cfg.messagingServiceSid : null,
@@ -526,6 +586,7 @@ export async function sendTwilioMessage(params: TwilioSendParams): Promise<Twili
     contentVariables: params.contentVariables ?? null,
     mediaUrls: params.mediaUrls ?? null,
     statusCallbackUrl: params.statusCallbackUrl ?? resolveTwilioStatusCallbackUrl(),
+    maxProviderAttempts: params.maxProviderAttempts,
   });
 }
 
@@ -546,6 +607,30 @@ export async function sendTenantMessage(input: SendTenantMessageInput): Promise<
     templatePayload: input.templatePayload ?? null,
     metadata,
   });
+
+  if (input.channel === "sms" || input.channel === "whatsapp") {
+    const rawActionRequestId =
+      metadata?.actionRequestId ?? metadata?.action_request_id ?? null;
+    const actionRequestId = Number(rawActionRequestId || 0);
+    await assertOutboundActionExecutionAllowed({
+      tenantId: input.tenantId,
+      actionRequestId: Number.isFinite(actionRequestId) && actionRequestId > 0
+        ? actionRequestId
+        : null,
+      channel: input.channel,
+      recipients: [toE164],
+      directPayload: {
+        toE164,
+        ...(template.contentSid ? { contentSid: template.contentSid } : {}),
+        communicationPurpose:
+          metadata?.communicationPurpose ??
+          metadata?.communication_purpose ??
+          "unspecified",
+        contactBasis:
+          metadata?.contactBasis ?? metadata?.contact_basis ?? "unknown",
+      },
+    });
+  }
 
   const resolvedSender = await resolveSender({
     tenantId: input.tenantId,

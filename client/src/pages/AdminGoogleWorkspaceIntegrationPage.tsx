@@ -26,6 +26,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { EXPORTUNITY_COMPANY_IDENTITY } from "@tenants/exportunity/companyIdentity";
 
 type Service = "drive" | "gmail" | "contacts";
 
@@ -337,7 +338,10 @@ export default function AdminGoogleWorkspaceIntegrationPage() {
                     </code>
                   ) : null}
                   <ol className="mt-4 grid gap-2 text-sm leading-6 text-amber-950 sm:grid-cols-2">
-                    <li><strong>1.</strong> Sign in to Google Cloud with the Exportunity company administrator.</li>
+                    <li>
+                      <strong>1.</strong> Sign in to Google Cloud with the Exportunity company administrator: {" "}
+                      <strong>{EXPORTUNITY_COMPANY_IDENTITY.adminEmail}</strong>.
+                    </li>
                     <li><strong>2.</strong> Create an OAuth client for a Web application.</li>
                     <li><strong>3.</strong> Register the redirect URI above exactly, then store the client ID and secret on the server.</li>
                     <li><strong>4.</strong> Return here and authorize Drive first with a small approved source set.</li>

@@ -66,57 +66,57 @@ export default function AppInvestOnboardingPage() {
   });
 
   return (
-    <div className="min-h-screen bg-gray-950 pb-32 text-white">
+    <div data-testid="exportunity-invest-onboarding" className="min-h-screen bg-[#F7F8FA] pb-24 text-[#07111F]">
       <AppProTopBar subtitle="Invest onboarding" />
-      <main className="mx-auto w-full max-w-xl px-4 pb-4 pt-6">
-        <Card className="border-white/10 bg-white/5">
+      <main className="mx-auto w-full max-w-xl px-4 py-4">
+        <Card className="border-slate-200 bg-white shadow-sm">
           <CardContent className="p-5 space-y-4">
-            <div className="text-sm text-white/70">
-              Submit onboarding. You land back in the module immediately after submission.
+            <div className="rounded-xl border border-[#F5A623]/25 bg-[#FFF8E8] p-3 text-sm leading-6 text-slate-700">
+              Submit your interest for operator review. No investment is activated from this form.
             </div>
             <div className="space-y-2">
-              <Label className="text-white/80">Full name</Label>
-              <Input value={name} onChange={(e) => setName(e.target.value)} className="border-white/15 bg-black/30 text-white" />
+              <Label className="text-slate-700">Full name</Label>
+              <Input value={name} onChange={(e) => setName(e.target.value)} className="border-slate-200 bg-white text-slate-950" />
             </div>
             <div className="space-y-2">
-              <Label className="text-white/80">Email</Label>
-              <Input value={email} onChange={(e) => setEmail(e.target.value)} className="border-white/15 bg-black/30 text-white" />
+              <Label className="text-slate-700">Email</Label>
+              <Input value={email} onChange={(e) => setEmail(e.target.value)} className="border-slate-200 bg-white text-slate-950" />
             </div>
             <div className="space-y-2">
-              <Label className="text-white/80">Country (optional)</Label>
-              <Input value={country} onChange={(e) => setCountry(e.target.value)} className="border-white/15 bg-black/30 text-white" />
+              <Label className="text-slate-700">Country (optional)</Label>
+              <Input value={country} onChange={(e) => setCountry(e.target.value)} className="border-slate-200 bg-white text-slate-950" />
             </div>
             <div className="space-y-2">
-              <Label className="text-white/80">Intent</Label>
+              <Label className="text-slate-700">Intent</Label>
               <select
                 value={intent}
                 onChange={(e) => setIntent(e.target.value)}
-                className="h-10 w-full rounded-md border border-white/15 bg-black/30 px-3 text-sm text-white"
+                className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-950"
               >
                 <option value="invest">Invest</option>
                 <option value="demo">Demo</option>
               </select>
             </div>
             <div className="space-y-2">
-              <Label className="text-white/80">Message</Label>
+              <Label className="text-slate-700">Message</Label>
               <textarea
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
-                className="min-h-[110px] w-full rounded-md border border-white/15 bg-black/30 px-3 py-2 text-sm text-white"
+                className="min-h-[110px] w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-950"
               />
             </div>
             <div className="flex gap-2">
               <Button
                 type="button"
                 variant="outline"
-                className="border-white/15 text-white/80 hover:bg-white/10"
+                className="border-slate-200 bg-white text-slate-700 hover:border-[#F5A623] hover:bg-[#FFF8E8]"
                 onClick={() => setLocation("/app/invest/opportunities")}
               >
                 Cancel
               </Button>
               <Button
                 type="button"
-                className="bg-amber-500 hover:bg-amber-600 text-black font-semibold"
+                className="bg-[#F5A623] font-black text-[#07111F] hover:bg-[#F8C45B]"
                 onClick={() => submit.mutate()}
                 disabled={submit.isPending}
               >

@@ -210,16 +210,171 @@ export type TalkMessage = {
   createdAt?: string;
 };
 
+export type TalkCommercialIntent = {
+  intent: string;
+  confidence: number;
+  commercial: boolean;
+  language: "en" | "fr" | "auto";
+  product?: {
+    name?: string;
+    category?: string;
+    specification?: string;
+    quantity?: number;
+    unit?: string;
+  };
+  origin?: string;
+  destination?: string;
+  targetPrice?: number;
+  currency?: string;
+  deadline?: string;
+  frequency?: string;
+  incoterm?: string;
+  customerType?: string;
+  orderReference?: string;
+  requirementId?: string;
+  requirementReferenceCode?: string;
+  productRequirementId?: string;
+  missingFields: string[];
+  suggestedAction: "ANSWER" | "ASK" | "ACT" | "ESCALATE";
+  rationale: string[];
+};
+
+export type TalkTimelineEvent = {
+  id: number;
+  eventType:
+    | "commercial_intent"
+    | "commercial_retrieval"
+    | "commercial_action"
+    | "commercial_crm"
+    | "sourcing_review_task"
+    | "supplier_candidate_screening"
+    | "handoff";
+  payload: Record<string, unknown>;
+  createdAt: string;
+};
+
+export type TalkCommercialCrm = {
+  status:
+    | "lead_captured"
+    | "opportunity_opened"
+    | "operator_company_missing"
+    | "sync_deferred";
+  leadId: number | null;
+  opportunityId: number | null;
+  opportunityReferenceCode: string | null;
+  stage: string | null;
+  createdLead: boolean;
+  createdOpportunity: boolean;
+};
+
+export type TalkSourcingReviewTask = {
+  status:
+    | "not_eligible"
+    | "agent_assignment_missing"
+    | "review_task_ready"
+    | "sync_deferred";
+  taskId: number | null;
+  publicTaskId: string | null;
+  state: string | null;
+  requiresHumanApproval: boolean;
+  outboundActionsAllowed: boolean;
+};
+
+export type TalkSupplierCandidateScreening = {
+  status:
+    | "not_eligible"
+    | "requirement_not_found"
+    | "no_verified_candidate"
+    | "candidates_ready"
+    | "sync_deferred";
+  screeningState: "not_run" | "completed";
+  source: "verified_internal_supplier_registry";
+  threshold: number;
+  candidateCount: number;
+  newCandidateCount: number;
+  existingCandidateCount: number;
+  topScore: number | null;
+  sourcingTaskId: number | null;
+  sourcingTaskPublicId: string | null;
+  requiresHumanApproval: boolean;
+  supplierIdentityPublic: boolean;
+  outboundActionsAllowed: boolean;
+  externalDiscoveryStarted: boolean;
+  quoteCreated: boolean;
+  screenedAt: string;
+};
+
+export type TalkCommercialRetrieval = {
+  status:
+    | "not_applicable"
+    | "clarification_required"
+    | "verified_matches"
+    | "internal_matches_require_review"
+    | "no_verified_match";
+  searched: boolean;
+  searchedAt: string;
+  source: "industrial_catalog";
+  threshold: number;
+  query: {
+    productName: string | null;
+    category: string | null;
+    specification: string | null;
+    classifications: string[];
+  };
+  verifiedMatchCount: number;
+  publicMatchCount: number;
+  matches: Array<{
+    id: string;
+    name: string;
+    classification: string;
+    relevanceScore: number;
+    availabilityStatus: string | null;
+    countryOfOrigin: string | null;
+    unitOfMeasure: string | null;
+    minimumOrderQuantity: string | null;
+    availableQuantityText: string | null;
+    leadTimeText: string | null;
+    priceMode: string | null;
+    priceText: string | null;
+    currencyCode: string | null;
+    certifications: string[];
+    freshnessAt: string | null;
+  }>;
+};
+
 export async function startTalkSession(payload: { intent?: string; sourceUrl?: string }) {
   return apiRequest("/api/talk/start", "POST", payload);
 }
 
-export async function fetchTalkLead(leadId: string, params?: { limit?: number }) {
+export async function fetchTalkLead(leadId: string, params?: { limit?: number; eventLimit?: number }) {
   const query = new URLSearchParams();
   if (params?.limit) query.set("limit", String(params.limit));
+  if (params?.eventLimit) query.set("eventLimit", String(params.eventLimit));
   const suffix = query.toString() ? `?${query.toString()}` : "";
   return apiRequest(`/api/talk/leads/${encodeURIComponent(leadId)}${suffix}`, { method: "GET" });
 }
+
+export type TalkLeadPayload = {
+  id: string;
+  intent: string;
+  name?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+  commercial?: TalkCommercialIntent | null;
+  crm?: TalkCommercialCrm | null;
+  sourcingTask?: TalkSourcingReviewTask | null;
+  supplierCandidateScreening?: TalkSupplierCandidateScreening | null;
+  retrieval?: TalkCommercialRetrieval | null;
+  events?: TalkTimelineEvent[];
+  requirement?: {
+    id: string | null;
+    referenceCode?: string | null;
+    productRequirementId?: string | null;
+  } | null;
+};
 
 export async function sendTalkMessage(payload: {
   leadId: string;
@@ -228,6 +383,23 @@ export async function sendTalkMessage(payload: {
   name?: string;
   email?: string;
   phone?: string;
-}) {
+}): Promise<{
+  ok: true;
+  leadId: string;
+  messages: TalkMessage[];
+  notify?: unknown;
+  lead: { intent: string; hasContact: boolean; hadContact: boolean };
+  requirement?: {
+    id: string | null;
+    referenceCode?: string | null;
+    productRequirementId?: string | null;
+  } | null;
+  commercial?: TalkCommercialIntent | null;
+  crm?: TalkCommercialCrm | null;
+  sourcingTask?: TalkSourcingReviewTask | null;
+  supplierCandidateScreening?: TalkSupplierCandidateScreening | null;
+  retrieval?: TalkCommercialRetrieval | null;
+  events?: TalkTimelineEvent[];
+}> {
   return apiRequest("/api/talk/message", "POST", payload);
 }

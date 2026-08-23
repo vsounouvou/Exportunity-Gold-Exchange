@@ -515,6 +515,22 @@ export function AgentProfileDialog({ agent, runtimeAgentId, open, onOpenChange }
     form.setValue(fieldName, currentValues.filter((v: string) => v !== item));
   };
 
+  const confirmQueueProfileAction = (
+    section: "background" | "personality" | "job" | "permissions" | "lifecycle",
+    scope: "targeted" | "bulk",
+  ) => {
+    const prompt = tr(
+      scope === "bulk"
+        ? `Créer une action RH groupée pour la section « ${section} » ? La demande sera ajoutée à la file interne pour approbation.`
+        : `Créer une action RH ciblée pour la section « ${section} » ? La demande sera ajoutée à la file interne pour approbation.`,
+      scope === "bulk"
+        ? `Queue a bulk HR action for the ${section} section? The request will enter the internal action queue for approval.`
+        : `Queue a targeted HR action for the ${section} section? The request will enter the internal action queue for approval.`,
+    );
+    if (!window.confirm(prompt)) return;
+    queueProfileActionMutation.mutate({ section, scope });
+  };
+
   const renderSectionActions = (
     section: "background" | "personality" | "job" | "permissions" | "lifecycle",
     label: string,
@@ -556,7 +572,7 @@ export function AgentProfileDialog({ agent, runtimeAgentId, open, onOpenChange }
             size="sm"
             variant="outline"
             disabled={!hasResolvableAgentId || queueProfileActionMutation.isPending}
-            onClick={() => queueProfileActionMutation.mutate({ section, scope: "targeted" })}
+            onClick={() => confirmQueueProfileAction(section, "targeted")}
           >
             {tr("Créer une action ciblée", "Queue targeted action")}
           </Button>
@@ -565,7 +581,7 @@ export function AgentProfileDialog({ agent, runtimeAgentId, open, onOpenChange }
             size="sm"
             variant="outline"
             disabled={!hasResolvableAgentId || queueProfileActionMutation.isPending}
-            onClick={() => queueProfileActionMutation.mutate({ section, scope: "bulk" })}
+            onClick={() => confirmQueueProfileAction(section, "bulk")}
           >
             {tr("Créer une action groupée", "Queue bulk action")}
           </Button>
@@ -579,7 +595,8 @@ export function AgentProfileDialog({ agent, runtimeAgentId, open, onOpenChange }
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className={`${tenant.key === "exportunity" ? "exportunity-operations-light bg-white text-slate-900 border-slate-200" : ""} w-[calc(100vw-2rem)] max-w-5xl max-h-[92vh] overflow-y-auto`}
+        data-testid="exportunity-agent-profile-editor"
+        className={`${tenant.key === "exportunity" ? "light border-slate-200 bg-white text-slate-950" : ""} max-h-[92vh] w-[calc(100vw-2rem)] max-w-5xl overflow-y-auto`}
       >
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -592,7 +609,7 @@ export function AgentProfileDialog({ agent, runtimeAgentId, open, onOpenChange }
         </DialogHeader>
 
         <AlertDialog open={aiConfirmOpen} onOpenChange={setAiConfirmOpen}>
-          <AlertDialogContent className={tenant.key === "exportunity" ? "exportunity-operations-light bg-white text-slate-900 border-slate-200" : ""}>
+          <AlertDialogContent className={tenant.key === "exportunity" ? "light border-slate-200 bg-white text-slate-950" : ""}>
             <AlertDialogHeader>
               <AlertDialogTitle>{tr("Utiliser l'IA pour générer des suggestions ?", "Use AI to generate suggestions?")}</AlertDialogTitle>
               <AlertDialogDescription>
@@ -617,7 +634,7 @@ export function AgentProfileDialog({ agent, runtimeAgentId, open, onOpenChange }
         </AlertDialog>
 
         <AlertDialog open={aiConsentOpen} onOpenChange={setAiConsentOpen}>
-          <AlertDialogContent className={`${tenant.key === "exportunity" ? "exportunity-operations-light bg-white text-slate-900 border-slate-200" : ""} max-w-2xl`}>
+          <AlertDialogContent className={`${tenant.key === "exportunity" ? "light border-slate-200 bg-white text-slate-950" : ""} max-w-2xl`}>
             <AlertDialogHeader>
               <AlertDialogTitle>{tr("Autorisation IA requise", "AI consent required")}</AlertDialogTitle>
               <AlertDialogDescription>

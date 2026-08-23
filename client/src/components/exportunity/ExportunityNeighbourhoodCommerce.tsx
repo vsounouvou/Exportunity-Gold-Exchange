@@ -332,12 +332,12 @@ const productLibrary: Record<string, ShopProduct[]> = {
 
 function cleanText(value: string) {
   return value
-    .replaceAll("Ã©", "e")
-    .replaceAll("Ã¨", "e")
-    .replaceAll("Ã´", "o")
-    .replaceAll("Ã¢", "a")
-    .replaceAll("Ãª", "e")
-    .replaceAll("Ã", "A");
+    .replaceAll("\u00c3\u00a9", "e")
+    .replaceAll("\u00c3\u00a8", "e")
+    .replaceAll("\u00c3\u00b4", "o")
+    .replaceAll("\u00c3\u00a2", "a")
+    .replaceAll("\u00c3\u00aa", "e")
+    .replaceAll("\u00c3", "A");
 }
 
 function kmBetween(from: [number, number], to: [number, number]) {

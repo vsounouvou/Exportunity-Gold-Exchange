@@ -7,6 +7,7 @@ import { resolveAgentIdentityForTenant } from "./sender-resolution";
 
 export type OutboundCommunicationRequest = {
   tenantId: number;
+  actionRequestId?: number | null;
   agentKey: string;
   channel: TwilioChannel;
   toE164: string;
@@ -86,6 +87,7 @@ export async function sendOutboundCommunication(req: OutboundCommunicationReques
       errorMessage: null,
       metadata: {
         ...(req.metadata ?? {}),
+        actionRequestId: req.actionRequestId ?? null,
         ...(req.clientMessageId ? { clientMessageId: req.clientMessageId } : {}),
         ...(contentSid ? { contentSid, contentVariables } : {}),
         ...(req.mediaUrls?.length ? { mediaUrls: req.mediaUrls } : {}),

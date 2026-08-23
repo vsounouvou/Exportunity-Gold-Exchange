@@ -28,6 +28,16 @@ if (expectedApp) {
   assert.strictEqual(String(build.app || ""), expectedApp, `Expected /build.json app=${expectedApp}`);
 }
 
+if (expectedApp === "exportunity") {
+  const surface = await getJson(`${origin}/exportunity-surface.json?v=${Date.now()}`);
+  assert.strictEqual(surface.canonicalSurface, "global-trade-network", "Expected the Global Trade Network surface marker");
+  assert.strictEqual(surface.homepageComponent, "MarketplacePage", "Expected MarketplacePage as the canonical root");
+  assert.strictEqual(surface.legacyHomepageRetired, true, "Expected the legacy homepage to be retired");
+  assert.strictEqual(build.publicSurface, "global-trade-network", "Expected build.json to stamp the Global Trade Network");
+  assert.strictEqual(build.homepageComponent, "MarketplacePage", "Expected build.json to stamp MarketplacePage");
+  assert.strictEqual(build.legacyHomepageRetired, true, "Expected build.json to stamp legacy retirement");
+}
+
 const mismatch =
   String(version.clientBuild.buildId) !== String(build.buildId) ||
   String(version.clientBuild.gitSha) !== String(build.gitSha) ||

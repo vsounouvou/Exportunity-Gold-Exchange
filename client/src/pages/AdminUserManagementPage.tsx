@@ -167,8 +167,25 @@ export default function AdminUserManagementPage() {
     });
   };
 
+  const confirmSetupLinkGeneration = () => {
+    if (!selectedUser || !draft) return;
+    const confirmed = window.confirm(
+      `Generate a new one-time account setup link for ${draft.displayName || draft.email}? Any previous setup link will stop working.`,
+    );
+    if (confirmed) setupLinkMutation.mutate(selectedUser.id);
+  };
+
+  const confirmAccessUpdate = () => {
+    if (!selectedUser || !draft) return;
+    const accessState = draft.isActive ? "active" : "inactive";
+    const confirmed = window.confirm(
+      `Save ${accessState} access and the selected roles for ${draft.displayName || draft.email}?`,
+    );
+    if (confirmed) updateUserMutation.mutate({ userId: selectedUser.id, payload: draft });
+  };
+
   return (
-    <div className="exportunity-operations-light min-h-full bg-[#f7f8fa] p-4 text-slate-950 md:p-6">
+    <div data-testid="exportunity-people-access-workspace" className="min-h-full bg-[#F7F8FA] p-4 text-slate-950 md:p-6">
       <div className="mx-auto max-w-6xl space-y-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
@@ -363,7 +380,7 @@ export default function AdminUserManagementPage() {
                   variant="outline"
                   className="border-slate-300 bg-white text-slate-800"
                   disabled={!draft.isActive || setupLinkMutation.isPending}
-                  onClick={() => setupLinkMutation.mutate(selectedUser.id)}
+                  onClick={confirmSetupLinkGeneration}
                 >
                   <KeyRound className="mr-2 h-4 w-4" /> Generate setup link
                 </Button>
@@ -397,7 +414,7 @@ export default function AdminUserManagementPage() {
                     !draft.email.includes("@") ||
                     draft.roles.length === 0
                   }
-                  onClick={() => updateUserMutation.mutate({ userId: selectedUser.id, payload: draft })}
+                  onClick={confirmAccessUpdate}
                 >
                   <UserRound className="mr-2 h-4 w-4" /> Save access
                 </Button>

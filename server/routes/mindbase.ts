@@ -45,6 +45,13 @@ import {
   selectWorkspaceAgentRoute,
 } from "../lib/mindbase/prompting";
 import { getFlutterwaveKeys } from "../lib/flutterwave/config";
+import {
+  buildScopeEvidence,
+  normalizeGrantedScopes,
+  parseMetaPermissionEvidence,
+  providerMatchesIntegration,
+} from "../lib/integrations/providerAuthorizationTruth";
+import { metaOAuthScopesForFeature } from "../lib/territory-media/metaSocialWebhookPolicy";
 import { getKkiapayConfig } from "../lib/kkiapay/config";
 import { creditWallet, debitWallet, getWalletBalance } from "../lib/wallet/ledger";
 import { getOrCreateWalletAccount } from "../lib/wallet/wallet";
@@ -222,17 +229,6 @@ function decodeJwtPayload(token: unknown): Record<string, unknown> | null {
   }
 }
 
-function normalizeScopeList(value: unknown, fallback: string[] = []) {
-  if (Array.isArray(value)) {
-    return value.map((entry) => String(entry || "").trim()).filter(Boolean);
-  }
-  const fromText = String(value || "")
-    .split(/[,\s]+/)
-    .map((entry) => entry.trim())
-    .filter(Boolean);
-  return fromText.length ? Array.from(new Set(fromText)) : fallback;
-}
-
 function integrationRuntimeStatus(input: {
   id: string;
   provider: string;
@@ -262,26 +258,37 @@ const MINDBASE_GOOGLE_SCOPES: Record<string, string[]> = {
     "openid",
     "email",
     "profile",
-    "https://www.googleapis.com/auth/gmail.modify",
+    "https://www.googleapis.com/auth/gmail.readonly",
   ],
   calendar: [
     "openid",
     "email",
     "profile",
-    "https://www.googleapis.com/auth/calendar.events",
+    "https://www.googleapis.com/auth/calendar.readonly",
   ],
   drive: [
     "openid",
     "email",
     "profile",
-    "https://www.googleapis.com/auth/drive.file",
+    "https://www.googleapis.com/auth/drive.readonly",
+  ],
+  youtube: [
+    "openid",
+    "email",
+    "profile",
+    "https://www.googleapis.com/auth/youtube.readonly",
+    "https://www.googleapis.com/auth/youtube.upload",
   ],
 };
 
-const MINDBASE_META_SCOPES: Record<string, string[]> = {
-  facebook: ["pages_show_list", "pages_read_engagement", "pages_manage_metadata"],
-  instagram: ["pages_show_list", "instagram_basic", "instagram_manage_comments"],
-};
+function mindbaseMetaScopes(integrationId: string) {
+  if (integrationId !== "facebook" && integrationId !== "instagram") return null;
+  const inboundEnabled =
+    String(process.env.FEATURE_META_SOCIAL_WEBHOOK_INGESTION || "")
+      .trim()
+      .toLowerCase() === "true";
+  return metaOAuthScopesForFeature(integrationId, inboundEnabled);
+}
 
 function requestOrigin(req: any) {
   const forwardedProto = String(req.headers?.["x-forwarded-proto"] || "").split(",")[0]?.trim();
@@ -353,6 +360,7 @@ type OAuthTokenExchangeResult = {
   accountLabel: string | null;
   tokenMeta: Record<string, unknown>;
   expiresAt: Date | null;
+  scopeEvidenceVerified: boolean;
 };
 
 type MindbaseIntegrationConnectionRow = typeof mindbaseIntegrationConnections.$inferSelect;
@@ -373,6 +381,11 @@ function withStoredConnectionStatus<T extends ReturnType<typeof integrationRunti
 ) {
   if (!connection || connection.revokedAt || String(connection.status || "").toLowerCase() !== "connected") return runtime;
   const tokenMeta = (connection.tokenMeta || {}) as Record<string, unknown>;
+  const requestedScopes = normalizeGrantedScopes(tokenMeta.requestedScopes);
+  const grantedScopes = normalizeGrantedScopes(connection.scopes);
+  const missingScopes = requestedScopes.filter((scope) => !grantedScopes.includes(scope));
+  const scopeEvidenceVerified = tokenMeta.scopeEvidenceVerified === true;
+  const authorizationReady = scopeEvidenceVerified && missingScopes.length === 0;
   const expiresAtMs = connection.expiresAt ? new Date(connection.expiresAt).getTime() : 0;
   const expiredWithoutRefresh =
     expiresAtMs > 0 &&
@@ -381,18 +394,32 @@ function withStoredConnectionStatus<T extends ReturnType<typeof integrationRunti
   const accountLabel = connectionAccountLabel(connection);
   return {
     ...runtime,
-    enabled: !expiredWithoutRefresh,
+    enabled: !expiredWithoutRefresh && authorizationReady,
     connected: !expiredWithoutRefresh,
+    authorizationReady: !expiredWithoutRefresh && authorizationReady,
     status: expiredWithoutRefresh
       ? "Reconnect needed"
+      : !authorizationReady
+        ? "Permission review needed"
       : runtime.configured
         ? "Connected"
         : "Connected, setup warning",
     accountLabel,
+    requestedScopes,
+    grantedScopes,
+    missingScopes,
+    declinedScopes: normalizeGrantedScopes(tokenMeta.declinedScopes),
+    scopeEvidenceSource: asText(tokenMeta.scopeEvidenceSource) || "provider_scope_unavailable",
+    scopeEvidenceVerified,
     connectedAt: connection.createdAt?.toISOString?.() || null,
     expiresAt: connection.expiresAt?.toISOString?.() || null,
+    lastVerifiedAt: connection.lastVerifiedAt?.toISOString?.() || null,
     message: expiredWithoutRefresh
       ? `${runtime.provider} authorization expired. Reconnect ${runtime.id} before agents use it.`
+      : !scopeEvidenceVerified
+        ? `${runtime.provider} authorization is stored${accountLabel ? ` for ${accountLabel}` : ""}, but actual provider permission evidence is unavailable. Reconnect and verify grants before external use.`
+        : missingScopes.length > 0
+          ? `${runtime.provider} authorization is stored${accountLabel ? ` for ${accountLabel}` : ""}, but ${missingScopes.length} requested permission${missingScopes.length === 1 ? " is" : "s are"} missing. Reconnect before external use.`
       : runtime.configured
         ? `${runtime.provider} is connected${accountLabel ? ` as ${accountLabel}` : ""}. Agents will still ask before using it for external action.`
         : `${runtime.provider} connection is stored${accountLabel ? ` for ${accountLabel}` : ""}, but server setup still has missing environment variables for refresh or action use.`,
@@ -427,24 +454,36 @@ async function exchangeGoogleOAuthCode(input: {
     const providerMessage = asText(tokenPayload.error_description) || asText(tokenPayload.error) || `HTTP ${response.status}`;
     throw new Error(`Google OAuth token exchange failed: ${providerMessage}`);
   }
+
   const idPayload = decodeJwtPayload(tokenPayload.id_token);
-  const scopes = normalizeScopeList(tokenPayload.scope, MINDBASE_GOOGLE_SCOPES[input.integrationId] || []);
+  const requestedScopes = MINDBASE_GOOGLE_SCOPES[input.integrationId] || [];
+  const hasScopeEvidence = Object.prototype.hasOwnProperty.call(tokenPayload, "scope");
+  const scopeEvidence = buildScopeEvidence({
+    requestedScopes,
+    grantedScopes: hasScopeEvidence ? tokenPayload.scope : [],
+    scopeEvidenceSource: hasScopeEvidence
+      ? "google_token_response"
+      : "provider_scope_unavailable",
+    scopeEvidenceVerified: hasScopeEvidence,
+  });
   const accountEmail = asText(idPayload?.email);
   const accountName = asText(idPayload?.name);
   const expiresIn = toInt(tokenPayload.expires_in, 0);
   return {
     provider: "google",
     tokenPayload,
-    scopes,
+    scopes: scopeEvidence.grantedScopes,
     accountLabel: accountEmail || accountName || "Google account",
     tokenMeta: compactRecord({
       tokenType: asText(tokenPayload.token_type),
-      scope: scopes,
+      scope: scopeEvidence.grantedScopes,
+      ...scopeEvidence,
       accountEmail,
       accountName,
       hasRefreshToken: Boolean(asText(tokenPayload.refresh_token)),
     }),
     expiresAt: expiresIn > 0 ? new Date(Date.now() + expiresIn * 1000) : null,
+    scopeEvidenceVerified: scopeEvidence.scopeEvidenceVerified,
   };
 }
 
@@ -455,10 +494,12 @@ async function exchangeMetaOAuthCode(input: {
 }): Promise<OAuthTokenExchangeResult> {
   const appId = String(process.env.META_APP_ID || "").trim();
   const appSecret = String(process.env.META_APP_SECRET || "").trim();
-  if (!appId || !appSecret) {
-    throw new Error(`Meta OAuth is not configured: ${missingEnv(["META_APP_ID", "META_APP_SECRET"]).join(", ")}`);
+  const graphVersion = String(process.env.META_GRAPH_VERSION || "").trim();
+  if (!appId || !appSecret || !graphVersion) {
+    throw new Error(
+      `Meta OAuth is not configured: ${missingEnv(["META_APP_ID", "META_APP_SECRET", "META_GRAPH_VERSION"]).join(", ")}`,
+    );
   }
-  const graphVersion = String(process.env.META_GRAPH_VERSION || "v19.0").trim() || "v19.0";
   const redirectUri = `${input.origin}/api/mindbase/integrations/meta/callback`;
   const url = new URL(`https://graph.facebook.com/${graphVersion}/oauth/access_token`);
   url.searchParams.set("client_id", appId);
@@ -466,7 +507,7 @@ async function exchangeMetaOAuthCode(input: {
   url.searchParams.set("client_secret", appSecret);
   url.searchParams.set("code", input.code);
   const response = await fetch(url.toString());
-  const tokenPayload = (await response.json().catch(() => ({}))) as Record<string, unknown>;
+  let tokenPayload = (await response.json().catch(() => ({}))) as Record<string, unknown>;
   if (!response.ok || !asText(tokenPayload.access_token)) {
     const providerError = (tokenPayload.error || {}) as Record<string, unknown>;
     const providerMessage = asText(providerError.message) || asText(tokenPayload.error) || `HTTP ${response.status}`;
@@ -474,11 +515,14 @@ async function exchangeMetaOAuthCode(input: {
   }
 
   let profile: Record<string, unknown> | null = null;
+  let permissionPayload: Record<string, unknown> | null = null;
+  let scopeEvidenceError: string | null = null;
   try {
     const profileUrl = new URL(`https://graph.facebook.com/${graphVersion}/me`);
     profileUrl.searchParams.set("fields", "id,name");
-    profileUrl.searchParams.set("access_token", String(tokenPayload.access_token));
-    const profileResponse = await fetch(profileUrl.toString());
+    const profileResponse = await fetch(profileUrl.toString(), {
+      headers: { authorization: `Bearer ${asText(tokenPayload.access_token)}` },
+    });
     if (profileResponse.ok) {
       const parsed = (await profileResponse.json().catch(() => null)) as Record<string, unknown> | null;
       if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) profile = parsed;
@@ -487,23 +531,68 @@ async function exchangeMetaOAuthCode(input: {
     profile = null;
   }
 
-  const scopes = normalizeScopeList(tokenPayload.scope, MINDBASE_META_SCOPES[input.integrationId] || []);
+  const longLivedUrl = new URL(`https://graph.facebook.com/${graphVersion}/oauth/access_token`);
+  longLivedUrl.searchParams.set("grant_type", "fb_exchange_token");
+  longLivedUrl.searchParams.set("client_id", appId);
+  longLivedUrl.searchParams.set("client_secret", appSecret);
+  longLivedUrl.searchParams.set("fb_exchange_token", asText(tokenPayload.access_token) || "");
+  const longLivedResponse = await fetch(longLivedUrl.toString());
+  const longLivedPayload = (await longLivedResponse.json().catch(() => ({}))) as Record<string, unknown>;
+  if (!longLivedResponse.ok || !asText(longLivedPayload.access_token)) {
+    const providerError = (longLivedPayload.error || {}) as Record<string, unknown>;
+    const providerMessage =
+      asText(providerError.message) || asText(longLivedPayload.error) || `HTTP ${longLivedResponse.status}`;
+    throw new Error(`Meta long-lived token exchange failed: ${providerMessage}`);
+  }
+  tokenPayload = {
+    ...tokenPayload,
+    ...longLivedPayload,
+  };
+
+  try {
+    const permissionsUrl = new URL(`https://graph.facebook.com/${graphVersion}/me/permissions`);
+    const permissionsResponse = await fetch(permissionsUrl.toString(), {
+      headers: { authorization: `Bearer ${asText(tokenPayload.access_token)}` },
+    });
+    if (permissionsResponse.ok) {
+      const parsed = (await permissionsResponse.json().catch(() => null)) as Record<string, unknown> | null;
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) permissionPayload = parsed;
+    } else {
+      scopeEvidenceError = `Meta permissions lookup returned HTTP ${permissionsResponse.status}`;
+    }
+  } catch {
+    scopeEvidenceError = "Meta permissions lookup was unavailable";
+  }
+
+  const requestedScopes = mindbaseMetaScopes(input.integrationId) || [];
+  const scopeEvidence = parseMetaPermissionEvidence(permissionPayload, requestedScopes);
   const accountName = asText(profile?.name);
   const accountId = asText(profile?.id);
   const expiresIn = toInt(tokenPayload.expires_in, 0);
   return {
     provider: "meta",
     tokenPayload,
-    scopes,
+    scopes: scopeEvidence.grantedScopes,
     accountLabel: accountName || accountId || "Meta account",
     tokenMeta: compactRecord({
       tokenType: asText(tokenPayload.token_type),
-      scope: scopes,
+      scope: scopeEvidence.grantedScopes,
+      requestedScopes: scopeEvidence.requestedScopes,
+      grantedScopes: scopeEvidence.grantedScopes,
+      missingScopes: scopeEvidence.missingScopes,
+      declinedScopes: scopeEvidence.declinedScopes,
+      scopeEvidenceSource: scopeEvidence.scopeEvidenceSource,
+      scopeEvidenceVerified: scopeEvidence.scopeEvidenceVerified,
+      authorizationReady: scopeEvidence.authorizationReady,
+      providerPermissionStatuses: scopeEvidence.providerPermissionStatuses,
+      scopeEvidenceError,
       accountName,
       providerAccountId: accountId,
+      metaLongLivedUserToken: true,
       hasRefreshToken: Boolean(asText(tokenPayload.refresh_token)),
     }),
     expiresAt: expiresIn > 0 ? new Date(Date.now() + expiresIn * 1000) : null,
+    scopeEvidenceVerified: scopeEvidence.scopeEvidenceVerified,
   };
 }
 
@@ -532,7 +621,7 @@ async function saveIntegrationConnection(input: {
       tokenAuthTag: encrypted.authTag,
       tokenMeta: input.exchange.tokenMeta,
       expiresAt: input.exchange.expiresAt,
-      lastVerifiedAt: now,
+      lastVerifiedAt: input.exchange.scopeEvidenceVerified ? now : null,
       revokedAt: null,
       createdAt: now,
       updatedAt: now,
@@ -554,7 +643,7 @@ async function saveIntegrationConnection(input: {
         tokenAuthTag: encrypted.authTag,
         tokenMeta: input.exchange.tokenMeta,
         expiresAt: input.exchange.expiresAt,
-        lastVerifiedAt: now,
+        lastVerifiedAt: input.exchange.scopeEvidenceVerified ? now : null,
         revokedAt: null,
         updatedAt: now,
       },
@@ -2023,6 +2112,14 @@ router.get("/api/mindbase/integrations/status", async (req: any, res) => {
         disabledMessage: "Google Drive needs GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET.",
         connectUrl: "/api/mindbase/integrations/drive/connect",
       }),
+      youtube: integrationRuntimeStatus({
+        id: "youtube",
+        provider: "google",
+        requiredEnv: ["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET"],
+        enabledMessage: "Google OAuth credentials are present. YouTube authorization can be requested with upload and read-only scopes.",
+        disabledMessage: "YouTube needs GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET.",
+        connectUrl: "/api/mindbase/integrations/youtube/connect",
+      }),
       whatsapp: integrationRuntimeStatus({
         id: "whatsapp",
         provider: "twilio",
@@ -2033,7 +2130,7 @@ router.get("/api/mindbase/integrations/status", async (req: any, res) => {
       facebook: integrationRuntimeStatus({
         id: "facebook",
         provider: "meta",
-        requiredEnv: ["META_APP_ID", "META_APP_SECRET"],
+        requiredEnv: ["META_APP_ID", "META_APP_SECRET", "META_GRAPH_VERSION"],
         enabledMessage: "Meta app credentials are present. Facebook page connection can be enabled.",
         disabledMessage: "Facebook needs META_APP_ID and META_APP_SECRET.",
         connectUrl: "/api/mindbase/integrations/facebook/connect",
@@ -2041,7 +2138,7 @@ router.get("/api/mindbase/integrations/status", async (req: any, res) => {
       instagram: integrationRuntimeStatus({
         id: "instagram",
         provider: "meta",
-        requiredEnv: ["META_APP_ID", "META_APP_SECRET"],
+        requiredEnv: ["META_APP_ID", "META_APP_SECRET", "META_GRAPH_VERSION"],
         enabledMessage: "Meta app credentials are present. Instagram business connection can be enabled.",
         disabledMessage: "Instagram needs META_APP_ID and META_APP_SECRET.",
         connectUrl: "/api/mindbase/integrations/instagram/connect",
@@ -2070,6 +2167,7 @@ router.get("/api/mindbase/integrations/status", async (req: any, res) => {
         gmail: withStoredConnectionStatus(runtimes.gmail, connectionByIntegration.get("gmail")),
         calendar: withStoredConnectionStatus(runtimes.calendar, connectionByIntegration.get("calendar")),
         drive: withStoredConnectionStatus(runtimes.drive, connectionByIntegration.get("drive")),
+        youtube: withStoredConnectionStatus(runtimes.youtube, connectionByIntegration.get("youtube")),
         whatsapp: runtimes.whatsapp,
         facebook: withStoredConnectionStatus(runtimes.facebook, connectionByIntegration.get("facebook")),
         instagram: withStoredConnectionStatus(runtimes.instagram, connectionByIntegration.get("instagram")),
@@ -2145,23 +2243,28 @@ router.get("/api/mindbase/integrations/:id/connect", async (req: any, res) => {
       return res.redirect(302, url.toString());
     }
 
-    if (MINDBASE_META_SCOPES[integrationId]) {
+    const metaScopes = mindbaseMetaScopes(integrationId);
+    if (metaScopes) {
       const appId = String(process.env.META_APP_ID || "").trim();
       const appSecret = String(process.env.META_APP_SECRET || "").trim();
-      if (!appId || !appSecret) {
+      const graphVersion = String(process.env.META_GRAPH_VERSION || "").trim();
+      if (!appId || !appSecret || !graphVersion) {
         return res.status(503).json({
           ok: false,
           message: "Meta OAuth is not configured",
-          missingEnv: missingEnv(["META_APP_ID", "META_APP_SECRET"]),
+          missingEnv: missingEnv([
+            "META_APP_ID",
+            "META_APP_SECRET",
+            "META_GRAPH_VERSION",
+          ]),
         });
       }
-      const graphVersion = String(process.env.META_GRAPH_VERSION || "v19.0").trim() || "v19.0";
       const redirectUri = `${origin}/api/mindbase/integrations/meta/callback`;
       const url = new URL(`https://www.facebook.com/${graphVersion}/dialog/oauth`);
       url.searchParams.set("client_id", appId);
       url.searchParams.set("redirect_uri", redirectUri);
       url.searchParams.set("response_type", "code");
-      url.searchParams.set("scope", MINDBASE_META_SCOPES[integrationId].join(","));
+      url.searchParams.set("scope", metaScopes.join(","));
       url.searchParams.set("state", state);
       return res.redirect(302, url.toString());
     }
@@ -2234,6 +2337,17 @@ router.get("/api/mindbase/integrations/:provider/callback", async (req: any, res
       return render(400, "MindBase connection was not completed", "The authorization state does not match this MindBase tenant.");
     }
 
+    const providerBinding = providerMatchesIntegration({ provider, integrationId });
+    if (!providerBinding.matches) {
+      return render(
+        400,
+        "MindBase connection was not completed",
+        providerBinding.expectedProvider
+          ? `The callback provider does not match the signed ${integrationId} authorization request.`
+          : "The signed authorization request names an unsupported integration.",
+      );
+    }
+
     const sessionUser = await resolveSessionUser(req).catch(() => null);
     if (sessionUser && sessionUser.id !== stateUserId) {
       return render(401, "MindBase connection was not completed", "This browser is signed in as a different user than the one who started the connection.");
@@ -2270,10 +2384,14 @@ router.get("/api/mindbase/integrations/:provider/callback", async (req: any, res
       exchange,
     });
     const accountLabel = connectionAccountLabel(connection);
+    const tokenMeta = (connection.tokenMeta || {}) as Record<string, unknown>;
+    const authorizationReady = tokenMeta.authorizationReady === true;
     return render(
       200,
-      "MindBase connection is ready",
-      `${integrationId} is connected. Agents can now request permission before using this company account for external actions.`,
+      authorizationReady ? "MindBase authorization verified" : "MindBase authorization saved",
+      authorizationReady
+        ? `${integrationId} authorization is stored and the provider confirmed every requested permission. External actions remain separately approval-gated.`
+        : `${integrationId} authorization is stored, but provider permission evidence is incomplete or a requested permission is missing. No external action is ready until the grant evidence passes.`,
       accountLabel,
     );
   } catch (error: any) {

@@ -57,6 +57,9 @@ import { ensureCadastreTables } from "./lib/cadastre/ensureCadastreTables";
 import { ensureMindbaseTables } from "./lib/mindbase/ensureTables";
 import { ensureVsTenantTables } from "./lib/vs/ensureTables";
 import { ensureIndustrialTables } from "./lib/industrial/ensureTables";
+import { ensureTradeIntelligenceTables } from "./lib/trade-intelligence/ensureTables";
+import { ensureTerritoryMediaCommerceTables } from "./lib/territory-media/ensureTables";
+import { ensureGroupBuyingTables } from "./lib/group-buying/ensureTables";
 import { ensureExportunityIndustrialAgentOrganization } from "./lib/industrial/agentOrganization";
 import { ensureCompanyBrainTables } from "./lib/company-brain/ensureTables";
 import { ensureExportunityRoleSeatCatalog } from "./lib/company-brain/ensureRoleSeatCatalog";
@@ -69,6 +72,10 @@ import {
   shouldNoIndexExportunityHost,
 } from "./lib/seo/hostIndexingPolicy";
 import { registerUnknownApiHandler } from "./lib/http/unknownApiHandler";
+import {
+  getExportunityLegacyCommerceDestination,
+  isExportunityPublicHostname,
+} from "../client/src/lib/exportunityPublicRoutePolicy";
 
 const app = express();
 let degradedNoDbMode = false;
@@ -152,6 +159,21 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 
   res.setHeader("WWW-Authenticate", 'Basic realm="Exportunity Staging"');
   return res.status(401).send("Authentication required.");
+});
+
+// Retired Exportunity public display paths must never reach a legacy SPA surface.
+// Redirect at the HTTP boundary as well as in the client so a direct load (or
+// a stale browser bundle) cannot render an old marketing, map, or store interface. Other
+// tenants and operational/protected paths continue through unchanged.
+app.use((req: Request, res: Response, next: NextFunction) => {
+  if (req.method !== "GET" && req.method !== "HEAD") return next();
+  if (!isExportunityPublicHostname(resolveRequestHost(req))) return next();
+
+  const destination = getExportunityLegacyCommerceDestination(req.path);
+  if (!destination) return next();
+
+  res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
+  return res.redirect(308, destination);
 });
 
 // Serve generated assets from persistent volume
@@ -397,7 +419,7 @@ const errorHandler = (err: any, _req: Request, res: Response, _next: NextFunctio
 (async () => {
   try {
     const startupMode = String(process.env.STARTUP_MODE || "").trim().toLowerCase();
-    if (startupMode === "marketing-audit" || startupMode === "quality-gate") {
+    if (startupMode === "public-surface-audit" || startupMode === "quality-gate") {
       // The build-time browser audit serves public pages only. Keep request
       // middleware from resolving tenant/admin context through a database.
       degradedNoDbMode = true;
@@ -572,10 +594,19 @@ const errorHandler = (err: any, _req: Request, res: Response, _next: NextFunctio
     await ensureWalletOsTables();
     // Ensure marketplace map marker schema exists (db-driven marker styles + category/shop marker keys)
     await ensureMarketplaceMapTables();
+    // Mindbase integration connections are referenced by carrier and social-provider tables.
+    await ensureMindbaseTables();
     // Exportunity's industrial schema is additive and idempotent.
     await ensureIndustrialTables();
-    // Ensure Mindbase credentials exist before Company Brain connector rows reference them.
-    await ensureMindbaseTables();
+    // Trade intelligence extends the industrial graph with cited evidence and demand coverage.
+    await ensureTradeIntelligenceTables();
+    // Territory social inbox projections reference canonical communications and CRM tables.
+    await ensureCommunicationsTables();
+    await ensureContactTables();
+    // Additive territory operating profiles, creator-source rights, and social inbox ledger.
+    await ensureTerritoryMediaCommerceTables();
+    // Group-purchase commerce references industrial, CRM, territory, rights, and carrier tables.
+    await ensureGroupBuyingTables();
     // Company Brain provenance is additive; capabilities remain feature-gated.
     await ensureCompanyBrainTables();
     const roleSeatCatalog = await ensureExportunityRoleSeatCatalog();
@@ -586,10 +617,6 @@ const errorHandler = (err: any, _req: Request, res: Response, _next: NextFunctio
     log(
       `Exportunity industrial organization synchronized (${exportunityOrganization.organizationVersion}, ${exportunityOrganization.changes.length} agents)`,
     );
-    // Ensure shared communications tables exist (Twilio SMS/WhatsApp, etc.)
-    await ensureCommunicationsTables();
-    // Ensure public contact form tables exist
-    await ensureContactTables();
     // Ensure unified notifications tables exist (omni-channel delivery logs)
     await ensureNotificationsTables();
     // Ensure Ops Center tables exist (action router + internal comms)

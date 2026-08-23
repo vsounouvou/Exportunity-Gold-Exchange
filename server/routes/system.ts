@@ -237,6 +237,11 @@ router.get("/version", (req, res) => {
           buildId: clientBuild.buildId ?? null,
           gitSha: clientBuild.gitSha ?? null,
           builtAt: clientBuild.builtAt ?? clientBuild.buildTime ?? null,
+          publicSurface: clientBuild.publicSurface ?? null,
+          publicSurfaceRevision: clientBuild.publicSurfaceRevision ?? null,
+          homepageComponent: clientBuild.homepageComponent ?? null,
+          homepageSourceSha256: clientBuild.homepageSourceSha256 ?? null,
+          legacyHomepageRetired: clientBuild.legacyHomepageRetired === true,
         }
       : null,
     clientBuildMissing: (client as any)?.build?.missing === true,

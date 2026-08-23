@@ -3,6 +3,7 @@ export const RELATIONSHIP_RECONSTRUCTION_MODE = "read_only" as const;
 export type RelationshipCandidateKind =
   | "stalled_requirement"
   | "dormant_factory_relationship"
+  | "delivered_order_continuity"
   | "awaiting_email_reply"
   | "workspace_email_thread"
   | "unresolved_conversation";
@@ -74,6 +75,8 @@ function defaultAction(kind: RelationshipCandidateKind, restricted: boolean) {
       return "Review the requirement evidence and decide whether the commercial dossier should be reactivated.";
     case "dormant_factory_relationship":
       return "Review the documented relationship history and record a human decision on the next step.";
+    case "delivered_order_continuity":
+      return "Review the immutable delivered-transaction memory and schedule the next internal relationship decision. External contact remains separately approval-gated.";
     case "awaiting_email_reply":
       return "Review the sent thread and its relationship context before proposing any follow-up.";
     case "workspace_email_thread":
@@ -101,6 +104,7 @@ export function buildRelationshipCandidate(
   let relevanceScore = 35;
   if (input.kind === "stalled_requirement") relevanceScore += 20;
   if (input.kind === "dormant_factory_relationship") relevanceScore += 12;
+  if (input.kind === "delivered_order_continuity") relevanceScore += 18;
   if (input.kind === "awaiting_email_reply") relevanceScore += 15;
   if (input.kind === "workspace_email_thread") relevanceScore += 8;
   if (input.kind === "unresolved_conversation") relevanceScore += 10;
@@ -147,6 +151,7 @@ export function summarizeRelationshipCandidates(candidates: RelationshipCandidat
   const byKind: Record<RelationshipCandidateKind, number> = {
     stalled_requirement: 0,
     dormant_factory_relationship: 0,
+    delivered_order_continuity: 0,
     awaiting_email_reply: 0,
     workspace_email_thread: 0,
     unresolved_conversation: 0,

@@ -52,16 +52,16 @@ export function ProSideNav({ activeKey }: ProSideNavProps) {
 
   return (
     <aside
-      className="hidden md:fixed md:inset-y-0 md:left-0 md:z-30 md:flex md:w-56 md:flex-col md:border-r md:border-white/10 md:bg-gray-950/95 md:backdrop-blur"
+      className="hidden md:fixed md:inset-y-0 md:left-0 md:z-30 md:flex md:w-56 md:flex-col md:border-r md:border-slate-200 md:bg-white/95 md:text-[#07111F] md:backdrop-blur-xl"
       aria-label="Pro navigation"
       data-testid="pro-side-nav"
     >
       <div className="px-4 py-4">
         <div className="flex items-center gap-2">
-          <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-amber-400 via-amber-500 to-amber-700" />
+          <img src="/tenants/exportunity/official/favicon-64.png" alt="" className="h-8 w-8 rounded-lg object-contain" />
           <div className="min-w-0">
-            <div className="text-sm font-semibold leading-none text-white">Exportunity Pro</div>
-            <div className="mt-1 text-[11px] leading-none text-white/55">Company operations</div>
+            <div className="text-sm font-black leading-none text-slate-950">Global Trade Network</div>
+            <div className="mt-1 text-[11px] font-bold leading-none text-slate-500">Operations workspace</div>
           </div>
         </div>
       </div>
@@ -79,9 +79,9 @@ export function ProSideNav({ activeKey }: ProSideNavProps) {
               data-testid={`pro-side-nav-${item.key}`}
               className={[
                 "w-full rounded-xl px-3 py-2 text-left text-sm font-medium transition",
-                "border border-transparent hover:bg-white/5",
-                isPrimary ? "bg-amber-500/10 text-amber-100 hover:bg-amber-500/15" : "text-white/80",
-                isActive ? "border-white/10 bg-white/5 text-white" : "",
+                "border border-transparent hover:bg-slate-50",
+                isPrimary ? "bg-[#FFF8E8] text-[#8A5700] hover:bg-[#FFF1CF]" : "text-slate-600",
+                isActive ? "border-[#F5A623]/35 bg-[#FFF8E8] text-slate-950" : "",
               ].join(" ")}
             >
               <span className="flex items-center gap-2">
@@ -93,7 +93,7 @@ export function ProSideNav({ activeKey }: ProSideNavProps) {
         })}
       </nav>
 
-      <div className="mt-auto px-4 py-4 text-[11px] text-white/45">v2</div>
+      <div className="mt-auto border-t border-slate-100 px-4 py-4 text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Exportunity · GTN</div>
     </aside>
   );
 }

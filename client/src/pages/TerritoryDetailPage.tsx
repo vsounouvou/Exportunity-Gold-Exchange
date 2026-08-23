@@ -13,6 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { apiRequest } from "@/lib/queryClient";
 import { useSession } from "@/lib/session";
 import { Loader2, ArrowLeft, RefreshCw, Activity, ShieldCheck, Zap, Send, Megaphone, BarChart3 } from "lucide-react";
+import { TerritoryOperatingLayerPanel } from "@/components/exportunity/TerritoryOperatingLayerPanel";
 
 type AiAgent = {
   id: string | number;
@@ -546,8 +547,9 @@ export function TerritoryDetailPage() {
               </CardHeader>
               <CardContent className="p-4">
                 <Tabs defaultValue="overview" className="w-full">
-                  <TabsList className="grid w-full grid-cols-3 lg:grid-cols-6 bg-black/30 border border-white/10">
+                  <TabsList className="grid w-full grid-cols-4 lg:grid-cols-7 bg-black/30 border border-white/10">
                     <TabsTrigger value="overview">Overview</TabsTrigger>
+                    <TabsTrigger value="activation">Activation</TabsTrigger>
                     <TabsTrigger value="ops">Ops</TabsTrigger>
                     <TabsTrigger value="marketplace">Marketplace</TabsTrigger>
                     <TabsTrigger value="marketing">Marketing</TabsTrigger>
@@ -610,6 +612,10 @@ export function TerritoryDetailPage() {
                         </div>
                       </div>
                     </div>
+                  </TabsContent>
+
+                  <TabsContent value="activation" className="mt-4">
+                    {territoryId ? <TerritoryOperatingLayerPanel territoryId={territoryId} /> : null}
                   </TabsContent>
 
                   <TabsContent value="ops" className="mt-4">

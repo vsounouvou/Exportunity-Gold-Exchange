@@ -191,6 +191,7 @@ export async function ensureIntelligenceGovernanceTables() {
     create table if not exists intelligence_tasks (
       id serial primary key,
       public_task_id text,
+      idempotency_key text,
       tenant_id int not null references tenants(id) on delete cascade,
       module_id text not null,
       policy_id int references intelligence_agent_policies(id) on delete set null,
@@ -237,9 +238,19 @@ export async function ensureIntelligenceGovernanceTables() {
   `);
 
   await db.execute(sql`
+    alter table intelligence_tasks
+      add column if not exists idempotency_key text;
+  `);
+
+  await db.execute(sql`
     create unique index if not exists intelligence_tasks_public_task_id_idx
       on intelligence_tasks (public_task_id)
       where public_task_id is not null;
+  `);
+
+  await db.execute(sql`
+    create unique index if not exists intelligence_tasks_tenant_idempotency_key_idx
+      on intelligence_tasks (tenant_id, idempotency_key);
   `);
 
   await db.execute(sql`

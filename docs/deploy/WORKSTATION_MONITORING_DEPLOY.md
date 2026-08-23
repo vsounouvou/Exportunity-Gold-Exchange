@@ -31,7 +31,7 @@ docker build -t exportunity/workstation:latest -f docker/workstation/Dockerfile 
 ```bash
 git pull origin main
 npm ci
-SKIP_MARKETING_QUALITY_GATE=1 npm run build
+SKIP_PUBLIC_SURFACE_QUALITY_GATE=1 npm run build
 ```
 
 Restart app (`pm2`, `systemd`, or compose).

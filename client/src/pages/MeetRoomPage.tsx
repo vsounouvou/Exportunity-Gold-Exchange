@@ -558,11 +558,11 @@ export default function MeetRoomPage() {
 
   if (!meetingId) {
     return (
-      <div className="min-h-[calc(100vh-4rem)] bg-gray-950 p-6 text-gray-100">
-        <Card className="mx-auto max-w-xl border-gray-800 bg-gray-900">
+      <div className="min-h-[calc(100vh-var(--admin-header-height,4rem))] bg-[#F7F8FA] p-6 text-[#07111F]">
+        <Card className="mx-auto max-w-xl border-slate-200 bg-white text-slate-950 shadow-sm">
           <CardContent className="p-6">
-            <p className="text-sm text-gray-300">Invalid meeting id.</p>
-            <Button className="mt-4" onClick={() => setLocation("/meetings")}>
+            <p className="text-sm text-slate-600">Invalid meeting id.</p>
+            <Button className="mt-4 bg-[#F5A623] font-bold text-[#07111F] hover:bg-[#E49718]" onClick={() => setLocation("/meetings")}>
               Back to meetings
             </Button>
           </CardContent>
@@ -573,8 +573,8 @@ export default function MeetRoomPage() {
 
   if (meetingQuery.isLoading) {
     return (
-      <div className="min-h-[calc(100vh-4rem)] bg-gray-950 p-6">
-        <div className="mx-auto flex max-w-xl items-center gap-3 rounded-lg border border-gray-800 bg-gray-900 p-4 text-gray-200">
+      <div className="min-h-[calc(100vh-var(--admin-header-height,4rem))] bg-[#F7F8FA] p-6">
+        <div className="mx-auto flex max-w-xl items-center gap-3 rounded-xl border border-slate-200 bg-white p-4 text-slate-600 shadow-sm">
           <Loader2 className="h-4 w-4 animate-spin" />
           Loading meeting room...
         </div>
@@ -584,14 +584,14 @@ export default function MeetRoomPage() {
 
   if (meetingQuery.isError || !meetingQuery.data) {
     return (
-      <div className="min-h-[calc(100vh-4rem)] bg-gray-950 p-6">
-        <Card className="mx-auto max-w-xl border-red-900/40 bg-red-950/20">
+      <div className="min-h-[calc(100vh-var(--admin-header-height,4rem))] bg-[#F7F8FA] p-6">
+        <Card className="mx-auto max-w-xl border-rose-200 bg-white text-slate-950 shadow-sm">
           <CardHeader>
-            <CardTitle className="text-red-300">Unable to open meeting</CardTitle>
+            <CardTitle className="text-rose-800">Unable to open meeting</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4 text-sm text-red-100/80">
+          <CardContent className="space-y-4 text-sm text-slate-600">
             <p>{(meetingQuery.error as any)?.message || "The meeting link is invalid or expired."}</p>
-            <Button variant="outline" onClick={() => setLocation("/meetings")}>
+            <Button variant="outline" className="border-slate-200 bg-white text-slate-700 hover:border-[#F5A623] hover:bg-[#FFF8E8]" onClick={() => setLocation("/meetings")}>
               Return
             </Button>
           </CardContent>
@@ -606,22 +606,26 @@ export default function MeetRoomPage() {
   const you = participants.find((participant) => participant.id === participantId) || null;
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] bg-gray-950">
+    <div
+      data-testid="exportunity-meeting-workspace"
+      className="min-h-[calc(100vh-var(--admin-header-height,4rem))] bg-[#F7F8FA] text-[#07111F]"
+    >
       <div className="mx-auto max-w-7xl px-4 py-5 sm:px-6 lg:px-8">
-        <div className="mb-4 flex flex-col gap-3 rounded-lg border border-gray-800 bg-gray-900 p-4">
+        <div className="mb-4 flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
             <div>
-              <h1 className="text-xl font-semibold text-gray-100">{meeting.title}</h1>
-              <p className="mt-1 text-sm text-gray-400">
+              <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#8A5700]">GTN meeting workspace</p>
+              <h1 className="mt-1 text-xl font-black tracking-tight text-slate-950">{meeting.title}</h1>
+              <p className="mt-1 text-sm text-slate-500">
                 Created {formatDistanceToNowStrict(new Date(meeting.createdAt), { addSuffix: true })} • Room {meeting.id.slice(0, 8)}
               </p>
               <div className="mt-2 flex flex-wrap items-center gap-2">
-                <Badge className="border-blue-600/30 bg-blue-600/15 text-blue-200">{meeting.status}</Badge>
-                <Badge className={meeting.locked ? "border-amber-600/30 bg-amber-600/15 text-amber-200" : "border-emerald-600/30 bg-emerald-600/15 text-emerald-200"}>
+                <Badge className="border border-sky-200 bg-sky-50 font-semibold text-sky-800 hover:bg-sky-50">{meeting.status}</Badge>
+                <Badge className={meeting.locked ? "border border-amber-200 bg-amber-50 font-semibold text-amber-800 hover:bg-amber-50" : "border border-emerald-200 bg-emerald-50 font-semibold text-emerald-800 hover:bg-emerald-50"}>
                   {meeting.locked ? "Locked" : "Open"}
                 </Badge>
-                <Badge className="border-gray-700 bg-gray-800 text-gray-300">{meeting.recordingEnabled ? "Recording enabled" : "Recording disabled"}</Badge>
-                <Badge className={connectionState === "connected" ? "border-emerald-500/40 bg-emerald-500/15 text-emerald-200" : "border-gray-700 bg-gray-800 text-gray-300"}>
+                <Badge className="border border-slate-200 bg-slate-50 font-semibold text-slate-700 hover:bg-slate-50">{meeting.recordingEnabled ? "Recording enabled" : "Recording disabled"}</Badge>
+                <Badge className={connectionState === "connected" ? "border border-emerald-200 bg-emerald-50 font-semibold text-emerald-800 hover:bg-emerald-50" : "border border-slate-200 bg-slate-50 font-semibold text-slate-700 hover:bg-slate-50"}>
                   {connectionState === "connected" ? "Connected" : connectionState === "connecting" ? "Connecting..." : "Disconnected"}
                 </Badge>
               </div>
@@ -629,7 +633,7 @@ export default function MeetRoomPage() {
             <div className="flex flex-wrap gap-2">
               <Button
                 variant="outline"
-                className="border-gray-700 bg-gray-900 text-gray-200"
+                className="border-slate-200 bg-white text-slate-700 hover:border-[#F5A623] hover:bg-[#FFF8E8]"
                 onClick={async () => {
                   if (!inviteToken) return;
                   const link = `${window.location.origin}/m/${encodeURIComponent(meetingId)}?t=${encodeURIComponent(inviteToken)}`;
@@ -644,7 +648,7 @@ export default function MeetRoomPage() {
               {canControl ? (
                 <Button
                   variant="outline"
-                  className="border-gray-700 bg-gray-900 text-gray-200"
+                  className="border-slate-200 bg-white text-slate-700 hover:border-[#F5A623] hover:bg-[#FFF8E8]"
                   onClick={() => toggleLock.mutate(!meeting.locked)}
                   disabled={toggleLock.isPending}
                 >
@@ -661,7 +665,7 @@ export default function MeetRoomPage() {
             </div>
           </div>
           {!mediaRelayReady && joined ? (
-            <div className="rounded-md border border-amber-700/40 bg-amber-900/20 px-3 py-2 text-xs text-amber-200">
+            <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800">
               <AlertTriangle className="mr-1 inline h-3.5 w-3.5" />
               SFU media relay is unavailable. Chat and host controls still work, but live A/V is degraded.
             </div>
@@ -669,34 +673,34 @@ export default function MeetRoomPage() {
         </div>
 
         {!joined ? (
-          <Card className="mb-4 border-gray-800 bg-gray-900">
+          <Card className="mb-4 border-slate-200 bg-white text-slate-950 shadow-sm">
             <CardHeader>
-              <CardTitle className="text-gray-100">Pre-join check</CardTitle>
+              <CardTitle className="text-slate-950">Pre-join check</CardTitle>
             </CardHeader>
             <CardContent className="grid gap-4 lg:grid-cols-[1.2fr,1fr]">
               <div className="space-y-3">
-                <div className="aspect-video overflow-hidden rounded-lg border border-gray-800 bg-gray-950">
+                <div className="aspect-video overflow-hidden rounded-xl border border-slate-200 bg-slate-950">
                   {prejoinReady ? (
                     <video ref={localVideoRef} autoPlay muted playsInline className="h-full w-full object-cover" />
                   ) : (
-                    <div className="flex h-full items-center justify-center text-sm text-gray-500">Camera preview not started</div>
+                    <div className="flex h-full items-center justify-center text-sm font-medium text-slate-300">Camera preview not started</div>
                   )}
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {!prejoinReady ? (
-                    <Button onClick={startPreview} className="bg-blue-600 hover:bg-blue-500">
+                    <Button onClick={startPreview} className="bg-[#F5A623] font-bold text-[#07111F] hover:bg-[#E49718]">
                       <Video className="mr-1.5 h-4 w-4" />
                       Start preview
                     </Button>
                   ) : (
-                    <Button variant="outline" className="border-gray-700 bg-gray-900 text-gray-200" onClick={stopPreview}>
+                    <Button variant="outline" className="border-slate-200 bg-white text-slate-700 hover:border-[#F5A623] hover:bg-[#FFF8E8]" onClick={stopPreview}>
                       <VideoOff className="mr-1.5 h-4 w-4" />
                       Stop preview
                     </Button>
                   )}
                   <Button
                     variant="outline"
-                    className="border-gray-700 bg-gray-900 text-gray-200"
+                    className="border-slate-200 bg-white text-slate-700 hover:border-[#F5A623] hover:bg-[#FFF8E8]"
                     onClick={() => setCamEnabled((value) => !value)}
                     disabled={!prejoinReady}
                   >
@@ -705,7 +709,7 @@ export default function MeetRoomPage() {
                   </Button>
                   <Button
                     variant="outline"
-                    className="border-gray-700 bg-gray-900 text-gray-200"
+                    className="border-slate-200 bg-white text-slate-700 hover:border-[#F5A623] hover:bg-[#FFF8E8]"
                     onClick={() => setMicEnabled((value) => !value)}
                     disabled={!prejoinReady}
                   >
@@ -715,27 +719,27 @@ export default function MeetRoomPage() {
                 </div>
               </div>
               <div className="space-y-3">
-                <label className="block text-sm text-gray-300">Display name</label>
+                <label className="block text-sm font-semibold text-slate-700">Display name</label>
                 <Input
                   value={displayName}
                   onChange={(event) => setDisplayName(event.target.value)}
                   placeholder="Your name"
-                  className="border-gray-700 bg-gray-950"
+                  className="border-slate-200 bg-white text-slate-950"
                 />
-                <Button onClick={connectAndJoin} disabled={joining || !displayName.trim()} className="w-full bg-blue-600 hover:bg-blue-500">
+                <Button onClick={connectAndJoin} disabled={joining || !displayName.trim()} className="w-full bg-[#F5A623] font-bold text-[#07111F] hover:bg-[#E49718]">
                   {joining ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <DoorOpen className="mr-2 h-4 w-4" />}
                   Join call
                 </Button>
-                <p className="text-xs text-gray-500">Joining requires a secure invite token. Staff users can self-issue one automatically.</p>
+                <p className="text-xs leading-5 text-slate-500">Joining requires a secure invite token. Staff users can self-issue one automatically.</p>
               </div>
             </CardContent>
           </Card>
         ) : null}
 
         <div className="grid gap-4 lg:grid-cols-[1.2fr,0.8fr]">
-          <Card className="border-gray-800 bg-gray-900">
+          <Card className="border-slate-200 bg-white text-slate-950 shadow-sm">
             <CardHeader className="pb-3">
-              <CardTitle className="text-gray-100">Participants ({participants.length})</CardTitle>
+              <CardTitle className="text-slate-950">Participants ({participants.length})</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="grid gap-2 sm:grid-cols-2">
@@ -743,20 +747,20 @@ export default function MeetRoomPage() {
                   const name = displayParticipantName(participant);
                   const isSelf = participantId === participant.id || you?.id === participant.id;
                   return (
-                    <div key={participant.id} className="rounded-lg border border-gray-800 bg-gray-950 p-3">
+                    <div key={participant.id} className="rounded-xl border border-slate-200 bg-slate-50/70 p-3">
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex items-center gap-2">
-                          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-600/25 text-xs font-semibold text-blue-200">
+                          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-sky-100 text-xs font-black text-sky-800">
                             {initials(name)}
                           </div>
                           <div>
-                            <p className="text-sm font-medium text-gray-100">{name}{isSelf ? " (you)" : ""}</p>
-                            <p className="text-xs text-gray-500">{participant.role}</p>
+                            <p className="text-sm font-bold text-slate-950">{name}{isSelf ? " (you)" : ""}</p>
+                            <p className="text-xs text-slate-500">{participant.role}</p>
                           </div>
                         </div>
                         <div className="flex items-center gap-1">
-                          {participant.isMuted ? <MicOff className="h-4 w-4 text-amber-300" /> : <Mic className="h-4 w-4 text-emerald-300" />}
-                          {participant.isKicked ? <UserX className="h-4 w-4 text-rose-300" /> : null}
+                          {participant.isMuted ? <MicOff className="h-4 w-4 text-amber-600" /> : <Mic className="h-4 w-4 text-emerald-600" />}
+                          {participant.isKicked ? <UserX className="h-4 w-4 text-rose-600" /> : null}
                         </div>
                       </div>
                       {canControl && !isSelf ? (
@@ -764,7 +768,7 @@ export default function MeetRoomPage() {
                           <Button
                             size="sm"
                             variant="outline"
-                            className="border-gray-700 bg-transparent text-gray-200"
+                            className="border-slate-200 bg-white text-slate-700 hover:border-[#F5A623] hover:bg-[#FFF8E8]"
                             onClick={() => applyMute(participant, !participant.isMuted)}
                           >
                             {participant.isMuted ? "Unmute" : "Mute"}
@@ -781,22 +785,22 @@ export default function MeetRoomPage() {
             </CardContent>
           </Card>
 
-          <Card className="border-gray-800 bg-gray-900">
+          <Card className="border-slate-200 bg-white text-slate-950 shadow-sm">
             <CardHeader className="pb-3">
-              <CardTitle className="text-gray-100">Live chat</CardTitle>
+              <CardTitle className="text-slate-950">Live chat</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              <ScrollArea ref={chatScrollRef} className="h-64 rounded-md border border-gray-800 bg-gray-950 p-3">
+              <ScrollArea ref={chatScrollRef} className="h-64 rounded-xl border border-slate-200 bg-slate-50/70 p-3">
                 <div className="space-y-2">
                   {chatMessages.length === 0 ? (
-                    <p className="text-xs text-gray-500">No messages yet.</p>
+                    <p className="text-xs text-slate-500">No messages yet.</p>
                   ) : (
                     chatMessages.map((message) => (
-                      <div key={message.id} className="rounded-md border border-gray-800 bg-gray-900 p-2">
-                        <p className="text-xs text-gray-400">
+                      <div key={message.id} className="rounded-lg border border-slate-200 bg-white p-2">
+                        <p className="text-xs text-slate-500">
                           {message.displayName} • {formatDistanceToNowStrict(new Date(message.at), { addSuffix: true })}
                         </p>
-                        <p className="mt-1 text-sm text-gray-100">{message.text}</p>
+                        <p className="mt-1 text-sm text-slate-800">{message.text}</p>
                       </div>
                     ))
                   )}
@@ -813,13 +817,13 @@ export default function MeetRoomPage() {
                     }
                   }}
                   placeholder="Write a message..."
-                  className="border-gray-700 bg-gray-950"
+                  className="border-slate-200 bg-white text-slate-950"
                 />
-                <Button onClick={sendChat} className="bg-blue-600 hover:bg-blue-500" disabled={!joined}>
+                <Button onClick={sendChat} className="bg-[#F5A623] text-[#07111F] hover:bg-[#E49718]" disabled={!joined}>
                   <Send className="h-4 w-4" />
                 </Button>
               </div>
-              <Button variant="outline" className="w-full border-gray-700 bg-gray-900 text-gray-200" onClick={leaveMeeting}>
+              <Button variant="outline" className="w-full border-slate-200 bg-white text-slate-700 hover:border-[#F5A623] hover:bg-[#FFF8E8]" onClick={leaveMeeting}>
                 Leave room
               </Button>
             </CardContent>
@@ -827,48 +831,48 @@ export default function MeetRoomPage() {
         </div>
 
         <div className="mt-4 grid gap-4 lg:grid-cols-2">
-          <Card className="border-gray-800 bg-gray-900">
+          <Card className="border-slate-200 bg-white text-slate-950 shadow-sm">
             <CardHeader className="pb-3">
-              <CardTitle className="text-gray-100">Meeting recap</CardTitle>
+              <CardTitle className="text-slate-950">Meeting recap</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 text-sm">
               <div className="flex gap-2">
-                <Button className="bg-blue-600 hover:bg-blue-500" onClick={() => generateSummary.mutate()} disabled={generateSummary.isPending}>
+                <Button className="bg-[#F5A623] font-bold text-[#07111F] hover:bg-[#E49718]" onClick={() => generateSummary.mutate()} disabled={generateSummary.isPending}>
                   {generateSummary.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                   Generate recap
                 </Button>
               </div>
               {summaryArtifact ? (
-                <div className="rounded-md border border-gray-800 bg-gray-950 p-3">
-                  <p className="text-xs text-gray-500">Latest summary</p>
-                  <p className="mt-2 whitespace-pre-wrap text-gray-100">
+                <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3">
+                  <p className="text-xs font-semibold text-slate-500">Latest summary</p>
+                  <p className="mt-2 whitespace-pre-wrap text-slate-800">
                     {String((summaryArtifact.metadata?.summaryText as string) || "Summary generated.")}
                   </p>
                 </div>
               ) : (
-                <p className="text-gray-500">No summary artifact yet.</p>
+                <p className="text-slate-500">No summary artifact yet.</p>
               )}
             </CardContent>
           </Card>
 
-          <Card className="border-gray-800 bg-gray-900">
+          <Card className="border-slate-200 bg-white text-slate-950 shadow-sm">
             <CardHeader className="pb-3">
-              <CardTitle className="text-gray-100">Transcript & artifacts</CardTitle>
+              <CardTitle className="text-slate-950">Transcript & artifacts</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3 text-sm text-gray-200">
+            <CardContent className="space-y-3 text-sm text-slate-700">
               {transcriptArtifact ? (
-                <div className="rounded-md border border-gray-800 bg-gray-950 p-3">
-                  <p className="text-xs text-gray-500">Transcript excerpt</p>
-                  <p className="mt-2 whitespace-pre-wrap text-gray-100">
+                <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3">
+                  <p className="text-xs font-semibold text-slate-500">Transcript excerpt</p>
+                  <p className="mt-2 whitespace-pre-wrap text-slate-800">
                     {String((transcriptArtifact.metadata?.text as string) || "").slice(0, 1200) || "Transcript available."}
                   </p>
                 </div>
               ) : (
-                <p className="text-gray-500">No transcript artifact yet.</p>
+                <p className="text-slate-500">No transcript artifact yet.</p>
               )}
-              <div className="space-y-1 text-xs text-gray-400">
+              <div className="space-y-1 text-xs text-slate-500">
                 {snapshot.artifacts.map((artifact) => (
-                  <div key={artifact.id} className="rounded border border-gray-800 bg-gray-950 px-2 py-1">
+                  <div key={artifact.id} className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1">
                     {artifact.type} • {formatDistanceToNowStrict(new Date(artifact.createdAt), { addSuffix: true })}
                   </div>
                 ))}

@@ -33,37 +33,37 @@ export default function AppGovernanceLogsPage() {
   const items = Array.isArray(query.data?.items) ? query.data!.items : [];
 
   return (
-    <div className="min-h-screen bg-gray-950 pb-32 text-white">
+    <div data-testid="exportunity-governance-log" className="min-h-screen bg-[#F7F8FA] pb-24 text-[#07111F]">
       <AppProTopBar subtitle="Governance logs" />
-      <main className="mx-auto w-full max-w-3xl px-4 pb-4 pt-6 space-y-3">
+      <main className="mx-auto w-full max-w-3xl space-y-3 px-4 py-4">
         <div className="flex items-center justify-between gap-2">
-          <div className="text-sm text-white/70">If the platform says it executed, it must show here.</div>
-          <Button variant="outline" className="border-white/15 text-white/80 hover:bg-white/10" onClick={() => query.refetch()}>
+          <div className="text-sm font-medium text-slate-600">If the network records an execution, its evidence appears here.</div>
+          <Button variant="outline" className="border-slate-200 bg-white text-slate-700 hover:border-[#F5A623] hover:bg-[#FFF8E8]" onClick={() => query.refetch()}>
             Refresh
           </Button>
         </div>
 
         {query.isLoading ? (
           <div className="space-y-2">
-            <div className="h-16 animate-pulse rounded-xl border border-white/10 bg-white/5" />
-            <div className="h-16 animate-pulse rounded-xl border border-white/10 bg-white/5" />
-            <div className="h-16 animate-pulse rounded-xl border border-white/10 bg-white/5" />
+            <div className="h-16 animate-pulse rounded-xl border border-slate-200 bg-white" />
+            <div className="h-16 animate-pulse rounded-xl border border-slate-200 bg-white" />
+            <div className="h-16 animate-pulse rounded-xl border border-slate-200 bg-white" />
           </div>
         ) : null}
 
         {!query.isLoading && !items.length ? (
-          <Card className="border-white/10 bg-white/5">
-            <CardContent className="p-5 text-sm text-white/70">No recent audit events.</CardContent>
+          <Card className="border-slate-200 bg-white shadow-sm">
+            <CardContent className="p-5 text-sm text-slate-600">No recent audit events.</CardContent>
           </Card>
         ) : null}
 
         {items.map((row) => (
-          <div key={row.id} className="rounded-xl border border-white/10 bg-white/5 p-4">
+          <div key={row.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
             <div className="flex items-center justify-between gap-2">
-              <div className="text-sm font-semibold text-white">{row.action}</div>
-              <div className="text-[11px] text-white/55">#{row.id}</div>
+              <div className="text-sm font-bold text-slate-950">{row.action}</div>
+              <div className="rounded-full bg-slate-100 px-2 py-1 text-[11px] font-semibold text-slate-500">#{row.id}</div>
             </div>
-            <div className="mt-1 text-xs text-white/65">
+            <div className="mt-2 text-xs text-slate-500">
               {row.createdAt ? new Date(row.createdAt).toLocaleString() : ""} {row.userRole ? `• ${row.userRole}` : ""}{" "}
               {row.entityType ? `• ${row.entityType}` : ""}
             </div>

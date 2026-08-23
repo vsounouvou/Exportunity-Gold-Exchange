@@ -1,8 +1,8 @@
 {
   "name": "Exportunity",
   "short_name": "Exportunity",
-  "description": "Industrial sourcing, manufacturing, quality control, logistics, and export readiness across Africa.",
-  "start_url": "/industrial",
+  "description": "A proximity-first marketplace for products, verified factories, sourcing, and trade expansion across Africa.",
+  "start_url": "/marketplace",
   "scope": "/",
   "display": "standalone",
   "background_color": "#07111F",

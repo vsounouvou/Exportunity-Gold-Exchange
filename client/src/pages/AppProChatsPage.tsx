@@ -142,18 +142,18 @@ export default function AppProChatsPage() {
   }, [agentRoster, query, roomMap]);
 
   return (
-    <div className="min-h-screen bg-gray-950 pb-24 text-white">
+    <div className="min-h-screen bg-[#F7F8FA] pb-24 text-[#07111F]">
       <ProSideNav activeKey="operations" />
       <div className="md:ml-56">
       <AppProTopBar subtitle="Chats" />
       <main className="mx-auto w-full max-w-3xl px-4 py-4">
         <div className="mt-4 relative">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" />
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <Input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Search chats"
-            className="border-white/10 bg-white/5 pl-9 text-white placeholder:text-white/45"
+            className="border-slate-200 bg-white pl-9 text-slate-950 placeholder:text-slate-400 focus-visible:ring-[#F5A623]"
           />
         </div>
 
@@ -165,38 +165,38 @@ export default function AppProChatsPage() {
               data-testid={`chat-room-${thread.key}`}
               className={[
                 "w-full rounded-xl border p-4 text-left transition",
-                thread.isPinned ? "border-amber-400/35 bg-amber-500/10 hover:bg-amber-500/15" : "border-white/10 bg-white/5 hover:bg-white/10",
+                thread.isPinned ? "border-[#F5A623]/40 bg-[#FFF8E8] hover:bg-[#FFF1CF]" : "border-slate-200 bg-white shadow-sm hover:border-[#F5A623]/40",
               ].join(" ")}
               onClick={() => setLocation(`/pro/operations/${thread.slug}`)}
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/10 bg-black/30 text-sm font-semibold text-white/85">
-                      {thread.kind === "group" ? <MessageSquareText className="h-4 w-4 text-amber-200" /> : thread.initials}
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-sm font-black text-slate-700">
+                      {thread.kind === "group" ? <MessageSquareText className="h-4 w-4 text-[#9A6200]" /> : thread.initials}
                     </div>
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 text-sm font-semibold">
                         <span className="truncate">{thread.title}</span>
                         {thread.isPinned ? <Pin className="h-3.5 w-3.5 text-amber-300" /> : null}
                         {thread.kind === "agent" ? (
-                          <span className="shrink-0 rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[11px] font-medium text-white/75">
+                          <span className="shrink-0 rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-bold text-slate-600">
                             {thread.roleLabel}
                           </span>
                         ) : (
-                          <span className="shrink-0 rounded-full border border-amber-400/30 bg-amber-500/10 px-2 py-0.5 text-[11px] font-medium text-amber-100/90">
+                          <span className="shrink-0 rounded-full border border-[#F5A623]/30 bg-white px-2 py-0.5 text-[11px] font-bold text-[#8A5700]">
                             Pinned
                           </span>
                         )}
                       </div>
-                      <div className="mt-1 truncate text-xs text-white/60">
+                      <div className="mt-1 truncate text-xs text-slate-500">
                         {thread.lastMessage || thread.subtitle}
                       </div>
                     </div>
                   </div>
                 </div>
                 <div className="shrink-0 text-right">
-                  <div className="text-[11px] text-white/45">{formatTime(thread.lastAt)}</div>
+                  <div className="text-[11px] text-slate-400">{formatTime(thread.lastAt)}</div>
                   {thread.unreadCount ? (
                     <div className="mt-2 inline-flex rounded-full bg-amber-500 px-2 py-0.5 text-[10px] font-semibold text-black">
                       {thread.unreadCount}
@@ -208,8 +208,8 @@ export default function AppProChatsPage() {
           ))}
 
           {!roomsQuery.isLoading && !operationsThreads.length ? (
-            <Card className="border-white/10 bg-white/5">
-              <CardContent className="space-y-3 p-4 text-sm text-white/70">
+            <Card className="border-slate-200 bg-white">
+              <CardContent className="space-y-3 p-4 text-sm text-slate-600">
                 <div>No operations threads found.</div>
               </CardContent>
             </Card>

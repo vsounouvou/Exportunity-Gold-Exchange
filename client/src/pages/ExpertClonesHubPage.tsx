@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState, type ReactNode } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCompany } from "@/hooks/use-company";
 import { apiRequest } from "@/lib/queryClient";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -8,28 +8,22 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import HierarchyPage from "@/pages/HierarchyPage";
-import { 
-  Search, 
-  Bot, 
-  Briefcase, 
-  Users, 
-  TrendingUp, 
-  DollarSign,
-  Play,
-  Pause,
-  XCircle,
+import {
+  Award,
+  Bot,
+  Briefcase,
   CheckCircle,
-  Clock,
-  Star,
   GitBranch,
+  Pause,
+  Play,
+  Search,
   Sparkles,
-  Building2,
-  UserPlus,
-  Award
+  Star,
+  Users,
+  XCircle,
 } from "lucide-react";
 
 interface CloneProfile {
@@ -38,8 +32,9 @@ interface CloneProfile {
   title: string;
   category: string;
   primaryExpertise: string;
-  description: string;
-  capabilities: string[];
+  bio: string | null;
+  longDescription: string | null;
+  skills: string[];
   baseDailyCost: string;
   trainingStatus: string;
   visibility: string;
@@ -67,394 +62,304 @@ interface Agent {
   name: string;
   role: string;
   department: string | null;
-  avatar: string;
   status: string;
   hierarchyLevel: number;
   companyId: number;
 }
 
+type AssignmentAction = "activate" | "pause" | "terminate";
+
+function exactDecimal(value: string | null | undefined, scale = 2) {
+  const match = /^(\d+)(?:\.(\d+))?$/.exec(String(value ?? "").trim());
+  if (!match) return "—";
+  const whole = match[1].replace(/^0+(?=\d)/, "");
+  if (scale === 0) return whole;
+  const fraction = (match[2] || "").padEnd(scale, "0").slice(0, scale);
+  return `${whole}.${fraction}`;
+}
+
+function exactUsd(value: string | null | undefined) {
+  const amount = exactDecimal(value);
+  return amount === "—" ? "Not set" : `USD ${amount}`;
+}
+
+function profileDescription(profile: CloneProfile) {
+  return profile.longDescription || profile.bio || "No operational description has been recorded.";
+}
+
 export function ExpertClonesHubPage() {
-  const { selectedCompanyId, companies, isLoading: companiesLoading } = useCompany();
+  const { selectedCompanyId, selectedCompany, companies, isLoading: companiesLoading } = useCompany();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [activeTab, setActiveTab] = useState("team");
   const [searchQuery, setSearchQuery] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState<string>("all");
-  const effectiveCompanyId =
-    selectedCompanyId ??
-    companies.find((c) => c.name.toLowerCase().replace(/\s+/g, " ").trim() === "exportunity gold exchange")?.id ??
-    companies[0]?.id ??
-    null;
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const effectiveCompanyId = selectedCompanyId ?? companies[0]?.id ?? null;
+  const effectiveCompany = selectedCompany ?? companies.find((company) => company.id === effectiveCompanyId) ?? null;
 
-  const { data: profiles, isLoading: loadingProfiles } = useQuery<CloneProfile[]>({
-    queryKey: ['/api/expert-clones/profiles'],
-    select: (data) => data.filter(p => p.isPublished && p.visibility === 'public'),
+  const {
+    data: profiles = [],
+    isLoading: loadingProfiles,
+    isError: profilesError,
+  } = useQuery<CloneProfile[]>({
+    queryKey: ["/api/expert-clones/profiles"],
+    select: (data) => data.filter((profile) => profile.isPublished && profile.visibility === "public_marketplace"),
   });
 
-  const { data: assignments, isLoading: loadingAssignments } = useQuery<Assignment[]>({
+  const {
+    data: assignments = [],
+    isLoading: loadingAssignments,
+    isError: assignmentsError,
+  } = useQuery<Assignment[]>({
     queryKey: [`/api/expert-clones/companies/${effectiveCompanyId}/assignments`],
-    enabled: !!effectiveCompanyId,
+    enabled: Boolean(effectiveCompanyId),
   });
 
-  const { data: agents, isLoading: loadingAgents } = useQuery<Agent[]>({
+  const {
+    data: agents = [],
+    isLoading: loadingAgents,
+    isError: agentsError,
+  } = useQuery<Agent[]>({
     queryKey: [`/api/companies/${effectiveCompanyId}/agents`],
-    enabled: !!effectiveCompanyId,
-  });
-
-  const { data: company } = useQuery({
-    queryKey: [`/api/companies/${effectiveCompanyId}`],
-    enabled: !!effectiveCompanyId,
+    enabled: Boolean(effectiveCompanyId),
   });
 
   const createAssignmentMutation = useMutation({
     mutationFn: async ({ profileId, role }: { profileId: number; role: string }) => {
-      if (!effectiveCompanyId) throw new Error(companiesLoading ? "Loading company..." : "No company found");
-
+      if (!effectiveCompanyId) throw new Error(companiesLoading ? "Loading company…" : "No company found");
       return apiRequest(`/api/expert-clones/companies/${effectiveCompanyId}/assignments`, {
         method: "POST",
-        body: JSON.stringify({
-          cloneProfileId: profileId,
-          roleWithinCompany: role,
-        }),
+        body: JSON.stringify({ cloneProfileId: profileId, roleWithinCompany: role }),
       });
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       if (effectiveCompanyId) {
-        queryClient.invalidateQueries({ queryKey: [`/api/expert-clones/companies/${effectiveCompanyId}/assignments`] });
+        await queryClient.invalidateQueries({ queryKey: [`/api/expert-clones/companies/${effectiveCompanyId}/assignments`] });
       }
-      toast({
-        title: "Assignment created",
-        description: "Expert clone has been assigned to your company",
-      });
+      toast({ title: "Assignment created", description: "The expert agent is now pending activation in this workspace." });
     },
     onError: (error: any) => {
-      toast({
-        title: "Failed to create assignment",
-        description: error.message,
-        variant: "destructive",
-      });
+      toast({ title: "Assignment failed", description: error?.message || "The expert agent could not be assigned.", variant: "destructive" });
     },
   });
 
   const updateStatusMutation = useMutation({
-    mutationFn: async ({ assignmentId, action }: { assignmentId: number; action: 'activate' | 'pause' | 'terminate' }) => {
-      if (!effectiveCompanyId) throw new Error(companiesLoading ? "Loading company..." : "No company found");
+    mutationFn: async ({ assignmentId, action }: { assignmentId: number; action: AssignmentAction }) => {
+      if (!effectiveCompanyId) throw new Error(companiesLoading ? "Loading company…" : "No company found");
       return apiRequest(`/api/expert-clones/assignments/${assignmentId}/${action}`, {
         method: "POST",
         body: JSON.stringify({ companyId: effectiveCompanyId }),
       });
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       if (effectiveCompanyId) {
-        queryClient.invalidateQueries({ queryKey: [`/api/expert-clones/companies/${effectiveCompanyId}/assignments`] });
+        await queryClient.invalidateQueries({ queryKey: [`/api/expert-clones/companies/${effectiveCompanyId}/assignments`] });
       }
-      toast({
-        title: "Status updated",
-        description: "Assignment status has been changed",
-      });
+      toast({ title: "Assignment updated", description: "The recorded assignment status has been changed." });
     },
     onError: (error: any) => {
-      toast({
-        title: "Failed to update status",
-        description: error.message,
-        variant: "destructive",
-      });
+      toast({ title: "Status update failed", description: error?.message || "The assignment status could not be changed.", variant: "destructive" });
     },
   });
-
-  const filteredProfiles = profiles?.filter(profile => {
-    const matchesSearch = searchQuery === "" ||
-      profile.displayName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      profile.primaryExpertise.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      profile.description?.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    const matchesCategory = categoryFilter === "all" || profile.category === categoryFilter;
-    
-    return matchesSearch && matchesCategory;
-  });
-
-  const categories = Array.from(new Set(profiles?.map(p => p.category) || []));
 
   if (!effectiveCompanyId) {
     return (
-      <div className="min-h-[calc(100vh-4rem)] bg-gray-950 flex items-center justify-center p-4">
-        <Card className="bg-gray-900 border-gray-800 max-w-md w-full">
-          <CardContent className="pt-6">
-            <p className="text-gray-400 text-center text-sm">
-              {companiesLoading ? "Loading company…" : "No company found"}
-            </p>
+      <div data-testid="exportunity-expert-agents-workspace" className="flex min-h-[calc(100vh-var(--admin-header-height,4rem))] items-center justify-center bg-[#F7F8FA] p-4 text-[#07111F]">
+        <Card className="w-full max-w-md border-slate-200 bg-white text-slate-950 shadow-sm">
+          <CardContent className="py-10 text-center">
+            <p className="font-bold text-slate-950">{companiesLoading ? "Loading company…" : "No tenant company is available"}</p>
+            <p className="mt-2 text-sm text-slate-500">Expert assignments require an active company in the current tenant.</p>
           </CardContent>
         </Card>
       </div>
     );
   }
 
-  const agentsByDepartment = agents?.reduce((acc, agent) => {
-    const dept = agent.department || 'Unassigned';
-    if (!acc[dept]) acc[dept] = [];
-    acc[dept].push(agent);
+  const agentsByDepartment = agents.reduce((acc, agent) => {
+    const department = agent.department || "Unassigned";
+    if (!acc[department]) acc[department] = [];
+    acc[department].push(agent);
     return acc;
   }, {} as Record<string, Agent[]>);
 
-  const totalAgents = agents?.length || 0;
-  const totalExpertClones = assignments?.length || 0;
-  const activeAgents = agents?.filter(a => a.status === 'active').length || 0;
+  const activeAgents = agents.filter((agent) => agent.status === "active").length;
+  const activeExpertAssignments = assignments.filter((assignment) => assignment.status === "active").length;
+  const assignedProfileIds = new Set(
+    assignments
+      .filter((assignment) => assignment.status !== "terminated")
+      .map((assignment) => assignment.cloneProfileId),
+  );
+  const normalizedSearch = searchQuery.trim().toLowerCase();
+  const filteredProfiles = profiles.filter((profile) => {
+    const matchesSearch =
+      !normalizedSearch ||
+      profile.displayName.toLowerCase().includes(normalizedSearch) ||
+      profile.primaryExpertise.toLowerCase().includes(normalizedSearch) ||
+      profile.title.toLowerCase().includes(normalizedSearch) ||
+      profileDescription(profile).toLowerCase().includes(normalizedSearch) ||
+      (profile.skills || []).some((skill) => skill.toLowerCase().includes(normalizedSearch));
+    const matchesCategory = categoryFilter === "all" || profile.category === categoryFilter;
+    return matchesSearch && matchesCategory;
+  });
+  const categories = Array.from(new Set(profiles.map((profile) => profile.category))).sort();
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] bg-gray-950">
-      <div className="container mx-auto py-4 md:py-8 px-4 md:px-6 space-y-4 md:space-y-6">
-        {/* Hero Section */}
-        <div className="relative overflow-hidden rounded-lg border border-gray-800 bg-gradient-to-br from-blue-950/30 via-gray-900 to-purple-950/30 p-4 md:p-8">
-	          <div className="relative z-10">
-	            <div className="flex items-center gap-2 mb-2 md:mb-3">
-	              <Building2 className="h-6 w-6 md:h-8 md:w-8 text-blue-400" />
-	              <h1 className="text-xl md:text-3xl font-bold text-white">Expert Agents</h1>
-	            </div>
-	            <p className="text-gray-300 text-sm md:text-lg mb-4 md:mb-6 max-w-2xl">
-	              Manage your expert agents and discover new expert clones.
-	            </p>
-            
-            {/* Stats Row - horizontal scroll on mobile */}
-            <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 md:mx-0 md:px-0 md:grid md:grid-cols-4">
-              <Card className="bg-gray-900/50 border-gray-800 backdrop-blur min-w-[140px] flex-shrink-0 md:min-w-0">
-                <CardContent className="pt-4 md:pt-6 px-3 md:px-4">
-                  <div className="flex items-center gap-2 md:gap-3">
-                    <div className="p-1.5 md:p-2 bg-blue-500/10 rounded-lg">
-                      <Users className="h-4 w-4 md:h-5 md:w-5 text-blue-400" />
-                    </div>
-                    <div>
-                      <p className="text-xl md:text-2xl font-bold text-white">{totalAgents}</p>
-                      <p className="text-xs md:text-sm text-gray-400">Total Agents</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-              
-              <Card className="bg-gray-900/50 border-gray-800 backdrop-blur min-w-[140px] flex-shrink-0 md:min-w-0">
-                <CardContent className="pt-4 md:pt-6 px-3 md:px-4">
-                  <div className="flex items-center gap-2 md:gap-3">
-                    <div className="p-1.5 md:p-2 bg-green-500/10 rounded-lg">
-                      <CheckCircle className="h-4 w-4 md:h-5 md:w-5 text-green-400" />
-                    </div>
-                    <div>
-                      <p className="text-xl md:text-2xl font-bold text-white">{activeAgents}</p>
-                      <p className="text-xs md:text-sm text-gray-400">Active Agents</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-              
-              <Card className="bg-gray-900/50 border-gray-800 backdrop-blur min-w-[140px] flex-shrink-0 md:min-w-0">
-                <CardContent className="pt-4 md:pt-6 px-3 md:px-4">
-                  <div className="flex items-center gap-2 md:gap-3">
-                    <div className="p-1.5 md:p-2 bg-purple-500/10 rounded-lg">
-                      <Sparkles className="h-4 w-4 md:h-5 md:w-5 text-purple-400" />
-                    </div>
-                    <div>
-                      <p className="text-xl md:text-2xl font-bold text-white">{totalExpertClones}</p>
-                      <p className="text-xs md:text-sm text-gray-400">Expert Clones</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-              
-              <Card className="bg-gray-900/50 border-gray-800 backdrop-blur min-w-[140px] flex-shrink-0 md:min-w-0">
-                <CardContent className="pt-4 md:pt-6 px-3 md:px-4">
-                  <div className="flex items-center gap-2 md:gap-3">
-                    <div className="p-1.5 md:p-2 bg-yellow-500/10 rounded-lg">
-                      <Award className="h-4 w-4 md:h-5 md:w-5 text-yellow-400" />
-                    </div>
-                    <div>
-                      <p className="text-xl md:text-2xl font-bold text-white">{Object.keys(agentsByDepartment || {}).length}</p>
-                      <p className="text-xs md:text-sm text-gray-400">Departments</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+    <div data-testid="exportunity-expert-agents-workspace" className="min-h-[calc(100vh-var(--admin-header-height,4rem))] bg-[#F7F8FA] p-4 pb-24 text-[#07111F] md:p-6">
+      <div className="mx-auto max-w-[1600px] space-y-6">
+        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm md:p-7">
+          <div className="flex flex-col justify-between gap-3 md:flex-row md:items-end">
+            <div>
+              <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#8A5700]">GTN agent operations</p>
+              <h1 className="mt-1 text-2xl font-black tracking-tight text-slate-950 md:text-3xl">Expert agent network</h1>
+              <p className="mt-2 max-w-3xl text-sm text-slate-500">
+                Review the current team, assign verified expert profiles, and manage their recorded operating state.
+              </p>
+            </div>
+            <div className="rounded-full border border-slate-200 bg-[#FBFCFD] px-3 py-1.5 text-xs font-bold text-slate-700">
+              {effectiveCompany?.name || `Company #${effectiveCompanyId}`}
             </div>
           </div>
-        </div>
 
-        <Tabs defaultValue="team" className="space-y-4 md:space-y-6">
-          <TabsList className="bg-gray-900 border border-gray-800 w-full sm:w-auto overflow-x-auto">
-            <TabsTrigger value="team" className="flex items-center gap-1 md:gap-2 h-10 text-xs sm:text-sm">
-              <Users className="h-3 w-3 md:h-4 md:w-4" />
-              <span className="hidden sm:inline">Your</span> Team
-              {totalAgents > 0 && (
-                <Badge variant="secondary" className="ml-1 text-xs">{totalAgents}</Badge>
-              )}
+          <div className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <StatCard icon={<Users className="h-5 w-5" />} label="Team agents" value={agents.length} />
+            <StatCard icon={<CheckCircle className="h-5 w-5" />} label="Active team" value={activeAgents} tone="success" />
+            <StatCard icon={<Sparkles className="h-5 w-5" />} label="Expert assignments" value={assignments.length} tone="accent" />
+            <StatCard icon={<Award className="h-5 w-5" />} label="Active experts" value={activeExpertAssignments} tone="gold" />
+          </div>
+        </section>
+
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-5">
+          <TabsList className="h-auto w-full justify-start overflow-x-auto border border-slate-200 bg-white p-1 text-slate-600 sm:w-auto">
+            <TabsTrigger value="team" className="h-10 gap-2 whitespace-nowrap data-[state=active]:bg-[#07111F] data-[state=active]:text-white">
+              <Users className="h-4 w-4" /> Team <Badge variant="secondary" className="ml-1">{agents.length}</Badge>
             </TabsTrigger>
-            <TabsTrigger value="marketplace" className="flex items-center gap-1 md:gap-2 h-10 text-xs sm:text-sm">
-              <Sparkles className="h-3 w-3 md:h-4 md:w-4" />
-              Marketplace
-              {profiles && profiles.length > 0 && (
-                <Badge variant="secondary" className="ml-1 text-xs">{profiles.length}</Badge>
-              )}
+            <TabsTrigger value="catalog" className="h-10 gap-2 whitespace-nowrap data-[state=active]:bg-[#07111F] data-[state=active]:text-white">
+              <Sparkles className="h-4 w-4" /> Expert catalog <Badge variant="secondary" className="ml-1">{profiles.length}</Badge>
             </TabsTrigger>
-            <TabsTrigger value="hierarchy" className="flex items-center gap-1 md:gap-2 h-10 text-xs sm:text-sm">
-              <GitBranch className="h-3 w-3 md:h-4 md:w-4" />
-              Hierarchy
+            <TabsTrigger value="hierarchy" className="h-10 gap-2 whitespace-nowrap data-[state=active]:bg-[#07111F] data-[state=active]:text-white">
+              <GitBranch className="h-4 w-4" /> Hierarchy
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="team" className="space-y-4 md:space-y-6">
+          <TabsContent value="team" className="space-y-5">
             {loadingAgents ? (
-              <div className="grid gap-4 md:gap-6">
-                {[...Array(3)].map((_, i) => (
-                  <Skeleton key={i} className="h-48 bg-gray-900" />
-                ))}
+              <div className="grid gap-4">
+                {[0, 1, 2].map((item) => <Skeleton key={item} className="h-48 bg-slate-200" />)}
               </div>
+            ) : agentsError ? (
+              <ReadError message="The tenant team could not be loaded." />
+            ) : agents.length === 0 ? (
+              <Card className="border-slate-200 bg-white text-slate-950 shadow-sm">
+                <CardContent className="py-12 text-center">
+                  <Users className="mx-auto h-10 w-10 text-slate-300" />
+                  <p className="mt-3 font-bold text-slate-950">No team agents recorded</p>
+                  <p className="mt-1 text-sm text-slate-500">You can review eligible expert profiles without creating an assignment.</p>
+                  <Button variant="outline" className="mt-4 border-slate-200 bg-white text-slate-700 hover:border-[#F5A623] hover:bg-[#FFF8E8]" onClick={() => setActiveTab("catalog")}>Open expert catalog</Button>
+                </CardContent>
+              </Card>
             ) : (
-              <div className="space-y-4 md:space-y-6">
-                {Object.entries(agentsByDepartment || {}).map(([department, deptAgents]) => (
-                  <Card key={department} className="bg-gray-900 border-gray-800">
-                    <CardHeader className="p-4 md:p-6">
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                        <div>
-                          <CardTitle className="text-white text-base md:text-xl flex items-center gap-2">
-                            <Briefcase className="h-4 w-4 md:h-5 md:w-5 text-blue-400" />
-                            {department}
-                          </CardTitle>
-                          <CardDescription className="text-gray-400 text-xs md:text-sm">
-                            {deptAgents.length} {deptAgents.length === 1 ? 'agent' : 'agents'} in this department
-                          </CardDescription>
-                        </div>
-                        <Badge variant="outline" className="bg-blue-900/20 text-blue-400 border-blue-700 self-start sm:self-auto text-xs">
-                          {deptAgents.filter(a => a.status === 'active').length} Active
-                        </Badge>
+              Object.entries(agentsByDepartment).map(([department, departmentAgents]) => (
+                <Card key={department} className="border-slate-200 bg-white text-slate-950 shadow-sm">
+                  <CardHeader className="p-4 md:p-6">
+                    <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
+                      <div>
+                        <CardTitle className="flex items-center gap-2 text-base text-slate-950 md:text-xl"><Briefcase className="h-5 w-5 text-[#8A5700]" />{department}</CardTitle>
+                        <CardDescription className="text-slate-500">{departmentAgents.length} recorded {departmentAgents.length === 1 ? "agent" : "agents"}</CardDescription>
                       </div>
-                    </CardHeader>
-                    <CardContent className="p-4 md:p-6 pt-0">
-                      <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-                        {deptAgents.map(agent => (
-                          <Card key={agent.id} className="bg-gray-800/50 border-gray-700 hover:border-gray-600 transition-colors">
-                            <CardContent className="pt-4 p-3 md:p-4">
-                              <div className="flex items-start gap-3">
-                                <div className="text-2xl md:text-3xl">{agent.avatar}</div>
-                                <div className="flex-1 min-w-0">
-                                  <h4 className="text-white font-medium truncate text-sm md:text-base">{agent.name}</h4>
-                                  <p className="text-xs md:text-sm text-gray-400 truncate">{agent.role}</p>
-                                  <div className="flex items-center gap-2 mt-2 flex-wrap">
-                                    <Badge 
-                                      variant="outline" 
-                                      className={
-                                        agent.status === 'active' 
-                                          ? 'bg-green-900/20 text-green-400 border-green-700 text-[10px] md:text-xs'
-                                          : 'bg-gray-700/20 text-gray-400 border-gray-600 text-[10px] md:text-xs'
-                                      }
-                                    >
-                                      {agent.status}
-                                    </Badge>
-                                    <Badge variant="outline" className="bg-gray-700/20 text-gray-400 border-gray-600 text-[10px] md:text-xs">
-                                      Level {agent.hierarchyLevel}
-                                    </Badge>
-                                  </div>
-                                </div>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        ))}
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-                
-                {totalAgents === 0 && (
-                  <Card className="bg-gray-900 border-gray-800">
-                    <CardContent className="pt-12 pb-12 text-center">
-                      <Users className="h-10 w-10 md:h-12 md:w-12 text-gray-700 mx-auto mb-3" />
-                      <p className="text-gray-500 text-sm">No agents yet. Browse the Marketplace tab to hire expert clones.</p>
-                    </CardContent>
-                  </Card>
-                )}
-              </div>
+                      <Badge variant="outline" className="w-fit border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-50">
+                        {departmentAgents.filter((agent) => agent.status === "active").length} active
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="grid grid-cols-1 gap-3 p-4 pt-0 sm:grid-cols-2 md:p-6 md:pt-0 lg:grid-cols-3">
+                    {departmentAgents.map((agent) => <TeamAgentCard key={agent.id} agent={agent} />)}
+                  </CardContent>
+                </Card>
+              ))
             )}
           </TabsContent>
 
-          <TabsContent value="marketplace" className="space-y-4 md:space-y-6">
-            {/* My Clones Management Section */}
-            {assignments && assignments.length > 0 && (
-              <div className="space-y-3 md:space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-base md:text-lg font-semibold text-white flex items-center gap-2">
-                    <CheckCircle className="h-4 w-4 md:h-5 md:w-5 text-green-400" />
-                    My Assigned Clones ({assignments.length})
-                  </h3>
+          <TabsContent value="catalog" className="space-y-6">
+            <section className="space-y-3">
+              <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-end">
+                <div>
+                  <h2 className="text-lg font-black text-slate-950">Assigned expert agents</h2>
+                  <p className="text-sm text-slate-500">Activation, pause, and termination are explicit tenant-scoped status changes.</p>
                 </div>
-                <ScrollArea className="h-[250px] md:h-[300px]">
-                  <div className="space-y-3 pr-4">
-                    {assignments.map(assignment => (
-                      <AssignmentCard
-                        key={assignment.id}
-                        assignment={assignment}
-                        onStatusChange={(action) => updateStatusMutation.mutate({ assignmentId: assignment.id, action })}
-                        isUpdating={updateStatusMutation.isPending}
-                      />
-                    ))}
-                  </div>
-                </ScrollArea>
+                <Badge variant="outline" className="w-fit border-slate-200 bg-white text-slate-700 hover:bg-white">{assignments.length} assignments</Badge>
               </div>
-            )}
+              {loadingAssignments ? (
+                <Skeleton className="h-40 bg-slate-200" />
+              ) : assignmentsError ? (
+                <ReadError message="Expert assignments could not be loaded." />
+              ) : assignments.length ? (
+                <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+                  {assignments.map((assignment) => (
+                    <AssignmentCard
+                      key={assignment.id}
+                      assignment={assignment}
+                      onStatusChange={(action) => updateStatusMutation.mutate({ assignmentId: assignment.id, action })}
+                      isUpdating={updateStatusMutation.isPending}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-xl border border-dashed border-slate-300 bg-white p-5 text-sm text-slate-500">No expert assignments have been recorded for this company.</div>
+              )}
+            </section>
 
-            {/* Browse Marketplace */}
-            <div className="space-y-3 md:space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                <h3 className="text-base md:text-lg font-semibold text-white">Browse Expert Clones</h3>
-                <p className="text-xs md:text-sm text-gray-400">{filteredProfiles?.length || 0} available</p>
+            <section className="space-y-4">
+              <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-end">
+                <div>
+                  <h2 className="text-lg font-black text-slate-950">Verified expert catalog</h2>
+                  <p className="text-sm text-slate-500">Only published profiles with current public-marketplace visibility are shown.</p>
+                </div>
+                <span className="text-xs font-bold text-slate-500">{filteredProfiles.length} available</span>
               </div>
-              
-              <div className="flex flex-col sm:flex-row gap-3">
-                <div className="flex-1 relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500" />
-                  <Input
-                    placeholder="Search by name, expertise..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10 bg-gray-900 border-gray-800 text-white h-11"
-                  />
+
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <Input placeholder="Search name, role, expertise, or skill" value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} className="h-11 border-slate-200 bg-white pl-10 text-slate-950" />
                 </div>
                 <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                  <SelectTrigger className="w-full sm:w-48 bg-gray-900 border-gray-800 text-white h-11">
-                    <SelectValue placeholder="Category" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-gray-900 border-gray-800">
-                    <SelectItem value="all">All Categories</SelectItem>
-                    {categories.map(cat => (
-                      <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                    ))}
+                  <SelectTrigger className="h-11 w-full border-slate-200 bg-white text-slate-950 sm:w-52"><SelectValue placeholder="Category" /></SelectTrigger>
+                  <SelectContent className="border-slate-200 bg-white text-slate-950">
+                    <SelectItem value="all">All categories</SelectItem>
+                    {categories.map((category) => <SelectItem key={category} value={category}>{category}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
 
-              <ScrollArea className="h-[calc(100vh-36rem)] md:h-[calc(100vh-32rem)]">
-                {loadingProfiles ? (
-                  <div className="grid gap-3 md:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-                    {[...Array(6)].map((_, i) => (
-                      <Skeleton key={i} className="h-64 bg-gray-900" />
-                    ))}
-                  </div>
-                ) : (
-                  <div className="grid gap-3 md:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-                    {filteredProfiles?.map(profile => (
-                      <CloneCard
-                        key={profile.id}
-                        profile={profile}
-                        onAssign={(role) => createAssignmentMutation.mutate({ profileId: profile.id, role })}
-                        isAssigning={createAssignmentMutation.isPending}
-                      />
-                    ))}
-                    {filteredProfiles?.length === 0 && (
-                      <div className="col-span-full text-center py-12">
-                        <Bot className="h-10 w-10 md:h-12 md:w-12 text-gray-700 mx-auto mb-3" />
-                        <p className="text-gray-500 text-sm">No expert clones found matching your criteria</p>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </ScrollArea>
-            </div>
+              {loadingProfiles ? (
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {[0, 1, 2, 3, 4, 5].map((item) => <Skeleton key={item} className="h-72 bg-slate-200" />)}
+                </div>
+              ) : profilesError ? (
+                <ReadError message="The verified expert catalog could not be loaded." />
+              ) : filteredProfiles.length ? (
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {filteredProfiles.map((profile) => (
+                    <CloneCard
+                      key={profile.id}
+                      profile={profile}
+                      alreadyAssigned={assignedProfileIds.has(profile.id)}
+                      onAssign={(role) => createAssignmentMutation.mutate({ profileId: profile.id, role })}
+                      isAssigning={createAssignmentMutation.isPending}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-xl border border-dashed border-slate-300 bg-white py-12 text-center">
+                  <Bot className="mx-auto h-10 w-10 text-slate-300" />
+                  <p className="mt-3 font-bold text-slate-950">No matching expert profiles</p>
+                  <p className="mt-1 text-sm text-slate-500">Adjust the catalog search or category filter.</p>
+                </div>
+              )}
+            </section>
           </TabsContent>
 
-          <TabsContent value="hierarchy">
+          <TabsContent value="hierarchy" className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
             <HierarchyPage />
           </TabsContent>
         </Tabs>
@@ -463,164 +368,115 @@ export function ExpertClonesHubPage() {
   );
 }
 
-function CloneCard({ profile, onAssign, isAssigning }: { 
-  profile: CloneProfile; 
-  onAssign: (role: string) => void;
-  isAssigning: boolean;
-}) {
-  const [role, setRole] = useState(profile.title);
-
-  const getTrainingBadge = (status: string) => {
-    switch (status) {
-      case 'complete':
-        return <Badge variant="outline" className="bg-green-900/20 text-green-400 border-green-700 text-xs">Trained</Badge>;
-      case 'in_progress':
-        return <Badge variant="outline" className="bg-yellow-900/20 text-yellow-400 border-yellow-700 text-xs">Training</Badge>;
-      default:
-        return <Badge variant="outline" className="bg-gray-700/20 text-gray-400 border-gray-600 text-xs">Draft</Badge>;
-    }
-  };
-
+function StatCard({ icon, label, value, tone = "default" }: { icon: ReactNode; label: string; value: number; tone?: "default" | "success" | "accent" | "gold" }) {
+  const toneClass = {
+    default: "bg-blue-50 text-blue-700",
+    success: "bg-emerald-50 text-emerald-700",
+    accent: "bg-violet-50 text-violet-700",
+    gold: "bg-[#FFF8E8] text-[#8A5700]",
+  }[tone];
   return (
-    <Card className="bg-gray-900 border-gray-800 hover:border-gray-700 transition-colors">
-      <CardHeader className="p-3 md:p-4">
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex-1 min-w-0">
-            <CardTitle className="text-white text-base md:text-lg truncate">{profile.displayName}</CardTitle>
-            <CardDescription className="text-gray-400 text-xs md:text-sm truncate">{profile.primaryExpertise}</CardDescription>
+    <Card className="border-slate-200 bg-[#FBFCFD] text-slate-950 shadow-none">
+      <CardContent className="flex items-center gap-3 p-3 md:p-4">
+        <div className={`rounded-lg p-2 ${toneClass}`}>{icon}</div>
+        <div><p className="text-xl font-black text-slate-950 md:text-2xl">{value}</p><p className="text-xs text-slate-500 md:text-sm">{label}</p></div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function TeamAgentCard({ agent }: { agent: Agent }) {
+  const active = agent.status === "active";
+  return (
+    <article data-testid="exportunity-team-agent-record" className="rounded-xl border border-slate-200 bg-[#FBFCFD] p-4">
+      <div className="flex items-start gap-3">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#07111F] text-sm font-black text-white">{agent.name.trim().slice(0, 1).toUpperCase() || "A"}</div>
+        <div className="min-w-0 flex-1">
+          <h3 className="truncate font-bold text-slate-950">{agent.name}</h3>
+          <p className="truncate text-sm text-slate-500">{agent.role}</p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <Badge variant="outline" className={active ? "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-50" : "border-slate-200 bg-white text-slate-600 hover:bg-white"}>{agent.status}</Badge>
+            <Badge variant="outline" className="border-slate-200 bg-white text-slate-600 hover:bg-white">Level {agent.hierarchyLevel}</Badge>
           </div>
-          {getTrainingBadge(profile.trainingStatus)}
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function trainingBadge(status: string) {
+  if (status === "ready" || status === "active") return <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-50">Ready</Badge>;
+  if (status === "training") return <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-50">Training</Badge>;
+  if (status === "paused") return <Badge variant="outline" className="border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-50">Paused</Badge>;
+  if (status === "archived") return <Badge variant="outline" className="border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-100">Archived</Badge>;
+  return <Badge variant="outline" className="border-slate-200 bg-white text-slate-600 hover:bg-white">Draft</Badge>;
+}
+
+function CloneCard({ profile, alreadyAssigned, onAssign, isAssigning }: { profile: CloneProfile; alreadyAssigned: boolean; onAssign: (role: string) => void; isAssigning: boolean }) {
+  const [role, setRole] = useState(profile.title);
+  const requestAssignment = () => {
+    const normalizedRole = role.trim();
+    if (!normalizedRole || alreadyAssigned) return;
+    if (window.confirm(`Assign ${profile.displayName} as ${normalizedRole} at ${exactUsd(profile.baseDailyCost)} per day?`)) onAssign(normalizedRole);
+  };
+  return (
+    <Card data-testid="exportunity-expert-profile-record" className="flex h-full flex-col border-slate-200 bg-white text-slate-950 shadow-sm transition-colors hover:border-[#F5A623]">
+      <CardHeader className="p-4">
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0 flex-1"><CardTitle className="truncate text-lg text-slate-950">{profile.displayName}</CardTitle><CardDescription className="truncate text-slate-500">{profile.primaryExpertise}</CardDescription></div>
+          {trainingBadge(profile.trainingStatus)}
         </div>
       </CardHeader>
-      <CardContent className="space-y-3 p-3 md:p-4 pt-0">
-        <p className="text-xs md:text-sm text-gray-500 line-clamp-2">{profile.description}</p>
-        
-        <div className="flex items-center gap-4 text-xs md:text-sm">
-          <div className="flex items-center gap-1 text-gray-400">
-            <Star className="h-3 w-3 md:h-4 md:w-4 text-yellow-500" />
-            <span>{parseFloat(profile.averageRating || '0').toFixed(1)}</span>
-          </div>
-          <div className="flex items-center gap-1 text-gray-400">
-            <Briefcase className="h-3 w-3 md:h-4 md:w-4" />
-            <span>{profile.totalAssignments} jobs</span>
-          </div>
-        </div>
-
-        <div className="flex items-center justify-between pt-2 border-t border-gray-800">
-          <div>
-            <p className="text-[10px] md:text-xs text-gray-500">Daily Cost</p>
-            <p className="text-white font-semibold text-sm md:text-base">${parseFloat(profile.baseDailyCost).toFixed(2)}</p>
-          </div>
-          <Badge variant="outline" className="bg-blue-900/20 text-blue-400 border-blue-700 text-xs">
-            {profile.category}
-          </Badge>
-        </div>
-
-        <Input
-          placeholder="Role (e.g., Marketing Manager)"
-          value={role}
-          onChange={(e) => setRole(e.target.value)}
-          className="bg-gray-800 border-gray-700 text-white h-10 text-sm"
-        />
+      <CardContent className="flex-1 space-y-4 p-4 pt-0">
+        <p className="line-clamp-3 text-sm text-slate-600">{profileDescription(profile)}</p>
+        {profile.skills?.length ? <div className="flex flex-wrap gap-1.5">{profile.skills.slice(0, 3).map((skill) => <Badge key={skill} variant="outline" className="border-slate-200 bg-[#FBFCFD] text-slate-600 hover:bg-[#FBFCFD]">{skill}</Badge>)}</div> : null}
+        <div className="flex items-center gap-4 text-sm text-slate-500"><span className="flex items-center gap-1"><Star className="h-4 w-4 text-[#F5A623]" />{exactDecimal(profile.averageRating)}</span><span className="flex items-center gap-1"><Briefcase className="h-4 w-4" />{profile.totalAssignments} assignments</span></div>
+        <div className="flex items-center justify-between border-t border-slate-200 pt-3"><div><p className="text-xs text-slate-500">Daily cost</p><p className="font-black text-slate-950">{exactUsd(profile.baseDailyCost)}</p></div><Badge variant="outline" className="border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-50">{profile.category}</Badge></div>
+        <Input aria-label={`Role for ${profile.displayName}`} value={role} onChange={(event) => setRole(event.target.value)} disabled={alreadyAssigned} placeholder="Operational role" className="h-10 border-slate-200 bg-white text-slate-950" />
       </CardContent>
-      <CardFooter className="p-3 md:p-4 pt-0">
-        <Button
-          className="w-full h-11"
-          onClick={() => onAssign(role)}
-          disabled={isAssigning || !role.trim()}
-        >
-          <CheckCircle className="h-4 w-4 mr-2" />
-          Assign to Company
+      <CardFooter className="p-4 pt-0">
+        <Button className="h-11 w-full bg-[#F5A623] font-bold text-[#07111F] hover:bg-[#E49718]" onClick={requestAssignment} disabled={alreadyAssigned || isAssigning || !role.trim()}>
+          <CheckCircle className="mr-2 h-4 w-4" />{alreadyAssigned ? "Already assigned" : isAssigning ? "Assigning…" : "Assign to workspace"}
         </Button>
       </CardFooter>
     </Card>
   );
 }
 
-function AssignmentCard({ assignment, onStatusChange, isUpdating }: {
-  assignment: Assignment;
-  onStatusChange: (action: 'activate' | 'pause' | 'terminate') => void;
-  isUpdating: boolean;
-}) {
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'active':
-        return <Badge variant="outline" className="bg-green-900/20 text-green-400 border-green-700 text-xs">Active</Badge>;
-      case 'learning':
-        return <Badge variant="outline" className="bg-blue-900/20 text-blue-400 border-blue-700 text-xs">Learning</Badge>;
-      case 'paused':
-        return <Badge variant="outline" className="bg-yellow-900/20 text-yellow-400 border-yellow-700 text-xs">Paused</Badge>;
-      case 'terminated':
-        return <Badge variant="outline" className="bg-gray-700/20 text-gray-400 border-gray-600 text-xs">Terminated</Badge>;
-      default:
-        return <Badge variant="outline" className="bg-gray-700/20 text-gray-400 border-gray-600 text-xs">Pending</Badge>;
-    }
+function assignmentBadge(status: string) {
+  if (status === "active") return <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-50">Active</Badge>;
+  if (status === "learning") return <Badge variant="outline" className="border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-50">Learning</Badge>;
+  if (status === "paused") return <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-50">Paused</Badge>;
+  if (status === "terminated") return <Badge variant="outline" className="border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-100">Terminated</Badge>;
+  return <Badge variant="outline" className="border-slate-200 bg-white text-slate-600 hover:bg-white">Pending</Badge>;
+}
+
+function AssignmentCard({ assignment, onStatusChange, isUpdating }: { assignment: Assignment; onStatusChange: (action: AssignmentAction) => void; isUpdating: boolean }) {
+  const requestStatusChange = (action: AssignmentAction) => {
+    const label = assignment.cloneProfile.displayName;
+    const prompt = action === "terminate"
+      ? `Terminate ${label}'s assignment? This ends the current assignment.`
+      : `${action === "pause" ? "Pause" : "Activate"} ${label}'s assignment?`;
+    if (window.confirm(prompt)) onStatusChange(action);
   };
-
+  const canActivate = assignment.status === "pending" || assignment.status === "learning" || assignment.status === "paused";
   return (
-    <Card className="bg-gray-900 border-gray-800">
-      <CardHeader className="p-3 md:p-4">
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex-1 min-w-0">
-            <CardTitle className="text-white text-base md:text-lg truncate">{assignment.cloneProfile.displayName}</CardTitle>
-            <CardDescription className="text-gray-400 text-xs md:text-sm truncate">{assignment.roleWithinCompany}</CardDescription>
-          </div>
-          {getStatusBadge(assignment.status)}
-        </div>
+    <Card data-testid="exportunity-expert-assignment-record" className="border-slate-200 bg-white text-slate-950 shadow-sm">
+      <CardHeader className="p-4">
+        <div className="flex items-start justify-between gap-2"><div className="min-w-0 flex-1"><CardTitle className="truncate text-lg text-slate-950">{assignment.cloneProfile.displayName}</CardTitle><CardDescription className="truncate text-slate-500">{assignment.roleWithinCompany}</CardDescription></div>{assignmentBadge(assignment.status)}</div>
       </CardHeader>
-      <CardContent className="space-y-3 md:space-y-4 p-3 md:p-4 pt-0">
-        <div className="grid grid-cols-3 gap-2 md:gap-4 text-xs md:text-sm">
-          <div>
-            <p className="text-gray-500 mb-1">Tasks</p>
-            <p className="text-white font-medium">{assignment.tasksCompleted}</p>
-          </div>
-          <div>
-            <p className="text-gray-500 mb-1">Daily</p>
-            <p className="text-white font-medium">${parseFloat(assignment.dailyCost).toFixed(2)}</p>
-          </div>
-          <div>
-            <p className="text-gray-500 mb-1">Monthly</p>
-            <p className="text-white font-medium">${parseFloat(assignment.monthlyCost).toFixed(2)}</p>
-          </div>
-        </div>
-
-        <div className="flex gap-2">
-          {assignment.status === 'paused' && (
-            <Button 
-              size="sm" 
-              className="flex-1 h-10"
-              onClick={() => onStatusChange('activate')}
-              disabled={isUpdating}
-            >
-              <Play className="h-3 w-3 mr-1" />
-              Activate
-            </Button>
-          )}
-          {assignment.status === 'active' && (
-            <Button 
-              size="sm" 
-              variant="outline"
-              className="flex-1 h-10"
-              onClick={() => onStatusChange('pause')}
-              disabled={isUpdating}
-            >
-              <Pause className="h-3 w-3 mr-1" />
-              Pause
-            </Button>
-          )}
-          {assignment.status !== 'terminated' && (
-            <Button 
-              size="sm" 
-              variant="destructive"
-              className="h-10"
-              onClick={() => onStatusChange('terminate')}
-              disabled={isUpdating}
-            >
-              <XCircle className="h-3 w-3" />
-            </Button>
-          )}
+      <CardContent className="space-y-4 p-4 pt-0">
+        <div className="grid grid-cols-3 gap-3 rounded-lg bg-[#FBFCFD] p-3 text-sm"><div><p className="text-xs text-slate-500">Tasks</p><p className="mt-1 font-bold text-slate-950">{assignment.tasksCompleted}</p></div><div><p className="text-xs text-slate-500">Daily</p><p className="mt-1 font-bold text-slate-950">{exactUsd(assignment.dailyCost)}</p></div><div><p className="text-xs text-slate-500">Monthly</p><p className="mt-1 font-bold text-slate-950">{exactUsd(assignment.monthlyCost)}</p></div></div>
+        <div className="flex flex-wrap gap-2">
+          {canActivate ? <Button size="sm" className="bg-[#F5A623] font-bold text-[#07111F] hover:bg-[#E49718]" onClick={() => requestStatusChange("activate")} disabled={isUpdating}><Play className="mr-1 h-4 w-4" />Activate</Button> : null}
+          {assignment.status === "active" ? <Button size="sm" variant="outline" className="border-slate-200 bg-white text-slate-700 hover:bg-[#FFF8E8]" onClick={() => requestStatusChange("pause")} disabled={isUpdating}><Pause className="mr-1 h-4 w-4" />Pause</Button> : null}
+          {assignment.status !== "terminated" ? <Button size="sm" variant="destructive" onClick={() => requestStatusChange("terminate")} disabled={isUpdating}><XCircle className="mr-1 h-4 w-4" />Terminate</Button> : null}
         </div>
       </CardContent>
     </Card>
   );
+}
+
+function ReadError({ message }: { message: string }) {
+  return <div className="rounded-xl border border-red-200 bg-red-50 p-5 text-sm text-red-800">{message}</div>;
 }

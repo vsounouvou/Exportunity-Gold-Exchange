@@ -150,7 +150,7 @@ test("flutterwaveVerifyTransaction: falls back to tx_ref when id verify fails", 
           data: {
             id: 456,
             tx_ref: "topup_bdo_abc",
-            amount: 1500,
+            amount: 1500.75,
             currency: "XOF",
             status: "successful",
           },
@@ -171,7 +171,7 @@ test("flutterwaveVerifyTransaction: falls back to tx_ref when id verify fails", 
   assert.equal(out.normalizedStatus, "succeeded");
   assert.equal(out.transactionId, "456");
   assert.equal(out.txRef, "topup_bdo_abc");
-  assert.equal(out.amount, 1500);
+  assert.equal(out.amount, "1500.75");
   assert.equal(out.currency, "XOF");
   assert.equal(calls.some((call) => call.includes("/transactions/123/verify")), true);
   assert.equal(calls.some((call) => call.includes("/transactions/verify_by_reference?tx_ref=topup_bdo_abc")), true);

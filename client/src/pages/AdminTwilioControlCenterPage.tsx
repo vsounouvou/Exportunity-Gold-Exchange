@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { EXPORTUNITY_COMPANY_IDENTITY } from "@tenants/exportunity/companyIdentity";
 
 type TwilioStatusResponse = {
   ok: boolean;
@@ -29,6 +30,29 @@ type TwilioStatusResponse = {
     smsFrom: string | null;
     messagingServiceSid: string | null;
     webhookPath?: string | null;
+  };
+};
+
+type TwilioAccountVerificationResponse = {
+  ok: boolean;
+  verification: {
+    provider: "twilio";
+    verified: boolean;
+    readyForApiAuthentication: boolean;
+    account: {
+      sidMasked: string | null;
+      ownerAccountSidMasked: string | null;
+      friendlyName: string | null;
+      status: string;
+      type: string;
+      dateCreated: string | null;
+      dateUpdated: string | null;
+    };
+    evidenceSource: string;
+    verifiedAt: string;
+    externalActionPerformed: false;
+    messageSent: false;
+    credentialsExposed: false;
   };
 };
 
@@ -104,6 +128,27 @@ export function AdminTwilioControlCenterPage() {
   const whatsappEnabled = !!(profile?.whatsappFrom || cfg?.whatsappFromPresent);
   const canSendSms = !!cfg?.accountSidPresent && !!cfg?.authTokenPresent && smsEnabled;
   const canSendWhatsApp = !!cfg?.accountSidPresent && !!cfg?.authTokenPresent && whatsappEnabled;
+  const [lastAccountVerification, setLastAccountVerification] = useState<TwilioAccountVerificationResponse["verification"] | null>(null);
+
+  const verifyAccountMutation = useMutation({
+    mutationFn: async () =>
+      await apiRequest("/api/admin/twilio/verify-account", "POST", {}) as TwilioAccountVerificationResponse,
+    onSuccess: (data) => {
+      setLastAccountVerification(data.verification);
+      toast({
+        title: data.verification.readyForApiAuthentication ? "Twilio account verified" : "Twilio account needs attention",
+        description: `Read-only check completed for ${data.verification.account.sidMasked || "the configured account"}. No message was sent.`,
+      });
+    },
+    onError: (err: any) => {
+      setLastAccountVerification(null);
+      toast({
+        title: "Account verification failed",
+        description: err?.message || "Twilio did not confirm the configured account.",
+        variant: "destructive",
+      });
+    },
+  });
 
   const [profileActive, setProfileActive] = useState(true);
   const [profileDefaultChannel, setProfileDefaultChannel] = useState<"sms" | "whatsapp" | "verify_sms" | "verify_whatsapp">("sms");
@@ -242,6 +287,9 @@ export function AdminTwilioControlCenterPage() {
           <div className="text-xs font-black uppercase tracking-[0.28em] text-[#F5A623]">Settings / Communications</div>
           <h1 className="mt-2 text-3xl font-black tracking-tight text-slate-950">Twilio Control Center</h1>
           <p className="mt-2 text-sm text-slate-600">Tenant: {tenant?.name || "-"}. Configure WhatsApp, SMS, Verify, sender profiles, and approved test sends with clear audit visibility.</p>
+          <p className="mt-2 text-xs font-bold text-slate-700">
+            Company administration identity: {EXPORTUNITY_COMPANY_IDENTITY.adminEmail}. Personal test recipients remain separate and receive no provider administration role.
+          </p>
         </section>
 
       <Card className="border-slate-200 bg-white shadow-sm">
@@ -258,6 +306,35 @@ export function AdminTwilioControlCenterPage() {
           <div className="text-xs text-slate-500">
             Status callback: <span className="font-mono text-slate-800">{cfg?.webhookPath || "/api/webhooks/twilio/status"}</span>
           </div>
+          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
+            <Button
+              type="button"
+              variant="outline"
+              className="border-slate-300 bg-white text-slate-800 hover:bg-slate-100"
+              onClick={() => verifyAccountMutation.mutate()}
+              disabled={verifyAccountMutation.isPending || !cfg?.accountSidPresent || !cfg?.authTokenPresent}
+            >
+              {verifyAccountMutation.isPending ? "Verifying account..." : "Verify account (read-only)"}
+            </Button>
+            <span className="text-xs text-slate-600">
+              Fetches Twilio account status only. It does not send SMS, WhatsApp, Verify, or voice traffic.
+            </span>
+          </div>
+          {lastAccountVerification ? (
+            <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-950">
+              <div className="flex flex-wrap items-center gap-2">
+                <HealthPill
+                  ok={lastAccountVerification.readyForApiAuthentication}
+                  label={lastAccountVerification.readyForApiAuthentication ? "Provider-confirmed active" : `Provider status: ${lastAccountVerification.account.status}`}
+                />
+                <span className="font-mono text-xs">{lastAccountVerification.account.sidMasked}</span>
+                <span className="text-xs font-semibold">{lastAccountVerification.account.type}</span>
+              </div>
+              <div className="mt-2 text-xs">
+                {lastAccountVerification.account.friendlyName || "Unnamed Twilio account"} · verified {new Date(lastAccountVerification.verifiedAt).toLocaleString()} · no message sent
+              </div>
+            </div>
+          ) : null}
         </CardContent>
       </Card>
 

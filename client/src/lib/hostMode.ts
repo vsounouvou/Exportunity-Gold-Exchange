@@ -46,26 +46,3 @@ export function isZoguelandHost() {
 export function isAgoojyeHost() {
   return isHostForTenant("agoojye");
 }
-
-export function isExportunityMarketingHost() {
-  const host = currentHost();
-  const marketingHosts = new Set([
-    "exportunity.com",
-    "www.exportunity.com",
-    "com.exportunity.net",
-    "www.com.exportunity.net",
-  ]);
-
-  if (marketingHosts.has(host)) return true;
-
-  if (host === "localhost" || host === "127.0.0.1") {
-    try {
-      const params = new URLSearchParams(window.location.search);
-      return params.get("marketing") === "1";
-    } catch {
-      return false;
-    }
-  }
-
-  return false;
-}

@@ -33,6 +33,7 @@ export type GovernedTaskSource =
 
 export type CreateGovernedTaskInput = {
   tenantId: number;
+  idempotencyKey?: string | null;
   moduleId: string;
   title: string;
   instruction: string;
@@ -329,6 +330,17 @@ export async function createIntelligenceAlert(input: {
 }
 
 export async function createGovernedTask(input: CreateGovernedTaskInput) {
+  const idempotencyKey = asText(input.idempotencyKey).slice(0, 240) || null;
+  if (idempotencyKey) {
+    const existing = await db.query.intelligenceTasks.findFirst({
+      where: and(
+        eq(intelligenceTasks.tenantId, input.tenantId),
+        eq(intelligenceTasks.idempotencyKey, idempotencyKey),
+      ),
+    });
+    if (existing) return existing;
+  }
+
   const managerTier = parseIntelligenceTier(input.managerTier ?? "MANAGER", "MANAGER");
   const policyTier = parseIntelligenceTier(input.policyTier ?? managerTier, managerTier);
   const policy = await getActivePolicyForTier({ tenantId: input.tenantId, tier: policyTier });
@@ -362,6 +374,7 @@ export async function createGovernedTask(input: CreateGovernedTaskInput) {
     .insert(intelligenceTasks)
     .values({
       tenantId: input.tenantId,
+      idempotencyKey,
       moduleId: asText(input.moduleId),
       policyId: Number(policy.id),
       cronJobId: input.cronJobId ?? null,
@@ -382,7 +395,23 @@ export async function createGovernedTask(input: CreateGovernedTaskInput) {
       createdAt: new Date(),
       updatedAt: new Date(),
     })
+    .onConflictDoNothing({
+      target: [intelligenceTasks.tenantId, intelligenceTasks.idempotencyKey],
+    })
     .returning();
+
+  if (!created && idempotencyKey) {
+    const existing = await db.query.intelligenceTasks.findFirst({
+      where: and(
+        eq(intelligenceTasks.tenantId, input.tenantId),
+        eq(intelligenceTasks.idempotencyKey, idempotencyKey),
+      ),
+    });
+    if (existing) return existing;
+  }
+  if (!created) {
+    throw new Error("TASK_CREATE_CONFLICT: governed task was not created");
+  }
 
   const publicTaskId = toPublicTaskId(Number(created.id));
   const [withPublicId] = await db

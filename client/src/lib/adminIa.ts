@@ -107,7 +107,7 @@ export function resolveTenantAdminAliasDestination(tenantKey: TenantKey, target:
       if (tenantKey === "vs") return "/admin/vs/website";
       if (tenantKey === "hoz") return "/admin/hoz/website";
       if (tenantKey === "mindbase") return "/admin/mindbase/settings";
-      return "/admin/website/visits";
+      return "/admin/seo?view=visits";
     case "modules":
       if (tenantKey === "agoojye") return "/admin/agoojye/settings";
       return "/admin/system/update";

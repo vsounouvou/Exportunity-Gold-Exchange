@@ -19,6 +19,18 @@ import {
 import { isChairmanAssistantUser } from "./utils/auth";
 import { generateAgentResponse } from "../lib/ai-provider";
 import { isAiEnabled } from "../lib/ai-consent";
+import {
+  approveTerritoryActivation,
+  getTerritoryOperatingLayer,
+  pauseTerritoryActivation,
+  prepareTerritoryActivation,
+  recordTerritoryCoverageSnapshot,
+} from "../lib/territory-media/territoryOperatingLayer";
+import { recordTerritoryScorecardEvidence } from "../lib/territory-media/territoryScorecard";
+import {
+  previewCanonicalTerritoryScorecard,
+  recordCanonicalTerritoryScorecardProjection,
+} from "../lib/territory-media/canonicalCommerceAttribution";
 
 const router = Router();
 
@@ -669,6 +681,208 @@ router.post("/", async (req, res) => {
     .returning();
 
   res.json({ territory: created });
+});
+
+router.get("/:id/operating-layer", async (req, res) => {
+  const tenant = requireTenant(req, res);
+  if (!tenant) return;
+  const territoryId = Number(req.params.id);
+  if (!Number.isFinite(territoryId)) return res.status(400).json({ message: "Invalid id" });
+
+  try {
+    const operatingLayer = await getTerritoryOperatingLayer(tenant.id, territoryId);
+    res.json({ ok: true, operatingLayer });
+  } catch (error: any) {
+    const message = String(error?.message || "Failed to load territory operating layer");
+    res.status(message === "Territory not found" ? 404 : 500).json({ message });
+  }
+});
+
+router.post("/:id/operating-layer/prepare", async (req, res) => {
+  const tenant = requireTenant(req, res);
+  if (!tenant) return;
+  const territoryId = Number(req.params.id);
+  if (!Number.isFinite(territoryId)) return res.status(400).json({ message: "Invalid id" });
+  const adminUserId = Number((req as any).adminUser?.id);
+
+  try {
+    const result = await prepareTerritoryActivation({
+      tenantId: tenant.id,
+      territoryId,
+      requestedByUserId: Number.isFinite(adminUserId) ? adminUserId : null,
+      idempotencyKey: String(req.body?.idempotencyKey || ""),
+      profile: req.body?.profile && typeof req.body.profile === "object" ? req.body.profile : {},
+      coverage: req.body?.coverage,
+      activationScope:
+        req.body?.activationScope && typeof req.body.activationScope === "object"
+          ? req.body.activationScope
+          : {},
+    });
+    res.status(result.idempotentReplay ? 200 : 201).json({ ok: true, ...result });
+  } catch (error: any) {
+    const message = String(error?.message || "Failed to prepare territory activation");
+    res.status(message === "Territory not found" ? 404 : 400).json({ message });
+  }
+});
+
+router.post("/:id/operating-layer/activations/:activationId/approve", async (req, res) => {
+  const tenant = requireTenant(req, res);
+  if (!tenant) return;
+  const territoryId = Number(req.params.id);
+  const activationId = Number(req.params.activationId);
+  if (!Number.isFinite(territoryId) || !Number.isFinite(activationId)) {
+    return res.status(400).json({ message: "Invalid territory or activation id" });
+  }
+  const adminUserId = Number((req as any).adminUser?.id);
+
+  try {
+    const result = await approveTerritoryActivation({
+      tenantId: tenant.id,
+      territoryId,
+      activationId,
+      approvedByUserId: Number.isFinite(adminUserId) ? adminUserId : null,
+      approvalNote: String(req.body?.approvalNote || ""),
+    });
+    res.json({ ok: true, ...result });
+  } catch (error: any) {
+    const message = String(error?.message || "Failed to approve territory activation");
+    const status = message.startsWith("TERRITORY_ACTIVATION_BLOCKED:") ? 409 : 400;
+    res.status(status).json({ message });
+  }
+});
+
+router.post("/:id/operating-layer/activations/:activationId/pause", async (req, res) => {
+  const tenant = requireTenant(req, res);
+  if (!tenant) return;
+  const territoryId = Number(req.params.id);
+  const activationId = Number(req.params.activationId);
+  if (!Number.isFinite(territoryId) || !Number.isFinite(activationId)) {
+    return res.status(400).json({ message: "Invalid territory or activation id" });
+  }
+  const adminUserId = Number((req as any).adminUser?.id);
+
+  try {
+    const result = await pauseTerritoryActivation({
+      tenantId: tenant.id,
+      territoryId,
+      activationId,
+      actorUserId: Number.isFinite(adminUserId) ? adminUserId : null,
+      reason: String(req.body?.reason || ""),
+    });
+    res.json({ ok: true, ...result });
+  } catch (error: any) {
+    res.status(400).json({ message: String(error?.message || "Failed to pause activation") });
+  }
+});
+
+router.post("/:id/operating-layer/coverage", async (req, res) => {
+  const tenant = requireTenant(req, res);
+  if (!tenant) return;
+  const territoryId = Number(req.params.id);
+  if (!Number.isFinite(territoryId)) return res.status(400).json({ message: "Invalid id" });
+  const adminUserId = Number((req as any).adminUser?.id);
+
+  try {
+    const snapshot = await recordTerritoryCoverageSnapshot({
+      tenantId: tenant.id,
+      territoryId,
+      activationId: Number(req.body?.activationId || 0) || null,
+      actorUserId: Number.isFinite(adminUserId) ? adminUserId : null,
+      dimensions: req.body?.dimensions,
+      evidence: req.body?.evidence && typeof req.body.evidence === "object" ? req.body.evidence : {},
+    });
+    res.status(201).json({ ok: true, snapshot });
+  } catch (error: any) {
+    const message = String(error?.message || "Failed to record coverage snapshot");
+    res.status(message === "Territory not found" ? 404 : 400).json({ message });
+  }
+});
+
+router.get("/:id/operating-layer/scorecards/canonical-preview", async (req, res) => {
+  const tenant = requireTenant(req, res);
+  if (!tenant) return;
+  const territoryId = Number(req.params.id);
+  if (!Number.isFinite(territoryId)) return res.status(400).json({ message: "Invalid id" });
+
+  try {
+    const projection = await previewCanonicalTerritoryScorecard({
+      tenantId: tenant.id,
+      territoryId,
+      month: req.query?.month,
+    });
+    res.json({ ok: true, projection });
+  } catch (error: any) {
+    const message = String(error?.message || "Failed to preview canonical territory scorecard");
+    res.status(message === "Territory not found" ? 404 : 400).json({
+      message,
+      externalActionPerformed: false,
+      backgroundExecutionStarted: false,
+      credentialsExposed: false,
+    });
+  }
+});
+
+router.post("/:id/operating-layer/scorecards/canonical", async (req, res) => {
+  const tenant = requireTenant(req, res);
+  if (!tenant) return;
+  const territoryId = Number(req.params.id);
+  if (!Number.isFinite(territoryId)) return res.status(400).json({ message: "Invalid id" });
+  const adminUserId = Number((req as any).adminUser?.id);
+
+  try {
+    const result = await recordCanonicalTerritoryScorecardProjection({
+      tenantId: tenant.id,
+      territoryId,
+      actorUserId: Number.isFinite(adminUserId) ? adminUserId : null,
+      confirmed: req.body?.confirmed === true,
+      month: req.body?.month,
+      projectionChecksum: req.body?.projectionChecksum,
+      idempotencyKey: req.body?.idempotencyKey,
+    });
+    res.status(result.idempotentReplay ? 200 : 201).json({ ok: true, ...result });
+  } catch (error: any) {
+    const message = String(error?.message || "Failed to record canonical territory scorecard");
+    res.status(message === "Territory not found" ? 404 : 400).json({
+      message,
+      externalActionPerformed: false,
+      backgroundExecutionStarted: false,
+      credentialsExposed: false,
+    });
+  }
+});
+
+router.post("/:id/operating-layer/scorecards", async (req, res) => {
+  const tenant = requireTenant(req, res);
+  if (!tenant) return;
+  const territoryId = Number(req.params.id);
+  if (!Number.isFinite(territoryId)) return res.status(400).json({ message: "Invalid id" });
+  const adminUserId = Number((req as any).adminUser?.id);
+
+  try {
+    const result = await recordTerritoryScorecardEvidence({
+      tenantId: tenant.id,
+      territoryId,
+      actorUserId: Number.isFinite(adminUserId) ? adminUserId : null,
+      confirmed: req.body?.confirmed === true,
+      idempotencyKey: req.body?.idempotencyKey,
+      month: req.body?.month,
+      currencyCode: req.body?.currencyCode,
+      sourceWindowStart: req.body?.sourceWindowStart,
+      sourceWindowEnd: req.body?.sourceWindowEnd,
+      metrics: req.body?.metrics,
+      evidence: req.body?.evidence,
+      perMetricEvidence: req.body?.perMetricEvidence,
+    });
+    res.status(result.idempotentReplay ? 200 : 201).json({ ok: true, ...result });
+  } catch (error: any) {
+    const message = String(error?.message || "Failed to record territory scorecard evidence");
+    res.status(message === "Territory not found" ? 404 : 400).json({
+      message,
+      externalActionPerformed: false,
+      backgroundExecutionStarted: false,
+      credentialsExposed: false,
+    });
+  }
 });
 
 router.get("/:id", async (req, res) => {

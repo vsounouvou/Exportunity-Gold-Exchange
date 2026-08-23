@@ -91,6 +91,7 @@ async function assertDailySendLimit(opts: { tenantId: number; agentKey: string; 
 
 export type SendCommunicationAsStaffInput = {
   tenantId: number;
+  actionRequestId?: number | null;
   agentKey: string;
   channel: Channel;
   toE164: string;
@@ -151,6 +152,7 @@ export async function sendCommunicationAsStaff(input: SendCommunicationAsStaffIn
 
   const out = await sendOutboundCommunication({
     tenantId: input.tenantId,
+    actionRequestId: input.actionRequestId ?? null,
     agentKey,
     channel,
     toE164,
@@ -160,6 +162,7 @@ export async function sendCommunicationAsStaff(input: SendCommunicationAsStaffIn
     mediaUrls: input.mediaUrls?.length ? input.mediaUrls : null,
     metadata: {
       requestedByUserId: input.requestedByUserId ?? null,
+      actionRequestId: input.actionRequestId ?? null,
       source: input.source || "internal",
       mode,
     },

@@ -22,7 +22,7 @@ const TARGETS = [
 ];
 
 async function run() {
-  const baseUrl = process.env.SCREENSHOT_BASE_URL || process.env.MARKETING_AUDIT_BASE_URL || "http://127.0.0.1:5000";
+  const baseUrl = process.env.SCREENSHOT_BASE_URL || process.env.PUBLIC_SURFACE_AUDIT_BASE_URL || "http://127.0.0.1:5000";
   const outputDir = path.resolve(process.cwd(), "client", "public", "assets", "screenshots", "auto");
   await fs.mkdir(outputDir, { recursive: true });
 

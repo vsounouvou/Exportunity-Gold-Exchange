@@ -73,7 +73,7 @@ Release gate: build and test a global root before removing the redirect or noind
 1. The public root does not yet communicate `Trade. Source. Expand. Operate.`
 2. The required primary paths are not unified: tell us what you need, source, sell and export, manage supply, enter a new market, industries, countries, and platform.
 3. Industrial currently acts as the platform identity rather than one vertical.
-4. Mobile executive Company Brain review and connector controls are not yet present.
+4. Mobile executive Company Brain review and connector controls were not yet present at the audited baseline.
 
 ### P2 - execution and communication
 
@@ -103,6 +103,7 @@ Release gate: build and test a global root before removing the redirect or noind
 - separate least-privilege Google Drive, Gmail, and Contacts read-only connector contracts, with send and modify scopes rejected;
 - sensitive/personal source quarantine and business-relevance classification;
 - a 126-seat role catalog reconciled with the existing active agent organization;
+- a quick-session-authenticated mobile executive truth panel showing source security, claim/conflict/approval counts, the latest cited context pack, department-level role-seat coverage, and workforce demand without approval or lifecycle controls;
 - serialized external approval requests and immutable governance audit events;
 - external communication feature gates retained in the disabled state.
 
@@ -117,11 +118,8 @@ Release gate: build and test a global root before removing the redirect or noind
 
 ## Remaining release gates
 
-1. Deploy and verify the enabled Company Brain/context-pack runtime while keeping Workspace sync and external communication disabled.
-2. Connect the exact Exportunity Google Workspace account, verify identity, then enable only the approved read-only services.
-3. Review and import approved Drive, Gmail, and Contacts evidence through the visible connector workflow.
-4. Build the global corporate root and preserve all industrial deep links.
-5. Complete mobile executive Company Brain review and organization coverage UX.
-6. Run tenant, security, accessibility, desktop, tablet, mobile, and cross-role UX tests.
-7. Remove `.net` from noindex only when the global public root passes those gates.
-8. Propose external communication activation as a separate founder-approved release.
+1. Connect the exact Exportunity Google Workspace account, verify identity, then enable only the approved read-only services.
+2. Review and import approved Drive, Gmail, and Contacts evidence through the visible connector workflow.
+3. Run the remaining tenant, security, accessibility, tablet, and cross-role UX tests; the mobile executive projection has focused contract, TypeScript, production-schema, and release-build evidence.
+4. Remove `.net` from noindex only when the global public root passes those gates.
+5. Propose external communication activation as a separate founder-approved release.

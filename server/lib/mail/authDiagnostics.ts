@@ -1,4 +1,5 @@
 import dns from "node:dns/promises";
+import { analyzeMailAuthRecords } from "./authRecordPolicy";
 
 type PtrDiagnostics = {
   ip: string | null;
@@ -102,17 +103,6 @@ async function resolvePtr(input: { sourceIp: string | null; expectedHost: string
   }
 }
 
-function detectDmarcPolicy(records: string[]) {
-  for (const record of records) {
-    const policy = String(record)
-      .split(";")
-      .map((part) => part.trim())
-      .find((part) => part.toLowerCase().startsWith("p="));
-    if (policy) return policy.slice(2).trim().toLowerCase();
-  }
-  return null;
-}
-
 export async function getMailAuthDiagnostics(input: {
   domain: string;
   dkimSelectors?: string[];
@@ -137,17 +127,12 @@ export async function getMailAuthDiagnostics(input: {
     records: await safeResolveTxt(`${selector}._domainkey.${domain}`),
   })));
 
-  const spfOk = spfRecords.some((record) => record.toLowerCase().startsWith("v=spf1"));
-  const dmarcOk = dmarcRecords.some((record) => record.toLowerCase().startsWith("v=dmarc1"));
-  const dmarcPolicy = detectDmarcPolicy(dmarcRecords);
-  const selectedDkim = dkimLookups.find((entry) =>
-    entry.records.some((record) => String(record).toLowerCase().includes("v=dkim1")),
-  );
-  const dkimOk = Boolean(selectedDkim);
-
-  if (!spfOk) warnings.push("spf_missing");
-  if (!dkimOk) warnings.push("dkim_missing");
-  if (!dmarcOk) warnings.push("dmarc_missing");
+  const recordAnalysis = analyzeMailAuthRecords({
+    spfRecords,
+    dmarcRecords,
+    dkimLookups,
+  });
+  warnings.push(...recordAnalysis.warnings);
 
   const smtpHost = normalizeDomain(input.smtpHost);
   const heloConfigured = normalizeDomain(input.smtpHeloName);
@@ -173,22 +158,22 @@ export async function getMailAuthDiagnostics(input: {
     domain,
     checkedAtIso: new Date().toISOString(),
     spf: {
-      ok: spfOk,
+      ok: recordAnalysis.spfOk,
       records: spfRecords,
     },
     dkim: {
-      ok: dkimOk,
-      selector: selectedDkim?.selector || null,
-      records: selectedDkim?.records || [],
+      ok: recordAnalysis.dkimOk,
+      selector: recordAnalysis.dkimSelector,
+      records: recordAnalysis.dkimRecords,
     },
     dmarc: {
-      ok: dmarcOk,
-      policy: dmarcPolicy,
+      ok: recordAnalysis.dmarcOk,
+      policy: recordAnalysis.dmarcPolicy,
       records: dmarcRecords,
     },
     ptr,
     helo,
-    trustedForOutbound: spfOk && dkimOk,
+    trustedForOutbound: recordAnalysis.spfOk && recordAnalysis.dkimOk,
     warnings,
   };
   cache.set(cacheKey, { atMs: Date.now(), value });

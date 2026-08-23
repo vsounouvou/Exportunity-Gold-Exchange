@@ -130,7 +130,7 @@ export default function AppProOrdersPage() {
   }, [allOrders]);
 
   return (
-    <div className="min-h-screen bg-gray-950 pb-24 text-white">
+    <div className="min-h-screen bg-[#F7F8FA] pb-24 text-[#07111F]">
       <ProSideNav activeKey="orders" />
       <div className="md:ml-56">
         <AppProTopBar subtitle="Orders" />
@@ -143,7 +143,7 @@ export default function AppProOrdersPage() {
               setLocation(ordersUrl(safe), { replace: true });
             }}
           >
-            <TabsList className="grid w-full grid-cols-4 border border-white/10 bg-white/5">
+            <TabsList className="grid w-full grid-cols-4 border border-slate-200 bg-white">
               <TabsTrigger value="new">New</TabsTrigger>
               <TabsTrigger value="processing">Processing</TabsTrigger>
               <TabsTrigger value="completed">Completed</TabsTrigger>
@@ -155,14 +155,14 @@ export default function AppProOrdersPage() {
               return (
                 <TabsContent key={key} value={key} className="mt-4 space-y-3">
                   {!sellerQuery.isLoading && !sellerId ? (
-                    <Card className="border-white/10 bg-white/5">
+                    <Card className="border-slate-200 bg-white shadow-sm">
                       <CardHeader className="pb-2">
                         <CardTitle className="flex items-center gap-2 text-sm">
-                          <ShieldAlert className="h-4 w-4 text-amber-300" />
+                          <ShieldAlert className="h-4 w-4 text-[#9A6200]" />
                           Orders are handled in Operations
                         </CardTitle>
                       </CardHeader>
-                      <CardContent className="space-y-3 text-sm text-white/70">
+                      <CardContent className="space-y-3 text-sm text-slate-600">
                         <p>Your company does not have a seller shop yet. Use the Orders Agent to manage requests and fulfillment.</p>
                         <Button
                           className="w-full bg-amber-500 text-black hover:bg-amber-400"
@@ -181,32 +181,32 @@ export default function AppProOrdersPage() {
                         <button
                           key={order.id}
                           type="button"
-                          className="w-full rounded-xl border border-white/10 bg-white/5 p-4 text-left hover:bg-white/10"
+                          className="w-full rounded-xl border border-slate-200 bg-white p-4 text-left shadow-sm hover:border-[#F5A623]/50"
                           onClick={() => setLocation("/pro/operations/procurement")}
                         >
                           <div className="flex items-start justify-between gap-3">
                             <div className="min-w-0">
                               <div className="flex items-center gap-2">
-                                <div className="truncate text-sm font-semibold">{order.orderNumber}</div>
-                                <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[11px] text-white/70">
+                                <div className="truncate text-sm font-black">{order.orderNumber}</div>
+                                <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-bold text-slate-600">
                                   {String(order.status || "pending")}
                                 </span>
                               </div>
-                              <div className="mt-1 truncate text-xs text-white/60">
+                              <div className="mt-1 truncate text-xs text-slate-500">
                                 {order.buyerName || "Buyer"}
                                 {order.buyerPhone ? ` • ${order.buyerPhone}` : ""}
                               </div>
                             </div>
                             <div className="shrink-0 text-right">
-                              <div className="text-sm font-semibold text-amber-200">{formatMoney(order.total, currency)}</div>
-                              <div className="mt-1 text-[11px] text-white/45">{formatDateTime(order.createdAt)}</div>
+                              <div className="text-sm font-black text-[#8A5700]">{formatMoney(order.total, currency)}</div>
+                              <div className="mt-1 text-[11px] text-slate-400">{formatDateTime(order.createdAt)}</div>
                             </div>
                           </div>
                         </button>
                       ))
                     ) : (
-                      <Card className="border-white/10 bg-white/5">
-                        <CardContent className="p-5 text-sm text-white/70">No orders in this state yet.</CardContent>
+                      <Card className="border-slate-200 bg-white">
+                        <CardContent className="p-5 text-sm text-slate-600">No orders in this state yet.</CardContent>
                       </Card>
                     )
                   ) : null}

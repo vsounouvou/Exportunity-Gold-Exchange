@@ -37,6 +37,15 @@ type FlutterwaveStatusResponse = {
     amount: number;
     currency: string;
   } | null;
+  industrialOrder: {
+    id: string;
+    referenceCode: string;
+    status: string;
+    paymentStatus: string;
+    paidAmount: number | null;
+    paidCurrencyCode: string | null;
+    paidAt: string | null;
+  } | null;
 };
 
 function normalizeNext(value: string | null) {
@@ -82,6 +91,8 @@ export function WalletTopupReturnPage() {
   const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [amountLabel, setAmountLabel] = useState<string | null>(null);
+  const [paymentPurpose, setPaymentPurpose] = useState<string | null>(null);
+  const [industrialOrderReference, setIndustrialOrderReference] = useState<string | null>(null);
 
   const elapsedMs = Date.now() - startedAtRef.current;
   const progress = Math.min(100, Math.round((elapsedMs / 60000) * 100));
@@ -108,12 +119,17 @@ export function WalletTopupReturnPage() {
 
         setStatus(topupStatus);
         setAmountLabel(`${amount} ${currency}`);
+        setPaymentPurpose(resp.payment?.purpose || null);
+        setIndustrialOrderReference(resp.industrialOrder?.referenceCode || null);
         setError(null);
         setLoading(false);
 
         if (topupStatus === "PAID") {
           queryClient.invalidateQueries({ queryKey: ["/api/wallet/summary"] });
           queryClient.invalidateQueries({ queryKey: ["/api/wallet/ledger"] });
+          if (resp.payment?.purpose === "INDUSTRIAL_ORDER_PAYMENT") {
+            queryClient.invalidateQueries({ queryKey: ["/api/industrial/orders"] });
+          }
           setDone(true);
           if (next) navigate(next);
           return;
@@ -193,13 +209,15 @@ export function WalletTopupReturnPage() {
     };
   }, [done, fetchStatus, paymentId, topupId]);
 
+  const isIndustrialPayment = paymentPurpose === "INDUSTRIAL_ORDER_PAYMENT";
   const meta = useMemo(() => {
-    if (status === "PAID") return { title: "Top up confirmed", icon: <CheckCircle2 className="h-5 w-5 text-emerald-400" /> };
-    if (status === "FAILED") return { title: "Top up failed", icon: <XCircle className="h-5 w-5 text-rose-400" /> };
-    if (status === "CANCELLED") return { title: "Top up cancelled", icon: <XCircle className="h-5 w-5 text-rose-400" /> };
-    if (status === "EXPIRED") return { title: "Top up expired", icon: <XCircle className="h-5 w-5 text-rose-300" /> };
-    return { title: "Confirming top up...", icon: <Loader2 className="h-5 w-5 animate-spin text-amber-400" /> };
-  }, [status]);
+    const subject = isIndustrialPayment ? "Payment" : "Top up";
+    if (status === "PAID") return { title: `${subject} confirmed`, icon: <CheckCircle2 className="h-5 w-5 text-emerald-400" /> };
+    if (status === "FAILED") return { title: `${subject} failed`, icon: <XCircle className="h-5 w-5 text-rose-400" /> };
+    if (status === "CANCELLED") return { title: `${subject} cancelled`, icon: <XCircle className="h-5 w-5 text-rose-400" /> };
+    if (status === "EXPIRED") return { title: `${subject} expired`, icon: <XCircle className="h-5 w-5 text-rose-300" /> };
+    return { title: `Confirming ${subject.toLowerCase()}...`, icon: <Loader2 className="h-5 w-5 animate-spin text-amber-400" /> };
+  }, [isIndustrialPayment, status]);
 
   const isPending = status !== "PAID" && status !== "FAILED" && status !== "CANCELLED" && status !== "EXPIRED" && !done;
   const backTarget = next || "/orders";
@@ -217,6 +235,7 @@ export function WalletTopupReturnPage() {
           <div className="text-sm text-white/60">
             {topupId ? <div className="break-all">Top up: {topupId}</div> : null}
             {paymentId ? <div className="break-all">Payment: {paymentId}</div> : null}
+            {industrialOrderReference ? <div>Order: {industrialOrderReference}</div> : null}
             {amountLabel ? <div>Amount: {amountLabel}</div> : null}
           </div>
 
@@ -231,7 +250,7 @@ export function WalletTopupReturnPage() {
 
           {done && status === "PENDING" ? (
             <div className="text-sm text-white/60">
-              Your top up is still pending. It may take a moment to confirm. You can refresh this page or keep checking later.
+              {isIndustrialPayment ? "Your payment" : "Your top up"} is still pending. It may take a moment to confirm. You can refresh this page or keep checking later.
             </div>
           ) : null}
 

@@ -120,6 +120,11 @@ type IndustrialChallengeAttachment = {
   fileName: string;
   mimeType: string;
   sizeBytes: number;
+  extractionStatus?: string | null;
+  extractionMethod?: string | null;
+  extractionWarning?: string | null;
+  hasExtractedText?: boolean;
+  extractedAt?: string | null;
   visibility: string;
   createdAt?: string | null;
 };
@@ -837,6 +842,20 @@ function technicalEvidenceSize(sizeBytes: number) {
   }
   if (sizeBytes >= 1024) return `${Math.round(sizeBytes / 1024)} KB`;
   return `${Math.max(0, Math.trunc(sizeBytes || 0))} B`;
+}
+
+function attachmentExtractionLabel(language: Language, status?: string | null) {
+  const labels: Record<string, [string, string]> = {
+    extracted: ["Texte extrait", "Text extracted"],
+    empty: ["Lecture manuelle requise", "Manual reading required"],
+    ocr_required: ["OCR requis", "OCR required"],
+    visual_review_required: ["Revue visuelle requise", "Visual review required"],
+    unsupported: ["Revue manuelle requise", "Manual review required"],
+    failed: ["Extraction à reprendre", "Extraction needs review"],
+    pending: ["Extraction en attente", "Extraction pending"],
+  };
+  const value = labels[String(status || "pending")] || labels.pending;
+  return value[language === "fr" ? 0 : 1];
 }
 
 function factoryDocumentTypeLabel(language: Language, documentType: string) {
@@ -6325,6 +6344,10 @@ export default function FactoryWorkspacePage({
                                     {attachment.mimeType} ·{" "}
                                     {technicalEvidenceSize(
                                       attachment.sizeBytes,
+                                    )} ·{" "}
+                                    {attachmentExtractionLabel(
+                                      language,
+                                      attachment.extractionStatus,
                                     )}
                                   </p>
                                 </div>

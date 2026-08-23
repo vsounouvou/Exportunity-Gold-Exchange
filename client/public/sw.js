@@ -1,19 +1,14 @@
 /* eslint-disable no-restricted-globals */
-const TENANT = "bdo";
+const TENANT = "platform";
 const BUILD_SUFFIX = "dev";
 const VERSION = `${TENANT}-sw-v1-build-${BUILD_SUFFIX}`;
 
 const STATIC_CACHE = `${VERSION}:static`;
 const RUNTIME_CACHE = `${VERSION}:runtime`;
-const API_CACHE = `${VERSION}:api`;
-
 const PRECACHE_URLS = [
   "/",
   "/index.html",
   "/offline.html",
-  "/manifest-bdo.webmanifest",
-  "/tenants/bdo/official/brand/app-icon-512.png",
-  "/tenants/bdo/official/brand/favicon-512.png",
 ];
 
 function isNavigationRequest(request) {
@@ -27,6 +22,7 @@ function isApiRequest(url) {
 function shouldNetworkFirst(url) {
   if (url.pathname.endsWith("/config.js")) return true;
   if (url.pathname.endsWith("/build.json")) return true;
+  if (url.pathname.endsWith("/exportunity-surface.json")) return true;
   if (url.pathname.endsWith(".webmanifest")) return true;
   if (url.pathname.endsWith("/sw.js") || url.pathname.endsWith("/service-worker.js")) return true;
   if (url.pathname.endsWith("/index.html")) return true;
@@ -109,7 +105,7 @@ self.addEventListener("fetch", (event) => {
   if (url.origin !== self.location.origin) return;
 
   if (isApiRequest(url)) {
-    event.respondWith(networkFirst(request, API_CACHE));
+    event.respondWith(fetch(request, { cache: "no-store" }));
     return;
   }
 

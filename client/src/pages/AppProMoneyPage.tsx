@@ -250,23 +250,23 @@ export default function AppProMoneyPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-950 pb-32 text-white">
+    <div className="min-h-screen bg-[#F7F8FA] pb-32 text-[#07111F]">
       <ProSideNav activeKey="money" />
       <div className="md:ml-56">
         <AppProTopBar subtitle="Money" />
         <main className="mx-auto w-full max-w-3xl px-4 py-4">
-        <Card className="border-white/10 bg-white/5">
+        <Card className="border-slate-200 bg-white shadow-sm">
           <CardContent className="p-5">
-            <div className="text-[11px] text-white/60">Wallet balance</div>
-            <div className="mt-2 text-3xl font-semibold">{formatMoney(overview?.balance ?? 0, currency)}</div>
+            <div className="text-[11px] font-bold text-slate-500">Wallet balance</div>
+            <div className="mt-2 text-3xl font-black">{formatMoney(overview?.balance ?? 0, currency)}</div>
             <div className="mt-4 grid grid-cols-2 gap-2">
-              <div className="rounded-xl border border-white/10 bg-black/30 p-3">
-                <div className="text-[11px] text-white/60">Available</div>
-                <div className="mt-1 text-sm font-semibold">{formatMoney(overview?.balance ?? 0, currency)}</div>
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                <div className="text-[11px] font-bold text-slate-500">Available</div>
+                <div className="mt-1 text-sm font-black">{formatMoney(overview?.balance ?? 0, currency)}</div>
               </div>
-              <div className="rounded-xl border border-white/10 bg-black/30 p-3">
-                <div className="text-[11px] text-white/60">Pending</div>
-                <div className="mt-1 text-sm font-semibold">{formatMoney(overview?.pendingAmount ?? 0, currency)}</div>
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                <div className="text-[11px] font-bold text-slate-500">Pending</div>
+                <div className="mt-1 text-sm font-black">{formatMoney(overview?.pendingAmount ?? 0, currency)}</div>
               </div>
             </div>
           </CardContent>
@@ -304,28 +304,28 @@ export default function AppProMoneyPage() {
           }}
           className="mt-4"
         >
-          <TabsList className="grid w-full grid-cols-3 border border-white/10 bg-white/5">
+          <TabsList className="grid w-full grid-cols-3 border border-slate-200 bg-white">
             <TabsTrigger value="wallet" data-testid="pro-money-tab-wallet">Wallet</TabsTrigger>
             <TabsTrigger value="transactions" data-testid="pro-money-tab-transactions">Transactions</TabsTrigger>
             <TabsTrigger value="reports" data-testid="pro-money-tab-reports">Reports</TabsTrigger>
           </TabsList>
 
           <TabsContent value="wallet" className="mt-4 space-y-3" data-testid="pro-money-wallet-tab">
-            <Card className="border-white/10 bg-white/5">
+            <Card className="border-slate-200 bg-white shadow-sm">
               <CardHeader className="pb-2">
                 <CardTitle className="flex items-center gap-2 text-sm">
-                  <Wallet className="h-4 w-4 text-amber-300" />
+                  <Wallet className="h-4 w-4 text-[#9A6200]" />
                   Wallet
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-2 text-sm">
                 <div className="flex items-center justify-between">
-                  <span className="text-white/70">Wallet ID</span>
-                  <span className="font-semibold">{overview?.walletId ?? "—"}</span>
+                  <span className="text-slate-500">Wallet ID</span>
+                  <span className="font-bold">{overview?.walletId ?? "—"}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-white/70">Currency</span>
-                  <span className="font-semibold">{currency}</span>
+                  <span className="text-slate-500">Currency</span>
+                  <span className="font-bold">{currency}</span>
                 </div>
               </CardContent>
             </Card>
@@ -333,48 +333,48 @@ export default function AppProMoneyPage() {
 
           <TabsContent value="transactions" className="mt-4 space-y-3" data-testid="pro-money-transactions-tab">
             {transactions.map((tx) => (
-              <Card key={tx.id} className="border-white/10 bg-white/5">
+              <Card key={tx.id} className="border-slate-200 bg-white shadow-sm">
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <div className="text-sm font-semibold">{tx.entryType || "Transaction"}</div>
-                      <div className="mt-1 text-xs text-white/65">{tx.reference || tx.note || "Wallet operation"}</div>
+                      <div className="text-sm font-black">{tx.entryType || "Transaction"}</div>
+                      <div className="mt-1 text-xs text-slate-500">{tx.reference || tx.note || "Wallet operation"}</div>
                     </div>
                     <div className="text-right">
-                      <div className={`text-sm font-semibold ${tx.direction === "CREDIT" ? "text-emerald-300" : "text-rose-300"}`}>
+                      <div className={`text-sm font-black ${tx.direction === "CREDIT" ? "text-emerald-700" : "text-rose-700"}`}>
                         {tx.direction === "CREDIT" ? "+" : "-"}
                         {formatMoney(tx.amount, currency)}
                       </div>
-                      <div className="mt-1 text-[11px] text-white/45">{formatDateTime(tx.createdAt)}</div>
+                      <div className="mt-1 text-[11px] text-slate-400">{formatDateTime(tx.createdAt)}</div>
                     </div>
                   </div>
                 </CardContent>
               </Card>
             ))}
             {!overviewQuery.isLoading && !transactions.length ? (
-              <Card className="border-white/10 bg-white/5">
-                <CardContent className="p-5 text-sm text-white/70">No transactions yet.</CardContent>
+              <Card className="border-slate-200 bg-white">
+                <CardContent className="p-5 text-sm text-slate-600">No transactions yet.</CardContent>
               </Card>
             ) : null}
           </TabsContent>
 
           <TabsContent value="reports" className="mt-4 space-y-3" data-testid="pro-money-reports-tab">
-            <Card className="border-white/10 bg-white/5">
+            <Card className="border-slate-200 bg-white shadow-sm">
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm">Reports</CardTitle>
               </CardHeader>
               <CardContent className="space-y-2 text-sm">
                 <div className="flex items-center justify-between">
-                  <span className="text-white/70">Fees today</span>
-                  <span className="font-semibold">{formatMoney(overview?.feesToday ?? 0, currency)}</span>
+                  <span className="text-slate-500">Fees today</span>
+                  <span className="font-bold">{formatMoney(overview?.feesToday ?? 0, currency)}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-white/70">Tax estimate</span>
-                  <span className="font-semibold">{formatMoney(overview?.taxEstimate ?? 0, currency)}</span>
+                  <span className="text-slate-500">Tax estimate</span>
+                  <span className="font-bold">{formatMoney(overview?.taxEstimate ?? 0, currency)}</span>
                 </div>
                 <Button
                   variant="outline"
-                  className="mt-3 w-full border-white/15 text-white/85"
+                  className="mt-3 w-full border-slate-200 text-slate-700"
                   onClick={exportStatement}
                   disabled={!transactions.length}
                 >
@@ -394,10 +394,10 @@ export default function AppProMoneyPage() {
             setLocation(moneyUrl(section, null), { replace: true });
           }}
         >
-          <DialogContent className="bg-gray-950 border-white/10 text-white" data-testid="pro-money-receive-modal">
+          <DialogContent className="border-slate-200 bg-white text-[#07111F]" data-testid="pro-money-receive-modal">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2 text-base">
-                <QrCode className="h-4 w-4 text-amber-300" />
+                <QrCode className="h-4 w-4 text-[#9A6200]" />
                 Receive
               </DialogTitle>
             </DialogHeader>
@@ -406,29 +406,29 @@ export default function AppProMoneyPage() {
                 value={receiveAmount}
                 onChange={(event) => setReceiveAmount(event.target.value)}
                 placeholder={`Amount (${currency})`}
-                className="border-white/10 bg-white/5"
+                className="border-slate-200 bg-white"
               />
               <Input
                 value={receiveNote}
                 onChange={(event) => setReceiveNote(event.target.value)}
                 placeholder="Payment reason"
-                className="border-white/10 bg-white/5"
+                className="border-slate-200 bg-white"
               />
               <Input
                 value={receiveDueDate}
                 onChange={(event) => setReceiveDueDate(event.target.value)}
                 placeholder="Due date (optional)"
-                className="border-white/10 bg-white/5"
+                className="border-slate-200 bg-white"
               />
 
-              <div className="rounded-lg border border-white/10 bg-black/30 p-3">
-                <div className="text-xs text-white/60">Payment link</div>
-                <div className="mt-1 break-all text-xs text-white/80">{paymentLink}</div>
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                <div className="text-xs text-slate-500">Payment link</div>
+                <div className="mt-1 break-all text-xs text-slate-700">{paymentLink}</div>
                 <div className="mt-2 flex gap-2">
                   <Button
                     size="sm"
                     variant="outline"
-                    className="border-white/15 text-white/85"
+                    className="border-slate-200 text-slate-700"
                     onClick={async () => {
                       await navigator.clipboard.writeText(paymentLink);
                       toast({ title: "Copied", description: "Payment link copied." });
@@ -442,14 +442,14 @@ export default function AppProMoneyPage() {
 
               {qrDataUrl ? (
                 <div className="flex justify-center">
-                  <img src={qrDataUrl} alt="Payment QR code" className="h-44 w-44 rounded-lg border border-white/10 bg-white p-2" />
+                  <img src={qrDataUrl} alt="Payment QR code" className="h-44 w-44 rounded-lg border border-slate-200 bg-white p-2" />
                 </div>
               ) : null}
 
               <div className="flex items-center justify-end gap-2 pt-2">
                 <Button
                   variant="outline"
-                  className="border-white/15 text-white/80"
+                  className="border-slate-200 text-slate-600"
                   onClick={() => {
                     setModal(null);
                     setLocation(moneyUrl(section, null), { replace: true });
@@ -478,10 +478,10 @@ export default function AppProMoneyPage() {
             setLocation(moneyUrl(section, null), { replace: true });
           }}
         >
-          <DialogContent className="bg-gray-950 border-white/10 text-white" data-testid="pro-money-send-modal">
+          <DialogContent className="border-slate-200 bg-white text-[#07111F]" data-testid="pro-money-send-modal">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2 text-base">
-                <SendHorizontal className="h-4 w-4 text-amber-300" />
+                <SendHorizontal className="h-4 w-4 text-[#9A6200]" />
                 Send
               </DialogTitle>
             </DialogHeader>
@@ -490,25 +490,25 @@ export default function AppProMoneyPage() {
                 value={sendTo}
                 onChange={(event) => setSendTo(event.target.value)}
                 placeholder="Recipient phone or email"
-                className="border-white/10 bg-white/5"
+                className="border-slate-200 bg-white"
               />
               <Input
                 value={sendAmount}
                 onChange={(event) => setSendAmount(event.target.value)}
                 placeholder={`Amount (${currency})`}
-                className="border-white/10 bg-white/5"
+                className="border-slate-200 bg-white"
               />
               <Input
                 value={sendNote}
                 onChange={(event) => setSendNote(event.target.value)}
                 placeholder="Transfer note"
-                className="border-white/10 bg-white/5"
+                className="border-slate-200 bg-white"
               />
 
               <div className="flex items-center justify-end gap-2 pt-2">
                 <Button
                   variant="outline"
-                  className="border-white/15 text-white/80"
+                  className="border-slate-200 text-slate-600"
                   onClick={() => {
                     setModal(null);
                     setLocation(moneyUrl(section, null), { replace: true });

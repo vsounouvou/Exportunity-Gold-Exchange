@@ -18,7 +18,7 @@ import { verifyUnsubscribeToken } from "../lib/mail/unsubscribe";
 import { isProtectedExportunityStagingHost } from "../lib/seo/hostIndexingPolicy";
 
 const router = Router();
-const EXPORTUNITY_CANONICAL_HOST = "exportunity.com";
+const EXPORTUNITY_CANONICAL_HOST = "exportunity.net";
 
 function normalizeHost(host: unknown) {
   if (typeof host !== "string") return "";
@@ -32,15 +32,13 @@ function resolveRequestedHost(req: any) {
   return normalizeHost(raw);
 }
 
-function isExportunityPublicMarketingHost(host: string) {
+function isExportunityPublicHost(host: string) {
   return (
     host === "exportunity.com" ||
-    host === "www.exportunity.com"
+    host === "www.exportunity.com" ||
+    host === "exportunity.net" ||
+    host === "www.exportunity.net"
   );
-}
-
-function isExportunityNetHost(host: string) {
-  return host === "exportunity.net" || host === "www.exportunity.net";
 }
 
 function isMindbaseHost(host: string) {
@@ -56,7 +54,7 @@ function isHozHost(host: string) {
 }
 
 function isExportunityFamilyHost(host: string) {
-  return isExportunityPublicMarketingHost(host) || isExportunityNetHost(host) || isProtectedExportunityStagingHost(host);
+  return isExportunityPublicHost(host) || isProtectedExportunityStagingHost(host);
 }
 
 function requireTenant(req: any, res: any) {
@@ -74,33 +72,6 @@ function setNoCache(res: any) {
   res.setHeader("Expires", "0");
 }
 
-function maybeMarketingRedirect(req: any, res: any, destination: string) {
-  const host = resolveRequestedHost(req);
-  if (!isExportunityPublicMarketingHost(host)) return false;
-  res.redirect(301, destination);
-  return true;
-}
-
-router.get("/about", (req: any, res: any, next: any) => {
-  if (maybeMarketingRedirect(req, res, "/our-journey")) return;
-  next();
-});
-
-router.get("/library", (req: any, res: any, next: any) => {
-  if (maybeMarketingRedirect(req, res, "/media/library")) return;
-  next();
-});
-
-router.get("/copy-of-home", (req: any, res: any, next: any) => {
-  if (maybeMarketingRedirect(req, res, "/solutions")) return;
-  next();
-});
-
-router.get("/contact", (req: any, res: any, next: any) => {
-  if (maybeMarketingRedirect(req, res, "/talk")) return;
-  next();
-});
-
 router.get("/health", (req: any, res) => {
   setNoCache(res);
   const host = resolveRequestedHost(req);
@@ -112,7 +83,7 @@ router.get("/health", (req: any, res) => {
     serverTime: new Date().toISOString(),
     host,
     tenant,
-    marketingHost: isExportunityPublicMarketingHost(host),
+    publicSurface: isExportunityPublicHost(host) ? "global-trade-network" : null,
     build: {
       ok: meta.ok,
       buildId: meta.buildId,
@@ -132,7 +103,7 @@ router.get("/status", (req: any, res) => {
   const rows = [
     ["Host", host || "(unknown)"],
     ["Tenant", tenant ? `${tenant.key} (id=${tenant.id})` : "(not resolved)"],
-    ["Marketing host", String(isExportunityPublicMarketingHost(host))],
+    ["Public surface", isExportunityPublicHost(host) ? "global-trade-network" : "tenant-default"],
     ["Build ID", meta.buildId || "(unknown)"],
     ["Git SHA", meta.gitSha || "(unknown)"],
     ["Built at", meta.builtAt || "(unknown)"],
@@ -242,7 +213,7 @@ router.get("/robots.txt", (req: any, res) => {
     "/engineering",
   ];
 
-  const sitemapHost = isExportunityPublicMarketingHost(host)
+  const sitemapHost = isExportunityPublicHost(host)
     ? EXPORTUNITY_CANONICAL_HOST
     : host || "boursedelor.com";
 
@@ -361,17 +332,14 @@ router.get("/sitemap.xml", async (req: any, res) => {
   const paths = isExportunityFamilyHost(host)
     ? [
         "/",
-        "/our-journey",
-        "/solutions",
-        "/platform",
-        "/platform/gold",
-        "/platform/agents",
-        "/platform/marketplace",
-        "/media",
-        "/media/press",
-        "/media/library",
-        "/invest",
-        "/talk",
+        "/marketplace",
+        "/trade",
+        "/industrial",
+        "/industrial-map",
+        "/factories",
+        "/export-products",
+        "/producer-exchange",
+        "/ai-team",
         "/privacy",
         "/terms",
       ]

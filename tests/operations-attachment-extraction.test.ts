@@ -68,3 +68,17 @@ test("labels image evidence for visual review instead of claiming OCR", async ()
   assert.match(result.warning || "", /OCR or a vision-capable review/i);
 });
 
+test("routes CAD evidence to accountable technical review", async () => {
+  const result = await extractAttachmentText(
+    asUpload({
+      name: "replacement-part.step",
+      type: "application/step",
+      buffer: Buffer.from("ISO-10303-21;\nHEADER;\nENDSEC;"),
+    }),
+  );
+
+  assert.equal(result.status, "visual_review_required");
+  assert.equal(result.method, "cad");
+  assert.equal(result.text, "");
+  assert.match(result.warning || "", /CAD viewer/i);
+});

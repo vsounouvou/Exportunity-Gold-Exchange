@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "@db";
-import { and, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 
 import { eceSessions, eceUsers, marketplaceOrders, payments, tenants, walletAccounts, walletTopups } from "@db/schema";
 import type { TenantKey } from "../lib/tenants";
@@ -19,6 +19,17 @@ import {
 import { applyTopupPaid, initWalletTopup } from "../lib/wallet/topups";
 import { getOrCreateWalletAccount } from "../lib/wallet/wallet";
 import { normalizeTenantKey } from "../../tenants/registry";
+import {
+  INDUSTRIAL_ORDER_PAYMENT_PURPOSE,
+  INDUSTRIAL_ORDER_PAYMENT_TARGET,
+  IndustrialPaymentError,
+  industrialProviderAmountMatches,
+  loadAuthorizedIndustrialOrder,
+  loadAuthorizedIndustrialOrderPaymentTarget,
+  markIndustrialOrderPaymentPending,
+  providerCurrencyMatches,
+  syncIndustrialOrderPaymentState,
+} from "../lib/industrial/orderPayments";
 
 const router = Router();
 
@@ -274,6 +285,25 @@ async function canAccessPayment(input: {
     return !!orderEmail && orderEmail === normalizeEmail(input.user.email);
   }
 
+  if (
+    purpose === INDUSTRIAL_ORDER_PAYMENT_PURPOSE &&
+    String((input.payment as any).targetType || "").trim().toUpperCase() ===
+      INDUSTRIAL_ORDER_PAYMENT_TARGET
+  ) {
+    try {
+      await loadAuthorizedIndustrialOrder({
+        tenantId: Number((input.payment as any).tenantId),
+        orderId: String((input.payment as any).targetId || "").trim(),
+        userId: input.user.id,
+        userEmail: input.user.email,
+        isAdmin: isAdminUser(input.user),
+      });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   return false;
 }
 
@@ -294,10 +324,21 @@ async function syncFlutterwaveCharge(input: {
   charge: FlutterwaveV4Charge;
   sourcePayload?: any;
 }) {
+  const purpose = String((input.paymentRow as any).purpose || "").trim().toUpperCase();
   const expectedAmount = Number((input.paymentRow as any).amount || 0);
   const expectedCurrency = String((input.paymentRow as any).currency || "XOF").toUpperCase();
-  const amountOk = input.charge.amount === null || Number(input.charge.amount) === expectedAmount;
-  const currencyOk = !input.charge.currency || String(input.charge.currency).toUpperCase() === expectedCurrency;
+  const amountOk =
+    purpose === INDUSTRIAL_ORDER_PAYMENT_PURPOSE
+      ? industrialProviderAmountMatches({
+          providerAmount: input.charge.amount,
+          expectedAmountMinor: (input.paymentRow as any).amount,
+          currencyCode: expectedCurrency,
+        })
+      : input.charge.amount !== null && Number(input.charge.amount) === expectedAmount;
+  const currencyOk = providerCurrencyMatches({
+    providerCurrency: input.charge.currency,
+    expectedCurrency,
+  });
 
   const paymentStatus =
     input.charge.normalizedStatus === "succeeded"
@@ -334,10 +375,16 @@ async function syncFlutterwaveCharge(input: {
       })
       .where(and(eq(payments.id, input.paymentRow.id), eq(payments.tenantId, input.tenantId)));
 
+    const industrialOrder = await syncIndustrialOrderPaymentState({
+      tenantId: input.tenantId,
+      paymentId: input.paymentRow.id,
+      status: "failed",
+    });
     await markTopupFromPaymentStatus(input.paymentRow, "FAILED");
     return {
       paymentStatus: "failed" as const,
       topupStatus: "FAILED" as const,
+      industrialOrder,
     };
   }
 
@@ -356,7 +403,6 @@ async function syncFlutterwaveCharge(input: {
     })
     .where(and(eq(payments.id, input.paymentRow.id), eq(payments.tenantId, input.tenantId)));
 
-  const purpose = String((input.paymentRow as any).purpose || "").trim().toUpperCase();
   if (paymentStatus === "succeeded" && purpose === "ORDER_PAYMENT" && (input.paymentRow as any).orderId) {
     await db
       .update(marketplaceOrders)
@@ -367,6 +413,12 @@ async function syncFlutterwaveCharge(input: {
       })
       .where(and(eq(marketplaceOrders.id, (input.paymentRow as any).orderId), eq(marketplaceOrders.tenantId, input.tenantId)));
   }
+
+  const industrialOrder = await syncIndustrialOrderPaymentState({
+    tenantId: input.tenantId,
+    paymentId: input.paymentRow.id,
+    status: paymentStatus,
+  });
 
   if (paymentStatus === "succeeded" && purpose === "WALLET_TOPUP") {
     const topupId = String((input.paymentRow as any).targetId || "").trim();
@@ -384,6 +436,7 @@ async function syncFlutterwaveCharge(input: {
     return {
       paymentStatus: "succeeded" as const,
       topupStatus: "PAID" as const,
+      industrialOrder,
     };
   }
 
@@ -392,12 +445,14 @@ async function syncFlutterwaveCharge(input: {
     return {
       paymentStatus: paymentStatus as "failed" | "cancelled",
       topupStatus: paymentStatus === "failed" ? ("FAILED" as const) : ("CANCELLED" as const),
+      industrialOrder,
     };
   }
 
   return {
     paymentStatus,
     topupStatus: null,
+    industrialOrder,
   };
 }
 
@@ -419,10 +474,21 @@ async function verifyAndSyncFlutterwavePayment(input: {
     txRef: input.txRef || (input.paymentRow as any).providerTransactionRef || null,
   });
 
+  const purpose = String((input.paymentRow as any).purpose || "").trim().toUpperCase();
   const expectedAmount = Number((input.paymentRow as any).amount || 0);
   const expectedCurrency = String((input.paymentRow as any).currency || "XOF").toUpperCase();
-  const amountOk = verified.amount === null || Number(verified.amount) === expectedAmount;
-  const currencyOk = !verified.currency || String(verified.currency).toUpperCase() === expectedCurrency;
+  const amountOk =
+    purpose === INDUSTRIAL_ORDER_PAYMENT_PURPOSE
+      ? industrialProviderAmountMatches({
+          providerAmount: verified.amount,
+          expectedAmountMinor: (input.paymentRow as any).amount,
+          currencyCode: expectedCurrency,
+        })
+      : verified.amount !== null && Number(verified.amount) === expectedAmount;
+  const currencyOk = providerCurrencyMatches({
+    providerCurrency: verified.currency,
+    expectedCurrency,
+  });
 
   const normalizedStatus = verified.normalizedStatus;
   const paymentStatus =
@@ -458,11 +524,17 @@ async function verifyAndSyncFlutterwavePayment(input: {
       })
       .where(and(eq(payments.id, input.paymentRow.id), eq(payments.tenantId, input.tenantId)));
 
+    const industrialOrder = await syncIndustrialOrderPaymentState({
+      tenantId: input.tenantId,
+      paymentId: input.paymentRow.id,
+      status: "failed",
+    });
     await markTopupFromPaymentStatus(input.paymentRow, "FAILED");
     return {
       verified,
       paymentStatus: "failed" as const,
       topupStatus: "FAILED" as const,
+      industrialOrder,
     };
   }
 
@@ -481,7 +553,6 @@ async function verifyAndSyncFlutterwavePayment(input: {
     })
     .where(and(eq(payments.id, input.paymentRow.id), eq(payments.tenantId, input.tenantId)));
 
-  const purpose = String((input.paymentRow as any).purpose || "").trim().toUpperCase();
   if (paymentStatus === "succeeded" && purpose === "ORDER_PAYMENT" && (input.paymentRow as any).orderId) {
     await db
       .update(marketplaceOrders)
@@ -492,6 +563,12 @@ async function verifyAndSyncFlutterwavePayment(input: {
       })
       .where(and(eq(marketplaceOrders.id, (input.paymentRow as any).orderId), eq(marketplaceOrders.tenantId, input.tenantId)));
   }
+
+  const industrialOrder = await syncIndustrialOrderPaymentState({
+    tenantId: input.tenantId,
+    paymentId: input.paymentRow.id,
+    status: paymentStatus,
+  });
 
   if (paymentStatus === "succeeded" && purpose === "WALLET_TOPUP") {
     const topupId = String((input.paymentRow as any).targetId || "").trim();
@@ -510,6 +587,7 @@ async function verifyAndSyncFlutterwavePayment(input: {
       verified,
       paymentStatus: "succeeded" as const,
       topupStatus: "PAID" as const,
+      industrialOrder,
     };
   }
 
@@ -519,6 +597,7 @@ async function verifyAndSyncFlutterwavePayment(input: {
       verified,
       paymentStatus: paymentStatus as "failed" | "cancelled",
       topupStatus: paymentStatus === "failed" ? ("FAILED" as const) : ("CANCELLED" as const),
+      industrialOrder,
     };
   }
 
@@ -526,38 +605,85 @@ async function verifyAndSyncFlutterwavePayment(input: {
     verified,
     paymentStatus,
     topupStatus: null,
+    industrialOrder,
   };
 }
 
 router.post("/init", async (req, res) => {
   let createdPaymentId: string | null = null;
   let createdTopupId: string | null = null;
+  let paymentTenantId: number | null = null;
   try {
     const tenant = requireTenant(req, res);
     if (!tenant) return;
+    paymentTenantId = Number(tenant.id);
 
     const user = await requireAuthenticatedUser(req, res);
     if (!user) return;
 
     const typeRaw = String(req.body?.type || "WALLET_TOPUP").trim().toUpperCase();
-    if (typeRaw !== "WALLET_TOPUP" && typeRaw !== "ORDER_PAYMENT") {
+    if (
+      typeRaw !== "WALLET_TOPUP" &&
+      typeRaw !== "ORDER_PAYMENT" &&
+      typeRaw !== INDUSTRIAL_ORDER_PAYMENT_PURPOSE
+    ) {
       return res.status(400).json({
         error: "type_not_allowed",
-        allowedTypes: ["WALLET_TOPUP", "ORDER_PAYMENT"],
+        allowedTypes: [
+          "WALLET_TOPUP",
+          "ORDER_PAYMENT",
+          INDUSTRIAL_ORDER_PAYMENT_PURPOSE,
+        ],
       });
     }
-    const type: "WALLET_TOPUP" | "ORDER_PAYMENT" = typeRaw;
-    const amount = parseAmount(req.body?.amount);
-    const currency = normalizeCurrency(req.body?.currency || "XOF");
+    const type = typeRaw as
+      | "WALLET_TOPUP"
+      | "ORDER_PAYMENT"
+      | typeof INDUSTRIAL_ORDER_PAYMENT_PURPOSE;
+    let amount = parseAmount(req.body?.amount);
+    let industrialGatewayAmount: string | null = null;
+    let currency = normalizeCurrency(req.body?.currency || "XOF");
     const orderId = Number.parseInt(String(req.body?.orderId || "").trim(), 10);
+    const industrialOrderId = String(
+      req.body?.industrialOrderId ||
+        (type === INDUSTRIAL_ORDER_PAYMENT_PURPOSE ? req.body?.orderId : "") ||
+        "",
+    ).trim();
+
+    let industrialTarget:
+      | Awaited<ReturnType<typeof loadAuthorizedIndustrialOrderPaymentTarget>>
+      | null = null;
+    if (type === INDUSTRIAL_ORDER_PAYMENT_PURPOSE) {
+      if (!industrialOrderId) {
+        return res.status(400).json({
+          error: "industrialOrderId is required for INDUSTRIAL_ORDER_PAYMENT",
+        });
+      }
+      industrialTarget = await loadAuthorizedIndustrialOrderPaymentTarget({
+        tenantId: tenant.id,
+        orderId: industrialOrderId,
+        userId: user.id,
+        userEmail: user.email,
+        isAdmin: isAdminUser(user),
+      });
+      amount = industrialTarget.amountMinor;
+      industrialGatewayAmount = industrialTarget.gatewayAmount;
+      currency = industrialTarget.currency;
+    }
 
     if (!amount) return res.status(400).json({ error: "amount is required" });
-    if (amount < MIN_TOPUP_AMOUNT_XOF || amount > MAX_TOPUP_AMOUNT_XOF) {
+    if (
+      type !== INDUSTRIAL_ORDER_PAYMENT_PURPOSE &&
+      (amount < MIN_TOPUP_AMOUNT_XOF || amount > MAX_TOPUP_AMOUNT_XOF)
+    ) {
       return res.status(400).json({
         error: `amount must be between ${MIN_TOPUP_AMOUNT_XOF} and ${MAX_TOPUP_AMOUNT_XOF}`,
       });
     }
-    if (!ALLOWED_WALLET_CURRENCIES.includes(currency)) {
+    if (
+      type !== INDUSTRIAL_ORDER_PAYMENT_PURPOSE &&
+      !ALLOWED_WALLET_CURRENCIES.includes(currency)
+    ) {
       return res.status(400).json({
         error: "currency_not_allowed",
         allowedCurrencies: ALLOWED_WALLET_CURRENCIES,
@@ -587,6 +713,18 @@ router.post("/init", async (req, res) => {
         },
       });
     }
+    if (
+      type === INDUSTRIAL_ORDER_PAYMENT_PURPOSE &&
+      industrialTarget &&
+      industrialTarget.amountScale > 0 &&
+      keys.version !== "v4"
+    ) {
+      throw new IndustrialPaymentError(
+        "industrial_payment_fractional_currency_requires_v4",
+        "This exact fractional-currency order requires the Flutterwave v4 rail or a governed bank-transfer payment plan.",
+        409,
+      );
+    }
 
     const buyerEmail = normalizeEmail(user.email);
     if (!buyerEmail) return res.status(400).json({ error: "User email is required for Flutterwave checkout" });
@@ -607,7 +745,7 @@ router.post("/init", async (req, res) => {
       paymentRow = init.payment;
       createdPaymentId = init.payment.id;
       createdTopupId = init.topup.id;
-    } else {
+    } else if (type === "ORDER_PAYMENT") {
       const order = await db.query.marketplaceOrders.findFirst({
         where: and(eq(marketplaceOrders.id, orderId), eq(marketplaceOrders.tenantId, tenant.id)),
       });
@@ -645,6 +783,77 @@ router.post("/init", async (req, res) => {
         paymentRow = created;
       }
       createdPaymentId = paymentRow?.id ?? null;
+    } else {
+      if (!industrialTarget) {
+        throw new IndustrialPaymentError(
+          "industrial_order_not_found",
+          "Industrial order not found.",
+          404,
+        );
+      }
+      const existing = await db.query.payments.findFirst({
+        where: and(
+          eq(payments.tenantId, tenant.id),
+          eq(payments.provider, "flutterwave"),
+          eq(payments.purpose, INDUSTRIAL_ORDER_PAYMENT_PURPOSE),
+          eq(payments.targetType, INDUSTRIAL_ORDER_PAYMENT_TARGET),
+          eq(payments.targetId, industrialOrderId),
+        ),
+        orderBy: [desc(payments.createdAt)],
+      });
+      const existingStatus = String(existing?.status || "").trim().toLowerCase();
+      if (existing && existingStatus === "succeeded") {
+        await syncIndustrialOrderPaymentState({
+          tenantId: tenant.id,
+          paymentId: existing.id,
+          status: "succeeded",
+          actorUserId: user.id,
+        });
+        throw new IndustrialPaymentError(
+          "industrial_order_already_paid",
+          "This industrial order has already been paid.",
+          409,
+        );
+      }
+      if (existing && (existingStatus === "pending" || existingStatus === "processing")) {
+        paymentRow = existing;
+      } else {
+        paymentRow = await db
+          .insert(payments)
+          .values({
+            tenantId: tenant.id,
+            provider: "flutterwave",
+            purpose: INDUSTRIAL_ORDER_PAYMENT_PURPOSE,
+            targetType: INDUSTRIAL_ORDER_PAYMENT_TARGET,
+            targetId: industrialOrderId,
+            orderId: null,
+            amount,
+            currency,
+            method: "REDIRECT",
+            userId: String(user.id),
+            status: "pending",
+            providerPayload: null,
+            metadata: {
+              reason: "industrial_order_payment",
+              industrialOrderReference: industrialTarget.order.referenceCode,
+              requirementId: industrialTarget.requirement.id,
+              amountRepresentation: "iso_currency_minor_units",
+              amountMinor: industrialTarget.amountMinorText,
+              amountScale: industrialTarget.amountScale,
+              gatewayAmount: industrialTarget.gatewayAmount,
+            },
+          } as any)
+          .returning()
+          .then((rows) => rows[0] || null);
+      }
+      createdPaymentId = paymentRow?.id ?? null;
+      if (paymentRow) {
+        await markIndustrialOrderPaymentPending({
+          tenantId: tenant.id,
+          orderId: industrialOrderId,
+          paymentId: paymentRow.id,
+        });
+      }
     }
 
     if (!paymentRow) throw new Error("Failed to create local payment");
@@ -660,9 +869,27 @@ router.post("/init", async (req, res) => {
     if (next) callbackQs.set("next", next);
     const redirectPath = `/wallet/topup/flutterwave/return?${callbackQs.toString()}`;
     const redirectUrl = origin ? `${origin}${redirectPath}` : redirectPath;
+    const paymentReason =
+      type === "WALLET_TOPUP"
+        ? "wallet_topup"
+        : type === INDUSTRIAL_ORDER_PAYMENT_PURPOSE
+          ? "industrial_order_payment"
+          : "order_payment";
+    const paymentTitle =
+      type === "WALLET_TOPUP"
+        ? "Wallet top up"
+        : type === INDUSTRIAL_ORDER_PAYMENT_PURPOSE
+          ? `Exportunity industrial order ${industrialTarget?.order.referenceCode || ""}`.trim()
+          : "Marketplace order";
+    const paymentDescription =
+      type === "WALLET_TOPUP"
+        ? "Top up your wallet"
+        : type === INDUSTRIAL_ORDER_PAYMENT_PURPOSE
+          ? `Payment for ${industrialTarget?.order.referenceCode || "industrial order"}`
+          : "Marketplace order payment";
     const paymentMetadata = {
       ...(typeof (paymentRow as any).metadata === "object" && (paymentRow as any).metadata ? (paymentRow as any).metadata : {}),
-      reason: type === "WALLET_TOPUP" ? "wallet_topup" : "order_payment",
+      reason: paymentReason,
       flutterwaveVersion: keys.version,
     };
 
@@ -696,7 +923,7 @@ router.post("/init", async (req, res) => {
         mode: keys.mode,
         clientId: keys.clientId,
         clientSecret: keys.clientSecret,
-        amount,
+        amount: industrialGatewayAmount || amount,
         currency,
         redirectUrl,
         customerId: customer.id,
@@ -706,7 +933,7 @@ router.post("/init", async (req, res) => {
           paymentId: paymentRow.id,
           tenantKey,
           type,
-          reason: type === "WALLET_TOPUP" ? "wallet_topup" : "order_payment",
+          reason: paymentReason,
         },
       });
 
@@ -770,13 +997,13 @@ router.post("/init", async (req, res) => {
         name: buyerName,
         phone: user.phone,
       },
-      title: "Buy credit",
-      description: "Top up your wallet",
+      title: paymentTitle,
+      description: paymentDescription,
       meta: {
         paymentId: paymentRow.id,
         tenantKey,
         type,
-        reason: type === "WALLET_TOPUP" ? "wallet_topup" : "order_payment",
+        reason: paymentReason,
       },
     });
 
@@ -819,6 +1046,13 @@ router.post("/init", async (req, res) => {
         } as any)
         .where(eq(payments.id, createdPaymentId as any))
         .catch(() => undefined);
+      if (paymentTenantId) {
+        await syncIndustrialOrderPaymentState({
+          tenantId: paymentTenantId,
+          paymentId: createdPaymentId,
+          status: "failed",
+        }).catch(() => undefined);
+      }
     }
     if (createdTopupId) {
       await db
@@ -828,6 +1062,12 @@ router.post("/init", async (req, res) => {
         .catch(() => undefined);
     }
     console.error("[Flutterwave] init error:", error);
+    if (error instanceof IndustrialPaymentError) {
+      return res.status(error.statusCode).json({
+        error: error.code,
+        message: error.message,
+      });
+    }
     res.status(500).json({ error: error?.message || "Failed to initialize Flutterwave payment" });
   }
 });
@@ -984,6 +1224,50 @@ router.get("/status", async (req, res) => {
     const purpose = String((latestPayment as any)?.purpose || "").toUpperCase();
     const topupId = purpose === "WALLET_TOPUP" ? String((latestPayment as any)?.targetId || "").trim() : "";
     const topup = topupId ? await db.query.walletTopups.findFirst({ where: eq(walletTopups.id, topupId as any) }) : null;
+    let industrialOrder: Record<string, unknown> | null = null;
+    if (
+      latestPayment &&
+      purpose === INDUSTRIAL_ORDER_PAYMENT_PURPOSE &&
+      String((latestPayment as any).targetType || "").trim().toUpperCase() ===
+        INDUSTRIAL_ORDER_PAYMENT_TARGET
+    ) {
+      const localStatus = String((latestPayment as any).status || "")
+        .trim()
+        .toLowerCase();
+      if (
+        localStatus === "pending" ||
+        localStatus === "processing" ||
+        localStatus === "succeeded" ||
+        localStatus === "failed" ||
+        localStatus === "cancelled"
+      ) {
+        await syncIndustrialOrderPaymentState({
+          tenantId: tenant.id,
+          paymentId: latestPayment.id,
+          status: localStatus,
+          actorUserId: user.id,
+        });
+      }
+      const context = await loadAuthorizedIndustrialOrder({
+        tenantId: tenant.id,
+        orderId: String((latestPayment as any).targetId || "").trim(),
+        userId: user.id,
+        userEmail: user.email,
+        isAdmin: isAdminUser(user),
+      });
+      industrialOrder = {
+        id: context.order.id,
+        referenceCode: context.order.referenceCode,
+        status: context.order.status,
+        paymentStatus: context.order.paymentStatus,
+        paidAmount:
+          context.order.paidAmount === null
+            ? null
+            : Number(context.order.paidAmount),
+        paidCurrencyCode: context.order.paidCurrencyCode,
+        paidAt: context.order.paidAt,
+      };
+    }
 
     res.setHeader("Cache-Control", "no-store");
     res.json({
@@ -1011,6 +1295,7 @@ router.get("/status", async (req, res) => {
             currency: String(topup.currency || "XOF"),
           }
         : null,
+      industrialOrder,
     });
   } catch (error: any) {
     console.error("[Flutterwave] status error:", error);

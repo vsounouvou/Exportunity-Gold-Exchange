@@ -23,8 +23,17 @@ export type RouterDecision = {
   };
 };
 
+const INTERNAL_EVIDENCE_WORK_INTENTS = new Set([
+  "industrial_opportunity_workstream",
+  "trade_sector_taxonomy_proposal",
+]);
+
+function isInternalEvidenceWorkIntent(intent: string | null | undefined) {
+  return INTERNAL_EVIDENCE_WORK_INTENTS.has(String(intent || "").trim());
+}
+
 export function allowsDirectMemoryAnswer(intent: string | null | undefined) {
-  return String(intent || "").trim() !== "industrial_opportunity_workstream";
+  return !isInternalEvidenceWorkIntent(intent);
 }
 
 function simpleIntent(task: string): string | null {
@@ -151,6 +160,8 @@ export async function runAgentTask(params: {
       title:
         params.intent === "industrial_opportunity_workstream"
           ? "Industrial opportunity workstream"
+          : params.intent === "trade_sector_taxonomy_proposal"
+            ? "Trade sector taxonomy proposal"
           : "AgentOS Task",
       agentId: params.agentId,
       companyId: params.companyId ?? null,
@@ -292,14 +303,19 @@ export async function runAgentTask(params: {
 
     const industrialWorkstream =
       params.intent === "industrial_opportunity_workstream";
+    const sectorTaxonomyProposal =
+      params.intent === "trade_sector_taxonomy_proposal";
+    const internalEvidenceWork = industrialWorkstream || sectorTaxonomyProposal;
     const response = await generateText({
       jobId,
       policy,
       purpose: industrialWorkstream
         ? "industrial_opportunity_workstream"
-        : "router_hard_case",
-      taskKey: industrialWorkstream
-        ? `industrial-opportunity:${params.entityId || jobId}`
+        : sectorTaxonomyProposal
+          ? "trade_sector_taxonomy_proposal"
+          : "router_hard_case",
+      taskKey: internalEvidenceWork
+        ? `${sectorTaxonomyProposal ? "trade-sector-proposal" : "industrial-opportunity"}:${params.entityId || jobId}`
         : undefined,
       conversationId: params.conversationId || null,
       correlationId: params.correlationId || jobId,
@@ -308,7 +324,9 @@ export async function runAgentTask(params: {
           role: "system",
           content: industrialWorkstream
             ? `You are an accountable Exportunity employee executing one internal commercial-opportunity workstream. The canonical case in the user message is authoritative. Use memory only when it is directly relevant and never substitute cached content for the current case. Do not invent suppliers, prices, inventory, certifications, completed checks, or external actions. Do not contact anyone, move money, accept terms, or make commitments. Separate evidence, missing facts, risks, and proposed approval-gated next actions.\n\nSUPPORTING MEMORY:\n${memorySnippets || "(none)"}`
-            : `You are an internal AgentOS helper.\n\nUse the memory if relevant. Be concise and actionable.\n\nMEMORY:\n${memorySnippets || "(none)"}`,
+            : sectorTaxonomyProposal
+              ? `You are an accountable Exportunity data-intelligence employee preparing one internal taxonomy draft. The current demand event is authoritative. Do not contact anyone, publish content, activate coverage, make commitments, or invent evidence. Follow the requested JSON contract exactly and return no surrounding prose or Markdown. Use supporting memory only when it directly clarifies terminology; never substitute it for the current demand event.\n\nSUPPORTING MEMORY:\n${memorySnippets || "(none)"}`
+              : `You are an internal AgentOS helper.\n\nUse the memory if relevant. Be concise and actionable.\n\nMEMORY:\n${memorySnippets || "(none)"}`,
         },
         { role: "user", content: params.task },
       ],
@@ -319,14 +337,16 @@ export async function runAgentTask(params: {
     const clueId = await addClue({
       jobId,
       policy,
-      scope: industrialWorkstream ? "entity" : "personal",
+      scope: internalEvidenceWork ? "entity" : "personal",
       type: "note",
       content: response.text.slice(0, 600),
-      entityId: industrialWorkstream ? params.entityId ?? null : null,
-      tags: industrialWorkstream
-        ? ["industrial_opportunity", "workstream_review"]
+      entityId: internalEvidenceWork ? params.entityId ?? null : null,
+      tags: internalEvidenceWork
+        ? sectorTaxonomyProposal
+          ? ["trade_intelligence", "sector_taxonomy_proposal"]
+          : ["industrial_opportunity", "workstream_review"]
         : ["router_cache"],
-      confidence: industrialWorkstream ? 0.75 : 0.6,
+      confidence: internalEvidenceWork ? 0.75 : 0.6,
       embed: true,
     });
 

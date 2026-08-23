@@ -60,10 +60,10 @@ function formatDuration(seconds?: number | null) {
 
 function importStatusClass(status: string) {
   const normalized = String(status || "").toLowerCase();
-  if (normalized === "completed") return "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30";
-  if (normalized === "running" || normalized === "queued") return "bg-blue-500/15 text-blue-300 border border-blue-500/30";
-  if (normalized === "rolled_back") return "bg-slate-500/15 text-slate-300 border border-slate-500/30";
-  return "bg-red-500/15 text-red-300 border border-red-500/30";
+  if (normalized === "completed") return "border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-50";
+  if (normalized === "running" || normalized === "queued") return "border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-50";
+  if (normalized === "rolled_back") return "border border-slate-200 bg-slate-100 text-slate-700 hover:bg-slate-100";
+  return "border border-red-200 bg-red-50 text-red-700 hover:bg-red-50";
 }
 
 function asDate(value?: string | null) {
@@ -82,8 +82,6 @@ export default function AdminContactsPage() {
   const [hasWhatsapp, setHasWhatsapp] = useState("all");
   const [offset, setOffset] = useState(0);
   const [limit] = useState(50);
-  const [selectedIds, setSelectedIds] = useState<number[]>([]);
-  const [selectAllMatching, setSelectAllMatching] = useState(false);
   const [selectedContact, setSelectedContact] = useState<ContactRow | null>(null);
   const [csvFile, setCsvFile] = useState<File | null>(null);
   const [csvImportResult, setCsvImportResult] = useState<any>(null);
@@ -99,7 +97,7 @@ export default function AdminContactsPage() {
     notes: "",
   });
   const [captureFile, setCaptureFile] = useState<File | null>(null);
-  const [captureSave, setCaptureSave] = useState(true);
+  const [captureSave, setCaptureSave] = useState(false);
   const [captureTags, setCaptureTags] = useState("business_card");
   const [captureResult, setCaptureResult] = useState<any>(null);
 
@@ -165,9 +163,6 @@ export default function AdminContactsPage() {
     }
     return Array.from(set).sort();
   }, [contacts]);
-
-  const contactIdsOnPage = useMemo(() => contacts.map((item) => item.id), [contacts]);
-  const isPageFullySelected = useMemo(() => contactIdsOnPage.length > 0 && contactIdsOnPage.every((id) => selectedIds.includes(id)), [contactIdsOnPage, selectedIds]);
 
   const syncEditor = (contact: ContactRow | null) => {
     if (!contact) {
@@ -246,26 +241,6 @@ export default function AdminContactsPage() {
     },
   });
 
-  const claimLegacyMutation = useMutation({
-    mutationFn: async (force: boolean) => apiRequest("/api/tenant/contacts/claim-legacy", "POST", { force }),
-    onSuccess: async (result: any) => {
-      toast({ title: "Legacy claim complete", description: `Claimed ${result?.claimed || 0} contact link(s).` });
-      await queryClient.invalidateQueries({ queryKey: ["tenant-contacts"] });
-      await queryClient.invalidateQueries({ queryKey: ["tenant-contacts-diagnostics"] });
-    },
-    onError: (error: any) => toast({ title: "Claim failed", description: error?.message || "Could not claim legacy contacts.", variant: "destructive" }),
-  });
-
-  const forceClaimMutation = useMutation({
-    mutationFn: async () => apiRequest("/api/tenant/contacts/force-claim", "POST", {}),
-    onSuccess: async (result: any) => {
-      toast({ title: "Force claim complete", description: `Claimed ${result?.claimed || 0} contact link(s).` });
-      await queryClient.invalidateQueries({ queryKey: ["tenant-contacts"] });
-      await queryClient.invalidateQueries({ queryKey: ["tenant-contacts-diagnostics"] });
-    },
-    onError: (error: any) => toast({ title: "Force claim failed", description: error?.message || "Could not force claim contacts.", variant: "destructive" }),
-  });
-
   const rollbackMutation = useMutation({
     mutationFn: async (batchId: number) => apiRequest(`/api/admin/contacts/imports/${batchId}/rollback`, "POST", {}),
     onSuccess: async () => {
@@ -325,46 +300,38 @@ export default function AdminContactsPage() {
     },
   });
 
-  const toggleSelectPage = (checked: boolean) => {
-    if (checked) {
-      setSelectedIds(uniqueIds([...selectedIds, ...contactIdsOnPage]));
-      return;
-    }
-    setSelectedIds(selectedIds.filter((id) => !contactIdsOnPage.includes(id)));
-  };
-
-  const selectedCount = selectAllMatching ? total : selectedIds.length;
-
   return (
-    <div className="min-h-screen bg-gray-950 text-white p-6">
-      <div className="max-w-[1600px] mx-auto">
-        <Card className="bg-gray-900 border-gray-800 mb-6">
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>Admin Contacts</CardTitle>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                onClick={async () => {
-                  const result = await diagnosticsQuery.refetch();
-                  if (result.error) {
-                    toast({ title: "Diagnostics failed", description: String((result.error as any)?.message || result.error), variant: "destructive" });
-                  }
-                }}
-                disabled={diagnosticsQuery.isFetching}
-              >
-                {diagnosticsQuery.isFetching ? "Running..." : "Diagnostics"}
-              </Button>
-              <Button variant="outline" onClick={() => claimLegacyMutation.mutate(false)} disabled={claimLegacyMutation.isPending}>
-                Claim Legacy
-              </Button>
-              <Button variant="secondary" onClick={() => forceClaimMutation.mutate()} disabled={forceClaimMutation.isPending}>
-                Force Claim
-              </Button>
-            </div>
-          </CardHeader>
+    <div
+      data-testid="exportunity-contacts-workspace"
+      className="min-h-[calc(100vh-var(--admin-header-height,4rem))] bg-[#F7F8FA] p-4 pb-24 text-[#07111F] md:p-6"
+    >
+      <div className="mx-auto max-w-[1600px]">
+        <div className="mb-6 flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+          <div>
+            <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#8A5700]">GTN relationship operations</p>
+            <h1 className="mt-1 text-2xl font-black tracking-tight text-slate-950">Contact registry</h1>
+            <p className="mt-1 text-sm text-slate-500">Tenant-scoped identities, consent, imports, and attributable merge controls.</p>
+          </div>
+          <Button
+            variant="outline"
+            className="border-slate-200 bg-white text-slate-700 hover:border-[#F5A623] hover:bg-[#FFF8E8]"
+            onClick={async () => {
+              const result = await diagnosticsQuery.refetch();
+              if (result.error) {
+                toast({ title: "Diagnostics failed", description: String((result.error as any)?.message || result.error), variant: "destructive" });
+              }
+            }}
+            disabled={diagnosticsQuery.isFetching}
+          >
+            {diagnosticsQuery.isFetching ? "Running diagnostics…" : "Run diagnostics"}
+          </Button>
+        </div>
+
+        <Card className="mb-6 border-slate-200 bg-white text-slate-950 shadow-sm">
+          <CardHeader><CardTitle className="text-base text-slate-950">Contact data integrity</CardTitle></CardHeader>
           <CardContent>
             {diagnosticsQuery.data ? (
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-3 text-sm">
+              <div className="grid grid-cols-2 gap-3 text-sm md:grid-cols-5">
                 <DiagStat label="All contacts" value={diagnosticsQuery.data.totals?.contactsTotal} />
                 <DiagStat label="Current tenant" value={diagnosticsQuery.data.totals?.tenantContactsTotal} />
                 <DiagStat label="Orphan (me)" value={diagnosticsQuery.data.totals?.orphanContactsCreatedByMe} />
@@ -372,11 +339,11 @@ export default function AdminContactsPage() {
                 <DiagStat label="Staging pending" value={diagnosticsQuery.data.totals?.stagingRowsPending} />
               </div>
             ) : (
-              <div className="text-sm text-gray-400">Run diagnostics to locate imported contacts and tenant distribution.</div>
+              <div className="text-sm text-slate-500">Run the read-only diagnostic to inspect tenant distribution and imported-contact staging.</div>
             )}
             {csvImportResult ? (
-              <div className="rounded border border-gray-800 bg-gray-950 p-3 text-xs text-gray-200 mt-4">
-                <div className="text-gray-400 mb-2">Last CSV import</div>
+              <div className="mt-4 rounded-lg border border-slate-200 bg-[#FBFCFD] p-3 text-xs text-slate-700">
+                <div className="mb-2 font-bold text-slate-500">Last CSV import</div>
                 <pre className="whitespace-pre-wrap break-all">{JSON.stringify(csvImportResult, null, 2)}</pre>
               </div>
             ) : null}
@@ -384,148 +351,108 @@ export default function AdminContactsPage() {
         </Card>
 
         <Tabs value={tab} onValueChange={setTab}>
-          <TabsList className="bg-gray-900 border border-gray-800">
-            <TabsTrigger value="contacts">Contacts</TabsTrigger>
-            <TabsTrigger value="imports">Imports</TabsTrigger>
-            <TabsTrigger value="capture">Capture</TabsTrigger>
-            <TabsTrigger value="segments">Segments</TabsTrigger>
-            <TabsTrigger value="campaigns">Campaigns</TabsTrigger>
+          <TabsList className="border border-slate-200 bg-white p-1 text-slate-600">
+            <TabsTrigger value="contacts" className="data-[state=active]:bg-[#07111F] data-[state=active]:text-white">Contacts</TabsTrigger>
+            <TabsTrigger value="imports" className="data-[state=active]:bg-[#07111F] data-[state=active]:text-white">Imports</TabsTrigger>
+            <TabsTrigger value="capture" className="data-[state=active]:bg-[#07111F] data-[state=active]:text-white">Capture</TabsTrigger>
           </TabsList>
 
           <TabsContent value="contacts">
-            <div className="grid grid-cols-1 xl:grid-cols-[1fr,420px] gap-6 mt-4">
-              <Card className="bg-gray-900 border-gray-800">
+            <div className="mt-4 grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
+              <Card className="min-w-0 border-slate-200 bg-white text-slate-950 shadow-sm">
                 <CardHeader className="space-y-3">
-                  <CardTitle>Contacts</CardTitle>
-                  <div className="grid grid-cols-1 md:grid-cols-5 gap-2">
-                    <Input value={search} onChange={(event) => { setOffset(0); setSearch(event.target.value); }} placeholder="Search name / phone / email" className="bg-gray-950 border-gray-700 md:col-span-2" />
+                  <CardTitle className="text-slate-950">Contacts</CardTitle>
+                  <div className="grid grid-cols-1 gap-2 md:grid-cols-5">
+                    <Input value={search} onChange={(event) => { setOffset(0); setSearch(event.target.value); }} placeholder="Search name / phone / email" className="border-slate-200 bg-white text-slate-950 md:col-span-2" />
                     <Select value={status} onChange={(value) => { setOffset(0); setStatus(value); }} options={[["all", "Status"], ["lead", "Lead"], ["warm", "Warm"], ["customer", "Customer"], ["vip", "VIP"], ["dnc", "DNC"]]} />
                     <Select value={consent} onChange={(value) => { setOffset(0); setConsent(value); }} options={[["all", "Consent"], ["unknown", "Unknown"], ["opt_in", "Opt-in"], ["opt_out", "Opt-out"]]} />
                     <Select value={hasWhatsapp} onChange={(value) => { setOffset(0); setHasWhatsapp(value); }} options={[["all", "WhatsApp"], ["yes", "Has WhatsApp"], ["no", "No WhatsApp"]]} />
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
-                    <Select
-                      value={source}
-                      onChange={(value) => {
-                        setOffset(0);
-                        setSource(value);
-                      }}
-                      options={[["all", "All sources"], ...sourceOptions.map((item) => [item, item] as [string, string])]}
-                    />
-                    <div className="md:col-span-3 flex items-center gap-3 text-xs text-gray-400">
-                      <div className="flex items-center gap-2">
-                        <Checkbox checked={isPageFullySelected} onCheckedChange={(checked) => toggleSelectPage(Boolean(checked))} />
-                        <span>Select page</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Checkbox checked={selectAllMatching} onCheckedChange={(checked) => setSelectAllMatching(Boolean(checked))} />
-                        <span>Select all results ({total})</span>
-                      </div>
-                      <Badge>{selectedCount} selected</Badge>
-                    </div>
+                  <div className="grid grid-cols-1 gap-2 md:grid-cols-4">
+                    <Select value={source} onChange={(value) => { setOffset(0); setSource(value); }} options={[["all", "All sources"], ...sourceOptions.map((item) => [item, item] as [string, string])]} />
+                    <div className="flex items-center text-xs text-slate-500 md:col-span-3">Filters operate on the canonical tenant contact registry.</div>
                   </div>
                 </CardHeader>
                 <CardContent className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead className="text-gray-400 border-b border-gray-800">
+                  <table className="w-full min-w-[860px] text-sm">
+                    <thead className="border-b border-slate-200 text-slate-500">
                       <tr>
-                        <th className="text-left py-2 w-8"></th>
-                        <th className="text-left py-2">Name</th>
-                        <th className="text-left py-2">Phone</th>
-                        <th className="text-left py-2">Email</th>
-                        <th className="text-left py-2">Source</th>
-                        <th className="text-left py-2">Consent</th>
-                        <th className="text-left py-2">Last Interaction</th>
+                        <th className="py-2 text-left">Name</th>
+                        <th className="py-2 text-left">Phone</th>
+                        <th className="py-2 text-left">Email</th>
+                        <th className="py-2 text-left">Source</th>
+                        <th className="py-2 text-left">Consent</th>
+                        <th className="py-2 text-left">Last interaction</th>
                       </tr>
                     </thead>
                     <tbody>
                       {contacts.map((item) => (
-                        <tr
-                          key={item.id}
-                          className={`border-b border-gray-900 hover:bg-gray-800/50 ${selectedContact?.id === item.id ? "bg-sky-500/10" : ""}`}
-                        >
-                          <td className="py-2">
-                            <Checkbox
-                              checked={selectedIds.includes(item.id)}
-                              onCheckedChange={(checked) =>
-                                setSelectedIds((prev) => (checked ? uniqueIds([...prev, item.id]) : prev.filter((id) => id !== item.id)))
-                              }
-                            />
+                        <tr key={item.id} data-testid="exportunity-contact-record" className={`border-b border-slate-100 hover:bg-[#FFF8E8] ${selectedContact?.id === item.id ? "bg-[#FFF0C7]" : ""}`}>
+                          <td className="py-2 pr-4">
+                            <button type="button" className="text-left" onClick={() => { setSelectedContact(item); syncEditor(item); }}>
+                              <div className="font-bold text-slate-950">{item.displayName}</div>
+                              <div className="text-xs text-slate-500">{item.company || "—"} {item.jobTitle ? `• ${item.jobTitle}` : ""}</div>
+                            </button>
                           </td>
-                          <td className="py-2 cursor-pointer" onClick={() => { setSelectedContact(item); syncEditor(item); }}>
-                            <div className="font-medium">{item.displayName}</div>
-                            <div className="text-xs text-gray-400">{item.company || "—"} {item.jobTitle ? `• ${item.jobTitle}` : ""}</div>
-                          </td>
-                          <td className="py-2">
-                            {item.primaryPhoneE164 || "—"} {item.hasWhatsapp ? <Badge className="ml-2">WA</Badge> : null}
-                          </td>
-                          <td className="py-2">{item.primaryEmail || "—"}</td>
-                          <td className="py-2">{item.sourceSystem || item.source || "—"}</td>
-                          <td className="py-2">
-                            <Badge variant={item.isDnc ? "destructive" : "outline"}>{item.consentStatus}</Badge>
-                          </td>
-                          <td className="py-2">{asDate(item.lastInteractionAt)}</td>
+                          <td className="py-2 pr-4 text-slate-700">{item.primaryPhoneE164 || "—"} {item.hasWhatsapp ? <Badge className="ml-2 bg-emerald-50 text-emerald-700 hover:bg-emerald-50">WA</Badge> : null}</td>
+                          <td className="py-2 pr-4 text-slate-700">{item.primaryEmail || "—"}</td>
+                          <td className="py-2 pr-4 text-slate-700">{item.sourceSystem || item.source || "—"}</td>
+                          <td className="py-2 pr-4"><Badge variant={item.isDnc ? "destructive" : "outline"} className={item.isDnc ? "" : "border-slate-200 bg-white text-slate-700 hover:bg-white"}>{item.consentStatus}</Badge></td>
+                          <td className="py-2 text-slate-700">{asDate(item.lastInteractionAt)}</td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
 
-                  <div className="flex items-center justify-between mt-4 text-xs text-gray-400">
+                  {contactsQuery.isLoading ? <div className="py-8 text-center text-sm text-slate-500">Loading contacts…</div> : null}
+                  {contactsQuery.isError ? <div className="py-8 text-center text-sm text-red-700">Unable to load contacts.</div> : null}
+                  {!contactsQuery.isLoading && !contactsQuery.isError && contacts.length === 0 ? <div className="py-8 text-center text-sm text-slate-500">No contacts match the current filters.</div> : null}
+
+                  <div className="mt-4 flex items-center justify-between text-xs text-slate-500">
                     <div>Total: {total}</div>
                     <div className="flex gap-2">
-                      <Button variant="outline" size="sm" disabled={offset <= 0} onClick={() => setOffset(Math.max(0, offset - limit))}>
-                        Previous
-                      </Button>
-                      <Button variant="outline" size="sm" disabled={!contactsQuery.data?.hasMore} onClick={() => setOffset(offset + limit)}>
-                        Next
-                      </Button>
+                      <Button variant="outline" size="sm" className="border-slate-200 bg-white text-slate-700 hover:border-[#F5A623] hover:bg-[#FFF8E8]" disabled={offset <= 0} onClick={() => setOffset(Math.max(0, offset - limit))}>Previous</Button>
+                      <Button variant="outline" size="sm" className="border-slate-200 bg-white text-slate-700 hover:border-[#F5A623] hover:bg-[#FFF8E8]" disabled={!contactsQuery.data?.hasMore} onClick={() => setOffset(offset + limit)}>Next</Button>
                     </div>
                   </div>
                 </CardContent>
               </Card>
 
-              <Card className="bg-gray-900 border-gray-800">
-                <CardHeader>
-                  <CardTitle>{selectedContact ? `Contact #${selectedContact.id}` : "Contact Profile"}</CardTitle>
-                </CardHeader>
+              <Card className="border-slate-200 bg-white text-slate-950 shadow-sm">
+                <CardHeader><CardTitle className="text-slate-950">{selectedContact ? `Contact #${selectedContact.id}` : "Contact profile"}</CardTitle></CardHeader>
                 <CardContent className="space-y-3">
                   {selectedContact ? (
                     <>
-                      <Input value={editor.displayName} onChange={(event) => setEditor((prev) => ({ ...prev, displayName: event.target.value }))} placeholder="Name" className="bg-gray-950 border-gray-700" />
-                      <Input value={editor.company} onChange={(event) => setEditor((prev) => ({ ...prev, company: event.target.value }))} placeholder="Company" className="bg-gray-950 border-gray-700" />
-                      <Input value={editor.jobTitle} onChange={(event) => setEditor((prev) => ({ ...prev, jobTitle: event.target.value }))} placeholder="Job title" className="bg-gray-950 border-gray-700" />
-                      <Input value={editor.emails} onChange={(event) => setEditor((prev) => ({ ...prev, emails: event.target.value }))} placeholder="Emails (comma separated)" className="bg-gray-950 border-gray-700" />
-                      <Input value={editor.phones} onChange={(event) => setEditor((prev) => ({ ...prev, phones: event.target.value }))} placeholder="Phones (comma separated)" className="bg-gray-950 border-gray-700" />
-                      <Input value={editor.tags} onChange={(event) => setEditor((prev) => ({ ...prev, tags: event.target.value }))} placeholder="Tags (comma separated)" className="bg-gray-950 border-gray-700" />
+                      <Input value={editor.displayName} onChange={(event) => setEditor((prev) => ({ ...prev, displayName: event.target.value }))} placeholder="Name" className="border-slate-200 bg-white text-slate-950" />
+                      <Input value={editor.company} onChange={(event) => setEditor((prev) => ({ ...prev, company: event.target.value }))} placeholder="Company" className="border-slate-200 bg-white text-slate-950" />
+                      <Input value={editor.jobTitle} onChange={(event) => setEditor((prev) => ({ ...prev, jobTitle: event.target.value }))} placeholder="Job title" className="border-slate-200 bg-white text-slate-950" />
+                      <Input value={editor.emails} onChange={(event) => setEditor((prev) => ({ ...prev, emails: event.target.value }))} placeholder="Emails (comma separated)" className="border-slate-200 bg-white text-slate-950" />
+                      <Input value={editor.phones} onChange={(event) => setEditor((prev) => ({ ...prev, phones: event.target.value }))} placeholder="Phones (comma separated)" className="border-slate-200 bg-white text-slate-950" />
+                      <Input value={editor.tags} onChange={(event) => setEditor((prev) => ({ ...prev, tags: event.target.value }))} placeholder="Tags (comma separated)" className="border-slate-200 bg-white text-slate-950" />
                       <div className="grid grid-cols-2 gap-2">
                         <Select value={editor.status} onChange={(value) => setEditor((prev) => ({ ...prev, status: value }))} options={[["lead", "Lead"], ["warm", "Warm"], ["customer", "Customer"], ["vip", "VIP"], ["dnc", "DNC"]]} />
                         <Select value={editor.consentStatus} onChange={(value) => setEditor((prev) => ({ ...prev, consentStatus: value }))} options={[["unknown", "Unknown"], ["opt_in", "Opt-in"], ["opt_out", "Opt-out"]]} />
                       </div>
-                      <Textarea value={editor.notes} onChange={(event) => setEditor((prev) => ({ ...prev, notes: event.target.value }))} placeholder="Notes" className="bg-gray-950 border-gray-700 min-h-[120px]" />
-                      <div className="flex gap-2 flex-wrap">
-                        <Button onClick={() => updateMutation.mutate()} disabled={updateMutation.isPending}>{updateMutation.isPending ? "Saving..." : "Save"}</Button>
-                        <Button variant="destructive" onClick={() => dncMutation.mutate()} disabled={dncMutation.isPending}>Mark DNC</Button>
+                      <Textarea value={editor.notes} onChange={(event) => setEditor((prev) => ({ ...prev, notes: event.target.value }))} placeholder="Notes" className="min-h-[120px] border-slate-200 bg-white text-slate-950" />
+                      <div className="flex flex-wrap gap-2">
+                        <Button className="bg-[#F5A623] font-bold text-[#07111F] hover:bg-[#E49718]" onClick={() => updateMutation.mutate()} disabled={updateMutation.isPending}>{updateMutation.isPending ? "Saving…" : "Save contact"}</Button>
+                        <Button variant="destructive" onClick={() => { if (window.confirm(`Mark ${selectedContact.displayName} as do-not-contact and opt out?`)) dncMutation.mutate(); }} disabled={dncMutation.isPending}>Mark DNC</Button>
                       </div>
-                      <div className="pt-3 border-t border-gray-800">
-                        <div className="text-xs text-gray-400 mb-2">Merge suggestions</div>
+                      <div className="border-t border-slate-200 pt-3">
+                        <div className="mb-2 text-xs font-bold text-slate-500">Merge suggestions</div>
                         <div className="space-y-2">
                           {(mergeSuggestionsQuery.data?.items || []).map((item: any) => (
-                            <div key={item.id} className="flex items-center justify-between rounded border border-gray-800 p-2 text-xs">
-                              <div>
-                                <div className="font-medium">{item.display_name}</div>
-                                <div className="text-gray-400">{item.primary_email || item.primary_phone_e164 || "No primary identity"}</div>
-                              </div>
-                              <Button size="sm" variant="outline" onClick={() => mergeMutation.mutate(Number(item.id))} disabled={mergeMutation.isPending}>
-                                Merge
-                              </Button>
+                            <div key={item.id} className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-[#FBFCFD] p-2 text-xs">
+                              <div><div className="font-bold text-slate-950">{item.display_name}</div><div className="text-slate-500">{item.primary_email || item.primary_phone_e164 || "No primary identity"}</div></div>
+                              <Button size="sm" variant="outline" className="border-slate-200 bg-white text-slate-700 hover:border-[#F5A623] hover:bg-[#FFF8E8]" onClick={() => { if (window.confirm(`Merge ${item.display_name || `contact #${item.id}`} into ${selectedContact.displayName}?`)) mergeMutation.mutate(Number(item.id)); }} disabled={mergeMutation.isPending}>Merge</Button>
                             </div>
                           ))}
-                          {!(mergeSuggestionsQuery.data?.items || []).length ? <div className="text-xs text-gray-500">No likely duplicates.</div> : null}
+                          {!(mergeSuggestionsQuery.data?.items || []).length ? <div className="text-xs text-slate-500">No likely duplicates.</div> : null}
                         </div>
                       </div>
                     </>
                   ) : (
-                    <div className="text-sm text-gray-400">Select a contact row to edit profile, tags, consent, and merge duplicates.</div>
+                    <div className="text-sm text-slate-500">Select a contact to review or edit its attributable profile, tags, and consent.</div>
                   )}
                 </CardContent>
               </Card>
@@ -533,150 +460,55 @@ export default function AdminContactsPage() {
           </TabsContent>
 
           <TabsContent value="imports">
-            <Card className="bg-gray-900 border-gray-800 mt-4">
-              <CardHeader>
-                <CardTitle>Import from CSV</CardTitle>
-              </CardHeader>
+            <Card className="mt-4 border-slate-200 bg-white text-slate-950 shadow-sm">
+              <CardHeader><CardTitle className="text-slate-950">Import from CSV</CardTitle></CardHeader>
               <CardContent className="space-y-3">
-                <Input type="file" accept=".csv,text/csv" onChange={(event) => setCsvFile(event.target.files?.[0] || null)} className="bg-gray-950 border-gray-700" />
-                <Button onClick={() => csvImportMutation.mutate()} disabled={!csvFile || csvImportMutation.isPending}>
-                  {csvImportMutation.isPending ? "Importing..." : "Import CSV"}
-                </Button>
-                {csvFile ? (
-                  <div className="text-xs text-gray-400">
-                    Selected file: <span className="text-gray-200">{csvFile.name}</span> ({Math.round(csvFile.size / 1024)} KB)
-                  </div>
-                ) : null}
-                <div className="text-xs text-gray-400">Import creates canonical contacts and links them to your tenant so they are visible immediately.</div>
+                <Input type="file" accept=".csv,text/csv" onChange={(event) => setCsvFile(event.target.files?.[0] || null)} className="border-slate-200 bg-white text-slate-950" />
+                <Button className="bg-[#F5A623] font-bold text-[#07111F] hover:bg-[#E49718]" onClick={() => csvImportMutation.mutate()} disabled={!csvFile || csvImportMutation.isPending}>{csvImportMutation.isPending ? "Importing…" : "Import CSV"}</Button>
+                {csvFile ? <div className="text-xs text-slate-500">Selected file: <span className="font-medium text-slate-700">{csvFile.name}</span> ({Math.round(csvFile.size / 1024)} KB)</div> : null}
+                <div className="text-xs text-slate-500">Import creates canonical contacts and links them to the current tenant.</div>
                 {activeImport ? (
-                  <div className="rounded border border-blue-500/30 bg-blue-500/5 p-3 space-y-2">
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="text-sm font-medium text-blue-200">
-                        Active batch #{activeImport.id}
-                        {activeImport.fileName ? ` • ${activeImport.fileName}` : ""}
-                      </div>
-                      <Badge className={importStatusClass(String(activeImport.status || ""))}>{String(activeImport.status || "running")}</Badge>
-                    </div>
-                    <div className="h-2 rounded bg-gray-800 overflow-hidden">
-                      <div
-                        className="h-full bg-blue-500 transition-all"
-                        style={{ width: `${Math.max(0, Math.min(100, asNumber(activeImport.progressPct, 0)))}%` }}
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-[11px] text-gray-300">
-                      <div>Processed: {asNumber(activeImport.processedRows, 0)} / {asNumber(activeImport.totalRows, 0)}</div>
-                      <div>Created: {asNumber(activeImport.createdContacts, 0)}</div>
-                      <div>Linked: {asNumber(activeImport.linkedExisting, 0)}</div>
-                      <div>Errors: {asNumber(activeImport.errorCount, 0)}</div>
-                    </div>
-                    {activeImport.runningForSeconds != null ? (
-                      <div className="text-[11px] text-gray-400">Running for {formatDuration(activeImport.runningForSeconds)}</div>
-                    ) : null}
+                  <div className="space-y-2 rounded-lg border border-blue-200 bg-blue-50 p-3">
+                    <div className="flex items-center justify-between gap-2"><div className="text-sm font-bold text-blue-900">Active batch #{activeImport.id}{activeImport.fileName ? ` • ${activeImport.fileName}` : ""}</div><Badge className={importStatusClass(String(activeImport.status || ""))}>{String(activeImport.status || "running")}</Badge></div>
+                    <div className="h-2 overflow-hidden rounded bg-blue-100"><div className="h-full bg-blue-600 transition-all" style={{ width: `${Math.max(0, Math.min(100, asNumber(activeImport.progressPct, 0)))}%` }} /></div>
+                    <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-700 md:grid-cols-4"><div>Processed: {asNumber(activeImport.processedRows, 0)} / {asNumber(activeImport.totalRows, 0)}</div><div>Created: {asNumber(activeImport.createdContacts, 0)}</div><div>Linked: {asNumber(activeImport.linkedExisting, 0)}</div><div>Errors: {asNumber(activeImport.errorCount, 0)}</div></div>
+                    {activeImport.runningForSeconds != null ? <div className="text-[11px] text-slate-500">Running for {formatDuration(activeImport.runningForSeconds)}</div> : null}
                   </div>
                 ) : null}
               </CardContent>
             </Card>
-            <Card className="bg-gray-900 border-gray-800 mt-4">
-              <CardHeader>
-                <CardTitle>Import Batches</CardTitle>
-              </CardHeader>
+
+            <Card className="mt-4 border-slate-200 bg-white text-slate-950 shadow-sm">
+              <CardHeader><CardTitle className="text-slate-950">Import batches</CardTitle></CardHeader>
               <CardContent className="space-y-2">
-                {Number(importsQuery.data?.staleFailed || 0) > 0 ? (
-                  <div className="text-xs text-amber-300 bg-amber-500/10 border border-amber-500/30 rounded p-2">
-                    Auto-marked {Number(importsQuery.data?.staleFailed || 0)} stale running import batch(es) as failed.
-                  </div>
-                ) : null}
+                {Number(importsQuery.data?.staleFailed || 0) > 0 ? <div className="rounded border border-amber-200 bg-amber-50 p-2 text-xs text-amber-800">Auto-marked {Number(importsQuery.data?.staleFailed || 0)} stale running import batch(es) as failed.</div> : null}
                 {(importsQuery.data?.items || []).map((batch: any) => (
-                  <div key={batch.id} className="flex items-center justify-between border border-gray-800 rounded p-3 text-sm">
-                    <div>
-                      <div className="font-medium">Batch #{batch.id} • {batch.source}</div>
-                      <div className="text-xs text-gray-400">{batch.status} • {asDate(batch.created_at)} • mode={batch.mode}</div>
-                      <div className="mt-2 h-2 rounded bg-gray-800 overflow-hidden">
-                        <div
-                          className={`h-full transition-all ${String(batch.status || "").toLowerCase() === "failed" ? "bg-red-500" : "bg-blue-500"}`}
-                          style={{ width: `${Math.max(0, Math.min(100, asNumber(batch.progressPct, 0)))}%` }}
-                        />
-                      </div>
-                      <div className="mt-1 text-[11px] text-gray-400">
-                        {asNumber(batch.processedRows, 0)}/{asNumber(batch.totalRows, 0)} processed • created {asNumber(batch.createdContacts, 0)} • linked {asNumber(batch.linkedExisting, 0)} • errors {asNumber(batch.errorCount, 0)}
-                        {batch.runningForSeconds != null ? ` • running ${formatDuration(batch.runningForSeconds)}` : ""}
-                      </div>
+                  <div key={batch.id} className="flex flex-col justify-between gap-3 rounded-lg border border-slate-200 bg-[#FBFCFD] p-3 text-sm sm:flex-row sm:items-center">
+                    <div className="min-w-0 flex-1">
+                      <div className="font-bold text-slate-950">Batch #{batch.id} • {batch.source}</div>
+                      <div className="text-xs text-slate-500">{batch.status} • {asDate(batch.created_at)} • mode={batch.mode}</div>
+                      <div className="mt-2 h-2 overflow-hidden rounded bg-slate-200"><div className={`h-full transition-all ${String(batch.status || "").toLowerCase() === "failed" ? "bg-red-600" : "bg-blue-600"}`} style={{ width: `${Math.max(0, Math.min(100, asNumber(batch.progressPct, 0)))}%` }} /></div>
+                      <div className="mt-1 text-[11px] text-slate-500">{asNumber(batch.processedRows, 0)}/{asNumber(batch.totalRows, 0)} processed • created {asNumber(batch.createdContacts, 0)} • linked {asNumber(batch.linkedExisting, 0)} • errors {asNumber(batch.errorCount, 0)}{batch.runningForSeconds != null ? ` • running ${formatDuration(batch.runningForSeconds)}` : ""}</div>
                     </div>
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => rollbackMutation.mutate(Number(batch.id))}
-                      disabled={
-                        rollbackMutation.isPending ||
-                        String(batch.status || "").toLowerCase() === "rolled_back" ||
-                        String(batch.status || "").toLowerCase() === "running" ||
-                        String(batch.status || "").toLowerCase() === "queued"
-                      }
-                    >
-                      Rollback
-                    </Button>
+                    <Button variant="destructive" size="sm" onClick={() => { if (window.confirm(`Rollback import batch #${batch.id}? This reverses records created by the batch.`)) rollbackMutation.mutate(Number(batch.id)); }} disabled={rollbackMutation.isPending || String(batch.status || "").toLowerCase() === "rolled_back" || String(batch.status || "").toLowerCase() === "running" || String(batch.status || "").toLowerCase() === "queued"}>Rollback</Button>
                   </div>
                 ))}
-                {!(importsQuery.data?.items || []).length ? <div className="text-sm text-gray-400">No import history yet.</div> : null}
+                {!(importsQuery.data?.items || []).length ? <div className="text-sm text-slate-500">No import history yet.</div> : null}
               </CardContent>
             </Card>
           </TabsContent>
 
           <TabsContent value="capture">
-            <Card className="bg-gray-900 border-gray-800 mt-4">
-              <CardHeader>
-                <CardTitle>Business Card Capture</CardTitle>
-              </CardHeader>
+            <Card className="mt-4 border-slate-200 bg-white text-slate-950 shadow-sm">
+              <CardHeader><CardTitle className="text-slate-950">Business card capture</CardTitle></CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid gap-3 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label>Image</Label>
-                    <Input type="file" accept="image/*" onChange={(event) => setCaptureFile(event.target.files?.[0] || null)} className="bg-gray-950 border-gray-700" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Tags</Label>
-                    <Input value={captureTags} onChange={(event) => setCaptureTags(event.target.value)} placeholder="business_card,event_2026" className="bg-gray-950 border-gray-700" />
-                  </div>
+                  <div className="space-y-2"><Label className="text-slate-700">Image</Label><Input type="file" accept="image/*" onChange={(event) => setCaptureFile(event.target.files?.[0] || null)} className="border-slate-200 bg-white text-slate-950" /></div>
+                  <div className="space-y-2"><Label className="text-slate-700">Tags</Label><Input value={captureTags} onChange={(event) => setCaptureTags(event.target.value)} placeholder="business_card,event_2026" className="border-slate-200 bg-white text-slate-950" /></div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Checkbox checked={captureSave} onCheckedChange={(checked) => setCaptureSave(Boolean(checked))} />
-                  <Label>Save/merge into Contacts immediately</Label>
-                </div>
-                <Button onClick={() => captureMutation.mutate()} disabled={captureMutation.isPending || !captureFile}>
-                  {captureMutation.isPending ? "Extracting..." : "Extract contact(s)"}
-                </Button>
-                {captureResult ? (
-                  <div className="rounded border border-gray-800 bg-gray-950 p-3 text-sm">
-                    <div className="text-xs text-gray-400 mb-2">Extraction result</div>
-                    <pre className="whitespace-pre-wrap break-all text-xs text-gray-200">{JSON.stringify(captureResult, null, 2)}</pre>
-                  </div>
-                ) : null}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="segments">
-            <Card className="bg-gray-900 border-gray-800 mt-4">
-              <CardHeader>
-                <CardTitle>Segments</CardTitle>
-              </CardHeader>
-              <CardContent className="text-sm text-gray-300 space-y-2">
-                <div>Segmenting uses tags + source + consent + status filters.</div>
-                <div>Current working set: <Badge>{total}</Badge> contacts.</div>
-                <div className="text-xs text-gray-400">Use Contacts filters, then switch to Campaigns to prepare approval-gated outreach.</div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="campaigns">
-            <Card className="bg-gray-900 border-gray-800 mt-4">
-              <CardHeader>
-                <CardTitle>Campaigns (Approval Gated)</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3 text-sm">
-                <div className="text-gray-300">Selected audience: <Badge>{selectedCount}</Badge> contacts</div>
-                <div className="text-gray-300">Approval rule is enforced: sends are blocked unless a campaign is explicitly approved.</div>
-                <Button disabled>Start Outreach (Approval Required)</Button>
+                <div className="flex items-center gap-2"><Checkbox checked={captureSave} onCheckedChange={(checked) => setCaptureSave(Boolean(checked))} /><Label className="text-slate-700">Save or merge after successful extraction</Label></div>
+                <Button className="bg-[#F5A623] font-bold text-[#07111F] hover:bg-[#E49718]" onClick={() => captureMutation.mutate()} disabled={captureMutation.isPending || !captureFile}>{captureMutation.isPending ? "Extracting…" : captureSave ? "Extract and save contacts" : "Extract without saving"}</Button>
+                {captureResult ? <div className="rounded-lg border border-slate-200 bg-[#FBFCFD] p-3 text-sm"><div className="mb-2 text-xs font-bold text-slate-500">Extraction result</div><pre className="whitespace-pre-wrap break-all text-xs text-slate-700">{JSON.stringify(captureResult, null, 2)}</pre></div> : null}
               </CardContent>
             </Card>
           </TabsContent>
@@ -684,10 +516,6 @@ export default function AdminContactsPage() {
       </div>
     </div>
   );
-}
-
-function uniqueIds(values: number[]) {
-  return Array.from(new Set(values));
 }
 
 function Select({
@@ -700,7 +528,7 @@ function Select({
   options: Array<[string, string]>;
 }) {
   return (
-    <select value={value} onChange={(event) => onChange(event.target.value)} className="h-10 rounded-md border border-gray-700 bg-gray-950 px-3 text-sm">
+    <select value={value} onChange={(event) => onChange(event.target.value)} className="h-10 rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-950">
       {options.map(([optValue, label]) => (
         <option key={optValue} value={optValue}>
           {label}
@@ -712,9 +540,9 @@ function Select({
 
 function DiagStat({ label, value }: { label: string; value: unknown }) {
   return (
-    <div className="rounded border border-gray-800 bg-gray-950 p-2">
-      <div className="text-[11px] uppercase tracking-wider text-gray-500">{label}</div>
-      <div className="text-sm font-semibold text-gray-100 mt-1">{String(value ?? "—")}</div>
+    <div className="rounded-lg border border-slate-200 bg-[#FBFCFD] p-2">
+      <div className="text-[11px] uppercase tracking-wider text-slate-500">{label}</div>
+      <div className="mt-1 text-sm font-bold text-slate-950">{String(value ?? "—")}</div>
     </div>
   );
 }

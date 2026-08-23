@@ -116,6 +116,8 @@ export * from "./schema/notifications";
 
 // Export Mindbase (creator profiles + intellect marketplace)
 export * from "./schema/mindbase";
+// Export Exportunity-owned provider connections and OAuth state
+export * from "./schema/exportunity-integrations";
 // Export Maison en Terre tenant commerce/cms tables
 export * from "./schema/met";
 // Export AGOOJYE tenant industrial mobility platform tables
@@ -123,9 +125,24 @@ export * from "./schema/agoojye";
 
 // Export PME Exchange lead, outreach, and profile tables
 export * from "./schema/pme-exchange";
-
-// Export Exportunity industrial factory, catalog, and requirement foundation.
+// Export Exportunity industrial factory, catalog, and requirement foundation
 export * from "./schema/industrial";
+export * from "./schema/exportunity-supplier-quotes";
+export * from "./schema/exportunity-procurement";
+export * from "./schema/exportunity-supplier-purchase-orders";
+export * from "./schema/exportunity-delivery-accounting";
+export * from "./schema/exportunity-relationship-continuity";
+
+// Export the evidence-backed carrier registry and governed logistics adapter layer.
+export * from "./schema/carrier-network";
+export * from "./schema/group-buying";
+
+// Export Exportunity's provenance-backed trade intelligence knowledge graph.
+export * from "./schema/trade-intelligence";
+
+// Territory Media-to-Commerce operational profiles, coverage, and rights ledger.
+export * from "./schema/territory-media-commerce";
+export * from "./schema/media-studio";
 
 // Export Action Router tables (background action requests + results)
 export * from "./schema/actions";

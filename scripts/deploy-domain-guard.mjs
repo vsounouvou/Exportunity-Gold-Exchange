@@ -33,20 +33,22 @@ if (!profile || !domain) {
   process.exit(0);
 }
 
-const corporateAllowed = new Set(["com.exportunity.net", "exportunity.com", "www.exportunity.com"]);
-const platformExactAllowed = new Set(["exportunity.net", "www.exportunity.net"]);
+const platformExactAllowed = new Set([
+  "exportunity.com",
+  "www.exportunity.com",
+  "exportunity.net",
+  "www.exportunity.net",
+  "com.exportunity.net",
+  "www.com.exportunity.net",
+]);
 
 if (profile === "corporate") {
-  if (!corporateAllowed.has(domain)) {
-    fail(`blocked: corporate profile cannot deploy to "${domain}"`);
-  }
-  console.log(`[deploy-domain-guard] ok: corporate -> ${domain}`);
-  process.exit(0);
+  fail(`blocked: the retired corporate homepage profile cannot deploy to "${domain}"`);
 }
 
 if (profile === "platform") {
   const allowed =
-    platformExactAllowed.has(domain) || (domain.endsWith(".exportunity.net") && domain !== "com.exportunity.net");
+    platformExactAllowed.has(domain) || domain.endsWith(".exportunity.net");
   if (!allowed) {
     fail(`blocked: platform profile cannot deploy to "${domain}"`);
   }

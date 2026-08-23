@@ -16,11 +16,29 @@ import { Textarea } from "@/components/ui/textarea";
 
 import { Loader2, PhoneCall, RefreshCw, Send } from "lucide-react";
 
+type SocialCommsChannel =
+  | "facebook_comment"
+  | "facebook_messenger"
+  | "instagram_comment"
+  | "instagram_dm"
+  | "youtube_comment"
+  | "tiktok_comment"
+  | "tiktok_dm"
+  | "linkedin_comment"
+  | "linkedin_dm"
+  | "x_reply"
+  | "x_dm";
+type CommsChannel = "sms" | "whatsapp" | "voice" | SocialCommsChannel;
+
+function isSocialChannel(channel: CommsChannel | string): channel is SocialCommsChannel {
+  return !["sms", "whatsapp", "voice"].includes(String(channel));
+}
+
 type CommsThread = {
   id: number;
   tenantId: number;
   agentKey: string;
-  channel: "sms" | "whatsapp" | "voice";
+  channel: CommsChannel;
   peerAddress: string;
   lastMessageAt: string;
   metadata: Record<string, unknown>;
@@ -32,7 +50,7 @@ type CommsWorkOrder = {
   id: number;
   tenantId: number;
   agentKey: string;
-  channel: "sms" | "whatsapp" | "voice";
+  channel: CommsChannel;
   threadId: number;
   status: string;
   peerAddress: string;
@@ -71,7 +89,7 @@ type CommsMessage = {
   direction: "inbound" | "outbound";
   status: string;
   provider: string;
-  channel: "sms" | "whatsapp" | "voice";
+  channel: CommsChannel;
   fromAddress: string;
   toAddress: string;
   body: string | null;
@@ -168,6 +186,7 @@ export function AdminCommunicationsInboxPage() {
           dueAt: row.workOrder.dueAt,
           lastAt: row.thread?.lastMessageAt ?? row.workOrder.lastInboundAt ?? null,
           status: row.workOrder.status,
+          metadata: row.thread?.metadata ?? row.workOrder.metadata,
         }))
         .sort((a, b) => String(a.dueAt || "").localeCompare(String(b.dueAt || "")));
     }
@@ -182,6 +201,7 @@ export function AdminCommunicationsInboxPage() {
       dueAt: row.workOrder?.dueAt ?? null,
       lastAt: row.thread.lastMessageAt ?? null,
       status: row.workOrder?.status ?? "-",
+      metadata: row.thread.metadata,
     }));
   }, [mode, workOrdersQuery.data?.items, threadsQuery.data?.items]);
 
@@ -226,6 +246,9 @@ export function AdminCommunicationsInboxPage() {
     mutationFn: async () => {
       if (!activeThread) throw new Error("Select a thread first");
       if (activeThread.channel === "voice") throw new Error("Voice threads require a call back");
+      if (isSocialChannel(activeThread.channel)) {
+        throw new Error("Social replies require an official adapter and an approved fact/policy pack");
+      }
       const body = composeBody.trim();
       if (!body) throw new Error("Message is empty");
       return await apiRequest("/api/comms/send", "POST", {
@@ -250,6 +273,7 @@ export function AdminCommunicationsInboxPage() {
   const callMutation = useMutation({
     mutationFn: async () => {
       if (!activeThread) throw new Error("Select a thread first");
+      if (isSocialChannel(activeThread.channel)) throw new Error("Social identities cannot be called");
       return await apiRequest("/api/voice/call", "POST", {
         agentKey: activeThread.agentKey,
         toE164: activeThread.peerAddress,
@@ -295,12 +319,14 @@ export function AdminCommunicationsInboxPage() {
   });
 
   const dueLabel = formatDueLabel(activeWorkOrder?.dueAt ?? null);
+  const activeIsSocial = activeThread ? isSocialChannel(activeThread.channel) : false;
+  const activeMetadata = (activeWorkOrder?.metadata || activeThread?.metadata || {}) as Record<string, any>;
 
   return (
     <div className="p-6 space-y-4 max-w-7xl mx-auto">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-white">Inbox (SMS / WhatsApp / Voice)</h1>
+          <h1 className="text-2xl font-bold text-white">Team Inbox (Messaging / Social / Voice)</h1>
           <p className="text-gray-400 text-sm">Tenant: {tenant?.name || "-"}</p>
         </div>
         <div className="flex items-center gap-2">
@@ -327,6 +353,11 @@ export function AdminCommunicationsInboxPage() {
           <Link href="/admin/settings/communications/twilio">
             <Button variant="outline" size="sm">
               Twilio settings
+            </Button>
+          </Link>
+          <Link href="/admin/media">
+            <Button variant="outline" size="sm">
+              Social readiness
             </Button>
           </Link>
         </div>
@@ -363,6 +394,11 @@ export function AdminCommunicationsInboxPage() {
                             <div className="text-[11px] text-white/55 truncate">
                               {it.channel.toUpperCase()} • {agent?.name || it.agentKey}
                             </div>
+                            {(it.metadata as any)?.classification ? (
+                              <div className="text-[10px] text-amber-200/80 mt-1">
+                                {String((it.metadata as any).classification).replace(/_/g, " ")}
+                              </div>
+                            ) : null}
                           </div>
                           <div className="shrink-0 text-right">
                             <Badge className="text-[10px] bg-white/10 border-white/15 text-white/70">{it.channel.toUpperCase()}</Badge>
@@ -456,8 +492,18 @@ export function AdminCommunicationsInboxPage() {
                       <div className="text-sm text-white whitespace-pre-wrap mt-1">
                         {m.channel === "voice" ? `Call (${m.status || "unknown"})` : m.body || ((m.metadata as any)?.media ? "[media]" : "-")}
                       </div>
+                      {(m.metadata as any)?.classification ? (
+                        <div className="flex flex-wrap gap-1 mt-2">
+                          <Badge className="text-[10px] bg-amber-500/10 border-amber-400/20 text-amber-100">
+                            {String((m.metadata as any).classification).replace(/_/g, " ")}
+                          </Badge>
+                          <Badge className="text-[10px] bg-white/10 border-white/15 text-white/70">
+                            {String((m.metadata as any).replyPolicyStatus || "fact_pack_required").replace(/_/g, " ")}
+                          </Badge>
+                        </div>
+                      ) : null}
                       {m.direction === "outbound" && m.providerMessageId ? (
-                        <div className="text-[11px] text-white/50 mt-1 font-mono break-words">sid: {m.providerMessageId}</div>
+                        <div className="text-[11px] text-white/50 mt-1 font-mono break-words">provider id: {m.providerMessageId}</div>
                       ) : null}
                       {m.errorMessage ? <div className="text-[11px] text-rose-200 mt-1">{m.errorMessage}</div> : null}
                     </div>
@@ -467,7 +513,31 @@ export function AdminCommunicationsInboxPage() {
             </ScrollArea>
 
             {activeThread ? (
-              activeThread.channel === "voice" ? (
+              activeIsSocial ? (
+                <div className="rounded-lg border border-amber-400/20 bg-amber-500/5 p-4 space-y-3">
+                  <div>
+                    <div className="text-sm text-amber-100 font-semibold">Governed social response</div>
+                    <div className="text-xs text-amber-100/70 mt-1">
+                      This verified provider event is in the Team Inbox. Direct reply is fail-closed until an official reply adapter,
+                      approved product facts, price references where applicable, policy/tone references, and human approval are attached.
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-white/65">
+                    <div>Classification: {String(activeMetadata.classification || "review required").replace(/_/g, " ")}</div>
+                    <div>Reply gate: {String(activeMetadata.replyPolicyStatus || "fact_pack_required").replace(/_/g, " ")}</div>
+                    <div>CRM contact: {activeMetadata.contactId ? `#${activeMetadata.contactId}` : "not lead-eligible"}</div>
+                    <div>Review task: {activeMetadata.agentTaskId ? `#${activeMetadata.agentTaskId} (paused)` : "pending"}</div>
+                  </div>
+                  <Textarea
+                    value=""
+                    readOnly
+                    disabled
+                    placeholder="Social reply disabled until the governed reply package is complete."
+                    className="bg-black/30 border-white/10 text-white min-h-[88px]"
+                  />
+                  <div className="text-[11px] text-white/50">No external reply, moderation action, or platform status is claimed here.</div>
+                </div>
+              ) : activeThread.channel === "voice" ? (
                 <div className="rounded-lg border border-white/10 bg-black/20 p-3">
                   <div className="flex items-center justify-between gap-2">
                     <div>

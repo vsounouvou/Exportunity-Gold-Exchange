@@ -57,9 +57,8 @@ The repo already contains a Twilio-first communications layer with:
 
 There is **no real omni-notification system** yet:
 - `server/lib/notifications.ts` explicitly states notifications are not DB-backed and currently returns no-ops.
-- There are placeholder endpoints for “performance notifications”:
-  - `GET /api/notifications/:agentId` and `POST /api/notifications/read` (defined in `server/routes.ts` monolith file)
-  - UI: `client/src/pages/PerformanceDiagnosticsPage.tsx`
+- Legacy “performance notification” endpoints remain documented for backend review, but their unreferenced diagnostics renderer was retired.
+- The current tenant-scoped notification workspace is `/admin/notifications` in `client/src/pages/AdminNotificationsPage.tsx`.
 
 ---
 

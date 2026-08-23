@@ -2,8 +2,13 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  applySemanticCommercialIntentCandidate,
   classifyIndustrialIntake,
   extractIndustrialIntakeFacts,
+  mayRefineDeterministicBuyIntent,
+  parseSemanticCommercialIntentCandidate,
+  SEMANTIC_COMMERCIAL_INTENT_JSON_SCHEMA,
+  shouldUseSemanticCommercialFallback,
 } from "../server/lib/industrial/intakeAssistant";
 import { resolveCommercialQualification } from "../server/lib/industrial/commercialIntentEngine";
 import {
@@ -164,6 +169,200 @@ test("refined palm-oil demand keeps supplied facts and asks only for missing tra
   assert.doesNotMatch(preview.response, /CAD|plan|photo/i);
   assert.match(preview.response, /ponctuel|r[eé]current/i);
   assert.doesNotMatch(preview.response, /qualifier le volume|qualify the volume/i);
+});
+
+test("semantic fallback recognizes an unfamiliar raw material and keeps action authority deterministic", () => {
+  const deterministic = classifyIndustrialIntake(
+    "We need 40 tonnes of sodium silicate delivered to Lagos, one-time, CIF.",
+    "en",
+  );
+
+  assert.equal(deterministic.product.name, undefined);
+  assert.equal(
+    shouldUseSemanticCommercialFallback(
+      "We need 40 tonnes of sodium silicate delivered to Lagos, one-time, CIF.",
+      deterministic,
+    ),
+    true,
+  );
+
+  const resolved = applySemanticCommercialIntentCandidate({
+    preview: deterministic,
+    language: "en",
+    candidate: {
+      intent: "BUY_PRODUCT",
+      confidence: 0.94,
+      productName: "sodium silicate",
+      productCategory: "industrial silicate",
+      specification: null,
+      quantity: "40",
+      unit: "tonnes",
+      requirementType: "raw_material",
+      categoryCode: "raw_materials",
+      origin: null,
+      destination: "Lagos",
+      targetPrice: null,
+      currency: null,
+      deadline: null,
+      frequency: "One-time purchase",
+      incoterm: "CIF",
+      customerType: null,
+      suggestedAction: "ACT",
+    },
+  });
+
+  assert.equal(resolved.classificationMode, "semantic_fallback");
+  assert.equal(resolved.requirementType, "raw_material");
+  assert.equal(resolved.categoryCode, "raw_materials");
+  assert.equal(resolved.product.name, "sodium silicate");
+  assert.equal(resolved.product.category, "industrial_silicate");
+  assert.equal(resolved.facts.quantityText, "40 tonnes");
+  assert.equal(resolved.facts.deliveryDestination, "Lagos");
+  assert.deepEqual(resolved.missingFields, []);
+  assert.equal(resolved.suggestedAction, "ACT");
+  assert.doesNotMatch(resolved.response, /CAD|drawing|photo/i);
+});
+
+test("semantic fallback cannot force ACT while deterministic qualification fields are missing", () => {
+  const deterministic = classifyIndustrialIntake(
+    "We need sodium silicate.",
+    "en",
+  );
+  const resolved = applySemanticCommercialIntentCandidate({
+    preview: deterministic,
+    language: "en",
+    candidate: {
+      intent: "BUY_PRODUCT",
+      confidence: 0.93,
+      productName: "sodium silicate",
+      productCategory: "industrial silicate",
+      requirementType: "raw_material",
+      categoryCode: "raw_materials",
+      suggestedAction: "ACT",
+    },
+  });
+
+  assert.deepEqual(resolved.missingFields, [
+    "product.quantity",
+    "destination",
+    "frequency",
+    "incoterm",
+  ]);
+  assert.equal(resolved.suggestedAction, "ASK");
+  assert.match(resolved.response, /quantity/i);
+});
+
+test("low-confidence or invalid semantic candidates cannot replace deterministic routing", () => {
+  const deterministic = classifyIndustrialIntake(
+    "We need an unfamiliar processing input.",
+    "en",
+  );
+  const lowConfidence = applySemanticCommercialIntentCandidate({
+    preview: deterministic,
+    language: "en",
+    candidate: {
+      intent: "BUY_PRODUCT",
+      confidence: 0.81,
+      productName: "unfamiliar processing input",
+      requirementType: "raw_material",
+      categoryCode: "raw_materials",
+    },
+  });
+
+  assert.strictEqual(lowConfidence, deterministic);
+  assert.equal(
+    parseSemanticCommercialIntentCandidate({
+      intent: "EXECUTE_EXTERNAL_PURCHASE",
+      confidence: 1,
+    }),
+    null,
+  );
+});
+
+test("semantic structured output cannot carry an action mode", () => {
+  assert.equal(SEMANTIC_COMMERCIAL_INTENT_JSON_SCHEMA.additionalProperties, false);
+  assert.equal(
+    "suggestedAction" in SEMANTIC_COMMERCIAL_INTENT_JSON_SCHEMA.properties,
+    false,
+  );
+  assert.equal(
+    SEMANTIC_COMMERCIAL_INTENT_JSON_SCHEMA.required.includes(
+      "suggestedAction" as never,
+    ),
+    false,
+  );
+});
+
+test("known product routing does not spend a semantic fallback call", () => {
+  const preview = classifyIndustrialIntake(
+    "I need 20 tonnes of refined palm oil delivered to Abidjan.",
+    "en",
+  );
+
+  assert.equal(preview.classificationMode, "deterministic");
+  assert.equal(
+    shouldUseSemanticCommercialFallback(
+      "I need 20 tonnes of refined palm oil delivered to Abidjan.",
+      preview,
+    ),
+    false,
+  );
+});
+
+test("semantic refinement separates a known-product seller from a buyer", () => {
+  const message = "We produce palm oil for export to regional distributors.";
+  const deterministic = classifyIndustrialIntake(message, "en");
+
+  assert.equal(deterministic.intent, "BUY_PRODUCT");
+  assert.equal(mayRefineDeterministicBuyIntent(message, deterministic), true);
+  assert.equal(
+    shouldUseSemanticCommercialFallback(message, deterministic),
+    true,
+  );
+
+  const resolved = applySemanticCommercialIntentCandidate({
+    preview: deterministic,
+    language: "en",
+    allowIntentRefinement: true,
+    candidate: {
+      intent: "SELL_EXPORT",
+      confidence: 0.95,
+      productName: "palm oil",
+      productCategory: "palm oil",
+      requirementType: "export_quotation",
+      categoryCode: "export_ready_factory_products",
+    },
+  });
+
+  assert.equal(resolved.intent, "SELL_EXPORT");
+  assert.equal(resolved.commercial, true);
+  assert.equal(resolved.classificationMode, "semantic_fallback");
+});
+
+test("semantic refinement can downgrade an informational product question to ANSWER", () => {
+  const message = "What is palm oil used for?";
+  const deterministic = classifyIndustrialIntake(message, "en");
+  const resolved = applySemanticCommercialIntentCandidate({
+    preview: deterministic,
+    language: "en",
+    allowIntentRefinement: true,
+    candidate: {
+      intent: "GENERAL_QUESTION",
+      confidence: 0.97,
+      productName: "palm oil",
+      productCategory: "palm oil",
+      requirementType: "raw_material",
+      categoryCode: "raw_materials",
+    },
+  });
+
+  assert.equal(deterministic.intent, "BUY_PRODUCT");
+  assert.equal(shouldUseSemanticCommercialFallback(message, deterministic), true);
+  assert.equal(resolved.intent, "GENERAL_QUESTION");
+  assert.equal(resolved.commercial, false);
+  assert.deepEqual(resolved.missingFields, []);
+  assert.equal(resolved.suggestedAction, "ANSWER");
+  assert.match(resolved.response, /general question/i);
 });
 
 test("the buyer conversation asks only unresolved palm-oil terms", () => {

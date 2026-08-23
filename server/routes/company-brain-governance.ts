@@ -246,7 +246,14 @@ router.get("/relationship-reconstruction", async (req: any, res) => {
     const sourceLimit = Math.min(250, Math.max(limit * 2, 50));
     const warnings: string[] = [];
 
-    const [requirementRows, factoryRows, emailRows, workspaceEmailRows, conversationRows] = await Promise.all([
+    const [
+      requirementRows,
+      factoryRows,
+      continuityRows,
+      emailRows,
+      workspaceEmailRows,
+      conversationRows,
+    ] = await Promise.all([
       safelyReadRelationshipRows("Industrial requirement", () => db.execute(sql`
         select
           ir.id::text as entity_id,
@@ -310,6 +317,43 @@ router.get("/relationship-reconstruction", async (req: any, res) => {
             )
           )
         order by rel.next_review_at asc nulls last, rel.last_contacted_at asc nulls last
+        limit ${sourceLimit}
+      `), warnings),
+      safelyReadRelationshipRows("Delivered transaction continuity", () => db.execute(sql`
+        select
+          review.id::text as entity_id,
+          review.memory_id::text,
+          review.status::text,
+          review.recommended_action,
+          review.proposed_next_review_at,
+          review.consent_status,
+          review.is_dnc,
+          memory.order_id::text,
+          memory.requirement_id::text,
+          memory.customer_contact_id,
+          memory.supplier_profile_id::text,
+          memory.reference_code,
+          memory.product_name,
+          memory.quantity_text,
+          memory.unit_of_measure,
+          memory.destination,
+          memory.cadence_text,
+          memory.delivered_at,
+          memory.customer_memory ->> 'displayName' as customer_name,
+          memory.customer_memory ->> 'company' as customer_company,
+          memory.supplier_memory ->> 'supplierName' as supplier_name
+        from industrial_relationship_continuity_reviews review
+        join industrial_transaction_relationship_memories memory
+          on memory.id = review.memory_id and memory.tenant_id = review.tenant_id
+        where review.tenant_id = ${tenantId}
+          and (
+            review.status = 'review_required'::industrial_relationship_continuity_status
+            or (
+              review.status = 'approved_internal'::industrial_relationship_continuity_status
+              and review.proposed_next_review_at <= now()
+            )
+          )
+        order by review.proposed_next_review_at asc nulls first, memory.delivered_at asc
         limit ${sourceLimit}
       `), warnings),
       safelyReadRelationshipRows("Email thread", () => db.execute(sql`
@@ -502,6 +546,39 @@ router.get("/relationship-reconstruction", async (req: any, res) => {
         consentStatus: "unknown",
         isDnc: false,
         openPath: "/admin/industrial-network",
+      }));
+    }
+
+    for (const row of continuityRows) {
+      candidates.push(buildRelationshipCandidate({
+        id: `relationship-continuity:${row.entity_id}`,
+        kind: "delivered_order_continuity",
+        title: `${row.product_name || "Delivered order"} relationship continuity`,
+        organization: row.customer_company,
+        person: row.customer_name,
+        stage: row.status,
+        lastActivityAt: row.delivered_at,
+        dueAt: row.proposed_next_review_at,
+        nextAction: row.recommended_action,
+        facts: [
+          `The recorded ${row.quantity_text || "completed"} ${row.unit_of_measure || ""} transaction was delivered to ${row.destination || "the recorded destination"}.`,
+          row.cadence_text ? `The customer requirement recorded a ${row.cadence_text} cadence.` : "No verified reorder cadence is recorded; a person must choose the next review date.",
+          row.supplier_name ? `The delivered supplier evidence is linked to ${row.supplier_name}.` : "",
+        ].filter(Boolean),
+        evidence: [
+          { entityType: "industrial_relationship_continuity_review", entityId: String(row.entity_id), label: "Internal continuity review" },
+          { entityType: "industrial_transaction_relationship_memory", entityId: String(row.memory_id), label: String(row.reference_code) },
+          { entityType: "industrial_order", entityId: String(row.order_id), label: "Delivered order" },
+          { entityType: "industrial_requirement", entityId: String(row.requirement_id), label: "Commercial requirement" },
+          { entityType: "industrial_supplier_profile", entityId: String(row.supplier_profile_id), label: "Delivered supplier" },
+          ...(row.customer_contact_id
+            ? [{ entityType: "contact", entityId: String(row.customer_contact_id), label: "Canonical customer" }]
+            : []),
+        ],
+        consentStatus: row.consent_status,
+        isDnc: row.is_dnc,
+        commercialEvidenceCount: 3,
+        openPath: `/admin/industrial-network?requirement=${encodeURIComponent(String(row.requirement_id))}`,
       }));
     }
 

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import {
@@ -76,9 +76,21 @@ type ForgeRequest = {
   desired_description?: string | null;
   desired_entity?: string | null;
   status?: string;
+  pr_url?: string | null;
+  error_log?: string | null;
+  updated_at?: string;
   created_at?: string;
 };
 type ForgeResponse = { ok: boolean; items: ForgeRequest[] };
+type ForgeEvent = {
+  id: string | number;
+  status_from?: string | null;
+  status_to?: string | null;
+  notes?: string | null;
+  created_at?: string;
+};
+type ForgeDetailResponse = { ok: boolean; request: ForgeRequest; events: ForgeEvent[] };
+type ActionsTab = "queue" | "decisions" | "automations";
 
 const ACTIVE_STATES = new Set(["CREATED", "QUEUED", "RUNNING", "PENDING"]);
 
@@ -144,6 +156,29 @@ function buildActionKeyFromPrompt(input: string) {
     .replace(/[^A-Z0-9]+/g, "_")
     .replace(/^_+|_+$/g, "");
   return (normalized || "AUTOMATION_REQUEST").slice(0, 64);
+}
+
+function initialActionsTab(): ActionsTab {
+  if (typeof window === "undefined") return "queue";
+  const requested = new URLSearchParams(window.location.search).get("view");
+  return requested === "decisions" || requested === "automations" ? requested : "queue";
+}
+
+function forgeStatusClasses(status: string) {
+  if (status === "PUBLISHED") return "border-emerald-200 bg-emerald-50 text-emerald-800";
+  if (status === "APPROVED") return "border-blue-200 bg-blue-50 text-blue-800";
+  if (status === "NEEDS_REVIEW") return "border-amber-300 bg-amber-50 text-amber-900";
+  if (status === "REJECTED") return "border-red-200 bg-red-50 text-red-800";
+  return "border-slate-200 bg-slate-50 text-slate-700";
+}
+
+function redactForgeText(value?: string | null) {
+  const text = String(value || "").trim();
+  if (!text) return "No note recorded";
+  return text
+    .replace(/\b(authorization)(\s*[:=]\s*)(?:(?:Bearer|Basic)\s+)?[^\s,;]+/gi, "$1$2[REDACTED]")
+    .replace(/\b(api[-_]?key|secret|token|password|cookie|pin|cvv|cvc)(\s*[:=]\s*)[^\s,;]+/gi, "$1$2[REDACTED]")
+    .replace(/\b(Bearer|Basic)\s+[^\s,;]+/gi, "$1 [REDACTED]");
 }
 
 function ActionRecord({
@@ -223,9 +258,12 @@ export function ActionsPage() {
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [activeTab, setActiveTab] = useState<ActionsTab>(initialActionsTab);
   const [automationOpen, setAutomationOpen] = useState(false);
   const [automationPrompt, setAutomationPrompt] = useState("");
   const [automationEntity, setAutomationEntity] = useState("operations");
+  const [selectedForgeId, setSelectedForgeId] = useState<string | null>(null);
+  const [forgeDecisionNote, setForgeDecisionNote] = useState("");
 
   const queueQuery = useQuery<QueueResponse>({
     queryKey: ["/api/actions/queue?limit=200"],
@@ -245,6 +283,12 @@ export function ActionsPage() {
   const forgeQuery = useQuery<ForgeResponse>({
     queryKey: ["/api/action-forge/requests"],
     queryFn: () => apiRequest("/api/action-forge/requests", "GET"),
+  });
+  const forgeDetailQuery = useQuery<ForgeDetailResponse>({
+    queryKey: selectedForgeId ? [`/api/action-forge/requests/${selectedForgeId}`] : ["__no_forge_detail__"],
+    queryFn: () => apiRequest(`/api/action-forge/requests/${selectedForgeId}`, "GET"),
+    enabled: Boolean(selectedForgeId),
+    staleTime: 8_000,
   });
 
   const refreshActionQueries = async () => {
@@ -288,9 +332,63 @@ export function ActionsPage() {
     onError: (error: any) => toast({ title: "Request failed", description: error?.message || "The automation request could not be created.", variant: "destructive" }),
   });
 
+  const forgeTransitionMutation = useMutation({
+    mutationFn: (input: { id: string; action: "approve" | "reject" | "publish"; note: string }) =>
+      apiRequest(
+        `/api/action-forge/${input.id}/${input.action}`,
+        "POST",
+        input.action === "reject" ? { reason: input.note } : { notes: input.note || undefined },
+      ),
+    onSuccess: async (_response, input) => {
+      setForgeDecisionNote("");
+      toast({
+        title: input.action === "approve" ? "Automation approved" : input.action === "reject" ? "Automation rejected" : "Automation published",
+        description: input.action === "publish" ? "The approved action key was added to the governed registry." : "The decision was added to the request history.",
+      });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["/api/action-forge/requests"] }),
+        queryClient.invalidateQueries({ queryKey: [`/api/action-forge/requests/${input.id}`] }),
+      ]);
+    },
+    onError: (error: any) => toast({ title: "Decision failed", description: error?.message || "The request was not changed.", variant: "destructive" }),
+  });
+
   const queue = Array.isArray(queueQuery.data?.items) ? queueQuery.data!.items : [];
   const decisions = Array.isArray(decisionsQuery.data?.items) ? decisionsQuery.data!.items : [];
   const forgeRequests = Array.isArray(forgeQuery.data?.items) ? forgeQuery.data!.items : [];
+
+  useEffect(() => {
+    if (!forgeRequests.length) {
+      setSelectedForgeId(null);
+      return;
+    }
+    if (!selectedForgeId || !forgeRequests.some((item) => String(item.id) === selectedForgeId)) {
+      setSelectedForgeId(String(forgeRequests[0].id));
+    }
+  }, [forgeRequests, selectedForgeId]);
+
+  const selectedForgeRequest = forgeDetailQuery.data?.request || forgeRequests.find((item) => String(item.id) === selectedForgeId) || null;
+  const selectedForgeStatus = normalize(selectedForgeRequest?.status || "REQUESTED");
+  const canApproveForge = selectedForgeStatus === "NEEDS_REVIEW";
+  const canRejectForge = Boolean(selectedForgeRequest && !["PUBLISHED", "REJECTED"].includes(selectedForgeStatus));
+  const canPublishForge = selectedForgeStatus === "APPROVED";
+
+  const confirmForgeTransition = (action: "approve" | "reject" | "publish") => {
+    if (!selectedForgeId || !selectedForgeRequest) return;
+    const note = forgeDecisionNote.trim();
+    if (action === "reject" && !note) {
+      toast({ title: "Rejection reason required", description: "Record why this automation must not proceed.", variant: "destructive" });
+      return;
+    }
+    if (action === "publish" && selectedForgeStatus !== "APPROVED") return;
+    const actionKey = selectedForgeRequest.desired_action_key || "this automation";
+    const prompt = action === "approve"
+      ? `Approve ${actionKey} for the governed registry review stage? This does not publish it.`
+      : action === "reject"
+        ? `Reject ${actionKey} and record the supplied reason?`
+        : `Publish ${actionKey} to the action registry? This changes the server-side registry and cannot be treated as a draft.`;
+    if (window.confirm(prompt)) forgeTransitionMutation.mutate({ id: selectedForgeId, action, note });
+  };
 
   const stats = useMemo(() => ({
     active: queue.filter((item) => ACTIVE_STATES.has(actionState(item))).length,
@@ -360,11 +458,11 @@ export function ActionsPage() {
           ))}
         </section>
 
-        <Tabs defaultValue="queue" className="mt-6">
+        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as ActionsTab)} className="mt-6">
           <TabsList className="h-auto w-full justify-start overflow-x-auto rounded-none border-b border-slate-200 bg-transparent p-0 dark:border-slate-800">
-            <TabsTrigger value="queue" className="rounded-none border-b-2 border-transparent px-4 py-3 data-[state=active]:border-[#f5a623] data-[state=active]:bg-transparent">Work queue</TabsTrigger>
-            <TabsTrigger value="decisions" className="rounded-none border-b-2 border-transparent px-4 py-3 data-[state=active]:border-[#f5a623] data-[state=active]:bg-transparent">Approvals ({decisions.length})</TabsTrigger>
-            <TabsTrigger value="automations" className="rounded-none border-b-2 border-transparent px-4 py-3 data-[state=active]:border-[#f5a623] data-[state=active]:bg-transparent">Automation requests</TabsTrigger>
+            <TabsTrigger value="queue" className="rounded-none border-b-2 border-transparent px-3 py-3 text-xs text-slate-500 data-[state=active]:border-[#f5a623] data-[state=active]:bg-transparent data-[state=active]:text-slate-950 dark:text-slate-400 dark:data-[state=active]:text-white sm:px-4 sm:text-sm">Work queue</TabsTrigger>
+            <TabsTrigger value="decisions" className="rounded-none border-b-2 border-transparent px-3 py-3 text-xs text-slate-500 data-[state=active]:border-[#f5a623] data-[state=active]:bg-transparent data-[state=active]:text-slate-950 dark:text-slate-400 dark:data-[state=active]:text-white sm:px-4 sm:text-sm">Approvals ({decisions.length})</TabsTrigger>
+            <TabsTrigger value="automations" aria-label="Automation requests" className="rounded-none border-b-2 border-transparent px-3 py-3 text-xs text-slate-500 data-[state=active]:border-[#f5a623] data-[state=active]:bg-transparent data-[state=active]:text-slate-950 dark:text-slate-400 dark:data-[state=active]:text-white sm:px-4 sm:text-sm">Automations</TabsTrigger>
           </TabsList>
 
           <TabsContent value="queue" className="mt-4">
@@ -411,23 +509,86 @@ export function ActionsPage() {
           </TabsContent>
 
           <TabsContent value="automations" className="mt-4">
-            <div className="overflow-hidden border border-slate-200 bg-white dark:border-slate-800 dark:bg-[#0a1628]">
-              {forgeQuery.isLoading ? (
-                <div className="flex items-center justify-center gap-2 px-4 py-16 text-sm text-slate-500"><Loader2 className="h-4 w-4 animate-spin" /> Loading requests</div>
-              ) : forgeRequests.length ? forgeRequests.map((request) => (
-                <div key={request.id} className="border-b border-slate-200 px-5 py-4 last:border-b-0 dark:border-slate-800">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div>
-                      <div className="text-xs font-semibold uppercase text-[#9a6200] dark:text-[#f5a623]">{request.desired_action_key || "Automation request"}</div>
-                      <div className="mt-1 text-sm font-medium">{request.desired_description || "Technical specification required"}</div>
-                    </div>
-                    <Badge variant="outline">{normalize(request.status || "REQUESTED").replace(/_/g, " ")}</Badge>
-                  </div>
-                  <div className="mt-2 flex flex-wrap gap-3 text-xs text-slate-500"><span>Entity: {request.desired_entity || "operations"}</span><span>{dateLabel(request.created_at)}</span></div>
+            <div data-testid="exportunity-automation-governance" className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,.9fr)_minmax(360px,1.1fr)]">
+              <section className="min-w-0 overflow-hidden border border-slate-200 bg-white dark:border-slate-800 dark:bg-[#0a1628]">
+                <div className="border-b border-slate-200 px-5 py-4 dark:border-slate-800">
+                  <h2 className="text-sm font-semibold">Automation request registry</h2>
+                  <p className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">Proposals are database records only. They remain inactive until implementation, testing, approval, and publication are separately recorded.</p>
                 </div>
-              )) : (
-                <div className="px-4 py-16 text-center"><Sparkles className="mx-auto h-7 w-7 text-slate-400" /><p className="mt-3 text-sm font-medium">No automation requests</p><p className="mt-1 text-xs text-slate-500">Proposals remain inactive until reviewed and implemented.</p></div>
-              )}
+                {forgeQuery.isLoading ? (
+                  <div className="flex items-center justify-center gap-2 px-4 py-16 text-sm text-slate-500"><Loader2 className="h-4 w-4 animate-spin" /> Loading requests</div>
+                ) : forgeQuery.isError ? (
+                  <div className="px-5 py-12 text-center text-sm text-red-700">Automation requests could not be loaded.</div>
+                ) : forgeRequests.length ? forgeRequests.map((request) => {
+                  const requestStatus = normalize(request.status || "REQUESTED");
+                  const active = String(request.id) === selectedForgeId;
+                  return (
+                    <button
+                      key={request.id}
+                      type="button"
+                      onClick={() => setSelectedForgeId(String(request.id))}
+                      className={`block w-full border-b border-slate-200 px-5 py-4 text-left transition-colors last:border-b-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#f5a623] dark:border-slate-800 ${active ? "border-l-4 border-l-[#f5a623] bg-amber-50/70 dark:bg-amber-950/20" : "hover:bg-slate-50 dark:hover:bg-slate-900"}`}
+                    >
+                      <div className="flex min-w-0 items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="truncate text-xs font-semibold uppercase text-[#9a6200] dark:text-[#f5a623]">{request.desired_action_key || "Automation request"}</div>
+                          <div className="mt-1 line-clamp-2 text-sm font-medium">{request.desired_description || "Technical specification required"}</div>
+                        </div>
+                        <Badge variant="outline" className={forgeStatusClasses(requestStatus)}>{requestStatus.replace(/_/g, " ")}</Badge>
+                      </div>
+                      <div className="mt-2 flex flex-wrap gap-3 text-xs text-slate-500"><span>Entity: {request.desired_entity || "operations"}</span><span>{dateLabel(request.created_at)}</span></div>
+                    </button>
+                  );
+                }) : (
+                  <div className="px-4 py-16 text-center"><Sparkles className="mx-auto h-7 w-7 text-slate-400" /><p className="mt-3 text-sm font-medium">No automation requests</p><p className="mt-1 text-xs text-slate-500">Proposals remain inactive until reviewed and implemented.</p></div>
+                )}
+              </section>
+
+              <section className="min-w-0 border border-slate-200 bg-white dark:border-slate-800 dark:bg-[#0a1628]">
+                <div className="border-b border-slate-200 px-5 py-4 dark:border-slate-800">
+                  <h2 className="text-sm font-semibold">Governance decision</h2>
+                  <p className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">Approval and publication are distinct, attributable steps. Publication is available only after an approved state.</p>
+                </div>
+                {!selectedForgeRequest ? (
+                  <div className="px-5 py-16 text-center text-sm text-slate-500">Select an automation request.</div>
+                ) : forgeDetailQuery.isLoading ? (
+                  <div className="flex items-center justify-center gap-2 px-5 py-16 text-sm text-slate-500"><Loader2 className="h-4 w-4 animate-spin" /> Loading request history</div>
+                ) : forgeDetailQuery.isError ? (
+                  <div className="px-5 py-12 text-center text-sm text-red-700">The request detail could not be loaded.</div>
+                ) : (
+                  <div className="space-y-5 p-5">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="min-w-0"><div className="break-words font-mono text-sm font-semibold text-slate-950 dark:text-white">{selectedForgeRequest.desired_action_key || "Automation request"}</div><div className="mt-1 text-xs text-slate-500">Entity: {selectedForgeRequest.desired_entity || "operations"} · updated {dateLabel(selectedForgeRequest.updated_at || selectedForgeRequest.created_at)}</div></div>
+                      <Badge variant="outline" className={forgeStatusClasses(selectedForgeStatus)}>{selectedForgeStatus.replace(/_/g, " ")}</Badge>
+                    </div>
+                    <p className="text-sm leading-6 text-slate-600 dark:text-slate-300">{selectedForgeRequest.desired_description || "No description recorded."}</p>
+                    {selectedForgeRequest.pr_url ? <div className="border-l-2 border-blue-500 bg-blue-50 px-3 py-2 text-xs text-blue-900 dark:bg-blue-950/30 dark:text-blue-100">A review artifact is recorded for this request. Server filesystem paths are intentionally not exposed here.</div> : null}
+                    {selectedForgeRequest.error_log ? <div className="border-l-2 border-red-500 bg-red-50 px-3 py-2 text-xs text-red-800 dark:bg-red-950/30 dark:text-red-200">{redactForgeText(selectedForgeRequest.error_log)}</div> : null}
+                    <div className="space-y-2">
+                      <Label htmlFor="forge-decision-note">Decision note {canRejectForge ? "(required for rejection)" : ""}</Label>
+                      <Textarea id="forge-decision-note" value={forgeDecisionNote} onChange={(event) => setForgeDecisionNote(event.target.value)} rows={3} placeholder="Record the operational or technical basis for this decision." className="border-slate-300 bg-white text-slate-950 placeholder:text-slate-400 dark:border-slate-700 dark:bg-slate-950 dark:text-white" />
+                      <div className="flex flex-wrap gap-2">
+                        <Button size="sm" className="bg-[#f5a623] text-[#07121f] hover:bg-[#e59a18]" disabled={!canApproveForge || forgeTransitionMutation.isPending} onClick={() => confirmForgeTransition("approve")}><Check className="mr-1.5 h-4 w-4" /> Approve review</Button>
+                        <Button size="sm" variant="outline" className="border-red-300 bg-white text-red-800 hover:bg-red-50 dark:bg-transparent" disabled={!canRejectForge || forgeTransitionMutation.isPending} onClick={() => confirmForgeTransition("reject")}><X className="mr-1.5 h-4 w-4" /> Reject</Button>
+                        <Button size="sm" className="bg-emerald-600 text-white hover:bg-emerald-700" disabled={!canPublishForge || forgeTransitionMutation.isPending} onClick={() => confirmForgeTransition("publish")}><FileCheck2 className="mr-1.5 h-4 w-4" /> Publish approved key</Button>
+                      </div>
+                      {!canApproveForge && !canPublishForge && selectedForgeStatus !== "PUBLISHED" && selectedForgeStatus !== "REJECTED" ? <p className="text-xs leading-5 text-slate-500">Technical implementation and testing must advance this request to Needs Review before an administrator can approve it.</p> : null}
+                    </div>
+                    <div>
+                      <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Recorded history</div>
+                      <div className="max-h-64 space-y-2 overflow-y-auto">
+                        {(forgeDetailQuery.data?.events || []).length ? (forgeDetailQuery.data?.events || []).map((event) => (
+                          <div key={event.id} className="border border-slate-200 bg-slate-50 px-3 py-2 text-xs dark:border-slate-800 dark:bg-slate-900">
+                            <div className="font-medium text-slate-800 dark:text-slate-100">{normalize(event.status_from || "START").replace(/_/g, " ")} → {normalize(event.status_to || "RECORDED").replace(/_/g, " ")}</div>
+                            <div className="mt-1 text-slate-600 dark:text-slate-300">{redactForgeText(event.notes)}</div>
+                            <div className="mt-1 text-slate-500">{dateLabel(event.created_at)}</div>
+                          </div>
+                        )) : <div className="py-4 text-xs text-slate-500">No transition history recorded.</div>}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </section>
             </div>
           </TabsContent>
         </Tabs>
@@ -440,7 +601,7 @@ export function ActionsPage() {
             <DialogDescription>Describe the repeatable outcome. This creates a visible technical request, not an active background process.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
-            <div className="space-y-2"><Label htmlFor="automation-description">Required outcome</Label><Textarea id="automation-description" value={automationPrompt} onChange={(event) => setAutomationPrompt(event.target.value)} rows={5} placeholder="Example: Every Monday, prepare an internal supplier pipeline review for approval." /></div>
+            <div className="space-y-2"><Label htmlFor="automation-description">Required outcome</Label><Textarea id="automation-description" value={automationPrompt} onChange={(event) => setAutomationPrompt(event.target.value)} rows={5} placeholder="Example: Every Monday, prepare an internal supplier pipeline review for approval." className="border-slate-300 bg-white text-slate-950 placeholder:text-slate-400 dark:border-slate-700 dark:bg-slate-950 dark:text-white" /></div>
             <div className="space-y-2"><Label>Area</Label><Select value={automationEntity} onValueChange={setAutomationEntity}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="operations">Operations</SelectItem><SelectItem value="sourcing">Sourcing</SelectItem><SelectItem value="sales">Sales</SelectItem><SelectItem value="finance">Finance</SelectItem><SelectItem value="compliance">Compliance</SelectItem></SelectContent></Select></div>
             <div className="flex gap-2 bg-slate-50 px-3 py-3 text-xs leading-5 text-slate-600 dark:bg-slate-900 dark:text-slate-300"><FileCheck2 className="mt-0.5 h-4 w-4 shrink-0 text-[#b97500]" /><span>Activation requires implementation, testing, and an explicit production approval. No external contact is initiated here.</span></div>
           </div>

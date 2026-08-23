@@ -125,16 +125,16 @@ export default function AppProWalletPage() {
   const transactions = overview?.transactions || [];
 
   return (
-    <div className="min-h-screen bg-gray-950 pb-24 text-white">
+    <div className="min-h-screen bg-[#F7F8FA] pb-24 text-[#07111F]">
       <AppProTopBar subtitle="Wallet" />
       <main className="mx-auto w-full max-w-3xl px-4 py-4">
-        <Card className="border-white/10 bg-white/5" data-testid="wallet-home-card">
+        <Card className="border-slate-200 bg-white shadow-sm" data-testid="wallet-home-card">
           <CardHeader className="pb-2">
             <CardTitle className="text-base">Available balance</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            <div className="text-2xl font-semibold">{formatMoney(overview?.balance ?? 0, currency)}</div>
-            <div className="text-xs text-white/65">Today received: {formatMoney(overview?.todayReceived ?? 0, currency)}</div>
+            <div className="text-2xl font-black">{formatMoney(overview?.balance ?? 0, currency)}</div>
+            <div className="text-xs text-slate-500">Today received: {formatMoney(overview?.todayReceived ?? 0, currency)}</div>
             <div className="grid grid-cols-2 gap-2">
               <Button
                 className="h-11 bg-emerald-500 text-black hover:bg-emerald-400"
@@ -157,7 +157,7 @@ export default function AppProWalletPage() {
         </Card>
 
         {mode === "receive" ? (
-          <Card className="mt-4 border-white/10 bg-white/5" data-testid="wallet-receive-panel">
+          <Card className="mt-4 border-slate-200 bg-white shadow-sm" data-testid="wallet-receive-panel">
             <CardHeader className="pb-2">
               <CardTitle className="text-base">Receive payment</CardTitle>
             </CardHeader>
@@ -166,13 +166,13 @@ export default function AppProWalletPage() {
                 value={receiveAmount}
                 onChange={(event) => setReceiveAmount(event.target.value)}
                 placeholder={`Amount (${currency})`}
-                className="border-white/10 bg-white/5"
+                className="border-slate-200 bg-white"
               />
               <Input
                 value={receiveNote}
                 onChange={(event) => setReceiveNote(event.target.value)}
                 placeholder="Payment reason"
-                className="border-white/10 bg-white/5"
+                className="border-slate-200 bg-white"
               />
               <div className="flex items-center gap-2">
                 <Button
@@ -182,7 +182,7 @@ export default function AppProWalletPage() {
                 >
                   Confirm
                 </Button>
-                <Button variant="outline" className="border-white/20 text-white/90" onClick={() => setLocation("/app/wallet")}>
+                <Button variant="outline" className="border-slate-200 text-slate-700" onClick={() => setLocation("/app/wallet")}>
                   Cancel
                 </Button>
               </div>
@@ -191,7 +191,7 @@ export default function AppProWalletPage() {
         ) : null}
 
         {mode === "send" ? (
-          <Card className="mt-4 border-white/10 bg-white/5" data-testid="wallet-send-panel">
+          <Card className="mt-4 border-slate-200 bg-white shadow-sm" data-testid="wallet-send-panel">
             <CardHeader className="pb-2">
               <CardTitle className="text-base">Send money</CardTitle>
             </CardHeader>
@@ -200,19 +200,19 @@ export default function AppProWalletPage() {
                 value={sendTo}
                 onChange={(event) => setSendTo(event.target.value)}
                 placeholder="Recipient (phone or handle)"
-                className="border-white/10 bg-white/5"
+                className="border-slate-200 bg-white"
               />
               <Input
                 value={sendAmount}
                 onChange={(event) => setSendAmount(event.target.value)}
                 placeholder={`Amount (${currency})`}
-                className="border-white/10 bg-white/5"
+                className="border-slate-200 bg-white"
               />
               <Input
                 value={sendNote}
                 onChange={(event) => setSendNote(event.target.value)}
                 placeholder="Note"
-                className="border-white/10 bg-white/5"
+                className="border-slate-200 bg-white"
               />
               <div className="flex items-center gap-2">
                 <Button
@@ -222,7 +222,7 @@ export default function AppProWalletPage() {
                 >
                   Confirm
                 </Button>
-                <Button variant="outline" className="border-white/20 text-white/90" onClick={() => setLocation("/app/wallet")}>
+                <Button variant="outline" className="border-slate-200 text-slate-700" onClick={() => setLocation("/app/wallet")}>
                   Cancel
                 </Button>
               </div>
@@ -232,30 +232,30 @@ export default function AppProWalletPage() {
 
         <section className="mt-4 space-y-2" data-testid="wallet-transactions-list">
           {transactions.map((tx) => (
-            <Card key={tx.id} className="border-white/10 bg-white/5">
+            <Card key={tx.id} className="border-slate-200 bg-white shadow-sm">
               <CardContent className="p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 text-sm font-semibold">
-                      <Receipt className="h-4 w-4 text-white/65" />
+                      <Receipt className="h-4 w-4 text-slate-500" />
                       <span>{tx.entryType || "Transaction"}</span>
                     </div>
-                    <div className="mt-1 text-xs text-white/65">{tx.reference || tx.note || "Wallet operation"}</div>
+                    <div className="mt-1 text-xs text-slate-500">{tx.reference || tx.note || "Wallet operation"}</div>
                   </div>
                   <div className="text-right">
-                    <div className={`text-sm font-semibold ${tx.direction === "CREDIT" ? "text-emerald-300" : "text-rose-300"}`}>
+                    <div className={`text-sm font-black ${tx.direction === "CREDIT" ? "text-emerald-700" : "text-rose-700"}`}>
                       {tx.direction === "CREDIT" ? "+" : "-"}
                       {formatMoney(tx.amount, currency)}
                     </div>
-                    <div className="mt-1 text-[11px] text-white/45">{formatDateTime(tx.createdAt)}</div>
+                    <div className="mt-1 text-[11px] text-slate-400">{formatDateTime(tx.createdAt)}</div>
                   </div>
                 </div>
               </CardContent>
             </Card>
           ))}
           {!overviewQuery.isLoading && !transactions.length ? (
-            <Card className="border-white/10 bg-white/5">
-              <CardContent className="p-4 text-sm text-white/70">No transactions yet.</CardContent>
+            <Card className="border-slate-200 bg-white">
+              <CardContent className="p-4 text-sm text-slate-600">No transactions yet.</CardContent>
             </Card>
           ) : null}
         </section>

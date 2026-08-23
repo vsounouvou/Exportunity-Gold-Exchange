@@ -102,12 +102,13 @@
       "sourceFile": "client/src/App.tsx"
     },
     {
-      "path": "/product/:id",
-      "component": "ProductPublicPage",
+      "path": "/product/:slug",
+      "component": "ExportunityLegacyCommerceGuard",
       "label": "Product Detail",
       "authRequired": false,
       "hiddenFromMenu": true,
-      "hiddenReason": "Detail page linked from marketplace listings.",
+      "hiddenReason": "Governed product deep link handled by the current tenant storefront or Exportunity industrial alias.",
+      "redirectTo": "/industrial",
       "sourceFile": "client/src/App.tsx"
     },
     {
@@ -166,20 +167,22 @@
     },
     {
       "path": "/app",
-      "component": "AppProInboxPage",
-      "label": "Pro App",
+      "component": null,
+      "label": "GTN Operations Alias",
       "authRequired": false,
       "hiddenFromMenu": true,
-      "hiddenReason": "Professional app home; entry is role-driven.",
+      "hiddenReason": "Legacy app entry redirects to the canonical GTN operations workspace.",
+      "redirectTo": "/pro/operations",
       "sourceFile": "client/src/App.tsx"
     },
     {
       "path": "/app/room/:roomKey",
-      "component": "AppProRoomPage",
-      "label": "Pro App Room",
+      "component": null,
+      "label": "GTN Operations Room Alias",
       "authRequired": false,
       "hiddenFromMenu": true,
-      "hiddenReason": "Professional app conversation room linked from pro inbox.",
+      "hiddenReason": "Legacy room deep links redirect to the canonical GTN operations room.",
+      "redirectTo": "/pro/operations/:roomKey",
       "sourceFile": "client/src/App.tsx"
     },
     {

@@ -11,83 +11,87 @@ export default function DeliveryHubPage() {
   const isAdmin = session.user?.roles?.includes("admin");
 
   return (
-    <div className="min-h-screen bg-black text-white">
-      <div className="max-w-4xl mx-auto px-4 py-6">
-        <div className="flex items-center justify-between">
-          <Link href="/">
-            <Button variant="ghost" className="text-white/80 hover:text-white hover:bg-white/10">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back
-            </Button>
+    <div data-testid="exportunity-delivery-hub" className="relative min-h-screen overflow-hidden bg-[#F7F8FA] text-[#07111F]">
+      <div className="pointer-events-none absolute inset-0 opacity-70 [background-image:linear-gradient(rgba(15,23,42,0.04)_1px,transparent_1px),linear-gradient(90deg,rgba(15,23,42,0.04)_1px,transparent_1px)] [background-size:38px_38px]" />
+      <div className="pointer-events-none absolute -left-40 top-24 h-96 w-96 rounded-full bg-[#F5A623]/15 blur-3xl" />
+      <div className="pointer-events-none absolute -right-32 bottom-0 h-96 w-96 rounded-full bg-sky-300/15 blur-3xl" />
+
+      <header className="relative z-20 border-b border-slate-200/90 bg-white/90 backdrop-blur-xl">
+        <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between gap-4 px-4 sm:px-6">
+          <Link href="/" className="inline-flex min-w-0 items-center gap-3">
+            <img src="/tenants/exportunity/official/logo-long-light.png" alt="Exportunity" className="h-9 w-auto max-w-[190px] object-contain" />
+            <span className="hidden border-l border-slate-200 pl-3 text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500 lg:block">
+              Global Trade Network
+            </span>
           </Link>
-          <div className="text-xs text-white/50">
-            {session.isAuthenticated ? `Signed in as ${session.user?.email}` : "Not signed in"}
-          </div>
+          <Button asChild variant="outline" className="border-slate-200 bg-white text-slate-700 hover:border-[#F5A623] hover:bg-[#FFF8E8]">
+            <Link href="/">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back to network
+            </Link>
+          </Button>
+        </div>
+      </header>
+
+      <main className="relative z-10 mx-auto w-full max-w-5xl px-4 py-10 sm:px-6 sm:py-16">
+        <div className="max-w-2xl">
+          <p className="text-[11px] font-black uppercase tracking-[0.2em] text-[#8A5700]">GTN fulfilment network</p>
+          <h1 className="mt-3 text-3xl font-black tracking-tight text-slate-950 sm:text-5xl">Delivery partner operations</h1>
+          <p className="mt-4 text-sm leading-7 text-slate-600 sm:text-base">
+            Apply to join the delivery network or open the authorized operating workspace for dispatch, evidence, and performance.
+          </p>
+          {session.isAuthenticated ? (
+            <p className="mt-3 text-xs font-semibold text-slate-500">Signed in as {session.user?.email}</p>
+          ) : null}
         </div>
 
-        <div className="mt-4">
-          <div className="text-lg font-semibold">Delivery</div>
-          <div className="text-xs text-white/50">
-            Apply to become a delivery partner, or open the delivery admin portal (authorized users).
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-          <Card className="bg-white/5 border-white/10">
+        <div className="mt-8 grid gap-4 md:grid-cols-2">
+          <Card className="border-slate-200 bg-white shadow-sm">
             <CardHeader className="pb-2">
-              <CardTitle className="text-white text-base flex items-center gap-2">
-                <UserPlus className="h-4 w-4 text-amber-400" />
-                Apply as Delivery Agent
-              </CardTitle>
+              <span className="mb-2 grid h-11 w-11 place-items-center rounded-2xl bg-[#FFF0C7] text-[#8A5700]">
+                <UserPlus className="h-5 w-5" />
+              </span>
+              <CardTitle className="text-lg font-black text-slate-950">Apply as a delivery partner</CardTitle>
             </CardHeader>
-            <CardContent className="text-sm text-white/70 space-y-3">
-              <div>
-                Submit your application, verify your identity, and get onboarded as a delivery partner.
-              </div>
-              <Link href="/apply/delivery">
-                <Button className="bg-amber-500 hover:bg-amber-600 text-black w-full">
-                  Start Application
-                </Button>
-              </Link>
+            <CardContent className="space-y-4 text-sm leading-6 text-slate-600">
+              <p>Submit your operating profile, complete identity review, and receive a governed partner decision.</p>
+              <Button asChild className="w-full bg-[#F5A623] font-black text-[#07111F] hover:bg-[#F8C45B]">
+                <Link href="/apply/delivery">Start application</Link>
+              </Button>
             </CardContent>
           </Card>
 
-          <Card className="bg-white/5 border-white/10">
+          <Card className="border-slate-200 bg-white shadow-sm">
             <CardHeader className="pb-2">
-              <CardTitle className="text-white text-base flex items-center gap-2">
-                <ShieldCheck className="h-4 w-4 text-emerald-400" />
-                Delivery Admin Portal
-              </CardTitle>
+              <span className="mb-2 grid h-11 w-11 place-items-center rounded-2xl bg-emerald-50 text-emerald-700">
+                <ShieldCheck className="h-5 w-5" />
+              </span>
+              <CardTitle className="text-lg font-black text-slate-950">Authorized delivery workspace</CardTitle>
             </CardHeader>
-            <CardContent className="text-sm text-white/70 space-y-3">
-              <div>Manage delivery operations, dispatch, and performance.</div>
-              <Link href="/delivery/admin">
-                <Button
-                  className="bg-emerald-500 hover:bg-emerald-600 text-black w-full"
-                  disabled={!session.isAuthenticated || (!isAdmin && !isDelivery)}
-                  title={
-                    session.isAuthenticated && (isAdmin || isDelivery)
-                      ? "Open"
-                      : "Sign in with an authorized account to access"
-                  }
-                >
-                  <Truck className="h-4 w-4 mr-2" />
-                  Open Portal
-                </Button>
-              </Link>
+            <CardContent className="space-y-4 text-sm leading-6 text-slate-600">
+              <p>Manage dispatch, delivery evidence, wallet records, and performance from one operating workspace.</p>
+              <Button asChild={session.isAuthenticated && (isAdmin || isDelivery)} className="w-full bg-emerald-700 font-black text-white hover:bg-emerald-800" disabled={!session.isAuthenticated || (!isAdmin && !isDelivery)}>
+                {session.isAuthenticated && (isAdmin || isDelivery) ? (
+                  <Link href="/delivery/admin">
+                    <Truck className="mr-2 h-4 w-4" />
+                    Open workspace
+                  </Link>
+                ) : (
+                  <span>
+                    <Truck className="mr-2 h-4 w-4" />
+                    Authorized accounts only
+                  </span>
+                )}
+              </Button>
               {!session.isAuthenticated ? (
-                <div className="text-xs text-white/40">
-                  Sign in to access the admin portal.
-                </div>
-              ) : (!isAdmin && !isDelivery) ? (
-                <div className="text-xs text-white/40">
-                  Your account doesn’t have delivery admin access.
-                </div>
+                <p className="text-xs text-slate-500">Sign in before opening the operating workspace.</p>
+              ) : !isAdmin && !isDelivery ? (
+                <p className="text-xs text-slate-500">This account does not have delivery operations access.</p>
               ) : null}
             </CardContent>
           </Card>
         </div>
-      </div>
+      </main>
     </div>
   );
 }

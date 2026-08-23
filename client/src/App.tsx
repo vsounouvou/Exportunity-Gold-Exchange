@@ -10,7 +10,6 @@ import { getTenantConfigByKey, getTenantHomeRoute } from "../../tenants/index";
 import {
   isBdoHost,
   isAgoojyeHost,
-  isExportunityMarketingHost,
   isHozHost,
   isMetHost,
   isMindbaseHost,
@@ -18,10 +17,11 @@ import {
   isZoguelandHost,
   isZoneHost,
 } from "@/lib/hostMode";
+import { getExportunityLegacyCommerceDestination } from "@/lib/exportunityPublicRoutePolicy";
+import { roomSlugFromKey } from "@/config/chatRooms";
 
 import ServiceWorkerUpdateBanner from "@/components/ServiceWorkerUpdateBanner";
 import BuildMismatchBanner from "@/components/BuildMismatchBanner";
-import ZoneInstallPrompt from "@/components/ZoneInstallPrompt";
 import { MinerLoadingAnimation } from "@/components/MinerLoadingAnimation";
 import { TapTraceOverlay } from "@/components/debug/TapTraceOverlay";
 
@@ -96,17 +96,19 @@ class RouteErrorBoundary extends Component<
     if (!this.state.error) return this.props.children;
 
     return (
-      <div className="min-h-screen w-full flex items-center justify-center p-4">
-        <Card className="w-full max-w-2xl bg-gray-900 border-gray-800">
+      <div className="relative flex min-h-screen w-full items-center justify-center overflow-hidden bg-[#F7F8FA] p-4 text-[#07111F]">
+        <div className="pointer-events-none absolute inset-0 opacity-70 [background-image:linear-gradient(rgba(15,23,42,0.04)_1px,transparent_1px),linear-gradient(90deg,rgba(15,23,42,0.04)_1px,transparent_1px)] [background-size:38px_38px]" />
+        <Card className="relative w-full max-w-2xl border-slate-200 bg-white shadow-[0_30px_90px_rgba(15,23,42,0.16)]">
           <CardContent className="pt-6 space-y-4">
             <div className="flex items-start gap-3">
-              <AlertCircle className="h-6 w-6 text-red-400 mt-0.5 shrink-0" />
+              <AlertCircle className="mt-0.5 h-6 w-6 shrink-0 text-red-600" />
               <div className="min-w-0">
-                <div className="text-lg font-semibold text-white">Page failed to load</div>
-                <div className="mt-1 text-sm text-gray-400">
-                  Route: <span className="text-gray-200">{this.props.routePath}</span>
+                <div className="text-[10px] font-black uppercase tracking-[0.18em] text-[#9A6200]">Global Trade Network</div>
+                <div className="mt-2 text-lg font-black text-slate-950">Page failed to load</div>
+                <div className="mt-1 text-sm text-slate-500">
+                  Route: <span className="text-slate-700">{this.props.routePath}</span>
                 </div>
-                <div className="mt-1 text-sm text-gray-300">{this.state.error.message}</div>
+                <div className="mt-1 text-sm text-slate-700">{this.state.error.message}</div>
               </div>
             </div>
 
@@ -114,23 +116,23 @@ class RouteErrorBoundary extends Component<
               <Button
                 type="button"
                 variant="outline"
-                className="border-white/15 text-white/80 hover:bg-white/10"
+                className="border-slate-200 font-bold text-slate-700 hover:border-[#F5A623] hover:text-slate-950"
                 onClick={this.copyDebug}
               >
-                {this.state.copied ? "Copied" : "Report to Codex"}
+                {this.state.copied ? "Copied" : "Copy error details"}
               </Button>
               <Button
                 type="button"
-                className="bg-emerald-500 hover:bg-emerald-600 text-black font-semibold"
+                className="bg-[#F5A623] font-black text-[#07111F] hover:bg-[#F8C45B]"
                 onClick={() => window.location.reload()}
               >
                 Reload
               </Button>
             </div>
 
-            <div className="rounded-lg border border-white/10 bg-black/30 p-3">
-              <div className="text-xs text-gray-300 mb-2">Debug</div>
-              <pre className="text-[11px] text-gray-300 whitespace-pre-wrap break-words max-h-[240px] overflow-auto">
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+              <div className="mb-2 text-xs font-bold text-slate-500">Debug</div>
+              <pre className="max-h-[240px] overflow-auto whitespace-pre-wrap break-words text-[11px] text-slate-600">
                 {this.state.error.stack || this.state.error.message}
               </pre>
             </div>
@@ -142,40 +144,81 @@ class RouteErrorBoundary extends Component<
 }
 
 // Public pages (route-level code split)
-const MarketplacePage = lazyPage(() => import("@/pages/MarketplacePage"), "MarketplacePage");
-const GatewayPage = lazyPage(() => import("@/pages/GatewayPage"), "GatewayPage");
-const AdminLoginPage = lazyPage(() => import("@/pages/AdminLoginPage"), "AdminLoginPage");
+const includeSharedStorefront = __BUILD_INCLUDE_SHARED_STOREFRONT__;
+const includeMindbase = __BUILD_INCLUDE_MINDBASE__;
+const includeOtherTenantUi = __BUILD_INCLUDE_OTHER_TENANT_UI__;
+const ZoneInstallPrompt = includeOtherTenantUi
+  ? lazyPage(() => import("@/components/ZoneInstallPrompt"))
+  : () => null;
+const ExcludedTenantPage: ComponentType<any> = () => <Redirect to="/" />;
+const GatewayPage = includeOtherTenantUi
+  ? lazyPage(() => import("@/pages/GatewayPage"), "GatewayPage")
+  : ExcludedTenantPage;
+const AdminLoginPage = includeOtherTenantUi
+  ? lazyPage(() => import("@/pages/AdminLoginPage"), "AdminLoginPage")
+  : lazyPage(() => import("@/pages/exportunity/AccountSupportPages"), "ExportunityOperationsAccessPage");
 const AdminPasswordChangePage = lazyPage(() => import("@/pages/AdminPasswordChangePage"), "AdminPasswordChangePage");
-const ECELoginPage = lazyPage(() => import("@/pages/ECELoginPage"), "ECELoginPage");
+const UnifiedAccessPage = includeOtherTenantUi
+  ? lazyPage(() => import("@/pages/ECELoginPage"), "ECELoginPage")
+  : lazyPage(() => import("@/pages/exportunity/AccessPage"));
 const SetupPasswordPage = lazyPage(() => import("@/pages/SetupPasswordPage"));
-const ApplicationStatusPage = lazyPage(() => import("@/pages/ApplicationStatusPage"), "ApplicationStatusPage");
-const CompliancePage = lazyPage(() => import("@/pages/CompliancePage"), "CompliancePage");
-const TermsPage = lazyPage(() => import("@/pages/TermsPage"), "TermsPage");
-const PrivacyPage = lazyPage(() => import("@/pages/PrivacyPage"), "PrivacyPage");
-const InstallAppPage = lazyPage(() => import("@/pages/InstallAppPage"), "InstallAppPage");
-const SwitchSpacePage = lazyPage(() => import("@/pages/SwitchSpacePage"), "SwitchSpacePage");
+const ApplicationStatusPage = includeOtherTenantUi
+  ? lazyPage(() => import("@/pages/ApplicationStatusPage"), "ApplicationStatusPage")
+  : lazyPage(() => import("@/pages/exportunity/AccountSupportPages"), "ExportunityApplicationStatusPage");
+const CompliancePage = includeOtherTenantUi
+  ? lazyPage(() => import("@/pages/CompliancePage"), "CompliancePage")
+  : lazyPage(() => import("@/pages/exportunity/GovernancePages"), "ExportunityCompliancePage");
+const TermsPage = includeOtherTenantUi
+  ? lazyPage(() => import("@/pages/TermsPage"), "TermsPage")
+  : lazyPage(() => import("@/pages/exportunity/GovernancePages"), "ExportunityTermsPage");
+const PrivacyPage = includeOtherTenantUi
+  ? lazyPage(() => import("@/pages/PrivacyPage"), "PrivacyPage")
+  : lazyPage(() => import("@/pages/exportunity/GovernancePages"), "ExportunityPrivacyPage");
+const InstallAppPage = includeOtherTenantUi
+  ? lazyPage(() => import("@/pages/InstallAppPage"), "InstallAppPage")
+  : lazyPage(() => import("@/pages/exportunity/InstallAppPage"), "ExportunityInstallAppPage");
+const SwitchSpacePage = includeOtherTenantUi
+  ? lazyPage(() => import("@/pages/SwitchSpacePage"), "SwitchSpacePage")
+  : lazyPage(() => import("@/pages/exportunity/AccountSupportPages"), "ExportunitySpaceExchangePage");
 const ChairmanQuickPage = lazyPage(() => import("@/pages/ChairmanQuickPage"), "ChairmanQuickPage");
 const AccountPage = lazyPage(() => import("@/pages/AccountPage"));
-const QAMobilePage = lazyPage(() => import("@/pages/QAMobilePage"));
-const DebugLocationPage = lazyPage(() => import("@/pages/DebugLocationPage"));
-const DebugHitTestPage = lazyPage(() => import("@/pages/DebugHitTestPage"));
-const StorePage = lazyPage(() => import("@/pages/store/StorePage"));
-const StoreCollectionsPage = lazyPage(() => import("@/pages/store/StoreCollectionsPage"));
-const StoreCollectionPage = lazyPage(() => import("@/pages/store/StoreCollectionPage"));
-const StoreProductPage = lazyPage(() => import("@/pages/store/StoreProductPage"));
-const StampedGoldVerifyPage = lazyPage(() => import("@/pages/StampedGoldVerifyPage"));
-const MyOrdersPage = lazyPage(() => import("@/pages/MyOrdersPage"));
+const QAMobilePage = includeOtherTenantUi
+  ? lazyPage(() => import("@/pages/QAMobilePage"))
+  : ExcludedTenantPage;
+const DebugLocationPage = includeOtherTenantUi
+  ? lazyPage(() => import("@/pages/DebugLocationPage"))
+  : ExcludedTenantPage;
+const DebugHitTestPage = includeOtherTenantUi
+  ? lazyPage(() => import("@/pages/DebugHitTestPage"))
+  : ExcludedTenantPage;
+const StorePage = includeSharedStorefront
+  ? lazyPage(() => import("@/pages/store/StorePage"))
+  : null;
+const StoreCollectionsPage = includeSharedStorefront
+  ? lazyPage(() => import("@/pages/store/StoreCollectionsPage"))
+  : null;
+const StoreCollectionPage = includeSharedStorefront
+  ? lazyPage(() => import("@/pages/store/StoreCollectionPage"))
+  : null;
+const StoreProductPage = includeSharedStorefront
+  ? lazyPage(() => import("@/pages/store/StoreProductPage"))
+  : null;
+const StampedGoldVerifyPage = includeOtherTenantUi
+  ? lazyPage(() => import("@/pages/StampedGoldVerifyPage"))
+  : ExcludedTenantPage;
+const MyOrdersPage = includeOtherTenantUi
+  ? lazyPage(() => import("@/pages/MyOrdersPage"))
+  : lazyPage(() => import("@/pages/exportunity/TradeOrdersPage"));
 const DeliveryHubPage = lazyPage(() => import("@/pages/DeliveryHubPage"));
-const InboxPage = lazyPage(() => import("@/pages/InboxPage"));
-const RoomPage = lazyPage(() => import("@/pages/RoomPage"));
-const AppProInboxPage = lazyPage(() => import("@/pages/AppProInboxPage"));
 const AppProChatsPage = lazyPage(() => import("@/pages/AppProChatsPage"));
 const AppProActionsPage = lazyPage(() => import("@/pages/AppProActionsPage"));
 const AppProWalletPage = lazyPage(() => import("@/pages/AppProWalletPage"));
 const AppProMoneyPage = lazyPage(() => import("@/pages/AppProMoneyPage"));
 const AppProRoomPage = lazyPage(() => import("@/pages/AppProRoomPage"));
 const AppProMineHomePage = lazyPage(() => import("@/pages/AppProMineHomePage"));
-const AppProLoginPage = lazyPage(() => import("@/pages/AppProLoginPage"));
+const AppProLoginPage = includeOtherTenantUi
+  ? lazyPage(() => import("@/pages/AppProLoginPage"))
+  : UnifiedAccessPage;
 const AppProJoinPage = lazyPage(() => import("@/pages/AppProJoinPage"));
 const AppProShopPage = lazyPage(() => import("@/pages/AppProShopPage"));
 const AppProEquipmentPage = lazyPage(() => import("@/pages/AppProEquipmentPage"));
@@ -201,177 +244,234 @@ const SellerDirectoryPage = lazyPage(() => import("@/pages/SellerDirectoryPage")
 const MeetingsHubPage = lazyPage(() => import("@/pages/MeetingsHubPage"));
 const AgendaPage = lazyPage(() => import("@/pages/AgendaPage"));
 const MeetRoomPage = lazyPage(() => import("@/pages/MeetRoomPage"));
-const PublicCadastreDemoPage = lazyPage(() => import("@/pages/PublicCadastreDemoPage"));
-const MindbaseLandingPage = lazyPage(() => import("@/pages/mindbase/MindbaseLandingPage"));
-const MindbaseDiscoverPage = lazyPage(() => import("@/pages/mindbase/MindbaseDiscoverPage"));
-const MindbaseIntellectPage = lazyPage(() => import("@/pages/mindbase/MindbaseIntellectPage"));
-const MindbaseCreatorProfilePage = lazyPage(() => import("@/pages/mindbase/MindbaseCreatorProfilePage"));
-const MindbaseStudioPage = lazyPage(() => import("@/pages/mindbase/MindbaseStudioPage"));
-const MindbaseBuildChatPage = lazyPage(() => import("@/pages/mindbase/MindbaseBuildChatPage"));
-const MindbaseStudioIntellectPage = lazyPage(() => import("@/pages/mindbase/MindbaseStudioIntellectPage"));
-const MindbaseWorkspacesPage = lazyPage(() => import("@/pages/mindbase/MindbaseWorkspacesPage"));
-const MindbasePricingPage = lazyPage(() => import("@/pages/mindbase/MindbasePricingPage"));
-const MindbaseDocsApiPage = lazyPage(() => import("@/pages/mindbase/MindbaseDocsApiPage"));
-const MindbaseAdminDashboardPage = lazyPage(() => import("@/pages/mindbase/MindbaseAdminPages"), "MindbaseAdminDashboardPage");
-const MindbaseAdminModerationPage = lazyPage(() => import("@/pages/mindbase/MindbaseAdminPages"), "MindbaseAdminModerationPage");
-const MindbaseAdminUsersPage = lazyPage(() => import("@/pages/mindbase/MindbaseAdminPages"), "MindbaseAdminUsersPage");
-const MindbaseAdminCreditsPage = lazyPage(() => import("@/pages/mindbase/MindbaseAdminPages"), "MindbaseAdminCreditsPage");
-const MindbaseAdminAgentsPage = lazyPage(() => import("@/pages/mindbase/MindbaseAdminPages"), "MindbaseAdminAgentsPage");
-const MindbaseAdminSettingsPage = lazyPage(() => import("@/pages/mindbase/MindbaseAdminPages"), "MindbaseAdminSettingsPage");
+const PublicCadastreDemoPage = includeOtherTenantUi
+  ? lazyPage(() => import("@/pages/PublicCadastreDemoPage"))
+  : ExcludedTenantPage;
+const MindbaseLandingPage = includeMindbase
+  ? lazyPage(() => import("@/pages/mindbase/MindbaseLandingPage"))
+  : ExcludedTenantPage;
+const MindbaseDiscoverPage = includeMindbase
+  ? lazyPage(() => import("@/pages/mindbase/MindbaseDiscoverPage"))
+  : ExcludedTenantPage;
+const MindbaseIntellectPage = includeMindbase
+  ? lazyPage(() => import("@/pages/mindbase/MindbaseIntellectPage"))
+  : ExcludedTenantPage;
+const MindbaseCreatorProfilePage = includeMindbase
+  ? lazyPage(() => import("@/pages/mindbase/MindbaseCreatorProfilePage"))
+  : ExcludedTenantPage;
+const MindbaseStudioPage = includeMindbase
+  ? lazyPage(() => import("@/pages/mindbase/MindbaseStudioPage"))
+  : ExcludedTenantPage;
+const MindbaseBuildChatPage = includeMindbase
+  ? lazyPage(() => import("@/pages/mindbase/MindbaseBuildChatPage"))
+  : ExcludedTenantPage;
+const MindbaseStudioIntellectPage = includeMindbase
+  ? lazyPage(() => import("@/pages/mindbase/MindbaseStudioIntellectPage"))
+  : ExcludedTenantPage;
+const MindbaseWorkspacesPage = includeMindbase
+  ? lazyPage(() => import("@/pages/mindbase/MindbaseWorkspacesPage"))
+  : ExcludedTenantPage;
+const MindbasePricingPage = includeMindbase
+  ? lazyPage(() => import("@/pages/mindbase/MindbasePricingPage"))
+  : ExcludedTenantPage;
+const MindbaseDocsApiPage = includeMindbase
+  ? lazyPage(() => import("@/pages/mindbase/MindbaseDocsApiPage"))
+  : ExcludedTenantPage;
+const MindbaseAdminDashboardPage = includeMindbase
+  ? lazyPage(() => import("@/pages/mindbase/MindbaseAdminPages"), "MindbaseAdminDashboardPage")
+  : ExcludedTenantPage;
+const MindbaseAdminModerationPage = includeMindbase
+  ? lazyPage(() => import("@/pages/mindbase/MindbaseAdminPages"), "MindbaseAdminModerationPage")
+  : ExcludedTenantPage;
+const MindbaseAdminUsersPage = includeMindbase
+  ? lazyPage(() => import("@/pages/mindbase/MindbaseAdminPages"), "MindbaseAdminUsersPage")
+  : ExcludedTenantPage;
+const MindbaseAdminCreditsPage = includeMindbase
+  ? lazyPage(() => import("@/pages/mindbase/MindbaseAdminPages"), "MindbaseAdminCreditsPage")
+  : ExcludedTenantPage;
+const MindbaseAdminAgentsPage = includeMindbase
+  ? lazyPage(() => import("@/pages/mindbase/MindbaseAdminPages"), "MindbaseAdminAgentsPage")
+  : ExcludedTenantPage;
+const MindbaseAdminSettingsPage = includeMindbase
+  ? lazyPage(() => import("@/pages/mindbase/MindbaseAdminPages"), "MindbaseAdminSettingsPage")
+  : ExcludedTenantPage;
 
-// Exportunity marketing clone (exportunity.com)
+// Exportunity Global Trade Network public surfaces
 const ExportunityGlobalTradeHomePage = lazyPage(() => import("@/pages/exportunity/GlobalTradeHomePage"));
+const ExportunityMarketplacePage = lazyPage(() => import("@/pages/exportunity/MarketplacePage"));
 const ExportunityIndustrialHubPage = lazyPage(() => import("@/pages/exportunity/IndustrialHubPage"));
-const ExportunityMarketingHomePage = lazyPage(() => import("@/pages/exportunity/MarketingHomePage"));
-const ExportunityMarketingVitrinePage = lazyPage(() => import("@/pages/exportunity/MarketingVitrinePage"));
-const ExportunityMarketingAboutPage = lazyPage(() => import("@/pages/exportunity/MarketingAboutPage"));
-const ExportunityMarketingStoryPage = lazyPage(() => import("@/pages/exportunity/MarketingStoryPage"));
-const ExportunityMarketingFounderStoryPage = lazyPage(() => import("@/pages/exportunity/MarketingFounderStoryPage"));
-const ExportunityMarketingUseCasesPage = lazyPage(() => import("@/pages/exportunity/MarketingUseCasesPage"));
-const ExportunityMarketingProofPage = lazyPage(() => import("@/pages/exportunity/MarketingProofPage"));
-const ExportunityMarketingSolutionsPage = lazyPage(() => import("@/pages/exportunity/MarketingSolutionsPage"));
-const ExportunityMarketingPlatformPage = lazyPage(() => import("@/pages/exportunity/MarketingPlatformPage"));
-const ExportunityMarketingPlatformOsPage = lazyPage(() => import("@/pages/exportunity/MarketingPlatformOsPage"));
-const ExportunityMarketingPlatformProPage = lazyPage(() => import("@/pages/exportunity/MarketingPlatformProPage"));
-const ExportunityMarketingPlatformGoldPage = lazyPage(() => import("@/pages/exportunity/MarketingPlatformGoldPage"));
-const ExportunityMarketingPlatformAgentsPage = lazyPage(() => import("@/pages/exportunity/MarketingPlatformAgentsPage"));
-const ExportunityMarketingPlatformMarketplacePage = lazyPage(() => import("@/pages/exportunity/MarketingPlatformMarketplacePage"));
-const ExportunityMarketingPlatformWalletPage = lazyPage(() => import("@/pages/exportunity/MarketingPlatformWalletPage"));
-const ExportunityMarketingPlatformContractsPage = lazyPage(() => import("@/pages/exportunity/MarketingPlatformContractsPage"));
-const ExportunityMarketingPlatformInvestPage = lazyPage(() => import("@/pages/exportunity/MarketingPlatformInvestPage"));
-const ExportunityMarketingPlatformCompliancePage = lazyPage(() => import("@/pages/exportunity/MarketingPlatformCompliancePage"));
-const ExportunityMarketingPlatformMessagingPage = lazyPage(() => import("@/pages/exportunity/MarketingPlatformMessagingPage"));
-const ExportunityMarketingPlatformGovernancePage = lazyPage(() => import("@/pages/exportunity/MarketingPlatformGovernancePage"));
-const ExportunityMarketingPlatformSecurityPage = lazyPage(() => import("@/pages/exportunity/MarketingPlatformSecurityPage"));
-const ExportunityMarketingPlatformScreenshotsPage = lazyPage(() => import("@/pages/exportunity/MarketingPlatformScreenshotsPage"));
-const ExportunityMarketingPlatformModulesPage = lazyPage(() => import("@/pages/exportunity/MarketingPlatformModulesPage"));
-const ExportunityMarketingPlatformModuleDetailPage = lazyPage(() => import("@/pages/exportunity/MarketingPlatformModuleDetailPage"));
-const ExportunityMarketingDemoPage = lazyPage(() => import("@/pages/exportunity/MarketingDemoPage"));
-const ExportunityMarketingMediaPage = lazyPage(() => import("@/pages/exportunity/MarketingMediaPage"));
-const ExportunityMarketingMediaPressPage = lazyPage(() => import("@/pages/exportunity/MarketingMediaPressPage"));
-const ExportunityMarketingMediaVideosPage = lazyPage(() => import("@/pages/exportunity/MarketingMediaVideosPage"));
-const ExportunityMarketingMediaProfilesPage = lazyPage(() => import("@/pages/exportunity/MarketingMediaProfilesPage"));
-const ExportunityMarketingAdvisoryPage = lazyPage(() => import("@/pages/exportunity/MarketingAdvisoryPage"));
-const ExportunityMarketingContactPage = lazyPage(() => import("@/pages/exportunity/MarketingContactPage"));
-const ExportunityMarketingTalkPage = lazyPage(() => import("@/pages/exportunity/MarketingTalkPage"));
-const ExportunityMarketingPrivacyPage = lazyPage(() => import("@/pages/exportunity/MarketingPrivacyPage"));
-const ExportunityMarketingTermsPage = lazyPage(() => import("@/pages/exportunity/MarketingTermsPage"));
-const ExportunityMarketingLibraryPage = lazyPage(() => import("@/pages/exportunity/MarketingLibraryPage"));
-const ExportunityMarketingPostPage = lazyPage(() => import("@/pages/exportunity/MarketingPostPage"));
-const ExportunityMarketingInvestPage = lazyPage(() => import("@/pages/exportunity/MarketingInvestPage"));
-const ExportunityMarketingInvestOpportunitiesPage = lazyPage(() => import("@/pages/exportunity/MarketingInvestOpportunitiesPage"));
-const ExportunityMarketingInvestOpportunityDetailPage = lazyPage(() => import("@/pages/exportunity/MarketingInvestOpportunityDetailPage"));
-const ExportunityMarketingInvestContractsPage = lazyPage(() => import("@/pages/exportunity/MarketingInvestContractsPage"));
-const ExportunityMarketingPricingPage = lazyPage(() => import("@/pages/exportunity/MarketingPricingPage"));
-const MetHomePage = lazyPage(() => import("@/pages/met/MetPublicPages"), "MetHomePage");
-const MetModelHousePage = lazyPage(() => import("@/pages/met/MetPublicPages"), "MetModelHousePage");
-const MetBricksPage = lazyPage(() => import("@/pages/met/MetPublicPages"), "MetBricksPage");
-const MetPlansPage = lazyPage(() => import("@/pages/met/MetPublicPages"), "MetPlansPage");
-const MetPlanDetailPage = lazyPage(() => import("@/pages/met/MetPublicPages"), "MetPlanDetailPage");
-const MetEstimatePage = lazyPage(() => import("@/pages/met/MetPublicPages"), "MetEstimatePage");
-const MetRealisationsPage = lazyPage(() => import("@/pages/met/MetPublicPages"), "MetRealisationsPage");
-const MetProjectDetailPage = lazyPage(() => import("@/pages/met/MetPublicPages"), "MetProjectDetailPage");
-const MetBlogPage = lazyPage(() => import("@/pages/met/MetPublicPages"), "MetBlogPage");
-const MetBlogPostPage = lazyPage(() => import("@/pages/met/MetPublicPages"), "MetBlogPostPage");
-const MetContactPage = lazyPage(() => import("@/pages/met/MetPublicPages"), "MetContactPage");
-const MetLegalMentionsPage = lazyPage(() => import("@/pages/met/MetPublicPages"), "MetLegalMentionsPage");
-const MetPrivacyPolicyPage = lazyPage(() => import("@/pages/met/MetPublicPages"), "MetPrivacyPolicyPage");
-const MetAdminDashboardPage = lazyPage(() => import("@/pages/met/MetAdminPages"), "MetAdminDashboardPage");
-const MetAdminLeadsPage = lazyPage(() => import("@/pages/met/MetAdminPages"), "MetAdminLeadsPage");
-const MetAdminEstimatesPage = lazyPage(() => import("@/pages/met/MetAdminPages"), "MetAdminEstimatesPage");
-const MetAdminOrdersPage = lazyPage(() => import("@/pages/met/MetAdminPages"), "MetAdminOrdersPage");
-const MetAdminProductsPage = lazyPage(() => import("@/pages/met/MetAdminPages"), "MetAdminProductsPage");
-const MetAdminPlansPage = lazyPage(() => import("@/pages/met/MetAdminPages"), "MetAdminPlansPage");
-const MetAdminProjectsPage = lazyPage(() => import("@/pages/met/MetAdminPages"), "MetAdminProjectsPage");
-const MetAdminBlogPage = lazyPage(() => import("@/pages/met/MetAdminPages"), "MetAdminBlogPage");
-const MetAdminMediaPage = lazyPage(() => import("@/pages/met/MetAdminPages"), "MetAdminMediaPage");
-const MetAdminSettingsPage = lazyPage(() => import("@/pages/met/MetAdminPages"), "MetAdminSettingsPage");
-const VsHomePage = lazyPage(() => import("@/pages/vs/VsPublicPages"), "VsHomePage");
-const VsAboutPage = lazyPage(() => import("@/pages/vs/VsPublicPages"), "VsAboutPage");
-const VsPressPage = lazyPage(() => import("@/pages/vs/VsPublicPages"), "VsPressPage");
-const VsPortfolioPage = lazyPage(() => import("@/pages/vs/VsPublicPages"), "VsPortfolioPage");
-const VsContactPage = lazyPage(() => import("@/pages/vs/VsPublicPages"), "VsContactPage");
-const VsInsightsPage = lazyPage(() => import("@/pages/vs/VsPublicPages"), "VsInsightsPage");
-const VsAdminDashboardPage = lazyPage(() => import("@/pages/vs/VsAdminPages"), "VsAdminDashboardPage");
-const VsAdminReputationPage = lazyPage(() => import("@/pages/vs/VsAdminPages"), "VsAdminReputationPage");
-const VsAdminPrPage = lazyPage(() => import("@/pages/vs/VsAdminPages"), "VsAdminPrPage");
-const VsAdminStudioPage = lazyPage(() => import("@/pages/vs/VsAdminPages"), "VsAdminStudioPage");
-const VsAdminSocialPage = lazyPage(() => import("@/pages/vs/VsAdminPages"), "VsAdminSocialPage");
-const VsAdminInboxPage = lazyPage(() => import("@/pages/vs/VsAdminPages"), "VsAdminInboxPage");
-const VsAdminAgentsPage = lazyPage(() => import("@/pages/vs/VsAdminPages"), "VsAdminAgentsPage");
-const VsAdminAssistantPage = lazyPage(() => import("@/pages/vs/VsAdminPages"), "VsAdminAssistantPage");
-const VsAdminActionsPage = lazyPage(() => import("@/pages/vs/VsAdminPages"), "VsAdminActionsPage");
-const VsAdminUsersPage = lazyPage(() => import("@/pages/vs/VsAdminPages"), "VsAdminUsersPage");
-const VsAdminSettingsPage = lazyPage(() => import("@/pages/vs/VsAdminPages"), "VsAdminSettingsPage");
-const VsAdminWebsitePage = lazyPage(() => import("@/pages/vs/VsAdminPages"), "VsAdminWebsitePage");
-const HozHomePage = lazyPage(() => import("@/pages/hoz/HozPublicPages"), "HozHomePage");
-const HozBooksPage = lazyPage(() => import("@/pages/hoz/HozPublicPages"), "HozBooksPage");
-const HozJewelryPage = lazyPage(() => import("@/pages/hoz/HozPublicPages"), "HozJewelryPage");
-const HozMediaPage = lazyPage(() => import("@/pages/hoz/HozPublicPages"), "HozMediaPage");
-const HozAboutPage = lazyPage(() => import("@/pages/hoz/HozPublicPages"), "HozAboutPage");
-const HozContactPage = lazyPage(() => import("@/pages/hoz/HozPublicPages"), "HozContactPage");
-const HozAdminDashboardPage = lazyPage(() => import("@/pages/hoz/HozAdminPages"), "HozAdminDashboardPage");
-const HozAdminCollectionsPage = lazyPage(() => import("@/pages/hoz/HozAdminPages"), "HozAdminCollectionsPage");
-const HozAdminMediaPage = lazyPage(() => import("@/pages/hoz/HozAdminPages"), "HozAdminMediaPage");
-const HozAdminInboxPage = lazyPage(() => import("@/pages/hoz/HozAdminPages"), "HozAdminInboxPage");
-const HozAdminWebsitePage = lazyPage(() => import("@/pages/hoz/HozAdminPages"), "HozAdminWebsitePage");
-const HozAdminSettingsPage = lazyPage(() => import("@/pages/hoz/HozAdminPages"), "HozAdminSettingsPage");
-const AgoojyeHomePage = lazyPage(() => import("@/pages/agoojye/AgoojyePublicPages"), "AgoojyeHomePage");
-const AgoojyeVisionPage = lazyPage(() => import("@/pages/agoojye/AgoojyePublicPages"), "AgoojyeVisionPage");
-const AgoojyeHistoryPage = lazyPage(() => import("@/pages/agoojye/AgoojyePublicPages"), "AgoojyeHistoryPage");
-const AgoojyeChallengePage = lazyPage(() => import("@/pages/agoojye/AgoojyePublicPages"), "AgoojyeChallengePage");
-const AgoojyeTeamsPage = lazyPage(() => import("@/pages/agoojye/AgoojyePublicPages"), "AgoojyeTeamsPage");
-const AgoojyePartnersPage = lazyPage(() => import("@/pages/agoojye/AgoojyePublicPages"), "AgoojyePartnersPage");
-const AgoojyeSponsorsPage = lazyPage(() => import("@/pages/agoojye/AgoojyePublicPages"), "AgoojyeSponsorsPage");
-const AgoojyeMediaPage = lazyPage(() => import("@/pages/agoojye/AgoojyePublicPages"), "AgoojyeMediaPage");
-const AgoojyeContactPage = lazyPage(() => import("@/pages/agoojye/AgoojyePublicPages"), "AgoojyeContactPage");
-const AgoojyeAdminDashboardPage = lazyPage(() => import("@/pages/agoojye/AgoojyeAdminPages"), "AgoojyeAdminDashboardPage");
-const AgoojyeAdminUsersPage = lazyPage(() => import("@/pages/agoojye/AgoojyeAdminPages"), "AgoojyeAdminUsersPage");
-const AgoojyeAdminTeamsPage = lazyPage(() => import("@/pages/agoojye/AgoojyeAdminPages"), "AgoojyeAdminTeamsPage");
-const AgoojyeAdminParticipantsPage = lazyPage(() => import("@/pages/agoojye/AgoojyeAdminPages"), "AgoojyeAdminParticipantsPage");
-const AgoojyeAdminEmailsPage = lazyPage(() => import("@/pages/agoojye/AgoojyeAdminPages"), "AgoojyeAdminEmailsPage");
-const AgoojyeAdminMessagesPage = lazyPage(() => import("@/pages/agoojye/AgoojyeAdminPages"), "AgoojyeAdminMessagesPage");
-const AgoojyeAdminTasksPage = lazyPage(() => import("@/pages/agoojye/AgoojyeAdminPages"), "AgoojyeAdminTasksPage");
-const AgoojyeAdminMilestonesPage = lazyPage(() => import("@/pages/agoojye/AgoojyeAdminPages"), "AgoojyeAdminMilestonesPage");
-const AgoojyeAdminDocumentsPage = lazyPage(() => import("@/pages/agoojye/AgoojyeAdminPages"), "AgoojyeAdminDocumentsPage");
-const AgoojyeAdminPartnersPage = lazyPage(() => import("@/pages/agoojye/AgoojyeAdminPages"), "AgoojyeAdminPartnersPage");
-const AgoojyeAdminSponsorsPage = lazyPage(() => import("@/pages/agoojye/AgoojyeAdminPages"), "AgoojyeAdminSponsorsPage");
-const AgoojyeAdminMediaPage = lazyPage(() => import("@/pages/agoojye/AgoojyeAdminPages"), "AgoojyeAdminMediaPage");
-const AgoojyeAdminContentPage = lazyPage(() => import("@/pages/agoojye/AgoojyeAdminPages"), "AgoojyeAdminContentPage");
-const AgoojyeAdminSettingsPage = lazyPage(() => import("@/pages/agoojye/AgoojyeAdminPages"), "AgoojyeAdminSettingsPage");
-const AgoojyeAdminAuditPage = lazyPage(() => import("@/pages/agoojye/AgoojyeAdminPages"), "AgoojyeAdminAuditPage");
-const BdoActualitesPage = lazyPage(() => import("@/pages/bdo/BdoAuthorityPages"), "BdoActualitesPage");
-const BdoReglementationPage = lazyPage(() => import("@/pages/bdo/BdoAuthorityPages"), "BdoReglementationPage");
-const BdoIndustrieMinierePage = lazyPage(() => import("@/pages/bdo/BdoAuthorityPages"), "BdoIndustrieMinierePage");
-const BdoCertificationPage = lazyPage(() => import("@/pages/bdo/BdoAuthorityPages"), "BdoCertificationPage");
-const BdoVerifierPage = lazyPage(() => import("@/pages/bdo/BdoAuthorityPages"), "BdoVerifierPage");
-const BdoEspaceProDashboardPage = lazyPage(() => import("@/pages/bdo/BdoProPages"), "BdoEspaceProDashboardPage");
-const BdoWholesaleMarketPage = lazyPage(() => import("@/pages/bdo/BdoProPages"), "BdoWholesaleMarketPage");
-const BdoProMapPage = lazyPage(() => import("@/pages/bdo/BdoProPages"), "BdoProMapPage");
-const BdoProIntelligencePage = lazyPage(() => import("@/pages/bdo/BdoProPages"), "BdoProIntelligencePage");
-const BdoProBureauxPage = lazyPage(() => import("@/pages/bdo/BdoProPages"), "BdoProBureauxPage");
-const BdoProBuyersPage = lazyPage(() => import("@/pages/bdo/BdoProPages"), "BdoProBuyersPage");
-const BdoProExportersPage = lazyPage(() => import("@/pages/bdo/BdoProPages"), "BdoProExportersPage");
-const BdoProCounterpartiesPage = lazyPage(() => import("@/pages/bdo/BdoProPages"), "BdoProCounterpartiesPage");
-const BdoProMembershipPage = lazyPage(() => import("@/pages/bdo/BdoProPages"), "BdoProMembershipPage");
-const BdoCoffrePage = lazyPage(() => import("@/pages/bdo/BdoGoalPages"), "BdoCoffrePage");
-const BdoGoalsPage = lazyPage(() => import("@/pages/bdo/BdoGoalPages"), "BdoGoalsPage");
-const BdoGoalDetailPage = lazyPage(() => import("@/pages/bdo/BdoGoalPages"), "BdoGoalDetailPage");
-const BdoAdminSettingsPage = lazyPage(() => import("@/pages/bdo/BdoAdminPages"), "BdoAdminSettingsPage");
-const BdoAdminGoalsPage = lazyPage(() => import("@/pages/bdo/BdoAdminPages"), "BdoAdminGoalsPage");
-const BdoAdminProMembershipsPage = lazyPage(() => import("@/pages/bdo/BdoAdminPages"), "BdoAdminProMembershipsPage");
+const ExportunityTradeIntelligencePage = lazyPage(
+  () => import("@/pages/exportunity/TradeIntelligencePage"),
+);
+const ExportunityProducerExchangePage = lazyPage(
+  () => import("@/pages/exportunity/ProducerExchangePage"),
+);
+const ExportunityTradeNewsroomArticlePage = lazyPage(
+  () => import("@/pages/exportunity/TradeNewsroomArticlePage"),
+);
+const ExportunityIndustrialOrderPaymentPage = lazyPage(
+  () => import("@/pages/exportunity/IndustrialOrderPaymentPage"),
+);
+const metPublicPagesImporter = includeOtherTenantUi
+  ? () => import("@/pages/met/MetPublicPages")
+  : null;
+const metAdminPagesImporter = includeOtherTenantUi
+  ? () => import("@/pages/met/MetAdminPages")
+  : null;
+const vsPublicPagesImporter = includeOtherTenantUi
+  ? () => import("@/pages/vs/VsPublicPages")
+  : null;
+const vsAdminPagesImporter = includeOtherTenantUi
+  ? () => import("@/pages/vs/VsAdminPages")
+  : null;
+const hozPublicPagesImporter = includeOtherTenantUi
+  ? () => import("@/pages/hoz/HozPublicPages")
+  : null;
+const hozAdminPagesImporter = includeOtherTenantUi
+  ? () => import("@/pages/hoz/HozAdminPages")
+  : null;
+const agoojyePublicPagesImporter = includeOtherTenantUi
+  ? () => import("@/pages/agoojye/AgoojyePublicPages")
+  : null;
+const agoojyeAdminPagesImporter = includeOtherTenantUi
+  ? () => import("@/pages/agoojye/AgoojyeAdminPages")
+  : null;
+const bdoAuthorityPagesImporter = includeOtherTenantUi
+  ? () => import("@/pages/bdo/BdoAuthorityPages")
+  : null;
+const bdoProPagesImporter = includeOtherTenantUi
+  ? () => import("@/pages/bdo/BdoProPages")
+  : null;
+const bdoGoalPagesImporter = includeOtherTenantUi
+  ? () => import("@/pages/bdo/BdoGoalPages")
+  : null;
+const bdoAdminPagesImporter = includeOtherTenantUi
+  ? () => import("@/pages/bdo/BdoAdminPages")
+  : null;
+
+function isolatedTenantPage(
+  importer: (() => Promise<any>) | null,
+  exportName: string,
+) {
+  return importer ? lazyPage(importer, exportName) : ExcludedTenantPage;
+}
+
+const MetHomePage = isolatedTenantPage(metPublicPagesImporter, "MetHomePage");
+const MetModelHousePage = isolatedTenantPage(metPublicPagesImporter, "MetModelHousePage");
+const MetBricksPage = isolatedTenantPage(metPublicPagesImporter, "MetBricksPage");
+const MetPlansPage = isolatedTenantPage(metPublicPagesImporter, "MetPlansPage");
+const MetPlanDetailPage = isolatedTenantPage(metPublicPagesImporter, "MetPlanDetailPage");
+const MetEstimatePage = isolatedTenantPage(metPublicPagesImporter, "MetEstimatePage");
+const MetRealisationsPage = isolatedTenantPage(metPublicPagesImporter, "MetRealisationsPage");
+const MetProjectDetailPage = isolatedTenantPage(metPublicPagesImporter, "MetProjectDetailPage");
+const MetBlogPage = isolatedTenantPage(metPublicPagesImporter, "MetBlogPage");
+const MetBlogPostPage = isolatedTenantPage(metPublicPagesImporter, "MetBlogPostPage");
+const MetContactPage = isolatedTenantPage(metPublicPagesImporter, "MetContactPage");
+const MetLegalMentionsPage = isolatedTenantPage(metPublicPagesImporter, "MetLegalMentionsPage");
+const MetPrivacyPolicyPage = isolatedTenantPage(metPublicPagesImporter, "MetPrivacyPolicyPage");
+const MetAdminDashboardPage = isolatedTenantPage(metAdminPagesImporter, "MetAdminDashboardPage");
+const MetAdminLeadsPage = isolatedTenantPage(metAdminPagesImporter, "MetAdminLeadsPage");
+const MetAdminEstimatesPage = isolatedTenantPage(metAdminPagesImporter, "MetAdminEstimatesPage");
+const MetAdminOrdersPage = isolatedTenantPage(metAdminPagesImporter, "MetAdminOrdersPage");
+const MetAdminProductsPage = isolatedTenantPage(metAdminPagesImporter, "MetAdminProductsPage");
+const MetAdminPlansPage = isolatedTenantPage(metAdminPagesImporter, "MetAdminPlansPage");
+const MetAdminProjectsPage = isolatedTenantPage(metAdminPagesImporter, "MetAdminProjectsPage");
+const MetAdminBlogPage = isolatedTenantPage(metAdminPagesImporter, "MetAdminBlogPage");
+const MetAdminMediaPage = isolatedTenantPage(metAdminPagesImporter, "MetAdminMediaPage");
+const MetAdminSettingsPage = isolatedTenantPage(metAdminPagesImporter, "MetAdminSettingsPage");
+const VsHomePage = isolatedTenantPage(vsPublicPagesImporter, "VsHomePage");
+const VsAboutPage = isolatedTenantPage(vsPublicPagesImporter, "VsAboutPage");
+const VsPressPage = isolatedTenantPage(vsPublicPagesImporter, "VsPressPage");
+const VsPortfolioPage = isolatedTenantPage(vsPublicPagesImporter, "VsPortfolioPage");
+const VsContactPage = isolatedTenantPage(vsPublicPagesImporter, "VsContactPage");
+const VsInsightsPage = isolatedTenantPage(vsPublicPagesImporter, "VsInsightsPage");
+const VsAdminDashboardPage = isolatedTenantPage(vsAdminPagesImporter, "VsAdminDashboardPage");
+const VsAdminReputationPage = isolatedTenantPage(vsAdminPagesImporter, "VsAdminReputationPage");
+const VsAdminPrPage = isolatedTenantPage(vsAdminPagesImporter, "VsAdminPrPage");
+const VsAdminStudioPage = isolatedTenantPage(vsAdminPagesImporter, "VsAdminStudioPage");
+const VsAdminSocialPage = isolatedTenantPage(vsAdminPagesImporter, "VsAdminSocialPage");
+const VsAdminInboxPage = isolatedTenantPage(vsAdminPagesImporter, "VsAdminInboxPage");
+const VsAdminAgentsPage = isolatedTenantPage(vsAdminPagesImporter, "VsAdminAgentsPage");
+const VsAdminAssistantPage = isolatedTenantPage(vsAdminPagesImporter, "VsAdminAssistantPage");
+const VsAdminActionsPage = isolatedTenantPage(vsAdminPagesImporter, "VsAdminActionsPage");
+const VsAdminUsersPage = isolatedTenantPage(vsAdminPagesImporter, "VsAdminUsersPage");
+const VsAdminSettingsPage = isolatedTenantPage(vsAdminPagesImporter, "VsAdminSettingsPage");
+const VsAdminWebsitePage = isolatedTenantPage(vsAdminPagesImporter, "VsAdminWebsitePage");
+const HozHomePage = isolatedTenantPage(hozPublicPagesImporter, "HozHomePage");
+const HozBooksPage = isolatedTenantPage(hozPublicPagesImporter, "HozBooksPage");
+const HozJewelryPage = isolatedTenantPage(hozPublicPagesImporter, "HozJewelryPage");
+const HozMediaPage = isolatedTenantPage(hozPublicPagesImporter, "HozMediaPage");
+const HozAboutPage = isolatedTenantPage(hozPublicPagesImporter, "HozAboutPage");
+const HozContactPage = isolatedTenantPage(hozPublicPagesImporter, "HozContactPage");
+const HozAdminDashboardPage = isolatedTenantPage(hozAdminPagesImporter, "HozAdminDashboardPage");
+const HozAdminCollectionsPage = isolatedTenantPage(hozAdminPagesImporter, "HozAdminCollectionsPage");
+const HozAdminMediaPage = isolatedTenantPage(hozAdminPagesImporter, "HozAdminMediaPage");
+const HozAdminInboxPage = isolatedTenantPage(hozAdminPagesImporter, "HozAdminInboxPage");
+const HozAdminWebsitePage = isolatedTenantPage(hozAdminPagesImporter, "HozAdminWebsitePage");
+const HozAdminSettingsPage = isolatedTenantPage(hozAdminPagesImporter, "HozAdminSettingsPage");
+const AgoojyeHomePage = isolatedTenantPage(agoojyePublicPagesImporter, "AgoojyeHomePage");
+const AgoojyeVisionPage = isolatedTenantPage(agoojyePublicPagesImporter, "AgoojyeVisionPage");
+const AgoojyeHistoryPage = isolatedTenantPage(agoojyePublicPagesImporter, "AgoojyeHistoryPage");
+const AgoojyeChallengePage = isolatedTenantPage(agoojyePublicPagesImporter, "AgoojyeChallengePage");
+const AgoojyeTeamsPage = isolatedTenantPage(agoojyePublicPagesImporter, "AgoojyeTeamsPage");
+const AgoojyePartnersPage = isolatedTenantPage(agoojyePublicPagesImporter, "AgoojyePartnersPage");
+const AgoojyeSponsorsPage = isolatedTenantPage(agoojyePublicPagesImporter, "AgoojyeSponsorsPage");
+const AgoojyeMediaPage = isolatedTenantPage(agoojyePublicPagesImporter, "AgoojyeMediaPage");
+const AgoojyeContactPage = isolatedTenantPage(agoojyePublicPagesImporter, "AgoojyeContactPage");
+const AgoojyeAdminDashboardPage = isolatedTenantPage(agoojyeAdminPagesImporter, "AgoojyeAdminDashboardPage");
+const AgoojyeAdminUsersPage = isolatedTenantPage(agoojyeAdminPagesImporter, "AgoojyeAdminUsersPage");
+const AgoojyeAdminTeamsPage = isolatedTenantPage(agoojyeAdminPagesImporter, "AgoojyeAdminTeamsPage");
+const AgoojyeAdminParticipantsPage = isolatedTenantPage(agoojyeAdminPagesImporter, "AgoojyeAdminParticipantsPage");
+const AgoojyeAdminEmailsPage = isolatedTenantPage(agoojyeAdminPagesImporter, "AgoojyeAdminEmailsPage");
+const AgoojyeAdminMessagesPage = isolatedTenantPage(agoojyeAdminPagesImporter, "AgoojyeAdminMessagesPage");
+const AgoojyeAdminTasksPage = isolatedTenantPage(agoojyeAdminPagesImporter, "AgoojyeAdminTasksPage");
+const AgoojyeAdminMilestonesPage = isolatedTenantPage(agoojyeAdminPagesImporter, "AgoojyeAdminMilestonesPage");
+const AgoojyeAdminDocumentsPage = isolatedTenantPage(agoojyeAdminPagesImporter, "AgoojyeAdminDocumentsPage");
+const AgoojyeAdminPartnersPage = isolatedTenantPage(agoojyeAdminPagesImporter, "AgoojyeAdminPartnersPage");
+const AgoojyeAdminSponsorsPage = isolatedTenantPage(agoojyeAdminPagesImporter, "AgoojyeAdminSponsorsPage");
+const AgoojyeAdminMediaPage = isolatedTenantPage(agoojyeAdminPagesImporter, "AgoojyeAdminMediaPage");
+const AgoojyeAdminContentPage = isolatedTenantPage(agoojyeAdminPagesImporter, "AgoojyeAdminContentPage");
+const AgoojyeAdminSettingsPage = isolatedTenantPage(agoojyeAdminPagesImporter, "AgoojyeAdminSettingsPage");
+const AgoojyeAdminAuditPage = isolatedTenantPage(agoojyeAdminPagesImporter, "AgoojyeAdminAuditPage");
+const BdoActualitesPage = isolatedTenantPage(bdoAuthorityPagesImporter, "BdoActualitesPage");
+const BdoReglementationPage = isolatedTenantPage(bdoAuthorityPagesImporter, "BdoReglementationPage");
+const BdoIndustrieMinierePage = isolatedTenantPage(bdoAuthorityPagesImporter, "BdoIndustrieMinierePage");
+const BdoCertificationPage = isolatedTenantPage(bdoAuthorityPagesImporter, "BdoCertificationPage");
+const BdoVerifierPage = isolatedTenantPage(bdoAuthorityPagesImporter, "BdoVerifierPage");
+const BdoEspaceProDashboardPage = isolatedTenantPage(bdoProPagesImporter, "BdoEspaceProDashboardPage");
+const BdoWholesaleMarketPage = isolatedTenantPage(bdoProPagesImporter, "BdoWholesaleMarketPage");
+const BdoProMapPage = isolatedTenantPage(bdoProPagesImporter, "BdoProMapPage");
+const BdoProIntelligencePage = isolatedTenantPage(bdoProPagesImporter, "BdoProIntelligencePage");
+const BdoProBureauxPage = isolatedTenantPage(bdoProPagesImporter, "BdoProBureauxPage");
+const BdoProBuyersPage = isolatedTenantPage(bdoProPagesImporter, "BdoProBuyersPage");
+const BdoProExportersPage = isolatedTenantPage(bdoProPagesImporter, "BdoProExportersPage");
+const BdoProCounterpartiesPage = isolatedTenantPage(bdoProPagesImporter, "BdoProCounterpartiesPage");
+const BdoProMembershipPage = isolatedTenantPage(bdoProPagesImporter, "BdoProMembershipPage");
+const BdoCoffrePage = isolatedTenantPage(bdoGoalPagesImporter, "BdoCoffrePage");
+const BdoGoalsPage = isolatedTenantPage(bdoGoalPagesImporter, "BdoGoalsPage");
+const BdoGoalDetailPage = isolatedTenantPage(bdoGoalPagesImporter, "BdoGoalDetailPage");
+const BdoAdminSettingsPage = isolatedTenantPage(bdoAdminPagesImporter, "BdoAdminSettingsPage");
+const BdoAdminGoalsPage = isolatedTenantPage(bdoAdminPagesImporter, "BdoAdminGoalsPage");
+const BdoAdminProMembershipsPage = isolatedTenantPage(bdoAdminPagesImporter, "BdoAdminProMembershipsPage");
 const AdminMarketingPostsPage = lazyPage(() => import("@/pages/AdminMarketingPostsPage"));
 const AdminMarketingPressPage = lazyPage(() => import("@/pages/AdminMarketingPressPage"));
 const AdminMarketingLibraryPage = lazyPage(() => import("@/pages/AdminMarketingLibraryPage"));
 const AdminMarketingMediaPage = lazyPage(() => import("@/pages/AdminMarketingMediaPage"));
+const AdminMediaStudioPage = lazyPage(() => import("@/pages/AdminMediaStudioPage"));
+const AdminAdvertisingGovernancePage = lazyPage(() => import("@/pages/AdminAdvertisingGovernancePage"));
 const AdminMarketingScreenshotsPage = lazyPage(() => import("@/pages/AdminMarketingScreenshotsPage"));
 const AdminContactsPage = lazyPage(() => import("@/pages/AdminContactsPage"));
 
 // Admin layout + pages (route-level code split)
 const AdminLayout = lazyPage(() => import("@/components/AdminLayout"), "AdminLayout");
-const AdminDashboardPage = lazyPage(() => import("@/pages/AdminDashboardPage"));
-const AITeamHubPage = lazyPage(() => import("@/pages/AITeamHubPage"), "AITeamHubPage");
-const AgentCommandCenterPage = lazyPage(() => import("@/pages/AgentCommandCenterPage"), "AgentCommandCenterPage");
+const ExportunityAdminDashboardPage = lazyPage(() => import("@/pages/exportunity/ExportunityAdminDashboardPage"));
+const AdminDashboardPage = includeOtherTenantUi
+  ? lazyPage(() => import("@/pages/AdminDashboardPage"))
+  : ExportunityAdminDashboardPage;
+const ExportunityOperationsCenterPage = lazyPage(() => import("@/pages/exportunity/ExportunityOperationsCenterPage"));
+const AITeamHubPage = includeOtherTenantUi
+  ? lazyPage(() => import("@/pages/AITeamHubPage"), "AITeamHubPage")
+  : ExportunityOperationsCenterPage;
 const AdminAgentGovernancePage = lazyPage(
   () => import("@/pages/AdminAgentGovernancePage"),
   "AdminAgentGovernancePage",
@@ -388,6 +488,15 @@ const AdminTwilioControlCenterPage = lazyPage(
 const AdminGooglePlacesIntegrationPage = lazyPage(() => import("@/pages/AdminGooglePlacesIntegrationPage"));
 const AdminGoogleWorkspaceIntegrationPage = lazyPage(() => import("@/pages/AdminGoogleWorkspaceIntegrationPage"));
 const AdminCompanyBrainPage = lazyPage(() => import("@/pages/AdminCompanyBrainPage"));
+const AdminExportunityIntegrationsPage = lazyPage(
+  () => import("@/pages/AdminExportunityIntegrationsPage"),
+);
+const AdminExportunitySupplierDiscoveryPage = lazyPage(
+  () => import("@/pages/AdminExportunitySupplierDiscoveryPage"),
+);
+const AdminExportunitySupplierRfqsPage = lazyPage(
+  () => import("@/pages/AdminExportunitySupplierRfqsPage"),
+);
 const AdminTwilioLogsPage = lazyPage(() => import("@/pages/AdminTwilioLogsPage"));
   const AdminCommunicationsInboxPage = lazyPage(
     () => import("@/pages/AdminCommunicationsInboxPage"),
@@ -408,7 +517,9 @@ const AgentProfileV2Page = lazyPage(() => import("@/pages/AgentProfileV2Page"));
 const TasksPage = lazyPage(() => import("@/pages/TasksPage"), "TasksPage");
 const GoalsPage = lazyPage(() => import("@/pages/GoalsPage"), "GoalsPage");
 const ActionsPage = lazyPage(() => import("@/pages/ActionsPage"), "ActionsPage");
-const FinancePage = lazyPage(() => import("@/pages/FinancePage"), "FinancePage");
+const FinancePage = includeOtherTenantUi
+  ? lazyPage(() => import("@/pages/FinancePage"), "FinancePage")
+  : ExcludedTenantPage;
 const KnowledgeBasePage = lazyPage(() => import("@/pages/KnowledgeBasePage"), "KnowledgeBasePage");
 const ExpertClonesHubPage = lazyPage(() => import("@/pages/ExpertClonesHubPage"), "ExpertClonesHubPage");
 const CompanyListPage = lazyPage(() => import("@/pages/CompanyListPage"), "CompanyListPage");
@@ -425,26 +536,28 @@ const AdminUserManagementPage = lazyPage(() => import("@/pages/AdminUserManageme
 const AdminProTestAccountPage = lazyPage(() => import("@/pages/AdminProTestAccountPage"));
 const SubscriptionPlansPage = lazyPage(() => import("@/pages/SubscriptionPlansPage"));
 const ClientHunterPage = lazyPage(() => import("@/pages/ClientHunterPage"));
-const MarketingPage = lazyPage(() => import("@/pages/MarketingPage"), "MarketingPage");
-const SalesPage = lazyPage(() => import("@/pages/SalesPage"), "SalesPage");
 const ContractsPage = lazyPage(() => import("@/pages/ContractsPage"));
 const ContractDetailPage = lazyPage(() => import("@/pages/ContractDetailPage"));
-const AuthorizedBureausPage = lazyPage(() => import("@/pages/AuthorizedBureausPage"));
+const AuthorizedBureausPage = includeOtherTenantUi
+  ? lazyPage(() => import("@/pages/AuthorizedBureausPage"))
+  : ExcludedTenantPage;
 const AdminAssetStudioPage = lazyPage(() => import("@/pages/AdminAssetStudioPage"));
 const AdminMediaDebugPage = lazyPage(() => import("@/pages/AdminMediaDebugPage"));
 const AdminMarketplaceProductsPage = lazyPage(() => import("@/pages/AdminMarketplaceProductsPage"));
 const AdminMarketplacePaymentsPage = lazyPage(() => import("@/pages/AdminMarketplacePaymentsPage"));
-const AdminPmeExchangePage = lazyPage(() => import("@/pages/AdminPmeExchangePage"));
+const AdminPmeExchangePage = includeOtherTenantUi
+  ? lazyPage(() => import("@/pages/AdminPmeExchangePage"))
+  : ExcludedTenantPage;
 const AdminIndustrialNetworkPage = lazyPage(() => import("@/pages/AdminIndustrialNetworkPage"));
+const AdminCarrierNetworkPage = lazyPage(() => import("@/pages/AdminCarrierNetworkPage"));
+const AdminGroupBuyingPage = lazyPage(() => import("@/pages/AdminGroupBuyingPage"));
+const AdminTradeIntelligencePage = lazyPage(
+  () => import("@/pages/AdminTradeIntelligencePage"),
+);
 const AdminSystemUpdatePage = lazyPage(() => import("@/pages/AdminSystemUpdatePage"));
 const AdminMapIconsPage = lazyPage(() => import("@/pages/AdminMapIconsPage"));
-const AdminMapSettingsPage = lazyPage(() => import("@/pages/AdminMapSettingsPage"));
 const AdminOnboardingSettingsPage = lazyPage(() => import("@/pages/AdminOnboardingSettingsPage"));
-const AdminDeveloperSettingsPage = lazyPage(() => import("@/pages/AdminDeveloperSettingsPage"));
-const AdminUxAuditPage = lazyPage(() => import("@/pages/AdminUxAuditPage"));
-const AdminVisitsIntelligencePage = lazyPage(() => import("@/pages/AdminVisitsIntelligencePage"));
-const AdminSeoHealthPage = lazyPage(() => import("@/pages/AdminSeoHealthPage"));
-const AdminSeoAutopilotPage = lazyPage(() => import("@/pages/AdminSeoAutopilotPage"));
+const AdminWebsiteIntelligencePage = lazyPage(() => import("@/pages/AdminWebsiteIntelligencePage"));
 const TerritoryManagementPage = lazyPage(() => import("@/pages/TerritoryManagementPage"), "TerritoryManagementPage");
 const TerritoryDetailPage = lazyPage(() => import("@/pages/TerritoryDetailPage"), "TerritoryDetailPage");
 const AdminWalletAccountsPage = lazyPage(() => import("@/pages/AdminWalletAccountsPage"));
@@ -457,20 +570,33 @@ const AdminWalletSellersPage = lazyPage(() => import("@/pages/AdminWalletSellers
 const AdminWalletRiskPage = lazyPage(() => import("@/pages/AdminWalletRiskPage"));
 const AdminWalletConfigPage = lazyPage(() => import("@/pages/AdminWalletConfigPage"));
 const AdminFxSettingsPage = lazyPage(() => import("@/pages/AdminFxSettingsPage"));
-const AdminStampedGoldMasterPage = lazyPage(() => import("@/pages/AdminStampedGoldMasterPage"));
-const AdminStampedGoldSkusPage = lazyPage(() => import("@/pages/AdminStampedGoldSkusPage"));
-const AdminStampedGoldItemsPage = lazyPage(() => import("@/pages/AdminStampedGoldItemsPage"));
-const AdminStampedGoldJewellersPage = lazyPage(() => import("@/pages/AdminStampedGoldJewellersPage"));
-const AdminStampedGoldScansPage = lazyPage(() => import("@/pages/AdminStampedGoldScansPage"));
-const AdminStampedGoldPickupPage = lazyPage(() => import("@/pages/AdminStampedGoldPickupPage"));
-const AdminStampedGoldMintingStudioPage = lazyPage(() => import("@/pages/AdminStampedGoldMintingStudioPage"));
+const AdminStampedGoldMasterPage = includeOtherTenantUi
+  ? lazyPage(() => import("@/pages/AdminStampedGoldMasterPage"))
+  : ExcludedTenantPage;
+const AdminStampedGoldSkusPage = includeOtherTenantUi
+  ? lazyPage(() => import("@/pages/AdminStampedGoldSkusPage"))
+  : ExcludedTenantPage;
+const AdminStampedGoldItemsPage = includeOtherTenantUi
+  ? lazyPage(() => import("@/pages/AdminStampedGoldItemsPage"))
+  : ExcludedTenantPage;
+const AdminStampedGoldJewellersPage = includeOtherTenantUi
+  ? lazyPage(() => import("@/pages/AdminStampedGoldJewellersPage"))
+  : ExcludedTenantPage;
+const AdminStampedGoldScansPage = includeOtherTenantUi
+  ? lazyPage(() => import("@/pages/AdminStampedGoldScansPage"))
+  : ExcludedTenantPage;
+const AdminStampedGoldPickupPage = includeOtherTenantUi
+  ? lazyPage(() => import("@/pages/AdminStampedGoldPickupPage"))
+  : ExcludedTenantPage;
+const AdminStampedGoldMintingStudioPage = includeOtherTenantUi
+  ? lazyPage(() => import("@/pages/AdminStampedGoldMintingStudioPage"))
+  : ExcludedTenantPage;
 const AdminEquipmentOpsFleetMapPage = lazyPage(() => import("@/pages/AdminEquipmentOpsFleetMapPage"));
 const AdminEquipmentOpsListingsPage = lazyPage(() => import("@/pages/AdminEquipmentOpsListingsPage"));
 const AdminEquipmentOpsContractsPage = lazyPage(() => import("@/pages/AdminEquipmentOpsContractsPage"));
 const AdminEquipmentOpsMaintenancePage = lazyPage(() => import("@/pages/AdminEquipmentOpsMaintenancePage"));
 const AdminWorkstationsPage = lazyPage(() => import("@/pages/AdminWorkstationsPage"));
 const AdminEvidencePage = lazyPage(() => import("@/pages/AdminEvidencePage"));
-const AdminActionForgePage = lazyPage(() => import("@/pages/AdminActionForgePage"));
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isGuest, user } = useSession();
@@ -493,6 +619,18 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return <AdminLayout>{children}</AdminLayout>;
 }
 
+function TenantDashboardRoute() {
+  const { tenant } = useTenant();
+  if (tenant.key === "exportunity") return <ExportunityAdminDashboardPage />;
+  return <AdminDashboardPage />;
+}
+
+function TenantOperationsCenterRoute() {
+  const { tenant } = useTenant();
+  if (tenant.key === "exportunity") return <ExportunityOperationsCenterPage />;
+  return <AITeamHubPage />;
+}
+
 function TenantAdminAliasRoute({ target }: { target: StandardAdminKey }) {
   const { tenant } = useTenant();
   const [location] = useLocation();
@@ -503,13 +641,9 @@ function TenantAdminAliasRoute({ target }: { target: StandardAdminKey }) {
   return <Redirect to={destination} />;
 }
 
-// Zone is the canonical marketplace landing.
-const DefaultLanding = () => <Redirect to="/zone" />;
-
 function RootPublicRoute() {
   const { tenant } = useTenant();
-  if (isExportunityMarketingHost()) return <ExportunityMarketingHomePage />;
-  if (tenant.key === "exportunity") return <ExportunityGlobalTradeHomePage />;
+  if (tenant.key === "exportunity") return <ExportunityMarketplacePage />;
 
   const config = getTenantConfigByKey(tenant.key);
   if (!config) return <Redirect to="/store" />;
@@ -530,15 +664,15 @@ function RootPublicRoute() {
 
 function ExportunityGlobalTradeRoute() {
   const { tenant } = useTenant();
-  if (tenant.key === "exportunity" && !isExportunityMarketingHost()) {
+  if (tenant.key === "exportunity") {
     return <ExportunityGlobalTradeHomePage />;
   }
-  if (isExportunityMarketingHost()) return <Redirect to="/solutions" />;
   return <Redirect to="/zone" />;
 }
 
 function StoreRoute() {
   const [location] = useLocation();
+  if (!StorePage) return <Redirect to="/industrial" />;
   const normalizedLocation = location.replace(/\/+$/, "") || "/";
   const initialSpace = normalizedLocation.startsWith("/wholesale")
     ? "wholesale"
@@ -567,25 +701,68 @@ function StoreRoute() {
   return <StorePage initialSpace={initialSpace} shellMode={shellMode} exchangeVariant={exchangeVariant} />;
 }
 
+function ExportunityLegacyCommerceGuard({ children }: { children: React.ReactNode }) {
+  const { tenant } = useTenant();
+  const [location] = useLocation();
+  const destination = getExportunityLegacyCommerceDestination(location);
+
+  if (tenant.key === "exportunity" && destination) {
+    return <Redirect to={destination} />;
+  }
+  return <>{children}</>;
+}
+
+function ExportunityLegacyStoreRoute() {
+  return (
+    <ExportunityLegacyCommerceGuard>
+      <StoreRoute />
+    </ExportunityLegacyCommerceGuard>
+  );
+}
+
+function ExportunityLegacyCollectionsRoute() {
+  return (
+    <ExportunityLegacyCommerceGuard>
+      <CollectionsRoute />
+    </ExportunityLegacyCommerceGuard>
+  );
+}
+
+function ExportunityLegacyStoreRedirect({ query }: { query: string }) {
+  return (
+    <ExportunityLegacyCommerceGuard>
+      <Redirect to={`/store?${query}`} />
+    </ExportunityLegacyCommerceGuard>
+  );
+}
+
 function ExportunityIndustrialRoute() {
   const { tenant } = useTenant();
-  if (tenant.key === "exportunity" && !isExportunityMarketingHost()) {
+  if (tenant.key === "exportunity") {
     return <ExportunityIndustrialHubPage />;
   }
   return <Redirect to="/zone" />;
 }
 
-function ExportunityIndustrialMapRoute() {
+function ExportunityMarketplaceRoute() {
   const { tenant } = useTenant();
-  if (tenant.key === "exportunity" && !isExportunityMarketingHost()) {
-    return <ExportunityIndustrialHubPage />;
+  if (tenant.key === "exportunity") {
+    return <ExportunityMarketplacePage />;
+  }
+  return <StoreRoute />;
+}
+
+function ExportunityMarketplaceMapRoute() {
+  const { tenant } = useTenant();
+  if (tenant.key === "exportunity") {
+    return <ExportunityMarketplacePage />;
   }
   return <StoreRoute />;
 }
 
 function ExportunityIndustrialAliasRoute({ to }: { to: string }) {
   const { tenant } = useTenant();
-  if (tenant.key === "exportunity" && !isExportunityMarketingHost()) {
+  if (tenant.key === "exportunity") {
     return <Redirect to={to} />;
   }
   return <StoreRoute />;
@@ -593,24 +770,22 @@ function ExportunityIndustrialAliasRoute({ to }: { to: string }) {
 
 function ExportunityMachineryRoute() {
   const { tenant } = useTenant();
-  if (tenant.key === "exportunity" && !isExportunityMarketingHost()) {
+  if (tenant.key === "exportunity") {
     return <ExportunityIndustrialHubPage />;
   }
-  return isExportunityMarketingHost() ? (
-    <ExportunityMarketingVitrinePage />
-  ) : (
-    <MarketingOrAuthRedirect marketingTo="/platform?module=machinery" authTo="/auth?next=/app/machinery/catalog" />
-  );
+  return <Redirect to="/auth?next=/app/machinery/catalog" />;
 }
 
 function BdoWholesaleRoute() {
   const { tenant } = useTenant();
   if (isBdoHost() || tenant.key === "bdo") return <StoreRoute />;
-  return tenant.key === "exportunity" ? <Redirect to="/industrial-supply" /> : <Redirect to="/zone" />;
+  return tenant.key === "exportunity"
+    ? <Redirect to="/industrial-supply" />
+    : <Redirect to="/zone" />;
 }
 
 function CollectionsRoute() {
-  return <StoreCollectionsPage />;
+  return StoreCollectionsPage ? <StoreCollectionsPage /> : <Redirect to="/industrial" />;
 }
 
 function MindbaseHostDiscoverRoute() {
@@ -635,7 +810,7 @@ function MindbaseHostWorkspacesRoute() {
 
 function UnifiedPricingRoute() {
   if (isMindbaseHost()) return <MindbasePricingPage />;
-  return <ExportunityMarketingPricingPage />;
+  return <Redirect to="/" />;
 }
 
 function UnifiedDocsApiRoute() {
@@ -644,25 +819,29 @@ function UnifiedDocsApiRoute() {
 }
 
 function MarketingAwareAboutRoute() {
+  const { tenant } = useTenant();
+  if (tenant.key === "exportunity") return <Redirect to="/" />;
   if (isVsHost()) return <VsAboutPage />;
   if (isHozHost()) return <HozAboutPage />;
-  return isExportunityMarketingHost() ? <Redirect to="/our-journey" /> : <GatewayPage />;
+  return <GatewayPage />;
 }
 
 function UnifiedContactRoute() {
   const { tenant } = useTenant();
+  if (tenant.key === "exportunity") return <Redirect to="/" />;
   if (tenant.key === "agoojye" || isAgoojyeHost()) return <AgoojyeContactPage />;
   if (isVsHost()) return <VsContactPage />;
   if (isMetHost()) return <MetContactPage />;
   if (isHozHost()) return <HozContactPage />;
-  return <MarketingRedirect to="/talk" />;
+  return <Redirect to="/" />;
 }
 
 function UnifiedMediaRoute() {
   const { tenant } = useTenant();
+  if (tenant.key === "exportunity") return <Redirect to="/trade" />;
   if (tenant.key === "agoojye" || isAgoojyeHost()) return <AgoojyeMediaPage />;
   if (isHozHost()) return <HozMediaPage />;
-  return <ExportunityMarketingMediaPage />;
+  return <Redirect to="/" />;
 }
 
 function AgoojyeOnlyRoute({ children }: { children: React.ReactNode }) {
@@ -671,50 +850,32 @@ function AgoojyeOnlyRoute({ children }: { children: React.ReactNode }) {
 }
 
 function MarketingAwarePrivacyRoute() {
-  return isExportunityMarketingHost() ? <ExportunityMarketingPrivacyPage /> : <PrivacyPage />;
+  return <PrivacyPage />;
 }
 
 function MarketingAwareTermsRoute() {
-  return isExportunityMarketingHost() ? <ExportunityMarketingTermsPage /> : <TermsPage />;
+  return <TermsPage />;
 }
 
-function withMarketingQuery(to: string) {
-  if (typeof window === "undefined") return to;
-  const host = String(window.location.hostname || "").trim().toLowerCase();
-  const isLocal = host === "localhost" || host === "127.0.0.1";
-  if (!isLocal) return to;
-  const currentParams = new URLSearchParams(window.location.search);
-  if (currentParams.get("marketing") !== "1") return to;
-
-  try {
-    const parsed = new URL(to, window.location.origin);
-    if (!parsed.searchParams.has("marketing")) parsed.searchParams.set("marketing", "1");
-    return `${parsed.pathname}${parsed.search}${parsed.hash}`;
-  } catch {
-    const hasQuery = to.includes("?");
-    if (hasQuery) return `${to}&marketing=1`;
-    return `${to}?marketing=1`;
-  }
-}
-
-function MarketingRedirect({ to }: { to: string }) {
-  return isExportunityMarketingHost() ? <Redirect to={withMarketingQuery(to)} /> : <Redirect to="/zone" />;
-}
-
-function MarketingOrAuthRedirect({ marketingTo, authTo }: { marketingTo: string; authTo: string }) {
-  return isExportunityMarketingHost() ? <Redirect to={withMarketingQuery(marketingTo)} /> : <Redirect to={authTo} />;
+function RetiredPublicSurfaceRedirect({ to = "/" }: { to?: string }) {
+  return <Redirect to={to} />;
 }
 
 function RetailAliasRedirect() {
   const { tenant } = useTenant();
-  if (tenant.key === "exportunity" && !isExportunityMarketingHost()) {
+  if (tenant.key === "exportunity") {
     return <Redirect to="/industrial" />;
   }
-  if (typeof window === "undefined") return <Redirect to="/zone" />;
-  const pathname = String(window.location.pathname || "/retail");
-  const suffix = pathname.startsWith("/retail/") ? pathname.slice("/retail".length) : "";
-  const search = String(window.location.search || "");
-  return <Redirect to={`/zone${suffix}${search}`} />;
+
+  const legacyRedirect = (() => {
+    if (typeof window === "undefined") return <Redirect to="/zone" />;
+    const pathname = String(window.location.pathname || "/retail");
+    const suffix = pathname.startsWith("/retail/") ? pathname.slice("/retail".length) : "";
+    const search = String(window.location.search || "");
+    return <Redirect to={`/zone${suffix}${search}`} />;
+  })();
+
+  return <ExportunityLegacyCommerceGuard>{legacyRedirect}</ExportunityLegacyCommerceGuard>;
 }
 
 function normalizeAccessRoleLabel(value: unknown) {
@@ -863,7 +1024,9 @@ function App() {
     <div className="min-h-screen bg-background">
       <BuildMismatchBanner />
       <ServiceWorkerUpdateBanner />
-      <ZoneInstallPrompt />
+      <Suspense fallback={null}>
+        <ZoneInstallPrompt />
+      </Suspense>
       {import.meta.env.DEV ? <TapTraceOverlay /> : null}
       <Suspense
         fallback={<RouteLoadingFallback />}
@@ -876,34 +1039,42 @@ function App() {
           <Route path="/sell-export" component={ExportunityGlobalTradeRoute} />
           <Route path="/manage-supply" component={ExportunityGlobalTradeRoute} />
           <Route path="/expand" component={ExportunityGlobalTradeRoute} />
-          <Route path="/store" component={StoreRoute} />
-          <Route path="/or" component={StoreRoute} />
-          <Route path="/or/:rest*" component={StoreRoute} />
-          <Route path="/achat-or" component={StoreRoute} />
-          <Route path="/achat-or/:rest*" component={StoreRoute} />
-          <Route path="/stamped-gold" component={StoreRoute} />
-          <Route path="/pieces" component={StoreRoute} />
-          <Route path="/collections" component={CollectionsRoute} />
+          <Route path="/store" component={ExportunityLegacyStoreRoute} />
+          <Route path="/or" component={ExportunityLegacyStoreRoute} />
+          <Route path="/or/:rest*" component={ExportunityLegacyStoreRoute} />
+          <Route path="/achat-or" component={ExportunityLegacyStoreRoute} />
+          <Route path="/achat-or/:rest*" component={ExportunityLegacyStoreRoute} />
+          <Route path="/stamped-gold" component={ExportunityLegacyStoreRoute} />
+          <Route path="/pieces" component={ExportunityLegacyStoreRoute} />
+          <Route path="/collections" component={ExportunityLegacyCollectionsRoute} />
           <Route path="/collections/:slug">
-            {(params) => <StoreCollectionPage slug={String((params as any).slug || "")} />}
+            {(params) => (
+              <ExportunityLegacyCommerceGuard>
+                {StoreCollectionPage ? (
+                  <StoreCollectionPage slug={String((params as any).slug || "")} />
+                ) : (
+                  <Redirect to="/industrial" />
+                )}
+              </ExportunityLegacyCommerceGuard>
+            )}
           </Route>
-          <Route path="/cart" component={() => <Redirect to="/store?cart=1" />} />
-          <Route path="/checkout" component={() => <Redirect to="/store?checkout=1" />} />
+          <Route path="/cart" component={() => <ExportunityLegacyStoreRedirect query="cart=1" />} />
+          <Route path="/checkout" component={() => <ExportunityLegacyStoreRedirect query="checkout=1" />} />
           <Route path="/maison-modele" component={() => (isMetHost() ? <MetModelHousePage /> : <Redirect to="/zone" />)} />
           <Route path="/briques" component={() => (isMetHost() ? <MetBricksPage /> : <Redirect to="/zone" />)} />
           <Route path="/plans/:slug">
-            {(params) => (isMetHost() ? <MetPlanDetailPage slug={String((params as any)?.slug || "")} /> : <MarketingRedirect to="/pricing" />)}
+            {(params) => (isMetHost() ? <MetPlanDetailPage slug={String((params as any)?.slug || "")} /> : <RetiredPublicSurfaceRedirect />)}
           </Route>
-          <Route path="/plans" component={() => (isMetHost() ? <MetPlansPage /> : <MarketingRedirect to="/pricing" />)} />
+          <Route path="/plans" component={() => (isMetHost() ? <MetPlansPage /> : <RetiredPublicSurfaceRedirect />)} />
           <Route path="/devis" component={() => (isMetHost() ? <MetEstimatePage /> : <Redirect to="/zone" />)} />
           <Route path="/realisations/:slug">
             {(params) => (isMetHost() ? <MetProjectDetailPage slug={String((params as any)?.slug || "")} /> : <Redirect to="/zone" />)}
           </Route>
           <Route path="/realisations" component={() => (isMetHost() ? <MetRealisationsPage /> : <Redirect to="/zone" />)} />
           <Route path="/blog/:slug">
-            {(params) => (isMetHost() ? <MetBlogPostPage slug={String((params as any)?.slug || "")} /> : <MarketingRedirect to="/media" />)}
+            {(params) => (isMetHost() ? <MetBlogPostPage slug={String((params as any)?.slug || "")} /> : <RetiredPublicSurfaceRedirect to="/trade" />)}
           </Route>
-          <Route path="/blog" component={() => (isMetHost() ? <MetBlogPage /> : <MarketingRedirect to="/media" />)} />
+          <Route path="/blog" component={() => (isMetHost() ? <MetBlogPage /> : <RetiredPublicSurfaceRedirect to="/trade" />)} />
           <Route path="/contact" component={UnifiedContactRoute} />
           <Route path="/vision" component={() => <AgoojyeOnlyRoute><AgoojyeVisionPage /></AgoojyeOnlyRoute>} />
           <Route path="/history" component={() => <AgoojyeOnlyRoute><AgoojyeHistoryPage /></AgoojyeOnlyRoute>} />
@@ -969,7 +1140,26 @@ function App() {
           <Route path="/mindbase/c/:slug">
             {(params) => <MindbaseCreatorProfilePage slug={String((params as any)?.slug || "")} />}
           </Route>
+          <Route path="/industrial/orders/:orderId/pay">
+            {(params) => (
+              <ProtectedRoute>
+                <ExportunityIndustrialOrderPaymentPage
+                  orderId={String((params as any)?.orderId || "")}
+                />
+              </ProtectedRoute>
+            )}
+          </Route>
           <Route path="/industrial" component={ExportunityIndustrialRoute} />
+          <Route path="/trade" component={ExportunityTradeIntelligencePage} />
+          <Route path="/trade/articles/:slug" component={ExportunityTradeNewsroomArticlePage} />
+          <Route path="/trade/countries/:countryCode" component={ExportunityTradeIntelligencePage} />
+          <Route path="/trade/sectors/:sectorCode" component={ExportunityTradeIntelligencePage} />
+          <Route path="/producer-exchange/:slug">
+            {(params) => (
+              <ExportunityProducerExchangePage slug={String((params as any)?.slug || "")} />
+            )}
+          </Route>
+          <Route path="/producer-exchange" component={ExportunityProducerExchangePage} />
           <Route path="/industrial-map" component={ExportunityIndustrialRoute} />
           <Route path="/factories" component={ExportunityIndustrialRoute} />
           <Route path="/factories/:rest*" component={ExportunityIndustrialRoute} />
@@ -979,21 +1169,20 @@ function App() {
           <Route path="/industrial-supply/:rest*" component={ExportunityIndustrialRoute} />
           <Route path="/request-quote" component={ExportunityIndustrialRoute} />
           <Route path="/my-factory" component={ExportunityIndustrialRoute} />
-          <Route path="/zone" component={() => <ExportunityIndustrialAliasRoute to="/industrial" />} />
-          <Route path="/zone/:rest*" component={() => <ExportunityIndustrialAliasRoute to="/industrial" />} />
-          <Route path="/map" component={ExportunityIndustrialMapRoute} />
-          <Route path="/marketplace/map" component={ExportunityIndustrialMapRoute} />
-          <Route path="/marketplace/map/:rest*" component={ExportunityIndustrialMapRoute} />
+          <Route path="/zone" component={() => <ExportunityIndustrialAliasRoute to="/marketplace" />} />
+          <Route path="/zone/:rest*" component={() => <ExportunityIndustrialAliasRoute to="/marketplace" />} />
+          <Route path="/map" component={ExportunityMarketplaceMapRoute} />
+          <Route path="/marketplace/map" component={ExportunityMarketplaceRoute} />
+          <Route path="/marketplace/map/:rest*" component={ExportunityMarketplaceRoute} />
           <Route path="/pme-exchange" component={() => <ExportunityIndustrialAliasRoute to="/factories" />} />
           <Route path="/pme-exchange/:rest*" component={() => <ExportunityIndustrialAliasRoute to="/factories" />} />
           <Route path="/ready-for-export" component={() => <ExportunityIndustrialAliasRoute to="/export-products" />} />
           <Route path="/ready-for-export/:rest*" component={() => <ExportunityIndustrialAliasRoute to="/export-products" />} />
           <Route path="/retail" component={RetailAliasRedirect} />
           <Route path="/retail/:rest*" component={RetailAliasRedirect} />
-          <Route path="/marketplace" component={() => <ExportunityIndustrialAliasRoute to="/industrial" />} />
-          <Route path="/marketplace/:rest*" component={() => <ExportunityIndustrialAliasRoute to="/industrial" />} />
-          <Route path="/shop" component={() => <ExportunityIndustrialAliasRoute to="/industrial" />} />
-          <Route path="/shop/:rest*" component={() => <ExportunityIndustrialAliasRoute to="/industrial" />} />
+          <Route path="/marketplace" component={ExportunityMarketplaceRoute} />
+          <Route path="/shop" component={() => <ExportunityIndustrialAliasRoute to="/marketplace" />} />
+          <Route path="/shop/:rest*" component={() => <ExportunityIndustrialAliasRoute to="/marketplace" />} />
           <Route path="/wholesale" component={BdoWholesaleRoute} />
           <Route path="/wholesale/:rest*" component={BdoWholesaleRoute} />
           <Route path="/gateway" component={GatewayPage} />
@@ -1018,103 +1207,109 @@ function App() {
           <Route path="/pro/membership" component={() => (isBdoHost() ? <BdoProMembershipPage /> : <Redirect to="/store" />)} />
           <Route path="/pro/exportateurs-verifies" component={() => (isBdoHost() ? <BdoProExportersPage /> : <Redirect to="/store" />)} />
           <Route path="/about" component={MarketingAwareAboutRoute} />
-          <Route path="/press" component={() => (isVsHost() ? <VsPressPage /> : <MarketingRedirect to="/media" />)} />
+          <Route path="/press" component={() => (isVsHost() ? <VsPressPage /> : <RetiredPublicSurfaceRedirect to="/trade" />)} />
           <Route path="/portfolio" component={() => (isVsHost() ? <VsPortfolioPage /> : <Redirect to="/zone" />)} />
           <Route path="/insights" component={() => (isVsHost() ? <VsInsightsPage /> : <Redirect to="/zone" />)} />
           <Route path="/books" component={() => (isHozHost() ? <HozBooksPage /> : <Redirect to="/zone" />)} />
           <Route path="/jewelry" component={() => (isHozHost() ? <HozJewelryPage /> : <Redirect to="/zone" />)} />
-          <Route path="/how-it-works" component={() => <MarketingRedirect to="/platform" />} />
+          <Route path="/how-it-works" component={() => <RetiredPublicSurfaceRedirect />} />
 
-          {/* Exportunity marketing clone routes (exportunity.com) */}
-          <Route path="/company" component={ExportunityMarketingVitrinePage} />
-          <Route path="/what-we-do" component={ExportunityMarketingVitrinePage} />
-          <Route path="/platforms" component={ExportunityMarketingVitrinePage} />
-          <Route path="/gold-mining" component={ExportunityMarketingVitrinePage} />
-          <Route path="/gold" component={() => <MarketingRedirect to="/gold-mining" />} />
-          <Route path="/government-institutions" component={ExportunityMarketingVitrinePage} />
-          <Route path="/government" component={() => <MarketingRedirect to="/government-institutions" />} />
-          <Route path="/archive" component={ExportunityMarketingVitrinePage} />
-          <Route path="/operating-stack" component={ExportunityMarketingVitrinePage} />
-          <Route path="/work-with-us" component={ExportunityMarketingVitrinePage} />
-          <Route path="/contact" component={ExportunityMarketingContactPage} />
-          <Route path="/story" component={() => <MarketingRedirect to="/journey" />} />
-          <Route path="/journey" component={ExportunityMarketingStoryPage} />
-          <Route path="/story/founder" component={ExportunityMarketingFounderStoryPage} />
-          <Route path="/use-cases" component={() => <MarketingRedirect to="/solutions" />} />
-          <Route path="/demo" component={ExportunityMarketingDemoPage} />
-          <Route path="/proof" component={() => <MarketingRedirect to="/media" />} />
-          <Route path="/our-journey" component={() => <MarketingRedirect to="/journey" />} />
-          <Route path="/solutions" component={ExportunityMarketingSolutionsPage} />
-          <Route path="/platform" component={ExportunityMarketingPlatformPage} />
-          <Route path="/platform/os" component={ExportunityMarketingPlatformOsPage} />
-          <Route path="/platform/pro" component={ExportunityMarketingPlatformProPage} />
-          <Route path="/platform/gold" component={ExportunityMarketingPlatformGoldPage} />
-          <Route path="/platform/agents" component={ExportunityMarketingPlatformAgentsPage} />
-          <Route path="/platform/marketplace" component={ExportunityMarketingPlatformMarketplacePage} />
-          <Route path="/platform/wallet" component={ExportunityMarketingPlatformWalletPage} />
-          <Route path="/platform/contracts" component={ExportunityMarketingPlatformContractsPage} />
-          <Route path="/platform/invest" component={ExportunityMarketingPlatformInvestPage} />
-          <Route path="/platform/compliance" component={ExportunityMarketingPlatformCompliancePage} />
-          <Route path="/platform/messaging" component={ExportunityMarketingPlatformMessagingPage} />
-          <Route path="/platform/governance" component={ExportunityMarketingPlatformGovernancePage} />
-          <Route path="/platform/security" component={ExportunityMarketingPlatformSecurityPage} />
-          <Route path="/platform/screenshots" component={ExportunityMarketingPlatformScreenshotsPage} />
-          <Route path="/platform/modules" component={ExportunityMarketingPlatformModulesPage} />
-          <Route path="/platform/modules/:slug" component={ExportunityMarketingPlatformModuleDetailPage} />
+          {/* Retired corporate URLs can resolve only into the current GTN and governed application surfaces. */}
+          <Route path="/company" component={() => <RetiredPublicSurfaceRedirect />} />
+          <Route path="/what-we-do" component={() => <RetiredPublicSurfaceRedirect />} />
+          <Route path="/platforms" component={() => <RetiredPublicSurfaceRedirect />} />
+          <Route path="/gold-mining" component={() => <RetiredPublicSurfaceRedirect to="/producer-exchange" />} />
+          <Route path="/gold" component={() => <RetiredPublicSurfaceRedirect to="/producer-exchange" />} />
+          <Route path="/government-institutions" component={() => <RetiredPublicSurfaceRedirect to="/industrial" />} />
+          <Route path="/government" component={() => <RetiredPublicSurfaceRedirect to="/industrial" />} />
+          <Route path="/archive" component={() => <RetiredPublicSurfaceRedirect />} />
+          <Route path="/operating-stack" component={() => <RetiredPublicSurfaceRedirect />} />
+          <Route path="/work-with-us" component={() => <RetiredPublicSurfaceRedirect />} />
+          <Route path="/story" component={() => <RetiredPublicSurfaceRedirect />} />
+          <Route path="/journey" component={() => <RetiredPublicSurfaceRedirect />} />
+          <Route path="/story/founder" component={() => <RetiredPublicSurfaceRedirect />} />
+          <Route path="/use-cases" component={() => <RetiredPublicSurfaceRedirect />} />
+          <Route path="/demo" component={() => <RetiredPublicSurfaceRedirect />} />
+          <Route path="/proof" component={() => <RetiredPublicSurfaceRedirect to="/trade" />} />
+          <Route path="/our-journey" component={() => <RetiredPublicSurfaceRedirect />} />
+          <Route path="/solutions" component={() => <RetiredPublicSurfaceRedirect />} />
+          <Route path="/platform/os" component={() => <RetiredPublicSurfaceRedirect to="/ai-team" />} />
+          <Route path="/platform/pro" component={() => <RetiredPublicSurfaceRedirect to="/ai-team" />} />
+          <Route path="/platform/gold" component={() => <RetiredPublicSurfaceRedirect to="/producer-exchange" />} />
+          <Route path="/platform/agents" component={() => <RetiredPublicSurfaceRedirect to="/ai-team" />} />
+          <Route path="/platform/marketplace" component={() => <RetiredPublicSurfaceRedirect to="/marketplace" />} />
+          <Route path="/platform/wallet" component={() => <RetiredPublicSurfaceRedirect to="/auth?next=/app/wallet" />} />
+          <Route path="/platform/contracts" component={() => <RetiredPublicSurfaceRedirect to="/auth?next=/app/contracts" />} />
+          <Route path="/platform/invest" component={() => <RetiredPublicSurfaceRedirect to="/auth?next=/app/invest/opportunities" />} />
+          <Route path="/platform/compliance" component={() => <RetiredPublicSurfaceRedirect to="/auth?next=/app/governance/logs" />} />
+          <Route path="/platform/messaging" component={() => <RetiredPublicSurfaceRedirect to="/auth?next=/app/messaging" />} />
+          <Route path="/platform/governance" component={() => <RetiredPublicSurfaceRedirect to="/auth?next=/app/governance/logs" />} />
+          <Route path="/platform/security" component={() => <RetiredPublicSurfaceRedirect to="/auth?next=/app/governance/logs" />} />
+          <Route path="/platform/screenshots" component={() => <RetiredPublicSurfaceRedirect to="/ai-team" />} />
+          <Route path="/platform/modules/:slug" component={() => <RetiredPublicSurfaceRedirect to="/ai-team" />} />
+          <Route path="/platform/modules" component={() => <RetiredPublicSurfaceRedirect to="/ai-team" />} />
+          <Route path="/platform" component={() => <RetiredPublicSurfaceRedirect to="/ai-team" />} />
           <Route path="/media" component={UnifiedMediaRoute} />
-          <Route path="/media/press" component={() => (isHozHost() ? <Redirect to="/media" /> : <MarketingRedirect to="/media" />)} />
-          <Route path="/media/videos" component={() => (isHozHost() ? <Redirect to="/media" /> : <MarketingRedirect to="/media" />)} />
-          <Route path="/media/profiles" component={() => (isHozHost() ? <Redirect to="/media" /> : <MarketingRedirect to="/media" />)} />
-          <Route path="/media/articles" component={() => (isHozHost() ? <Redirect to="/media" /> : <MarketingRedirect to="/media" />)} />
-          <Route path="/media/library" component={() => (isHozHost() ? <Redirect to="/media" /> : <MarketingRedirect to="/media" />)} />
-          <Route path="/talk" component={ExportunityMarketingTalkPage} />
+          <Route path="/media/press" component={() => (isHozHost() ? <Redirect to="/media" /> : <RetiredPublicSurfaceRedirect to="/trade" />)} />
+          <Route path="/media/videos" component={() => (isHozHost() ? <Redirect to="/media" /> : <RetiredPublicSurfaceRedirect to="/trade" />)} />
+          <Route path="/media/profiles" component={() => (isHozHost() ? <Redirect to="/media" /> : <RetiredPublicSurfaceRedirect to="/trade" />)} />
+          <Route path="/media/articles" component={() => (isHozHost() ? <Redirect to="/media" /> : <RetiredPublicSurfaceRedirect to="/trade" />)} />
+          <Route path="/media/library" component={() => (isHozHost() ? <Redirect to="/media" /> : <RetiredPublicSurfaceRedirect to="/trade" />)} />
+          <Route path="/talk" component={() => <RetiredPublicSurfaceRedirect />} />
           <Route path="/signup" component={() => <Redirect to="/register" />} />
-          <Route path="/wallet" component={() => <MarketingOrAuthRedirect marketingTo="/platform?module=wallet" authTo="/auth?next=/app/wallet" />} />
-          <Route path="/trade" component={() => <MarketingOrAuthRedirect marketingTo="/platform?module=trade" authTo="/auth?next=/app" />} />
-          <Route path="/contracts" component={() => <MarketingOrAuthRedirect marketingTo="/platform?module=contracts" authTo="/auth?next=/app/contracts" />} />
-          <Route path="/business" component={() => <MarketingOrAuthRedirect marketingTo="/platform?module=business" authTo="/auth?next=/app" />} />
-          <Route path="/ops" component={() => <MarketingOrAuthRedirect marketingTo="/platform?module=business" authTo="/auth?next=/app" />} />
+          <Route path="/wallet" component={() => <RetiredPublicSurfaceRedirect to="/auth?next=/app/wallet" />} />
+          <Route path="/contracts" component={() => <RetiredPublicSurfaceRedirect to="/auth?next=/app/contracts" />} />
+          <Route path="/business" component={() => <RetiredPublicSurfaceRedirect to="/auth?next=/app" />} />
+          <Route path="/ops" component={() => <RetiredPublicSurfaceRedirect to="/auth?next=/app" />} />
           <Route path="/machinery" component={ExportunityMachineryRoute} />
-          <Route path="/invest" component={() => <MarketingOrAuthRedirect marketingTo="/platform?module=invest" authTo="/auth?next=/app/invest/opportunities" />} />
-          <Route path="/compliance" component={() => <MarketingOrAuthRedirect marketingTo="/platform?module=compliance" authTo="/auth?next=/app/governance/logs" />} />
-          <Route path="/communications" component={() => <MarketingOrAuthRedirect marketingTo="/platform?module=communications" authTo="/auth?next=/app/messaging" />} />
-          <Route path="/ai-operations" component={() => <MarketingOrAuthRedirect marketingTo="/platform?module=ai-operations" authTo="/auth?next=/app?tab=team" />} />
+          <Route path="/invest" component={() => <RetiredPublicSurfaceRedirect to="/auth?next=/app/invest/opportunities" />} />
+          <Route path="/compliance" component={() => <RetiredPublicSurfaceRedirect to="/auth?next=/app/governance/logs" />} />
+          <Route path="/communications" component={() => <RetiredPublicSurfaceRedirect to="/auth?next=/app/messaging" />} />
+          <Route path="/ai-operations" component={() => <RetiredPublicSurfaceRedirect to="/ai-team" />} />
           <Route path="/privacy" component={MarketingAwarePrivacyRoute} />
           <Route path="/terms" component={MarketingAwareTermsRoute} />
-          <Route path="/copy-of-home" component={() => <MarketingRedirect to="/solutions" />} />
-          <Route path="/contact-8" component={() => <MarketingRedirect to="/talk" />} />
-          <Route path="/privacypolicy" component={() => <MarketingRedirect to="/privacy" />} />
-          <Route path="/termsofservice" component={() => <MarketingRedirect to="/terms" />} />
-          <Route path="/library" component={() => <MarketingRedirect to="/media" />} />
-          <Route path="/library/categories/:slug" component={() => <MarketingRedirect to="/media" />} />
-          <Route path="/library/tags/:slug" component={() => <MarketingRedirect to="/media" />} />
-          <Route path="/post/:slug" component={ExportunityMarketingPostPage} />
-          <Route path="/invest/opportunities" component={() => <MarketingRedirect to="/invest" />} />
-          <Route path="/invest/opportunities/:slug" component={() => <MarketingRedirect to="/invest" />} />
-          <Route path="/invest/contracts" component={() => <MarketingRedirect to="/invest" />} />
+          <Route path="/copy-of-home" component={() => <RetiredPublicSurfaceRedirect />} />
+          <Route path="/contact-8" component={() => <RetiredPublicSurfaceRedirect />} />
+          <Route path="/privacypolicy" component={() => <RetiredPublicSurfaceRedirect to="/privacy" />} />
+          <Route path="/termsofservice" component={() => <RetiredPublicSurfaceRedirect to="/terms" />} />
+          <Route path="/library" component={() => <RetiredPublicSurfaceRedirect to="/trade" />} />
+          <Route path="/library/categories/:slug" component={() => <RetiredPublicSurfaceRedirect to="/trade" />} />
+          <Route path="/library/tags/:slug" component={() => <RetiredPublicSurfaceRedirect to="/trade" />} />
+          <Route path="/post/:slug" component={() => <RetiredPublicSurfaceRedirect to="/trade" />} />
+          <Route path="/invest/opportunities" component={() => <RetiredPublicSurfaceRedirect to="/auth?next=/app/invest/opportunities" />} />
+          <Route path="/invest/opportunities/:slug" component={() => <RetiredPublicSurfaceRedirect to="/auth?next=/app/invest/opportunities" />} />
+          <Route path="/invest/contracts" component={() => <RetiredPublicSurfaceRedirect to="/auth?next=/app/contracts" />} />
           <Route path="/pricing" component={UnifiedPricingRoute} />
-          <Route path="/plans-pricing" component={() => <MarketingRedirect to="/pricing" />} />
-          <Route path="/academy" component={() => <MarketingRedirect to="/media/library" />} />
-          <Route path="/initiative" component={() => <MarketingRedirect to="/solutions" />} />
-          <Route path="/booking-calendar" component={() => <MarketingRedirect to="/talk" />} />
-          <Route path="/people" component={() => <MarketingRedirect to="/journey" />} />
-          <Route path="/clubs" component={() => <MarketingRedirect to="/media/library" />} />
-          <Route path="/rayonhome" component={() => <MarketingRedirect to="/" />} />
-          <Route path="/rayon-seller" component={() => <MarketingRedirect to="/invest" />} />
-          <Route path="/copy-of-fintech" component={() => <MarketingRedirect to="/solutions" />} />
-          <Route path="/challenge-page/:id" component={() => <MarketingRedirect to="/media/library" />} />
-          <Route path="/group/:rest*" component={() => <MarketingRedirect to="/media/library" />} />
-          <Route path="/profile/:rest*" component={() => <MarketingRedirect to="/media/library" />} />
+          <Route path="/plans-pricing" component={() => <RetiredPublicSurfaceRedirect />} />
+          <Route path="/academy" component={() => <RetiredPublicSurfaceRedirect to="/trade" />} />
+          <Route path="/initiative" component={() => <RetiredPublicSurfaceRedirect />} />
+          <Route path="/booking-calendar" component={() => <RetiredPublicSurfaceRedirect />} />
+          <Route path="/people" component={() => <RetiredPublicSurfaceRedirect />} />
+          <Route path="/clubs" component={() => <RetiredPublicSurfaceRedirect to="/trade" />} />
+          <Route path="/rayonhome" component={() => <RetiredPublicSurfaceRedirect />} />
+          <Route path="/rayon-seller" component={() => <RetiredPublicSurfaceRedirect to="/industrial" />} />
+          <Route path="/copy-of-fintech" component={() => <RetiredPublicSurfaceRedirect />} />
+          <Route path="/challenge-page/:id" component={() => <RetiredPublicSurfaceRedirect to="/trade" />} />
+          <Route path="/group/:rest*" component={() => <RetiredPublicSurfaceRedirect to="/trade" />} />
+          <Route path="/profile/:rest*" component={() => <RetiredPublicSurfaceRedirect to="/trade" />} />
           <Route path="/orders" component={MyOrdersPage} />
           <Route path="/orders/:orderNumber" component={MyOrdersPage} />
           <Route path="/delivery" component={() => (isBdoHost() ? <Redirect to="/store" /> : <DeliveryHubPage />)} />
-          <Route path="/marketplace-old" component={MarketplacePage} />
+          <Route path="/marketplace-old" component={() => <ExportunityIndustrialAliasRoute to="/marketplace" />} />
           <Route path="/product/:slug">
-            {(params) => <StoreProductPage slug={String((params as any).slug || "")} />}
+            {(params) => (
+              <ExportunityLegacyCommerceGuard>
+                {StoreProductPage ? (
+                  <StoreProductPage slug={String((params as any).slug || "")} />
+                ) : (
+                  <Redirect to="/industrial" />
+                )}
+              </ExportunityLegacyCommerceGuard>
+            )}
           </Route>
           <Route path="/verify/:serial" component={StampedGoldVerifyPage} />
-          <Route path="/login" component={ECELoginPage} />
-          <Route path="/register" component={ECELoginPage} />
+          <Route path="/login" component={UnifiedAccessPage} />
+          <Route path="/register" component={UnifiedAccessPage} />
           <Route path="/setup-password" component={SetupPasswordPage} />
           <Route path="/auth" component={AuthGatePage} />
           <Route path="/account" component={AccountPage} />
@@ -1186,8 +1381,21 @@ function App() {
           </Route>
           <Route path="/m/:id" component={MeetRoomPage} />
           <Route path="/meet/:id" component={MeetRoomPage} />
-          <Route path="/inbox" component={InboxPage} />
-          <Route path="/inbox/:roomKey" component={RoomPage} />
+          <Route path="/inbox" component={() => <Redirect to="/pro/chats" />} />
+          <Route path="/inbox/:roomKey">
+            {(params) => {
+              const roomKey = String((params as any)?.roomKey || "").trim().toLowerCase();
+              return (
+                <Redirect
+                  to={
+                    roomKey === "wallet"
+                      ? "/pro/money"
+                      : `/pro/operations/${encodeURIComponent(roomSlugFromKey(roomKey))}`
+                  }
+                />
+              );
+            }}
+          </Route>
           <Route path="/qa-mobile" component={QAMobilePage} />
           <Route path="/debug/location" component={DebugLocationPage} />
           <Route path="/debug/hit-test" component={DebugHitTestPage} />
@@ -1577,9 +1785,19 @@ function App() {
               <AdminMarketingLibraryPage />
             </ProtectedRoute>
           </Route>
+          <Route path="/admin/media/studio">
+            <ProtectedRoute>
+              <AdminMediaStudioPage />
+            </ProtectedRoute>
+          </Route>
           <Route path="/admin/media">
             <ProtectedRoute>
               <AdminMarketingMediaPage />
+            </ProtectedRoute>
+          </Route>
+          <Route path="/admin/advertising-governance">
+            <ProtectedRoute>
+              <AdminAdvertisingGovernancePage />
             </ProtectedRoute>
           </Route>
           <Route path="/admin/screenshots">
@@ -1596,13 +1814,13 @@ function App() {
         {/* Admin/Dashboard routes - require authentication */}
         <Route path="/dashboard">
           <ProtectedRoute>
-            <AdminDashboardPage />
+            <TenantDashboardRoute />
           </ProtectedRoute>
         </Route>
 
         <Route path="/ai-team">
           <ProtectedRoute>
-            <AITeamHubPage />
+            <TenantOperationsCenterRoute />
           </ProtectedRoute>
         </Route>
 
@@ -1730,7 +1948,7 @@ function App() {
 
         <Route path="/admin/action-forge">
           <ProtectedRoute>
-            <AdminActionForgePage />
+            <Redirect to="/actions?view=automations" />
           </ProtectedRoute>
         </Route>
 
@@ -1925,6 +2143,24 @@ function App() {
             <AdminGooglePlacesIntegrationPage />
           </ProtectedRoute>
         </Route>
+
+        <Route path="/admin/exportunity/integrations">
+          <ProtectedRoute>
+            <AdminExportunityIntegrationsPage />
+          </ProtectedRoute>
+        </Route>
+
+        <Route path="/admin/exportunity/supplier-discovery">
+          <ProtectedRoute>
+            <AdminExportunitySupplierDiscoveryPage />
+          </ProtectedRoute>
+        </Route>
+
+        <Route path="/admin/exportunity/supplier-rfqs">
+          <ProtectedRoute>
+            <AdminExportunitySupplierRfqsPage />
+          </ProtectedRoute>
+        </Route>
         
         <Route path="/admin-users">
           <ProtectedRoute>
@@ -1952,13 +2188,13 @@ function App() {
 
         <Route path="/marketing">
           <ProtectedRoute>
-            <MarketingPage />
+            <Redirect to="/admin/media" />
           </ProtectedRoute>
         </Route>
 
         <Route path="/sales">
           <ProtectedRoute>
-            <SalesPage />
+            <Redirect to="/client-hunter" />
           </ProtectedRoute>
         </Route>
 
@@ -2012,19 +2248,19 @@ function App() {
 
         <Route path="/admin/website/visits">
           <ProtectedRoute>
-            <AdminVisitsIntelligencePage />
+            <Redirect to="/admin/seo?view=visits" />
           </ProtectedRoute>
         </Route>
 
         <Route path="/admin/website/seo">
           <ProtectedRoute>
-            <AdminSeoHealthPage />
+            <Redirect to="/admin/seo?view=seo" />
           </ProtectedRoute>
         </Route>
 
         <Route path="/admin/website/seo-autopilot">
           <ProtectedRoute>
-            <AdminSeoAutopilotPage />
+            <Redirect to="/admin/seo?view=governance" />
           </ProtectedRoute>
         </Route>
 
@@ -2049,6 +2285,24 @@ function App() {
         <Route path="/admin/industrial-network">
           <ProtectedRoute>
             <AdminIndustrialNetworkPage />
+          </ProtectedRoute>
+        </Route>
+
+        <Route path="/admin/carrier-network">
+          <ProtectedRoute>
+            <AdminCarrierNetworkPage />
+          </ProtectedRoute>
+        </Route>
+
+        <Route path="/admin/group-buying">
+          <ProtectedRoute>
+            <AdminGroupBuyingPage />
+          </ProtectedRoute>
+        </Route>
+
+        <Route path="/admin/trade-intelligence">
+          <ProtectedRoute>
+            <AdminTradeIntelligencePage />
           </ProtectedRoute>
         </Route>
 
@@ -2240,13 +2494,13 @@ function App() {
 
         <Route path="/admin/seo">
           <ProtectedRoute>
-            <AdminSeoHealthPage />
+            <AdminWebsiteIntelligencePage />
           </ProtectedRoute>
         </Route>
 
         <Route path="/admin/ux-audit">
           <ProtectedRoute>
-            <AdminUxAuditPage />
+            <Redirect to="/admin/seo?view=navigation" />
           </ProtectedRoute>
         </Route>
 
@@ -2270,7 +2524,7 @@ function App() {
 
         <Route path="/admin/settings/developer">
           <ProtectedRoute>
-            <AdminDeveloperSettingsPage />
+            <Redirect to="/admin/system/update?view=voice" />
           </ProtectedRoute>
         </Route>
 

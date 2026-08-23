@@ -43,25 +43,25 @@ export default function AppInvestOpportunityDetailPage({ slug }: { slug: string 
   const item = (query.data as any)?.item as OpportunityDetail | undefined;
 
   return (
-    <div className="min-h-screen bg-gray-950 pb-32 text-white">
+    <div data-testid="exportunity-invest-opportunity-detail" className="min-h-screen bg-[#F7F8FA] pb-24 text-[#07111F]">
       <AppProTopBar subtitle="Invest opportunity" />
-      <main className="mx-auto w-full max-w-3xl px-4 pb-4 pt-6">
+      <main className="mx-auto w-full max-w-3xl px-4 py-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <div className="text-xs uppercase tracking-[0.14em] text-sky-200/70">{item?.type || "opportunity"}</div>
-            <h1 className="mt-2 text-2xl font-semibold">{item?.title || "Loading..."}</h1>
-            {item?.summary ? <div className="mt-2 text-sm text-white/70">{item.summary}</div> : null}
+            <div className="text-xs font-black uppercase tracking-[0.14em] text-[#8A5700]">{item?.type || "opportunity"}</div>
+            <h1 className="mt-2 text-2xl font-black tracking-tight text-slate-950">{item?.title || "Loading..."}</h1>
+            {item?.summary ? <div className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">{item.summary}</div> : null}
           </div>
           <div className="flex flex-wrap gap-2">
             <Button
               variant="outline"
-              className="border-white/15 text-white/80 hover:bg-white/10"
+              className="border-slate-200 bg-white text-slate-700 hover:border-[#F5A623] hover:bg-[#FFF8E8]"
               onClick={() => setLocation("/app/invest/opportunities")}
             >
               Back
             </Button>
             <Button
-              className="bg-amber-500 hover:bg-amber-600 text-black font-semibold"
+              className="bg-[#F5A623] font-black text-[#07111F] hover:bg-[#F8C45B]"
               onClick={() => setLocation(`/app/invest/onboarding?op=${encodeURIComponent(slug)}`)}
             >
               Start onboarding
@@ -71,41 +71,41 @@ export default function AppInvestOpportunityDetailPage({ slug }: { slug: string 
 
         {query.isLoading ? (
           <div className="mt-5 space-y-2">
-            <div className="h-20 animate-pulse rounded-xl border border-white/10 bg-white/5" />
-            <div className="h-20 animate-pulse rounded-xl border border-white/10 bg-white/5" />
+            <div className="h-20 animate-pulse rounded-xl border border-slate-200 bg-white" />
+            <div className="h-20 animate-pulse rounded-xl border border-slate-200 bg-white" />
           </div>
         ) : null}
 
         {query.error ? (
-          <Card className="mt-5 border-red-500/30 bg-red-500/10">
-            <CardContent className="p-5 text-sm text-red-100">Failed to load opportunity.</CardContent>
+          <Card className="mt-5 border-rose-200 bg-rose-50">
+            <CardContent className="p-5 text-sm font-medium text-rose-800">Failed to load opportunity.</CardContent>
           </Card>
         ) : null}
 
         {item ? (
           <div className="mt-5 space-y-4">
-            <Card className="border-white/10 bg-white/5">
-              <CardContent className="p-5 space-y-2 text-sm text-white/75">
+            <Card className="border-slate-200 bg-white shadow-sm">
+              <CardContent className="space-y-2 p-5 text-sm text-slate-700">
                 <div>
-                  <span className="text-white/55">Country:</span> {item.country || "Multi-market"}
+                  <span className="font-semibold text-slate-500">Country:</span> {item.country || "Multi-market"}
                 </div>
                 <div>
-                  <span className="text-white/55">Funding goal:</span> {String(item.currency || "USD").toUpperCase()}{" "}
+                  <span className="font-semibold text-slate-500">Funding goal:</span> {String(item.currency || "USD").toUpperCase()}{" "}
                   {item.fundingGoalMin || "?"} {item.fundingGoalMax ? `- ${item.fundingGoalMax}` : ""}
                 </div>
                 <div>
-                  <span className="text-white/55">Duration:</span> {item.contractDurationMonths ? `${item.contractDurationMonths} months` : "Flexible"}
+                  <span className="font-semibold text-slate-500">Duration:</span> {item.contractDurationMonths ? `${item.contractDurationMonths} months` : "Flexible"}
                 </div>
               </CardContent>
             </Card>
 
             {Array.isArray(item.useOfFunds) && item.useOfFunds.length ? (
-              <Card className="border-white/10 bg-white/5">
+              <Card className="border-slate-200 bg-white shadow-sm">
                 <CardContent className="p-5">
                   <div className="text-sm font-semibold">Use of funds</div>
                   <div className="mt-2 flex flex-wrap gap-2">
                     {item.useOfFunds.map((u) => (
-                      <span key={u} className="rounded-full border border-white/15 bg-black/20 px-2 py-1 text-xs text-white/75">
+                      <span key={u} className="rounded-full border border-slate-200 bg-slate-50 px-2 py-1 text-xs font-medium text-slate-700">
                         {u}
                       </span>
                     ))}
@@ -115,12 +115,12 @@ export default function AppInvestOpportunityDetailPage({ slug }: { slug: string 
             ) : null}
 
             {Array.isArray(item.trackedKpis) && item.trackedKpis.length ? (
-              <Card className="border-white/10 bg-white/5">
+              <Card className="border-slate-200 bg-white shadow-sm">
                 <CardContent className="p-5">
                   <div className="text-sm font-semibold">Tracked KPIs</div>
                   <div className="mt-2 flex flex-wrap gap-2">
                     {item.trackedKpis.map((k) => (
-                      <span key={k} className="rounded-full border border-emerald-300/20 bg-emerald-500/10 px-2 py-1 text-xs text-emerald-100">
+                      <span key={k} className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-800">
                         {k}
                       </span>
                     ))}
@@ -130,16 +130,16 @@ export default function AppInvestOpportunityDetailPage({ slug }: { slug: string 
             ) : null}
 
             {item.narrative ? (
-              <Card className="border-white/10 bg-white/5">
-                <CardContent className="p-5 text-sm text-white/75 whitespace-pre-line">{item.narrative}</CardContent>
+              <Card className="border-slate-200 bg-white shadow-sm">
+                <CardContent className="whitespace-pre-line p-5 text-sm leading-6 text-slate-700">{item.narrative}</CardContent>
               </Card>
             ) : null}
 
             {item.riskNotes ? (
-              <Card className="border-white/10 bg-white/5">
+              <Card className="border-slate-200 bg-white shadow-sm">
                 <CardContent className="p-5">
                   <div className="text-sm font-semibold">Risk notes</div>
-                  <div className="mt-2 text-sm text-white/75 whitespace-pre-line">{item.riskNotes}</div>
+                  <div className="mt-2 whitespace-pre-line text-sm leading-6 text-slate-700">{item.riskNotes}</div>
                 </CardContent>
               </Card>
             ) : null}

@@ -18,10 +18,6 @@ function getDryRunAllowed() {
 export class TwilioProvider implements WhatsAppProvider {
   public readonly provider = "twilio" as const;
 
-  verifySignature(_rawBody: Buffer | undefined, _signatureHeader: string | undefined): boolean {
-    return true;
-  }
-
   async sendText(toE164: string, text: string) {
     return sendWaText(toE164, text);
   }

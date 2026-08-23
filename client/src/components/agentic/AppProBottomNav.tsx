@@ -50,6 +50,7 @@ export function AppProBottomNav({ activeKey }: AppProBottomNavProps) {
     <MobileBottomNav
       activeKey={activeKey}
       items={items}
+      theme="gtn"
     />
   );
 }

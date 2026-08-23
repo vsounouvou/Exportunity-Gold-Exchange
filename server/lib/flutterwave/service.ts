@@ -29,6 +29,12 @@ function asRoundedAmount(value: unknown): number | null {
   return Math.round(parsed);
 }
 
+function asExactAmount(value: unknown): string | null {
+  const exact = String(value ?? "").trim();
+  if (!/^(0|[1-9]\d*)(?:\.\d+)?$/.test(exact)) return null;
+  return exact;
+}
+
 function asUpperCurrency(value: unknown): string | null {
   const raw = String(value ?? "").trim().toUpperCase();
   return raw || null;
@@ -48,9 +54,14 @@ function normalizeStatus(input: unknown): FlutterwavePaymentStatus {
 export function buildFlutterwaveTxRef(input: {
   tenantKey: string;
   paymentId: string;
-  type: "WALLET_TOPUP" | "ORDER_PAYMENT";
+  type: "WALLET_TOPUP" | "ORDER_PAYMENT" | "INDUSTRIAL_ORDER_PAYMENT";
 }) {
-  const prefix = input.type === "WALLET_TOPUP" ? "topup" : "order";
+  const prefix =
+    input.type === "WALLET_TOPUP"
+      ? "topup"
+      : input.type === "INDUSTRIAL_ORDER_PAYMENT"
+        ? "industrial"
+        : "order";
   const tenant = String(input.tenantKey || "").trim().toLowerCase() || "tenant";
   const paymentId = String(input.paymentId || "").trim();
   if (!paymentId) throw new Error("paymentId is required to build tx_ref");
@@ -168,7 +179,7 @@ export async function flutterwaveVerifyById(input: {
     raw,
     transactionId: data?.id ? String(data.id) : transactionId,
     txRef: typeof data?.tx_ref === "string" ? data.tx_ref : null,
-    amount: asRoundedAmount(data?.amount),
+    amount: asExactAmount(data?.amount),
     currency: asUpperCurrency(data?.currency),
     normalizedStatus: normalizeStatus(data?.status),
   };
@@ -194,7 +205,7 @@ export async function flutterwaveVerifyByReference(input: {
     raw,
     transactionId: data?.id ? String(data.id) : null,
     txRef: typeof data?.tx_ref === "string" ? data.tx_ref : txRef,
-    amount: asRoundedAmount(data?.amount),
+    amount: asExactAmount(data?.amount),
     currency: asUpperCurrency(data?.currency),
     normalizedStatus: normalizeStatus(data?.status),
   };

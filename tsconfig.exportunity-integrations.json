@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "incremental": false
+  },
+  "include": [
+    "client/src/pages/AdminExportunityIntegrationsPage.tsx",
+    "db/schema/exportunity-integrations.ts",
+    "server/lib/exportunity/integrations/**/*.ts",
+    "server/routes/exportunity-integrations.ts",
+    "tests/exportunity-integration-provider-contract.test.ts"
+  ]
+}

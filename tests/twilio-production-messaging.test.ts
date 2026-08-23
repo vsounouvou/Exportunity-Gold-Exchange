@@ -40,6 +40,29 @@ test("normalizeE164 rejects invalid destinations", () => {
   assert.equal(normalizeE164("+12"), null);
 });
 
+test("Twilio destination validation remains market-agnostic for expansion", () => {
+  const expansionDestinations = [
+    "+2250100000229", // Côte d'Ivoire
+    "+233201234567", // Ghana
+    "+221771234567", // Senegal
+    "+2348012345678", // Nigeria
+    "+254712345678", // Kenya
+    "+971501234567", // UAE
+  ];
+
+  for (const destination of expansionDestinations) {
+    assert.equal(normalizeE164(destination), destination);
+  }
+
+  const nonIvoryCoastHint = resolveTwilioProviderErrorMessage(
+    "21408",
+    "Permission to send an SMS has not been enabled for the region indicated by the To number.",
+    { destinationE164: "+233201234567" },
+  );
+  assert.match(String(nonIvoryCoastHint), /destination country/i);
+  assert.doesNotMatch(String(nonIvoryCoastHint), /Côte d'Ivoire/i);
+});
+
 test("assertResolvedSenderForChannel rejects missing production WhatsApp sender", () => {
   assert.throws(
     () =>
@@ -75,6 +98,18 @@ test("resolveTwilioProviderErrorMessage only gives sandbox join guidance when sa
   assert.match(String(sandboxHint), /join/i);
   assert.doesNotMatch(String(prodHint), /join/i);
   assert.match(String(prodHint), /approved/i);
+});
+
+test("Twilio geographic-permission failures identify the exact Côte d'Ivoire control", () => {
+  const hint = resolveTwilioProviderErrorMessage(
+    "21408",
+    "Permission to send an SMS has not been enabled for the region indicated by the To number.",
+    { destinationE164: "+2250100000229" },
+  );
+
+  assert.match(String(hint), /Côte d'Ivoire \(\+225\)/i);
+  assert.match(String(hint), /Geo Permissions/i);
+  assert.doesNotMatch(String(hint), /0100000229/);
 });
 
 test("resolveTemplateDispatch extracts contentSid and variables for production WhatsApp templates", () => {

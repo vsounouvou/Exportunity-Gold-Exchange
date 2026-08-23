@@ -92,6 +92,29 @@ MANIFEST_PATH="${ARTIFACT_BASE}.json"
 [[ -f "$MANIFEST_PATH" ]] || fail "manifest not found: $MANIFEST_PATH"
 assert_artifact_matches_tenant "$ARTIFACT_PATH" "$CANONICAL_TENANT"
 
+if [[ "$CANONICAL_TENANT" == "exportunity" ]]; then
+  require_cmd tar
+  surface_json="$(tar -xOf "$ARTIFACT_PATH" dist/public/exportunity-surface.json 2>/dev/null || true)"
+  if [[ -z "$surface_json" ]]; then
+    surface_json="$(tar -xOf "$ARTIFACT_PATH" client/public/exportunity-surface.json 2>/dev/null || true)"
+  fi
+  [[ -n "$surface_json" ]] || fail "Exportunity artifact is missing the canonical public-surface marker"
+  node -e '
+    const marker = JSON.parse(process.argv[1]);
+    if (
+      marker.schemaVersion !== 2 ||
+      marker.surfaceRevision !== 5 ||
+      marker.canonicalSurface !== "global-trade-network" ||
+      marker.homepageComponent !== "MarketplacePage" ||
+      marker.homepageSourceSha256 !== "0c40d6a498340288889fc3d9e112df085442cbc0f7018ce41b131deb014c2816" ||
+      marker.legacyHomepageRetired !== true
+    ) {
+      console.error("[ops][error] Exportunity artifact does not match the exact approved Global Trade Network surface lock");
+      process.exit(1);
+    }
+  ' "$surface_json"
+fi
+
 RELEASE_ID="$(node -e "const fs=require('fs'); const data=JSON.parse(fs.readFileSync(process.argv[1],'utf8')); process.stdout.write(data.releaseId);" "$MANIFEST_PATH")"
 GIT_SHA="$(node -e "const fs=require('fs'); const data=JSON.parse(fs.readFileSync(process.argv[1],'utf8')); process.stdout.write(data.gitSha);" "$MANIFEST_PATH")"
 GIT_DIRTY="$(node -e "const fs=require('fs'); const data=JSON.parse(fs.readFileSync(process.argv[1],'utf8')); process.stdout.write(String(data.gitDirty === true));" "$MANIFEST_PATH")"
@@ -114,6 +137,7 @@ REMOTE_SCRIPT="$(cat <<EOF
 set -euo pipefail
 
 REMOTE_DEPLOY_ROOT='${REMOTE_DEPLOY_ROOT}'
+REMOTE_RELEASE_ARCHIVE_DIR='${REMOTE_RELEASE_ARCHIVE_DIR}'
 REMOTE_ARTIFACT_PATH='${REMOTE_ARTIFACT_PATH}'
 RELEASE_ID='${RELEASE_ID}'
 GIT_SHA='${GIT_SHA}'
@@ -124,6 +148,7 @@ COMPOSE_PROJECT='${COMPOSE_PROJECT}'
 HEALTHCHECK_URL='${HEALTHCHECK_URL}'
 DEPLOY_MODE='${DEPLOY_MODE}'
 KEEP_REMOTE_RELEASES='${KEEP_REMOTE_RELEASES}'
+KEEP_REMOTE_ARCHIVES='${KEEP_REMOTE_ARCHIVES}'
 
 mkdir -p "\${REMOTE_DEPLOY_ROOT}/releases" "\${REMOTE_DEPLOY_ROOT}/shared"
 lock_dir="\${REMOTE_DEPLOY_ROOT}/.deploy.lock"
@@ -199,6 +224,16 @@ REMOTE_SCRIPT+=$'\n'"  find \"\${REMOTE_DEPLOY_ROOT}/releases\" -mindepth 1 -max
 REMOTE_SCRIPT+=$'\n'"    old_real=\"\$(readlink -f \"\${old_release}\" || true)\""
 REMOTE_SCRIPT+=$'\n'"    if [ -n \"\${old_real}\" ] && grep -Fxq \"\${old_real}\" \"\${keep_file}\"; then continue; fi"
 REMOTE_SCRIPT+=$'\n'"    rm -rf \"\${old_release}\""
+REMOTE_SCRIPT+=$'\n'"  done"
+REMOTE_SCRIPT+=$'\n'"fi"
+REMOTE_SCRIPT+=$'\n'"if [ \"\${KEEP_REMOTE_ARCHIVES:-0}\" -gt 0 ] 2>/dev/null; then"
+REMOTE_SCRIPT+=$'\n'"  archive_root=\"\$(readlink -f \"\${REMOTE_RELEASE_ARCHIVE_DIR}\")\""
+REMOTE_SCRIPT+=$'\n'"  find \"\${archive_root}\" -maxdepth 1 -type f -name '*.tar.gz' | sort -r | tail -n \"+\$((KEEP_REMOTE_ARCHIVES + 1))\" | while IFS= read -r old_archive; do"
+REMOTE_SCRIPT+=$'\n'"    [ -n \"\${old_archive}\" ] || continue"
+REMOTE_SCRIPT+=$'\n'"    old_real=\"\$(readlink -f \"\${old_archive}\" || true)\""
+REMOTE_SCRIPT+=$'\n'"    case \"\${old_real}\" in \"\${archive_root}\"/*) ;; *) echo \"refusing to prune archive outside \${archive_root}: \${old_archive}\" >&2; exit 79 ;; esac"
+REMOTE_SCRIPT+=$'\n'"    old_base=\"\${old_archive%.tar.gz}\""
+REMOTE_SCRIPT+=$'\n'"    rm -f \"\${old_archive}\" \"\${old_base}.json\" \"\${old_base}.sha256\""
 REMOTE_SCRIPT+=$'\n'"  done"
 REMOTE_SCRIPT+=$'\n'"fi"
 

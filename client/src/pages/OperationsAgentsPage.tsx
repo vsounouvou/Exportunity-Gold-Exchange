@@ -26,7 +26,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { useTenant } from "@/lib/tenant";
 import { getAgentAvatarUrl } from "@/lib/agentAvatar";
 import { useLocale } from "@/contexts/LocaleContext";
 
@@ -52,7 +51,6 @@ type AgentListResponse = {
 
 export default function OperationsAgentsPage() {
   const { toast } = useToast();
-  const { tenant } = useTenant();
   const { language } = useLocale();
   const isFr = language !== "en";
   const tr = (fr: string, en: string) => (isFr ? fr : en);
@@ -130,14 +128,26 @@ export default function OperationsAgentsPage() {
     return Array.from(set).sort();
   }, [items]);
 
+  const confirmCreate = () => {
+    const confirmed = window.confirm(
+      tr(
+        `Créer l'identité interne inactive « ${newName.trim()} » ? Aucun message, paiement, contrat ou travail externe ne sera lancé.`,
+        `Create the dormant internal identity “${newName.trim()}”? No message, payment, contract, or external work will be started.`,
+      ),
+    );
+    if (confirmed) createMutation.mutate();
+  };
+
   return (
-    <div className={tenant.key === "exportunity" ? "exportunity-operations-light min-h-screen bg-[#f7f8fa] p-4 md:p-6 space-y-4" : "p-4 md:p-6 space-y-4"}>
-      <div className="flex flex-wrap items-center justify-between gap-3">
+    <div data-testid="exportunity-internal-agents-workspace" className="min-h-full bg-[#f7f8fa] p-4 text-slate-950 md:p-6">
+      <div className="mx-auto max-w-7xl space-y-4">
+      <header className="flex flex-wrap items-end justify-between gap-3 border-b border-slate-200 pb-5">
         <div>
-          <h1 className="text-xl font-semibold text-white">
+          <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase text-[#9a6200]"><BrainCircuit className="h-4 w-4" /> Agents OS</div>
+          <h1 className="text-2xl font-semibold tracking-normal">
             {tr("Équipe et agents", "Team & Agents")}
           </h1>
-          <p className="text-xs text-gray-400">
+          <p className="mt-1 max-w-2xl text-sm text-slate-600">
             {tr(
               "Créez, modifiez, testez et affectez les agents opérationnels d'Exportunity.",
               "Create, edit, test, and assign Exportunity's working agents.",
@@ -146,21 +156,15 @@ export default function OperationsAgentsPage() {
         </div>
         <Dialog open={createOpen} onOpenChange={setCreateOpen}>
           <DialogTrigger asChild>
-            <Button className="bg-amber-500 text-black hover:bg-amber-400">
+            <Button className="bg-[#f5a623] text-[#07121f] hover:bg-[#e59a18]">
               <Plus className="h-4 w-4 mr-2" />
               {tr("Créer un agent", "Create agent")}
             </Button>
           </DialogTrigger>
-          <DialogContent
-            className={
-              tenant.key === "exportunity"
-                ? "border-slate-200 bg-white text-slate-950"
-                : "bg-gray-900 border-gray-800 text-white"
-            }
-          >
+          <DialogContent className="border-slate-200 bg-white text-slate-950">
             <DialogHeader>
               <DialogTitle>{tr("Créer un agent opérationnel", "Create a working agent")}</DialogTitle>
-              <DialogDescription className={tenant.key === "exportunity" ? "text-slate-600" : "text-gray-400"}>
+              <DialogDescription className="text-slate-600">
                 {tr(
                   "Après la création, l'éditeur d'identité et de visage s'ouvre automatiquement.",
                   "After creation, the identity and face editor opens automatically.",
@@ -170,26 +174,32 @@ export default function OperationsAgentsPage() {
             <div className="space-y-3">
               <div>
                 <Label>{tr("Nom", "Name")}</Label>
-                <Input value={newName} onChange={(e) => setNewName(e.target.value)} className={tenant.key === "exportunity" ? "border-slate-300 bg-white text-slate-950" : "bg-gray-800 border-gray-700"} />
+                <Input value={newName} onChange={(e) => setNewName(e.target.value)} className="border-slate-300 bg-white text-slate-950" />
               </div>
               <div>
                 <Label>{tr("Fonction", "Role")}</Label>
-                <Input value={newRole} onChange={(e) => setNewRole(e.target.value)} className={tenant.key === "exportunity" ? "border-slate-300 bg-white text-slate-950" : "bg-gray-800 border-gray-700"} />
+                <Input value={newRole} onChange={(e) => setNewRole(e.target.value)} className="border-slate-300 bg-white text-slate-950" />
               </div>
               <div>
                 <Label>{tr("Département", "Department")}</Label>
-                <Input value={newDepartment} onChange={(e) => setNewDepartment(e.target.value)} className={tenant.key === "exportunity" ? "border-slate-300 bg-white text-slate-950" : "bg-gray-800 border-gray-700"} />
+                <Input value={newDepartment} onChange={(e) => setNewDepartment(e.target.value)} className="border-slate-300 bg-white text-slate-950" />
               </div>
               <div>
                 <Label>{tr("Modèle d'exécution (facultatif)", "Runtime Model (optional)")}</Label>
-                <Input value={newModel} onChange={(e) => setNewModel(e.target.value)} className={tenant.key === "exportunity" ? "border-slate-300 bg-white text-slate-950" : "bg-gray-800 border-gray-700"} />
+                <Input value={newModel} onChange={(e) => setNewModel(e.target.value)} className="border-slate-300 bg-white text-slate-950" />
+              </div>
+              <div className="border-l-4 border-[#f5a623] bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-950">
+                {tr(
+                  "La création ajoute uniquement une identité interne inactive. Les outils, communications, paiements, contrats et travaux externes restent désactivés ou soumis à approbation.",
+                  "Creation adds only a dormant internal identity. Tools, communications, payments, contracts, and external work remain disabled or approval-gated.",
+                )}
               </div>
             </div>
             <DialogFooter>
               <Button
                 disabled={!newName.trim() || createMutation.isPending}
-                className="bg-emerald-500 text-black hover:bg-emerald-400"
-                onClick={() => createMutation.mutate()}
+                className="bg-emerald-700 text-white hover:bg-emerald-600"
+                onClick={confirmCreate}
               >
                 {createMutation.isPending ? <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> : null}
                 {tr("Créer et configurer", "Create and edit")}
@@ -197,9 +207,9 @@ export default function OperationsAgentsPage() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
-      </div>
+      </header>
 
-      <Card className="bg-gray-900 border-gray-800">
+      <Card className="rounded-none border-slate-200 bg-white shadow-none">
         <CardContent className="pt-4">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
             <Input
@@ -209,11 +219,11 @@ export default function OperationsAgentsPage() {
               )}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="bg-gray-800 border-gray-700"
+              className="border-slate-300 bg-white"
             />
             <Select value={departmentKey} onValueChange={setDepartmentKey}>
-                <SelectTrigger className="bg-gray-800 border-gray-700"><SelectValue placeholder={tr("Département", "Department")} /></SelectTrigger>
-              <SelectContent className="bg-gray-900 border-gray-700">
+                <SelectTrigger className="border-slate-300 bg-white"><SelectValue placeholder={tr("Département", "Department")} /></SelectTrigger>
+              <SelectContent className="border-slate-200 bg-white">
                   <SelectItem value="all">{tr("Tous les départements", "All departments")}</SelectItem>
                 {departmentOptions.map((opt) => (
                   <SelectItem key={opt} value={opt}>{opt}</SelectItem>
@@ -221,15 +231,15 @@ export default function OperationsAgentsPage() {
               </SelectContent>
             </Select>
             <Select value={status} onValueChange={setStatus}>
-                <SelectTrigger className="bg-gray-800 border-gray-700"><SelectValue placeholder={tr("Statut", "Status")} /></SelectTrigger>
-              <SelectContent className="bg-gray-900 border-gray-700">
+                <SelectTrigger className="border-slate-300 bg-white"><SelectValue placeholder={tr("Statut", "Status")} /></SelectTrigger>
+              <SelectContent className="border-slate-200 bg-white">
                   <SelectItem value="all">{tr("Tous les statuts", "All statuses")}</SelectItem>
                   <SelectItem value="ACTIVE">{tr("Actif", "Active")}</SelectItem>
                   <SelectItem value="PAUSED">{tr("En pause", "Paused")}</SelectItem>
                   <SelectItem value="ARCHIVED">{tr("Archivé", "Archived")}</SelectItem>
               </SelectContent>
             </Select>
-              <div className="text-xs text-gray-400 flex items-center">
+              <div className="flex items-center text-xs text-slate-500">
                 {filtered.length} {tr("agent(s) opérationnel(s)", "working agent(s)")}
               </div>
           </div>
@@ -238,19 +248,19 @@ export default function OperationsAgentsPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
         {query.isLoading ? (
-          <Card className="bg-gray-900 border-gray-800"><CardContent className="pt-6 text-gray-400">{tr("Chargement des agents internes...", "Loading internal agents...")}</CardContent></Card>
+          <Card className="rounded-none border-slate-200 bg-white shadow-none"><CardContent className="pt-6 text-slate-500">{tr("Chargement des agents internes...", "Loading internal agents...")}</CardContent></Card>
         ) : null}
         {query.isError ? (
-          <Card className="bg-gray-900 border-red-500/40">
+          <Card className="rounded-none border-red-200 bg-white shadow-none">
             <CardContent className="pt-6 space-y-3">
-              <div className="text-sm text-red-300">
+              <div className="text-sm text-red-800">
                 {tr("Impossible de charger les agents internes", "Failed to load internal agents")}: {(query.error as Error)?.message || tr("Erreur inconnue", "Unknown error")}
               </div>
               <Button
                 type="button"
                 size="sm"
                 variant="outline"
-                className="border-red-400/50 text-red-200 hover:bg-red-500/10"
+                className="border-red-300 bg-white text-red-800 hover:bg-red-50"
                 onClick={() => query.refetch()}
               >
                 <RefreshCw className="h-4 w-4 mr-2" />
@@ -260,13 +270,13 @@ export default function OperationsAgentsPage() {
           </Card>
         ) : null}
         {!query.isLoading && !query.isError && filtered.length === 0 ? (
-          <Card className="bg-gray-900 border-gray-800"><CardContent className="pt-6 text-gray-400">{tr("Aucun agent interne trouvé.", "No internal agents found.")}</CardContent></Card>
+          <Card className="rounded-none border-slate-200 bg-white shadow-none"><CardContent className="pt-6 text-slate-500">{tr("Aucun agent interne trouvé.", "No internal agents found.")}</CardContent></Card>
         ) : null}
         {filtered.map((item) => (
-          <Card key={item.id} className="bg-gray-900 border-gray-800 hover:border-amber-500/40 transition-colors">
+          <Card key={item.id} className="rounded-none border-slate-200 bg-white shadow-none transition-colors hover:border-amber-300">
             <CardHeader className="pb-2">
               <div className="flex items-start gap-3">
-                <Avatar className="h-12 w-12 shrink-0 border border-amber-500/30 bg-slate-950">
+                <Avatar className="h-12 w-12 shrink-0 border border-amber-200 bg-slate-100">
                   <AvatarImage
                     src={
                       String(item.avatar_url || item.avatar || "") ||
@@ -278,22 +288,22 @@ export default function OperationsAgentsPage() {
                   <AvatarFallback>{item.name.slice(0, 2).toUpperCase()}</AvatarFallback>
                 </Avatar>
                 <div className="min-w-0 flex-1">
-                  <CardTitle className="text-sm text-white flex items-center justify-between gap-2">
+                  <CardTitle className="flex items-center justify-between gap-2 text-sm text-slate-950">
                     <span className="truncate">{item.name}</span>
                     <Badge variant="outline" className="text-[10px]">{item.statusV2}</Badge>
                   </CardTitle>
-                  <div className="mt-1 text-xs text-gray-400">{item.role}</div>
+                  <div className="mt-1 text-xs text-slate-500">{item.role}</div>
                 </div>
               </div>
             </CardHeader>
-            <CardContent className="text-xs text-gray-300 space-y-3">
+            <CardContent className="space-y-3 text-xs text-slate-600">
               <div className="space-y-1">
-                <div>{tr("Département", "Department")}: <span className="text-gray-100">{item.department_name || item.department_key || tr("Non affecté", "Unassigned")}</span></div>
-                <div>{tr("Tâches ouvertes", "Open tasks")}: <span className="text-gray-100">{Number(item.open_tasks_count || 0)}</span></div>
-                <div>{tr("Dernière action", "Last action")}: <span className="text-gray-100">{item.last_action_at ? new Date(item.last_action_at).toLocaleString(isFr ? "fr-FR" : "en-GB") : tr("aucune", "n/a")}</span></div>
-                <div>{tr("Dernier poste de travail", "Last workstation")}: <span className="text-gray-100">{item.last_workstation_started_at ? new Date(item.last_workstation_started_at).toLocaleString(isFr ? "fr-FR" : "en-GB") : tr("aucun", "n/a")}</span></div>
+                <div>{tr("Département", "Department")}: <span className="font-medium text-slate-950">{item.department_name || item.department_key || tr("Non affecté", "Unassigned")}</span></div>
+                <div>{tr("Tâches ouvertes", "Open tasks")}: <span className="font-medium text-slate-950">{Number(item.open_tasks_count || 0)}</span></div>
+                <div>{tr("Dernière action", "Last action")}: <span className="font-medium text-slate-950">{item.last_action_at ? new Date(item.last_action_at).toLocaleString(isFr ? "fr-FR" : "en-GB") : tr("aucune", "n/a")}</span></div>
+                <div>{tr("Dernier poste de travail", "Last workstation")}: <span className="font-medium text-slate-950">{item.last_workstation_started_at ? new Date(item.last_workstation_started_at).toLocaleString(isFr ? "fr-FR" : "en-GB") : tr("aucun", "n/a")}</span></div>
               </div>
-              <div className="flex flex-wrap gap-2 border-t border-gray-800 pt-3">
+              <div className="flex flex-wrap gap-2 border-t border-slate-100 pt-3">
                 <Link href={`/operations/agents/${item.id}`}>
                   <Button type="button" size="sm" variant="outline" className="h-8">
                     <Eye className="mr-2 h-3.5 w-3.5" />
@@ -316,6 +326,7 @@ export default function OperationsAgentsPage() {
             </CardContent>
           </Card>
         ))}
+      </div>
       </div>
     </div>
   );

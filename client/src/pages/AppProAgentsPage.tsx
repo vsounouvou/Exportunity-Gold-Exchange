@@ -375,7 +375,7 @@ export default function AppProAgentsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white pb-24">
+    <div className="min-h-screen bg-[#F7F8FA] pb-24 text-slate-950">
       <ProSideNav activeKey="agents" />
       <div className="md:ml-56">
       <AppProTopBar subtitle="Agents" />
@@ -384,15 +384,15 @@ export default function AppProAgentsPage() {
         <div className="flex items-center justify-between gap-3">
           <div>
             <h1 className="text-xl font-semibold tracking-tight">Agents</h1>
-            <p className="text-xs text-white/60 mt-1">Hire, manage, and approve agent work in one place.</p>
+            <p className="mt-1 text-xs text-slate-600">Hire, manage, and approve governed agent work in one place.</p>
           </div>
-          <div className="text-xs px-3 py-1 rounded-full border border-white/10 bg-white/5">
+          <div className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs text-slate-600 shadow-sm">
             {teamItems.filter((item) => item.status === "active").length} active agents
           </div>
         </div>
 
         <Tabs value={activeTab} onValueChange={handleTabChange}>
-          <TabsList className="bg-white/5 border border-white/10 w-full grid grid-cols-5">
+          <TabsList className="grid w-full grid-cols-5 border border-slate-200 bg-white">
             <TabsTrigger value="store" data-testid="pro-agents-tab-trigger-store">Store</TabsTrigger>
             <TabsTrigger value="team" data-testid="pro-agents-tab-trigger-team">My Team</TabsTrigger>
             <TabsTrigger value="inbox" data-testid="pro-agents-tab-trigger-inbox">Inbox</TabsTrigger>
@@ -406,13 +406,13 @@ export default function AppProAgentsPage() {
                 value={storeSearch}
                 onChange={(event) => setStoreSearch(event.target.value)}
                 placeholder="Search agents..."
-                className="bg-white/5 border-white/10"
+                className="border-slate-200 bg-white"
               />
               <Select value={storeCategory} onValueChange={setStoreCategory}>
-                <SelectTrigger className="bg-white/5 border-white/10">
+                <SelectTrigger className="border-slate-200 bg-white">
                   <SelectValue placeholder="All categories" />
                 </SelectTrigger>
-                <SelectContent className="bg-gray-900 border-gray-700">
+                <SelectContent className="border-slate-200 bg-white text-slate-950">
                   <SelectItem value="all">All categories</SelectItem>
                   {storeCategories.map((category) => (
                     <SelectItem key={category} value={category}>
@@ -422,10 +422,10 @@ export default function AppProAgentsPage() {
                 </SelectContent>
               </Select>
               <Select value={storeSort} onValueChange={(next) => setStoreSort((next as "trending" | "featured" | "new") || "trending")}>
-                <SelectTrigger className="bg-white/5 border-white/10">
+                <SelectTrigger className="border-slate-200 bg-white">
                   <SelectValue placeholder="Sort" />
                 </SelectTrigger>
-                <SelectContent className="bg-gray-900 border-gray-700">
+                <SelectContent className="border-slate-200 bg-white text-slate-950">
                   <SelectItem value="trending">Trending</SelectItem>
                   <SelectItem value="featured">Featured</SelectItem>
                   <SelectItem value="new">New</SelectItem>
@@ -435,19 +435,19 @@ export default function AppProAgentsPage() {
 
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {storeItems.map((agent) => (
-                <Card key={agent.id} className="bg-white/5 border-white/10">
+                <Card key={agent.id} className="border-slate-200 bg-white shadow-sm">
                   <CardHeader className="pb-2">
                     <CardTitle className="text-base flex items-center gap-2">
-                      <Bot className="h-4 w-4 text-amber-300" />
+                      <Bot className="h-4 w-4 text-[#B26F00]" />
                       {agent.displayName}
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-3">
-                    <p className="text-xs text-white/70">{agent.shortPitch || "No pitch available."}</p>
-                    <div className="text-xs text-white/50">{agent.category}</div>
+                    <p className="text-xs text-slate-600">{agent.shortPitch || "No pitch available."}</p>
+                    <div className="text-xs text-slate-500">{agent.category}</div>
                     <div className="text-sm font-semibold">Salary: {fmtMoney(agent.priceMonthly)} / month</div>
                     <Button
-                      className="w-full bg-amber-500 hover:bg-amber-600 text-black"
+                      className="w-full bg-[#F5A623] text-[#07111F] hover:bg-[#F8C45B]"
                       disabled={!canManage}
                       onClick={() => {
                         setSelectedStoreAgent(agent);
@@ -462,8 +462,8 @@ export default function AppProAgentsPage() {
                 </Card>
               ))}
               {!storeItems.length ? (
-                <Card className="bg-white/5 border-white/10 sm:col-span-2 lg:col-span-3">
-                  <CardContent className="p-6 text-sm text-white/70">
+                <Card className="border-slate-200 bg-white shadow-sm sm:col-span-2 lg:col-span-3">
+                  <CardContent className="p-6 text-sm text-slate-600">
                     No marketplace agents found yet. Please retry in a few seconds.
                   </CardContent>
                 </Card>
@@ -474,17 +474,17 @@ export default function AppProAgentsPage() {
           <TabsContent value="team" className="mt-4" data-testid="pro-agents-tab-team">
             <div className="space-y-2">
               {teamItems.map((item) => (
-                <Card key={item.id} className="bg-white/5 border-white/10">
+                <Card key={item.id} className="border-slate-200 bg-white shadow-sm">
                   <CardContent className="p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                     <div className="min-w-0">
                       <div className="text-sm font-semibold truncate">{item.display_name}</div>
-                      <div className="text-xs text-white/60 truncate">{item.template_title || "Agent"} • {item.model_tier}</div>
-                      <div className="text-xs text-white/50 mt-1">Salary: {fmtMoney(item.salary_monthly)} / month</div>
+                      <div className="truncate text-xs text-slate-600">{item.template_title || "Agent"} • {item.model_tier}</div>
+                      <div className="mt-1 text-xs text-slate-500">Salary: {fmtMoney(item.salary_monthly)} / month</div>
                     </div>
                     <div className="flex items-center gap-2">
                       <Button
                         variant="outline"
-                        className="border-white/15 text-white/80"
+                        className="border-slate-300 text-slate-700"
                         onClick={() => {
                           setSelectedAgentId(item.id);
                           handleTabChange("inbox", item.id);
@@ -496,7 +496,7 @@ export default function AppProAgentsPage() {
                       {item.status === "active" ? (
                         <Button
                           variant="outline"
-                          className="border-white/15 text-white/80"
+                          className="border-slate-300 text-slate-700"
                           disabled={!canManage}
                           onClick={() => updateStatus.mutate({ agentId: item.id, status: "paused" })}
                         >
@@ -506,7 +506,7 @@ export default function AppProAgentsPage() {
                       ) : (
                         <Button
                           variant="outline"
-                          className="border-white/15 text-white/80"
+                          className="border-slate-300 text-slate-700"
                           disabled={!canManage || item.status === "cancelled"}
                           onClick={() => updateStatus.mutate({ agentId: item.id, status: "active" })}
                         >
@@ -519,8 +519,8 @@ export default function AppProAgentsPage() {
                 </Card>
               ))}
               {!teamItems.length ? (
-                <Card className="bg-white/5 border-white/10">
-                  <CardContent className="p-6 text-sm text-white/70">No agents hired yet. Go to Store to hire your first agent.</CardContent>
+                <Card className="border-slate-200 bg-white shadow-sm">
+                  <CardContent className="p-6 text-sm text-slate-600">No agents hired yet. Go to Store to hire your first agent.</CardContent>
                 </Card>
               ) : null}
             </div>
@@ -528,7 +528,7 @@ export default function AppProAgentsPage() {
 
           <TabsContent value="inbox" className="mt-4" data-testid="pro-agents-tab-inbox">
             <div className="grid lg:grid-cols-[280px_1fr] gap-3">
-              <Card className="bg-white/5 border-white/10">
+              <Card className="border-slate-200 bg-white shadow-sm">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm flex items-center gap-2"><Users className="h-4 w-4" /> Agent Threads</CardTitle>
                 </CardHeader>
@@ -536,39 +536,39 @@ export default function AppProAgentsPage() {
                   {threadItems.map((thread) => (
                     <button
                       key={thread.org_agent_id}
-                      className={`w-full text-left rounded-lg px-3 py-2 border ${selectedAgentId === thread.org_agent_id ? "border-amber-400/60 bg-amber-500/10" : "border-white/10 bg-white/5"}`}
+                      className={`w-full rounded-lg border px-3 py-2 text-left ${selectedAgentId === thread.org_agent_id ? "border-[#F5A623] bg-[#FFF7E6]" : "border-slate-200 bg-slate-50"}`}
                       onClick={() => setSelectedAgentId(thread.org_agent_id)}
                     >
                       <div className="text-xs font-semibold truncate">{thread.display_name}</div>
-                      <div className="text-[11px] text-white/60 truncate mt-1">{thread.last_message || "Open thread"}</div>
+                      <div className="mt-1 truncate text-[11px] text-slate-600">{thread.last_message || "Open thread"}</div>
                     </button>
                   ))}
-                  {!threadItems.length ? <div className="text-xs text-white/60">No threads yet.</div> : null}
+                  {!threadItems.length ? <div className="text-xs text-slate-600">No threads yet.</div> : null}
                 </CardContent>
               </Card>
 
-              <Card className="bg-white/5 border-white/10">
+              <Card className="border-slate-200 bg-white shadow-sm">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm">{selectedThreadLabel}</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  <div className="h-[44vh] overflow-y-auto space-y-2 rounded-lg border border-white/10 bg-black/20 p-3">
+                  <div className="h-[44vh] space-y-2 overflow-y-auto rounded-lg border border-slate-200 bg-slate-50 p-3">
                     {(messages.data?.items || []).map((message) => (
                       <div key={message.id} className={`flex ${message.sender_type === "user" ? "justify-end" : "justify-start"}`}>
                         <div
                           className={`max-w-[85%] rounded-xl px-3 py-2 text-xs whitespace-pre-wrap ${
                             message.sender_type === "user"
-                              ? "bg-amber-500 text-black"
+                              ? "bg-[#F5A623] text-[#07111F]"
                               : message.sender_type === "agent"
-                                ? "bg-white/10 text-white"
-                                : "bg-blue-500/10 border border-blue-400/20 text-blue-100"
+                                ? "border border-slate-200 bg-white text-slate-800"
+                                : "border border-blue-200 bg-blue-50 text-blue-800"
                           }`}
                         >
                           {message.content}
                         </div>
                       </div>
                     ))}
-                    {!messages.data?.items?.length ? <div className="text-xs text-white/60">Select an agent to start.</div> : null}
+                    {!messages.data?.items?.length ? <div className="text-xs text-slate-600">Select an agent to start.</div> : null}
                   </div>
 
                   <div className="flex gap-2">
@@ -576,17 +576,17 @@ export default function AppProAgentsPage() {
                       value={messageDraft}
                       onChange={(event) => setMessageDraft(event.target.value)}
                       placeholder="Instruct the agent..."
-                      className="bg-white/5 border-white/10"
+                      className="border-slate-200 bg-white"
                     />
                     <Button
-                      className="bg-amber-500 hover:bg-amber-600 text-black"
+                      className="bg-[#F5A623] text-[#07111F] hover:bg-[#F8C45B]"
                       disabled={!canOperate || sendMessage.isPending || !selectedAgentId}
                       onClick={() => sendMessage.mutate()}
                     >
                       Send
                     </Button>
                   </div>
-                  <div className="text-[11px] text-white/50 flex items-center gap-1">
+                  <div className="flex items-center gap-1 text-[11px] text-slate-500">
                     <ShieldAlert className="h-3 w-3" />
                     External actions are always approval-gated.
                   </div>
@@ -598,19 +598,19 @@ export default function AppProAgentsPage() {
           <TabsContent value="tasks" className="mt-4" data-testid="pro-agents-tab-tasks">
             <div className="space-y-2">
               {taskItems.map((task) => (
-                <Card key={task.id} className="bg-white/5 border-white/10">
+                <Card key={task.id} className="border-slate-200 bg-white shadow-sm">
                   <CardContent className="p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                     <div className="min-w-0">
                       <div className="text-sm font-semibold truncate">{task.title}</div>
-                      <div className="text-xs text-white/60 truncate">{task.agent_name || "Agent"} • {task.type}</div>
-                      <div className="text-[11px] text-white/50 mt-1">Status: {task.status}</div>
+                      <div className="truncate text-xs text-slate-600">{task.agent_name || "Agent"} • {task.type}</div>
+                      <div className="mt-1 text-[11px] text-slate-500">Status: {task.status}</div>
                     </div>
                     <div className="flex gap-2">
                       {task.status === "needs_approval" ? (
                         <>
                           <Button
                             size="sm"
-                            className="bg-emerald-500 hover:bg-emerald-600 text-black"
+                            className="bg-emerald-600 text-white hover:bg-emerald-700"
                             disabled={!canManage || approveTask.isPending}
                             onClick={() => approveTask.mutate(task.id)}
                           >
@@ -620,7 +620,7 @@ export default function AppProAgentsPage() {
                           <Button
                             size="sm"
                             variant="outline"
-                            className="border-white/15 text-white/80"
+                            className="border-slate-300 text-slate-700"
                             disabled={!canManage || rejectTask.isPending}
                             onClick={() => rejectTask.mutate(task.id)}
                           >
@@ -633,8 +633,8 @@ export default function AppProAgentsPage() {
                 </Card>
               ))}
               {!taskItems.length ? (
-                <Card className="bg-white/5 border-white/10">
-                  <CardContent className="p-6 text-sm text-white/70">No tasks yet.</CardContent>
+                <Card className="border-slate-200 bg-white shadow-sm">
+                  <CardContent className="p-6 text-sm text-slate-600">No tasks yet.</CardContent>
                 </Card>
               ) : null}
             </div>
@@ -642,21 +642,21 @@ export default function AppProAgentsPage() {
 
           <TabsContent value="billing" className="mt-4 space-y-3" data-testid="pro-agents-tab-billing">
             <div className="grid md:grid-cols-3 gap-3">
-              <Card className="bg-white/5 border-white/10">
+              <Card className="border-slate-200 bg-white shadow-sm">
                 <CardContent className="p-4">
-                  <div className="text-xs text-white/60">Current Plan</div>
+                  <div className="text-xs text-slate-600">Current Plan</div>
                   <div className="text-lg font-semibold mt-1">{billing.data?.subscription?.plan_name || "Starter"}</div>
                 </CardContent>
               </Card>
-              <Card className="bg-white/5 border-white/10">
+              <Card className="border-slate-200 bg-white shadow-sm">
                 <CardContent className="p-4">
-                  <div className="text-xs text-white/60">Active Agents</div>
+                  <div className="text-xs text-slate-600">Active Agents</div>
                   <div className="text-lg font-semibold mt-1">{billing.data?.summary?.activeAgents || 0}</div>
                 </CardContent>
               </Card>
-              <Card className="bg-white/5 border-white/10">
+              <Card className="border-slate-200 bg-white shadow-sm">
                 <CardContent className="p-4">
-                  <div className="text-xs text-white/60">Monthly Salaries</div>
+                  <div className="text-xs text-slate-600">Monthly Salaries</div>
                   <div className="text-lg font-semibold mt-1">{fmtMoney(billing.data?.summary?.monthlySalaryTotal || 0)}</div>
                 </CardContent>
               </Card>
@@ -664,16 +664,16 @@ export default function AppProAgentsPage() {
 
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {(billing.data?.plans || []).map((plan) => (
-                <Card key={plan.id} className="bg-white/5 border-white/10">
+                <Card key={plan.id} className="border-slate-200 bg-white shadow-sm">
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-base flex items-center gap-2"><Wallet className="h-4 w-4 text-amber-300" />{plan.plan_name}</CardTitle>
+                    <CardTitle className="flex items-center gap-2 text-base"><Wallet className="h-4 w-4 text-[#B26F00]" />{plan.plan_name}</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-2">
                     <div className="text-sm font-semibold">{fmtMoney(plan.monthly_fee)} / month</div>
-                    <div className="text-xs text-white/60">Max agents: {plan.max_agents}</div>
-                    <div className="text-xs text-white/60">Included tokens: {fmtMoney(plan.included_tokens)}</div>
+                    <div className="text-xs text-slate-600">Max agents: {plan.max_agents}</div>
+                    <div className="text-xs text-slate-600">Included tokens: {fmtMoney(plan.included_tokens)}</div>
                     <Button
-                      className="w-full bg-amber-500 hover:bg-amber-600 text-black"
+                      className="w-full bg-[#F5A623] text-[#07111F] hover:bg-[#F8C45B]"
                       disabled={!canManage || subscribePlan.isPending}
                       onClick={() => subscribePlan.mutate(plan.id)}
                     >
@@ -694,25 +694,25 @@ export default function AppProAgentsPage() {
           if (!open) setSelectedStoreAgent(null);
         }}
       >
-        <DialogContent className="bg-gray-950 border-white/10 text-white">
+        <DialogContent className="border-slate-200 bg-white text-slate-950">
           <DialogHeader>
             <DialogTitle>Hire Agent{selectedStoreAgent ? ` • ${selectedStoreAgent.displayName}` : ""}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
             <div className="space-y-1">
               <Label>Name</Label>
-              <Input value={hireName} onChange={(event) => setHireName(event.target.value)} className="bg-white/5 border-white/10" />
+              <Input value={hireName} onChange={(event) => setHireName(event.target.value)} className="border-slate-200 bg-white" />
             </div>
             <div className="space-y-1">
               <Label>Mission</Label>
-              <Textarea value={hireGoal} onChange={(event) => setHireGoal(event.target.value)} className="bg-white/5 border-white/10 min-h-24" />
+              <Textarea value={hireGoal} onChange={(event) => setHireGoal(event.target.value)} className="min-h-24 border-slate-200 bg-white" />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" className="border-white/15 text-white/80" onClick={() => setHireDialogOpen(false)}>
+            <Button variant="outline" className="border-slate-300 text-slate-700" onClick={() => setHireDialogOpen(false)}>
               Cancel
             </Button>
-            <Button className="bg-amber-500 hover:bg-amber-600 text-black" onClick={() => hireAgent.mutate()} disabled={hireAgent.isPending}>
+            <Button className="bg-[#F5A623] text-[#07111F] hover:bg-[#F8C45B]" onClick={() => hireAgent.mutate()} disabled={hireAgent.isPending}>
               <UserPlus className="h-4 w-4 mr-2" />
               Hire
             </Button>

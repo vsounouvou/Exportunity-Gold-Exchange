@@ -578,8 +578,8 @@ function missionContext(
     { fr: string; en: string; repliesFr: string[]; repliesEn: string[]; requirementType: string | null }
   > = {
     trade: {
-      fr: "Bonjour, je suis Awa Kouadio, votre interlocutrice commerciale Exportunity. Dites-moi ce que votre entreprise doit acheter, vendre, approvisionner ou developper; je vais transformer le besoin en dossier commercial suivi, sans contacter de tiers sans autorisation.",
-      en: "Hello, I am Awa Kouadio, your Exportunity commercial lead. Tell me what your company needs to buy, sell, supply, or develop; I will turn it into a tracked commercial case, without contacting third parties without approval.",
+      fr: "Bonjour, je suis Awa Kouadio, votre interlocutrice commerciale Exportunity. Dites-moi ce que votre entreprise doit acheter, vendre, approvisionner ou developper; je vais transformer le besoin en dossier commercial suivi.",
+      en: "Hello, I am Awa Kouadio, your Exportunity commercial lead. Tell me what your company needs to buy, sell, supply, or develop; I will turn it into a tracked commercial case.",
       repliesFr: [
         "Je cherche un produit ou un fournisseur",
         "Je veux vendre ou exporter",
@@ -919,10 +919,28 @@ export default function GlobalTradeHomePage() {
               </Link>
             ))}
             <Link
+              href="/marketplace"
+              className="rounded-md px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-white/10 dark:hover:text-white"
+            >
+              Marketplace
+            </Link>
+            <Link
               href="/industrial"
               className="rounded-md px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-white/10 dark:hover:text-white"
             >
               {language === "fr" ? "Industries" : "Industries"}
+            </Link>
+            <Link
+              href="/trade"
+              className="rounded-md px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-white/10 dark:hover:text-white"
+            >
+              {language === "fr" ? "Intelligence marchés" : "Trade intelligence"}
+            </Link>
+            <Link
+              href="/producer-exchange"
+              className="rounded-md px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-white/10 dark:hover:text-white"
+            >
+              {language === "fr" ? "Bourse producteurs" : "Producer exchange"}
             </Link>
           </nav>
 
@@ -1022,6 +1040,16 @@ export default function GlobalTradeHomePage() {
                     ? "Exportunity aide les entreprises a trouver des fournisseurs, atteindre des acheteurs, gerer leurs approvisionnements et executer entre les marches."
                     : "Exportunity helps companies find suppliers, reach buyers, manage supply, and execute across markets."}
                 </p>
+                <Link
+                  href="/marketplace"
+                  className="mt-3 inline-flex min-h-10 items-center gap-2 rounded-md bg-[#07111F] px-3 text-xs font-semibold text-white transition hover:bg-[#14243B] dark:bg-[#F5A623] dark:text-[#07111F] dark:hover:bg-[#F8C45B]"
+                >
+                  <ShoppingBag className="h-4 w-4" />
+                  {language === "fr"
+                    ? "Explorer les produits et usines autour de moi"
+                    : "Explore products and factories around me"}
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </Link>
               </div>
               <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-300">
                 <MapPin className="h-4 w-4 text-[#B26F00] dark:text-[#F5A623]" />
@@ -1257,7 +1285,7 @@ export default function GlobalTradeHomePage() {
               </h2>
             </div>
             <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-semibold text-emerald-800 dark:bg-emerald-300/15 dark:text-emerald-200">
-              {language === "fr" ? "Dossier reel" : "Real case"}
+              {language === "fr" ? "Dossier" : "Case"}
             </span>
           </div>
           <IndustrialAssistantChat
@@ -1407,6 +1435,12 @@ export default function GlobalTradeHomePage() {
           <div className="flex flex-wrap gap-4">
             <Link href="/industrial" className="hover:text-slate-950 dark:hover:text-white">
               {language === "fr" ? "Industries" : "Industries"}
+            </Link>
+            <Link href="/trade" className="hover:text-slate-950 dark:hover:text-white">
+              {language === "fr" ? "Intelligence marchés" : "Trade intelligence"}
+            </Link>
+            <Link href="/producer-exchange" className="hover:text-slate-950 dark:hover:text-white">
+              {language === "fr" ? "Bourse producteurs" : "Producer exchange"}
             </Link>
             <Link href="/privacy" className="hover:text-slate-950 dark:hover:text-white">
               {language === "fr" ? "Confidentialite" : "Privacy"}

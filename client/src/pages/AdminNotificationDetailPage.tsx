@@ -43,45 +43,46 @@ export function AdminNotificationDetailPage() {
   const deliveries = detailQuery.data?.deliveries ?? [];
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] bg-gray-950">
-      <div className="container mx-auto py-8 px-6 space-y-6">
+    <div data-testid="exportunity-admin-notification-detail" className="min-h-[calc(100vh-var(--admin-header-height,4rem))] bg-[#F7F8FA] text-[#07111F]">
+      <div className="container mx-auto space-y-6 px-4 py-6 md:px-6">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-semibold text-white">Notification #{id}</h1>
-            <div className="text-xs text-white/60">Admin detail view</div>
+            <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#8A5700]">GTN delivery evidence</p>
+            <h1 className="mt-1 text-2xl font-black tracking-tight text-slate-950">Notification #{id}</h1>
+            <div className="text-xs font-medium text-slate-500">Provider delivery record</div>
           </div>
-          <Button variant="secondary" onClick={() => navigate("/admin/notifications")}>
+          <Button variant="outline" className="border-slate-200 bg-white text-slate-700 hover:border-[#F5A623] hover:bg-[#FFF8E8]" onClick={() => navigate("/admin/notifications")}>
             Back
           </Button>
         </div>
 
-        <Card className="bg-gray-900 border-gray-800">
+        <Card className="border-slate-200 bg-white text-slate-950 shadow-sm">
           <CardHeader>
-            <CardTitle className="text-white">Deliveries</CardTitle>
+            <CardTitle className="text-slate-950">Deliveries</CardTitle>
           </CardHeader>
           <CardContent>
             <ScrollArea className="h-[60vh] pr-3">
               <div className="space-y-3">
                 {detailQuery.isLoading ? (
-                  <div className="text-sm text-white/70">Loading…</div>
+                  <div className="text-sm text-slate-500">Loading…</div>
                 ) : deliveries.length === 0 ? (
-                  <div className="text-sm text-white/70">No deliveries recorded.</div>
+                  <div className="text-sm text-slate-500">No deliveries recorded.</div>
                 ) : (
                   deliveries.map((d) => (
-                    <div key={d.id} className="rounded-xl border border-gray-800 bg-gray-950/40 p-4">
+                    <div key={d.id} className="rounded-xl border border-slate-200 bg-slate-50/70 p-4">
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
                           <div className="flex items-center gap-2">
-                            <Badge className="bg-blue-500/20 text-blue-200 border-blue-500/20">{d.channel}</Badge>
-                            <Badge className="bg-white/10 text-white border-white/10">{d.status}</Badge>
-                            <div className="text-xs text-white/60">attempt {d.attempt}</div>
+                            <Badge className="border border-sky-200 bg-sky-50 font-semibold text-sky-800 hover:bg-sky-50">{d.channel}</Badge>
+                            <Badge className="border border-slate-200 bg-white font-semibold text-slate-700 hover:bg-white">{d.status}</Badge>
+                            <div className="text-xs font-medium text-slate-500">attempt {d.attempt}</div>
                           </div>
-                          <div className="mt-1 text-xs text-white/60">{new Date(d.createdAt).toLocaleString()}</div>
-                          <div className="mt-2 text-xs text-white/70">To: {d.toAddress}</div>
+                          <div className="mt-1 text-xs text-slate-500">{new Date(d.createdAt).toLocaleString()}</div>
+                          <div className="mt-2 text-xs font-medium text-slate-600">To: {d.toAddress}</div>
                           {d.providerMessageId && (
-                            <div className="mt-1 text-xs text-white/70">Provider ID: {d.providerMessageId}</div>
+                            <div className="mt-1 text-xs font-medium text-slate-600">Provider ID: {d.providerMessageId}</div>
                           )}
-                          {d.errorMessage && <div className="mt-2 text-xs text-red-300">Error: {d.errorMessage}</div>}
+                          {d.errorMessage && <div className="mt-2 text-xs font-medium text-rose-700">Error: {d.errorMessage}</div>}
                         </div>
                       </div>
                     </div>
@@ -92,12 +93,12 @@ export function AdminNotificationDetailPage() {
           </CardContent>
         </Card>
 
-        <Card className="bg-gray-900 border-gray-800">
+        <Card className="border-slate-200 bg-white text-slate-950 shadow-sm">
           <CardHeader>
-            <CardTitle className="text-white">Raw</CardTitle>
+            <CardTitle className="text-slate-950">Notification record</CardTitle>
           </CardHeader>
           <CardContent>
-            <pre className="text-xs text-white/70 whitespace-pre-wrap break-words">
+            <pre className="whitespace-pre-wrap break-words rounded-xl border border-slate-100 bg-slate-50 p-4 text-xs text-slate-600">
               {detailQuery.data ? JSON.stringify(detailQuery.data.notification, null, 2) : "—"}
             </pre>
           </CardContent>

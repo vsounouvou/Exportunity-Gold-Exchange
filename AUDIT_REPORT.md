@@ -79,7 +79,7 @@ The cleanup was executed with `scripts/ops/cleanup-exportunity-production-qa.cjs
 - `server/lib/payment/providers/FlutterwaveProvider.ts`
 - `server/lib/seo/hostIndexingPolicy.ts`
 - `server/lib/seo/runtimeSeo.ts`
-- `scripts/site/marketing-quality-gate.mjs`
+- `scripts/site/public-surface-quality-gate.mjs`
 - `scripts/ops/cleanup-exportunity-production-qa.cjs`
 - `tests/audio-cleanup.test.ts`
 - `tests/exportunity-root-seo.test.ts`

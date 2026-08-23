@@ -9,6 +9,7 @@ server
 tenants
 
 # Runtime and build configuration
+.nvmrc
 .dockerignore
 .env.example
 Dockerfile

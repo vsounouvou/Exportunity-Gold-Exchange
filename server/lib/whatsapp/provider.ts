@@ -22,7 +22,6 @@ export type WhatsAppConnectStatus = {
 
 export interface WhatsAppProvider {
   readonly provider: "twilio";
-  verifySignature(rawBody: Buffer | undefined, signatureHeader: string | undefined): boolean;
   sendText(toE164: string, text: string): Promise<WaSendResult>;
   sendTemplate(toE164: string, templateName: string, languageCode?: string): Promise<WaSendResult>;
   listTemplates(): Promise<WhatsAppTemplateInfo[]>;

@@ -31,25 +31,25 @@ export default function AppMachineryFinancingPage() {
   const items = Array.isArray(query.data?.items) ? query.data!.items : [];
 
   return (
-    <div className="min-h-screen bg-gray-950 pb-32 text-white">
+    <div data-testid="exportunity-machinery-financing" className="min-h-screen bg-[#F7F8FA] pb-24 text-[#07111F]">
       <AppProTopBar subtitle="Machinery financing" />
-      <main className="mx-auto w-full max-w-3xl px-4 pb-4 pt-6 space-y-4">
-        <Card className="border-white/10 bg-white/5">
-          <CardContent className="p-5 space-y-2 text-sm text-white/75">
-            <div className="text-base font-semibold text-white">Order with investor capital</div>
+      <main className="mx-auto w-full max-w-3xl space-y-4 px-4 py-4">
+        <Card className="border-slate-200 bg-white shadow-sm">
+          <CardContent className="space-y-2 p-5 text-sm leading-6 text-slate-700">
+            <div className="text-base font-black text-slate-950">Order with investor capital</div>
             <div>
               Financing ties to an investment contract. Releases happen via approvals and milestone evidence, and funds route to procurement only.
             </div>
             <div className="flex flex-wrap gap-2 pt-2">
               <Button
-                className="bg-amber-500 hover:bg-amber-600 text-black font-semibold"
+                className="bg-[#F5A623] font-black text-[#07111F] hover:bg-[#F8C45B]"
                 onClick={() => setLocation("/app/invest/opportunities?type=machinery")}
               >
                 View machinery opportunities
               </Button>
               <Button
                 variant="outline"
-                className="border-white/15 text-white/80 hover:bg-white/10"
+                className="border-slate-200 bg-white text-slate-700 hover:border-[#F5A623] hover:bg-[#FFF8E8]"
                 onClick={() => setLocation("/app/machinery/catalog")}
               >
                 Open machinery catalog
@@ -58,22 +58,22 @@ export default function AppMachineryFinancingPage() {
           </CardContent>
         </Card>
 
-        <div className="text-sm font-semibold text-white">Live opportunities</div>
-        {query.isLoading ? <div className="h-20 animate-pulse rounded-xl border border-white/10 bg-white/5" /> : null}
+        <div className="text-sm font-black text-slate-950">Published opportunities</div>
+        {query.isLoading ? <div className="h-20 animate-pulse rounded-xl border border-slate-200 bg-white" /> : null}
         {!query.isLoading && !items.length ? (
-          <Card className="border-white/10 bg-white/5">
-            <CardContent className="p-5 text-sm text-white/70">No machinery opportunities published yet.</CardContent>
+          <Card className="border-slate-200 bg-white shadow-sm">
+            <CardContent className="p-5 text-sm text-slate-600">No machinery opportunities published yet.</CardContent>
           </Card>
         ) : null}
         {items.map((item) => (
           <button
             key={item.slug}
             type="button"
-            className="w-full rounded-xl border border-white/10 bg-white/5 p-4 text-left hover:bg-white/10"
+            className="w-full rounded-xl border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:border-[#F5A623]/50 hover:bg-[#FFFCF5]"
             onClick={() => setLocation(`/app/invest/opportunities/${encodeURIComponent(item.slug)}`)}
           >
-            <div className="text-base font-semibold">{item.title}</div>
-            {item.summary ? <div className="mt-1 text-sm text-white/70">{item.summary}</div> : null}
+            <div className="text-base font-black text-slate-950">{item.title}</div>
+            {item.summary ? <div className="mt-1 text-sm leading-6 text-slate-600">{item.summary}</div> : null}
           </button>
         ))}
       </main>

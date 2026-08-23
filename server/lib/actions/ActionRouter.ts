@@ -19,6 +19,14 @@ import {
   externalCommunicationsEnabled,
   isExternalCommunicationAction,
 } from "./externalCommunications";
+import {
+  evaluateOutboundActionPolicy,
+  outboundChannelForActionType,
+  outboundRecipientsForPayload,
+  OutboundCommunicationPolicyError,
+} from "../communications/outboundDecisionService";
+import { authorizeExportunityOwnerTest } from "../exportunity/outreach/ownerTestPolicy";
+import { isolateActionForDeploymentTenant } from "./tenantWorkerIsolation";
 
 export type ActionRequestStatus =
   | "PENDING"
@@ -129,6 +137,12 @@ function isTruthy(value: unknown) {
   const raw = String(value || "").trim().toLowerCase();
   if (!raw) return false;
   return ["1", "true", "yes", "y", "on"].includes(raw);
+}
+
+function safeRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
 }
 
 function isProductionRuntime() {
@@ -527,7 +541,55 @@ export async function createActionRequest(input: CreateActionRequestInput) {
     throw new Error("Feature disabled: FEATURE_AGENT_MODEL_SELECTOR");
   }
 
-  if (input.forceApproval) {
+  const configMetadata = safeRecord(metadata.config);
+  const missingConfiguration = Array.isArray(configMetadata.missing)
+    ? configMetadata.missing.filter((value) => String(value || "").trim()).length > 0
+    : initialErrorCode === "MISSING_CONFIG";
+  const outboundCommunicationPolicy = await evaluateOutboundActionPolicy({
+    tenantId: input.tenantId,
+    tenantKey: await getTenantKey(input.tenantId),
+    actionType: input.actionType,
+    payload,
+    executionRequested: false,
+    approvalGranted: false,
+    requestedByUserId: input.requestedByUserId,
+    requestedByAgentKey,
+    externalCommunicationsEnabled: externalCommunicationsEnabled(
+      process.env.FEATURE_EXTERNAL_COMMUNICATIONS,
+    ),
+    providerConfigured: !missingConfiguration,
+    channelEnabled: !missingConfiguration,
+    senderVerified: true,
+    dailyLimit:
+      typeof policy.dailyOutboundLimit === "number"
+        ? policy.dailyOutboundLimit
+        : null,
+  });
+  if (outboundCommunicationPolicy) {
+    metadata.outboundCommunicationPolicy = outboundCommunicationPolicy;
+    policy = {
+      ...policy,
+      outboundCommunication: outboundCommunicationPolicy,
+    };
+    if (outboundCommunicationPolicy.decision === "BLOCK") {
+      initialStatus = "FAILED";
+      lifecycleState = "FAILED";
+      initialErrorCode = "OUTBOUND_COMMUNICATION_BLOCK";
+      initialErrorMessage = `Outbound communication blocked: ${outboundCommunicationPolicy.reasons.join(", ")}`;
+    } else if (
+      outboundCommunicationPolicy.decision === "REQUIRE_APPROVAL" &&
+      initialStatus !== "FAILED"
+    ) {
+      initialStatus = "REQUIRES_APPROVAL";
+      lifecycleState = "CREATED";
+      policy = { ...policy, approvalRequired: true };
+    }
+  }
+
+  if (
+    input.forceApproval &&
+    outboundCommunicationPolicy?.decision !== "BLOCK"
+  ) {
     initialStatus = "REQUIRES_APPROVAL";
     lifecycleState = "CREATED";
     initialErrorCode = null;
@@ -558,6 +620,14 @@ export async function createActionRequest(input: CreateActionRequestInput) {
         : mode === "SIMULATED"
           ? "NO_EFFECT"
           : "APPROVAL_PENDING";
+
+  metadata = isolateActionForDeploymentTenant({
+    tenantId: input.tenantId,
+    tenantKey: await getTenantKey(input.tenantId),
+    deployTenantKey:
+      process.env.DEPLOY_TENANT || process.env.TENANT_DEFAULT || null,
+    metadata,
+  });
 
   const [row] = await db
     .insert(actionRequests)
@@ -687,14 +757,70 @@ export async function approveActionRequest(opts: { tenantId: number; actionReque
     ),
   });
   if (!current) throw new Error("Action request not found");
+  if (String(current.status || "").trim().toUpperCase() !== "REQUIRES_APPROVAL") {
+    const error = new Error(
+      "ACTION_NOT_AWAITING_APPROVAL: only an action in REQUIRES_APPROVAL may be approved.",
+    );
+    (error as any).code = "ACTION_NOT_AWAITING_APPROVAL";
+    (error as any).status = 409;
+    throw error;
+  }
+  const currentPayload = safeRecord(current.payload);
+  const currentTenantKey = await getTenantKey(opts.tenantId);
+  const currentChannel = outboundChannelForActionType(current.actionType);
+  const ownerTestAuthorization =
+    currentChannel === "email" ||
+    currentChannel === "sms" ||
+    currentChannel === "whatsapp"
+      ? authorizeExportunityOwnerTest({
+          tenantKey: currentTenantKey,
+          channel: currentChannel,
+          payload: currentPayload,
+          recipients: outboundRecipientsForPayload(
+            currentChannel,
+            currentPayload,
+          ),
+        })
+      : null;
   if (
     isExternalCommunicationAction(current.actionType) &&
-    !externalCommunicationsEnabled(process.env.FEATURE_EXTERNAL_COMMUNICATIONS)
+    !externalCommunicationsEnabled(process.env.FEATURE_EXTERNAL_COMMUNICATIONS) &&
+    !(
+      ownerTestAuthorization?.authorized &&
+      ownerTestAuthorization.channelEnabled
+    )
   ) {
-    throw new Error(
+    const error = new Error(
       "EXTERNAL_COMMUNICATIONS_DISABLED: activate FEATURE_EXTERNAL_COMMUNICATIONS only through the approved external-communications runbook.",
     );
+    (error as any).status = 409;
+    throw error;
   }
+  const currentMetadata = safeRecord(current.metadata);
+  const currentConfig = safeRecord(currentMetadata.config);
+  const missingConfiguration = Array.isArray(currentConfig.missing)
+    ? currentConfig.missing.filter((value) => String(value || "").trim()).length > 0
+    : false;
+  const outboundApprovalPolicy = await evaluateOutboundActionPolicy({
+    tenantId: opts.tenantId,
+    actionType: String(current.actionType || ""),
+    payload: currentPayload,
+    executionRequested: true,
+    approvalGranted: true,
+    requestedByUserId: current.requestedByUserId,
+    requestedByAgentKey: current.requestedByAgentKey,
+    externalCommunicationsEnabled: externalCommunicationsEnabled(
+      process.env.FEATURE_EXTERNAL_COMMUNICATIONS,
+    ),
+    providerConfigured: !missingConfiguration,
+    channelEnabled: !missingConfiguration,
+    senderVerified: true,
+    evaluatedAt: now,
+  });
+  if (outboundApprovalPolicy && !outboundApprovalPolicy.mayExecute) {
+    throw new OutboundCommunicationPolicyError(outboundApprovalPolicy);
+  }
+  const existingPolicy = safeRecord(currentMetadata.policy);
   const [row] = await db
     .update(actionRequests)
     .set({
@@ -708,11 +834,34 @@ export async function approveActionRequest(opts: { tenantId: number; actionReque
       nextRetryAt: null,
       claimedUntil: null,
       claimedBy: null,
+      metadata: outboundApprovalPolicy
+        ? {
+            ...currentMetadata,
+            outboundApprovalPolicy,
+            policy: {
+              ...existingPolicy,
+              outboundCommunication: outboundApprovalPolicy,
+            },
+          }
+        : currentMetadata,
       updatedAt: now,
     })
-    .where(and(eq(actionRequests.tenantId, opts.tenantId), eq(actionRequests.id, opts.actionRequestId)))
+    .where(
+      and(
+        eq(actionRequests.tenantId, opts.tenantId),
+        eq(actionRequests.id, opts.actionRequestId),
+        eq(actionRequests.status, "REQUIRES_APPROVAL" as any),
+      ),
+    )
     .returning();
-  if (!row) throw new Error("Action request not found");
+  if (!row) {
+    const error = new Error(
+      "ACTION_APPROVAL_CONFLICT: action state changed before approval was recorded.",
+    );
+    (error as any).code = "ACTION_APPROVAL_CONFLICT";
+    (error as any).status = 409;
+    throw error;
+  }
 
   const actionId = Number((row as any)?.id || 0);
   const publicActionId = await ensureActionPublicId({
@@ -727,13 +876,23 @@ export async function approveActionRequest(opts: { tenantId: number; actionReque
     action: "action_request.approved",
     entityType: "action_request",
     entityId: actionId,
-    metadata: { actionType: row.actionType, publicActionId },
+    metadata: {
+      actionType: row.actionType,
+      publicActionId,
+      outboundDecision: outboundApprovalPolicy?.decision ?? null,
+      outboundReasons: outboundApprovalPolicy?.reasons ?? [],
+    },
   });
   await appendActionEvent({
     actionId,
     correlationId: (row as any)?.correlationId ?? (row as any)?.correlation_id ?? null,
     eventType: "QUEUED",
-    payload: { approvedByUserId: opts.approvedByUserId, publicActionId },
+    payload: {
+      approvedByUserId: opts.approvedByUserId,
+      publicActionId,
+      outboundDecision: outboundApprovalPolicy?.decision ?? null,
+      outboundPolicyVersion: outboundApprovalPolicy?.policyVersion ?? null,
+    },
   });
   return row;
 }

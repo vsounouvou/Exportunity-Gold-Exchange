@@ -1,5 +1,9 @@
 import { db } from "@db";
 import { seoPatches, tenantSites } from "@db/schema";
+import {
+  getExportunityLegacyCommerceDestination,
+  isExportunityPublicHostname,
+} from "../../../client/src/lib/exportunityPublicRoutePolicy";
 
 export type SeoHead = {
   title: string;
@@ -24,27 +28,6 @@ function defaultCanonicalHost(domain: string) {
   const d = domain.trim().toLowerCase();
   if (d.startsWith("www.")) return d.slice("www.".length);
   return d;
-}
-
-function isExportunityMarketingHost(host: unknown, search: unknown) {
-  const normalized = normalizeHost(host);
-  if (normalized === "exportunity.com" || normalized === "www.exportunity.com") return true;
-  if (normalized === "localhost" || normalized === "127.0.0.1") {
-    const query = String(search ?? "");
-    if (!query) return false;
-    try {
-      const params = new URLSearchParams(query.startsWith("?") ? query.slice(1) : query);
-      return params.get("marketing") === "1";
-    } catch {
-      return false;
-    }
-  }
-  return false;
-}
-
-function isExportunityPlatformHost(host: unknown) {
-  const normalized = normalizeHost(host);
-  return normalized === "exportunity.net" || normalized === "www.exportunity.net";
 }
 
 function isMindbaseHost(host: unknown) {
@@ -85,12 +68,16 @@ function isBdoHost(host: unknown) {
 
 export function canonicalizePath(pathname: string, ctx?: { host?: string; search?: string }) {
   const nextPath = pathname || "/";
-  const marketingHost = isExportunityMarketingHost(ctx?.host, ctx?.search);
-  const exportunityPlatformHost = isExportunityPlatformHost(ctx?.host);
+  const exportunityPublicHost = isExportunityPublicHostname(normalizeHost(ctx?.host));
   const mindbaseHost = isMindbaseHost(ctx?.host);
   const vsHost = isVsHost(ctx?.host);
   const hozHost = isHozHost(ctx?.host);
   const bdoHost = isBdoHost(ctx?.host);
+
+  if (exportunityPublicHost) {
+    const destination = getExportunityLegacyCommerceDestination(nextPath);
+    return destination ? destination.split("?")[0] || "/" : nextPath;
+  }
 
   if (mindbaseHost) {
     if (nextPath === "/" || nextPath === "/mindbase") return "/";
@@ -141,33 +128,33 @@ export function canonicalizePath(pathname: string, ctx?: { host?: string; search
     return nextPath;
   }
 
-  if (nextPath === "/") return marketingHost || exportunityPlatformHost ? "/" : "/zone";
+  if (nextPath === "/") return "/zone";
   if (nextPath === "/retail") return "/zone";
   if (nextPath.startsWith("/retail/")) return `/zone${nextPath.slice("/retail".length)}`;
-  if (nextPath === "/about") return marketingHost ? "/our-journey" : "/about";
-  if (nextPath === "/contact") return marketingHost ? "/talk" : "/zone";
+  if (nextPath === "/about") return "/about";
+  if (nextPath === "/contact") return "/zone";
   if (nextPath === "/marketplace" || nextPath === "/shop") return "/zone";
-  if (nextPath === "/plans-pricing") return marketingHost ? "/pricing" : "/zone";
-  if (nextPath === "/rayonhome") return marketingHost ? "/" : "/zone";
-  if (nextPath === "/booking-calendar") return marketingHost ? "/talk" : "/zone";
-  if (nextPath === "/people") return marketingHost ? "/our-journey" : "/about";
-  if (nextPath === "/academy" || nextPath === "/clubs") return marketingHost ? "/media/library" : "/zone";
-  if (nextPath === "/initiative") return marketingHost ? "/solutions" : "/zone";
-  if (nextPath === "/copy-of-home") return marketingHost ? "/solutions" : "/zone";
-  if (nextPath === "/copy-of-fintech") return marketingHost ? "/solutions" : "/zone";
-  if (nextPath === "/contact-8") return marketingHost ? "/talk" : "/zone";
-  if (nextPath === "/privacypolicy") return marketingHost ? "/privacy" : "/zone";
-  if (nextPath === "/termsofservice") return marketingHost ? "/terms" : "/zone";
-  if (nextPath === "/library") return marketingHost ? "/media/library" : "/zone";
-  if (nextPath === "/rayon-seller") return marketingHost ? "/invest" : "/zone";
+  if (nextPath === "/plans-pricing") return "/zone";
+  if (nextPath === "/rayonhome") return "/zone";
+  if (nextPath === "/booking-calendar") return "/zone";
+  if (nextPath === "/people") return "/about";
+  if (nextPath === "/academy" || nextPath === "/clubs") return "/zone";
+  if (nextPath === "/initiative") return "/zone";
+  if (nextPath === "/copy-of-home") return "/zone";
+  if (nextPath === "/copy-of-fintech") return "/zone";
+  if (nextPath === "/contact-8") return "/zone";
+  if (nextPath === "/privacypolicy") return "/zone";
+  if (nextPath === "/termsofservice") return "/zone";
+  if (nextPath === "/library") return "/zone";
+  if (nextPath === "/rayon-seller") return "/zone";
   if (nextPath.startsWith("/library/categories/") || nextPath.startsWith("/library/tags/")) {
-    return marketingHost ? "/media/library" : "/zone";
+    return "/zone";
   }
   if (nextPath.startsWith("/group/") || nextPath.startsWith("/profile/") || nextPath.startsWith("/challenge-page/")) {
-    return marketingHost ? "/media/library" : "/zone";
+    return "/zone";
   }
 
-  const marketingOnlyRoutes = new Set([
+  const retiredGenericRoutes = new Set([
     "/our-journey",
     "/solutions",
     "/platform",
@@ -183,7 +170,7 @@ export function canonicalizePath(pathname: string, ctx?: { host?: string; search
     "/invest",
     "/pricing",
   ]);
-  if (!marketingHost && marketingOnlyRoutes.has(nextPath)) return "/zone";
+  if (retiredGenericRoutes.has(nextPath)) return "/zone";
 
   return nextPath;
 }
@@ -257,11 +244,16 @@ export async function resolveSeoHead(input: {
   const canonicalPath = canonicalizePath(pathname, { host: input.host, search: input.search });
   const isAlias = pathname !== canonicalPath;
 
-  const canonicalHost = await resolveCanonicalHost({
+  const resolvedCanonicalHost = await resolveCanonicalHost({
     tenantId: input.tenant?.id ?? 0,
     env: input.env,
     host: input.host,
   });
+  const isExportunity =
+    tenantKey === "exportunity" || isExportunityPublicHostname(input.host);
+  const canonicalHost = isExportunity
+    ? "exportunity.net"
+    : resolvedCanonicalHost;
 
   let canonicalUrl = `https://${canonicalHost}${canonicalPath}`;
   if (tenantKey === "exportunity" && canonicalPath.startsWith("/zone")) {
@@ -280,7 +272,6 @@ export async function resolveSeoHead(input: {
 
   const hasQuery = Boolean(input.search && input.search !== "?");
   const robots = isAdmin ? "noindex, nofollow" : isAlias || hasQuery ? "noindex, follow" : "index, follow";
-  const isMarketing = isExportunityMarketingHost(input.host, input.search);
   const isMindbase = tenantKey === "mindbase" || isMindbaseHost(input.host);
   const isHoz = tenantKey === "hoz" || isHozHost(input.host);
   const isBdo = tenantKey === "bdo" || isBdoHost(input.host);
@@ -317,22 +308,26 @@ export async function resolveSeoHead(input: {
   };
 
 
-  const marketingTitleMap: Record<string, string> = {
-    "/": "Exportunity",
-    "/our-journey": "Our Journey",
-    "/solutions": "Solutions",
-    "/platform": "Exportunity OS",
-    "/platform/gold": "Gold & Commodities",
-    "/platform/agents": "AI Agents",
-    "/platform/marketplace": "Marketplace",
-    "/media": "Media Hub",
-    "/media/press": "Media Press",
-    "/media/library": "Media Library",
-    "/talk": "Talk to us",
+  const exportunityTitleMap: Record<string, string> = {
+    "/marketplace": "Marketplace — Products and Factories Near You",
+    "/trade": "Trade Intelligence",
+    "/industrial": "Industrial Sourcing",
+    "/industrial-map": "African Industrial Network",
+    "/factories": "Factories and Producers",
+    "/export-products": "Ready for Export",
+    "/producer-exchange": "Producer Exchange",
+    "/ai-team": "AI Trade Team",
+    "/login": "Global Trade Network Access",
+    "/register": "Request Global Trade Network Access",
+    "/pro/login": "Global Trade Network Access",
+    "/app/login": "Global Trade Network Access",
+    "/orders": "Global Trade Network Order Records",
+    "/application-status": "Global Trade Network Access Request Status",
+    "/admin/login": "Global Trade Network Operations Access",
+    "/switch": "Global Trade Network Workspace Access",
+    "/cadre-conformite": "Global Trade Network Governance and Compliance",
     "/privacy": "Privacy Policy",
     "/terms": "Terms of Service",
-    "/invest": "Invest",
-    "/pricing": "Plans",
   };
 
   const routeDescriptionMap: Record<string, string> = {
@@ -367,22 +362,27 @@ export async function resolveSeoHead(input: {
   };
 
 
-  const marketingDescriptionMap: Record<string, string> = {
-    "/": "Exportunity is an operations-first trade platform for cross-border execution with compliance and AI-managed workflows.",
-    "/our-journey": "Exportunity timeline, mission, and field milestones across trade execution.",
-    "/solutions": "Trade execution, compliance, and AI-managed operations for cross-border workflows.",
-    "/platform": "Exportunity OS: multi-tenant operations with AI agents, communications, and compliance controls.",
-    "/platform/gold": "Traceable gold and commodity execution workflows from sourcing to export.",
-    "/platform/agents": "AI agents with action execution, approvals, and auditable results.",
-    "/platform/marketplace": "B2B supplier discovery and marketplace execution workflows.",
-    "/media": "Press, library, and article coverage about Exportunity and its platform.",
-    "/media/press": "Press and public media coverage related to Exportunity.",
-    "/media/library": "Interviews, resources, and media library entries managed in Exportunity CMS.",
-    "/talk": "Contact Exportunity for platform demos, partnerships, and trade execution support.",
-    "/privacy": "Privacy policy for Exportunity marketing properties.",
-    "/terms": "Terms of service for Exportunity marketing properties.",
-    "/invest": "Invest landing page with login and plans paths.",
-    "/pricing": "Plans and membership overview.",
+  const exportunityDescriptionMap: Record<string, string> = {
+    "/": "Exportunity is an AI-powered Global Trade Network for sourcing, industrial supply, producer discovery, export execution, and market expansion across Africa.",
+    "/marketplace": "Discover approved seller products and verified factories nearest to you, then widen the search across Africa and global markets.",
+    "/trade": "Source-linked African trade intelligence, regulations, companies, products, routes, and opportunities connected to an agentic commercial workflow.",
+    "/industrial": "Discover industrial products, factories, suppliers, and governed sourcing workflows across African production networks.",
+    "/industrial-map": "Explore Exportunity's evidence-backed African industrial and supplier network.",
+    "/factories": "Find African factories and producers with attributable source and verification evidence.",
+    "/export-products": "Explore products and suppliers preparing for governed export execution.",
+    "/producer-exchange": "Connect producer demand, group commerce, sourcing, and production evidence without investment or unverified-partner claims.",
+    "/ai-team": "Work with Exportunity's governed AI trade team for sourcing, qualification, coordination, and execution support.",
+    "/login": "Sign in to Exportunity's Global Trade Network for tracked requirements, suppliers, offers, orders, and governed operations.",
+    "/register": "Request reviewed access to Exportunity's Global Trade Network without triggering supplier contact or a transaction.",
+    "/pro/login": "Sign in to Exportunity's Global Trade Network for tracked requirements, suppliers, offers, orders, and governed operations.",
+    "/app/login": "Sign in to Exportunity's Global Trade Network for tracked requirements, suppliers, offers, orders, and governed operations.",
+    "/orders": "Review tenant-scoped order records linked to your signed-in Exportunity account without triggering payment, supplier contact, or fulfilment.",
+    "/application-status": "Track an Exportunity Global Trade Network access request by its reference.",
+    "/admin/login": "Secure access to Exportunity Global Trade Network operations.",
+    "/switch": "Secure access exchange for an Exportunity Global Trade Network workspace.",
+    "/cadre-conformite": "Review Exportunity's evidence, approval, payment-verification, supplier-media, and governed-action boundaries.",
+    "/privacy": "Privacy policy for the Exportunity Global Trade Network.",
+    "/terms": "Terms of service for the Exportunity Global Trade Network.",
   };
 
   const bdoTitleMap: Record<string, string> = {
@@ -416,13 +416,13 @@ export async function resolveSeoHead(input: {
   };
 
 const pageLabel =
-  (isMarketing ? marketingTitleMap[canonicalPath] : undefined) ??
+  (isExportunity ? exportunityTitleMap[canonicalPath] : undefined) ??
   (isHoz ? hozTitleMap[canonicalPath] : undefined) ??
   routeTitleMap[canonicalPath] ??
   null;
   let title = pageLabel ? `${pageLabel} | ${baseTitle}` : baseTitle;
   let description =
-    (isMarketing ? marketingDescriptionMap[canonicalPath] : undefined) ??
+    (isExportunity ? exportunityDescriptionMap[canonicalPath] : undefined) ??
     (isHoz ? hozDescriptionMap[canonicalPath] : undefined) ??
     routeDescriptionMap[canonicalPath] ??
     defaultDesc;
@@ -446,10 +446,6 @@ const pageLabel =
       title = `${prettyName} — Hire on MindBase`;
       description = `Hire ${prettyName} on MindBase and deploy expertise on-demand.`;
     }
-  }
-  if (tenantKey === "exportunity" && canonicalPath === "/zone") {
-    title = "Zone — Exportunity";
-    description = "Zone is Exportunity's proximity retail marketplace with fast local delivery and shared wallet checkout.";
   }
   if (isBdo) {
     title = bdoTitleMap[canonicalPath] ?? title;

@@ -4,7 +4,6 @@ import { format, parseISO, startOfDay, endOfDay, startOfMonth, endOfMonth, start
 import { ArrowRight, Calendar, ChevronLeft, ChevronRight, Download, Loader2, Plus, Clock, Users, FileText, MapPin, Target } from "lucide-react";
 
 import { useCompany } from "@/hooks/use-company";
-import { useTenant } from "@/lib/tenant";
 import { apiRequest } from "@/lib/queryClient";
 import { resolveApiUrl } from "@/lib/runtimeConfig";
 import { Button } from "@/components/ui/button";
@@ -137,12 +136,21 @@ function parseEmailList(raw: string) {
     .filter((value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value));
 }
 
+function meetingStatusClasses(status: AgendaEvent["status"]) {
+  if (status === "completed") return "border-emerald-200 bg-emerald-50 text-emerald-800";
+  if (status === "in_progress") return "border-sky-200 bg-sky-50 text-sky-800";
+  if (status === "cancelled") return "border-rose-200 bg-rose-50 text-rose-800";
+  return "border-amber-200 bg-[#FFF8E8] text-[#8A5700]";
+}
+
+function meetingStatusLabel(status: AgendaEvent["status"]) {
+  return status.replaceAll("_", " ");
+}
+
 export default function AgendaPage() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { selectedCompanyId, selectedCompany, isLoading: companyLoading } = useCompany();
-  const { tenant } = useTenant();
-  const useExportunityLightWorkspace = tenant.key === "exportunity";
 
   const [viewMode, setViewMode] = useState<ViewMode>("month");
   const [cursorDate, setCursorDate] = useState(() => new Date());
@@ -516,7 +524,38 @@ export default function AgendaPage() {
       a.remove();
       URL.revokeObjectURL(url);
     },
+    onError: (error: Error) => {
+      toast({
+        title: "Calendar invite unavailable",
+        description: error.message || "The calendar file could not be downloaded.",
+        variant: "destructive",
+      });
+    },
   });
+
+  const confirmMeetingCreation = () => {
+    const title = newTitle.trim() || "Meeting";
+    const attendeeCount = selectedAgentIds.length + selectedHumanIds.length + parseEmailList(externalGuestsRaw).length;
+    const scheduledStart = safeDate(newStartLocal);
+    const startLabel = scheduledStart ? format(scheduledStart, "PPpp") : newStartLocal;
+    const approved = window.confirm(
+      `Schedule “${title}” for ${startLabel} with ${attendeeCount} attendee${attendeeCount === 1 ? "" : "s"}?`,
+    );
+    if (!approved) return;
+    createMeetingMutation.mutate();
+  };
+
+  const confirmMeetingStart = (meeting: AgendaEvent) => {
+    if (meeting.status !== "scheduled" || !meeting.meetingId) {
+      openMeetingConversation(meeting);
+      return;
+    }
+    const approved = window.confirm(
+      `Start “${meeting.title}” now? This records the meeting as in progress and opens its Operations Center context.`,
+    );
+    if (!approved) return;
+    startMeetingMutation.mutate(meeting);
+  };
 
   const headerTitle = useMemo(() => {
     if (viewMode === "day") return format(cursorDate, "EEEE, MMM d, yyyy");
@@ -540,71 +579,73 @@ export default function AgendaPage() {
     const days = eachDayOfInterval({ start: range.start, end: range.end });
     const daysSet = days.map((d) => format(d, "yyyy-MM-dd"));
     return (
-      <Card className="bg-gray-900/40 border-gray-800">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-white text-sm flex items-center gap-2">
-            <Calendar className="h-4 w-4 text-blue-400" />
-            Month
+      <Card className="overflow-hidden border-slate-200 bg-white shadow-[0_12px_34px_rgba(15,23,42,0.04)]">
+        <CardHeader className="border-b border-slate-200 pb-4">
+          <CardTitle className="flex items-center gap-2 text-sm font-black text-[#07111F]">
+            <Calendar className="h-4 w-4 text-[#A56600]" />
+            Monthly execution calendar
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-7 gap-2">
-            {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((label) => (
-              <div key={label} className="text-xs text-gray-500 font-medium px-2">
-                {label}
-              </div>
-            ))}
-            {daysSet.map((dayKey) => {
-              const day = parseISO(dayKey);
-              const isTodayDate = isToday(day);
-              const dayEvents = eventsByDay.get(dayKey) ?? [];
-              return (
-                <div
-                  key={dayKey}
-                  className={cn(
-                    "min-h-[110px] rounded-lg border p-2 transition-colors",
-                    "border-gray-800 bg-gray-950/30 hover:bg-gray-950/60",
-                    isTodayDate ? "ring-1 ring-blue-600/60" : null
-                  )}
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <div className={cn("text-xs", isTodayDate ? "text-blue-300 font-semibold" : "text-gray-400")}>
-                      {format(day, "d")}
-                    </div>
-                    {dayEvents.length ? (
-                      <Badge variant="outline" className="text-[10px] border-gray-700 text-gray-400">
-                        {dayEvents.length}
-                      </Badge>
-                    ) : null}
-                  </div>
-                  <div className="space-y-1">
-                    {dayEvents.slice(0, 3).map((ev) => {
-                      const t = safeDate(ev.startTime);
-                      const time = t ? format(t, "HH:mm") : "--:--";
-                      return (
-                        <button
-                          key={ev.id}
-                          onClick={() => setSelectedEvent(ev)}
-                          className={cn(
-                            "w-full text-left text-xs rounded-md px-2 py-1 border transition-colors",
-                            "border-gray-800 bg-gray-900/40 hover:bg-gray-900/70",
-                            ev.status === "completed" ? "opacity-70" : null
-                          )}
-                        >
-                          <div className="flex items-center gap-2">
-                            <span className="text-gray-400 tabular-nums">{time}</span>
-                            <span className="text-gray-200 truncate">{ev.title}</span>
-                          </div>
-                        </button>
-                      );
-                    })}
-                    {dayEvents.length > 3 ? (
-                      <div className="text-[11px] text-gray-500 px-2">+{dayEvents.length - 3} more…</div>
-                    ) : null}
-                  </div>
+        <CardContent className="p-4">
+          <div className="-mx-1 overflow-x-auto px-1 pb-2">
+            <div className="grid min-w-[760px] grid-cols-7 gap-2">
+              {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((label) => (
+                <div key={label} className="px-2 text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">
+                  {label}
                 </div>
-              );
-            })}
+              ))}
+              {daysSet.map((dayKey) => {
+                const day = parseISO(dayKey);
+                const isTodayDate = isToday(day);
+                const dayEvents = eventsByDay.get(dayKey) ?? [];
+                return (
+                  <div
+                    key={dayKey}
+                    className={cn(
+                      "min-h-[118px] rounded-xl border p-2 transition-colors",
+                      "border-slate-200 bg-slate-50/70 hover:border-amber-200 hover:bg-[#FFFBF2]",
+                      isTodayDate ? "border-[#F5A623] ring-2 ring-[#F5A623]/20" : null,
+                    )}
+                  >
+                    <div className="mb-2 flex items-center justify-between">
+                      <div className={cn("text-xs font-bold", isTodayDate ? "text-[#8A5700]" : "text-slate-600")}>
+                        {format(day, "d")}
+                      </div>
+                      {dayEvents.length ? (
+                        <Badge variant="outline" className="border-slate-200 bg-white text-[10px] font-bold text-slate-600">
+                          {dayEvents.length}
+                        </Badge>
+                      ) : null}
+                    </div>
+                    <div className="space-y-1">
+                      {dayEvents.slice(0, 3).map((ev) => {
+                        const t = safeDate(ev.startTime);
+                        const time = t ? format(t, "HH:mm") : "--:--";
+                        return (
+                          <button
+                            key={ev.id}
+                            type="button"
+                            onClick={() => setSelectedEvent(ev)}
+                            className={cn(
+                              "w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-left text-xs transition hover:border-[#F5A623] hover:bg-[#FFF8E8]",
+                              ev.status === "completed" ? "opacity-70" : null,
+                            )}
+                          >
+                            <div className="flex items-center gap-2">
+                              <span className="tabular-nums text-slate-500">{time}</span>
+                              <span className="truncate font-semibold text-slate-800">{ev.title}</span>
+                            </div>
+                          </button>
+                        );
+                      })}
+                      {dayEvents.length > 3 ? (
+                        <div className="px-2 text-[11px] font-medium text-slate-500">+{dayEvents.length - 3} more…</div>
+                      ) : null}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -614,11 +655,11 @@ export default function AgendaPage() {
   const WeekView = () => {
     const days = eachDayOfInterval({ start: range.start, end: range.end });
     return (
-      <Card className="bg-gray-900/40 border-gray-800">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-white text-sm flex items-center gap-2">
-            <Calendar className="h-4 w-4 text-blue-400" />
-            Week
+      <Card className="overflow-hidden border-slate-200 bg-white shadow-[0_12px_34px_rgba(15,23,42,0.04)]">
+        <CardHeader className="border-b border-slate-200 pb-4">
+          <CardTitle className="flex items-center gap-2 text-sm font-black text-[#07111F]">
+            <Calendar className="h-4 w-4 text-[#A56600]" />
+            Weekly execution calendar
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -626,21 +667,21 @@ export default function AgendaPage() {
             const key = format(day, "yyyy-MM-dd");
             const dayEvents = eventsByDay.get(key) ?? [];
             return (
-              <div key={key} className="rounded-lg border border-gray-800 bg-gray-950/30">
-                <div className="flex items-center justify-between px-3 py-2 border-b border-gray-800">
-                  <div className="text-sm text-white flex items-center gap-2">
-                    <span className={cn(isToday(day) ? "text-blue-300 font-semibold" : "text-gray-200")}>
+              <div key={key} className="overflow-hidden rounded-xl border border-slate-200 bg-slate-50/70">
+                <div className="flex items-center justify-between border-b border-slate-200 bg-white px-3 py-2.5">
+                  <div className="flex items-center gap-2 text-sm text-slate-900">
+                    <span className={cn("font-black", isToday(day) ? "text-[#8A5700]" : "text-slate-800")}>
                       {format(day, "EEE")}
                     </span>
-                    <span className="text-gray-500">{format(day, "MMM d")}</span>
+                    <span className="text-slate-500">{format(day, "MMM d")}</span>
                   </div>
-                  <Badge variant="outline" className="border-gray-800 text-gray-400">
+                  <Badge variant="outline" className="border-slate-200 bg-slate-50 text-slate-600">
                     {dayEvents.length}
                   </Badge>
                 </div>
                 <div className="p-2 space-y-1">
                   {dayEvents.length === 0 ? (
-                    <div className="text-xs text-gray-500 px-2 py-2">No events</div>
+                    <div className="px-2 py-2 text-xs text-slate-500">No events</div>
                   ) : (
                     dayEvents.map((ev) => {
                       const t = safeDate(ev.startTime);
@@ -648,16 +689,17 @@ export default function AgendaPage() {
                       return (
                         <button
                           key={ev.id}
+                          type="button"
                           onClick={() => setSelectedEvent(ev)}
-                          className="w-full text-left text-xs rounded-md px-2 py-2 border border-gray-800 bg-gray-900/40 hover:bg-gray-900/70"
+                          className="w-full rounded-lg border border-transparent bg-white px-3 py-2 text-left text-xs shadow-sm transition hover:border-[#F5A623] hover:bg-[#FFF8E8]"
                         >
                           <div className="flex items-center justify-between gap-2">
                             <div className="min-w-0 flex items-center gap-2">
-                              <span className="text-gray-400 tabular-nums">{time}</span>
-                              <span className="text-gray-200 truncate">{ev.title}</span>
+                              <span className="tabular-nums text-slate-500">{time}</span>
+                              <span className="truncate font-semibold text-slate-800">{ev.title}</span>
                             </div>
-                            <Badge variant="outline" className="text-[10px] border-gray-800 text-gray-400">
-                              {ev.status}
+                            <Badge variant="outline" className={cn("text-[10px] font-bold capitalize", meetingStatusClasses(ev.status))}>
+                              {meetingStatusLabel(ev.status)}
                             </Badge>
                           </div>
                         </button>
@@ -677,16 +719,18 @@ export default function AgendaPage() {
     const key = format(range.start, "yyyy-MM-dd");
     const dayEvents = eventsByDay.get(key) ?? [];
     return (
-      <Card className="bg-gray-900/40 border-gray-800">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-white text-sm flex items-center gap-2">
-            <Calendar className="h-4 w-4 text-blue-400" />
-            Day
+      <Card className="overflow-hidden border-slate-200 bg-white shadow-[0_12px_34px_rgba(15,23,42,0.04)]">
+        <CardHeader className="border-b border-slate-200 pb-4">
+          <CardTitle className="flex items-center gap-2 text-sm font-black text-[#07111F]">
+            <Calendar className="h-4 w-4 text-[#A56600]" />
+            Daily execution calendar
           </CardTitle>
         </CardHeader>
         <CardContent>
           {dayEvents.length === 0 ? (
-            <div className="text-sm text-gray-500">No events scheduled.</div>
+            <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">
+              No events scheduled.
+            </div>
           ) : (
             <div className="space-y-2">
               {dayEvents.map((ev) => {
@@ -695,21 +739,22 @@ export default function AgendaPage() {
                 return (
                   <button
                     key={ev.id}
+                    type="button"
                     onClick={() => setSelectedEvent(ev)}
-                    className="w-full text-left rounded-lg border border-gray-800 bg-gray-900/40 hover:bg-gray-900/70 p-3"
+                    className="w-full rounded-xl border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:border-[#F5A623] hover:bg-[#FFF8E8]"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <div className="text-sm text-white font-medium truncate">{ev.title}</div>
-                        <div className="text-xs text-gray-400 mt-1 flex items-center gap-2">
+                        <div className="truncate text-sm font-black text-slate-900">{ev.title}</div>
+                        <div className="mt-1 flex items-center gap-2 text-xs text-slate-500">
                           <Clock className="h-3 w-3" />
                           <span className="tabular-nums">
                             {start ? format(start, "HH:mm") : "--:--"}–{end ? format(end, "HH:mm") : "…"}
                           </span>
                         </div>
                       </div>
-                      <Badge variant="outline" className="border-gray-800 text-gray-400">
-                        {ev.status}
+                      <Badge variant="outline" className={cn("shrink-0 text-[10px] font-bold capitalize", meetingStatusClasses(ev.status))}>
+                        {meetingStatusLabel(ev.status)}
                       </Badge>
                     </div>
                   </button>
@@ -723,62 +768,68 @@ export default function AgendaPage() {
   };
 
   return (
-    <div
-      className={cn(
-        "container mx-auto p-6 max-w-7xl",
-        useExportunityLightWorkspace && "exportunity-operations-light rounded-xl",
-      )}
-    >
-      <div className="flex items-start justify-between gap-4 mb-6">
-        <div>
-          <h1 className="text-3xl font-bold text-white flex items-center gap-3">
-            <Calendar className="h-8 w-8 text-blue-400" />
-            Agenda
-          </h1>
-          <p className="text-gray-400 mt-1">
-            Company calendar for meetings and execution windows
-            {selectedCompany ? <span className="text-gray-500"> • {selectedCompany.name}</span> : null}
-          </p>
-        </div>
-
+    <div data-testid="exportunity-agenda-workspace" className="min-h-full bg-[#F7F8FA] p-4 text-[#07111F] md:p-6">
+      <div className="mx-auto max-w-7xl space-y-5">
+        <header className="overflow-hidden rounded-[26px] border border-slate-200 bg-white shadow-[0_20px_60px_rgba(15,23,42,0.07)]">
+          <div className="flex flex-col gap-5 p-5 sm:flex-row sm:items-end sm:justify-between md:p-7">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge className="border-[#F5A623]/35 bg-[#FFF8E8] text-[10px] font-black uppercase tracking-[0.16em] text-[#8A5700] hover:bg-[#FFF8E8]">
+                  Exportunity · Global Trade Network
+                </Badge>
+                <Badge variant="outline" className="border-slate-200 bg-slate-50 text-[10px] font-black uppercase tracking-[0.14em] text-slate-600">
+                  Governed execution
+                </Badge>
+              </div>
+              <h1 className="mt-4 flex items-center gap-3 text-3xl font-black tracking-tight sm:text-4xl">
+                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-[#07111F] text-[#F8C45B]">
+                  <Calendar className="h-5 w-5" />
+                </span>
+                Agenda &amp; objectives
+              </h1>
+              <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600 sm:text-base">
+                Coordinate Awa-qualified work, GDIZ sourcing, accountable participants, and reviewable outcomes against a real company objective.
+                {selectedCompany ? <span className="font-bold text-slate-800"> · {selectedCompany.name}</span> : null}
+              </p>
+            </div>
+            <div className="shrink-0">
         <Dialog open={newMeetingOpen} onOpenChange={setNewMeetingOpen}>
           <DialogTrigger asChild>
-            <Button className="bg-blue-600 hover:bg-blue-700 gap-2" disabled={!selectedCompanyId}>
+                  <Button className="gap-2 bg-[#F5A623] font-black text-[#07111F] hover:bg-[#E49A17]" disabled={!selectedCompanyId}>
               <Plus className="h-4 w-4" />
-              New Meeting
+                    Schedule meeting
             </Button>
           </DialogTrigger>
           <DialogContent
-            className={cn(
-              "bg-gray-950 border-gray-800 w-[min(96vw,1080px)] max-w-none p-0",
-              useExportunityLightWorkspace && "exportunity-operations-light",
-            )}
+                  className="max-h-[92vh] w-[calc(100vw-2rem)] max-w-5xl overflow-hidden border-slate-200 bg-white p-0 text-slate-950 shadow-2xl"
           >
             <DialogHeader>
-              <DialogTitle className="text-white px-6 pt-6">Schedule meeting</DialogTitle>
+                    <DialogTitle className="border-b border-slate-200 px-6 pb-4 pt-6 text-xl font-black text-[#07111F]">
+                      Schedule governed meeting
+                    </DialogTitle>
             </DialogHeader>
-            <div className="px-6 pb-6 space-y-4 max-h-[84vh] overflow-y-auto">
-              <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                  <div className="max-h-[calc(92vh-5rem)] space-y-5 overflow-y-auto px-5 pb-6 sm:px-6">
+              <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
                 <div className="space-y-2 xl:col-span-2">
-                  <Label className="text-gray-300">Title</Label>
+                  <Label className="font-bold text-slate-700">Title</Label>
                   <Input
                     value={newTitle}
                     onChange={(e) => setNewTitle(e.target.value)}
                     placeholder="Weekly operations sync"
-                    className="bg-gray-900 border-gray-800 text-white"
+                    className="border-slate-200 bg-white text-slate-950 focus-visible:ring-[#F5A623]"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-gray-300">Description</Label>
+                  <Label className="font-bold text-slate-700">Description</Label>
                   <Input
                     value={newDescription}
                     onChange={(e) => setNewDescription(e.target.value)}
                     placeholder="Purpose / expected outcome"
-                    className="bg-gray-900 border-gray-800 text-white"
+                    className="border-slate-200 bg-white text-slate-950 focus-visible:ring-[#F5A623]"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-gray-300">Meeting type</Label>
+                  <Label className="font-bold text-slate-700">Meeting type</Label>
                   <Select
                     value={newMeetingType}
                     onValueChange={(value) => {
@@ -787,10 +838,10 @@ export default function AgendaPage() {
                       if (defaultDuration) setNewDuration(defaultDuration);
                     }}
                   >
-                    <SelectTrigger className="bg-gray-900 border-gray-800 text-white">
+                    <SelectTrigger className="border-slate-200 bg-white text-slate-950 focus:ring-[#F5A623]">
                       <SelectValue placeholder="Select meeting type" />
                     </SelectTrigger>
-                    <SelectContent className="bg-gray-950 border-gray-800 text-white z-[140]">
+                    <SelectContent className="z-[140] border-slate-200 bg-white text-slate-950">
                       <SelectItem value="weekly_ops_sync">Weekly Ops Sync</SelectItem>
                       <SelectItem value="incident">Incident</SelectItem>
                       <SelectItem value="investor_call">Investor Call</SelectItem>
@@ -799,15 +850,15 @@ export default function AgendaPage() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-gray-300">Objective</Label>
+                  <Label className="font-bold text-slate-700">Objective</Label>
                   <Select
                     value={newObjectiveId ? String(newObjectiveId) : ""}
                     onValueChange={(value) => setNewObjectiveId(Number(value))}
                   >
-                    <SelectTrigger className="bg-gray-900 border-gray-800 text-white">
+                    <SelectTrigger className="border-slate-200 bg-white text-slate-950 focus:ring-[#F5A623]">
                       <SelectValue placeholder="Select the objective this meeting advances" />
                     </SelectTrigger>
-                    <SelectContent className="bg-gray-950 border-gray-800 text-white z-[140]">
+                    <SelectContent className="z-[140] border-slate-200 bg-white text-slate-950">
                       {activeObjectives.map((objective) => (
                         <SelectItem key={objective.id} value={String(objective.id)}>
                           {objective.title}
@@ -816,19 +867,19 @@ export default function AgendaPage() {
                     </SelectContent>
                   </Select>
                   {activeObjectives.length === 0 ? (
-                    <p className="text-xs text-amber-400">Create an active objective before scheduling a meeting.</p>
+                    <p className="text-xs font-medium text-[#8A5700]">Create an active objective before scheduling a meeting.</p>
                   ) : null}
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-gray-300">Room</Label>
+                  <Label className="font-bold text-slate-700">Room</Label>
                   <Select
                     value={newRoomId ? String(newRoomId) : ""}
                     onValueChange={(value) => setNewRoomId(Number(value))}
                   >
-                    <SelectTrigger className="bg-gray-900 border-gray-800 text-white">
+                    <SelectTrigger className="border-slate-200 bg-white text-slate-950 focus:ring-[#F5A623]">
                       <SelectValue placeholder="Select room" />
                     </SelectTrigger>
-                    <SelectContent className="bg-gray-950 border-gray-800 text-white z-[140]">
+                    <SelectContent className="z-[140] border-slate-200 bg-white text-slate-950">
                       {rooms.map((room) => (
                         <SelectItem key={room.id} value={String(room.id)}>
                           {room.name}
@@ -839,23 +890,25 @@ export default function AgendaPage() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-gray-300">Start</Label>
+                  <Label className="font-bold text-slate-700">Start</Label>
                   <Input
                     type="datetime-local"
                     value={newStartLocal}
                     onChange={(e) => setNewStartLocal(e.target.value)}
-                    className="bg-gray-900 border-gray-800 text-white"
+                    className="border-slate-200 bg-white text-slate-950 focus-visible:ring-[#F5A623]"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-gray-300">Duration presets</Label>
-                  <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
+                  <Label className="font-bold text-slate-700">Duration presets</Label>
+                  <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5">
                     {durationPresets.map((preset) => (
                       <Button
                         key={preset}
                         type="button"
                         variant={newDuration === preset ? "default" : "outline"}
-                        className={newDuration === preset ? "bg-blue-600 hover:bg-blue-700 h-9" : "border-gray-800 text-gray-200 h-9"}
+                        className={newDuration === preset
+                          ? "h-9 bg-[#07111F] font-bold text-white hover:bg-slate-800"
+                          : "h-9 border-slate-200 bg-white font-bold text-slate-700 hover:border-[#F5A623] hover:bg-[#FFF8E8]"}
                         onClick={() => setNewDuration(preset)}
                       >
                         {preset}m
@@ -869,23 +922,23 @@ export default function AgendaPage() {
                     min={1}
                     max={480}
                     placeholder="Custom minutes (1-480)"
-                    className="bg-gray-900 border-gray-800 text-white"
+                    className="border-slate-200 bg-white text-slate-950 focus-visible:ring-[#F5A623]"
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
-                <Card className="bg-gray-900/40 border-gray-800">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm text-white">Agents attendance</CardTitle>
+              <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
+                <Card className="border-slate-200 bg-slate-50/70">
+                  <CardHeader className="border-b border-slate-200 pb-3">
+                    <CardTitle className="text-sm font-black text-[#07111F]">Agents attendance</CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-2 max-h-[280px] overflow-auto">
+                  <CardContent className="max-h-[280px] space-y-2 overflow-auto pt-4">
                     {agentRows.map((agent) => {
                       const checked = selectedAgentIds.includes(agent.id);
                       return (
-                        <div key={agent.id} className="rounded-md border border-gray-800 p-2">
-                          <div className="flex items-center justify-between gap-2">
-                            <label className="flex items-center gap-2 text-sm text-gray-200">
+                        <div key={agent.id} className="rounded-xl border border-slate-200 bg-white p-3">
+                          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                            <label className="flex min-w-0 items-center gap-2 text-sm font-semibold text-slate-800">
                               <Checkbox
                                 checked={checked}
                                 onCheckedChange={(nextChecked) => {
@@ -911,10 +964,10 @@ export default function AgendaPage() {
                                   setSelectedAgentRoles((prev) => ({ ...prev, [agent.id]: value }))
                                 }
                               >
-                                <SelectTrigger className="h-8 w-40 bg-gray-950 border-gray-700 text-white">
+                                <SelectTrigger className="h-8 w-full border-slate-200 bg-white text-slate-950 sm:w-40">
                                   <SelectValue />
                                 </SelectTrigger>
-                                <SelectContent className="bg-gray-950 border-gray-700 text-white z-[140]">
+                                <SelectContent className="z-[140] border-slate-200 bg-white text-slate-950">
                                   <SelectItem value="host">Host</SelectItem>
                                   <SelectItem value="facilitator">Facilitator</SelectItem>
                                   <SelectItem value="note_taker">Note-taker</SelectItem>
@@ -924,25 +977,25 @@ export default function AgendaPage() {
                               </Select>
                             ) : null}
                           </div>
-                          {agent.role ? <div className="text-[11px] text-gray-500 mt-1">{agent.role}</div> : null}
+                          {agent.role ? <div className="mt-1 text-[11px] text-slate-500">{agent.role}</div> : null}
                         </div>
                       );
                     })}
                   </CardContent>
                 </Card>
 
-                <Card className="bg-gray-900/40 border-gray-800">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm text-white">Humans attendance</CardTitle>
+                <Card className="border-slate-200 bg-slate-50/70">
+                  <CardHeader className="border-b border-slate-200 pb-3">
+                    <CardTitle className="text-sm font-black text-[#07111F]">Humans attendance</CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-2 max-h-[280px] overflow-auto">
+                  <CardContent className="max-h-[280px] space-y-2 overflow-auto pt-4">
                     {activeUsers.map((user) => {
                       const checked = selectedHumanIds.includes(user.id);
                       const label = user.displayName || user.email || `User ${user.id}`;
                       return (
-                        <div key={user.id} className="rounded-md border border-gray-800 p-2">
-                          <div className="flex items-center justify-between gap-2">
-                            <label className="flex items-center gap-2 text-sm text-gray-200">
+                        <div key={user.id} className="rounded-xl border border-slate-200 bg-white p-3">
+                          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                            <label className="flex min-w-0 items-center gap-2 text-sm font-semibold text-slate-800">
                               <Checkbox
                                 checked={checked}
                                 onCheckedChange={(nextChecked) => {
@@ -968,10 +1021,10 @@ export default function AgendaPage() {
                                   setSelectedHumanRoles((prev) => ({ ...prev, [user.id]: value }))
                                 }
                               >
-                                <SelectTrigger className="h-8 w-40 bg-gray-950 border-gray-700 text-white">
+                                <SelectTrigger className="h-8 w-full border-slate-200 bg-white text-slate-950 sm:w-40">
                                   <SelectValue />
                                 </SelectTrigger>
-                                <SelectContent className="bg-gray-950 border-gray-700 text-white z-[140]">
+                                <SelectContent className="z-[140] border-slate-200 bg-white text-slate-950">
                                   <SelectItem value="host">Host</SelectItem>
                                   <SelectItem value="facilitator">Facilitator</SelectItem>
                                   <SelectItem value="participant">Participant</SelectItem>
@@ -987,37 +1040,38 @@ export default function AgendaPage() {
                 </Card>
               </div>
 
-              <div className="space-y-2">
-                <Label className="text-gray-300">External guests (emails)</Label>
+              <div className="space-y-2 rounded-xl border border-slate-200 bg-slate-50/70 p-4">
+                <Label className="font-bold text-slate-700">External guests (emails)</Label>
                 <Input
                   value={externalGuestsRaw}
                   onChange={(e) => setExternalGuestsRaw(e.target.value)}
                   placeholder="guest1@example.com, guest2@example.com"
-                  className="bg-gray-900 border-gray-800 text-white"
+                  className="border-slate-200 bg-white text-slate-950 focus-visible:ring-[#F5A623]"
                 />
+                <p className="text-xs leading-5 text-slate-500">External participants require an explicit recording and transcript policy.</p>
               </div>
 
               {parseEmailList(externalGuestsRaw).length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3 rounded-xl border border-amber-200 bg-[#FFF8E8] p-4 md:grid-cols-2">
                   <div className="space-y-2">
-                    <Label className="text-gray-300">Recording policy</Label>
+                    <Label className="font-bold text-slate-700">Recording policy</Label>
                     <Select value={recordingPolicy} onValueChange={setRecordingPolicy}>
-                      <SelectTrigger className="bg-gray-900 border-gray-800 text-white">
+                      <SelectTrigger className="border-amber-200 bg-white text-slate-950">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent className="bg-gray-950 border-gray-800 text-white z-[140]">
+                      <SelectContent className="z-[140] border-slate-200 bg-white text-slate-950">
                         <SelectItem value="off">Off</SelectItem>
                         <SelectItem value="on">On</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-gray-300">Transcript policy</Label>
+                    <Label className="font-bold text-slate-700">Transcript policy</Label>
                     <Select value={transcriptPolicy} onValueChange={setTranscriptPolicy}>
-                      <SelectTrigger className="bg-gray-900 border-gray-800 text-white">
+                      <SelectTrigger className="border-amber-200 bg-white text-slate-950">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent className="bg-gray-950 border-gray-800 text-white z-[140]">
+                      <SelectContent className="z-[140] border-slate-200 bg-white text-slate-950">
                         <SelectItem value="off">Off</SelectItem>
                         <SelectItem value="on">On</SelectItem>
                       </SelectContent>
@@ -1026,16 +1080,16 @@ export default function AgendaPage() {
                 </div>
               ) : null}
 
-              <div className="flex items-center justify-end gap-2 pt-2">
+              <div className="flex flex-col-reverse gap-2 border-t border-slate-200 pt-4 sm:flex-row sm:items-center sm:justify-end">
                 <Button
                   variant="ghost"
                   onClick={() => setNewMeetingOpen(false)}
-                  className="text-gray-300 hover:text-white"
+                  className="font-bold text-slate-600 hover:bg-slate-100 hover:text-slate-950"
                 >
                   Cancel
                 </Button>
                 <Button
-                  onClick={() => createMeetingMutation.mutate()}
+                  onClick={confirmMeetingCreation}
                   disabled={
                     createMeetingMutation.isPending ||
                     !newTitle.trim() ||
@@ -1043,7 +1097,7 @@ export default function AgendaPage() {
                     !newObjectiveId ||
                     selectedAgentIds.length + selectedHumanIds.length + parseEmailList(externalGuestsRaw).length === 0
                   }
-                  className="bg-blue-600 hover:bg-blue-700"
+                  className="bg-[#07111F] font-black text-white hover:bg-slate-800"
                 >
                   {createMeetingMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Create"}
                 </Button>
@@ -1051,47 +1105,63 @@ export default function AgendaPage() {
             </div>
           </DialogContent>
         </Dialog>
-      </div>
+            </div>
+          </div>
+          <div className="grid border-t border-slate-200 bg-[#07111F] text-white sm:grid-cols-3">
+            <div className="border-b border-white/10 px-5 py-3 sm:border-b-0 sm:border-r">
+              <p className="text-[9px] font-black uppercase tracking-[0.18em] text-[#F8C45B]">Awa</p>
+              <p className="mt-1 text-xs text-slate-300">Qualified demand and accountable follow-up</p>
+            </div>
+            <div className="border-b border-white/10 px-5 py-3 sm:border-b-0 sm:border-r">
+              <p className="text-[9px] font-black uppercase tracking-[0.18em] text-[#F8C45B]">GDIZ</p>
+              <p className="mt-1 text-xs text-slate-300">Industrial sourcing and execution reviews</p>
+            </div>
+            <div className="px-5 py-3">
+              <p className="text-[9px] font-black uppercase tracking-[0.18em] text-[#F8C45B]">Control</p>
+              <p className="mt-1 text-xs text-slate-300">Objectives, participants, and evidence</p>
+            </div>
+          </div>
+        </header>
 
-      <div className="flex flex-col md:flex-row md:items-center gap-3 mb-4">
+      <section className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_12px_34px_rgba(15,23,42,0.04)] lg:flex-row lg:items-center">
         <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as ViewMode)}>
-          <TabsList className="bg-gray-900 border border-gray-800">
-            <TabsTrigger value="month">Month</TabsTrigger>
-            <TabsTrigger value="week">Week</TabsTrigger>
-            <TabsTrigger value="day">Day</TabsTrigger>
+          <TabsList className="w-full border border-slate-200 bg-slate-100 sm:w-auto">
+            <TabsTrigger value="month" className="font-bold data-[state=active]:bg-white data-[state=active]:text-[#07111F]">Month</TabsTrigger>
+            <TabsTrigger value="week" className="font-bold data-[state=active]:bg-white data-[state=active]:text-[#07111F]">Week</TabsTrigger>
+            <TabsTrigger value="day" className="font-bold data-[state=active]:bg-white data-[state=active]:text-[#07111F]">Day</TabsTrigger>
           </TabsList>
         </Tabs>
 
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" onClick={movePrev} className="border-gray-800 bg-gray-950/30">
-            <ChevronLeft className="h-4 w-4 text-gray-200" />
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" size="icon" onClick={movePrev} className="border-slate-200 bg-white text-slate-700 hover:border-[#F5A623] hover:bg-[#FFF8E8]">
+            <ChevronLeft className="h-4 w-4" />
           </Button>
-          <Button variant="outline" onClick={() => setCursorDate(new Date())} className="border-gray-800 bg-gray-950/30">
+          <Button variant="outline" onClick={() => setCursorDate(new Date())} className="border-slate-200 bg-white font-bold text-slate-700 hover:border-[#F5A623] hover:bg-[#FFF8E8]">
             Today
           </Button>
-          <Button variant="outline" size="icon" onClick={moveNext} className="border-gray-800 bg-gray-950/30">
-            <ChevronRight className="h-4 w-4 text-gray-200" />
+          <Button variant="outline" size="icon" onClick={moveNext} className="border-slate-200 bg-white text-slate-700 hover:border-[#F5A623] hover:bg-[#FFF8E8]">
+            <ChevronRight className="h-4 w-4" />
           </Button>
-          <div className="text-sm text-white font-medium ml-2">{headerTitle}</div>
+          <div className="ml-1 text-sm font-black text-[#07111F] sm:ml-2">{headerTitle}</div>
         </div>
 
         <div className="flex-1" />
 
         {eventsLoading ? (
-          <div className="text-sm text-gray-400 flex items-center gap-2">
+          <div className="flex items-center gap-2 text-sm text-slate-500">
             <Loader2 className="h-4 w-4 animate-spin" />
             Loading events…
           </div>
         ) : (
-          <Badge variant="outline" className="border-gray-800 text-gray-400">
+          <Badge variant="outline" className="border-slate-200 bg-slate-50 font-bold text-slate-600">
             {events.length} events
           </Badge>
         )}
-      </div>
+      </section>
 
       {!selectedCompanyId ? (
-        <Card className="bg-gray-900/40 border-gray-800">
-          <CardContent className="p-6 text-gray-400">
+        <Card className="border-slate-200 bg-white shadow-[0_12px_34px_rgba(15,23,42,0.04)]">
+          <CardContent className="p-8 text-center text-slate-500">
             Select a company to view its agenda.
           </CardContent>
         </Card>
@@ -1105,17 +1175,14 @@ export default function AgendaPage() {
 
       <Dialog open={!!selectedEvent} onOpenChange={(open) => (!open ? setSelectedEvent(null) : null)}>
         <DialogContent
-          className={cn(
-            "bg-gray-950 border-gray-800 max-w-4xl",
-            useExportunityLightWorkspace && "exportunity-operations-light",
-          )}
+          className="max-h-[92vh] w-[calc(100vw-2rem)] max-w-4xl overflow-y-auto border-slate-200 bg-white text-slate-950 shadow-2xl"
         >
           <DialogHeader>
-            <DialogTitle className="text-white flex items-center justify-between gap-3">
+            <DialogTitle className="flex items-center justify-between gap-3 pr-6 text-xl font-black text-[#07111F]">
               <span className="min-w-0 truncate">{selectedEvent?.title || "Meeting"}</span>
               {selectedEvent ? (
-                <Badge variant="outline" className="border-gray-800 text-gray-400 shrink-0">
-                  {selectedEvent.status}
+                <Badge variant="outline" className={cn("shrink-0 text-[10px] font-bold capitalize", meetingStatusClasses(selectedEvent.status))}>
+                  {meetingStatusLabel(selectedEvent.status)}
                 </Badge>
               ) : null}
             </DialogTitle>
@@ -1123,66 +1190,66 @@ export default function AgendaPage() {
 
           {selectedEvent ? (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <Card className="bg-gray-900/40 border-gray-800">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-white text-sm flex items-center gap-2">
-                    <FileText className="h-4 w-4 text-blue-400" />
+              <Card className="border-slate-200 bg-slate-50/70">
+                <CardHeader className="border-b border-slate-200 pb-4">
+                  <CardTitle className="flex items-center gap-2 text-sm font-black text-[#07111F]">
+                    <FileText className="h-4 w-4 text-[#A56600]" />
                     Details
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   {selectedEvent.description ? (
-                    <div className="text-sm text-gray-300">{selectedEvent.description}</div>
+                    <div className="text-sm leading-6 text-slate-700">{selectedEvent.description}</div>
                   ) : (
-                    <div className="text-sm text-gray-500">No description.</div>
+                    <div className="text-sm text-slate-500">No description.</div>
                   )}
 
-                  <div className="text-xs text-gray-400 flex items-center gap-2">
+                  <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
                     <Clock className="h-3 w-3" />
                     <span className="tabular-nums">
                       {safeDate(selectedEvent.startTime) ? format(parseISO(selectedEvent.startTime), "PPpp") : "—"}
                     </span>
                   </div>
 
-                  <div className="grid gap-2 rounded-lg border border-gray-800 bg-gray-950/30 p-3">
+                  <div className="grid gap-3 rounded-xl border border-slate-200 bg-white p-4">
                     <div className="flex items-start gap-2">
-                      <Target className="mt-0.5 h-4 w-4 shrink-0 text-blue-400" />
+                      <Target className="mt-0.5 h-4 w-4 shrink-0 text-[#A56600]" />
                       <div className="min-w-0">
-                        <div className="text-[11px] font-medium uppercase text-gray-500">Objective</div>
-                        <div className="text-sm text-gray-200">
+                        <div className="text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">Objective</div>
+                        <div className="text-sm font-semibold text-slate-800">
                           {selectedObjective?.title || (meetingDetailLoading ? "Loading objective..." : "No objective linked")}
                         </div>
                       </div>
                     </div>
                     <div className="flex items-start gap-2">
-                      <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-blue-400" />
+                      <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[#A56600]" />
                       <div className="min-w-0">
-                        <div className="text-[11px] font-medium uppercase text-gray-500">Room</div>
-                        <div className="text-sm text-gray-200">
+                        <div className="text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">Room</div>
+                        <div className="text-sm font-semibold text-slate-800">
                           {selectedRoom?.name || (meetingDetailLoading ? "Loading room..." : "Operations Center")}
                         </div>
                       </div>
                     </div>
                     <div className="flex items-start gap-2">
-                      <Users className="mt-0.5 h-4 w-4 shrink-0 text-blue-400" />
+                      <Users className="mt-0.5 h-4 w-4 shrink-0 text-[#A56600]" />
                       <div className="min-w-0 flex-1">
-                        <div className="text-[11px] font-medium uppercase text-gray-500">Participants</div>
+                        <div className="text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">Participants</div>
                         {meetingDetailLoading ? (
-                          <div className="text-sm text-gray-500">Loading participants...</div>
+                          <div className="text-sm text-slate-500">Loading participants...</div>
                         ) : participantLabels.length ? (
                           <div className="mt-1 flex flex-wrap gap-1.5">
                             {participantLabels.map((participant) => (
                               <Badge
                                 key={participant.id}
                                 variant="outline"
-                                className="border-gray-800 bg-white text-gray-700"
+                                className="border-slate-200 bg-slate-50 text-slate-700"
                               >
                                 {participant.name} · {participant.role}
                               </Badge>
                             ))}
                           </div>
                         ) : (
-                          <div className="text-sm text-gray-500">No participant roster available.</div>
+                          <div className="text-sm text-slate-500">No participant roster available.</div>
                         )}
                       </div>
                     </div>
@@ -1190,8 +1257,8 @@ export default function AgendaPage() {
 
                   <div className="flex flex-wrap items-center gap-2">
                     <Button
-                      className="bg-blue-600 hover:bg-blue-700 gap-2"
-                      onClick={() => startMeetingMutation.mutate(selectedEvent)}
+                      className="gap-2 bg-[#07111F] font-black text-white hover:bg-slate-800"
+                      onClick={() => confirmMeetingStart(selectedEvent)}
                       disabled={startMeetingMutation.isPending || !selectedEvent.conversationId}
                     >
                       {startMeetingMutation.isPending ? (
@@ -1207,7 +1274,7 @@ export default function AgendaPage() {
                     </Button>
                     <Button
                       variant="outline"
-                      className="border-gray-800 bg-gray-950/30 gap-2"
+                      className="gap-2 border-slate-200 bg-white font-bold text-slate-700 hover:border-[#F5A623] hover:bg-[#FFF8E8]"
                       onClick={() => downloadIcsMutation.mutate(selectedEvent)}
                       disabled={downloadIcsMutation.isPending || !selectedEvent.meetingId}
                     >
@@ -1220,32 +1287,32 @@ export default function AgendaPage() {
                     </Button>
                   </div>
 
-                  <Card className="bg-gray-950/40 border-gray-800">
-                    <CardHeader className="py-3">
-                      <CardTitle className="text-white text-xs flex items-center gap-2">
-                        <Users className="h-3 w-3 text-blue-400" />
+                  <Card className="border-slate-200 bg-white">
+                    <CardHeader className="border-b border-slate-200 py-3">
+                      <CardTitle className="flex items-center gap-2 text-xs font-black text-[#07111F]">
+                        <Users className="h-3 w-3 text-[#A56600]" />
                         Summary
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="pt-0">
                       {!selectedEvent.meetingId ? (
-                        <div className="text-xs text-gray-500">Legacy meeting room (no meeting archive yet).</div>
+                        <div className="pt-4 text-xs text-slate-500">This room does not have a meeting archive yet.</div>
                       ) : summaryLoading ? (
-                        <div className="text-xs text-gray-400 flex items-center gap-2">
+                        <div className="flex items-center gap-2 pt-4 text-xs text-slate-500">
                           <Loader2 className="h-3 w-3 animate-spin" />
                           Loading…
                         </div>
                       ) : !summary ? (
-                        <div className="text-xs text-gray-500">No summary yet.</div>
+                        <div className="pt-4 text-xs text-slate-500">No summary yet.</div>
                       ) : (
-                        <div className="space-y-3">
+                        <div className="space-y-3 pt-4">
                           {summary.summary ? (
-                            <div className="text-sm text-gray-300">{summary.summary}</div>
+                            <div className="text-sm leading-6 text-slate-700">{summary.summary}</div>
                           ) : null}
                           {Array.isArray(summary.decisions) && summary.decisions.length ? (
                             <div>
-                              <div className="text-xs text-gray-400 mb-1">Decisions</div>
-                              <ul className="text-xs text-gray-300 list-disc pl-4 space-y-1">
+                              <div className="mb-1 text-xs font-black text-slate-700">Decisions</div>
+                              <ul className="list-disc space-y-1 pl-4 text-xs text-slate-600">
                                 {summary.decisions.slice(0, 5).map((d, idx) => (
                                   <li key={idx}>
                                     {typeof d === "string" ? d : d.decision}
@@ -1256,8 +1323,8 @@ export default function AgendaPage() {
                           ) : null}
                           {Array.isArray(summary.actionItems) && summary.actionItems.length ? (
                             <div>
-                              <div className="text-xs text-gray-400 mb-1">Action items</div>
-                              <ul className="text-xs text-gray-300 list-disc pl-4 space-y-1">
+                              <div className="mb-1 text-xs font-black text-slate-700">Action items</div>
+                              <ul className="list-disc space-y-1 pl-4 text-xs text-slate-600">
                                 {summary.actionItems.slice(0, 5).map((a, idx) => (
                                   <li key={idx}>
                                     {typeof a === "string" ? a : a.text}
@@ -1273,33 +1340,33 @@ export default function AgendaPage() {
                 </CardContent>
               </Card>
 
-              <Card className="bg-gray-900/40 border-gray-800">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-white text-sm">Transcript</CardTitle>
+              <Card className="border-slate-200 bg-white">
+                <CardHeader className="border-b border-slate-200 pb-4">
+                  <CardTitle className="text-sm font-black text-[#07111F]">Transcript</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <ScrollArea className="h-[420px] pr-3">
                     {transcriptLoading ? (
-                      <div className="text-sm text-gray-400 flex items-center gap-2">
+                      <div className="flex items-center gap-2 text-sm text-slate-500">
                         <Loader2 className="h-4 w-4 animate-spin" />
                         Loading…
                       </div>
                     ) : transcript.length === 0 ? (
-                      <div className="text-sm text-gray-500">No messages yet.</div>
+                      <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">No messages yet.</div>
                     ) : (
                       <div className="space-y-3">
                         {transcript.slice(-80).map((msg: any) => {
                           const createdAt = msg?.createdAt ? new Date(msg.createdAt) : null;
                           const from = msg?.fromAgent?.name || (msg?.fromAgentId ? `Agent #${msg.fromAgentId}` : "System");
                           return (
-                            <div key={msg.id} className="rounded-lg border border-gray-800 bg-gray-950/30 p-3">
+                            <div key={msg.id} className="rounded-xl border border-slate-200 bg-slate-50/70 p-3">
                               <div className="flex items-center justify-between gap-3 mb-2">
-                                <div className="text-xs text-gray-300 truncate">{from}</div>
-                                <div className="text-[10px] text-gray-500 tabular-nums">
+                                <div className="truncate text-xs font-black text-slate-700">{from}</div>
+                                <div className="tabular-nums text-[10px] text-slate-500">
                                   {createdAt && Number.isFinite(createdAt.getTime()) ? format(createdAt, "HH:mm") : ""}
                                 </div>
                               </div>
-                              <div className="text-sm text-gray-200 whitespace-pre-wrap">{String(msg?.content || "")}</div>
+                              <div className="whitespace-pre-wrap text-sm leading-6 text-slate-700">{String(msg?.content || "")}</div>
                             </div>
                           );
                         })}
@@ -1312,6 +1379,7 @@ export default function AgendaPage() {
           ) : null}
         </DialogContent>
       </Dialog>
+      </div>
     </div>
   );
 }

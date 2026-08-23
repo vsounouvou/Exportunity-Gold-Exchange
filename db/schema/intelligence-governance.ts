@@ -105,6 +105,7 @@ export const intelligenceTasks = pgTable(
   {
     id: serial("id").primaryKey(),
     publicTaskId: text("public_task_id"),
+    idempotencyKey: text("idempotency_key"),
     tenantId: integer("tenant_id")
       .notNull()
       .references(() => tenants.id, { onDelete: "cascade" }),
@@ -152,6 +153,10 @@ export const intelligenceTasks = pgTable(
   },
   (t) => ({
     byPublicTaskId: uniqueIndex("intelligence_tasks_public_task_id_idx").on(t.publicTaskId),
+    byTenantIdempotencyKey: uniqueIndex("intelligence_tasks_tenant_idempotency_key_idx").on(
+      t.tenantId,
+      t.idempotencyKey,
+    ),
     byTenantState: index("intelligence_tasks_tenant_state_idx").on(t.tenantId, t.state, t.priority, t.createdAt),
     byQueueLease: index("intelligence_tasks_queue_lease_idx").on(t.state, t.leaseUntil, t.priority, t.createdAt),
     byModule: index("intelligence_tasks_module_idx").on(t.tenantId, t.moduleId, t.createdAt),

@@ -302,7 +302,9 @@ export async function resolveSender(input: ResolveSenderInput): Promise<Resolved
     tenantName: tenantRow?.name ?? null,
     tenantProfile,
     agentProfile,
-    fallbackEnv: resolveMessagingEnv(),
+    // The tenant key selects EXPORTUNITY_TWILIO_* for Exportunity and keeps
+    // every other product's provider credentials outside this resolution path.
+    fallbackEnv: resolveMessagingEnv(tenantRow?.key ?? null),
     channel: input.channel,
     agentId: agentIdentity.agentId,
     agentKey: agentIdentity.agentKey,

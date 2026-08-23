@@ -12,6 +12,13 @@ type BuildMetaFile = {
   gitSha?: string;
 };
 
+const APP_NAME =
+  process.env.APP_NAME ||
+  process.env.APP ||
+  process.env.DEPLOY_TENANT ||
+  process.env.TENANT_DEFAULT ||
+  "";
+
 function readBuildMetaFile(repoRoot: string): BuildMetaFile | null {
   try {
     const metaPath = path.join(repoRoot, ".build-meta.json");
@@ -56,6 +63,11 @@ function sanitizeId(value: string) {
   return String(value).replace(/[^A-Za-z0-9._-]+/g, "-");
 }
 
+function resolveServiceWorkerTenant(appName: string) {
+  const normalized = sanitizeId(appName || "platform").toLowerCase() || "platform";
+  return normalized === "boursedelor" ? "bdo" : normalized;
+}
+
 function normalizeGitSha(raw: unknown): string | null {
   if (raw == null) return null;
   const value = String(raw).trim();
@@ -88,14 +100,25 @@ function resolveBuildInfo(repoRoot: string): BuildInfo {
   return { id, builtAt, gitSha };
 }
 
-function updateSwVersion(swPath: string, buildId: string) {
+function updateSwVersion(swPath: string, buildId: string, appName: string) {
   if (!fs.existsSync(swPath)) return;
   const text = fs.readFileSync(swPath, "utf8");
-  const match = text.match(/const\s+VERSION\s*=\s*["']([^"']+)["']/);
+  const tenant = resolveServiceWorkerTenant(appName);
+  let updated = text.replace(
+    /const\s+TENANT\s*=\s*["'][^"']*["']/,
+    `const TENANT = "${tenant}"`,
+  );
+  const suffixMatch = updated.match(/const\s+BUILD_SUFFIX\s*=\s*["']([^"']+)["']/);
+  if (suffixMatch) {
+    updated = updated.replace(suffixMatch[0], `const BUILD_SUFFIX = "${buildId}"`);
+    fs.writeFileSync(swPath, updated, "utf8");
+    return;
+  }
+  const match = updated.match(/const\s+VERSION\s*=\s*["']([^"']+)["']/);
   if (!match) return;
   const base = match[1].replace(/-build-[A-Za-z0-9._-]+$/, "");
   const next = `${base}-build-${buildId}`;
-  const updated = text.replace(match[0], `const VERSION = "${next}"`);
+  updated = updated.replace(match[0], `const VERSION = "${next}"`);
   fs.writeFileSync(swPath, updated, "utf8");
 }
 
@@ -145,6 +168,8 @@ function writeBuildJson(publicDir: string, build: BuildInfo) {
   const swPath = path.join(publicDir, "sw.js");
   const swText = fs.existsSync(swPath) ? fs.readFileSync(swPath, "utf8") : "";
   const swVersionMatch = swText.match(/const\s+VERSION\s*=\s*["']([^"']+)["']/);
+  const swBuildSuffixMatch = swText.match(/const\s+BUILD_SUFFIX\s*=\s*["']([^"']+)["']/);
+  const swAppPrefix = resolveServiceWorkerTenant(APP_NAME);
 
   const payload = {
     buildId: build.id,
@@ -154,7 +179,7 @@ function writeBuildJson(publicDir: string, build: BuildInfo) {
     buildTime: build.builtAt,
     mainJs: statOrNull(publicDir, mainJs),
     mainCss: statOrNull(publicDir, mainCss),
-    sw: swVersionMatch?.[1] ?? null,
+    sw: swVersionMatch?.[1] ?? (swBuildSuffixMatch ? `${swAppPrefix}-sw-v1-build-${swBuildSuffixMatch[1]}` : null),
   };
 
   fs.writeFileSync(path.join(publicDir, "build.json"), JSON.stringify(payload, null, 2), "utf8");
@@ -169,7 +194,7 @@ function main() {
   }
 
   const build = resolveBuildInfo(repoRoot);
-  updateSwVersion(path.join(publicDir, "sw.js"), build.id);
+  updateSwVersion(path.join(publicDir, "sw.js"), build.id, APP_NAME);
   updateConfig(path.join(publicDir, "config.js"), build);
   writeBuildJson(publicDir, build);
 

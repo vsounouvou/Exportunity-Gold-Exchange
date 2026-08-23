@@ -40,6 +40,7 @@ import {
 } from "./deliveryStatus";
 import { createUnsubscribeToken } from "./unsubscribe";
 import { assertProductionAgentKeyAllowed } from "../agents/productionAllowlist";
+import { assertOutboundActionExecutionAllowed } from "../communications/outboundDecisionService";
 
 function truthyEnv(value: unknown) {
   return ["1", "true", "yes", "y", "on"].includes(String(value || "").trim().toLowerCase());
@@ -720,6 +721,13 @@ export async function sendEmailAsAgent(input: SendEmailAsAgentInput) {
   if (recipientValidation.invalid.length) {
     throw new Error(`Invalid recipient email(s): ${recipientValidation.invalid.join(", ")}`);
   }
+
+  await assertOutboundActionExecutionAllowed({
+    tenantId: input.tenantId,
+    actionRequestId: input.actionRequestId ?? null,
+    channel: "email",
+    recipients: recipientValidation.recipients,
+  });
 
   const mailbox = await ensureMailboxForAgent({ tenantId: input.tenantId, agentKey });
   if (!mailbox.isEnabled) throw new Error("Mailbox disabled");

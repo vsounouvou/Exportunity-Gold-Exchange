@@ -28,7 +28,9 @@
     ],
     "keepLocalReleases": 3,
     "keepLocalBackups": 3,
-    "keepRemoteReleases": 3
+    "keepLocalArchivedReleases": 3,
+    "keepRemoteReleases": 3,
+    "keepRemoteArchives": 3
   },
   "tenants": {
     "boursedelor": {
@@ -44,7 +46,11 @@
       "composeProject": "exportunity",
       "hostPort": "5002",
       "proxyAlias": "exportunity-app",
-      "remoteDeployRoot": "/var/www/exportunity"
+      "remoteDeployRoot": "/var/www/exportunity",
+      "keepLocalReleases": 1,
+      "keepLocalArchivedReleases": 0,
+      "keepRemoteReleases": 2,
+      "keepRemoteArchives": 2
     },
     "agoojye": {
       "aliases": [

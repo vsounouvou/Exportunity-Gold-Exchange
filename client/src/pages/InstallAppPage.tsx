@@ -65,7 +65,7 @@ export function InstallAppPage() {
     <div className="min-h-screen bg-black px-4 py-6 text-white">
       <div className="mx-auto w-full max-w-xl space-y-4">
         <div className="flex items-center gap-2">
-          <Link href={tenant.key === "exportunity" ? "/zone" : "/"}>
+          <Link href={tenant.key === "exportunity" ? "/platform/marketplace" : "/"}>
             <Button variant="ghost" className="h-10 px-2 text-white/80 hover:bg-white/10 hover:text-white">
               <ArrowLeft className="h-5 w-5" />
               <span className="ml-2">Back</span>

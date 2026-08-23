@@ -6,7 +6,16 @@ type ClientBuild = {
   buildId: string;
   gitSha: string;
   builtAt?: string | null;
+  publicSurface?: string | null;
+  publicSurfaceRevision?: number | null;
+  homepageComponent?: string | null;
+  homepageSourceSha256?: string | null;
+  legacyHomepageRetired?: boolean;
 };
+
+const EXPORTUNITY_PUBLIC_SURFACE_REVISION = 5;
+const EXPORTUNITY_HOMEPAGE_SOURCE_SHA256 =
+  "0c40d6a498340288889fc3d9e112df085442cbc0f7018ce41b131deb014c2816";
 
 function nonEmptyString(value: unknown): value is string {
   return typeof value === "string" && value.trim().length > 0;
@@ -59,6 +68,19 @@ export function requireClientBuild(publicDir: string): ClientBuild {
   const gitSha = normalizeGitSha(parsed?.gitSha);
   const builtAt = nonEmptyString(parsed?.builtAt) ? String(parsed.builtAt).trim() : null;
   const app = nonEmptyString(parsed?.app) ? String(parsed.app).trim() : null;
+  const publicSurface = nonEmptyString(parsed?.publicSurface)
+    ? String(parsed.publicSurface).trim()
+    : null;
+  const publicSurfaceRevision = Number.isInteger(parsed?.publicSurfaceRevision)
+    ? Number(parsed.publicSurfaceRevision)
+    : null;
+  const homepageComponent = nonEmptyString(parsed?.homepageComponent)
+    ? String(parsed.homepageComponent).trim()
+    : null;
+  const homepageSourceSha256 = nonEmptyString(parsed?.homepageSourceSha256)
+    ? String(parsed.homepageSourceSha256).trim().toLowerCase()
+    : null;
+  const legacyHomepageRetired = parsed?.legacyHomepageRetired === true;
 
   if (!buildId || !gitSha) {
     console.error("[DEPLOY-GUARD] build.json missing buildId/gitSha", parsed);
@@ -77,6 +99,34 @@ export function requireClientBuild(publicDir: string): ClientBuild {
     process.exit(6);
   }
 
-  return { app, buildId, gitSha, builtAt };
+  if (
+    app === "exportunity" &&
+    (publicSurface !== "global-trade-network" ||
+      publicSurfaceRevision !== EXPORTUNITY_PUBLIC_SURFACE_REVISION ||
+      homepageComponent !== "MarketplacePage" ||
+      homepageSourceSha256 !== EXPORTUNITY_HOMEPAGE_SOURCE_SHA256 ||
+      !legacyHomepageRetired)
+  ) {
+    console.error("[DEPLOY-GUARD] Exportunity client does not match the exact approved public-surface lock", {
+      publicSurface,
+      publicSurfaceRevision,
+      homepageComponent,
+      homepageSourceSha256,
+      legacyHomepageRetired,
+    });
+    process.exit(7);
+  }
+
+  return {
+    app,
+    buildId,
+    gitSha,
+    builtAt,
+    publicSurface,
+    publicSurfaceRevision,
+    homepageComponent,
+    homepageSourceSha256,
+    legacyHomepageRetired,
+  };
 }
 

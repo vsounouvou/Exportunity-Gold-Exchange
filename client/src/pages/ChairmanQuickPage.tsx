@@ -6,7 +6,22 @@ import { Badge } from "@/components/ui/badge";
 import { resolveApiUrl } from "@/lib/runtimeConfig";
 import { useToast } from "@/hooks/use-toast";
 import { VoiceToTextButton } from "@/components/chat/VoiceToTextButton";
-import { Brain, FileUp, Loader2, Paperclip, PhoneCall, Send, Sparkles, X } from "lucide-react";
+import {
+  AlertTriangle,
+  Brain,
+  ChevronDown,
+  ChevronUp,
+  FileUp,
+  Loader2,
+  Paperclip,
+  PhoneCall,
+  RefreshCw,
+  Send,
+  ShieldCheck,
+  Sparkles,
+  UsersRound,
+  X,
+} from "lucide-react";
 import { useLocation } from "wouter";
 
 type ChatAttachment = {
@@ -59,6 +74,68 @@ type QuickUser = {
   displayName: string;
 };
 
+type ExecutiveTruth = {
+  generatedAt: string;
+  brain: {
+    flags: Record<string, { envName: string; enabled: boolean }>;
+    counts: {
+      sources: number;
+      activeSources: number;
+      claims: number;
+      verifiedInternalClaims: number;
+      approvedExternalClaims: number;
+      openConflicts: number;
+      pendingApprovals: number;
+    };
+    sourceSecurity: Array<{ status: string; count: number }>;
+    latestContextPack: {
+      id: number;
+      taskKey: string;
+      purpose: string;
+      status: string;
+      citationCount: number;
+      conflictCount: number;
+      createdAt: string | null;
+      expiresAt: string | null;
+    } | null;
+  };
+  organization: {
+    organizationVersion: string | null;
+    baseline: number;
+    summary: {
+      total: number;
+      available: number;
+      linkedRuntime: number;
+      activeRuntime: number;
+      productionEnabled: number;
+    };
+    departments: Array<{
+      key: string;
+      name: string;
+      total: number;
+      available: number;
+      linkedRuntime: number;
+      activeRuntime: number;
+      productionEnabled: number;
+    }>;
+  };
+  workforce: {
+    total: number;
+    monitoring: number;
+    proposed: number;
+    approved: number;
+    provisioned: number;
+    active: number;
+    paused: number;
+  };
+  controls: {
+    readOnly: true;
+    approvalsAvailable: false;
+    agentLifecycleMutationAvailable: false;
+    externalActionsStarted: false;
+  };
+};
+
 function formatTime(value?: string | null) {
   if (!value) return "";
   try {
@@ -79,6 +156,17 @@ function statusTone(status: string) {
 function extractAttachments(message?: QuickMessage | null): ChatAttachment[] {
   const raw = Array.isArray(message?.metadata?.attachments) ? message?.metadata?.attachments : [];
   return raw.filter((entry: any) => entry && typeof entry === "object" && typeof entry.name === "string");
+}
+
+function formatDateTime(value?: string | null) {
+  if (!value) return "No record";
+  const date = new Date(value);
+  return Number.isFinite(date.getTime()) ? date.toLocaleString() : "Unknown date";
+}
+
+function percentage(value: number, total: number) {
+  if (!Number.isFinite(value) || !Number.isFinite(total) || total <= 0) return 0;
+  return Math.max(0, Math.min(100, Math.round((value / total) * 100)));
 }
 
 function extractCompanyBrainEvidenceRefs(message?: QuickMessage | null): CompanyBrainEvidenceRef[] {
@@ -163,6 +251,10 @@ export function ChairmanQuickPage() {
   const [startingCall, setStartingCall] = useState(false);
   const [assistantThinking, setAssistantThinking] = useState(false);
   const [resolvingThread, setResolvingThread] = useState(false);
+  const [executiveTruth, setExecutiveTruth] = useState<ExecutiveTruth | null>(null);
+  const [executiveTruthOpen, setExecutiveTruthOpen] = useState(false);
+  const [loadingExecutiveTruth, setLoadingExecutiveTruth] = useState(false);
+  const [executiveTruthError, setExecutiveTruthError] = useState<string | null>(null);
   const attachmentInputRef = useRef<HTMLInputElement | null>(null);
   const maxAttachmentBytes = 20 * 1024 * 1024;
   const assistantName = thread?.assistantDisplayName || "Tassi Hangbé";
@@ -200,6 +292,20 @@ export function ChairmanQuickPage() {
     const payload = await apiQuick("/api/actions/runs?limit=5");
     setRuns(payload.runs || []);
   };
+
+  const refreshExecutiveTruth = useCallback(async () => {
+    if (!sessionToken) return;
+    setLoadingExecutiveTruth(true);
+    setExecutiveTruthError(null);
+    try {
+      const payload = await apiQuick("/api/chairman/executive-truth");
+      setExecutiveTruth(payload as ExecutiveTruth);
+    } catch (error: any) {
+      setExecutiveTruthError(error?.message || "Executive truth could not be loaded.");
+    } finally {
+      setLoadingExecutiveTruth(false);
+    }
+  }, [apiQuick, sessionToken]);
 
   const ensureThread = useCallback(async () => {
     const currentId = Number(thread?.id || 0);
@@ -293,6 +399,11 @@ export function ChairmanQuickPage() {
       })
       .finally(() => setLoading(false));
   }, [apiQuick, sessionToken]);
+
+  useEffect(() => {
+    if (!sessionToken) return;
+    void refreshExecutiveTruth();
+  }, [refreshExecutiveTruth, sessionToken]);
 
   const sendMessage = async () => {
     const content = message.trim();
@@ -593,7 +704,168 @@ export function ChairmanQuickPage() {
             {startingCall ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <PhoneCall className="h-4 w-4 mr-1" />}
             Start live call
           </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className="border-white/15 text-white/80"
+            onClick={() => {
+              setExecutiveTruthOpen((current) => !current);
+              if (!executiveTruth && !loadingExecutiveTruth) void refreshExecutiveTruth();
+            }}
+            aria-expanded={executiveTruthOpen}
+            aria-controls="chairman-executive-truth"
+          >
+            <ShieldCheck className="mr-1 h-4 w-4" />
+            Company truth
+            {executiveTruthOpen ? <ChevronUp className="ml-1 h-3.5 w-3.5" /> : <ChevronDown className="ml-1 h-3.5 w-3.5" />}
+          </Button>
         </div>
+
+        {executiveTruthOpen ? (
+          <Card
+            id="chairman-executive-truth"
+            className="space-y-4 border-white/10 bg-white/5 p-4 text-white"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <div className="flex items-center gap-2 text-sm font-semibold">
+                  <ShieldCheck className="h-4 w-4 text-emerald-300" />
+                  Executive truth
+                  <Badge variant="outline" className="border-emerald-400/30 text-[10px] text-emerald-200">
+                    Read-only
+                  </Badge>
+                </div>
+                <div className="mt-1 text-[11px] text-white/50">
+                  Evidence, conflicts, context, and organization coverage from current records.
+                </div>
+              </div>
+              <Button
+                type="button"
+                size="icon"
+                variant="ghost"
+                className="h-8 w-8 shrink-0 text-white/65 hover:text-white"
+                onClick={() => void refreshExecutiveTruth()}
+                disabled={loadingExecutiveTruth}
+                title="Refresh executive truth"
+              >
+                <RefreshCw className={`h-4 w-4 ${loadingExecutiveTruth ? "animate-spin" : ""}`} />
+              </Button>
+            </div>
+
+            {executiveTruthError ? (
+              <div className="rounded-lg border border-rose-400/25 bg-rose-400/10 px-3 py-2 text-xs text-rose-200">
+                {executiveTruthError}
+              </div>
+            ) : null}
+
+            {!executiveTruth && loadingExecutiveTruth ? (
+              <div className="flex items-center gap-2 py-4 text-xs text-white/60">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Loading governed company state...
+              </div>
+            ) : null}
+
+            {executiveTruth ? (
+              <>
+                <section className="space-y-2" aria-label="Company Brain truth">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 text-xs font-semibold text-white/85">
+                      <Brain className="h-4 w-4 text-amber-200" />
+                      Company Brain
+                    </div>
+                    <span className="text-[10px] text-white/45">
+                      {executiveTruth.brain.flags.companyBrain?.enabled && executiveTruth.brain.flags.contextPacks?.enabled
+                        ? "Runtime and context packs on"
+                        : "Runtime restricted"}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                    {[
+                      ["Active sources", executiveTruth.brain.counts.activeSources],
+                      ["Internal claims", executiveTruth.brain.counts.verifiedInternalClaims],
+                      ["Public claims", executiveTruth.brain.counts.approvedExternalClaims],
+                      ["Pending reviews", executiveTruth.brain.counts.pendingApprovals],
+                    ].map(([label, value]) => (
+                      <div key={String(label)} className="rounded-lg border border-white/10 bg-black/20 px-3 py-2">
+                        <div className="text-lg font-semibold text-white">{value}</div>
+                        <div className="text-[10px] text-white/50">{label}</div>
+                      </div>
+                    ))}
+                  </div>
+                  {executiveTruth.brain.counts.openConflicts > 0 ? (
+                    <div className="flex items-start gap-2 rounded-lg border border-amber-300/25 bg-amber-300/10 px-3 py-2 text-xs text-amber-100">
+                      <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                      {executiveTruth.brain.counts.openConflicts} open evidence conflict{executiveTruth.brain.counts.openConflicts === 1 ? "" : "s"} require full governance review.
+                    </div>
+                  ) : null}
+                  <div className="flex flex-wrap gap-1.5">
+                    {executiveTruth.brain.sourceSecurity.map((item) => (
+                      <Badge key={item.status} variant="outline" className="border-white/15 text-[10px] text-white/65">
+                        {item.status.replace(/_/g, " ")}: {item.count}
+                      </Badge>
+                    ))}
+                  </div>
+                  <div className="rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-[11px] text-white/60">
+                    {executiveTruth.brain.latestContextPack ? (
+                      <>
+                        <div className="font-medium text-white/80">Latest governed context</div>
+                        <div className="mt-1 line-clamp-2">{executiveTruth.brain.latestContextPack.purpose || executiveTruth.brain.latestContextPack.taskKey}</div>
+                        <div className="mt-1">
+                          {executiveTruth.brain.latestContextPack.citationCount} citation{executiveTruth.brain.latestContextPack.citationCount === 1 ? "" : "s"} · {executiveTruth.brain.latestContextPack.conflictCount} conflict{executiveTruth.brain.latestContextPack.conflictCount === 1 ? "" : "s"} · {formatDateTime(executiveTruth.brain.latestContextPack.createdAt)}
+                        </div>
+                      </>
+                    ) : (
+                      "No governed context pack has been recorded."
+                    )}
+                  </div>
+                </section>
+
+                <section className="space-y-2" aria-label="Organization coverage">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 text-xs font-semibold text-white/85">
+                      <UsersRound className="h-4 w-4 text-blue-200" />
+                      Global organization
+                    </div>
+                    <span className="text-[10px] text-white/45">
+                      {executiveTruth.organization.summary.activeRuntime} active / {executiveTruth.organization.summary.total || executiveTruth.organization.baseline} seats
+                    </span>
+                  </div>
+                  <div className="h-1.5 overflow-hidden rounded-full bg-white/10">
+                    <div
+                      className="h-full rounded-full bg-blue-400"
+                      style={{
+                        width: `${percentage(
+                          executiveTruth.organization.summary.activeRuntime,
+                          executiveTruth.organization.summary.total || executiveTruth.organization.baseline,
+                        )}%`,
+                      }}
+                    />
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 text-center">
+                    <div className="rounded-lg bg-black/20 px-2 py-2"><div className="text-sm font-semibold">{executiveTruth.organization.summary.linkedRuntime}</div><div className="text-[9px] text-white/45">Linked</div></div>
+                    <div className="rounded-lg bg-black/20 px-2 py-2"><div className="text-sm font-semibold">{executiveTruth.organization.summary.productionEnabled}</div><div className="text-[9px] text-white/45">Production enabled</div></div>
+                    <div className="rounded-lg bg-black/20 px-2 py-2"><div className="text-sm font-semibold">{executiveTruth.organization.summary.available}</div><div className="text-[9px] text-white/45">Available capacity</div></div>
+                  </div>
+                  <div className="max-h-44 space-y-1 overflow-y-auto pr-1">
+                    {executiveTruth.organization.departments.map((department) => (
+                      <div key={department.key} className="flex items-center justify-between gap-3 rounded-md bg-black/15 px-2.5 py-2 text-[11px]">
+                        <span className="min-w-0 truncate text-white/70">{department.name}</span>
+                        <span className="shrink-0 text-white/45">{department.activeRuntime} active / {department.total}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-[11px] text-white/55">
+                    Workforce demand: {executiveTruth.workforce.proposed} ready for review, {executiveTruth.workforce.approved} approved, {executiveTruth.workforce.active} active. This panel cannot approve or activate anything.
+                  </div>
+                </section>
+
+                <div className="text-[10px] text-white/35">
+                  Updated {formatDateTime(executiveTruth.generatedAt)} · no external action started
+                </div>
+              </>
+            ) : null}
+          </Card>
+        ) : null}
 
         <div className="space-y-3">
           {messages.length === 0 ? (

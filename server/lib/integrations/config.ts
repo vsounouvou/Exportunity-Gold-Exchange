@@ -14,9 +14,9 @@ export const IntegrationConfigSchema = z.object({
     clientSecret: z.string().optional(),
     redirectUri: z.string().optional(),
     scopes: z.array(z.string()).default([
-      'https://www.googleapis.com/auth/calendar',
-      'https://www.googleapis.com/auth/drive.file',
-      'https://www.googleapis.com/auth/gmail.send'
+      'https://www.googleapis.com/auth/calendar.readonly',
+      'https://www.googleapis.com/auth/drive.readonly',
+      'https://www.googleapis.com/auth/gmail.readonly'
     ]),
   }),
   dropbox: z.object({
@@ -37,9 +37,9 @@ export const defaultConfig: IntegrationConfig = {
   google: {
     enabled: false,
     scopes: [
-      'https://www.googleapis.com/auth/calendar',
-      'https://www.googleapis.com/auth/drive.file',
-      'https://www.googleapis.com/auth/gmail.send'
+      'https://www.googleapis.com/auth/calendar.readonly',
+      'https://www.googleapis.com/auth/drive.readonly',
+      'https://www.googleapis.com/auth/gmail.readonly'
     ],
   },
   dropbox: {

@@ -158,6 +158,8 @@ router.post("/work-orders/:workOrderId/escalate", async (req: any, res) => {
     if (!wo) return res.status(404).json({ message: "Work order not found" });
 
     const now = new Date();
+    const workMetadata = wo.metadata && typeof wo.metadata === "object" ? (wo.metadata as Record<string, unknown>) : {};
+    const eventProvider = String(workMetadata.provider || "twilio").trim().toLowerCase() || "twilio";
 
     await db
       .update(communicationsWorkOrders)
@@ -167,7 +169,7 @@ router.post("/work-orders/:workOrderId/escalate", async (req: any, res) => {
     try {
       await db.insert(communicationsEvents).values({
         tenantId: tenant.id,
-        provider: "twilio",
+        provider: eventProvider as any,
         eventType: "work_order.escalated",
         eventAt: now,
         data: {

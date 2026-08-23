@@ -27,14 +27,14 @@ export default function AppProMePage() {
   const currentMode = String(user?.currentMode || roles[0] || "");
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white pb-24">
+    <div className="min-h-screen bg-[#F7F8FA] pb-24 text-[#07111F]">
       <ProSideNav activeKey="account" />
       <div className="md:ml-56">
       <AppProTopBar subtitle="Account" />
       <div className="max-w-xl mx-auto px-4 py-4 space-y-4">
         <Button
           variant="ghost"
-          className="h-9 px-2 text-white/75 hover:bg-white/5 hover:text-white"
+          className="h-9 px-2 text-slate-600 hover:bg-white hover:text-slate-950"
           onClick={() => {
             if (canGoBack) {
               window.history.back();
@@ -48,20 +48,20 @@ export default function AppProMePage() {
           Back
         </Button>
 
-        <Card className="bg-white/5 border-white/10">
+        <Card className="border-slate-200 bg-white shadow-sm">
           <CardHeader className="pb-2">
             <CardTitle className="text-base">My account</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 text-sm">
-            <div className="rounded-xl border border-white/10 bg-black/30 p-3">
-              <div className="font-semibold">{user?.displayName || "User"}</div>
-              <div className="text-white/60 mt-1">{user?.email}</div>
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+              <div className="font-black">{user?.displayName || "User"}</div>
+              <div className="mt-1 text-slate-500">{user?.email}</div>
             </div>
             {roles.length > 1 ? (
               <div className="space-y-1">
-                <label className="text-xs text-white/55">View as</label>
+                <label className="text-xs font-bold text-slate-500">View as</label>
                 <select
-                  className="h-10 w-full rounded-md bg-white/5 border border-white/10 text-white/85 px-3"
+                  className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-slate-800 outline-none focus:border-[#F5A623]"
                   value={currentMode}
                   onChange={(event) => switchMode(event.target.value as UserRole)}
                 >
@@ -73,29 +73,29 @@ export default function AppProMePage() {
                 </select>
               </div>
             ) : (
-              <div className="text-xs text-white/55">
-                Role: <span className="text-white/80">{formatRole(currentMode || "user")}</span>
+              <div className="text-xs text-slate-500">
+                Role: <span className="font-bold text-slate-800">{formatRole(currentMode || "user")}</span>
               </div>
             )}
           </CardContent>
         </Card>
 
-        <Card className="bg-white/5 border-white/10">
+        <Card className="border-slate-200 bg-white shadow-sm">
           <CardHeader className="pb-2">
             <CardTitle className="text-base">Account</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            <Button variant="outline" className="w-full justify-start border-white/15 text-white/85" onClick={() => setLocation("/account")}>
+            <Button variant="outline" className="w-full justify-start border-slate-200 text-slate-700" onClick={() => setLocation("/account")}>
               <Building2 className="h-4 w-4 mr-2" />
               Profile & company
             </Button>
-            <Button variant="outline" className="w-full justify-start border-white/15 text-white/85" onClick={() => setLocation("/pro/operations")}>
+            <Button variant="outline" className="w-full justify-start border-slate-200 text-slate-700" onClick={() => setLocation("/pro/operations")}>
               <Shield className="h-4 w-4 mr-2" />
               Switch company space (top-right)
             </Button>
             <Button
               variant="outline"
-              className="w-full justify-start border-white/15 text-white/85"
+              className="w-full justify-start border-slate-200 text-slate-700"
               onClick={() => setLocation("/pro/agents/billing")}
             >
               <CreditCard className="h-4 w-4 mr-2" />
@@ -106,7 +106,7 @@ export default function AppProMePage() {
 
         <Button
           variant="outline"
-          className="w-full border-red-400/40 text-red-200 hover:bg-red-500/10"
+          className="w-full border-red-200 bg-white text-red-700 hover:bg-red-50"
           onClick={() => {
             logout();
             setLocation("/pro/login?next=%2Fpro");

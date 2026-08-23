@@ -21,7 +21,6 @@ import {
   CheckCircle2,
   Clock,
   Coins,
-  DollarSign,
   Image,
   ImageDown,
   Mail,
@@ -450,7 +449,6 @@ function LegacyAdminDashboardPage() {
     { href: "/admin/email", title: "Email", desc: "Agent mailboxes, threads, and test sends", icon: Mail },
     { href: "/marketing", title: "Marketing", desc: "Campaigns and content", icon: Megaphone },
     { href: "/client-hunter", title: "Leads & Campaigns", desc: "AI discovery and scoring", icon: Target },
-    { href: "/sales", title: "Sales", desc: "Pipeline and leads", icon: DollarSign },
   ];
 
   return (

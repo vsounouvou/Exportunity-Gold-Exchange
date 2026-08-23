@@ -74,6 +74,7 @@ test("relationship summaries preserve candidate kinds without inventing records"
   assert.equal(summary.total, 2);
   assert.equal(summary.byKind.stalled_requirement, 1);
   assert.equal(summary.byKind.dormant_factory_relationship, 1);
+  assert.equal(summary.byKind.delivered_order_continuity, 0);
   assert.equal(summary.byKind.awaiting_email_reply, 0);
   assert.equal(summary.byKind.workspace_email_thread, 0);
 });
@@ -88,6 +89,8 @@ test("the admin route reconstructs only from canonical records and exposes no se
   assert.ok(start >= 0 && end > start);
   assert.match(reconstructionRoute, /from industrial_requirements/);
   assert.match(reconstructionRoute, /from industrial_factory_relationships/);
+  assert.match(reconstructionRoute, /from industrial_relationship_continuity_reviews/);
+  assert.match(reconstructionRoute, /industrial_transaction_relationship_memories/);
   assert.match(reconstructionRoute, /from email_messages/);
   assert.match(reconstructionRoute, /from company_brain_sources/);
   assert.match(reconstructionRoute, /connector_type = 'google_gmail'/);

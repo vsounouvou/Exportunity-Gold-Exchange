@@ -78,11 +78,16 @@ const MODULE_ALIASES: Record<string, AdminNavCategory> = {
 };
 
 const AGENTS_OS_ROUTE = "/agents-os";
-const LEGACY_AGENT_NAV_ROUTES = new Set<string>([
+const RETIRED_ADMIN_NAV_ROUTES = new Set<string>([
   "/agents",
   "/hierarchy",
   "/admin/agents",
   "/admin/agents/governance",
+  "/admin/action-forge",
+  "/admin/website/visits",
+  "/admin/website/seo",
+  "/admin/website/seo-autopilot",
+  "/admin/ux-audit",
 ]);
 
 const AGENTS_OS_NAV_ITEM: AdminNavRegistryItem = {
@@ -122,17 +127,6 @@ const COMMERCE_MARKETPLACE_AGENTS_NAV_ITEM: AdminNavRegistryItem = {
   apiEndpointsCalled: ["/api/v2/agents?domain=MARKETPLACE"],
   navEntryName: "AI Marketplace Agents",
   icon: "Store",
-  visibleInNav: true,
-};
-
-const ACTION_FORGE_NAV_ITEM: AdminNavRegistryItem = {
-  route: "/admin/action-forge",
-  pageTitle: "Action Forge",
-  module: "Agents OS",
-  capabilityTag: "action_forge",
-  apiEndpointsCalled: ["/api/action-forge/requests", "/api/action-forge/:id/publish"],
-  navEntryName: "Action Forge",
-  icon: "Zap",
   visibleInNav: true,
 };
 
@@ -235,6 +229,97 @@ const INDUSTRIAL_NETWORK_NAV_ITEM: AdminNavRegistryItem = {
   visibleInNav: true,
 };
 
+const CARRIER_NETWORK_NAV_ITEM: AdminNavRegistryItem = {
+  route: "/admin/carrier-network",
+  pageTitle: "Carrier Network & Delivery Authority",
+  module: "Trade",
+  capabilityTag: "admin_carrier_network_governance",
+  apiEndpointsCalled: [
+    "/api/admin/carrier-network",
+    "/api/admin/carrier-network/profiles",
+    "/api/admin/carrier-network/profiles/:carrierProfileId/verify",
+    "/api/admin/carrier-network/coverages",
+    "/api/admin/carrier-network/connections/record-verification",
+    "/api/admin/carrier-network/quote-requests/prepare",
+    "/api/admin/carrier-network/quotes/record",
+    "/api/admin/carrier-network/quotes/:deliveryQuoteId/select",
+    "/api/admin/carrier-network/bookings/:bookingAuthorizationId/approve",
+    "/api/admin/carrier-network/incidents",
+  ],
+  navEntryName: "Carrier Network",
+  icon: "Truck",
+  visibleInNav: true,
+};
+
+const GROUP_BUYING_NAV_ITEM: AdminNavRegistryItem = {
+  route: "/admin/group-buying",
+  pageTitle: "Producer Exchange Group Commerce",
+  module: "Trade",
+  capabilityTag: "admin_group_buying_governance",
+  apiEndpointsCalled: [
+    "/api/group-buying/admin",
+    "/api/group-buying/admin/campaigns/prepare",
+    "/api/group-buying/admin/campaigns/:campaignId/authorize",
+    "/api/group-buying/admin/commitments/:commitmentId/bind-paid-order",
+    "/api/group-buying/admin/campaigns/:campaignId/updates/publish",
+    "/api/group-buying/admin/production-batches/prepare",
+    "/api/group-buying/admin/production-batches/:productionBatchId/transition",
+    "/api/group-buying/admin/settlements/prepare",
+    "/api/group-buying/admin/settlements/:settlementPlanId/approve",
+  ],
+  navEntryName: "Producer Exchange",
+  icon: "ShoppingBag",
+  visibleInNav: true,
+};
+
+const TRADE_INTELLIGENCE_NAV_ITEM: AdminNavRegistryItem = {
+  route: "/admin/trade-intelligence",
+  pageTitle: "Trade Intelligence",
+  module: "Trade",
+  capabilityTag: "admin_trade_intelligence",
+  apiEndpointsCalled: [
+    "/api/trade/admin/dashboard",
+    "/api/trade/admin/sources",
+    "/api/trade/admin/missions",
+  ],
+  navEntryName: "Trade Intelligence",
+  icon: "BarChart3",
+  visibleInNav: true,
+};
+
+const ADVERTISING_GOVERNANCE_NAV_ITEM: AdminNavRegistryItem = {
+  route: "/admin/advertising-governance",
+  pageTitle: "Advertising Governance",
+  module: "Trade",
+  capabilityTag: "admin_advertising_governance",
+  apiEndpointsCalled: [
+    "/api/admin/marketing/ads/governance",
+    "/api/admin/marketing/ads/accounts/record-verification",
+    "/api/admin/marketing/ads/budget-envelopes",
+    "/api/admin/marketing/ads/media-plans/prepare",
+    "/api/admin/marketing/ads/spend-authorizations/prepare",
+  ],
+  navEntryName: "Advertising Governance",
+  icon: "Target",
+  visibleInNav: true,
+};
+
+const MEDIA_STUDIO_NAV_ITEM: AdminNavRegistryItem = {
+  route: "/admin/media/studio",
+  pageTitle: "Interview & Media Studio",
+  module: "Trade",
+  capabilityTag: "admin_media_interview_studio",
+  apiEndpointsCalled: [
+    "/api/admin/marketing/studio/workspace",
+    "/api/admin/marketing/studio/interviews",
+    "/api/admin/marketing/studio/projects",
+    "/api/admin/marketing/studio/renders/prepare",
+  ],
+  navEntryName: "Interview & Media Studio",
+  icon: "Image",
+  visibleInNav: true,
+};
+
 const ROUTE_CATEGORY_OVERRIDES: Record<string, AdminNavCategory> = {
   // Agents OS is the canonical home for all agent functions.
   "/agents": "Agents OS",
@@ -246,7 +331,6 @@ const ROUTE_CATEGORY_OVERRIDES: Record<string, AdminNavCategory> = {
   "/operations/agents/:agentId": "Agents OS",
   "/commerce/ai-marketplace/agents": "Agents OS",
   "/commerce/ai-marketplace/agents/:agentId": "Agents OS",
-  "/admin/action-forge": "Agents OS",
   "/admin/agents/governance": "Agents OS",
   "/admin/agents": "Agents OS",
 
@@ -267,6 +351,9 @@ const ROUTE_CATEGORY_OVERRIDES: Record<string, AdminNavCategory> = {
   // Trade and marketplace execution.
   "/admin/marketplace/products": "Trade",
   "/admin/industrial-network": "Trade",
+  "/admin/carrier-network": "Trade",
+  "/admin/group-buying": "Trade",
+  "/admin/trade-intelligence": "Trade",
   "/marketplace/sellers": "Trade",
   "/seller-dashboard": "Trade",
   "/bureaus": "Trade",
@@ -286,13 +373,12 @@ const ROUTE_CATEGORY_OVERRIDES: Record<string, AdminNavCategory> = {
   "/admin/pme-exchange/map": "Trade",
   "/admin/pme-exchange/import": "Trade",
   "/admin/pme-exchange/campaigns": "Trade",
-  "/admin/website/visits": "Trade",
-  "/admin/website/seo": "Trade",
-  "/admin/website/seo-autopilot": "Trade",
+  "/admin/seo": "Settings",
   "/admin/media/assets": "Trade",
+  "/admin/media/studio": "Trade",
+  "/admin/advertising-governance": "Trade",
   "/marketing": "Trade",
   "/client-hunter": "Trade",
-  "/sales": "Trade",
 
   // Territory management is a first-class menu.
   "/territories": "Territories",
@@ -302,7 +388,6 @@ const ROUTE_CATEGORY_OVERRIDES: Record<string, AdminNavCategory> = {
 
   // Settings & system tools
   "/admin/system/update": "Settings",
-  "/admin/ux-audit": "Settings",
   "/admin/settings/map": "Settings",
   "/admin/map-icons": "Settings",
   "/admin/settings/onboarding": "Settings",
@@ -317,7 +402,6 @@ const CATEGORY_ITEM_ORDER: Record<AdminNavCategory, Record<string, number>> = {
     [AGENTS_OS_ROUTE]: 0,
     "/operations/agents": 5,
     "/commerce/ai-marketplace/agents": 10,
-    "/admin/action-forge": 15,
     "/admin/agents/governance": 20,
     "/agents": 100,
     "/hierarchy": 101,
@@ -340,6 +424,10 @@ const CATEGORY_ITEM_ORDER: Record<AdminNavCategory, Record<string, number>> = {
   },
   Trade: {
     "/admin/industrial-network": 0,
+    "/admin/carrier-network": 1,
+    "/admin/group-buying": 2,
+    "/admin/trade-intelligence": 3,
+    "/admin/advertising-governance": 4,
     "/admin/marketplace/products": 0,
     "/marketplace/sellers": 10,
     "/seller-dashboard": 20,
@@ -360,13 +448,10 @@ const CATEGORY_ITEM_ORDER: Record<AdminNavCategory, Record<string, number>> = {
     "/admin/pme-exchange/map": 241,
     "/admin/pme-exchange/import": 242,
     "/admin/pme-exchange/campaigns": 243,
-    "/admin/website/visits": 0,
-    "/admin/website/seo": 10,
-    "/admin/website/seo-autopilot": 20,
     "/admin/media/assets": 30,
+    "/admin/media/studio": 31,
     "/marketing": 40,
     "/client-hunter": 50,
-    "/sales": 60,
   },
   Territories: {
     "/territories": 0,
@@ -380,6 +465,7 @@ const CATEGORY_ITEM_ORDER: Record<AdminNavCategory, Record<string, number>> = {
   },
   Settings: {
     "/admin/system/update": 0,
+    "/admin/seo": 1,
     "/admin/contacts": 5,
     "/admin/agents/governance": 6,
     "/admin/map-icons": 8,
@@ -391,19 +477,32 @@ const CATEGORY_ITEM_ORDER: Record<AdminNavCategory, Record<string, number>> = {
 };
 
 export function getAdminNavItems() {
-  const visible = ADMIN_NAV_REGISTRY.items.filter((item) => item.visibleInNav && !LEGACY_AGENT_NAV_ROUTES.has(item.route));
+  const visible = ADMIN_NAV_REGISTRY.items.filter((item) => item.visibleInNav && !RETIRED_ADMIN_NAV_ROUTES.has(item.route));
   const hasAgentsOs = visible.some((item) => item.route === AGENTS_OS_ROUTE);
   const hasInternalAgents = visible.some((item) => item.route === OPERATIONS_INTERNAL_AGENTS_NAV_ITEM.route);
   const hasMarketplaceAgents = visible.some((item) => item.route === COMMERCE_MARKETPLACE_AGENTS_NAV_ITEM.route);
-  const hasActionForge = visible.some((item) => item.route === ACTION_FORGE_NAV_ITEM.route);
 
   const next = [...visible];
   if (!hasAgentsOs) next.push(AGENTS_OS_NAV_ITEM);
   if (!hasInternalAgents) next.push(OPERATIONS_INTERNAL_AGENTS_NAV_ITEM);
   if (!hasMarketplaceAgents) next.push(COMMERCE_MARKETPLACE_AGENTS_NAV_ITEM);
-  if (!hasActionForge) next.push(ACTION_FORGE_NAV_ITEM);
   if (!next.some((entry) => entry.route === INDUSTRIAL_NETWORK_NAV_ITEM.route)) {
     next.push(INDUSTRIAL_NETWORK_NAV_ITEM);
+  }
+  if (!next.some((entry) => entry.route === CARRIER_NETWORK_NAV_ITEM.route)) {
+    next.push(CARRIER_NETWORK_NAV_ITEM);
+  }
+  if (!next.some((entry) => entry.route === GROUP_BUYING_NAV_ITEM.route)) {
+    next.push(GROUP_BUYING_NAV_ITEM);
+  }
+  if (!next.some((entry) => entry.route === TRADE_INTELLIGENCE_NAV_ITEM.route)) {
+    next.push(TRADE_INTELLIGENCE_NAV_ITEM);
+  }
+  if (!next.some((entry) => entry.route === ADVERTISING_GOVERNANCE_NAV_ITEM.route)) {
+    next.push(ADVERTISING_GOVERNANCE_NAV_ITEM);
+  }
+  if (!next.some((entry) => entry.route === MEDIA_STUDIO_NAV_ITEM.route)) {
+    next.push(MEDIA_STUDIO_NAV_ITEM);
   }
   for (const item of PME_EXCHANGE_NAV_ITEMS) {
     if (!next.some((entry) => entry.route === item.route)) next.push(item);

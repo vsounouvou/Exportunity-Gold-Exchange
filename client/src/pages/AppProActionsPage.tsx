@@ -114,7 +114,7 @@ export default function AppProActionsPage() {
   }, [events, filter]);
 
   return (
-    <div className="min-h-screen bg-gray-950 pb-24 text-white">
+    <div className="min-h-screen bg-[#F7F8FA] pb-24 text-[#07111F]">
       <AppProTopBar subtitle="Actions" />
       <main className="mx-auto w-full max-w-3xl px-4 py-4">
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -123,39 +123,39 @@ export default function AppProActionsPage() {
             data-testid="actions-filter-orders"
             aria-pressed={filter === "orders"}
             className={cn(
-              "rounded-xl border border-white/10 bg-white/5 px-3 py-3 text-left hover:bg-white/10",
-              filter === "orders" && "border-amber-400/40 bg-amber-500/10",
+              "rounded-xl border border-slate-200 bg-white px-3 py-3 text-left shadow-sm hover:border-[#F5A623]/50",
+              filter === "orders" && "border-[#F5A623]/50 bg-[#FFF8E8]",
             )}
             onClick={() => setFilterWithRoute("orders")}
           >
-            <div className="text-[11px] text-white/60">Orders</div>
-            <div className="mt-1 text-base font-semibold">{summary?.activeTickets ?? 0}</div>
+            <div className="text-[11px] font-bold text-slate-500">Orders</div>
+            <div className="mt-1 text-base font-black">{summary?.activeTickets ?? 0}</div>
           </button>
           <button
             type="button"
             data-testid="actions-filter-approvals"
             aria-pressed={filter === "approvals"}
             className={cn(
-              "rounded-xl border border-white/10 bg-white/5 px-3 py-3 text-left hover:bg-white/10",
-              filter === "approvals" && "border-amber-400/40 bg-amber-500/10",
+              "rounded-xl border border-slate-200 bg-white px-3 py-3 text-left shadow-sm hover:border-[#F5A623]/50",
+              filter === "approvals" && "border-[#F5A623]/50 bg-[#FFF8E8]",
             )}
             onClick={() => setFilterWithRoute("approvals")}
           >
-            <div className="text-[11px] text-white/60">Approvals</div>
-            <div className="mt-1 text-base font-semibold">{summary?.pendingApprovals ?? 0}</div>
+            <div className="text-[11px] font-bold text-slate-500">Approvals</div>
+            <div className="mt-1 text-base font-black">{summary?.pendingApprovals ?? 0}</div>
           </button>
           <button
             type="button"
             data-testid="actions-filter-payments"
             aria-pressed={filter === "payments"}
             className={cn(
-              "rounded-xl border border-white/10 bg-white/5 px-3 py-3 text-left hover:bg-white/10",
-              filter === "payments" && "border-amber-400/40 bg-amber-500/10",
+              "rounded-xl border border-slate-200 bg-white px-3 py-3 text-left shadow-sm hover:border-[#F5A623]/50",
+              filter === "payments" && "border-[#F5A623]/50 bg-[#FFF8E8]",
             )}
             onClick={() => setFilterWithRoute("payments")}
           >
-            <div className="text-[11px] text-white/60">Payments</div>
-            <div className="mt-1 text-base font-semibold">
+            <div className="text-[11px] font-bold text-slate-500">Payments</div>
+            <div className="mt-1 text-base font-black">
               {new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 }).format(summary?.paymentsReceivedToday ?? 0)} XOF
             </div>
           </button>
@@ -164,29 +164,29 @@ export default function AppProActionsPage() {
             data-testid="actions-filter-all"
             aria-pressed={filter === "all"}
             className={cn(
-              "rounded-xl border border-white/10 bg-white/5 px-3 py-3 text-left hover:bg-white/10",
-              filter === "all" && "border-amber-400/40 bg-amber-500/10",
+              "rounded-xl border border-slate-200 bg-white px-3 py-3 text-left shadow-sm hover:border-[#F5A623]/50",
+              filter === "all" && "border-[#F5A623]/50 bg-[#FFF8E8]",
             )}
             onClick={() => setFilterWithRoute("all")}
           >
-            <div className="text-[11px] text-white/60">Late risk</div>
-            <div className="mt-1 text-base font-semibold">{summary?.slaRisks ?? 0}</div>
+            <div className="text-[11px] font-bold text-slate-500">Late risk</div>
+            <div className="mt-1 text-base font-black">{summary?.slaRisks ?? 0}</div>
           </button>
         </div>
 
         {pendingApprovals.length > 0 ? (
-          <Card className="mt-4 border-amber-400/30 bg-amber-500/10">
+          <Card className="mt-4 border-[#F5A623]/35 bg-[#FFF8E8]">
             <CardHeader className="pb-2">
               <CardTitle className="flex items-center gap-2 text-base">
-                <AlertTriangle className="h-4 w-4 text-amber-200" />
+                <AlertTriangle className="h-4 w-4 text-[#9A6200]" />
                 Approval queue
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
               {pendingApprovals.slice(0, 5).map((task) => (
-                <div key={task.id} className="rounded-lg border border-white/10 bg-black/20 p-3">
+                <div key={task.id} className="rounded-lg border border-[#F5A623]/25 bg-white p-3">
                   <div className="text-sm font-semibold">{task.title}</div>
-                  <div className="mt-1 text-xs text-white/65">{task.agent_name || "Assigned agent"}</div>
+                  <div className="mt-1 text-xs text-slate-500">{task.agent_name || "Assigned agent"}</div>
                   <div className="mt-2">
                     <Button
                       size="sm"
@@ -208,17 +208,17 @@ export default function AppProActionsPage() {
             <button
               key={event.id}
               type="button"
-              className="w-full rounded-xl border border-white/10 bg-white/5 p-4 text-left hover:bg-white/10"
+              className="w-full rounded-xl border border-slate-200 bg-white p-4 text-left shadow-sm hover:border-[#F5A623]/50"
               onClick={() => setLocation(event.link || "/pro/operations")}
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <div className="text-sm font-semibold">{event.title}</div>
-                  {event.detail ? <div className="mt-1 line-clamp-2 text-xs text-white/65">{event.detail}</div> : null}
+                  {event.detail ? <div className="mt-1 line-clamp-2 text-xs text-slate-500">{event.detail}</div> : null}
                 </div>
-                <div className="shrink-0 text-[11px] text-white/45">{formatTime(event.createdAt)}</div>
+                <div className="shrink-0 text-[11px] text-slate-400">{formatTime(event.createdAt)}</div>
               </div>
-              <div className="mt-2 inline-flex items-center gap-1 text-xs text-amber-200">
+              <div className="mt-2 inline-flex items-center gap-1 text-xs font-bold text-[#9A6200]">
                 Open
                 <ChevronRight className="h-3.5 w-3.5" />
               </div>
@@ -226,13 +226,13 @@ export default function AppProActionsPage() {
           ))}
 
           {!centerQuery.isLoading && !filteredEvents.length ? (
-            <Card className="border-white/10 bg-white/5">
-              <CardContent className="space-y-3 p-4 text-sm text-white/70">
+            <Card className="border-slate-200 bg-white">
+              <CardContent className="space-y-3 p-4 text-sm text-slate-600">
                 <div>No active items in this filter.</div>
                 <Button
                   size="sm"
                   variant="outline"
-                  className="border-white/20 text-white/90"
+                  className="border-slate-200 text-slate-700"
                   onClick={() => setLocation("/pro/operations")}
                 >
                   <CheckCircle2 className="mr-2 h-4 w-4" />

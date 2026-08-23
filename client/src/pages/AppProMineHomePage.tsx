@@ -176,29 +176,29 @@ export default function AppProMineHomePage() {
   const monthToDate = overview?.monthToDateGrams ?? 0;
 
   return (
-    <div className="min-h-screen bg-gray-950 pb-24 text-white">
+    <div className="min-h-screen bg-[#F7F8FA] pb-24 text-slate-950">
       <ProSideNav activeKey="operations" />
       <div className="md:ml-56">
         <AppProTopBar subtitle="Mine" />
-        <main className="mx-auto w-full max-w-2xl px-4 py-4 space-y-4">
-          <Card className="border-amber-400/20 bg-amber-500/10">
+        <main className="mx-auto w-full max-w-2xl space-y-4 px-4 py-6">
+          <Card className="border-[#F5A623]/40 bg-[#FFF7E6] shadow-sm">
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-lg">
-                <Pickaxe className="h-5 w-5 text-amber-200" />
+                <Pickaxe className="h-5 w-5 text-[#B26F00]" />
                 Production Today
               </CardTitle>
-              <div className="text-xs text-white/65">How much did you produce today?</div>
+              <div className="text-xs text-slate-600">How much did you produce today?</div>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 gap-3 md:grid-cols-[1fr_auto]">
                 <div>
-                  <div className="text-xs uppercase tracking-[0.12em] text-white/55">Quantity</div>
+                  <div className="text-xs uppercase tracking-[0.12em] text-slate-500">Quantity</div>
                   <Input
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
                     placeholder={unit === "kg" ? "1.25" : "750"}
                     inputMode="decimal"
-                    className="mt-2 border-white/10 bg-white/5 text-white placeholder:text-white/40"
+                    className="mt-2 border-slate-200 bg-white text-slate-950 placeholder:text-slate-400"
                     disabled={saveMutation.isPending}
                     data-testid="mine-production-amount"
                   />
@@ -207,7 +207,7 @@ export default function AppProMineHomePage() {
                   <Button
                     type="button"
                     variant={unit === "g" ? "default" : "outline"}
-                    className={unit === "g" ? "bg-amber-500 text-black hover:bg-amber-400" : "border-white/15 text-white/85"}
+                    className={unit === "g" ? "bg-[#F5A623] text-[#07111F] hover:bg-[#F8C45B]" : "border-slate-300 text-slate-700"}
                     onClick={() => setUnit("g")}
                     disabled={saveMutation.isPending}
                     data-testid="mine-unit-g"
@@ -217,7 +217,7 @@ export default function AppProMineHomePage() {
                   <Button
                     type="button"
                     variant={unit === "kg" ? "default" : "outline"}
-                    className={unit === "kg" ? "bg-amber-500 text-black hover:bg-amber-400" : "border-white/15 text-white/85"}
+                    className={unit === "kg" ? "bg-[#F5A623] text-[#07111F] hover:bg-[#F8C45B]" : "border-slate-300 text-slate-700"}
                     onClick={() => setUnit("kg")}
                     disabled={saveMutation.isPending}
                     data-testid="mine-unit-kg"
@@ -229,36 +229,36 @@ export default function AppProMineHomePage() {
 
               <button
                 type="button"
-                className="flex w-full items-center justify-between rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-left text-sm text-white/80 hover:bg-black/40"
+                className="flex w-full items-center justify-between rounded-xl border border-slate-200 bg-white px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
                 onClick={() => setDetailsOpen((v) => !v)}
                 data-testid="mine-details-toggle"
               >
                 <span>Optional details</span>
-                {detailsOpen ? <ChevronUp className="h-4 w-4 text-white/70" /> : <ChevronDown className="h-4 w-4 text-white/70" />}
+                {detailsOpen ? <ChevronUp className="h-4 w-4 text-slate-600" /> : <ChevronDown className="h-4 w-4 text-slate-600" />}
               </button>
 
               {detailsOpen ? (
-                <div className="space-y-3 rounded-xl border border-white/10 bg-black/25 p-3">
+                <div className="space-y-3 rounded-xl border border-slate-200 bg-white p-3">
                   <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                     <div>
-                      <div className="text-xs uppercase tracking-[0.12em] text-white/55">Purity (%)</div>
+                      <div className="text-xs uppercase tracking-[0.12em] text-slate-500">Purity (%)</div>
                       <Input
                         value={purityPercent}
                         onChange={(e) => setPurityPercent(e.target.value)}
                         placeholder="92.5"
                         inputMode="decimal"
-                        className="mt-2 border-white/10 bg-white/5 text-white placeholder:text-white/40"
+                        className="mt-2 border-slate-200 bg-white text-slate-950 placeholder:text-slate-400"
                         disabled={saveMutation.isPending}
                         data-testid="mine-production-purity"
                       />
                     </div>
                     <div>
-                      <div className="text-xs uppercase tracking-[0.12em] text-white/55">Site (optional)</div>
+                      <div className="text-xs uppercase tracking-[0.12em] text-slate-500">Site (optional)</div>
                       <Input
                         value={siteName}
                         onChange={(e) => setSiteName(e.target.value)}
                         placeholder="Site A"
-                        className="mt-2 border-white/10 bg-white/5 text-white placeholder:text-white/40"
+                        className="mt-2 border-slate-200 bg-white text-slate-950 placeholder:text-slate-400"
                         disabled={saveMutation.isPending}
                         data-testid="mine-production-site"
                       />
@@ -266,12 +266,12 @@ export default function AppProMineHomePage() {
                   </div>
 
                   <div>
-                    <div className="text-xs uppercase tracking-[0.12em] text-white/55">Shift</div>
+                    <div className="text-xs uppercase tracking-[0.12em] text-slate-500">Shift</div>
                     <div className="mt-2 flex gap-2">
                       <Button
                         type="button"
                         variant={shift === "AM" ? "default" : "outline"}
-                        className={shift === "AM" ? "bg-white text-black hover:bg-white/90" : "border-white/15 text-white/85"}
+                        className={shift === "AM" ? "bg-slate-950 text-white hover:bg-slate-800" : "border-slate-300 text-slate-700"}
                         onClick={() => setShift((v) => (v === "AM" ? "" : "AM"))}
                         disabled={saveMutation.isPending}
                         data-testid="mine-shift-am"
@@ -281,7 +281,7 @@ export default function AppProMineHomePage() {
                       <Button
                         type="button"
                         variant={shift === "PM" ? "default" : "outline"}
-                        className={shift === "PM" ? "bg-white text-black hover:bg-white/90" : "border-white/15 text-white/85"}
+                        className={shift === "PM" ? "bg-slate-950 text-white hover:bg-slate-800" : "border-slate-300 text-slate-700"}
                         onClick={() => setShift((v) => (v === "PM" ? "" : "PM"))}
                         disabled={saveMutation.isPending}
                         data-testid="mine-shift-pm"
@@ -292,12 +292,12 @@ export default function AppProMineHomePage() {
                   </div>
 
                   <div>
-                    <div className="text-xs uppercase tracking-[0.12em] text-white/55">Notes</div>
+                    <div className="text-xs uppercase tracking-[0.12em] text-slate-500">Notes</div>
                     <Textarea
                       value={notes}
                       onChange={(e) => setNotes(e.target.value)}
                       placeholder="Anything to remember about today's output..."
-                      className="mt-2 min-h-[90px] border-white/10 bg-white/5 text-white placeholder:text-white/40"
+                      className="mt-2 min-h-[90px] border-slate-200 bg-white text-slate-950 placeholder:text-slate-400"
                       disabled={saveMutation.isPending}
                       data-testid="mine-production-notes"
                     />
@@ -307,7 +307,7 @@ export default function AppProMineHomePage() {
 
               <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
                 <Button
-                  className="w-full bg-amber-500 hover:bg-amber-400 text-black font-semibold"
+                  className="w-full bg-[#F5A623] font-semibold text-[#07111F] hover:bg-[#F8C45B]"
                   onClick={() => saveMutation.mutate()}
                   disabled={saveMutation.isPending}
                   data-testid="mine-production-save"
@@ -316,7 +316,7 @@ export default function AppProMineHomePage() {
                 </Button>
                 <Button
                   variant="outline"
-                  className="w-full border-white/15 text-white/85"
+                  className="w-full border-slate-300 text-slate-700"
                   onClick={() => setHistoryOpen((v) => !v)}
                   disabled={saveMutation.isPending}
                   data-testid="mine-production-history"
@@ -329,76 +329,76 @@ export default function AppProMineHomePage() {
           </Card>
 
           {overview ? (
-            <Card className="border-white/10 bg-white/5">
+            <Card className="border-slate-200 bg-white shadow-sm">
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center gap-2 text-base">
-                  <TrendingUp className="h-4 w-4 text-amber-300" />
+                  <TrendingUp className="h-4 w-4 text-[#B26F00]" />
                   Overview
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-3 gap-2 text-xs">
-                  <div className="rounded-xl border border-white/10 bg-black/30 p-3">
-                    <div className="text-white/55">Today</div>
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                    <div className="text-slate-500">Today</div>
                     <div className="mt-1 text-sm font-semibold">{formatProduction(todayTotal)}</div>
                   </div>
-                  <div className="rounded-xl border border-white/10 bg-black/30 p-3">
-                    <div className="text-white/55">Month-to-date</div>
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                    <div className="text-slate-500">Month-to-date</div>
                     <div className="mt-1 text-sm font-semibold">{formatProduction(monthToDate)}</div>
                   </div>
-                  <div className="rounded-xl border border-white/10 bg-black/30 p-3">
-                    <div className="text-white/55">Entries today</div>
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                    <div className="text-slate-500">Entries today</div>
                     <div className="mt-1 text-sm font-semibold">{overview.todayEntries.length}</div>
                   </div>
                 </div>
 
                 <div>
-                  <div className="text-xs uppercase tracking-[0.12em] text-white/55">Last 7 days</div>
+                  <div className="text-xs uppercase tracking-[0.12em] text-slate-500">Last 7 days</div>
                   <div className="mt-2">
                     <Sparkline series={last7Days} />
                   </div>
-                  <div className="mt-2 text-[11px] text-white/55">
+                  <div className="mt-2 text-[11px] text-slate-500">
                     {last7Days.map((d) => d.date.slice(5)).join("  ")}
                   </div>
                 </div>
               </CardContent>
             </Card>
           ) : overviewQuery.isLoading ? (
-            <Card className="border-white/10 bg-white/5">
-              <CardContent className="p-4 text-sm text-white/70">Loading overview...</CardContent>
+            <Card className="border-slate-200 bg-white shadow-sm">
+              <CardContent className="p-4 text-sm text-slate-600">Loading overview...</CardContent>
             </Card>
           ) : overviewQuery.error ? (
-            <Card className="border-rose-400/30 bg-rose-500/10">
-              <CardContent className="p-4 text-sm text-rose-100">
+            <Card className="border-rose-200 bg-rose-50">
+              <CardContent className="p-4 text-sm text-rose-700">
                 {String((overviewQuery.error as any)?.message || "Could not load overview")}
               </CardContent>
             </Card>
           ) : null}
 
           {historyOpen ? (
-            <Card className="border-white/10 bg-white/5">
+            <Card className="border-slate-200 bg-white shadow-sm">
               <CardHeader className="pb-3">
                 <CardTitle className="text-base">History</CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
                 {historyQuery.isLoading ? (
-                  <div className="text-sm text-white/70">Loading...</div>
+                  <div className="text-sm text-slate-600">Loading...</div>
                 ) : historyQuery.error ? (
-                  <div className="text-sm text-rose-100">{String((historyQuery.error as any)?.message || "Could not load history")}</div>
+                  <div className="text-sm text-rose-700">{String((historyQuery.error as any)?.message || "Could not load history")}</div>
                 ) : (
-                  <div className="divide-y divide-white/10 rounded-xl border border-white/10 overflow-hidden">
+                  <div className="divide-y divide-slate-200 overflow-hidden rounded-xl border border-slate-200">
                     {(historyQuery.data?.rows || []).slice(0, 30).map((row) => (
-                      <div key={row.id} className="flex items-start justify-between gap-3 bg-black/25 px-3 py-2 text-sm">
+                      <div key={row.id} className="flex items-start justify-between gap-3 bg-white px-3 py-2 text-sm">
                         <div className="min-w-0">
                           <div className="font-medium">{row.date}</div>
-                          <div className="mt-0.5 text-xs text-white/55">
+                          <div className="mt-0.5 text-xs text-slate-500">
                             {row.siteId && row.siteId !== "default" ? `Site: ${row.siteId}` : "Site: (default)"}
                             {row.shift ? ` - Shift ${row.shift}` : ""}
                             {row.purityPercent !== null ? ` - Purity ${row.purityPercent}%` : ""}
                           </div>
-                          {row.notes ? <div className="mt-1 text-xs text-white/60 line-clamp-2">{row.notes}</div> : null}
+                          {row.notes ? <div className="mt-1 line-clamp-2 text-xs text-slate-600">{row.notes}</div> : null}
                         </div>
-                        <div className="shrink-0 text-right font-semibold text-white">{formatProduction(row.gramsTotal)}</div>
+                        <div className="shrink-0 text-right font-semibold text-slate-950">{formatProduction(row.gramsTotal)}</div>
                       </div>
                     ))}
                   </div>

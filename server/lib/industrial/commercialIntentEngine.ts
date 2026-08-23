@@ -316,6 +316,7 @@ export function missingFieldsForCommercialIntent(input: {
   destination?: string;
   frequency?: string;
   incoterm?: string;
+  requireTradeTerms?: boolean;
 }) {
   const transactional = new Set<CommercialIntent>([
     "SOURCE_PRODUCT",
@@ -333,9 +334,9 @@ export function missingFieldsForCommercialIntent(input: {
   if (!input.destination) missing.push("destination");
   if (input.product.category === "palm_oil" && !input.product.specification)
     missing.push("product.specification");
-  const commodityTradeTerms = PRODUCTS.some(
-    (product) => product.category === input.product.category,
-  );
+  const commodityTradeTerms =
+    input.requireTradeTerms === true ||
+    PRODUCTS.some((product) => product.category === input.product.category);
   if (commodityTradeTerms && !input.frequency) missing.push("frequency");
   if (commodityTradeTerms && !input.incoterm) missing.push("incoterm");
   return missing;
@@ -424,6 +425,7 @@ export function resolveCommercialQualification(input: {
     incoterm?: string | null;
     customerType?: string | null;
   };
+  requireTradeTerms?: boolean;
 }): CommercialIntentAnalysis {
   const fallback = input.fallback || {};
   const product: CommercialProductIntent = {
@@ -451,6 +453,7 @@ export function resolveCommercialQualification(input: {
     destination,
     frequency,
     incoterm,
+    requireTradeTerms: input.requireTradeTerms,
   });
   const suggestedAction: CommercialActionMode =
     input.analysis.suggestedAction === "ESCALATE"

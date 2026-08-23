@@ -294,6 +294,13 @@ function CreateDepartmentDialog({ companyId }: { companyId: number }) {
     { name: "Red", value: "#EF4444" },
     { name: "Teal", value: "#14B8A6" },
   ];
+
+  const confirmCreateDepartment = () => {
+    const confirmed = window.confirm(
+      `Create the “${name.trim()}” department for this company? This changes the live organization structure.`,
+    );
+    if (confirmed) createMutation.mutate();
+  };
   
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -303,7 +310,7 @@ function CreateDepartmentDialog({ companyId }: { companyId: number }) {
           New Department
         </Button>
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent className="border-slate-200 bg-white text-slate-950">
         <DialogHeader>
           <DialogTitle>Create New Department</DialogTitle>
         </DialogHeader>
@@ -343,7 +350,11 @@ function CreateDepartmentDialog({ companyId }: { companyId: number }) {
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-          <Button onClick={() => createMutation.mutate()} disabled={!name || createMutation.isPending}>
+          <Button
+            className="bg-[#F5A623] font-bold text-[#07111F] hover:bg-[#E59A18]"
+            onClick={confirmCreateDepartment}
+            disabled={!name.trim() || createMutation.isPending}
+          >
             Create Department
           </Button>
         </DialogFooter>
@@ -415,10 +426,18 @@ function EditDepartmentDialog({
     { name: "Red", value: "#EF4444" },
     { name: "Teal", value: "#14B8A6" },
   ];
+
+  const confirmDepartmentUpdate = () => {
+    if (!department) return;
+    const confirmed = window.confirm(
+      `Save changes to the “${department.name}” department? This changes the live organization structure.`,
+    );
+    if (confirmed) updateMutation.mutate();
+  };
   
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="border-slate-200 bg-white text-slate-950">
         <DialogHeader>
           <DialogTitle>Edit Department</DialogTitle>
         </DialogHeader>
@@ -456,7 +475,11 @@ function EditDepartmentDialog({
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={() => updateMutation.mutate()} disabled={updateMutation.isPending}>
+          <Button
+            className="bg-[#F5A623] font-bold text-[#07111F] hover:bg-[#E59A18]"
+            onClick={confirmDepartmentUpdate}
+            disabled={!name.trim() || updateMutation.isPending}
+          >
             Save Changes
           </Button>
         </DialogFooter>
@@ -543,7 +566,7 @@ export default function HierarchyPage() {
   };
   
   const handleDeleteDepartment = (deptId: number) => {
-    if (confirm("Delete this department? All agents will be unassigned.")) {
+    if (window.confirm("Delete this department? All agents will be unassigned.")) {
       deleteDepartmentMutation.mutate(deptId);
     }
   };
@@ -594,7 +617,7 @@ export default function HierarchyPage() {
     : [];
   
   return (
-    <div className="exportunity-operations-light min-h-full bg-[#f7f8fa] p-4 text-slate-950 md:p-6">
+    <div data-testid="exportunity-organization-workspace" className="min-h-full bg-[#F7F8FA] p-4 text-slate-950 md:p-6">
       <div className="mx-auto max-w-7xl space-y-4 md:space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>

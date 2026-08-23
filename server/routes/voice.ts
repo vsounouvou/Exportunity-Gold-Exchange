@@ -17,6 +17,7 @@ import multer from "multer";
 import path from "path";
 import { mkdir, unlink, writeFile } from "fs/promises";
 import { isVoiceTranscriptionConfigured, transcribeAudioFile } from "../lib/voice/transcriber";
+import { assertOutboundActionExecutionAllowed } from "../lib/communications/outboundDecisionService";
 
 const router = Router();
 router.use(ensureTenantStaff);
@@ -193,6 +194,37 @@ router.post("/call", async (req: any, res) => {
     if (!admin) {
       await assertDailyCallLimit({ tenantId: tenant.id, agentKey, limit: Number(controls?.voiceDailyOutboundLimit || 0) });
     }
+
+    const actionRequestId = parseIntSafe(
+      req.body?.actionRequestId ?? req.body?.action_request_id,
+    );
+    await assertOutboundActionExecutionAllowed({
+      tenantId: tenant.id,
+      actionRequestId,
+      channel: "voice",
+      recipients: [toE164],
+      directPayload: {
+        toE164,
+        communicationPurpose:
+          req.body?.communicationPurpose ??
+          req.body?.communication_purpose ??
+          "unspecified",
+        contactBasis:
+          req.body?.contactBasis ?? req.body?.contact_basis ?? "unknown",
+        commitmentRisk:
+          req.body?.commitmentRisk ?? req.body?.commitment_risk ?? "none",
+        recipientCountryCode:
+          req.body?.recipientCountryCode ??
+          req.body?.recipient_country_code ??
+          null,
+        recipientTimeZone:
+          req.body?.recipientTimeZone ??
+          req.body?.recipient_time_zone ??
+          null,
+        optInEvidence:
+          req.body?.optInEvidence ?? req.body?.opt_in_evidence ?? null,
+      },
+    });
 
     const cfg = getTwilioConfig();
     const voiceFrom = normalizeE164(cfg.voiceFrom);

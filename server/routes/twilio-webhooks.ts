@@ -25,6 +25,7 @@ import {
 import { createInboundMessageLog, mapTwilioStatusToLogStatus, updateOutboundMessageLogBySid } from "../lib/communications/message-logs";
 import { resolveInboundTwilioContext } from "../lib/communications/sender-resolution";
 import { canSendLegacyInboundAutoReply } from "../lib/communications/inbound-auto-reply-policy";
+import { captureSupplierQuoteFromWhatsApp } from "../lib/exportunity/supplierQuoteIntake";
 
 const router = Router();
 
@@ -326,6 +327,20 @@ async function handleMessageInbound(req: Request, res: Response) {
         raw: { from: (req.body as any)?.From, to: (req.body as any)?.To },
         inboundLogId: inboundLog.id,
         resolutionSource: inboundContext.resolutionSource,
+        ...(channel === "whatsapp" &&
+        String((req.body as any)?.OriginalRepliedMessageSid || "").trim()
+          ? {
+              replyContext: {
+                originalRepliedMessageSid: String(
+                  (req.body as any)?.OriginalRepliedMessageSid,
+                ).trim(),
+                originalRepliedMessageSender:
+                  String(
+                    (req.body as any)?.OriginalRepliedMessageSender || "",
+                  ).trim() || null,
+              },
+            }
+          : {}),
         ...(media.count ? { media } : {}),
         ...(channel === "whatsapp" && (req.body as any)?.ProfileName ? { profileName: String((req.body as any)?.ProfileName) } : {}),
       },
@@ -391,8 +406,44 @@ async function handleMessageInbound(req: Request, res: Response) {
     resolutionSource: inboundContext.resolutionSource,
   });
 
+  let suppressSupplierQuoteAutoReply = false;
+  if (
+    channel === "whatsapp" &&
+    String(tenantKey || "").trim().toLowerCase() === "exportunity"
+  ) {
+    try {
+      const capture = await captureSupplierQuoteFromWhatsApp({
+        tenantId,
+        communicationsMessageId: msg.id,
+      });
+      suppressSupplierQuoteAutoReply = capture.suppressAutoReply;
+      if (capture.handled) {
+        await logEvent(tenantId, "twilio.supplier_quote.inbound_captured", {
+          communicationsMessageId: msg.id,
+          quoteIntakeId: capture.quoteIntake.id,
+          correlationStatus: capture.quoteIntake.correlation.status,
+          optOutDetected: capture.quoteIntake.optOut.detected,
+          autoReplySuppressed: true,
+        });
+      }
+    } catch (error: any) {
+      await logEvent(tenantId, "twilio.supplier_quote.capture_failed", {
+        communicationsMessageId: msg.id,
+        code: String(error?.code || error?.name || "capture_failed").slice(
+          0,
+          120,
+        ),
+      });
+    }
+  }
+
   // Only auto-reply once (idempotent on MessageSid).
-  if (inserted.length && shouldAutoReply(tenantKey) && bodyText) {
+  if (
+    inserted.length &&
+    shouldAutoReply(tenantKey) &&
+    bodyText &&
+    !suppressSupplierQuoteAutoReply
+  ) {
     try {
       const reply = await replyRouter(bodyText, { tenantId, tenantKey: tenantKey || "exportunity" });
       const out = await sendOutboundCommunication({

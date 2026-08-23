@@ -1,16 +1,17 @@
 import { useMemo } from "react";
 import { Redirect, useLocation } from "wouter";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { ExternalLink, Package, Share2, ShoppingCart, Store, Users } from "lucide-react";
 
 import { AppProBottomNav } from "@/components/agentic/AppProBottomNav";
 import { AppProTopBar } from "@/components/agentic/AppProTopBar";
+import { ProSideNav } from "@/components/agentic/ProSideNav";
 import { WalletStrip } from "@/components/agentic/WalletStrip";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest } from "@/lib/queryClient";
 import { useSession } from "@/lib/session";
 
 type Seller = {
@@ -122,20 +123,6 @@ export default function AppProShopPage() {
     staleTime: 8_000,
   });
 
-  const createDemoSeller = useMutation({
-    mutationFn: async () => apiRequest("/api/marketplace/demo/create-seller", "POST", { userId: user?.id }),
-    onSuccess: async () => {
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["/api/marketplace/sellers/by-user", user?.id] }),
-        queryClient.invalidateQueries({ queryKey: ["/api/marketplace/sellers"] }),
-      ]);
-      toast({ title: "Shop enabled", description: "Your shop space is now active." });
-    },
-    onError: (error: any) => {
-      toast({ title: "Activation failed", description: error?.message || "Could not enable shop", variant: "destructive" });
-    },
-  });
-
   const shopUrl = useMemo(() => {
     if (!sellerQuery.data?.id) return "";
     if (typeof window === "undefined") return `/marketplace/sellers/${sellerQuery.data.id}`;
@@ -162,30 +149,32 @@ export default function AppProShopPage() {
 
   if (!sellerQuery.data) {
     return (
-      <div className="min-h-screen bg-gray-950 text-white pb-24">
-        <AppProTopBar subtitle="Shop" />
-        <WalletStrip href="/pro/money" />
-        <div className="max-w-xl mx-auto px-4 py-4">
-          <Card className="bg-white/5 border-white/10">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <Store className="h-5 w-5 text-amber-300" />
-                Shop setup
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4 text-sm text-white/75">
-              <p>Activate your shop to manage products, client orders, and customer conversations from one place.</p>
-              <Button
-                className="w-full bg-amber-500 hover:bg-amber-400 text-black font-semibold"
-                onClick={() => createDemoSeller.mutate()}
-                disabled={createDemoSeller.isPending}
-              >
-                {createDemoSeller.isPending ? "Activating..." : "Activate my shop"}
-              </Button>
-            </CardContent>
-          </Card>
+      <div className="min-h-screen bg-[#F7F8FA] pb-24 text-slate-950">
+        <ProSideNav activeKey="operations" />
+        <div className="md:ml-56">
+          <AppProTopBar subtitle="Shop" />
+          <WalletStrip href="/pro/money" />
+          <div className="mx-auto max-w-xl px-4 py-6">
+            <Card className="border-slate-200 bg-white shadow-sm">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <Store className="h-5 w-5 text-[#B26F00]" />
+                  Seller workspace
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4 text-sm text-slate-600">
+                <p>Complete the governed seller application before products, orders, and customer conversations are activated.</p>
+                <Button
+                  className="w-full bg-[#F5A623] font-semibold text-[#07111F] hover:bg-[#F8C45B]"
+                  onClick={() => setLocation("/apply/shop")}
+                >
+                  Start seller application
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+          <AppProBottomNav activeKey="operations" />
         </div>
-        <AppProBottomNav activeKey="operations" />
       </div>
     );
   }
@@ -197,47 +186,49 @@ export default function AppProShopPage() {
   const clients = clientsQuery.data?.clients || [];
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white pb-24">
+    <div className="min-h-screen bg-[#F7F8FA] pb-24 text-slate-950">
+      <ProSideNav activeKey="operations" />
+      <div className="md:ml-56">
       <AppProTopBar subtitle="Shop" />
       <WalletStrip href="/pro/money" />
-      <div className="max-w-xl mx-auto px-4 py-4 space-y-4">
-        <Card className="bg-white/5 border-white/10">
+      <div className="mx-auto max-w-xl space-y-4 px-4 py-6">
+        <Card className="border-slate-200 bg-white shadow-sm">
           <CardContent className="pt-5 space-y-4">
             <div>
-              <div className="text-xs uppercase tracking-[0.12em] text-white/50">My Shop</div>
+              <div className="text-xs uppercase tracking-[0.12em] text-slate-500">Seller workspace</div>
               <div className="text-lg font-semibold mt-1">{seller.shopName || "Shop"}</div>
-              <div className="text-xs text-white/55 mt-1">Status: {seller.status}</div>
+              <div className="mt-1 text-xs text-slate-500">Status: {seller.status}</div>
             </div>
             <div className="grid grid-cols-3 gap-2 text-xs">
-              <div className="rounded-lg border border-white/10 bg-black/30 p-2">
-                <div className="text-white/50">Products</div>
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-2">
+                <div className="text-slate-500">Products</div>
                 <div className="text-sm font-semibold">{stats?.totalProducts ?? products.length}</div>
               </div>
-              <div className="rounded-lg border border-white/10 bg-black/30 p-2">
-                <div className="text-white/50">Orders</div>
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-2">
+                <div className="text-slate-500">Orders</div>
                 <div className="text-sm font-semibold">{stats?.totalOrders ?? orders.length}</div>
               </div>
-              <div className="rounded-lg border border-white/10 bg-black/30 p-2">
-                <div className="text-white/50">Sales</div>
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-2">
+                <div className="text-slate-500">Sales</div>
                 <div className="text-sm font-semibold">{formatXof(stats?.totalSales ?? 0)}</div>
               </div>
             </div>
             <div className="grid grid-cols-3 gap-2">
               <Button
                 variant="outline"
-                className="border-white/15 text-white/85"
+                className="border-slate-300 text-slate-700"
                 onClick={() => setLocation(`/marketplace/sellers/${seller.id}`)}
               >
                 <ExternalLink className="h-4 w-4 mr-2" />
                 Open
               </Button>
-              <Button variant="outline" className="border-white/15 text-white/85" onClick={handleShareShop}>
+              <Button variant="outline" className="border-slate-300 text-slate-700" onClick={handleShareShop}>
                 <Share2 className="h-4 w-4 mr-2" />
                 Share
               </Button>
               <Button
                 variant="outline"
-                className="border-white/15 text-white/85"
+                className="border-slate-300 text-slate-700"
                 onClick={() => setLocation("/seller-dashboard")}
               >
                 Edit
@@ -247,7 +238,7 @@ export default function AppProShopPage() {
         </Card>
 
         <Tabs defaultValue="products">
-          <TabsList className="grid grid-cols-3 w-full bg-white/5 border border-white/10">
+          <TabsList className="grid w-full grid-cols-3 border border-slate-200 bg-white">
             <TabsTrigger value="products">Products</TabsTrigger>
             <TabsTrigger value="orders">Orders</TabsTrigger>
             <TabsTrigger value="clients">Clients</TabsTrigger>
@@ -255,60 +246,60 @@ export default function AppProShopPage() {
 
           <TabsContent value="products" className="mt-3 space-y-2">
             {products.slice(0, 8).map((product) => (
-              <Card key={product.id} className="bg-white/5 border-white/10">
+              <Card key={product.id} className="border-slate-200 bg-white shadow-sm">
                 <CardContent className="pt-4 flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <div className="text-sm font-semibold truncate">{product.name}</div>
-                    <div className="text-xs text-white/60 mt-1">
+                    <div className="mt-1 text-xs text-slate-600">
                       {formatXof(product.price)} · Stock {product.stockQuantity ?? 0}
                     </div>
                   </div>
-                  <div className="text-[11px] rounded-full border border-white/15 px-2 py-1 text-white/70">{product.status}</div>
+                  <div className="rounded-full border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] text-slate-600">{product.status}</div>
                 </CardContent>
               </Card>
             ))}
             {!products.length ? (
-              <Card className="bg-white/5 border-white/10">
-                <CardContent className="pt-6 text-sm text-white/65">No products yet. Add products from your seller dashboard.</CardContent>
+              <Card className="border-slate-200 bg-white shadow-sm">
+                <CardContent className="pt-6 text-sm text-slate-600">No products yet. Add products from your seller dashboard.</CardContent>
               </Card>
             ) : null}
           </TabsContent>
 
           <TabsContent value="orders" className="mt-3 space-y-2">
             {orders.slice(0, 8).map((order) => (
-              <Card key={order.id} className="bg-white/5 border-white/10">
+              <Card key={order.id} className="border-slate-200 bg-white shadow-sm">
                 <CardContent className="pt-4 space-y-1">
                   <div className="flex items-center justify-between gap-3">
                     <div className="text-sm font-semibold truncate">{order.orderNumber}</div>
-                    <div className="text-[11px] rounded-full border border-white/15 px-2 py-1 text-white/70">{order.status}</div>
+                    <div className="rounded-full border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] text-slate-600">{order.status}</div>
                   </div>
-                  <div className="text-xs text-white/65">{order.buyerName || "Client"} · {formatXof(order.total)}</div>
-                  <div className="text-[11px] text-white/45">{formatDateTime(order.createdAt)}</div>
+                  <div className="text-xs text-slate-600">{order.buyerName || "Client"} · {formatXof(order.total)}</div>
+                  <div className="text-[11px] text-slate-400">{formatDateTime(order.createdAt)}</div>
                 </CardContent>
               </Card>
             ))}
             {!orders.length ? (
-              <Card className="bg-white/5 border-white/10">
-                <CardContent className="pt-6 text-sm text-white/65">No orders yet.</CardContent>
+              <Card className="border-slate-200 bg-white shadow-sm">
+                <CardContent className="pt-6 text-sm text-slate-600">No orders yet.</CardContent>
               </Card>
             ) : null}
           </TabsContent>
 
           <TabsContent value="clients" className="mt-3 space-y-2">
             {clients.slice(0, 10).map((client) => (
-              <Card key={client.userId} className="bg-white/5 border-white/10">
+              <Card key={client.userId} className="border-slate-200 bg-white shadow-sm">
                 <CardContent className="pt-4 flex items-center justify-between gap-3">
                   <div className="min-w-0">
                     <div className="text-sm font-semibold truncate">{client.displayName || `Client ${client.userId}`}</div>
-                    <div className="text-[11px] text-white/55">Last top-up {formatXof(client.lastAmount)}</div>
+                    <div className="text-[11px] text-slate-500">Last top-up {formatXof(client.lastAmount)}</div>
                   </div>
-                  <div className="text-[11px] text-white/45">{formatDateTime(client.lastAt)}</div>
+                  <div className="text-[11px] text-slate-400">{formatDateTime(client.lastAt)}</div>
                 </CardContent>
               </Card>
             ))}
             {!clients.length ? (
-              <Card className="bg-white/5 border-white/10">
-                <CardContent className="pt-6 text-sm text-white/65">No client records yet.</CardContent>
+              <Card className="border-slate-200 bg-white shadow-sm">
+                <CardContent className="pt-6 text-sm text-slate-600">No client records yet.</CardContent>
               </Card>
             ) : null}
           </TabsContent>
@@ -316,15 +307,15 @@ export default function AppProShopPage() {
         </Tabs>
 
         <div className="grid grid-cols-3 gap-2">
-          <Button variant="outline" className="border-white/15 text-white/85" onClick={() => setLocation("/pro/threads/sales")}>
+          <Button variant="outline" className="border-slate-300 text-slate-700" onClick={() => setLocation("/pro/threads/sales")}>
             <Users className="h-4 w-4 mr-2" />
             Clients
           </Button>
-          <Button variant="outline" className="border-white/15 text-white/85" onClick={() => setLocation("/pro/threads/procurement")}>
+          <Button variant="outline" className="border-slate-300 text-slate-700" onClick={() => setLocation("/pro/threads/procurement")}>
             <ShoppingCart className="h-4 w-4 mr-2" />
             Orders
           </Button>
-          <Button variant="outline" className="border-white/15 text-white/85" onClick={() => setLocation("/pro/threads/team")}>
+          <Button variant="outline" className="border-slate-300 text-slate-700" onClick={() => setLocation("/pro/threads/team")}>
             <Package className="h-4 w-4 mr-2" />
             Team
           </Button>
@@ -332,6 +323,7 @@ export default function AppProShopPage() {
       </div>
 
       <AppProBottomNav activeKey="operations" />
+      </div>
     </div>
   );
 }

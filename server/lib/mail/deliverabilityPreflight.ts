@@ -1,4 +1,8 @@
 import dns from "node:dns/promises";
+import {
+  analyzeMailAuthRecords,
+  type MailDkimLookup,
+} from "./authRecordPolicy";
 
 type DeliverabilityPreflightResult = {
   domain: string;
@@ -29,16 +33,6 @@ async function resolveTxtStrings(name: string): Promise<string[]> {
   return rows.map((parts) => parts.join("")).map((v) => v.trim()).filter(Boolean);
 }
 
-function hasTxtPrefix(records: string[], prefix: string) {
-  const p = prefix.toLowerCase();
-  return records.some((r) => String(r || "").trim().toLowerCase().startsWith(p));
-}
-
-function hasTxtIncludes(records: string[], needle: string) {
-  const n = needle.toLowerCase();
-  return records.some((r) => String(r || "").toLowerCase().includes(n));
-}
-
 export async function preflightOutboundDomainDeliverability(opts: {
   domain: string;
   cacheTtlMs?: number;
@@ -65,7 +59,7 @@ export async function preflightOutboundDomainDeliverability(opts: {
   const warnings: string[] = [];
   let spfRecords: string[] = [];
   let dmarcRecords: string[] = [];
-  let dkimRecords: string[] = [];
+  const dkimLookups: MailDkimLookup[] = [];
 
   try {
     spfRecords = await resolveTxtStrings(domain);
@@ -84,21 +78,25 @@ export async function preflightOutboundDomainDeliverability(opts: {
   // Also check s1 selector as configured in OpenDKIM setup.
   const dkimNames = [`s1._domainkey.${domain}`, `mail._domainkey.${domain}`, `default._domainkey.${domain}`];
   for (const name of dkimNames) {
+    const selector = name.split("._domainkey.")[0] || "";
     try {
       const records = await resolveTxtStrings(name);
-      dkimRecords = dkimRecords.concat(records);
+      dkimLookups.push({ selector, records });
     } catch {
-      // ignore; we'll decide based on aggregate
+      dkimLookups.push({ selector, records: [] });
     }
   }
 
-  const hasSpf = hasTxtPrefix(spfRecords, "v=spf1");
-  const hasDmarc = hasTxtPrefix(dmarcRecords, "v=dmarc1");
-  const hasDkim = hasTxtIncludes(dkimRecords, "v=dkim1");
-
-  if (!hasSpf) warnings.push("spf_missing");
-  if (!hasDkim) warnings.push("dkim_missing");
-  if (!hasDmarc) warnings.push("dmarc_missing");
+  const recordAnalysis = analyzeMailAuthRecords({
+    spfRecords,
+    dmarcRecords,
+    dkimLookups,
+  });
+  const hasSpf = recordAnalysis.spfOk;
+  const hasDmarc = recordAnalysis.dmarcOk;
+  const hasDkim = recordAnalysis.dkimOk;
+  const dkimRecords = recordAnalysis.dkimRecords;
+  warnings.push(...recordAnalysis.warnings);
 
   const value: DeliverabilityPreflightResult = {
     domain,
@@ -131,9 +129,23 @@ export async function assertOutboundDeliverabilityReady(opts: { fromDomain: stri
   // Strictly required for inboxing with major providers.
   if (!preflight.hasSpf || !preflight.hasDkim) {
     const missing: string[] = [];
-    if (!preflight.hasSpf) missing.push("SPF");
-    if (!preflight.hasDkim) missing.push("DKIM");
-    const warnings = preflight.warnings.filter((w) => /_missing$/.test(w)).join(", ");
+    if (!preflight.hasSpf) {
+      missing.push(
+        preflight.warnings.includes("spf_multiple")
+          ? "SPF (multiple records)"
+          : "SPF",
+      );
+    }
+    if (!preflight.hasDkim) {
+      missing.push(
+        preflight.warnings.includes("dkim_multiple")
+          ? "DKIM (multiple records for one selector)"
+          : "DKIM",
+      );
+    }
+    const warnings = preflight.warnings
+      .filter((warning) => /_(?:missing|multiple)$/.test(warning))
+      .join(", ");
 
     // Log warning but don't throw if MAIL_DELIVERABILITY_WARN_ONLY is true
     // This allows emails to be sent with missing DNS records (useful for internal/dev)
@@ -141,7 +153,7 @@ export async function assertOutboundDeliverabilityReady(opts: { fromDomain: stri
       String(process.env.MAIL_DELIVERABILITY_WARN_ONLY || "").trim().toLowerCase()
     );
 
-    const errorMsg = `Outbound deliverability misconfigured for ${domain}: missing ${missing.join(" & ")}. Fix DNS (seen: ${warnings || "unknown"}).`;
+    const errorMsg = `Outbound deliverability misconfigured for ${domain}: invalid or missing ${missing.join(" & ")}. Fix DNS (seen: ${warnings || "unknown"}).`;
 
     if (warnOnly) {
       console.warn(`[deliverability-preflight] WARNING: ${errorMsg}`);

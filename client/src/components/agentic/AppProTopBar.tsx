@@ -32,49 +32,56 @@ export function AppProTopBar({ subtitle, homeHref = "/pro/operations" }: AppProT
   const [, setLocation] = useLocation();
   const { user, logout } = useSession();
   const { tenant } = useTenant();
+  const includeTenantSwitcher = __BUILD_INCLUDE_OTHER_TENANT_UI__;
 
   return (
-    <header className="sticky top-0 z-30 border-b border-white/10 bg-gray-950/95 backdrop-blur">
+    <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 text-[#07111F] backdrop-blur-xl">
       <div className="mx-auto flex w-full max-w-3xl items-center justify-between px-4 py-3">
         <button
           type="button"
-          className="flex items-center gap-2 rounded-lg px-2 py-1 text-left hover:bg-white/5"
+          className="flex items-center gap-3 rounded-lg px-2 py-1 text-left hover:bg-slate-50"
           onClick={() => setLocation(homeHref)}
           aria-label="Open Operations Center"
           data-testid="app-pro-home-logo"
         >
-          <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-amber-400 via-amber-500 to-amber-700" />
+          <img src="/tenants/exportunity/official/favicon-64.png" alt="" className="h-8 w-8 rounded-lg object-contain" />
           <div>
-            <div className="text-sm font-semibold leading-none text-white">{tenant?.name || "Company"}</div>
-            <div className="mt-1 text-[11px] leading-none text-white/55">{subtitle || "Exportunity Pro"}</div>
+            <div className="text-sm font-black leading-none text-slate-950">{tenant?.name || "Exportunity"}</div>
+            <div className="mt-1 text-[11px] font-bold leading-none text-slate-500">{subtitle || "GTN Operations"}</div>
           </div>
         </button>
 
         <div className="flex items-center gap-2">
-          <TenantSwitcher />
+          {includeTenantSwitcher ? (
+            <TenantSwitcher />
+          ) : (
+            <span className="hidden rounded-full border border-[#F5A623]/35 bg-[#FFF8E8] px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.16em] text-[#8A5700] sm:inline-flex">
+              GTN workspace
+            </span>
+          )}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
                 variant="outline"
-                className="h-9 rounded-full border-white/15 bg-white/5 px-3 text-white hover:bg-white/10"
+                className="h-9 rounded-full border-slate-200 bg-white px-3 text-slate-700 hover:border-[#F5A623] hover:bg-[#FFF8E8] hover:text-slate-950"
                 data-testid="app-pro-account-menu"
               >
-                <span className="mr-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-amber-500/20 text-[11px] font-semibold text-amber-200">
+                <span className="mr-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-[#F5A623]/20 text-[11px] font-black text-[#8A5700]">
                   {initialsOf(user?.displayName)}
                 </span>
                 <span className="max-w-[120px] truncate text-xs">{user?.displayName || "Account"}</span>
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56 border-white/10 bg-gray-950 text-white">
-              <DropdownMenuLabel className="text-[11px] text-white/70">Account</DropdownMenuLabel>
-              <DropdownMenuSeparator className="bg-white/10" />
+            <DropdownMenuContent align="end" className="w-56 border-slate-200 bg-white text-slate-800">
+              <DropdownMenuLabel className="text-[11px] text-slate-500">Account</DropdownMenuLabel>
+              <DropdownMenuSeparator className="bg-slate-100" />
               <DropdownMenuItem className="cursor-pointer gap-2" onClick={() => setLocation("/pro/account")}>
                 <UserCircle2 className="h-4 w-4" />
                 Account
               </DropdownMenuItem>
-              <DropdownMenuSeparator className="bg-white/10" />
+              <DropdownMenuSeparator className="bg-slate-100" />
               <DropdownMenuItem
-                className="cursor-pointer gap-2 text-red-200 focus:text-red-100"
+                className="cursor-pointer gap-2 text-red-700 focus:text-red-800"
                 onClick={() => {
                   logout();
                   setLocation("/pro/login?next=%2Fpro");

@@ -208,21 +208,26 @@ export function MailPage() {
   }, [mode, selectedThreadId, threadsQuery.data, workOrdersQuery.data]);
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] bg-gray-950">
-      <div className="container mx-auto py-8 px-6 space-y-6">
-        <div className="flex items-center justify-between gap-3">
+    <div
+      data-testid="exportunity-mail-workspace"
+      className="min-h-[calc(100vh-var(--admin-header-height,4rem))] bg-[#F7F8FA] text-[#07111F]"
+    >
+      <div className="container mx-auto space-y-6 px-4 py-6 md:px-6">
+        <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
           <div>
-            <h1 className="text-2xl font-semibold text-white">Mail</h1>
-            <div className="text-xs text-white/60">Platform-native mailbox (SSO)</div>
+            <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#8A5700]">GTN communications</p>
+            <h1 className="mt-1 text-2xl font-black tracking-tight text-slate-950">Mailbox operations</h1>
+            <div className="text-xs font-medium text-slate-500">Platform-native email workspace with governed access</div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex w-full items-center gap-2 sm:w-auto">
             <Input
               value={agentKey}
               onChange={(e) => setAgentKey(e.target.value)}
-              placeholder="agent key (e.g. support)"
-              className="w-56"
+              placeholder="Agent key (for example, support)"
+              aria-label="Mailbox agent key"
+              className="min-w-0 flex-1 border-slate-200 bg-white text-slate-950 sm:w-64 sm:flex-none"
             />
-            <Button variant="secondary" onClick={() => {
+            <Button variant="outline" className="border-slate-200 bg-white text-slate-700 hover:border-[#F5A623] hover:bg-[#FFF8E8]" onClick={() => {
               queryClient.invalidateQueries({ queryKey: [threadsQueryKey] });
               queryClient.invalidateQueries({ queryKey: [workOrdersQueryKey] });
             }}>
@@ -231,26 +236,36 @@ export function MailPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <Card className="bg-gray-900 border-gray-800">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          <Card className="border-slate-200 bg-white text-slate-950 shadow-sm">
             <CardHeader>
-              <div className="flex items-center justify-between gap-2">
-                <CardTitle className="text-white">{mode === "work_orders" ? "Work Orders" : "Threads"}</CardTitle>
+              <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center lg:flex-col lg:items-start xl:flex-row xl:items-center">
+                <CardTitle className="text-slate-950">{mode === "work_orders" ? "Needs reply" : "All conversations"}</CardTitle>
                 <div className="flex items-center gap-2">
-                  <Button size="sm" variant={mode === "work_orders" ? "secondary" : "ghost"} onClick={() => setMode("work_orders")}>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className={mode === "work_orders" ? "border-[#F5A623]/40 bg-[#FFF0C7] font-bold text-[#8A5700] hover:bg-[#FFF0C7]" : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"}
+                    onClick={() => setMode("work_orders")}
+                  >
                     Needs reply
                   </Button>
-                  <Button size="sm" variant={mode === "threads" ? "secondary" : "ghost"} onClick={() => setMode("threads")}>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className={mode === "threads" ? "border-[#F5A623]/40 bg-[#FFF0C7] font-bold text-[#8A5700] hover:bg-[#FFF0C7]" : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"}
+                    onClick={() => setMode("threads")}
+                  >
                     All
                   </Button>
                 </div>
               </div>
             </CardHeader>
             <CardContent>
-              <ScrollArea className="h-[70vh] pr-3">
+              <ScrollArea className="h-[36vh] pr-3 lg:h-[70vh]">
                 <div className="space-y-2">
                   {rows.length === 0 ? (
-                    <div className="text-sm text-white/60">No items.</div>
+                    <div className="text-sm text-slate-500">No conversations found for this agent.</div>
                   ) : (
                     rows.map((row: any) => {
                       const threadId = mode === "work_orders" ? row.workOrder.threadId : row.id;
@@ -261,16 +276,16 @@ export function MailPage() {
                         <button
                           key={threadId}
                           onClick={() => setSelectedThreadId(threadId)}
-                          className={`w-full text-left rounded-lg border px-3 py-2 ${
-                            selected ? "border-amber-500 bg-amber-500/10" : "border-gray-800 bg-gray-950/40"
+                          className={`w-full rounded-xl border px-3 py-3 text-left transition-colors ${
+                            selected ? "border-[#F5A623]/55 bg-[#FFF8E8]" : "border-slate-200 bg-slate-50/70 hover:border-slate-300 hover:bg-white"
                           }`}
                         >
                           <div className="flex items-center justify-between gap-2">
-                            <div className="truncate text-sm text-white">{subject || "(no subject)"}</div>
-                            {mode === "work_orders" && dueLabel && <Badge className="bg-white/10 text-white">{dueLabel}</Badge>}
+                            <div className="truncate text-sm font-bold text-slate-950">{subject || "(no subject)"}</div>
+                            {mode === "work_orders" && dueLabel && <Badge className="border border-slate-200 bg-white font-semibold text-slate-700 hover:bg-white">{dueLabel}</Badge>}
                           </div>
                           {mode === "work_orders" && (
-                            <div className="mt-1 text-xs text-white/60">From: {row.workOrder?.senderEmail}</div>
+                            <div className="mt-1 text-xs font-medium text-slate-500">From: {row.workOrder?.senderEmail}</div>
                           )}
                         </button>
                       );
@@ -281,26 +296,26 @@ export function MailPage() {
             </CardContent>
           </Card>
 
-          <Card className="bg-gray-900 border-gray-800 lg:col-span-2">
+          <Card className="border-slate-200 bg-white text-slate-950 shadow-sm lg:col-span-2">
             <CardHeader>
-              <CardTitle className="text-white">{selectedThread?.subject || "Conversation"}</CardTitle>
+              <CardTitle className="text-slate-950">{selectedThread?.subject || "Conversation workspace"}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <Input value={composeTo} onChange={(e) => setComposeTo(e.target.value)} placeholder="To (comma-separated)" />
-                <Input value={composeSubject} onChange={(e) => setComposeSubject(e.target.value)} placeholder="Subject" />
+                <Input className="border-slate-200 bg-white text-slate-950" value={composeTo} onChange={(e) => setComposeTo(e.target.value)} placeholder="To (comma-separated)" />
+                <Input className="border-slate-200 bg-white text-slate-950" value={composeSubject} onChange={(e) => setComposeSubject(e.target.value)} placeholder="Subject" />
                 <Button
                   disabled={sendMutation.isPending}
                   onClick={() => sendMutation.mutate()}
-                  className="bg-amber-500 hover:bg-amber-600 text-gray-950 font-semibold"
+                  className="bg-[#F5A623] font-bold text-[#07111F] hover:bg-[#E49718]"
                 >
                   Send
                 </Button>
               </div>
-              <Textarea value={composeBody} onChange={(e) => setComposeBody(e.target.value)} placeholder="Compose…" className="min-h-28" />
+              <Textarea value={composeBody} onChange={(e) => setComposeBody(e.target.value)} placeholder="Compose…" className="min-h-28 border-slate-200 bg-white text-slate-950" />
 
-              <div className="border-t border-gray-800 pt-4">
-                <div className="text-sm font-medium text-white mb-2">Messages</div>
+              <div className="border-t border-slate-200 pt-4">
+                <div className="mb-2 text-sm font-bold text-slate-950">Messages</div>
                 <ScrollArea className="h-[38vh] pr-3">
                   <div className="space-y-2">
                     {(messagesQuery.data?.items ?? []).map((m) => {
@@ -309,16 +324,16 @@ export function MailPage() {
                         <button
                           key={m.id}
                           onClick={() => setSelectedMessageId(m.id)}
-                          className={`w-full text-left rounded-lg border px-3 py-2 ${
-                            selected ? "border-blue-500 bg-blue-500/10" : "border-gray-800 bg-gray-950/40"
+                          className={`w-full rounded-xl border px-3 py-3 text-left transition-colors ${
+                            selected ? "border-sky-300 bg-sky-50" : "border-slate-200 bg-slate-50/70 hover:border-slate-300 hover:bg-white"
                           }`}
                         >
                           <div className="flex items-center justify-between gap-2">
-                            <Badge className="bg-white/10 text-white">{m.direction}</Badge>
-                            <div className="text-xs text-white/60">{new Date(m.createdAt).toLocaleString()}</div>
+                            <Badge className="border border-sky-200 bg-white font-semibold text-sky-800 hover:bg-white">{m.direction}</Badge>
+                            <div className="text-xs text-slate-500">{new Date(m.createdAt).toLocaleString()}</div>
                           </div>
-                          <div className="mt-1 text-xs text-white/60">From: {m.fromEmail}</div>
-                          <div className="mt-2 text-sm text-white/80 line-clamp-3 whitespace-pre-wrap">
+                          <div className="mt-1 text-xs font-medium text-slate-500">From: {m.fromEmail}</div>
+                          <div className="mt-2 line-clamp-3 whitespace-pre-wrap text-sm leading-6 text-slate-700">
                             {m.textBody || "(no text body indexed)"}
                           </div>
                         </button>
@@ -328,23 +343,23 @@ export function MailPage() {
                 </ScrollArea>
               </div>
 
-              <div className="border-t border-gray-800 pt-4 space-y-3">
+              <div className="space-y-3 border-t border-slate-200 pt-4">
                 <div className="flex items-center justify-between">
-                  <div className="text-sm font-medium text-white">Reply</div>
-                  <Button disabled={replyMutation.isPending} variant="secondary" onClick={() => replyMutation.mutate()}>
+                  <div className="text-sm font-bold text-slate-950">Reply</div>
+                  <Button disabled={replyMutation.isPending} variant="outline" className="border-slate-200 bg-white text-slate-700 hover:border-[#F5A623] hover:bg-[#FFF8E8]" onClick={() => replyMutation.mutate()}>
                     Reply
                   </Button>
                 </div>
-                <Textarea value={replyBody} onChange={(e) => setReplyBody(e.target.value)} placeholder="Write a reply…" className="min-h-24" />
+                <Textarea value={replyBody} onChange={(e) => setReplyBody(e.target.value)} placeholder="Write a reply…" className="min-h-24 border-slate-200 bg-white text-slate-950" />
 
                 {messageDetailQuery.data?.attachments?.length ? (
                   <div className="pt-2">
-                    <div className="text-xs text-white/70 mb-2">Attachments</div>
+                    <div className="mb-2 text-xs font-semibold text-slate-600">Attachments</div>
                     <div className="flex flex-wrap gap-2">
                       {messageDetailQuery.data.attachments.map((a) => (
                         <a
                           key={a.id}
-                          className="text-xs text-amber-300 hover:underline"
+                          className="rounded-full border border-[#F5A623]/30 bg-[#FFF8E8] px-3 py-1 text-xs font-bold text-[#8A5700] hover:underline"
                           href={`/api/mail/attachments/${a.id}/download?agentKey=${encodeURIComponent(agentKey)}`}
                           target="_blank"
                           rel="noreferrer"

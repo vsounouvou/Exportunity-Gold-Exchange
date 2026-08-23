@@ -17,6 +17,11 @@ import { processIncomingWhatsAppMessage } from "../lib/whatsapp/orchestrator";
 import { getWhatsAppProvider } from "../lib/whatsapp/provider";
 import { normalizeWaPhoneE164, hashOtp } from "../lib/whatsapp/waGateway";
 import { canRunLegacyWhatsAppAutomation } from "../lib/communications/inbound-auto-reply-policy";
+import {
+  metaWebhookSecurityStatus,
+  verifyMetaWebhookChallenge,
+  verifyMetaWebhookSignature,
+} from "../lib/integrations/metaWebhookSecurity";
 import { isChairmanAssistantUser } from "./utils/auth";
 import { AGENT_KEYS } from "../agents";
 
@@ -437,19 +442,32 @@ whatsappApiRouter.post("/send", requireAuth, requireEceStaff, async (req: Authed
 });
 
 export async function whatsappWebhookVerify(req: Request, res: Response) {
-  const mode = req.query["hub.mode"];
-  const token = req.query["hub.verify_token"];
-  const challenge = req.query["hub.challenge"];
-
-  if (mode === "subscribe" && token === process.env.WHATSAPP_VERIFY_TOKEN) {
-    return res.status(200).send(challenge);
+  const verification = verifyMetaWebhookChallenge({
+    purpose: "whatsapp",
+    mode: req.query["hub.mode"],
+    verifyToken: req.query["hub.verify_token"],
+    challenge: req.query["hub.challenge"],
+  });
+  if (verification.ok) {
+    return res.status(200).type("text/plain").send(verification.challenge);
+  }
+  if (!metaWebhookSecurityStatus("whatsapp").verifyTokenConfigured) {
+    return res.status(503).json({ error: "Meta webhook verification is not configured" });
   }
   return res.sendStatus(403);
 }
 
 export async function whatsappWebhook(req: AuthedRequest, res: Response) {
   const signature = req.headers["x-hub-signature-256"] as string | undefined;
-  if (!provider.verifySignature(req.rawBody, signature)) {
+  const verification = verifyMetaWebhookSignature({
+    purpose: "whatsapp",
+    rawBody: req.rawBody,
+    signatureHeader: signature,
+  });
+  if (!verification.ok) {
+    if (verification.reason === "signing_secret_not_configured") {
+      return res.status(503).json({ error: "Meta webhook signature verification is not configured" });
+    }
     return res.status(401).json({ error: "Invalid signature" });
   }
 

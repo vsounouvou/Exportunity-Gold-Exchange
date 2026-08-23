@@ -65,35 +65,39 @@ export function NotificationsPage() {
   });
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] bg-gray-950">
-      <div className="container mx-auto py-8 px-6 space-y-6">
+    <div data-testid="exportunity-notifications" className="min-h-[calc(100vh-var(--admin-header-height,4rem))] bg-[#F7F8FA] text-[#07111F]">
+      <div className="container mx-auto space-y-6 px-4 py-6 md:px-6">
         <div className="flex items-center justify-between gap-3">
-          <h1 className="text-2xl font-semibold text-white">Notifications</h1>
+          <div>
+            <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#8A5700]">GTN account activity</p>
+            <h1 className="mt-1 text-2xl font-black tracking-tight text-slate-950">Notifications</h1>
+          </div>
           <div className="flex items-center gap-2">
             <Button
-              variant="secondary"
+              variant="outline"
+              className="border-slate-200 bg-white text-slate-700 hover:border-[#F5A623] hover:bg-[#FFF8E8]"
               disabled={!unreadIds.length || markReadMutation.isPending}
               onClick={() => markReadMutation.mutate(unreadIds)}
             >
               Mark all read
             </Button>
-            <Button variant="secondary" onClick={() => queryClient.invalidateQueries({ queryKey: ["/api/notifications"] })}>
+            <Button variant="outline" className="border-slate-200 bg-white text-slate-700 hover:border-[#F5A623] hover:bg-[#FFF8E8]" onClick={() => queryClient.invalidateQueries({ queryKey: ["/api/notifications"] })}>
               Refresh
             </Button>
           </div>
         </div>
 
-        <Card className="bg-gray-900 border-gray-800">
+        <Card className="border-slate-200 bg-white text-slate-950 shadow-sm">
           <CardHeader>
-            <CardTitle className="text-white">Inbox</CardTitle>
+            <CardTitle className="text-slate-950">Activity inbox</CardTitle>
           </CardHeader>
           <CardContent>
             <ScrollArea className="h-[70vh] pr-3">
               <div className="space-y-3">
                 {notificationsQuery.isLoading ? (
-                  <div className="text-sm text-white/70">Loading…</div>
+                  <div className="text-sm text-slate-500">Loading…</div>
                 ) : rows.length === 0 ? (
-                  <div className="text-sm text-white/70">No notifications yet.</div>
+                  <div className="text-sm text-slate-500">No notifications yet.</div>
                 ) : (
                   rows.map((row) => {
                     const n = row.notification;
@@ -105,26 +109,27 @@ export function NotificationsPage() {
                         : n.status;
 
                     return (
-                      <div key={n.id} className="rounded-xl border border-gray-800 bg-gray-950/40 p-4">
+                      <div key={n.id} className="rounded-xl border border-slate-200 bg-slate-50/70 p-4">
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
                             <div className="flex items-center gap-2">
-                              <div className="truncate text-sm font-medium text-white">
+                              <div className="truncate text-sm font-bold text-slate-950">
                                 {n.title || n.eventKey}
                               </div>
-                              {unread && <Badge className="bg-amber-500 text-gray-950">Unread</Badge>}
+                              {unread && <Badge className="border border-[#F5A623]/35 bg-[#FFF0C7] font-bold text-[#8A5700] hover:bg-[#FFF0C7]">Unread</Badge>}
                             </div>
-                            <div className="mt-1 text-xs text-white/60">{new Date(n.createdAt).toLocaleString()}</div>
-                            {n.message && <div className="mt-2 text-sm text-white/80 whitespace-pre-wrap">{n.message}</div>}
-                            <div className="mt-2 text-xs text-white/60">{summary}</div>
+                            <div className="mt-1 text-xs text-slate-500">{new Date(n.createdAt).toLocaleString()}</div>
+                            {n.message && <div className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-700">{n.message}</div>}
+                            <div className="mt-2 text-xs font-medium text-slate-500">{summary}</div>
                             {lastDelivery?.errorMessage && (
-                              <div className="mt-1 text-xs text-red-300">Error: {lastDelivery.errorMessage}</div>
+                              <div className="mt-1 text-xs font-medium text-rose-700">Error: {lastDelivery.errorMessage}</div>
                             )}
                           </div>
                           <div className="shrink-0">
                             <Button
                               size="sm"
                               variant="ghost"
+                              className="text-slate-700 hover:bg-white hover:text-slate-950"
                               disabled={!unread || markReadMutation.isPending}
                               onClick={() => markReadMutation.mutate([n.id])}
                             >

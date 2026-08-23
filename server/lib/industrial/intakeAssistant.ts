@@ -4,10 +4,17 @@ import { assertAiEnabled, isAiEnabled } from "../ai-consent";
 import { EXPORTUNITY_COMPANY_CONTEXT } from "./companyContext";
 import {
   analyzeCommercialIntent,
+  COMMERCIAL_INTENTS,
+  resolveCommercialQualification,
   type CommercialIntentAnalysis,
 } from "./commercialIntentEngine";
 import { getExportunityAgentModelPolicy } from "./modelPolicy";
-import { normalizeIndustrialText } from "./taxonomy";
+import {
+  INDUSTRIAL_REQUIREMENT_TYPES,
+  INDUSTRIAL_TAXONOMY,
+  isIndustrialCategoryCode,
+  normalizeIndustrialText,
+} from "./taxonomy";
 
 export type IndustrialIntakeLanguage = "fr" | "en";
 
@@ -44,13 +51,14 @@ export type IndustrialIntakePreview = {
   customerType?: string;
   missingFields: string[];
   suggestedAction: CommercialIntentAnalysis["suggestedAction"];
+  classificationMode: "deterministic" | "semantic_fallback";
   response: string;
 };
 
 export type IndustrialIntakeAssistantReply = IndustrialIntakePreview & {
   /**
-   * The model may improve the wording, but deterministic routing remains the
-   * only authority for the technical case that is created from the intake.
+   * A model may improve wording or propose a semantic fallback, but validated
+   * deterministic rules remain the only action authority for a created case.
    */
   responseMode: "ai" | "guided";
 };
@@ -92,11 +100,369 @@ const CATEGORY_BY_REQUIREMENT_TYPE: Record<
   export_quotation: "export_ready_factory_products",
 };
 
+const SEMANTIC_FALLBACK_MIN_CONFIDENCE = 0.82;
+const VALID_INCOTERMS = new Set([
+  "EXW",
+  "FCA",
+  "FOB",
+  "CFR",
+  "CIF",
+  "CPT",
+  "CIP",
+  "DAP",
+  "DPU",
+  "DDP",
+]);
+
+export type SemanticCommercialIntentCandidate = {
+  intent: CommercialIntentAnalysis["intent"];
+  confidence: number;
+  productName?: string;
+  productCategory?: string;
+  specification?: string;
+  quantity?: string;
+  unit?: string;
+  requirementType?: IndustrialIntakePreview["requirementType"];
+  categoryCode?: string;
+  origin?: string;
+  destination?: string;
+  targetPrice?: string;
+  currency?: string;
+  deadline?: string;
+  frequency?: string;
+  incoterm?: string;
+  customerType?: string;
+};
+
+const nullableStringSchema = {
+  anyOf: [{ type: "string" }, { type: "null" }],
+} as const;
+
+/**
+ * Strict provider response shape. A model never returns an action mode; action
+ * authority remains in resolveCommercialQualification after validation.
+ */
+export const SEMANTIC_COMMERCIAL_INTENT_JSON_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    intent: { type: "string", enum: [...COMMERCIAL_INTENTS] },
+    confidence: { type: "number", minimum: 0, maximum: 1 },
+    productName: nullableStringSchema,
+    productCategory: nullableStringSchema,
+    specification: nullableStringSchema,
+    quantity: nullableStringSchema,
+    unit: nullableStringSchema,
+    requirementType: {
+      anyOf: [
+        { type: "string", enum: [...INDUSTRIAL_REQUIREMENT_TYPES] },
+        { type: "null" },
+      ],
+    },
+    categoryCode: {
+      anyOf: [
+        {
+          type: "string",
+          enum: INDUSTRIAL_TAXONOMY.map((category) => category.code),
+        },
+        { type: "null" },
+      ],
+    },
+    origin: nullableStringSchema,
+    destination: nullableStringSchema,
+    targetPrice: nullableStringSchema,
+    currency: nullableStringSchema,
+    deadline: nullableStringSchema,
+    frequency: nullableStringSchema,
+    incoterm: nullableStringSchema,
+    customerType: nullableStringSchema,
+  },
+  required: [
+    "intent",
+    "confidence",
+    "productName",
+    "productCategory",
+    "specification",
+    "quantity",
+    "unit",
+    "requirementType",
+    "categoryCode",
+    "origin",
+    "destination",
+    "targetPrice",
+    "currency",
+    "deadline",
+    "frequency",
+    "incoterm",
+    "customerType",
+  ],
+} as const;
+
+function boundedSemanticString(value: unknown, maxLength: number) {
+  if (value === null || value === undefined) return undefined;
+  if (typeof value !== "string" && typeof value !== "number") return undefined;
+  const normalized = String(value)
+    .replace(/[\u0000-\u001f\u007f]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return normalized ? normalized.slice(0, maxLength) : undefined;
+}
+
+function semanticProductCategory(value: unknown) {
+  const bounded = boundedSemanticString(value, 80);
+  if (!bounded) return undefined;
+  const normalized = normalizeIndustrialText(bounded).replace(/\s+/g, "_");
+  return normalized ? normalized.slice(0, 80) : undefined;
+}
+
+export function parseSemanticCommercialIntentCandidate(
+  value: unknown,
+): SemanticCommercialIntentCandidate | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const candidate = value as Record<string, unknown>;
+  const intent = COMMERCIAL_INTENTS.find(
+    (entry) => entry === String(candidate.intent || ""),
+  );
+  const confidence = Number(candidate.confidence);
+  if (
+    !intent ||
+    !Number.isFinite(confidence) ||
+    confidence < 0 ||
+    confidence > 1
+  )
+    return null;
+
+  const requirementType = INDUSTRIAL_REQUIREMENT_TYPES.find(
+    (entry) => entry === String(candidate.requirementType || ""),
+  );
+  const categoryCodeValue = boundedSemanticString(candidate.categoryCode, 80);
+  const categoryCode =
+    categoryCodeValue && isIndustrialCategoryCode(categoryCodeValue)
+      ? categoryCodeValue
+      : undefined;
+  const currencyValue = boundedSemanticString(candidate.currency, 8)?.toUpperCase();
+  const incotermValue = boundedSemanticString(candidate.incoterm, 8)?.toUpperCase();
+
+  return {
+    intent,
+    confidence,
+    productName: boundedSemanticString(candidate.productName, 160),
+    productCategory: semanticProductCategory(candidate.productCategory),
+    specification: boundedSemanticString(candidate.specification, 240),
+    quantity: boundedSemanticString(candidate.quantity, 80),
+    unit: boundedSemanticString(candidate.unit, 40),
+    requirementType,
+    categoryCode,
+    origin: boundedSemanticString(candidate.origin, 120),
+    destination: boundedSemanticString(candidate.destination, 120),
+    targetPrice: boundedSemanticString(candidate.targetPrice, 120),
+    currency:
+      currencyValue && /^[A-Z]{3,5}$/.test(currencyValue)
+        ? currencyValue
+        : undefined,
+    deadline: boundedSemanticString(candidate.deadline, 120),
+    frequency: boundedSemanticString(candidate.frequency, 120),
+    incoterm:
+      incotermValue && VALID_INCOTERMS.has(incotermValue)
+        ? incotermValue
+        : undefined,
+    customerType: boundedSemanticString(candidate.customerType, 80),
+  };
+}
+
+export function shouldUseSemanticCommercialFallback(
+  message: string,
+  preview: IndustrialIntakePreview,
+) {
+  if (mayRefineDeterministicBuyIntent(message, preview)) return true;
+  if (preview.product.name) return false;
+  if (preview.commercial) return true;
+
+  const normalized = normalizeIndustrialText(message);
+  const hasCommercialCue = includesAny(normalized, [
+    "looking for",
+    "recherche",
+    "cherche",
+    "procurement",
+    "purchase",
+    "acheter",
+    "buy",
+    "supplier",
+    "fournisseur",
+    "vendor",
+    "supply",
+    "approvisionnement",
+    "source",
+    "quote",
+    "devis",
+    "order",
+    "commande",
+    "need",
+    "besoin",
+    "wholesale",
+    "en gros",
+    "export",
+    "import",
+    "deliver",
+    "livrer",
+  ]);
+  const hasTradeStructure = Boolean(
+    preview.facts.quantityText &&
+      (preview.facts.deliveryDestination || preview.incoterm),
+  );
+  return hasCommercialCue || hasTradeStructure;
+}
+
+export function mayRefineDeterministicBuyIntent(
+  message: string,
+  preview: IndustrialIntakePreview,
+) {
+  if (preview.intent !== "BUY_PRODUCT" || !preview.product.name) return false;
+  const normalized = normalizeIndustrialText(message);
+  const explicitBuyingCue = includesAny(normalized, [
+    "acheter",
+    "achat",
+    "buy",
+    "purchase",
+    "commander",
+    "commande",
+    "order",
+    "besoin de",
+    "need",
+    "looking for",
+    "recherche",
+    "cherche",
+    "sourcer",
+    "source",
+    "approvisionner",
+    "procurement",
+  ]);
+  return !explicitBuyingCue;
+}
+
+function semanticQuantityText(candidate: SemanticCommercialIntentCandidate) {
+  return boundedSemanticString(
+    [candidate.quantity, candidate.unit].filter(Boolean).join(" "),
+    120,
+  );
+}
+
+export function applySemanticCommercialIntentCandidate(input: {
+  preview: IndustrialIntakePreview;
+  candidate: unknown;
+  language?: IndustrialIntakeLanguage;
+  allowIntentRefinement?: boolean;
+}): IndustrialIntakePreview {
+  const candidate = parseSemanticCommercialIntentCandidate(input.candidate);
+  if (
+    !candidate ||
+    candidate.confidence < SEMANTIC_FALLBACK_MIN_CONFIDENCE ||
+    (candidate.intent === "GENERAL_QUESTION" && !input.allowIntentRefinement)
+  ) {
+    return input.preview;
+  }
+
+  const semanticRequirementType =
+    candidate.requirementType ||
+    (candidate.categoryCode
+      ? (Object.entries(CATEGORY_BY_REQUIREMENT_TYPE).find(
+          ([, code]) => code === candidate.categoryCode,
+        )?.[0] as IndustrialIntakePreview["requirementType"] | undefined)
+      : undefined);
+  const canRefineDefaultRoute =
+    input.preview.requirementType === "industrial_input" &&
+    input.preview.categoryCode === "industrial_inputs_and_consumables";
+  const requirementType =
+    canRefineDefaultRoute && semanticRequirementType
+      ? semanticRequirementType
+      : input.preview.requirementType;
+  const categoryCode = CATEGORY_BY_REQUIREMENT_TYPE[requirementType];
+  const intent =
+    input.preview.intent === "GENERAL_QUESTION" ||
+    (input.allowIntentRefinement && input.preview.intent === "BUY_PRODUCT")
+      ? candidate.intent
+      : input.preview.intent;
+  const facts: IndustrialIntakeFacts = {
+    ...input.preview.facts,
+    quantityText:
+      input.preview.facts.quantityText || semanticQuantityText(candidate),
+    deliveryDestination:
+      input.preview.facts.deliveryDestination || candidate.destination,
+    requiredBy: input.preview.facts.requiredBy || candidate.deadline,
+  };
+  const product = {
+    name: input.preview.product.name || candidate.productName,
+    category:
+      input.preview.product.category || candidate.productCategory || categoryCode,
+    specification:
+      input.preview.product.specification || candidate.specification,
+    quantity:
+      input.preview.product.quantity ||
+      candidate.quantity ||
+      facts.quantityText,
+    unit: input.preview.product.unit || candidate.unit,
+  };
+  const commercialIntent = resolveCommercialQualification({
+    analysis: {
+      intent,
+      confidence:
+        input.preview.intent === "GENERAL_QUESTION" ||
+        input.allowIntentRefinement
+          ? candidate.confidence
+          : Math.max(input.preview.confidence, candidate.confidence),
+      commercial: intent !== "GENERAL_QUESTION",
+      product,
+      origin: input.preview.origin || candidate.origin,
+      destination:
+        input.preview.facts.deliveryDestination || candidate.destination,
+      targetPrice: input.preview.targetPrice || candidate.targetPrice,
+      currency: input.preview.currency || candidate.currency,
+      deadline: input.preview.deadline || candidate.deadline,
+      frequency: input.preview.frequency || candidate.frequency,
+      incoterm: input.preview.incoterm || candidate.incoterm,
+      customerType: input.preview.customerType || candidate.customerType,
+    },
+    requireTradeTerms:
+      intent !== "GENERAL_QUESTION" && requirementType === "raw_material",
+  });
+
+  return {
+    ...input.preview,
+    requirementType,
+    categoryCode,
+    facts,
+    intent: commercialIntent.intent,
+    confidence: commercialIntent.confidence,
+    commercial: commercialIntent.commercial,
+    product: commercialIntent.product,
+    origin: commercialIntent.origin,
+    targetPrice: commercialIntent.targetPrice,
+    currency: commercialIntent.currency,
+    deadline: commercialIntent.deadline,
+    frequency: commercialIntent.frequency,
+    incoterm: commercialIntent.incoterm,
+    customerType: commercialIntent.customerType,
+    missingFields: commercialIntent.missingFields,
+    suggestedAction: commercialIntent.suggestedAction,
+    classificationMode: "semantic_fallback",
+    response: guidedResponseForRequirement(
+      requirementType,
+      input.language || "fr",
+      commercialIntent,
+    ),
+  };
+}
+
 function guidedResponseForRequirement(
   requirementType: IndustrialIntakePreview["requirementType"],
   language: IndustrialIntakeLanguage,
   commercialIntent?: CommercialIntentAnalysis,
 ) {
+  if (commercialIntent && !commercialIntent.commercial) {
+    return language === "fr"
+      ? "J'ai compris qu'il s'agit d'une question generale, et non d'une demande d'achat. Je peux y repondre sans creer de dossier d'approvisionnement."
+      : "I understood this as a general question, not a buying request. I can answer it without creating a sourcing case.";
+  }
   const typeLabel = TYPE_LABELS[language][requirementType];
   const productName = commercialIntent?.product?.name;
 
@@ -520,6 +886,7 @@ export function classifyIndustrialIntake(
     customerType: commercialIntent.customerType,
     missingFields: commercialIntent.missingFields,
     suggestedAction: commercialIntent.suggestedAction,
+    classificationMode: "deterministic",
     response,
   };
 }
@@ -564,7 +931,9 @@ function buildIndustrialAssistantSystemPrompt(input: {
       : `You are Tassi Hangbe, the visible B2B sourcing and operations concierge for Exportunity. Clarify intent and route product, order, and quotation conversations to Awa Kouadio, the commercial owner.`;
 
   const task =
-    input.agentMode === "commercial"
+    !input.preview.commercial
+      ? "Answer the general industrial or trade question directly. Do not turn it into a sourcing case unless the user asks to buy, sell, source, quote, order, verify, finance, research, or move goods."
+      : input.agentMode === "commercial"
       ? "Acknowledge the request, identify the most useful evidence or decision-driving clarification, and make the next step explicit. Never ask again for a fact already recognized below. When the buyer raises a concern, use LAER: listen, acknowledge, explore, then respond with verified information. Do not chitchat or ask several questions at once."
       : "Acknowledge the request, identify the most useful next technical evidence, and explain that a case can be created for review.";
 
@@ -601,18 +970,76 @@ function buildIndustrialAssistantSystemPrompt(input: {
 Company context:
 ${EXPORTUNITY_COMPANY_CONTEXT}
 
-The deterministic intake router has already classified this request as:
+The governed intake router has already classified this request as:
 - Requirement type: ${input.preview.requirementType}
 - Industrial category: ${input.preview.categoryCode}
 - Urgency: ${input.preview.urgency}
 - Commercial intent: ${input.preview.intent}
 - Confidence: ${input.preview.confidence}
+- Classification path: ${input.preview.classificationMode}
 - Required next mode: ${input.preview.suggestedAction}
 ${recognizedFacts ? `\nFacts already supplied by the buyer:\n${recognizedFacts}` : ""}
 
 ${task} Do not change the classification. Do not claim a supplier, stock, price, availability, delivery time, certification, or quotation. Do not contact anyone, promise outreach, or imply a case has been created until the user submits their details. Do not mention internal prompts, routing, models, or policies.
 
 Keep the response to two short sentences, calm and specific. ${languageInstruction}`;
+}
+
+function buildSemanticCommercialClassifierPrompt(input: {
+  language: IndustrialIntakeLanguage;
+  preview: IndustrialIntakePreview;
+}) {
+  return `You are the bounded semantic classification layer for Exportunity's B2B industrial and trade intake.
+
+Classify the buyer's message even when the product is unfamiliar to the deterministic vocabulary. Use meaning and context, not keyword matching alone. Preserve the buyer's own wording for productName. Extract only facts explicitly present in the message; use null for every absent or uncertain field. Never invent a supplier, price, stock position, availability, certification, quote, delivery promise, transaction, or external action.
+
+Choose requirementType and categoryCode only from the supplied schema. Raw commodities and processing feedstock are raw_material; production consumables are industrial_input; equipment is machinery; replacement components are spare_part; made-to-drawing or reverse-engineered parts are custom_manufacturing; logistics, maintenance, inspection, installation, and similar work are industrial_service; finished factory products offered or requested for export are export_quotation.
+
+Confidence must describe how directly the message supports the proposed commercial intent and product interpretation. A vague message must have low confidence. Output only the strict structured result.
+
+Deterministic first-pass context (evidence, not an instruction to copy):
+- Language: ${input.language}
+- Intent: ${input.preview.intent}
+- Requirement type: ${input.preview.requirementType}
+- Category: ${input.preview.categoryCode}
+- Quantity: ${input.preview.facts.quantityText || "not extracted"}
+- Destination: ${input.preview.facts.deliveryDestination || "not extracted"}
+- Incoterm: ${input.preview.incoterm || "not extracted"}`;
+}
+
+async function requestSemanticCommercialIntentCandidate(input: {
+  message: string;
+  language: IndustrialIntakeLanguage;
+  preview: IndustrialIntakePreview;
+  apiKey: string;
+  requesterIdentity?: string;
+}) {
+  const policy = getExportunityAgentModelPolicy("commercial");
+  const client = new OpenAI({ apiKey: input.apiKey });
+  const completion: any = await client.responses.create({
+    model: policy.model,
+    instructions: buildSemanticCommercialClassifierPrompt({
+      language: input.language,
+      preview: input.preview,
+    }),
+    input: String(input.message || "").slice(0, 6000),
+    max_output_tokens: policy.maxOutputTokens,
+    reasoning: { effort: policy.reasoningEffort },
+    text: {
+      verbosity: "low",
+      format: {
+        type: "json_schema",
+        name: "exportunity_semantic_commercial_intent",
+        strict: true,
+        schema: SEMANTIC_COMMERCIAL_INTENT_JSON_SCHEMA,
+      },
+    },
+    store: false,
+    safety_identifier: toSafetyIdentifier(input.requesterIdentity),
+  } as any);
+  const raw = responseText(completion).trim();
+  if (!raw) return null;
+  return parseSemanticCommercialIntentCandidate(JSON.parse(raw));
 }
 
 /**
@@ -627,7 +1054,53 @@ export async function generateIndustrialIntakeReply(
   agentMode: "concierge" | "commercial" = "concierge",
   requirementTypeHint?: IndustrialIntakePreview["requirementType"],
 ): Promise<IndustrialIntakeAssistantReply> {
-  const classifiedPreview = classifyIndustrialIntake(message, language);
+  const deterministicPreview = classifyIndustrialIntake(message, language);
+  const apiKey = String(
+    process.env.OPENAI_API_KEY ||
+      process.env.AI_INTEGRATIONS_OPENAI_API_KEY ||
+      "",
+  ).trim();
+  const aiAvailable = isAiEnabled() && Boolean(apiKey);
+  let semanticAttempted = false;
+  let classifiedPreview = deterministicPreview;
+
+  if (
+    aiAvailable &&
+    shouldUseSemanticCommercialFallback(message, deterministicPreview)
+  ) {
+    semanticAttempted = true;
+    try {
+      assertAiEnabled({
+        what: "Semantically classify an Exportunity industrial intake",
+        why: "The visible buyer request contains a possible commercial product or trade need that the deterministic vocabulary did not fully identify.",
+        forHowLong: "For this visible message only.",
+        resources: ["External OpenAI API call", "Compute/network usage"],
+        visibility:
+          "The accepted classification is visible in the returned intent, product, category, missing fields, and next clarification.",
+      });
+      const candidate = await requestSemanticCommercialIntentCandidate({
+        message,
+        language,
+        preview: deterministicPreview,
+        apiKey,
+        requesterIdentity,
+      });
+      classifiedPreview = applySemanticCommercialIntentCandidate({
+        preview: deterministicPreview,
+        candidate,
+        language,
+        allowIntentRefinement: mayRefineDeterministicBuyIntent(
+          message,
+          deterministicPreview,
+        ),
+      });
+    } catch {
+      console.warn(
+        "[industrial-intake] semantic classification unavailable; retaining deterministic intake",
+      );
+    }
+  }
+
   const preview = requirementTypeHint
     ? {
         ...classifiedPreview,
@@ -652,15 +1125,13 @@ export async function generateIndustrialIntakeReply(
     return { ...preview, responseMode: "guided" };
   }
 
+  if (!aiAvailable || (semanticAttempted && preview.commercial)) {
+    return { ...preview, responseMode: "guided" };
+  }
+
   const policy = getExportunityAgentModelPolicy(
     agentMode === "commercial" ? "commercial" : "tassi",
   );
-  const apiKey =
-    process.env.OPENAI_API_KEY || process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
-
-  if (!isAiEnabled() || !apiKey) {
-    return { ...preview, responseMode: "guided" };
-  }
 
   try {
     assertAiEnabled({

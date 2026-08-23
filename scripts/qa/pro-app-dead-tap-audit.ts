@@ -14,8 +14,6 @@ const routesFile = path.join(repoRoot, "server", "routes.ts");
 
 const targetFiles = [
   "client/src/components/agentic/AppProBottomNav.tsx",
-  "client/src/pages/AppProThreadsPage.tsx",
-  "client/src/pages/AppProOperationsPage.tsx",
   "client/src/pages/AppProMoneyPage.tsx",
   "client/src/pages/AppProRoomPage.tsx",
   "client/src/pages/AppProShopPage.tsx",

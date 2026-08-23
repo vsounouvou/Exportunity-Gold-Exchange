@@ -13,7 +13,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ArrowLeft, BrainCircuit, Pencil, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useTenant } from "@/lib/tenant";
 import { getAgentAvatarUrl } from "@/lib/agentAvatar";
 import { AgentProfileDialog } from "@/components/AgentProfileDialog";
 import type { Agent } from "@db/schema";
@@ -77,6 +76,9 @@ function parseCsv(value: string) {
     .filter(Boolean);
 }
 
+const agentProfileTabClass =
+  "shrink-0 rounded-none border-b-2 border-transparent px-3 py-3 text-xs text-slate-500 data-[state=active]:border-[#f5a623] data-[state=active]:bg-transparent data-[state=active]:text-slate-950 sm:px-4 sm:text-sm";
+
 function normalizeOverviewAgent(record: any): Agent | null {
   if (!record || typeof record !== "object") return null;
   const id = Number(record.id || 0);
@@ -112,7 +114,6 @@ function normalizeOverviewAgent(record: any): Agent | null {
 
 export default function AgentProfileV2Page() {
   const { toast } = useToast();
-  const { tenant } = useTenant();
   const [location, setLocation] = useLocation();
   const [, operationsParams] = useRoute("/operations/agents/:agentId");
   const [, marketplaceParams] = useRoute("/commerce/ai-marketplace/agents/:agentId");
@@ -317,11 +318,6 @@ export default function AgentProfileV2Page() {
     }
     return messages;
   }, [activeChatEntries]);
-
-  const initialized = useMemo(() => {
-    if (!overview) return false;
-    return runtimeModel.length > 0 || toolsEnabled.length > 0 || modelProvider.length > 0 || temperature.length > 0;
-  }, [overview, runtimeModel, toolsEnabled, modelProvider, temperature]);
 
   useEffect(() => {
     if (!overview) return;
@@ -567,44 +563,81 @@ export default function AgentProfileV2Page() {
     setSessionTitleDraft("");
   };
 
+  const confirmRuntimeConfigUpdate = () => {
+    const approved = window.confirm(
+      "Save this agent's runtime model, provider, tools, temperature, and hard-mode configuration? This changes future internal execution settings. It does not send an external message, create a payment, or start a contract.",
+    );
+    if (!approved) return;
+    modelMutation.mutate();
+  };
+
+  const confirmMemoryDeletion = (memoryId: number) => {
+    if (!window.confirm(`Delete memory entry #${memoryId}? This cannot be undone.`)) return;
+    deleteMemoryMutation.mutate(memoryId);
+  };
+
+  const confirmSkillRemoval = (skill: string) => {
+    if (!window.confirm(`Remove the skill "${skill}" from this agent?`)) return;
+    skillsMutation.mutate({ action: "remove", skill });
+  };
+
+  const confirmAbilityTest = () => {
+    const approved = window.confirm(
+      "Run this internal ability test? It may use the configured model provider and consume provider capacity. It will not send an external message, create a payment, or start a contract.",
+    );
+    if (!approved) return;
+    testMutation.mutate();
+  };
+
+  const confirmChatSessionArchive = (session: AgentChatSessionItem) => {
+    if (!session.archived) {
+      const label = session.title || `Thread ${session.session_id.slice(0, 8)}`;
+      if (!window.confirm(`Archive "${label}"? Its saved history will remain available under archived threads.`)) return;
+    }
+    updateChatSessionMutation.mutate({
+      sessionId: session.session_id,
+      archived: !session.archived,
+    });
+  };
+
   if (!agentId) {
     return <Redirect to={backHref} />;
   }
 
   return (
-    <div className={tenant.key === "exportunity" ? "exportunity-operations-light min-h-screen bg-[#f7f8fa] p-4 md:p-6 space-y-4" : "p-4 md:p-6 space-y-4"}>
+    <div data-testid="exportunity-agent-profile-workspace" className="light min-h-full space-y-4 bg-[#f7f8fa] p-4 text-slate-950 md:p-6">
       <div className="flex items-center justify-between gap-3">
         <Link href={backHref}>
-          <a className="inline-flex items-center text-xs text-gray-300 hover:text-white">
+          <a className="inline-flex items-center text-xs text-slate-700 hover:text-slate-950">
             <ArrowLeft className="h-4 w-4 mr-1" /> Back to team
           </a>
         </Link>
       </div>
 
       {profileQuery.isLoading ? (
-        <Card className="bg-gray-900 border-gray-800"><CardContent className="pt-6 text-gray-400">Loading profile...</CardContent></Card>
+        <Card className="bg-white border-slate-200"><CardContent className="pt-6 text-slate-600">Loading profile...</CardContent></Card>
       ) : null}
 
       {overview ? (
         <>
-          <Card className="bg-gray-900 border-gray-800">
-            <CardHeader className="flex flex-row items-start justify-between gap-4 space-y-0">
+          <Card className="bg-white border-slate-200">
+            <CardHeader className="flex flex-col gap-4 space-y-0 sm:flex-row sm:items-start sm:justify-between">
               <div className="flex min-w-0 items-center gap-3">
-                <Avatar className="h-14 w-14 border border-amber-500/30 bg-slate-950">
+                <Avatar className="h-14 w-14 border border-amber-200 bg-slate-100">
                   <AvatarImage src={avatarUrl} alt={overview.name || "Agent"} className="object-cover" />
                   <AvatarFallback>{String(overview.name || "A").slice(0, 2).toUpperCase()}</AvatarFallback>
                 </Avatar>
                 <div className="min-w-0">
-                  <CardTitle className="text-white text-lg flex flex-wrap items-center gap-2">
+                  <CardTitle className="text-slate-950 text-lg flex flex-wrap items-center gap-2">
                     <span className="truncate">{overview.name}</span>
                     <Badge variant="outline">{overview.domain || "INTERNAL"}</Badge>
                     <Badge variant="outline">{overview.statusV2 || "ACTIVE"}</Badge>
                   </CardTitle>
-                  <div className="mt-1 text-xs text-gray-400">{overview.role || "-"}</div>
-                  <div className="mt-1 text-[11px] text-gray-500">{overview.department_name || overview.department_key || "Unassigned department"}</div>
+                  <div className="mt-1 text-xs text-slate-600">{overview.role || "-"}</div>
+                  <div className="mt-1 text-[11px] text-slate-500">{overview.department_name || overview.department_key || "Unassigned department"}</div>
                 </div>
               </div>
-              <div className="flex shrink-0 flex-wrap justify-end gap-2">
+              <div className="grid w-full grid-cols-1 gap-2 sm:flex sm:w-auto sm:shrink-0 sm:flex-wrap sm:justify-end">
                 <Button
                   type="button"
                   variant="outline"
@@ -625,67 +658,58 @@ export default function AgentProfileV2Page() {
               </div>
             </CardHeader>
             <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
-              <div className="rounded-lg border border-gray-800 p-3 bg-gray-950/60"><div className="text-gray-500">Actions</div><div className="text-white text-lg font-semibold">{performance.total}</div></div>
-              <div className="rounded-lg border border-gray-800 p-3 bg-gray-950/60"><div className="text-gray-500">Success</div><div className="text-emerald-300 text-lg font-semibold">{performance.successCount}</div></div>
-              <div className="rounded-lg border border-gray-800 p-3 bg-gray-950/60"><div className="text-gray-500">Failures</div><div className="text-rose-300 text-lg font-semibold">{performance.failedCount}</div></div>
-              <div className="rounded-lg border border-gray-800 p-3 bg-gray-950/60"><div className="text-gray-500">NO_EFFECT</div><div className="text-amber-300 text-lg font-semibold">{performance.noEffectCount}</div></div>
+              <div className="rounded-lg border border-slate-200 p-3 bg-slate-50"><div className="text-slate-500">Actions</div><div className="text-slate-950 text-lg font-semibold">{performance.total}</div></div>
+              <div className="rounded-lg border border-slate-200 p-3 bg-slate-50"><div className="text-slate-500">Success</div><div className="text-emerald-700 text-lg font-semibold">{performance.successCount}</div></div>
+              <div className="rounded-lg border border-slate-200 p-3 bg-slate-50"><div className="text-slate-500">Failures</div><div className="text-rose-700 text-lg font-semibold">{performance.failedCount}</div></div>
+              <div className="rounded-lg border border-slate-200 p-3 bg-slate-50"><div className="text-slate-500">NO_EFFECT</div><div className="text-amber-700 text-lg font-semibold">{performance.noEffectCount}</div></div>
             </CardContent>
           </Card>
 
           <Tabs value={activeTab} onValueChange={selectProfileTab}>
-            <TabsList className="bg-gray-900 border border-gray-800 w-full md:w-auto">
-              <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="activity">Activity</TabsTrigger>
-              <TabsTrigger value="permissions">Permissions</TabsTrigger>
-              <TabsTrigger value="memory">Memory</TabsTrigger>
-              <TabsTrigger value="skills">Skills</TabsTrigger>
-              <TabsTrigger value="test">Test</TabsTrigger>
-              <TabsTrigger value="chat">Direct chat</TabsTrigger>
-              {isMarketplace ? <TabsTrigger value="listing">Listing</TabsTrigger> : null}
+            <TabsList className="h-auto w-full justify-start overflow-x-auto rounded-none border-b border-slate-200 bg-transparent p-0">
+              <TabsTrigger className={agentProfileTabClass} value="overview">Overview</TabsTrigger>
+              <TabsTrigger className={agentProfileTabClass} value="activity">Activity</TabsTrigger>
+              <TabsTrigger className={agentProfileTabClass} value="permissions">Permissions</TabsTrigger>
+              <TabsTrigger className={agentProfileTabClass} value="memory">Memory</TabsTrigger>
+              <TabsTrigger className={agentProfileTabClass} value="skills">Skills</TabsTrigger>
+              <TabsTrigger className={agentProfileTabClass} value="test">Test</TabsTrigger>
+              <TabsTrigger className={agentProfileTabClass} value="chat">Direct chat</TabsTrigger>
+              {isMarketplace ? <TabsTrigger className={agentProfileTabClass} value="listing">Listing</TabsTrigger> : null}
             </TabsList>
 
             <TabsContent value="overview" className="space-y-3">
-              <Card className="bg-gray-900 border-gray-800">
-                <CardHeader><CardTitle className="text-sm text-white">Runtime</CardTitle></CardHeader>
+              <Card className="bg-white border-slate-200">
+                <CardHeader><CardTitle className="text-sm text-slate-950">Runtime</CardTitle></CardHeader>
                 <CardContent className="space-y-3 text-xs">
-                  <div>Department: <span className="text-gray-100">{overview.department_key || "-"}</span></div>
-                  <div>Current model: <span className="text-gray-100">{overview.runtime_model || "default"}</span></div>
-                  <div>Tools: <span className="text-gray-100">{Array.isArray(overview.toolsEnabled) ? overview.toolsEnabled.join(", ") || "none" : "none"}</span></div>
+                  <div>Department: <span className="text-slate-900">{overview.department_key || "-"}</span></div>
+                  <div>Current model: <span className="text-slate-900">{overview.runtime_model || "default"}</span></div>
+                  <div>Tools: <span className="text-slate-900">{Array.isArray(overview.toolsEnabled) ? overview.toolsEnabled.join(", ") || "none" : "none"}</span></div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-2 pt-2">
                     <div>
-                      <Label className="text-gray-300">Runtime model</Label>
-                      <Input value={runtimeModel} onChange={(e) => setRuntimeModel(e.target.value)} placeholder={overview.runtime_model || "gpt-4.1"} className="bg-gray-800 border-gray-700" />
+                      <Label className="text-slate-700">Runtime model</Label>
+                      <Input value={runtimeModel} onChange={(e) => setRuntimeModel(e.target.value)} placeholder={overview.runtime_model || "gpt-4.1"} className="bg-white border-slate-300" />
                     </div>
                     <div>
-                      <Label className="text-gray-300">Tools (csv)</Label>
-                      <Input value={toolsEnabled} onChange={(e) => setToolsEnabled(e.target.value)} placeholder={(Array.isArray(overview.toolsEnabled) ? overview.toolsEnabled.join(",") : "") || "browser,workstation"} className="bg-gray-800 border-gray-700" />
+                      <Label className="text-slate-700">Tools (csv)</Label>
+                      <Input value={toolsEnabled} onChange={(e) => setToolsEnabled(e.target.value)} placeholder={(Array.isArray(overview.toolsEnabled) ? overview.toolsEnabled.join(",") : "") || "browser,workstation"} className="bg-white border-slate-300" />
                     </div>
                     <div>
-                      <Label className="text-gray-300">Model provider</Label>
-                      <Input value={modelProvider} onChange={(e) => setModelProvider(e.target.value)} placeholder={overview?.metadata?.modelProvider || "openai / claude / gemini"} className="bg-gray-800 border-gray-700" />
+                      <Label className="text-slate-700">Model provider</Label>
+                      <Input value={modelProvider} onChange={(e) => setModelProvider(e.target.value)} placeholder={overview?.metadata?.modelProvider || "openai / claude / gemini"} className="bg-white border-slate-300" />
                     </div>
                     <div>
-                      <Label className="text-gray-300">Temperature (0-2)</Label>
-                      <Input value={temperature} onChange={(e) => setTemperature(e.target.value)} placeholder={overview?.metadata?.temperature == null ? "0.4" : String(overview.metadata.temperature)} className="bg-gray-800 border-gray-700" />
+                      <Label className="text-slate-700">Temperature (0-2)</Label>
+                      <Input value={temperature} onChange={(e) => setTemperature(e.target.value)} placeholder={overview?.metadata?.temperature == null ? "0.4" : String(overview.metadata.temperature)} className="bg-white border-slate-300" />
                     </div>
                   </div>
                   <div className="flex items-center gap-2 pt-1 text-xs">
-                    <input id="hard-mode" type="checkbox" checked={hardMode} onChange={(e) => setHardMode(e.target.checked)} className="rounded border-gray-700 bg-gray-800" />
-                    <Label htmlFor="hard-mode" className="text-gray-300 cursor-pointer">Hard mode (strict execution)</Label>
+                    <input id="hard-mode" type="checkbox" checked={hardMode} onChange={(e) => setHardMode(e.target.checked)} className="rounded border-slate-300 bg-white" />
+                    <Label htmlFor="hard-mode" className="text-slate-700 cursor-pointer">Hard mode (strict execution)</Label>
                   </div>
                   <Button
-                    onClick={() => {
-                      if (!initialized) {
-                        setRuntimeModel(overview.runtime_model || "");
-                        setToolsEnabled(Array.isArray(overview.toolsEnabled) ? overview.toolsEnabled.join(",") : "");
-                        setModelProvider(String(overview?.metadata?.modelProvider || ""));
-                        setTemperature(overview?.metadata?.temperature == null || Number.isNaN(Number(overview?.metadata?.temperature)) ? "" : String(overview.metadata.temperature));
-                        setHardMode(Boolean(overview?.metadata?.hardMode));
-                      }
-                      modelMutation.mutate();
-                    }}
+                    onClick={confirmRuntimeConfigUpdate}
                     disabled={modelMutation.isPending}
-                    className="bg-blue-600 hover:bg-blue-500"
+                    className="bg-amber-500 text-slate-950 hover:bg-amber-400"
                   >
                     {modelMutation.isPending ? <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> : null}
                     Save runtime config
@@ -695,27 +719,27 @@ export default function AgentProfileV2Page() {
             </TabsContent>
 
             <TabsContent value="activity" className="space-y-3">
-              <Card className="bg-gray-900 border-gray-800">
-                <CardHeader><CardTitle className="text-sm text-white">Action Runs</CardTitle></CardHeader>
+              <Card className="bg-white border-slate-200">
+                <CardHeader><CardTitle className="text-sm text-slate-950">Action Runs</CardTitle></CardHeader>
                 <CardContent className="space-y-2 text-xs">
-                  {activity.actionRuns.length === 0 ? <div className="text-gray-500">No action runs.</div> : null}
+                  {activity.actionRuns.length === 0 ? <div className="text-slate-500">No action runs.</div> : null}
                   {activity.actionRuns.map((row: any) => (
-                    <div key={`ar-${row.id}`} className="rounded border border-gray-800 bg-gray-950/60 p-2">
-                      <div className="text-gray-100">{row.action_key}</div>
-                      <div className="text-gray-400">{row.status} • {row.outcome || "-"} • {row.created_at ? new Date(row.created_at).toLocaleString() : "n/a"}</div>
+                    <div key={`ar-${row.id}`} className="rounded border border-slate-200 bg-slate-50 p-2">
+                      <div className="text-slate-900">{row.action_key}</div>
+                      <div className="text-slate-600">{row.status} • {row.outcome || "-"} • {row.created_at ? new Date(row.created_at).toLocaleString() : "n/a"}</div>
                     </div>
                   ))}
                 </CardContent>
               </Card>
 
-              <Card className="bg-gray-900 border-gray-800">
-                <CardHeader><CardTitle className="text-sm text-white">Workstation Sessions</CardTitle></CardHeader>
+              <Card className="bg-white border-slate-200">
+                <CardHeader><CardTitle className="text-sm text-slate-950">Workstation Sessions</CardTitle></CardHeader>
                 <CardContent className="space-y-2 text-xs">
-                  {activity.workstations.length === 0 ? <div className="text-gray-500">No workstation sessions.</div> : null}
+                  {activity.workstations.length === 0 ? <div className="text-slate-500">No workstation sessions.</div> : null}
                   {activity.workstations.map((row: any) => (
-                    <div key={`ws-${row.id}`} className="rounded border border-gray-800 bg-gray-950/60 p-2">
-                      <div className="text-gray-100">Workstation {row.workstation_id}</div>
-                      <div className="text-gray-400">{row.status || "-"} • start {row.started_at ? new Date(row.started_at).toLocaleString() : "n/a"}</div>
+                    <div key={`ws-${row.id}`} className="rounded border border-slate-200 bg-slate-50 p-2">
+                      <div className="text-slate-900">Workstation {row.workstation_id}</div>
+                      <div className="text-slate-600">{row.status || "-"} • start {row.started_at ? new Date(row.started_at).toLocaleString() : "n/a"}</div>
                     </div>
                   ))}
                 </CardContent>
@@ -723,9 +747,9 @@ export default function AgentProfileV2Page() {
             </TabsContent>
 
             <TabsContent value="permissions">
-              <Card className="bg-gray-900 border-gray-800">
-                <CardHeader><CardTitle className="text-sm text-white">Permissions</CardTitle></CardHeader>
-                <CardContent className="text-xs text-gray-300 space-y-1">
+              <Card className="bg-white border-slate-200">
+                <CardHeader><CardTitle className="text-sm text-slate-950">Permissions</CardTitle></CardHeader>
+                <CardContent className="text-xs text-slate-700 space-y-1">
                   <div>Allowed actions: see action policy attached to this agent profile.</div>
                   <div>Restricted tables: protected-table enforcement applies on forged actions.</div>
                 </CardContent>
@@ -733,16 +757,16 @@ export default function AgentProfileV2Page() {
             </TabsContent>
 
             <TabsContent value="memory">
-              <Card className="bg-gray-900 border-gray-800">
-                <CardHeader><CardTitle className="text-sm text-white">Memory / Context</CardTitle></CardHeader>
-                <CardContent className="space-y-3 text-xs text-gray-300">
+              <Card className="bg-white border-slate-200">
+                <CardHeader><CardTitle className="text-sm text-slate-950">Memory / Context</CardTitle></CardHeader>
+                <CardContent className="space-y-3 text-xs text-slate-700">
                   <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-2 items-end">
                     <div>
-                      <Label className="text-gray-300">Memory template</Label>
+                      <Label className="text-slate-700">Memory template</Label>
                       <select
                         value={selectedMemoryTemplate}
                         onChange={(e) => setSelectedMemoryTemplate(e.target.value)}
-                        className="w-full h-9 rounded-md border border-gray-700 bg-gray-800 px-3 text-sm text-gray-100"
+                        className="w-full h-9 rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-900"
                       >
                         <option value="">Select template...</option>
                         {memoryTemplates.map((tpl) => (
@@ -769,23 +793,23 @@ export default function AgentProfileV2Page() {
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                     <div className="md:col-span-2">
-                      <Label className="text-gray-300">Memory content</Label>
-                      <Textarea value={memoryContent} onChange={(e) => setMemoryContent(e.target.value)} placeholder="Add memory this agent should retain..." className="bg-gray-800 border-gray-700 min-h-[90px]" />
+                      <Label className="text-slate-700">Memory content</Label>
+                      <Textarea value={memoryContent} onChange={(e) => setMemoryContent(e.target.value)} placeholder="Add memory this agent should retain..." className="bg-white border-slate-300 min-h-[90px]" />
                     </div>
                     <div className="space-y-2">
-                      <div><Label className="text-gray-300">Category</Label><Input value={memoryType} onChange={(e) => setMemoryType(e.target.value)} placeholder="operations" className="bg-gray-800 border-gray-700" /></div>
-                      <div><Label className="text-gray-300">Tags (csv)</Label><Input value={memoryTags} onChange={(e) => setMemoryTags(e.target.value)} placeholder="priority,policy,customer" className="bg-gray-800 border-gray-700" /></div>
-                      <Button className="w-full bg-blue-600 hover:bg-blue-500" disabled={!memoryContent.trim() || createMemoryMutation.isPending} onClick={() => createMemoryMutation.mutate()}>{createMemoryMutation.isPending ? <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> : null}Add memory</Button>
+                      <div><Label className="text-slate-700">Category</Label><Input value={memoryType} onChange={(e) => setMemoryType(e.target.value)} placeholder="operations" className="bg-white border-slate-300" /></div>
+                      <div><Label className="text-slate-700">Tags (csv)</Label><Input value={memoryTags} onChange={(e) => setMemoryTags(e.target.value)} placeholder="priority,policy,customer" className="bg-white border-slate-300" /></div>
+                      <Button className="w-full bg-amber-500 text-slate-950 hover:bg-amber-400" disabled={!memoryContent.trim() || createMemoryMutation.isPending} onClick={() => createMemoryMutation.mutate()}>{createMemoryMutation.isPending ? <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> : null}Add memory</Button>
                     </div>
                   </div>
 
-                  {(memoryQuery.data?.items || []).length === 0 ? <div className="text-gray-500">No memory entries yet.</div> : null}
+                  {(memoryQuery.data?.items || []).length === 0 ? <div className="text-slate-500">No memory entries yet.</div> : null}
                   {(memoryQuery.data?.items || []).map((entry) => (
-                    <div key={entry.id} className="rounded border border-gray-800 bg-gray-950/60 p-2">
+                    <div key={entry.id} className="rounded border border-slate-200 bg-slate-50 p-2">
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2">
                           <Badge variant="outline">{entry.type || "note"}</Badge>
-                          <Badge variant="outline" className={entry.is_active ? "text-emerald-300" : "text-rose-300"}>{entry.is_active ? "ACTIVE" : "INACTIVE"}</Badge>
+                          <Badge variant="outline" className={entry.is_active ? "text-emerald-700" : "text-rose-700"}>{entry.is_active ? "ACTIVE" : "INACTIVE"}</Badge>
                         </div>
                         <div className="flex items-center gap-2">
                           <Button size="sm" variant="outline" className="h-7 px-2 text-[11px]" onClick={() => updateMemoryMutation.mutate({ memoryId: entry.id, pinned: !entry.pinned })}>{entry.pinned ? "Unpin" : "Pin"}</Button>
@@ -798,11 +822,8 @@ export default function AgentProfileV2Page() {
                           <Button
                             size="sm"
                             variant="outline"
-                            className="h-7 px-2 text-[11px] border-rose-800 text-rose-300 hover:bg-rose-950/40"
-                            onClick={() => {
-                              if (!window.confirm(`Delete memory entry #${entry.id}?`)) return;
-                              deleteMemoryMutation.mutate(entry.id);
-                            }}
+                            className="h-7 px-2 text-[11px] border-rose-200 text-rose-700 hover:bg-rose-50"
+                            onClick={() => confirmMemoryDeletion(entry.id)}
                             disabled={deleteMemoryMutation.isPending}
                           >
                             Delete
@@ -814,25 +835,25 @@ export default function AgentProfileV2Page() {
                           <Textarea
                             value={memoryEditContent}
                             onChange={(e) => setMemoryEditContent(e.target.value)}
-                            className="bg-gray-800 border-gray-700 min-h-[90px]"
+                            className="bg-white border-slate-300 min-h-[90px]"
                             placeholder="Memory content"
                           />
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                             <div>
-                              <Label className="text-gray-300">Category</Label>
+                              <Label className="text-slate-700">Category</Label>
                               <Input
                                 value={memoryEditType}
                                 onChange={(e) => setMemoryEditType(e.target.value)}
-                                className="bg-gray-800 border-gray-700"
+                                className="bg-white border-slate-300"
                                 placeholder="operations"
                               />
                             </div>
                             <div>
-                              <Label className="text-gray-300">Tags (csv)</Label>
+                              <Label className="text-slate-700">Tags (csv)</Label>
                               <Input
                                 value={memoryEditTags}
                                 onChange={(e) => setMemoryEditTags(e.target.value)}
-                                className="bg-gray-800 border-gray-700"
+                                className="bg-white border-slate-300"
                                 placeholder="priority,policy"
                               />
                             </div>
@@ -840,7 +861,7 @@ export default function AgentProfileV2Page() {
                           <div className="flex justify-end">
                             <Button
                               size="sm"
-                              className="bg-blue-600 hover:bg-blue-500"
+                              className="bg-amber-500 text-slate-950 hover:bg-amber-400"
                               disabled={!memoryEditContent.trim() || updateMemoryMutation.isPending}
                               onClick={() =>
                                 updateMemoryMutation.mutate({
@@ -857,8 +878,8 @@ export default function AgentProfileV2Page() {
                         </div>
                       ) : (
                         <>
-                          <div className="mt-2 text-gray-100 whitespace-pre-wrap">{entry.content}</div>
-                          <div className="mt-2 text-[11px] text-gray-400">tags: {Array.isArray(entry.tags) && entry.tags.length ? entry.tags.join(", ") : "none"} • conf {entry.confidence == null ? "-" : Number(entry.confidence).toFixed(2)} • updated {entry.updated_at ? new Date(entry.updated_at).toLocaleString() : "n/a"}</div>
+                          <div className="mt-2 text-slate-900 whitespace-pre-wrap">{entry.content}</div>
+                          <div className="mt-2 text-[11px] text-slate-600">tags: {Array.isArray(entry.tags) && entry.tags.length ? entry.tags.join(", ") : "none"} • conf {entry.confidence == null ? "-" : Number(entry.confidence).toFixed(2)} • updated {entry.updated_at ? new Date(entry.updated_at).toLocaleString() : "n/a"}</div>
                         </>
                       )}
                     </div>
@@ -868,16 +889,16 @@ export default function AgentProfileV2Page() {
             </TabsContent>
 
             <TabsContent value="skills">
-              <Card className="bg-gray-900 border-gray-800">
-                <CardHeader><CardTitle className="text-sm text-white">Skills</CardTitle></CardHeader>
-                <CardContent className="space-y-3 text-xs text-gray-300">
+              <Card className="bg-white border-slate-200">
+                <CardHeader><CardTitle className="text-sm text-slate-950">Skills</CardTitle></CardHeader>
+                <CardContent className="space-y-3 text-xs text-slate-700">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                     <div>
-                      <Label className="text-gray-300">Skill category</Label>
+                      <Label className="text-slate-700">Skill category</Label>
                       <select
                         value={selectedSkillCategory}
                         onChange={(e) => setSelectedSkillCategory(e.target.value)}
-                        className="w-full h-9 rounded-md border border-gray-700 bg-gray-800 px-3 text-sm text-gray-100"
+                        className="w-full h-9 rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-900"
                       >
                         <option value="">Select category...</option>
                         {skillCategories.map((category) => (
@@ -904,15 +925,15 @@ export default function AgentProfileV2Page() {
                     </div>
                   </div>
                   <div className="flex gap-2">
-                    <Input value={skillInput} onChange={(e) => setSkillInput(e.target.value)} placeholder="Add a skill (e.g. SLA enforcement)" className="bg-gray-800 border-gray-700" />
-                    <Button className="bg-blue-600 hover:bg-blue-500" disabled={!skillInput.trim() || skillsMutation.isPending} onClick={() => skillsMutation.mutate({ action: "add", skill: skillInput.trim() })}>Add</Button>
+                    <Input value={skillInput} onChange={(e) => setSkillInput(e.target.value)} placeholder="Add a skill (e.g. SLA enforcement)" className="bg-white border-slate-300" />
+                    <Button className="bg-amber-500 text-slate-950 hover:bg-amber-400" disabled={!skillInput.trim() || skillsMutation.isPending} onClick={() => skillsMutation.mutate({ action: "add", skill: skillInput.trim() })}>Add</Button>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    {(skillsQuery.data?.skills || []).length === 0 ? <span className="text-gray-500">No skills assigned.</span> : null}
+                    {(skillsQuery.data?.skills || []).length === 0 ? <span className="text-slate-500">No skills assigned.</span> : null}
                     {(skillsQuery.data?.skills || []).map((skill) => (
-                      <span key={skill} className="inline-flex items-center gap-1 rounded-full border border-gray-700 bg-gray-950 px-2 py-1">
+                      <span key={skill} className="inline-flex items-center gap-1 rounded-full border border-slate-300 bg-slate-50 px-2 py-1">
                         <span>{skill}</span>
-                        <button type="button" className="text-gray-400 hover:text-rose-300" onClick={() => skillsMutation.mutate({ action: "remove", skill })} aria-label={`Remove ${skill}`}>x</button>
+                        <button type="button" className="text-slate-600 hover:text-rose-700" onClick={() => confirmSkillRemoval(skill)} aria-label={`Remove ${skill}`}>x</button>
                       </span>
                     ))}
                   </div>
@@ -921,30 +942,30 @@ export default function AgentProfileV2Page() {
             </TabsContent>
 
             <TabsContent value="test">
-              <Card className="bg-gray-900 border-gray-800">
-                <CardHeader><CardTitle className="text-sm text-white">Ability Test</CardTitle></CardHeader>
-                <CardContent className="space-y-3 text-xs text-gray-300">
-                  <Textarea value={testPrompt} onChange={(e) => setTestPrompt(e.target.value)} placeholder="Describe a scenario and test this agent's reasoning/execution output." className="bg-gray-800 border-gray-700 min-h-[110px]" />
-                  <Button className="bg-blue-600 hover:bg-blue-500" disabled={!testPrompt.trim() || testMutation.isPending} onClick={() => testMutation.mutate()}>{testMutation.isPending ? <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> : null}Run test</Button>
+              <Card className="bg-white border-slate-200">
+                <CardHeader><CardTitle className="text-sm text-slate-950">Ability Test</CardTitle></CardHeader>
+                <CardContent className="space-y-3 text-xs text-slate-700">
+                  <Textarea value={testPrompt} onChange={(e) => setTestPrompt(e.target.value)} placeholder="Describe a scenario and test this agent's reasoning/execution output." className="bg-white border-slate-300 min-h-[110px]" />
+                  <Button className="bg-amber-500 text-slate-950 hover:bg-amber-400" disabled={!testPrompt.trim() || testMutation.isPending} onClick={confirmAbilityTest}>{testMutation.isPending ? <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> : null}Run test</Button>
                   {testResult ? (
-                    <div className="rounded border border-gray-800 bg-gray-950/60 p-3 space-y-2">
-                      <div className="text-[11px] text-gray-400">model: {testResult.runtimeModel || "default"} • tools: {Array.isArray(testResult.toolsEnabled) ? testResult.toolsEnabled.join(", ") || "none" : "none"} • {Number(testResult.durationMs || 0)}ms</div>
-                      <div className="text-gray-100 whitespace-pre-wrap">{String(testResult.response || "(no response)")}</div>
-                      {testResult.analysis ? <div className="text-[11px] text-gray-400 whitespace-pre-wrap">analysis: {String(testResult.analysis)}</div> : null}
+                    <div className="rounded border border-slate-200 bg-slate-50 p-3 space-y-2">
+                      <div className="text-[11px] text-slate-600">model: {testResult.runtimeModel || "default"} • tools: {Array.isArray(testResult.toolsEnabled) ? testResult.toolsEnabled.join(", ") || "none" : "none"} • {Number(testResult.durationMs || 0)}ms</div>
+                      <div className="text-slate-900 whitespace-pre-wrap">{String(testResult.response || "(no response)")}</div>
+                      {testResult.analysis ? <div className="text-[11px] text-slate-600 whitespace-pre-wrap">analysis: {String(testResult.analysis)}</div> : null}
                     </div>
                   ) : null}
-                  <div className="rounded border border-gray-800 bg-gray-950/60 p-2 space-y-2">
-                    <div className="text-[11px] text-gray-400">Recent persisted tests</div>
-                    {testHistoryItems.length === 0 ? <div className="text-gray-500">No test history yet.</div> : null}
+                  <div className="rounded border border-slate-200 bg-slate-50 p-2 space-y-2">
+                    <div className="text-[11px] text-slate-600">Recent persisted tests</div>
+                    {testHistoryItems.length === 0 ? <div className="text-slate-500">No test history yet.</div> : null}
                     {testHistoryItems.map((entry) => (
-                      <div key={`test-${entry.id}`} className="rounded border border-gray-800 bg-gray-900/60 p-2">
-                        <div className="text-[11px] text-gray-400">
+                      <div key={`test-${entry.id}`} className="rounded border border-slate-200 bg-white p-2">
+                        <div className="text-[11px] text-slate-600">
                           {entry.created_at ? new Date(entry.created_at).toLocaleString() : "n/a"}
                           {" • "}
                           {Number(entry?.metadata?.durationMs || 0)}ms
                         </div>
-                        <div className="text-gray-200 mt-1">prompt: {entry.prompt}</div>
-                        <div className="text-gray-100 mt-1 whitespace-pre-wrap">{String(entry.response || "(no response)")}</div>
+                        <div className="text-slate-800 mt-1">prompt: {entry.prompt}</div>
+                        <div className="text-slate-900 mt-1 whitespace-pre-wrap">{String(entry.response || "(no response)")}</div>
                         <div className="mt-2 flex gap-2">
                           <Button
                             size="sm"
@@ -972,16 +993,16 @@ export default function AgentProfileV2Page() {
             </TabsContent>
 
             <TabsContent value="chat">
-              <Card className="bg-gray-900 border-gray-800">
-                <CardHeader><CardTitle className="text-sm text-white">Direct Chat</CardTitle></CardHeader>
-                <CardContent className="space-y-3 text-xs text-gray-300">
+              <Card className="bg-white border-slate-200">
+                <CardHeader><CardTitle className="text-sm text-slate-950">Direct Chat</CardTitle></CardHeader>
+                <CardContent className="space-y-3 text-xs text-slate-700">
                   <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_auto] gap-2 items-end">
                     <div>
-                      <Label className="text-gray-300">Session</Label>
+                      <Label className="text-slate-700">Session</Label>
                       <select
                         value={chatSessionId}
                         onChange={(e) => setChatSessionId(e.target.value)}
-                        className="w-full h-9 rounded-md border border-gray-700 bg-gray-800 px-3 text-sm text-gray-100"
+                        className="w-full h-9 rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-900"
                       >
                         <option value="">Select session...</option>
                         {chatSessionId && !chatSessions.some((session) => session.session_id === chatSessionId) ? (
@@ -1017,24 +1038,24 @@ export default function AgentProfileV2Page() {
                       Refresh
                     </Button>
                   </div>
-                  <div className="rounded border border-gray-800 bg-gray-950/60 p-2 space-y-2">
+                  <div className="rounded border border-slate-200 bg-slate-50 p-2 space-y-2">
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                      <div className="text-[11px] text-gray-400">Thread manager</div>
-                      <label className="inline-flex items-center gap-2 text-[11px] text-gray-400">
+                      <div className="text-[11px] text-slate-600">Thread manager</div>
+                      <label className="inline-flex items-center gap-2 text-[11px] text-slate-600">
                         <input
                           type="checkbox"
-                          className="rounded border-gray-700 bg-gray-800"
+                          className="rounded border-slate-300 bg-white"
                           checked={includeArchivedSessions}
                           onChange={(e) => setIncludeArchivedSessions(e.target.checked)}
                         />
                         Show archived
                       </label>
                     </div>
-                    {chatSessions.length === 0 ? <div className="text-gray-500">No saved chat sessions yet.</div> : null}
+                    {chatSessions.length === 0 ? <div className="text-slate-500">No saved chat sessions yet.</div> : null}
                     {chatSessions.map((session) => (
                       <div
                         key={`mgr-${session.session_id}`}
-                        className={`rounded border p-2 ${chatSessionId === session.session_id ? "border-blue-700 bg-blue-950/20" : "border-gray-800 bg-gray-900/70"}`}
+                        className={`rounded border p-2 ${chatSessionId === session.session_id ? "border-amber-300 bg-amber-50" : "border-slate-200 bg-white"}`}
                       >
                         <div className="flex flex-wrap items-center justify-between gap-2">
                           <div className="min-w-0">
@@ -1042,15 +1063,15 @@ export default function AgentProfileV2Page() {
                               <Input
                                 value={sessionTitleDraft}
                                 onChange={(e) => setSessionTitleDraft(e.target.value)}
-                                className="h-8 bg-gray-800 border-gray-700"
+                                className="h-8 bg-white border-slate-300"
                                 placeholder={`Thread ${session.session_id.slice(0, 8)}`}
                               />
                             ) : (
-                              <div className="font-medium text-gray-100 truncate">
+                              <div className="font-medium text-slate-900 truncate">
                                 {session.title || `Thread ${session.session_id.slice(0, 8)}`}
                               </div>
                             )}
-                            <div className="text-[11px] text-gray-400">
+                            <div className="text-[11px] text-slate-600">
                               {Number(session.entry_count || 0)} msg
                               {" • "}
                               {session.last_message_at ? new Date(session.last_message_at).toLocaleString() : "no activity"}
@@ -1070,7 +1091,7 @@ export default function AgentProfileV2Page() {
                               <>
                                 <Button
                                   size="sm"
-                                  className="h-7 px-2 text-[11px] bg-blue-600 hover:bg-blue-500"
+                                  className="h-7 px-2 text-[11px] bg-amber-500 text-slate-950 hover:bg-amber-400"
                                   disabled={!sessionTitleDraft.trim() || updateChatSessionMutation.isPending}
                                   onClick={() =>
                                     updateChatSessionMutation.mutate({
@@ -1105,12 +1126,7 @@ export default function AgentProfileV2Page() {
                               variant="outline"
                               className="h-7 px-2 text-[11px]"
                               disabled={updateChatSessionMutation.isPending}
-                              onClick={() =>
-                                updateChatSessionMutation.mutate({
-                                  sessionId: session.session_id,
-                                  archived: !session.archived,
-                                })
-                              }
+                              onClick={() => confirmChatSessionArchive(session)}
                             >
                               {session.archived ? "Unarchive" : "Archive"}
                             </Button>
@@ -1119,19 +1135,19 @@ export default function AgentProfileV2Page() {
                       </div>
                     ))}
                   </div>
-                  <div className="max-h-[280px] overflow-auto rounded border border-gray-800 bg-gray-950/60 p-2 space-y-2">
-                    {activeChatMessages.length === 0 ? <div className="text-gray-500">Start a direct chat with this agent.</div> : null}
+                  <div className="max-h-[280px] overflow-auto rounded border border-slate-200 bg-slate-50 p-2 space-y-2">
+                    {activeChatMessages.length === 0 ? <div className="text-slate-500">Start a direct chat with this agent.</div> : null}
                     {activeChatMessages.map((row, index) => (
-                      <div key={`${row.role}-${index}-${row.at}`} className={`rounded p-2 border ${row.role === "user" ? "border-blue-700 bg-blue-950/40 text-blue-100 ml-8" : "border-gray-700 bg-gray-900 text-gray-100 mr-8"}`}>
-                        <div className="text-[10px] uppercase tracking-wide text-gray-400 mb-1">{row.role}</div>
+                      <div key={`${row.role}-${index}-${row.at}`} className={`rounded p-2 border ${row.role === "user" ? "border-amber-200 bg-amber-50 text-slate-900 ml-8" : "border-slate-300 bg-white text-slate-900 mr-8"}`}>
+                        <div className="text-[10px] uppercase tracking-wide text-slate-600 mb-1">{row.role}</div>
                         <div className="whitespace-pre-wrap">{row.content}</div>
                       </div>
                     ))}
                   </div>
                   <div className="flex gap-2">
-                    <Textarea value={chatInput} onChange={(e) => setChatInput(e.target.value)} placeholder="Message this agent directly..." className="bg-gray-800 border-gray-700 min-h-[74px]" />
+                    <Textarea value={chatInput} onChange={(e) => setChatInput(e.target.value)} placeholder="Message this agent directly..." className="bg-white border-slate-300 min-h-[74px]" />
                     <Button
-                      className="self-end bg-blue-600 hover:bg-blue-500"
+                      className="self-end bg-amber-500 text-slate-950 hover:bg-amber-400"
                       disabled={!chatInput.trim() || chatMutation.isPending}
                       onClick={() => {
                         const message = chatInput.trim();
@@ -1149,9 +1165,9 @@ export default function AgentProfileV2Page() {
 
             {isMarketplace ? (
               <TabsContent value="listing">
-                <Card className="bg-gray-900 border-gray-800">
-                  <CardHeader><CardTitle className="text-sm text-white">Listing</CardTitle></CardHeader>
-                  <CardContent className="text-xs text-gray-300 space-y-1">
+                <Card className="bg-white border-slate-200">
+                  <CardHeader><CardTitle className="text-sm text-slate-950">Listing</CardTitle></CardHeader>
+                  <CardContent className="text-xs text-slate-700 space-y-1">
                     <div>Template: {overview.is_template ? "Yes" : "No"}</div>
                     <div>Parent agent id: {overview.parent_agent_id || "-"}</div>
                     <div>Use Marketplace management controls for pricing/tags/public listing state.</div>

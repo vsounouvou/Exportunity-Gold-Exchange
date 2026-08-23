@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { VoiceInput } from "@/components/VoiceInput";
-import { usePwaInstall } from "@/contexts/PwaInstallContext";
+import { PWA_INSTALL_STORAGE_KEYS, usePwaInstall } from "@/contexts/PwaInstallContext";
 import { roomKeyFromSlug } from "@/config/chatRooms";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -148,7 +148,7 @@ export default function AppProRoomPage() {
   const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
   const [installPromptLastAt, setInstallPromptLastAt] = useState<number>(() => {
     try {
-      return Number(localStorage.getItem("bdo_pwa_install_prompt_at") || "0") || 0;
+      return Number(localStorage.getItem(PWA_INSTALL_STORAGE_KEYS.promptAt) || "0") || 0;
     } catch {
       return 0;
     }
@@ -320,7 +320,7 @@ export default function AppProRoomPage() {
 
     const now = Date.now();
     try {
-      localStorage.setItem("bdo_pwa_install_prompt_at", String(now));
+      localStorage.setItem(PWA_INSTALL_STORAGE_KEYS.promptAt, String(now));
     } catch {
       // ignore
     }
@@ -341,11 +341,11 @@ export default function AppProRoomPage() {
     if (!installed) return;
     if (showPostInstallMessage) return;
     try {
-      const installedAt = Number(localStorage.getItem("bdo_pwa_installed_at") || "0") || 0;
-      const ackAt = Number(localStorage.getItem("bdo_pwa_installed_ack_at") || "0") || 0;
+      const installedAt = Number(localStorage.getItem(PWA_INSTALL_STORAGE_KEYS.installedAt) || "0") || 0;
+      const ackAt = Number(localStorage.getItem(PWA_INSTALL_STORAGE_KEYS.installedAcknowledgedAt) || "0") || 0;
       if (installedAt && ackAt < installedAt) {
         setShowPostInstallMessage(true);
-        localStorage.setItem("bdo_pwa_installed_ack_at", String(Date.now()));
+        localStorage.setItem(PWA_INSTALL_STORAGE_KEYS.installedAcknowledgedAt, String(Date.now()));
       }
     } catch {
       // ignore
@@ -401,7 +401,7 @@ export default function AppProRoomPage() {
   const markInstallPromptAsSeenNow = () => {
     const now = Date.now();
     try {
-      localStorage.setItem("bdo_pwa_install_prompt_at", String(now));
+      localStorage.setItem(PWA_INSTALL_STORAGE_KEYS.promptAt, String(now));
     } catch {
       // ignore
     }
@@ -503,7 +503,7 @@ export default function AppProRoomPage() {
   };
 
   return (
-    <div className={cn("min-h-screen bg-gray-950 text-white", isKeyboardOpen ? "pb-4" : "pb-24")}>
+    <div className={cn("min-h-screen bg-[#F7F8FA] text-[#07111F]", isKeyboardOpen ? "pb-4" : "pb-24")}>
       <ProSideNav activeKey={activeSection} />
       <div className="md:ml-56">
         <AppProTopBar subtitle={room?.title || "Operations"} homeHref="/pro/operations" />
@@ -515,7 +515,7 @@ export default function AppProRoomPage() {
             {!isGeneralOperations ? (
               <Button
                 variant="ghost"
-                className="h-10 w-10 p-0 text-white/70 hover:text-white hover:bg-white/10"
+                className="h-10 w-10 p-0 text-slate-600 hover:bg-white hover:text-slate-950"
                 onClick={() => setLocation("/pro/chats")}
                 aria-label="Back"
               >
@@ -524,8 +524,8 @@ export default function AppProRoomPage() {
             ) : null}
 
             <div className="min-w-0">
-              <div className="text-sm font-semibold truncate">{room?.title || roomKey}</div>
-              {room?.subtitle ? <div className="text-[11px] text-white/50 truncate">{room.subtitle}</div> : null}
+              <div className="truncate text-sm font-black">{room?.title || roomKey}</div>
+              {room?.subtitle ? <div className="truncate text-[11px] text-slate-500">{room.subtitle}</div> : null}
             </div>
           </div>
 
@@ -534,7 +534,7 @@ export default function AppProRoomPage() {
               <Button
                 type="button"
                 variant="outline"
-                className="border-white/15 text-white/85"
+                className="border-slate-200 bg-white text-slate-700"
                 onClick={() => setAddAgentDialogOpen(true)}
                 data-testid="pro-ops-add-agent"
               >
@@ -544,7 +544,7 @@ export default function AppProRoomPage() {
               <Button
                 type="button"
                 variant="outline"
-                className="border-white/15 text-white/85"
+                className="border-slate-200 bg-white text-slate-700"
                 onClick={() => setLocation("/pro/agents/store")}
                 data-testid="pro-ops-agent-marketplace"
               >
@@ -553,7 +553,7 @@ export default function AppProRoomPage() {
               <Button
                 type="button"
                 variant="outline"
-                className="border-white/15 text-white/85"
+                className="border-slate-200 bg-white text-slate-700"
                 onClick={() => setLocation("/pro/chats")}
                 data-testid="pro-open-chats"
               >
@@ -564,17 +564,17 @@ export default function AppProRoomPage() {
         </div>
 
         {isGeneralOperations ? (
-          <div className="mt-3 rounded-xl border border-white/10 bg-white/[0.04] p-3" data-testid="pro-ops-active-agents">
+          <div className="mt-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm" data-testid="pro-ops-active-agents">
             <div className="flex items-center justify-between gap-2">
-              <div className="text-xs font-semibold uppercase tracking-wide text-white/70">My Team (active)</div>
-              <div className="text-[11px] text-white/50">{activeTeamAgents.length} online</div>
+              <div className="text-xs font-black uppercase tracking-wide text-slate-600">My Team (active)</div>
+              <div className="text-[11px] text-slate-400">{activeTeamAgents.length} online</div>
             </div>
             <div className="mt-2 flex flex-wrap gap-2">
               {activeTeamAgents.slice(0, 8).map((agent) => (
                 <button
                   key={agent.id}
                   type="button"
-                  className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-black/25 px-3 py-1 text-[11px] text-white/85 hover:bg-white/10"
+                  className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-bold text-slate-700 hover:border-[#F5A623]/40 hover:bg-[#FFF8E8]"
                   onClick={() => attachAgentMention(agent)}
                 >
                   <span className="h-2 w-2 rounded-full bg-emerald-400" />
@@ -582,16 +582,16 @@ export default function AppProRoomPage() {
                 </button>
               ))}
               {!teamQuery.isLoading && !activeTeamAgents.length ? (
-                <div className="text-[11px] text-white/55">No active agents yet. Hire one in Marketplace.</div>
+                <div className="text-[11px] text-slate-500">No active agents yet. Hire one in the agent catalog.</div>
               ) : null}
             </div>
           </div>
         ) : null}
 
-        <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 overflow-hidden">
+        <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
           <div className="h-[62vh] overflow-y-auto px-4 py-4 space-y-3">
             {isLoading ? (
-              <div className="flex items-center gap-2 text-sm text-white/60">
+              <div className="flex items-center gap-2 text-sm text-slate-500">
                 <Loader2 className="h-4 w-4 animate-spin" />
                 Chargement…
               </div>
@@ -604,16 +604,16 @@ export default function AppProRoomPage() {
                       m.role === "user"
                         ? "bg-amber-500 text-black"
                         : m.role === "assistant"
-                          ? "bg-white/10 text-white"
-                          : "bg-black/40 border border-white/10 text-white/80",
+                          ? "border border-slate-200 bg-slate-100 text-slate-800"
+                          : "border border-slate-200 bg-[#07111F] text-white/85",
                     )}
                   >
                     {m.content}
 
                     {m.metadata?.card ? (
-                      <div className="mt-3 rounded-xl border border-white/15 bg-black/35 p-3 text-xs">
-                        <div className="font-semibold text-white">{m.metadata.card.title}</div>
-                        <div className="mt-1 grid grid-cols-2 gap-2 text-white/70">
+                      <div className="mt-3 rounded-xl border border-slate-200 bg-white p-3 text-xs text-slate-700">
+                        <div className="font-black text-slate-950">{m.metadata.card.title}</div>
+                        <div className="mt-1 grid grid-cols-2 gap-2 text-slate-600">
                           {m.metadata.card.amount ? (
                             <div>
                               Amount: {new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 }).format(Number(m.metadata.card.amount))}{" "}
@@ -624,9 +624,9 @@ export default function AppProRoomPage() {
                           {m.metadata.card.dueDate ? <div>Due: {m.metadata.card.dueDate}</div> : null}
                           {m.metadata.card.productTitle ? <div>Product: {m.metadata.card.productTitle}</div> : null}
                         </div>
-                        {m.metadata.card.note ? <div className="mt-2 text-white/75">{m.metadata.card.note}</div> : null}
+                        {m.metadata.card.note ? <div className="mt-2 text-slate-600">{m.metadata.card.note}</div> : null}
                         {m.metadata.card.status ? (
-                          <div className="mt-2 inline-flex rounded-full border border-emerald-400/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] text-emerald-200">
+                          <div className="mt-2 inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
                             {m.metadata.card.status}
                           </div>
                         ) : null}
@@ -639,7 +639,7 @@ export default function AppProRoomPage() {
                           <button
                             key={qr}
                             type="button"
-                            className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-[11px] text-white/80 hover:bg-white/10"
+                            className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] font-bold text-slate-700 hover:border-[#F5A623]/40 hover:bg-[#FFF8E8]"
                             onClick={() => handleQuickReply(qr)}
                           >
                             {qr}
@@ -655,12 +655,12 @@ export default function AppProRoomPage() {
             <div ref={bottomRef} />
           </div>
 
-          <div className="border-t border-white/10 p-3 bg-black/40">
+          <div className="border-t border-slate-200 bg-slate-50 p-3">
             <div className="flex items-end gap-2">
               <Button
                 type="button"
                 variant="outline"
-                className="border-white/15 text-white/85"
+                className="border-slate-200 bg-white text-slate-700"
                 onClick={() => setCardDialogOpen(true)}
                 disabled={cardActionMutation.isPending}
               >
@@ -679,7 +679,7 @@ export default function AppProRoomPage() {
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
                   placeholder="Écrire un message…"
-                  className="bg-white/5 border-white/10 text-white placeholder:text-white/40"
+                  className="border-slate-200 bg-white text-slate-950 placeholder:text-slate-400 focus-visible:ring-[#F5A623]"
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && !e.shiftKey) {
                       e.preventDefault();
@@ -706,12 +706,12 @@ export default function AppProRoomPage() {
       {!isKeyboardOpen ? <AppProBottomNav activeKey={activeSection} /> : null}
 
       <Dialog open={addAgentDialogOpen} onOpenChange={setAddAgentDialogOpen}>
-        <DialogContent className="bg-black border-white/10 text-white" data-testid="pro-ops-add-agent-dialog">
+        <DialogContent className="border-slate-200 bg-white text-[#07111F]" data-testid="pro-ops-add-agent-dialog">
           <DialogHeader>
             <DialogTitle>Add agent to this chat</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
-            <div className="text-xs text-white/60">
+            <div className="text-xs text-slate-500">
               Select an agent to tag in the composer. This routes the next message to that agent in General Operations.
             </div>
             <div className="max-h-[45vh] space-y-2 overflow-y-auto pr-1">
@@ -721,7 +721,7 @@ export default function AppProRoomPage() {
                   type="button"
                   className={cn(
                     "w-full rounded-xl border p-3 text-left",
-                    agent.status === "active" ? "border-white/15 bg-white/5 hover:bg-white/10" : "border-white/10 bg-black/30 text-white/60",
+                    agent.status === "active" ? "border-slate-200 bg-white hover:border-[#F5A623]/40 hover:bg-[#FFF8E8]" : "border-slate-200 bg-slate-50 text-slate-500",
                   )}
                   onClick={() => attachAgentMention(agent)}
                   disabled={agent.status === "cancelled"}
@@ -729,36 +729,36 @@ export default function AppProRoomPage() {
                   <div className="flex items-center justify-between gap-3">
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 text-sm font-semibold">
-                        <Bot className="h-4 w-4 text-amber-300" />
+                        <Bot className="h-4 w-4 text-[#9A6200]" />
                         <span className="truncate">{agent.display_name}</span>
                       </div>
-                      <div className="mt-1 truncate text-[11px] text-white/55">
+                      <div className="mt-1 truncate text-[11px] text-slate-500">
                         {agent.template_title || "Agent"} • {agent.model_tier || "L0"}
                       </div>
                     </div>
                     <div className="shrink-0 text-[11px]">
                       {agent.status === "active" ? (
-                        <span className="rounded-full border border-emerald-400/40 bg-emerald-500/10 px-2 py-0.5 text-emerald-200">Active</span>
+                        <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-emerald-700">Active</span>
                       ) : agent.status === "paused" ? (
-                        <span className="rounded-full border border-amber-400/40 bg-amber-500/10 px-2 py-0.5 text-amber-200">Paused</span>
+                        <span className="rounded-full border border-[#F5A623]/40 bg-[#FFF8E8] px-2 py-0.5 text-[#8A5700]">Paused</span>
                       ) : (
-                        <span className="rounded-full border border-white/20 bg-white/5 px-2 py-0.5 text-white/65">Inactive</span>
+                        <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-slate-500">Inactive</span>
                       )}
                     </div>
                   </div>
                 </button>
               ))}
               {!teamQuery.isLoading && !teamAgents.length ? (
-                <div className="rounded-xl border border-white/10 bg-white/5 p-4 text-sm text-white/65">
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
                   No agents in your team yet.
                 </div>
               ) : null}
             </div>
             <div className="flex items-center justify-end gap-2 pt-1">
-              <Button variant="outline" className="border-white/15 text-white/85" onClick={() => setLocation("/pro/agents/store")}>
-                Open marketplace
+              <Button variant="outline" className="border-slate-200 text-slate-700" onClick={() => setLocation("/pro/agents/store")}>
+                Open agent catalog
               </Button>
-              <Button variant="outline" className="border-white/15 text-white/85" onClick={() => setAddAgentDialogOpen(false)}>
+              <Button variant="outline" className="border-slate-200 text-slate-700" onClick={() => setAddAgentDialogOpen(false)}>
                 Close
               </Button>
             </div>
@@ -767,7 +767,7 @@ export default function AppProRoomPage() {
       </Dialog>
 
       <Dialog open={cardDialogOpen} onOpenChange={setCardDialogOpen}>
-        <DialogContent className="bg-black border-white/10 text-white">
+        <DialogContent className="border-slate-200 bg-white text-[#07111F]">
           <DialogHeader>
             <DialogTitle>Create chat action</DialogTitle>
           </DialogHeader>
@@ -777,7 +777,7 @@ export default function AppProRoomPage() {
                 type="button"
                 className={cn(
                   "rounded-lg border px-3 py-2 text-left",
-                  cardKind === "request_payment" ? "border-amber-400/60 bg-amber-500/10" : "border-white/15 bg-white/5",
+                  cardKind === "request_payment" ? "border-[#F5A623]/60 bg-[#FFF8E8]" : "border-slate-200 bg-white",
                 )}
                 onClick={() => setCardKind("request_payment")}
               >
@@ -787,7 +787,7 @@ export default function AppProRoomPage() {
                 type="button"
                 className={cn(
                   "rounded-lg border px-3 py-2 text-left",
-                  cardKind === "pay_now" ? "border-amber-400/60 bg-amber-500/10" : "border-white/15 bg-white/5",
+                  cardKind === "pay_now" ? "border-[#F5A623]/60 bg-[#FFF8E8]" : "border-slate-200 bg-white",
                 )}
                 onClick={() => setCardKind("pay_now")}
               >
@@ -797,7 +797,7 @@ export default function AppProRoomPage() {
                 type="button"
                 className={cn(
                   "rounded-lg border px-3 py-2 text-left",
-                  cardKind === "create_task" ? "border-amber-400/60 bg-amber-500/10" : "border-white/15 bg-white/5",
+                  cardKind === "create_task" ? "border-[#F5A623]/60 bg-[#FFF8E8]" : "border-slate-200 bg-white",
                 )}
                 onClick={() => setCardKind("create_task")}
               >
@@ -807,7 +807,7 @@ export default function AppProRoomPage() {
                 type="button"
                 className={cn(
                   "rounded-lg border px-3 py-2 text-left",
-                  cardKind === "share_product" ? "border-amber-400/60 bg-amber-500/10" : "border-white/15 bg-white/5",
+                  cardKind === "share_product" ? "border-[#F5A623]/60 bg-[#FFF8E8]" : "border-slate-200 bg-white",
                 )}
                 onClick={() => setCardKind("share_product")}
               >
@@ -817,7 +817,7 @@ export default function AppProRoomPage() {
                 type="button"
                 className={cn(
                   "rounded-lg border px-3 py-2 text-left",
-                  cardKind === "send_contract" ? "border-amber-400/60 bg-amber-500/10" : "border-white/15 bg-white/5",
+                  cardKind === "send_contract" ? "border-[#F5A623]/60 bg-[#FFF8E8]" : "border-slate-200 bg-white",
                 )}
                 onClick={() => setCardKind("send_contract")}
               >
@@ -827,7 +827,7 @@ export default function AppProRoomPage() {
                 type="button"
                 className={cn(
                   "rounded-lg border px-3 py-2 text-left",
-                  cardKind === "create_order" ? "border-amber-400/60 bg-amber-500/10" : "border-white/15 bg-white/5",
+                  cardKind === "create_order" ? "border-[#F5A623]/60 bg-[#FFF8E8]" : "border-slate-200 bg-white",
                 )}
                 onClick={() => setCardKind("create_order")}
               >
@@ -837,7 +837,7 @@ export default function AppProRoomPage() {
                 type="button"
                 className={cn(
                   "rounded-lg border px-3 py-2 text-left",
-                  cardKind === "delivery_update" ? "border-amber-400/60 bg-amber-500/10" : "border-white/15 bg-white/5",
+                  cardKind === "delivery_update" ? "border-[#F5A623]/60 bg-[#FFF8E8]" : "border-slate-200 bg-white",
                 )}
                 onClick={() => setCardKind("delivery_update")}
               >
@@ -847,27 +847,27 @@ export default function AppProRoomPage() {
 
             {(cardKind === "request_payment" || cardKind === "pay_now") ? (
               <div className="grid grid-cols-2 gap-2">
-                <Input value={cardTo} onChange={(e) => setCardTo(e.target.value)} placeholder="Recipient (email/phone)" className="bg-white/5 border-white/10" />
-                <Input value={cardAmount} onChange={(e) => setCardAmount(e.target.value)} placeholder="Amount" className="bg-white/5 border-white/10" />
-                <Input value={cardCurrency} onChange={(e) => setCardCurrency(e.target.value.toUpperCase())} placeholder="Currency" className="bg-white/5 border-white/10" />
-                <Input value={cardDueDate} onChange={(e) => setCardDueDate(e.target.value)} placeholder="Due date (optional)" className="bg-white/5 border-white/10" />
+                <Input value={cardTo} onChange={(e) => setCardTo(e.target.value)} placeholder="Recipient (email/phone)" className="border-slate-200 bg-white" />
+                <Input value={cardAmount} onChange={(e) => setCardAmount(e.target.value)} placeholder="Amount" className="border-slate-200 bg-white" />
+                <Input value={cardCurrency} onChange={(e) => setCardCurrency(e.target.value.toUpperCase())} placeholder="Currency" className="border-slate-200 bg-white" />
+                <Input value={cardDueDate} onChange={(e) => setCardDueDate(e.target.value)} placeholder="Due date (optional)" className="border-slate-200 bg-white" />
               </div>
             ) : null}
 
             {cardKind === "create_task" ? (
               <div className="grid grid-cols-2 gap-2">
-                <Input value={cardTo} onChange={(e) => setCardTo(e.target.value)} placeholder="Owner (optional)" className="bg-white/5 border-white/10" />
-                <Input value={cardDueDate} onChange={(e) => setCardDueDate(e.target.value)} placeholder="Due date (optional)" className="bg-white/5 border-white/10" />
+                <Input value={cardTo} onChange={(e) => setCardTo(e.target.value)} placeholder="Owner (optional)" className="border-slate-200 bg-white" />
+                <Input value={cardDueDate} onChange={(e) => setCardDueDate(e.target.value)} placeholder="Due date (optional)" className="border-slate-200 bg-white" />
               </div>
             ) : null}
 
             {cardKind === "share_product" ? (
-              <Input value={cardProductTitle} onChange={(e) => setCardProductTitle(e.target.value)} placeholder="Product title" className="bg-white/5 border-white/10" />
+              <Input value={cardProductTitle} onChange={(e) => setCardProductTitle(e.target.value)} placeholder="Product title" className="border-slate-200 bg-white" />
             ) : null}
 
             {cardKind === "delivery_update" ? (
               <select
-                className="h-10 w-full rounded-md bg-white/5 border border-white/10 text-white/90 px-3"
+                className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-slate-800"
                 value={cardDeliveryStatus}
                 onChange={(e) => setCardDeliveryStatus(e.target.value)}
               >
@@ -882,11 +882,11 @@ export default function AppProRoomPage() {
               value={cardNote}
               onChange={(e) => setCardNote(e.target.value)}
               placeholder={cardKind === "create_task" ? "Task title" : "Add context for this action"}
-              className="bg-white/5 border-white/10"
+              className="border-slate-200 bg-white"
             />
 
             <div className="flex items-center justify-end gap-2">
-              <Button variant="outline" className="border-white/15 text-white/80" onClick={() => setCardDialogOpen(false)}>
+              <Button variant="outline" className="border-slate-200 text-slate-700" onClick={() => setCardDialogOpen(false)}>
                 Cancel
               </Button>
               <Button
@@ -902,11 +902,11 @@ export default function AppProRoomPage() {
       </Dialog>
 
       <Dialog open={installHelpOpen} onOpenChange={setInstallHelpOpen}>
-        <DialogContent className="bg-black border-white/10 text-white">
+        <DialogContent className="border-slate-200 bg-white text-[#07111F]">
           <DialogHeader>
             <DialogTitle>Installer l’application</DialogTitle>
           </DialogHeader>
-          <div className="text-sm text-white/70 space-y-3">
+          <div className="space-y-3 text-sm text-slate-600">
             <p>
               Sur mobile, vous pouvez installer l’application depuis le menu du navigateur (Ajouter à l’écran d’accueil /
               Installer l’application).
@@ -914,7 +914,7 @@ export default function AppProRoomPage() {
             <div className="flex items-center justify-end gap-2">
               <Button
                 variant="outline"
-                className="border-white/15 text-white/80 hover:bg-white/10"
+                className="border-slate-200 text-slate-700 hover:bg-slate-50"
                 onClick={() => setInstallHelpOpen(false)}
               >
                 OK

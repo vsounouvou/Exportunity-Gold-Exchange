@@ -66,11 +66,6 @@ type RuntimeImportResponse = {
     throttled?: boolean;
   };
 };
-type SeedResponse = {
-  ok: boolean;
-  seeded: { created: number; updated: number };
-  imported: RuntimeImportResponse["imported"];
-};
 type GovernanceNode = {
   id: number;
   displayName: string;
@@ -297,9 +292,11 @@ function parseTab(search: string): AgentsOsTab {
   return "registry";
 }
 
+const agentsTabClass = "shrink-0 rounded-none border-b-2 border-transparent px-3 py-3 text-xs text-slate-500 data-[state=active]:border-[#f5a623] data-[state=active]:bg-transparent data-[state=active]:text-slate-950 sm:px-4 sm:text-sm";
+
 export default function AdminAgentsOsPage() {
   const { toast } = useToast();
-  const [location, setLocation] = useLocation();
+  const [, setLocation] = useLocation();
   const search = useSearch();
   const activeTab = parseTab(search);
 
@@ -631,22 +628,6 @@ export default function AdminAgentsOsPage() {
     },
   });
 
-  const seedAgents = useMutation({
-    mutationFn: async () => apiRequest("/api/admin/agents-os/seed", "POST", { preset: "boursedelor_core" }),
-    onSuccess: async (payload: SeedResponse) => {
-      toast({
-        title: "Agents generated",
-        description: `${payload?.seeded?.created ?? 0} generated, ${payload?.imported?.updated ?? 0} runtime agents refreshed.`,
-      });
-      await refreshAll();
-      await queryClient.invalidateQueries({ queryKey: ["/api/admin/agents-os/governance"] });
-      setLocation("/agents-os?tab=registry");
-    },
-    onError: (error: any) => {
-      toast({ title: "Generation failed", description: error?.message || "Could not generate agents", variant: "destructive" });
-    },
-  });
-
   const setMarketplace = useMutation({
     mutationFn: async (payload: {
       id: number;
@@ -706,93 +687,61 @@ export default function AdminAgentsOsPage() {
     },
   });
 
+  const confirmImportRuntimeAgents = () => {
+    if (window.confirm("Import current runtime identities into the private Exportunity registry? This updates catalog records but does not activate agents or publish them.")) {
+      importRuntimeAgents.mutate();
+    }
+  };
+
+  const confirmCreateDraft = () => {
+    if (window.confirm(`Create “${createDisplayName.trim()}” as a private draft agent? It will remain inactive and unpublished.`)) {
+      createAgent.mutate();
+    }
+  };
+
+  const confirmMarketplaceUpdate = (
+    payload: { id: number; isVisible: boolean; priceMonthly: number; currency: string; isFeatured: boolean; availability: string; sortRank: number },
+    displayName: string,
+  ) => {
+    const action = payload.isVisible ? "make visible in the marketplace" : "hide from the marketplace";
+    if (window.confirm(`${action.charAt(0).toUpperCase()}${action.slice(1)}: ${displayName}? This changes the public catalog state.`)) {
+      setMarketplace.mutate(payload);
+    }
+  };
+
+  const confirmAgentStatus = (id: number, action: "activate" | "retire", displayName: string) => {
+    if (window.confirm(`${action === "activate" ? "Activate" : "Retire"} ${displayName}? This changes the governed registry status.`)) {
+      setAgentStatus.mutate({ id, action });
+    }
+  };
+
+  const confirmCloneAgent = (id: number, displayName: string) => {
+    if (window.confirm(`Create a private draft clone of ${displayName}?`)) cloneAgent.mutate(id);
+  };
+
+  const confirmPauseEmployee = (id: number, displayName: string) => {
+    if (window.confirm(`Pause ${displayName}? Internal production routing will stop until a separate reactivation.`)) {
+      updateEmployeeLifecycle.mutate({ id, action: "pause" });
+    }
+  };
+
   const navigateTab = (tab: string) => {
     const safe = (tab || "registry").toLowerCase();
     setLocation(`/agents-os?tab=${safe}`, { replace: true });
   };
 
   return (
-    <div className="agents-os-light min-h-screen space-y-4 p-4 lg:p-6">
-      <style>{`
-        .agents-os-light {
-          background: #f7f8fa;
-          color: #111827;
-        }
-        .agents-os-light .bg-gray-900,
-        .agents-os-light .bg-gray-900\\/50,
-        .agents-os-light .bg-gray-900\\/60,
-        .agents-os-light .bg-gray-900\\/70,
-        .agents-os-light .bg-gray-900\\/80,
-        .agents-os-light .bg-gray-950,
-        .agents-os-light .bg-gray-950\\/30,
-        .agents-os-light .bg-gray-950\\/40,
-        .agents-os-light .bg-gray-950\\/50,
-        .agents-os-light .bg-gray-950\\/70 {
-          background: #ffffff !important;
-        }
-        .agents-os-light .border-gray-800,
-        .agents-os-light .border-gray-800\\/70,
-        .agents-os-light .border-gray-800\\/80,
-        .agents-os-light .border-gray-700 {
-          border-color: rgba(15, 23, 42, 0.12) !important;
-        }
-        .agents-os-light .text-white,
-        .agents-os-light .text-gray-100,
-        .agents-os-light .text-gray-200,
-        .agents-os-light .text-gray-300 {
-          color: #111827 !important;
-        }
-        .agents-os-light .text-gray-400,
-        .agents-os-light .text-gray-500 {
-          color: #4b5563 !important;
-        }
-        .agents-os-light input,
-        .agents-os-light textarea,
-        .agents-os-light [role="combobox"] {
-          background: #ffffff !important;
-          color: #111827 !important;
-          border-color: rgba(15, 23, 42, 0.16) !important;
-        }
-        .agents-os-light [role="tablist"] {
-          background: #ffffff !important;
-          border-color: rgba(15, 23, 42, 0.12) !important;
-          box-shadow: 0 16px 40px rgba(15, 23, 42, 0.08);
-        }
-        .agents-os-light [role="tab"] {
-          color: #334155 !important;
-        }
-        .agents-os-light [role="tab"][data-state="active"] {
-          background: #f5a623 !important;
-          color: #07111f !important;
-        }
-        .agents-os-light .bg-amber-500,
-        .agents-os-light .hover\\:bg-amber-600:hover {
-          background: #f5a623 !important;
-          color: #07111f !important;
-        }
-        .agents-os-light .bg-emerald-600\\/20 {
-          background: rgba(22, 163, 74, 0.12) !important;
-        }
-        .agents-os-light .agents-os-secondary-action {
-          background: #ffffff !important;
-          border-color: rgba(15, 23, 42, 0.14) !important;
-          color: #334155 !important;
-          box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
-        }
-        .agents-os-light .agents-os-secondary-action:hover {
-          background: #f8fafc !important;
-          color: #07111f !important;
-        }
-      `}</style>
-      <div className="flex items-start justify-between gap-3 flex-wrap">
+    <div data-testid="exportunity-agents-os-workspace" className="min-h-full space-y-4 bg-[#f7f8fa] p-4 text-slate-950 lg:p-6">
+      <header className="flex flex-wrap items-end justify-between gap-3 border-b border-slate-200 pb-5">
         <div>
-          <h1 className="text-2xl font-semibold text-white">Agents OS</h1>
-          <p className="text-xs text-gray-400">Advanced registry, versions, marketplace controls, analytics, and governance.</p>
+          <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase text-[#9a6200]"><BrainCircuit className="h-4 w-4" /> Operational intelligence</div>
+          <h1 className="text-2xl font-semibold text-slate-950">Agents OS</h1>
+          <p className="mt-1 max-w-2xl text-sm text-slate-600">Private identities, role seats, governed workforce capacity, marketplace controls, and audit-ready lifecycle decisions.</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="grid w-full grid-cols-1 gap-2 sm:flex sm:w-auto sm:items-center">
           <Button
             variant="outline"
-            className="agents-os-secondary-action"
+            className="border-slate-300 bg-white text-slate-700 hover:bg-slate-50 hover:text-slate-950"
             onClick={() => setLocation("/operations/agents")}
           >
             <UsersRound className="h-4 w-4 mr-2" />
@@ -800,38 +749,34 @@ export default function AdminAgentsOsPage() {
           </Button>
           <Button
             variant="outline"
-            className="agents-os-secondary-action"
+            className="border-slate-300 bg-white text-slate-700 hover:bg-slate-50 hover:text-slate-950"
             disabled={importRuntimeAgents.isPending}
-            onClick={() => importRuntimeAgents.mutate()}
+            onClick={confirmImportRuntimeAgents}
           >
             <RefreshCw className="h-4 w-4 mr-2" />
             Import runtime agents
           </Button>
-          <Button className="bg-amber-500 hover:bg-amber-600 text-black" disabled={seedAgents.isPending} onClick={() => seedAgents.mutate()}>
-            <Sparkles className="h-4 w-4 mr-2" />
-            Generate agents
-          </Button>
         </div>
-      </div>
+      </header>
 
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-        <Card className="bg-gray-900 border-gray-800"><CardContent className="p-4"><div className="text-xs text-gray-400">Total Agents</div><div className="text-xl font-semibold text-white">{summaryQuery.data?.summary.totalAgents ?? 0}</div></CardContent></Card>
-        <Card className="bg-gray-900 border-gray-800"><CardContent className="p-4"><div className="text-xs text-gray-400">Marketplace Visible</div><div className="text-xl font-semibold text-white">{summaryQuery.data?.summary.marketplaceVisible ?? 0}</div></CardContent></Card>
-        <Card className="bg-gray-900 border-gray-800"><CardContent className="p-4"><div className="text-xs text-gray-400">Active</div><div className="text-xl font-semibold text-white">{summaryQuery.data?.summary.activeAgents ?? 0}</div></CardContent></Card>
-        <Card className="bg-gray-900 border-gray-800"><CardContent className="p-4"><div className="text-xs text-gray-400">Draft</div><div className="text-xl font-semibold text-white">{summaryQuery.data?.summary.draftAgents ?? 0}</div></CardContent></Card>
-        <Card className="bg-gray-900 border-gray-800"><CardContent className="p-4"><div className="text-xs text-gray-400">Visible Revenue</div><div className="text-xl font-semibold text-white">${fmtMoney(summaryQuery.data?.summary.visibleMonthlyRevenue ?? 0)}</div></CardContent></Card>
+        <Card className="bg-white border-slate-200"><CardContent className="p-4"><div className="text-xs text-slate-500">Total Agents</div><div className="text-xl font-semibold text-slate-950">{summaryQuery.data?.summary.totalAgents ?? 0}</div></CardContent></Card>
+        <Card className="bg-white border-slate-200"><CardContent className="p-4"><div className="text-xs text-slate-500">Marketplace Visible</div><div className="text-xl font-semibold text-slate-950">{summaryQuery.data?.summary.marketplaceVisible ?? 0}</div></CardContent></Card>
+        <Card className="bg-white border-slate-200"><CardContent className="p-4"><div className="text-xs text-slate-500">Active</div><div className="text-xl font-semibold text-slate-950">{summaryQuery.data?.summary.activeAgents ?? 0}</div></CardContent></Card>
+        <Card className="bg-white border-slate-200"><CardContent className="p-4"><div className="text-xs text-slate-500">Draft</div><div className="text-xl font-semibold text-slate-950">{summaryQuery.data?.summary.draftAgents ?? 0}</div></CardContent></Card>
+        <Card className="bg-white border-slate-200"><CardContent className="p-4"><div className="text-xs text-slate-500">Visible Revenue</div><div className="text-xl font-semibold text-slate-950">${fmtMoney(summaryQuery.data?.summary.visibleMonthlyRevenue ?? 0)}</div></CardContent></Card>
       </div>
 
       <Tabs value={activeTab} onValueChange={navigateTab}>
-        <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 lg:grid-cols-8 bg-gray-900 border border-gray-800">
-          <TabsTrigger value="registry"><Bot className="h-4 w-4 mr-1" />Registry</TabsTrigger>
-          <TabsTrigger value="organization"><Building2 className="h-4 w-4 mr-1" />Organization</TabsTrigger>
-          <TabsTrigger value="workforce"><UsersRound className="h-4 w-4 mr-1" />Workforce</TabsTrigger>
-          <TabsTrigger value="studio"><Plus className="h-4 w-4 mr-1" />Studio</TabsTrigger>
-          <TabsTrigger value="knowledge"><Library className="h-4 w-4 mr-1" />Knowledge</TabsTrigger>
-          <TabsTrigger value="marketplace"><Globe className="h-4 w-4 mr-1" />Marketplace</TabsTrigger>
-          <TabsTrigger value="analytics"><BarChart3 className="h-4 w-4 mr-1" />Analytics</TabsTrigger>
-          <TabsTrigger value="governance"><ShieldCheck className="h-4 w-4 mr-1" />Governance</TabsTrigger>
+        <TabsList className="h-auto w-full justify-start overflow-x-auto rounded-none border-b border-slate-200 bg-transparent p-0">
+          <TabsTrigger className={agentsTabClass} value="registry"><Bot className="h-4 w-4 mr-1" />Registry</TabsTrigger>
+          <TabsTrigger className={agentsTabClass} value="organization"><Building2 className="h-4 w-4 mr-1" />Organization</TabsTrigger>
+          <TabsTrigger className={agentsTabClass} value="workforce"><UsersRound className="h-4 w-4 mr-1" />Workforce</TabsTrigger>
+          <TabsTrigger className={agentsTabClass} value="studio"><Plus className="h-4 w-4 mr-1" />Studio</TabsTrigger>
+          <TabsTrigger className={agentsTabClass} value="knowledge"><Library className="h-4 w-4 mr-1" />Knowledge</TabsTrigger>
+          <TabsTrigger className={agentsTabClass} value="marketplace"><Globe className="h-4 w-4 mr-1" />Marketplace</TabsTrigger>
+          <TabsTrigger className={agentsTabClass} value="analytics"><BarChart3 className="h-4 w-4 mr-1" />Analytics</TabsTrigger>
+          <TabsTrigger className={agentsTabClass} value="governance"><ShieldCheck className="h-4 w-4 mr-1" />Governance</TabsTrigger>
         </TabsList>
 
         <TabsContent value="organization" className="space-y-3">
@@ -896,7 +841,7 @@ export default function AdminAgentsOsPage() {
                   </div>
                   <Button
                     variant="outline"
-                    className="agents-os-secondary-action shrink-0"
+                    className="border-slate-300 bg-white text-slate-700 hover:bg-slate-50 hover:text-slate-950 shrink-0"
                     onClick={() => setReconciliationOpen(true)}
                   >
                     Review {coreTeamReconciliationQuery.data.summary.total} matches
@@ -995,7 +940,7 @@ export default function AdminAgentsOsPage() {
                               <Button
                                 size="sm"
                                 variant="outline"
-                                className="agents-os-secondary-action"
+                                className="border-slate-300 bg-white text-slate-700 hover:bg-slate-50 hover:text-slate-950"
                                 onClick={() => openRoleSeatEditor(seat)}
                               >
                                 <Pencil className="mr-1.5 h-3.5 w-3.5" />Edit role
@@ -1011,7 +956,7 @@ export default function AdminAgentsOsPage() {
                               ) : (
                                 <Button
                                   size="sm"
-                                  className="bg-slate-950 text-white hover:bg-slate-800"
+                                  className="bg-slate-900 text-[#f8fafc] hover:bg-slate-800"
                                   disabled={provisionRoleSeat.isPending}
                                   onClick={() => provisionRoleSeat.mutate({ templateId: seat.id })}
                                 >
@@ -1050,7 +995,7 @@ export default function AdminAgentsOsPage() {
                   <Sparkles className="mr-2 h-4 w-4" />
                   {evaluateCurrentDemand.isPending ? "Evaluating demand..." : "Evaluate current demand"}
                 </Button>
-                <Button variant="outline" className="agents-os-secondary-action" onClick={() => workforceQuery.refetch()}>
+                <Button variant="outline" className="border-slate-300 bg-white text-slate-700 hover:bg-slate-50 hover:text-slate-950" onClick={() => workforceQuery.refetch()}>
                   <RefreshCw className="mr-2 h-4 w-4" />Refresh
                 </Button>
               </div>
@@ -1063,7 +1008,7 @@ export default function AdminAgentsOsPage() {
                 ["4", "Activate separately", "Enable internal work only after review; outreach and spending stay gated."],
               ].map(([step, title, description]) => (
                 <div key={step} className="flex gap-3">
-                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-950 text-xs font-semibold text-white">{step}</span>
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-900 text-xs font-semibold text-[#f8fafc]">{step}</span>
                   <div>
                     <div className="text-sm font-semibold text-slate-950">{title}</div>
                     <div className="mt-0.5 text-xs leading-5 text-slate-600">{description}</div>
@@ -1194,7 +1139,7 @@ export default function AdminAgentsOsPage() {
                             type="button"
                             size="sm"
                             variant="outline"
-                            className="agents-os-secondary-action shrink-0"
+                            className="border-slate-300 bg-white text-slate-700 hover:bg-slate-50 hover:text-slate-950 shrink-0"
                             onClick={() => setLocation("/admin/company-brain")}
                           >
                             Review evidence
@@ -1232,7 +1177,7 @@ export default function AdminAgentsOsPage() {
                             <Button
                               size="sm"
                               variant="outline"
-                              className="agents-os-secondary-action"
+                              className="border-slate-300 bg-white text-slate-700 hover:bg-slate-50 hover:text-slate-950"
                               onClick={() => {
                                 setWorkforceReviewRequest(item);
                                 setWorkforceReviewDecision("reject");
@@ -1271,16 +1216,16 @@ export default function AdminAgentsOsPage() {
                             Re-review need
                           </Button>
                         ) : item.status === "approved" && item.role_template_id ? (
-                          <Button size="sm" className="bg-slate-950 text-white hover:bg-slate-800" onClick={() => provisionRoleSeat.mutate({ templateId: Number(item.role_template_id), staffingRequestId: item.id })}>Create employee inactive</Button>
+                          <Button size="sm" className="bg-slate-900 text-[#f8fafc] hover:bg-slate-800" onClick={() => provisionRoleSeat.mutate({ templateId: Number(item.role_template_id), staffingRequestId: item.id })}>Create employee inactive</Button>
                         ) : null}
                         {item.provisioned_agent_id ? (
-                          <Button size="sm" variant="outline" className="agents-os-secondary-action" onClick={() => setLocation(`/operations/agents/${item.provisioned_agent_id}?edit=1`)}>Edit identity</Button>
+                          <Button size="sm" variant="outline" className="border-slate-300 bg-white text-slate-700 hover:bg-slate-50 hover:text-slate-950" onClick={() => setLocation(`/operations/agents/${item.provisioned_agent_id}?edit=1`)}>Edit identity</Button>
                         ) : null}
                         {item.status === "active" ? (
                           <Button
                             size="sm"
                             variant="outline"
-                            className="agents-os-secondary-action"
+                            className="border-slate-300 bg-white text-slate-700 hover:bg-slate-50 hover:text-slate-950"
                             onClick={() => setLocation(
                               item.requirement_id
                                 ? `/admin/industrial-network?requirement=${encodeURIComponent(item.requirement_id)}`
@@ -1294,7 +1239,7 @@ export default function AdminAgentsOsPage() {
                           <Button size="sm" className="bg-emerald-700 text-white hover:bg-emerald-600" onClick={() => setActivationRequest(item)}>Review &amp; activate</Button>
                         ) : null}
                         {item.status === "active" ? (
-                          <Button size="sm" variant="outline" className="agents-os-secondary-action" onClick={() => updateEmployeeLifecycle.mutate({ id: item.id, action: "pause" })}>Pause employee</Button>
+                          <Button size="sm" variant="outline" className="border-slate-300 bg-white text-slate-700 hover:bg-slate-50 hover:text-slate-950" onClick={() => confirmPauseEmployee(item.id, item.runtime_display_name || item.role_title)}>Pause employee</Button>
                         ) : null}
                         {item.status === "paused" ? (
                           <Button size="sm" className="bg-emerald-700 text-white hover:bg-emerald-600" onClick={() => setActivationRequest(item)}>Reactivate</Button>
@@ -1326,17 +1271,17 @@ export default function AdminAgentsOsPage() {
         </TabsContent>
 
         <TabsContent value="registry" className="space-y-3">
-          <Card className="bg-gray-900 border-gray-800">
+          <Card className="bg-white border-slate-200">
             <CardHeader>
-              <CardTitle className="text-white">Registry</CardTitle>
+              <CardTitle className="text-slate-950">Registry</CardTitle>
               <CardDescription>Search and manage tenant agents.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                <Input value={q} onChange={(event) => setQ(event.target.value)} placeholder="Search by name, role, pitch..." className="bg-gray-950 border-gray-800 text-white" />
+                <Input value={q} onChange={(event) => setQ(event.target.value)} placeholder="Search by name, role, pitch..." className="bg-slate-50 border-slate-200 text-slate-950" />
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="bg-gray-950 border-gray-800 text-white"><SelectValue placeholder="Status" /></SelectTrigger>
-                  <SelectContent className="bg-gray-900 border-gray-700">
+                  <SelectTrigger className="bg-slate-50 border-slate-200 text-slate-950"><SelectValue placeholder="Status" /></SelectTrigger>
+                  <SelectContent className="bg-white border-slate-300">
                     <SelectItem value="all">All status</SelectItem>
                     <SelectItem value="draft">Draft</SelectItem>
                     <SelectItem value="active">Active</SelectItem>
@@ -1344,8 +1289,8 @@ export default function AdminAgentsOsPage() {
                   </SelectContent>
                 </Select>
                 <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                  <SelectTrigger className="bg-gray-950 border-gray-800 text-white"><SelectValue placeholder="Category" /></SelectTrigger>
-                  <SelectContent className="bg-gray-900 border-gray-700">
+                  <SelectTrigger className="bg-slate-50 border-slate-200 text-slate-950"><SelectValue placeholder="Category" /></SelectTrigger>
+                  <SelectContent className="bg-white border-slate-300">
                     <SelectItem value="all">All categories</SelectItem>
                     {categories.map((category) => (
                       <SelectItem key={category} value={category}>{category}</SelectItem>
@@ -1356,7 +1301,7 @@ export default function AdminAgentsOsPage() {
 
               <div className="space-y-2">
                 {agentsQuery.isLoading ? (
-                  <div className="text-sm text-gray-400 border border-gray-800 rounded-lg p-4">Loading agents...</div>
+                  <div className="text-sm text-slate-500 border border-slate-200 rounded-lg p-4">Loading agents...</div>
                 ) : null}
                 {(agentsQuery.data?.items || []).map((item) => {
                   const runtimeAgentId = Number(item.runtime_agent_id || 0);
@@ -1399,7 +1344,7 @@ export default function AdminAgentsOsPage() {
                       <Button
                         size="sm"
                         variant="outline"
-                        className="agents-os-secondary-action"
+                        className="border-slate-300 bg-white text-slate-700 hover:bg-slate-50 hover:text-slate-950"
                         onClick={() => setLocation(runtimeAgentId > 0 ? `/operations/agents/${runtimeAgentId}` : `/agents-os/agents/${item.id}`)}
                       >
                         <Bot className="h-3.5 w-3.5 mr-1" />
@@ -1410,7 +1355,7 @@ export default function AdminAgentsOsPage() {
                           <Button
                             size="sm"
                             variant="outline"
-                            className="agents-os-secondary-action h-9 w-9 px-0"
+                            className="border-slate-300 bg-white text-slate-700 hover:bg-slate-50 hover:text-slate-950 h-9 w-9 px-0"
                             aria-label={`More actions for ${item.display_name}`}
                             title={`More actions for ${item.display_name}`}
                           >
@@ -1426,16 +1371,16 @@ export default function AdminAgentsOsPage() {
                           <DropdownMenuItem onSelect={() => snapshotAgent.mutate(item.id)}>
                             <Settings2 className="h-4 w-4 mr-2" />Save configuration snapshot
                           </DropdownMenuItem>
-                          <DropdownMenuItem onSelect={() => cloneAgent.mutate(item.id)}>
+                          <DropdownMenuItem onSelect={() => confirmCloneAgent(item.id, item.display_name)}>
                             <CopyPlus className="h-4 w-4 mr-2" />Clone agent
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           {item.status === "active" ? (
-                            <DropdownMenuItem className="text-amber-800 focus:text-amber-900" onSelect={() => setAgentStatus.mutate({ id: item.id, action: "retire" })}>
+                            <DropdownMenuItem className="text-amber-800 focus:text-amber-900" onSelect={() => confirmAgentStatus(item.id, "retire", item.display_name)}>
                               Retire agent
                             </DropdownMenuItem>
                           ) : (
-                            <DropdownMenuItem className="text-emerald-700 focus:text-emerald-800" onSelect={() => setAgentStatus.mutate({ id: item.id, action: "activate" })}>
+                            <DropdownMenuItem className="text-emerald-700 focus:text-emerald-800" onSelect={() => confirmAgentStatus(item.id, "activate", item.display_name)}>
                               Activate agent
                             </DropdownMenuItem>
                           )}
@@ -1446,22 +1391,18 @@ export default function AdminAgentsOsPage() {
                   );
                 })}
                 {!agentsQuery.data?.items?.length ? (
-                  <div className="text-sm text-gray-400 border border-gray-800 rounded-lg p-4 space-y-3">
+                  <div className="text-sm text-slate-500 border border-slate-200 rounded-lg p-4 space-y-3">
                     <div>No agents found for this tenant.</div>
                     <div className="flex flex-wrap items-center gap-2">
                       <Button
                         size="sm"
                         variant="outline"
-                        className="agents-os-secondary-action"
+                        className="border-slate-300 bg-white text-slate-700 hover:bg-slate-50 hover:text-slate-950"
                         disabled={importRuntimeAgents.isPending}
-                        onClick={() => importRuntimeAgents.mutate()}
+                        onClick={confirmImportRuntimeAgents}
                       >
                         <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
                         Import runtime agents
-                      </Button>
-                      <Button size="sm" className="bg-amber-500 hover:bg-amber-600 text-black" disabled={seedAgents.isPending} onClick={() => seedAgents.mutate()}>
-                        <Sparkles className="h-3.5 w-3.5 mr-1.5" />
-                        Generate agents
                       </Button>
                     </div>
                   </div>
@@ -1472,22 +1413,22 @@ export default function AdminAgentsOsPage() {
         </TabsContent>
 
         <TabsContent value="studio" className="space-y-3">
-          <Card className="bg-gray-900 border-gray-800">
+          <Card className="bg-white border-slate-200">
             <CardHeader>
-              <CardTitle className="text-white">Studio (Create / Clone)</CardTitle>
+              <CardTitle className="text-slate-950">Studio (Create / Clone)</CardTitle>
               <CardDescription>Create new agents and clone from existing ones.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div className="space-y-1"><Label>Display name</Label><Input value={createDisplayName} onChange={(event) => setCreateDisplayName(event.target.value)} className="bg-gray-950 border-gray-800 text-white" /></div>
-                <div className="space-y-1"><Label>Role title</Label><Input value={createRoleTitle} onChange={(event) => setCreateRoleTitle(event.target.value)} className="bg-gray-950 border-gray-800 text-white" /></div>
+                <div className="space-y-1"><Label>Display name</Label><Input value={createDisplayName} onChange={(event) => setCreateDisplayName(event.target.value)} className="bg-slate-50 border-slate-200 text-slate-950" /></div>
+                <div className="space-y-1"><Label>Role title</Label><Input value={createRoleTitle} onChange={(event) => setCreateRoleTitle(event.target.value)} className="bg-slate-50 border-slate-200 text-slate-950" /></div>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <Label>Category</Label>
                   <Select value={createCategory} onValueChange={setCreateCategory}>
-                    <SelectTrigger className="bg-gray-950 border-gray-800 text-white"><SelectValue /></SelectTrigger>
-                    <SelectContent className="bg-gray-900 border-gray-700">
+                    <SelectTrigger className="bg-slate-50 border-slate-200 text-slate-950"><SelectValue /></SelectTrigger>
+                    <SelectContent className="bg-white border-slate-300">
                       <SelectItem value="operations">operations</SelectItem>
                       <SelectItem value="compliance">compliance</SelectItem>
                       <SelectItem value="marketing">marketing</SelectItem>
@@ -1496,11 +1437,11 @@ export default function AdminAgentsOsPage() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-1"><Label>Price / month</Label><Input value={createPrice} onChange={(event) => setCreatePrice(event.target.value)} className="bg-gray-950 border-gray-800 text-white" /></div>
+                <div className="space-y-1"><Label>Price / month</Label><Input value={createPrice} onChange={(event) => setCreatePrice(event.target.value)} className="bg-slate-50 border-slate-200 text-slate-950" /></div>
               </div>
-              <div className="space-y-1"><Label>Short pitch</Label><Textarea value={createShortPitch} onChange={(event) => setCreateShortPitch(event.target.value)} className="bg-gray-950 border-gray-800 text-white min-h-16" /></div>
-              <div className="space-y-1"><Label>Long description</Label><Textarea value={createLongDescription} onChange={(event) => setCreateLongDescription(event.target.value)} className="bg-gray-950 border-gray-800 text-white min-h-24" /></div>
-              <Button className="bg-amber-500 hover:bg-amber-600 text-black" disabled={createAgent.isPending || !createDisplayName.trim()} onClick={() => createAgent.mutate()}>
+              <div className="space-y-1"><Label>Short pitch</Label><Textarea value={createShortPitch} onChange={(event) => setCreateShortPitch(event.target.value)} className="bg-slate-50 border-slate-200 text-slate-950 min-h-16" /></div>
+              <div className="space-y-1"><Label>Long description</Label><Textarea value={createLongDescription} onChange={(event) => setCreateLongDescription(event.target.value)} className="bg-slate-50 border-slate-200 text-slate-950 min-h-24" /></div>
+              <Button className="bg-[#f5a623] text-[#07121f] hover:bg-[#e59a18]" disabled={createAgent.isPending || !createDisplayName.trim()} onClick={confirmCreateDraft}>
                 <Plus className="h-4 w-4 mr-2" />Create agent
               </Button>
             </CardContent>
@@ -1508,20 +1449,20 @@ export default function AdminAgentsOsPage() {
         </TabsContent>
 
         <TabsContent value="knowledge" className="space-y-3">
-          <Card className="bg-gray-900 border-gray-800">
+          <Card className="bg-white border-slate-200">
             <CardHeader>
-              <CardTitle className="text-white">Knowledge Base</CardTitle>
+              <CardTitle className="text-slate-950">Knowledge Base</CardTitle>
               <CardDescription>Knowledge assignment is controlled per agent record.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-2">
-              {agentsQuery.isLoading ? <div className="text-sm text-gray-400">Loading knowledge targets...</div> : null}
+              {agentsQuery.isLoading ? <div className="text-sm text-slate-500">Loading knowledge targets...</div> : null}
               {(agentsQuery.data?.items || []).map((item) => (
-                <div key={item.id} className="p-3 border border-gray-800 rounded-lg bg-gray-950/40 text-sm flex items-center justify-between gap-2">
+                <div key={item.id} className="p-3 border border-slate-200 rounded-lg bg-slate-50 text-sm flex items-center justify-between gap-2">
                   <div className="min-w-0">
-                    <div className="text-white truncate">{item.display_name}</div>
-                    <div className="text-xs text-gray-400 truncate">{item.role_title}</div>
+                    <div className="text-slate-950 truncate">{item.display_name}</div>
+                    <div className="text-xs text-slate-500 truncate">{item.role_title}</div>
                   </div>
-                  <Button size="sm" variant="outline" className="agents-os-secondary-action" onClick={() => snapshotAgent.mutate(item.id)}>
+                  <Button size="sm" variant="outline" className="border-slate-300 bg-white text-slate-700 hover:bg-slate-50 hover:text-slate-950" onClick={() => snapshotAgent.mutate(item.id)}>
                     Snapshot config
                   </Button>
                 </div>
@@ -1531,26 +1472,26 @@ export default function AdminAgentsOsPage() {
         </TabsContent>
 
         <TabsContent value="marketplace" className="space-y-3">
-          <Card className="bg-gray-900 border-gray-800">
+          <Card className="bg-white border-slate-200">
             <CardHeader>
-              <CardTitle className="text-white">Marketplace</CardTitle>
+              <CardTitle className="text-slate-950">Marketplace</CardTitle>
               <CardDescription>Chairman/Super Admin control publish visibility and pricing.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-2">
-              {marketplaceQuery.isLoading ? <div className="text-sm text-gray-400">Loading marketplace agents...</div> : null}
+              {marketplaceQuery.isLoading ? <div className="text-sm text-slate-500">Loading marketplace agents...</div> : null}
               {(marketplaceQuery.data?.items || agentsQuery.data?.items || []).map((item) => (
-                <div key={item.id} className="p-3 border border-gray-800 rounded-lg bg-gray-950/40 grid grid-cols-1 md:grid-cols-6 gap-2 items-center">
+                <div key={item.id} className="p-3 border border-slate-200 rounded-lg bg-slate-50 grid grid-cols-1 md:grid-cols-6 gap-2 items-center">
                   <div className="md:col-span-2 min-w-0">
-                    <div className="text-white text-sm truncate">{item.display_name}</div>
-                    <div className="text-xs text-gray-400 truncate">{item.category}</div>
+                    <div className="text-slate-950 text-sm truncate">{item.display_name}</div>
+                    <div className="text-xs text-slate-500 truncate">{item.category}</div>
                   </div>
-                  <div className="text-xs text-gray-300">Price: {fmtMoney(item.price_monthly)} {item.currency || "USD"}</div>
-                  <div className="text-xs text-gray-300">Availability: {item.availability || "available"}</div>
+                  <div className="text-xs text-slate-600">Price: {fmtMoney(item.price_monthly)} {item.currency || "USD"}</div>
+                  <div className="text-xs text-slate-600">Availability: {item.availability || "available"}</div>
                   <div className="flex items-center gap-2">
                     <Switch
                       checked={Boolean(item.marketplace_visible ?? (item as any).is_visible)}
                       onCheckedChange={(checked) =>
-                        setMarketplace.mutate({
+                        confirmMarketplaceUpdate({
                           id: item.id,
                           isVisible: checked,
                           priceMonthly: Number(item.price_monthly || 0),
@@ -1558,17 +1499,17 @@ export default function AdminAgentsOsPage() {
                           isFeatured: Boolean(item.is_featured),
                           availability: String(item.availability || "available"),
                           sortRank: Number(item.sort_rank || 0),
-                        })
+                        }, item.display_name)
                       }
                     />
-                    <span className="text-xs text-gray-300">{Boolean(item.marketplace_visible ?? (item as any).is_visible) ? "Visible" : "Hidden"}</span>
+                    <span className="text-xs text-slate-600">{Boolean(item.marketplace_visible ?? (item as any).is_visible) ? "Visible" : "Hidden"}</span>
                   </div>
                   <div className="text-right">
                     <Button
                       size="sm"
-                      className="bg-amber-500 hover:bg-amber-600 text-black"
+                      className="bg-[#f5a623] text-[#07121f] hover:bg-[#e59a18]"
                       onClick={() =>
-                        setMarketplace.mutate({
+                        confirmMarketplaceUpdate({
                           id: item.id,
                           isVisible: true,
                           priceMonthly: Number(item.price_monthly || 0),
@@ -1576,7 +1517,7 @@ export default function AdminAgentsOsPage() {
                           isFeatured: true,
                           availability: String(item.availability || "available"),
                           sortRank: 0,
-                        })
+                        }, item.display_name)
                       }
                     >
                       Feature
@@ -1584,81 +1525,81 @@ export default function AdminAgentsOsPage() {
                   </div>
                 </div>
               ))}
-              {!agentsQuery.data?.items?.length ? <div className="text-sm text-gray-400">No agents to publish.</div> : null}
+              {!agentsQuery.data?.items?.length ? <div className="text-sm text-slate-500">No agents to publish.</div> : null}
             </CardContent>
           </Card>
         </TabsContent>
 
         <TabsContent value="analytics" className="space-y-3">
-          <Card className="bg-gray-900 border-gray-800">
-            <CardHeader><CardTitle className="text-white">Analytics</CardTitle><CardDescription>Live catalog health and publishing coverage.</CardDescription></CardHeader>
+          <Card className="bg-white border-slate-200">
+            <CardHeader><CardTitle className="text-slate-950">Analytics</CardTitle><CardDescription>Live catalog health and publishing coverage.</CardDescription></CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <div className="p-3 rounded-lg border border-gray-800 bg-gray-950/40">
-                <div className="text-xs text-gray-400">Catalog coverage</div>
-                <div className="text-lg text-white font-semibold">
+              <div className="p-3 rounded-lg border border-slate-200 bg-slate-50">
+                <div className="text-xs text-slate-500">Catalog coverage</div>
+                <div className="text-lg text-slate-950 font-semibold">
                   {summaryQuery.data?.summary.totalAgents ? Math.round(((summaryQuery.data?.summary.marketplaceVisible || 0) / Math.max(1, summaryQuery.data.summary.totalAgents)) * 100) : 0}%
                 </div>
               </div>
-              <div className="p-3 rounded-lg border border-gray-800 bg-gray-950/40">
-                <div className="text-xs text-gray-400">Draft backlog</div>
-                <div className="text-lg text-white font-semibold">{summaryQuery.data?.summary.draftAgents || 0}</div>
+              <div className="p-3 rounded-lg border border-slate-200 bg-slate-50">
+                <div className="text-xs text-slate-500">Draft backlog</div>
+                <div className="text-lg text-slate-950 font-semibold">{summaryQuery.data?.summary.draftAgents || 0}</div>
               </div>
-              <div className="p-3 rounded-lg border border-gray-800 bg-gray-950/40">
-                <div className="text-xs text-gray-400">Featured opportunities</div>
-                <div className="text-lg text-white font-semibold">{(marketplaceQuery.data?.items || []).filter((x) => Boolean(x.is_featured)).length}</div>
+              <div className="p-3 rounded-lg border border-slate-200 bg-slate-50">
+                <div className="text-xs text-slate-500">Featured opportunities</div>
+                <div className="text-lg text-slate-950 font-semibold">{(marketplaceQuery.data?.items || []).filter((x) => Boolean(x.is_featured)).length}</div>
               </div>
             </CardContent>
           </Card>
         </TabsContent>
 
         <TabsContent value="governance" className="space-y-3">
-          <Card className="bg-gray-900 border-gray-800">
+          <Card className="bg-white border-slate-200">
             <CardHeader>
-              <CardTitle className="text-white flex items-center gap-2"><Network className="h-4 w-4" />Governance (Hierarchy)</CardTitle>
+              <CardTitle className="text-slate-950 flex items-center gap-2"><Network className="h-4 w-4" />Governance (Hierarchy)</CardTitle>
               <CardDescription>Hierarchy tools are managed from this section.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="grid grid-cols-3 gap-2">
-                <div className="rounded border border-gray-800 bg-gray-950/40 p-2 text-xs text-gray-300">
-                  <div className="text-gray-500">Total</div>
-                  <div className="text-white text-lg font-semibold">{governanceQuery.data?.total ?? 0}</div>
+                <div className="rounded border border-slate-200 bg-slate-50 p-2 text-xs text-slate-600">
+                  <div className="text-slate-500">Total</div>
+                  <div className="text-slate-950 text-lg font-semibold">{governanceQuery.data?.total ?? 0}</div>
                 </div>
-                <div className="rounded border border-gray-800 bg-gray-950/40 p-2 text-xs text-gray-300">
-                  <div className="text-gray-500">Roots</div>
-                  <div className="text-white text-lg font-semibold">{governanceQuery.data?.roots ?? 0}</div>
+                <div className="rounded border border-slate-200 bg-slate-50 p-2 text-xs text-slate-600">
+                  <div className="text-slate-500">Roots</div>
+                  <div className="text-slate-950 text-lg font-semibold">{governanceQuery.data?.roots ?? 0}</div>
                 </div>
-                <div className="rounded border border-gray-800 bg-gray-950/40 p-2 text-xs text-gray-300">
-                  <div className="text-gray-500">Orphans</div>
-                  <div className="text-white text-lg font-semibold">{governanceQuery.data?.orphans ?? 0}</div>
+                <div className="rounded border border-slate-200 bg-slate-50 p-2 text-xs text-slate-600">
+                  <div className="text-slate-500">Orphans</div>
+                  <div className="text-slate-950 text-lg font-semibold">{governanceQuery.data?.orphans ?? 0}</div>
                 </div>
               </div>
               {governanceQuery.isLoading ? (
-                <div className="text-sm text-gray-400">Loading hierarchy...</div>
+                <div className="text-sm text-slate-500">Loading hierarchy...</div>
               ) : governanceQuery.data?.nodes?.length ? (
                 <div className="space-y-2">
                   {governanceQuery.data.nodes.map((node) => (
-                    <div key={node.id} className="p-3 border border-gray-800 rounded-lg bg-gray-950/40">
+                    <div key={node.id} className="p-3 border border-slate-200 rounded-lg bg-slate-50">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <div className="text-sm text-white font-medium">{node.displayName}</div>
-                        <Badge variant="secondary" className="bg-gray-800 text-gray-100">{node.status}</Badge>
-                        {node.isDepartmentHead ? <Badge className="bg-emerald-600/20 text-emerald-200 border border-emerald-500/40">department head</Badge> : null}
+                        <div className="text-sm text-slate-950 font-medium">{node.displayName}</div>
+                        <Badge variant="secondary" className="bg-slate-100 text-slate-700">{node.status}</Badge>
+                        {node.isDepartmentHead ? <Badge className="border border-emerald-200 bg-emerald-50 text-emerald-800">department head</Badge> : null}
                       </div>
-                      <div className="text-xs text-gray-400 mt-1">{node.roleTitle} • {node.category}</div>
-                      <div className="text-xs text-gray-500 mt-1">
+                      <div className="text-xs text-slate-500 mt-1">{node.roleTitle} • {node.category}</div>
+                      <div className="text-xs text-slate-500 mt-1">
                         Manager: {node.managerName || "Unassigned"}{node.runtimeAgentId ? ` • runtime #${node.runtimeAgentId}` : ""}
                       </div>
                     </div>
                   ))}
                 </div>
               ) : (
-                <div className="text-sm text-gray-400 border border-gray-800 rounded-lg p-3">No hierarchy data found.</div>
+                <div className="text-sm text-slate-500 border border-slate-200 rounded-lg p-3">No hierarchy data found.</div>
               )}
               <div className="flex items-center gap-2">
-                <Button variant="outline" className="agents-os-secondary-action" onClick={() => importRuntimeAgents.mutate()} disabled={importRuntimeAgents.isPending}>
+                <Button variant="outline" className="border-slate-300 bg-white text-slate-700 hover:bg-slate-50 hover:text-slate-950" onClick={confirmImportRuntimeAgents} disabled={importRuntimeAgents.isPending}>
                   <RefreshCw className="h-4 w-4 mr-1.5" />
                   Refresh from runtime agents
                 </Button>
-                <Button variant="outline" className="agents-os-secondary-action" onClick={() => setLocation("/admin/agents/governance")}>
+                <Button variant="outline" className="border-slate-300 bg-white text-slate-700 hover:bg-slate-50 hover:text-slate-950" onClick={() => setLocation("/admin/agents/governance")}>
                   Open Governance Workspace
                 </Button>
               </div>
@@ -1828,7 +1769,7 @@ export default function AdminAgentsOsPage() {
                           <Button
                             size="sm"
                             variant="outline"
-                            className="agents-os-secondary-action shrink-0"
+                            className="border-slate-300 bg-white text-slate-700 hover:bg-slate-50 hover:text-slate-950 shrink-0"
                             onClick={() => setLocation(`/operations/agents/${item.employee!.id}?edit=1`)}
                           >
                             Review employee
@@ -1998,7 +1939,6 @@ export default function AdminAgentsOsPage() {
         </DialogContent>
       </Dialog>
 
-      <div className="text-xs text-gray-500">{location.includes("admin/agents-os") ? "" : ""}</div>
     </div>
   );
 }

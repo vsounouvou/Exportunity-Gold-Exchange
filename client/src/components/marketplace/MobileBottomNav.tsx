@@ -38,9 +38,10 @@ type MobileBottomNavProps = {
   items: MobileNavItem[];
   activeKey?: MobileNavKey;
   topSlot?: ReactNode;
+  theme?: "dark" | "gtn";
 };
 
-export function MobileBottomNav({ items, activeKey, topSlot }: MobileBottomNavProps) {
+export function MobileBottomNav({ items, activeKey, topSlot, theme = "dark" }: MobileBottomNavProps) {
   const gridCols =
     items.length === 2
       ? "grid-cols-2"
@@ -59,11 +60,11 @@ export function MobileBottomNav({ items, activeKey, topSlot }: MobileBottomNavPr
       data-mobile-nav
     >
       {topSlot ? (
-        <div className="px-4 pt-2 pb-2 bg-black/80 border-t border-white/10 backdrop-blur-xl">
+        <div className={theme === "gtn" ? "border-t border-slate-200 bg-white/95 px-4 pb-2 pt-2 backdrop-blur-xl" : "border-t border-white/10 bg-black/80 px-4 pb-2 pt-2 backdrop-blur-xl"}>
           {topSlot}
         </div>
       ) : null}
-      <nav className="bg-black/90 border-t border-white/10 px-4 pt-2 pb-[calc(env(safe-area-inset-bottom,0px)+8px)] shadow-2xl">
+      <nav className={theme === "gtn" ? "border-t border-slate-200 bg-white/95 px-4 pb-[calc(env(safe-area-inset-bottom,0px)+8px)] pt-2 shadow-[0_-12px_32px_rgba(15,23,42,0.10)] backdrop-blur-xl" : "border-t border-white/10 bg-black/90 px-4 pb-[calc(env(safe-area-inset-bottom,0px)+8px)] pt-2 shadow-2xl"}>
         <div className={`grid ${gridCols} gap-1`}>
           {items.map((item) => {
             const isActive = item.key === activeKey;
@@ -78,12 +79,18 @@ export function MobileBottomNav({ items, activeKey, topSlot }: MobileBottomNavPr
                 aria-label={item.label}
                 data-testid={`mobile-nav-${item.key}`}
                 className={`relative flex min-h-[44px] flex-col items-center justify-center gap-1 rounded-xl px-2 py-1 text-[10px] font-medium transition-colors ${
-                  isPrimary
-                    ? "bg-amber-500/15 text-amber-100 hover:bg-amber-500/25"
-                    : isActive
-                      ? "text-amber-300"
-                      : "text-white/60"
-                } ${item.disabled ? "opacity-40" : "hover:text-white hover:bg-white/5"} ${isPrimary ? "border border-amber-500/25" : ""}`}
+                  theme === "gtn"
+                    ? isPrimary
+                      ? "border border-[#F5A623]/30 bg-[#FFF8E8] text-[#8A5700] hover:bg-[#FFF1CF]"
+                      : isActive
+                        ? "bg-slate-100 text-slate-950"
+                        : "text-slate-500"
+                    : isPrimary
+                      ? "bg-amber-500/15 text-amber-100 hover:bg-amber-500/25"
+                      : isActive
+                        ? "text-amber-300"
+                        : "text-white/60"
+                } ${item.disabled ? "opacity-40" : theme === "gtn" ? "hover:bg-slate-50 hover:text-slate-950" : "hover:bg-white/5 hover:text-white"} ${isPrimary && theme !== "gtn" ? "border border-amber-500/25" : ""}`}
               >
                 <span className="relative flex items-center justify-center">
                   {item.icon}

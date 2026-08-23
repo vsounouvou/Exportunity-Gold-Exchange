@@ -11,10 +11,12 @@ import {
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 
 import { eceUsers } from "./ece";
 import { tenants } from "./tenants";
 import { contacts } from "./contact";
+import { chatMessages } from "./chat-desk";
 
 export const industrialVisibilityEnum = pgEnum("industrial_visibility", [
   "public",
@@ -122,6 +124,50 @@ export const industrialOrderStatusEnum = pgEnum("industrial_order_status", [
   "cancelled",
 ]);
 
+export const industrialFulfillmentKindEnum = pgEnum(
+  "industrial_fulfillment_kind",
+  ["standard_order", "sample", "prototype"],
+);
+
+export const industrialFulfillmentStatusEnum = pgEnum(
+  "industrial_fulfillment_status",
+  [
+    "release_review",
+    "procurement",
+    "inspection",
+    "ready_to_ship",
+    "in_transit",
+    "customs",
+    "last_mile",
+    "delivered",
+    "exception",
+    "cancelled",
+  ],
+);
+
+export const industrialFulfillmentServiceTypeEnum = pgEnum(
+  "industrial_fulfillment_service_type",
+  ["procurement", "inspection", "freight", "customs", "last_mile"],
+);
+
+export const industrialFulfillmentServiceStatusEnum = pgEnum(
+  "industrial_fulfillment_service_status",
+  [
+    "candidate",
+    "approval_required",
+    "approved",
+    "in_progress",
+    "completed",
+    "exception",
+    "cancelled",
+  ],
+);
+
+export const industrialFulfillmentEventSourceEnum = pgEnum(
+  "industrial_fulfillment_event_source",
+  ["system_payment", "staff", "delivery_network", "provider_callback"],
+);
+
 export const industrialFactoryClaimStatusEnum = pgEnum(
   "industrial_factory_claim_status",
   ["submitted", "under_review", "approved", "rejected", "cancelled"],
@@ -220,6 +266,24 @@ export const industrialPartRouteDecisionEnum = pgEnum(
   ],
 );
 
+export const industrialAttachmentReviewKindEnum = pgEnum(
+  "industrial_attachment_review_kind",
+  ["image_vision", "scanned_document_ocr", "cad_technical", "manual"],
+);
+
+export const industrialAttachmentReviewStatusEnum = pgEnum(
+  "industrial_attachment_review_status",
+  [
+    "pending_analysis",
+    "analysis_ready",
+    "analysis_failed",
+    "under_review",
+    "approved",
+    "rejected",
+    "applied",
+  ],
+);
+
 export const industrialFactoryLeadStatusEnum = pgEnum(
   "industrial_factory_lead_status",
   [
@@ -230,6 +294,41 @@ export const industrialFactoryLeadStatusEnum = pgEnum(
     "rejected",
     "converted",
   ],
+);
+
+export const industrialDiscoveryCandidateStatusEnum = pgEnum(
+  "industrial_discovery_candidate_status",
+  ["discovered", "under_review", "verification_pending", "rejected", "promoted"],
+);
+
+export const industrialSupplierRfqStatusEnum = pgEnum(
+  "industrial_supplier_rfq_status",
+  ["draft", "approval_pending", "approved_for_outreach", "rejected", "cancelled"],
+);
+
+export const industrialSupplierRfqDecisionEnum = pgEnum(
+  "industrial_supplier_rfq_decision",
+  ["approved", "rejected"],
+);
+
+export const industrialSupplierContactChannelEnum = pgEnum(
+  "industrial_supplier_contact_channel",
+  ["email", "whatsapp"],
+);
+
+export const industrialSupplierContactControlStateEnum = pgEnum(
+  "industrial_supplier_contact_control_state",
+  ["authorized", "suppressed"],
+);
+
+export const industrialSupplierContactAuthorizationBasisEnum = pgEnum(
+  "industrial_supplier_contact_authorization_basis",
+  ["explicit_consent", "existing_business_relationship", "supplier_initiated_inquiry"],
+);
+
+export const industrialSupplierRfqDispatchStatusEnum = pgEnum(
+  "industrial_supplier_rfq_dispatch_status",
+  ["reserved", "sending", "accepted", "failed", "unknown"],
 );
 
 export const industrialFactoryRelationshipStageEnum = pgEnum(
@@ -397,6 +496,7 @@ export const industrialFactoryLeads = pgTable(
       .references(() => tenants.id, { onDelete: "cascade" })
       .notNull(),
     source: text("source").notNull().default("manual"),
+    discoveryKey: text("discovery_key"),
     googlePlaceId: text("google_place_id"),
     name: text("name").notNull(),
     normalizedName: text("normalized_name").notNull(),
@@ -444,6 +544,9 @@ export const industrialFactoryLeads = pgTable(
     tenantGooglePlaceUnique: uniqueIndex(
       "industrial_factory_leads_tenant_google_place_unique",
     ).on(t.tenantId, t.googlePlaceId),
+    tenantDiscoveryKeyUnique: uniqueIndex(
+      "industrial_factory_leads_tenant_discovery_key_unique",
+    ).on(t.tenantId, t.discoveryKey),
     tenantNameCityIndex: index(
       "industrial_factory_leads_tenant_name_city_idx",
     ).on(t.tenantId, t.normalizedName, t.city),
@@ -812,6 +915,10 @@ export const industrialProductRequirements = pgTable(
     requirementId: uuid("requirement_id")
       .references(() => industrialRequirements.id, { onDelete: "cascade" })
       .notNull(),
+    sourceMessageId: integer("source_message_id").references(
+      () => chatMessages.id,
+      { onDelete: "set null" },
+    ),
     intent: text("intent").notNull(),
     intentConfidence: decimal("intent_confidence", {
       precision: 4,
@@ -821,6 +928,7 @@ export const industrialProductRequirements = pgTable(
     productName: text("product_name"),
     productCategory: text("product_category"),
     specification: text("specification"),
+    quantity: decimal("quantity", { precision: 20, scale: 6 }),
     quantityText: text("quantity_text"),
     unit: text("unit"),
     origin: text("origin"),
@@ -852,6 +960,9 @@ export const industrialProductRequirements = pgTable(
     tenantProductIndex: index(
       "industrial_product_requirements_tenant_product_idx",
     ).on(t.tenantId, t.productCategory, t.productName),
+    tenantSourceMessageIndex: index(
+      "industrial_product_requirements_tenant_source_message_idx",
+    ).on(t.tenantId, t.sourceMessageId),
   }),
 );
 
@@ -1306,6 +1417,418 @@ export const industrialRequirementSupplierMatches = pgTable(
   }),
 );
 
+// External discovery candidates are unverified company records linked to one
+// governed requirement. Recording a candidate never creates a supplier
+// profile, exposes an identity publicly, or authorizes outreach.
+export const industrialRequirementDiscoveryCandidates = pgTable(
+  "industrial_requirement_discovery_candidates",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: integer("tenant_id")
+      .references(() => tenants.id, { onDelete: "cascade" })
+      .notNull(),
+    requirementId: uuid("requirement_id")
+      .references(() => industrialRequirements.id, { onDelete: "cascade" })
+      .notNull(),
+    factoryLeadId: uuid("factory_lead_id")
+      .references(() => industrialFactoryLeads.id, { onDelete: "cascade" })
+      .notNull(),
+    candidateKey: text("candidate_key").notNull(),
+    status: industrialDiscoveryCandidateStatusEnum("status")
+      .notNull()
+      .default("discovered"),
+    relevanceScore: integer("relevance_score").notNull().default(0),
+    relevanceRationale: text("relevance_rationale").notNull(),
+    contactStatus: text("contact_status").notNull().default("not_contacted"),
+    outreachAllowed: boolean("outreach_allowed").notNull().default(false),
+    humanApprovalRequired: boolean("human_approval_required")
+      .notNull()
+      .default(true),
+    createdByUserId: integer("created_by_user_id").references(
+      () => eceUsers.id,
+      { onDelete: "set null" },
+    ),
+    reviewedByUserId: integer("reviewed_by_user_id").references(
+      () => eceUsers.id,
+      { onDelete: "set null" },
+    ),
+    reviewedAt: timestamp("reviewed_at"),
+    reviewNotes: text("review_notes"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => ({
+    requirementCandidateUnique: uniqueIndex(
+      "industrial_requirement_discovery_candidates_requirement_candidate_unique",
+    ).on(t.requirementId, t.candidateKey),
+    tenantQueueIndex: index(
+      "industrial_requirement_discovery_candidates_tenant_queue_idx",
+    ).on(t.tenantId, t.status, t.updatedAt),
+    tenantRequirementIndex: index(
+      "industrial_requirement_discovery_candidates_tenant_requirement_idx",
+    ).on(t.tenantId, t.requirementId, t.status),
+    factoryLeadIndex: index(
+      "industrial_requirement_discovery_candidates_factory_lead_idx",
+    ).on(t.factoryLeadId, t.status),
+  }),
+);
+
+// Provenance is append-only at the application layer. Multiple source
+// snapshots can support one candidate without overwriting earlier evidence.
+export const industrialDiscoveryEvidence = pgTable(
+  "industrial_discovery_evidence",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: integer("tenant_id")
+      .references(() => tenants.id, { onDelete: "cascade" })
+      .notNull(),
+    discoveryCandidateId: uuid("discovery_candidate_id")
+      .references(() => industrialRequirementDiscoveryCandidates.id, {
+        onDelete: "cascade",
+      })
+      .notNull(),
+    sourceType: text("source_type").notNull(),
+    sourceName: text("source_name").notNull(),
+    sourceUrl: text("source_url").notNull(),
+    retrievedAt: timestamp("retrieved_at").notNull(),
+    contentHash: text("content_hash").notNull(),
+    evidence: jsonb("evidence")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default({}),
+    createdByUserId: integer("created_by_user_id").references(
+      () => eceUsers.id,
+      { onDelete: "set null" },
+    ),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => ({
+    sourceSnapshotUnique: uniqueIndex(
+      "industrial_discovery_evidence_candidate_source_hash_unique",
+    ).on(t.discoveryCandidateId, t.sourceUrl, t.contentHash),
+    tenantCandidateIndex: index(
+      "industrial_discovery_evidence_tenant_candidate_idx",
+    ).on(t.tenantId, t.discoveryCandidateId, t.createdAt),
+  }),
+);
+
+// A promotion is an explicit, human-approved bridge from an unverified
+// discovery candidate to an internal supplier profile. It records the exact
+// evidence and attestation used for the decision, but never authorizes
+// outreach or public identity exposure.
+export const industrialSupplierPromotions = pgTable(
+  "industrial_supplier_promotions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: integer("tenant_id")
+      .references(() => tenants.id, { onDelete: "cascade" })
+      .notNull(),
+    discoveryCandidateId: uuid("discovery_candidate_id")
+      .references(() => industrialRequirementDiscoveryCandidates.id, {
+        onDelete: "cascade",
+      })
+      .notNull(),
+    requirementId: uuid("requirement_id")
+      .references(() => industrialRequirements.id, { onDelete: "cascade" })
+      .notNull(),
+    supplierProfileId: uuid("supplier_profile_id")
+      .references(() => industrialSupplierProfiles.id, { onDelete: "restrict" })
+      .notNull(),
+    verificationScope: text("verification_scope").notNull(),
+    evidenceIds: jsonb("evidence_ids").$type<string[]>().notNull().default([]),
+    officialEvidenceId: uuid("official_evidence_id")
+      .references(() => industrialDiscoveryEvidence.id, { onDelete: "restrict" })
+      .notNull(),
+    contactEvidenceId: uuid("contact_evidence_id")
+      .references(() => industrialDiscoveryEvidence.id, { onDelete: "restrict" })
+      .notNull(),
+    legalName: text("legal_name").notNull(),
+    countryCode: text("country_code").notNull(),
+    contactType: text("contact_type").notNull(),
+    contactValue: text("contact_value").notNull(),
+    checklist: jsonb("checklist")
+      .$type<Record<string, boolean>>()
+      .notNull()
+      .default({}),
+    decisionNotes: text("decision_notes").notNull(),
+    approvedByUserId: integer("approved_by_user_id").references(
+      () => eceUsers.id,
+      { onDelete: "set null" },
+    ),
+    approvedAt: timestamp("approved_at").notNull(),
+    outreachAllowed: boolean("outreach_allowed").notNull().default(false),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => ({
+    candidateUnique: uniqueIndex(
+      "industrial_supplier_promotions_candidate_unique",
+    ).on(t.discoveryCandidateId),
+    tenantSupplierIndex: index(
+      "industrial_supplier_promotions_tenant_supplier_idx",
+    ).on(t.tenantId, t.supplierProfileId, t.approvedAt),
+    tenantRequirementIndex: index(
+      "industrial_supplier_promotions_tenant_requirement_idx",
+    ).on(t.tenantId, t.requirementId, t.approvedAt),
+  }),
+);
+
+// An RFQ draft is an internal, content-addressed proposal for supplier
+// outreach. This table is intentionally unable to record a delivery: channel
+// dispatch belongs to a later, separately governed workflow.
+export const industrialSupplierRfqDrafts = pgTable(
+  "industrial_supplier_rfq_drafts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: integer("tenant_id")
+      .references(() => tenants.id, { onDelete: "cascade" })
+      .notNull(),
+    promotionId: uuid("promotion_id")
+      .references(() => industrialSupplierPromotions.id, { onDelete: "restrict" })
+      .notNull(),
+    requirementId: uuid("requirement_id")
+      .references(() => industrialRequirements.id, { onDelete: "restrict" })
+      .notNull(),
+    supplierProfileId: uuid("supplier_profile_id")
+      .references(() => industrialSupplierProfiles.id, { onDelete: "restrict" })
+      .notNull(),
+    requirementSupplierMatchId: uuid("requirement_supplier_match_id")
+      .references(() => industrialRequirementSupplierMatches.id, {
+        onDelete: "restrict",
+      })
+      .notNull(),
+    referenceCode: text("reference_code").notNull(),
+    revision: integer("revision").notNull().default(1),
+    status: industrialSupplierRfqStatusEnum("status").notNull().default("draft"),
+    subject: text("subject").notNull(),
+    messageBody: text("message_body").notNull(),
+    requestedFields: jsonb("requested_fields").$type<string[]>().notNull().default([]),
+    requirementSnapshot: jsonb("requirement_snapshot")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default({}),
+    supplierSnapshot: jsonb("supplier_snapshot")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default({}),
+    buyerInstructions: text("buyer_instructions"),
+    responseDeadline: timestamp("response_deadline").notNull(),
+    contentHash: text("content_hash").notNull(),
+    createdByUserId: integer("created_by_user_id").references(
+      () => eceUsers.id,
+      { onDelete: "set null" },
+    ),
+    submittedByUserId: integer("submitted_by_user_id").references(
+      () => eceUsers.id,
+      { onDelete: "set null" },
+    ),
+    submittedAt: timestamp("submitted_at"),
+    deliveryStatus: text("delivery_status").notNull().default("not_sent"),
+    deliveryChannel: text("delivery_channel"),
+    deliveredAt: timestamp("delivered_at"),
+    externalMessageId: text("external_message_id"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => ({
+    tenantReferenceUnique: uniqueIndex(
+      "industrial_supplier_rfq_drafts_tenant_reference_unique",
+    ).on(t.tenantId, t.referenceCode),
+    promotionRevisionUnique: uniqueIndex(
+      "industrial_supplier_rfq_drafts_promotion_revision_unique",
+    ).on(t.promotionId, t.revision),
+    promotionContentUnique: uniqueIndex(
+      "industrial_supplier_rfq_drafts_promotion_content_unique",
+    ).on(t.promotionId, t.contentHash),
+    tenantStatusIndex: index(
+      "industrial_supplier_rfq_drafts_tenant_status_idx",
+    ).on(t.tenantId, t.status, t.updatedAt),
+    tenantRequirementIndex: index(
+      "industrial_supplier_rfq_drafts_tenant_requirement_idx",
+    ).on(t.tenantId, t.requirementId, t.status),
+    tenantSupplierIndex: index(
+      "industrial_supplier_rfq_drafts_tenant_supplier_idx",
+    ).on(t.tenantId, t.supplierProfileId, t.status),
+  }),
+);
+
+// Decision content is immutable at the application layer and binds an explicit
+// human decision to the exact RFQ content hash. The dispatchCreated marker is
+// the sole mutable field and is consumed atomically by the separate dispatcher.
+export const industrialSupplierRfqDecisions = pgTable(
+  "industrial_supplier_rfq_decisions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: integer("tenant_id")
+      .references(() => tenants.id, { onDelete: "cascade" })
+      .notNull(),
+    rfqDraftId: uuid("rfq_draft_id")
+      .references(() => industrialSupplierRfqDrafts.id, { onDelete: "restrict" })
+      .notNull(),
+    decision: industrialSupplierRfqDecisionEnum("decision").notNull(),
+    contentHash: text("content_hash").notNull(),
+    checklist: jsonb("checklist")
+      .$type<Record<string, boolean>>()
+      .notNull()
+      .default({}),
+    decisionNotes: text("decision_notes").notNull(),
+    decidedByUserId: integer("decided_by_user_id").references(
+      () => eceUsers.id,
+      { onDelete: "set null" },
+    ),
+    decidedAt: timestamp("decided_at").notNull(),
+    authorizationExpiresAt: timestamp("authorization_expires_at"),
+    outreachAuthorized: boolean("outreach_authorized").notNull().default(false),
+    dispatchCreated: boolean("dispatch_created").notNull().default(false),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => ({
+    draftUnique: uniqueIndex(
+      "industrial_supplier_rfq_decisions_draft_unique",
+    ).on(t.rfqDraftId),
+    tenantDecisionIndex: index(
+      "industrial_supplier_rfq_decisions_tenant_decision_idx",
+    ).on(t.tenantId, t.decision, t.decidedAt),
+    tenantExpiryIndex: index(
+      "industrial_supplier_rfq_decisions_tenant_expiry_idx",
+    ).on(t.tenantId, t.authorizationExpiresAt),
+  }),
+);
+
+// Contact authorization and suppression are stored independently from a
+// supplier profile. A verified public contact is not, by itself, permission
+// to send an RFQ.
+export const industrialSupplierContactControls = pgTable(
+  "industrial_supplier_contact_controls",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: integer("tenant_id")
+      .references(() => tenants.id, { onDelete: "cascade" })
+      .notNull(),
+    supplierProfileId: uuid("supplier_profile_id")
+      .references(() => industrialSupplierProfiles.id, { onDelete: "restrict" })
+      .notNull(),
+    sourcePromotionId: uuid("source_promotion_id").references(
+      () => industrialSupplierPromotions.id,
+      { onDelete: "restrict" },
+    ),
+    channel: industrialSupplierContactChannelEnum("channel").notNull(),
+    contactHash: text("contact_hash").notNull(),
+    contactMasked: text("contact_masked").notNull(),
+    state: industrialSupplierContactControlStateEnum("state").notNull(),
+    authorizationBasis: industrialSupplierContactAuthorizationBasisEnum(
+      "authorization_basis",
+    ),
+    evidenceReference: text("evidence_reference"),
+    notes: text("notes").notNull(),
+    authorizedByUserId: integer("authorized_by_user_id").references(
+      () => eceUsers.id,
+      { onDelete: "set null" },
+    ),
+    authorizedAt: timestamp("authorized_at"),
+    authorizationExpiresAt: timestamp("authorization_expires_at"),
+    suppressedByUserId: integer("suppressed_by_user_id").references(
+      () => eceUsers.id,
+      { onDelete: "set null" },
+    ),
+    suppressedAt: timestamp("suppressed_at"),
+    suppressionReason: text("suppression_reason"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => ({
+    contactUnique: uniqueIndex(
+      "industrial_supplier_contact_controls_tenant_contact_unique",
+    ).on(t.tenantId, t.supplierProfileId, t.channel, t.contactHash),
+    tenantStateIndex: index(
+      "industrial_supplier_contact_controls_tenant_state_idx",
+    ).on(t.tenantId, t.state, t.updatedAt),
+    tenantExpiryIndex: index(
+      "industrial_supplier_contact_controls_tenant_expiry_idx",
+    ).on(t.tenantId, t.authorizationExpiresAt),
+  }),
+);
+
+// A dispatch consumes exactly one approved RFQ decision. The ledger permits
+// one provider attempt and intentionally has no automatic retry state.
+export const industrialSupplierRfqDispatches = pgTable(
+  "industrial_supplier_rfq_dispatches",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: integer("tenant_id")
+      .references(() => tenants.id, { onDelete: "cascade" })
+      .notNull(),
+    rfqDraftId: uuid("rfq_draft_id")
+      .references(() => industrialSupplierRfqDrafts.id, { onDelete: "restrict" })
+      .notNull(),
+    decisionId: uuid("decision_id")
+      .references(() => industrialSupplierRfqDecisions.id, { onDelete: "restrict" })
+      .notNull(),
+    contactControlId: uuid("contact_control_id")
+      .references(() => industrialSupplierContactControls.id, { onDelete: "restrict" })
+      .notNull(),
+    contactAuthorizationBasis: industrialSupplierContactAuthorizationBasisEnum(
+      "contact_authorization_basis",
+    ).notNull(),
+    contactEvidenceReference: text("contact_evidence_reference").notNull(),
+    contactAuthorizedAt: timestamp("contact_authorized_at").notNull(),
+    contactAuthorizationExpiresAt: timestamp(
+      "contact_authorization_expires_at",
+    ).notNull(),
+    supplierProfileId: uuid("supplier_profile_id")
+      .references(() => industrialSupplierProfiles.id, { onDelete: "restrict" })
+      .notNull(),
+    channel: industrialSupplierContactChannelEnum("channel").notNull(),
+    contentHash: text("content_hash").notNull(),
+    recipientHash: text("recipient_hash").notNull(),
+    recipientMasked: text("recipient_masked").notNull(),
+    senderAgentKey: text("sender_agent_key").notNull(),
+    idempotencyKey: text("idempotency_key").notNull(),
+    checklist: jsonb("checklist")
+      .$type<Record<string, boolean>>()
+      .notNull()
+      .default({}),
+    dispatchNotes: text("dispatch_notes").notNull(),
+    status: industrialSupplierRfqDispatchStatusEnum("status")
+      .notNull()
+      .default("reserved"),
+    attemptCount: integer("attempt_count").notNull().default(0),
+    reservedByUserId: integer("reserved_by_user_id").references(
+      () => eceUsers.id,
+      { onDelete: "set null" },
+    ),
+    reservedAt: timestamp("reserved_at").notNull(),
+    attemptedAt: timestamp("attempted_at"),
+    completedAt: timestamp("completed_at"),
+    providerMessageId: text("provider_message_id"),
+    providerStatus: text("provider_status"),
+    providerResponse: jsonb("provider_response")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default({}),
+    errorCode: text("error_code"),
+    errorMessage: text("error_message"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => ({
+    draftUnique: uniqueIndex("industrial_supplier_rfq_dispatches_draft_unique").on(
+      t.rfqDraftId,
+    ),
+    decisionUnique: uniqueIndex(
+      "industrial_supplier_rfq_dispatches_decision_unique",
+    ).on(t.decisionId),
+    tenantIdempotencyUnique: uniqueIndex(
+      "industrial_supplier_rfq_dispatches_tenant_idempotency_unique",
+    ).on(t.tenantId, t.idempotencyKey),
+    tenantStatusIndex: index(
+      "industrial_supplier_rfq_dispatches_tenant_status_idx",
+    ).on(t.tenantId, t.status, t.updatedAt),
+    tenantSupplierIndex: index(
+      "industrial_supplier_rfq_dispatches_tenant_supplier_idx",
+    ).on(t.tenantId, t.supplierProfileId, t.createdAt),
+  }),
+);
+
 // This ledger preserves the legacy marketplace source while staff decide
 // whether a record belongs in Exportunity's industrial model. It never alters
 // seller_products directly and is never used by public industrial search.
@@ -1363,10 +1886,11 @@ export const industrialLegacyProductReviews = pgTable(
   }),
 );
 
-// Supplier quotations are strictly internal evidence. Customer-facing prices
-// live in industrial_quotes and never inherit cost or margin fields from this
-// table through a public serializer.
-export const industrialSupplierQuotes = pgTable(
+// Historical subset retained privately for source compatibility while the
+// canonical exported table is defined in exportunity-supplier-quotes.ts. Both
+// definitions target the existing ledger; only the extended definition is
+// exported through @db/schema.
+const industrialSupplierQuotesLegacyShape = pgTable(
   "industrial_supplier_quotes",
   {
     id: uuid("id").primaryKey().defaultRandom(),
@@ -1544,7 +2068,7 @@ export const industrialQuotes = pgTable(
     referenceCode: text("reference_code").notNull(),
     status: industrialQuoteStatusEnum("status").notNull().default("draft"),
     currencyCode: text("currency_code").notNull().default("XOF"),
-    totalAmount: decimal("total_amount", { precision: 16, scale: 2 }),
+    totalAmount: decimal("total_amount", { precision: 24, scale: 3 }),
     lineItems: jsonb("line_items")
       .$type<Array<Record<string, string>>>()
       .notNull()
@@ -1554,6 +2078,48 @@ export const industrialQuotes = pgTable(
     commercialTerms: text("commercial_terms"),
     customerNotes: text("customer_notes"),
     internalNotes: text("internal_notes"),
+    // industrial_supplier_quotes lives in the Exportunity extension schema.
+    // The additive migration enforces this cross-module foreign key without
+    // introducing an import cycle back into the industrial foundation.
+    sourceSupplierQuoteId: uuid("source_supplier_quote_id"),
+    pricingVersion: text("pricing_version"),
+    pricingHash: text("pricing_hash"),
+    supplierCostMinor: decimal("supplier_cost_minor", {
+      precision: 30,
+      scale: 0,
+    }),
+    additionalCostsMinor: decimal("additional_costs_minor", {
+      precision: 30,
+      scale: 0,
+    }),
+    totalCostMinor: decimal("total_cost_minor", {
+      precision: 30,
+      scale: 0,
+    }),
+    targetGrossMarginBps: integer("target_gross_margin_bps"),
+    marginMinor: decimal("margin_minor", { precision: 30, scale: 0 }),
+    customerPriceMinor: decimal("customer_price_minor", {
+      precision: 30,
+      scale: 0,
+    }),
+    costStack: jsonb("cost_stack")
+      .$type<Array<Record<string, string>>>()
+      .notNull()
+      .default([]),
+    pricingChecklist: jsonb("pricing_checklist")
+      .$type<Record<string, boolean>>()
+      .notNull()
+      .default({}),
+    pricingNotes: text("pricing_notes"),
+    pricingSubmittedByUserId: integer(
+      "pricing_submitted_by_user_id",
+    ).references(() => eceUsers.id, { onDelete: "set null" }),
+    pricingSubmittedAt: timestamp("pricing_submitted_at"),
+    pricingApprovedByUserId: integer(
+      "pricing_approved_by_user_id",
+    ).references(() => eceUsers.id, { onDelete: "set null" }),
+    pricingApprovedAt: timestamp("pricing_approved_at"),
+    pricingDecisionNotes: text("pricing_decision_notes"),
     visibility: industrialVisibilityEnum("visibility")
       .notNull()
       .default("parties_to_transaction"),
@@ -1566,6 +2132,16 @@ export const industrialQuotes = pgTable(
     }),
     issuedAt: timestamp("issued_at"),
     respondedAt: timestamp("responded_at"),
+    customerResponseHash: text("customer_response_hash"),
+    customerResponseChannel: text("customer_response_channel"),
+    customerResponseReference: text("customer_response_reference"),
+    customerResponseEvidence: jsonb("customer_response_evidence")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default({}),
+    customerResponseRecordedByUserId: integer(
+      "customer_response_recorded_by_user_id",
+    ).references(() => eceUsers.id, { onDelete: "set null" }),
     closedAt: timestamp("closed_at"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
@@ -1585,6 +2161,17 @@ export const industrialQuotes = pgTable(
     commercialOfferUnique: uniqueIndex(
       "industrial_quotes_commercial_offer_unique",
     ).on(t.tenantId, t.commercialOfferId),
+    tenantPricingHashUnique: uniqueIndex(
+      "industrial_quotes_tenant_pricing_hash_unique",
+    ).on(t.tenantId, t.pricingHash),
+    tenantSourceSupplierQuoteIndex: index(
+      "industrial_quotes_tenant_source_supplier_quote_idx",
+    ).on(t.tenantId, t.sourceSupplierQuoteId, t.status),
+    tenantCustomerResponseHashUnique: uniqueIndex(
+      "industrial_quotes_tenant_customer_response_hash_unique",
+    )
+      .on(t.tenantId, t.customerResponseHash)
+      .where(sql`${t.customerResponseHash} IS NOT NULL`),
   }),
 );
 
@@ -1611,7 +2198,23 @@ export const industrialOrders = pgTable(
     referenceCode: text("reference_code").notNull(),
     status: industrialOrderStatusEnum("status").notNull().default("confirmed"),
     currencyCode: text("currency_code").notNull().default("XOF"),
-    totalAmount: decimal("total_amount", { precision: 16, scale: 2 }),
+    totalAmount: decimal("total_amount", { precision: 30, scale: 3 }),
+    totalAmountMinor: decimal("total_amount_minor", {
+      precision: 30,
+      scale: 0,
+    }),
+    sourcePricingHash: text("source_pricing_hash"),
+    customerResponseHash: text("customer_response_hash"),
+    orderConfirmationHash: text("order_confirmation_hash"),
+    orderConfirmationChecklist: jsonb("order_confirmation_checklist")
+      .$type<Record<string, boolean>>()
+      .notNull()
+      .default({}),
+    paymentStatus: text("payment_status").notNull().default("unpaid"),
+    paidAmount: decimal("paid_amount", { precision: 16, scale: 2 }),
+    paidCurrencyCode: text("paid_currency_code"),
+    paidAt: timestamp("paid_at"),
+    lastPaymentId: uuid("last_payment_id"),
     lineItems: jsonb("line_items")
       .$type<Array<Record<string, string>>>()
       .notNull()
@@ -1658,6 +2261,9 @@ export const industrialOrders = pgTable(
       t.status,
       t.updatedAt,
     ),
+    tenantPaymentStatus: index(
+      "industrial_orders_tenant_payment_status_idx",
+    ).on(t.tenantId, t.paymentStatus, t.updatedAt),
     factoryStatus: index("industrial_orders_factory_status_idx").on(
       t.factoryId,
       t.status,
@@ -1667,6 +2273,199 @@ export const industrialOrders = pgTable(
       t.requirementId,
       t.status,
     ),
+    tenantConfirmationHashUnique: uniqueIndex(
+      "industrial_orders_tenant_confirmation_hash_unique",
+    )
+      .on(t.tenantId, t.orderConfirmationHash)
+      .where(sql`${t.orderConfirmationHash} IS NOT NULL`),
+    tenantSourcePricingHash: index(
+      "industrial_orders_tenant_source_pricing_hash_idx",
+    )
+      .on(t.tenantId, t.sourcePricingHash)
+      .where(sql`${t.sourcePricingHash} IS NOT NULL`),
+  }),
+);
+
+export const industrialFulfillmentPlans = pgTable(
+  "industrial_fulfillment_plans",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: integer("tenant_id")
+      .references(() => tenants.id, { onDelete: "cascade" })
+      .notNull(),
+    orderId: uuid("order_id")
+      .references(() => industrialOrders.id, { onDelete: "cascade" })
+      .notNull(),
+    kind: industrialFulfillmentKindEnum("kind")
+      .notNull()
+      .default("standard_order"),
+    status: industrialFulfillmentStatusEnum("status")
+      .notNull()
+      .default("release_review"),
+    trackingCode: text("tracking_code").notNull(),
+    procurementTaskId: integer("procurement_task_id"),
+    publicEta: timestamp("public_eta"),
+    routeSnapshot: jsonb("route_snapshot")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default({}),
+    exceptionSummary: text("exception_summary"),
+    metadata: jsonb("metadata")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default({}),
+    startedAt: timestamp("started_at"),
+    deliveredAt: timestamp("delivered_at"),
+    cancelledAt: timestamp("cancelled_at"),
+    createdByUserId: integer("created_by_user_id").references(
+      () => eceUsers.id,
+      { onDelete: "set null" },
+    ),
+    updatedByUserId: integer("updated_by_user_id").references(
+      () => eceUsers.id,
+      { onDelete: "set null" },
+    ),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => ({
+    tenantOrderUnique: uniqueIndex(
+      "industrial_fulfillment_plans_tenant_order_unique",
+    ).on(t.tenantId, t.orderId),
+    tenantTrackingUnique: uniqueIndex(
+      "industrial_fulfillment_plans_tenant_tracking_unique",
+    ).on(t.tenantId, t.trackingCode),
+    tenantStatusIndex: index(
+      "industrial_fulfillment_plans_tenant_status_idx",
+    ).on(t.tenantId, t.status, t.updatedAt),
+  }),
+);
+
+export const industrialFulfillmentServices = pgTable(
+  "industrial_fulfillment_services",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: integer("tenant_id")
+      .references(() => tenants.id, { onDelete: "cascade" })
+      .notNull(),
+    planId: uuid("plan_id")
+      .references(() => industrialFulfillmentPlans.id, { onDelete: "cascade" })
+      .notNull(),
+    orderId: uuid("order_id")
+      .references(() => industrialOrders.id, { onDelete: "cascade" })
+      .notNull(),
+    serviceType: industrialFulfillmentServiceTypeEnum("service_type").notNull(),
+    status: industrialFulfillmentServiceStatusEnum("status")
+      .notNull()
+      .default("candidate"),
+    providerKind: text("provider_kind").notNull().default("internal_team"),
+    providerName: text("provider_name"),
+    providerReference: text("provider_reference"),
+    externalReference: text("external_reference"),
+    publicLabel: text("public_label"),
+    approvalReason: text("approval_reason"),
+    approvedByUserId: integer("approved_by_user_id").references(
+      () => eceUsers.id,
+      { onDelete: "set null" },
+    ),
+    approvedAt: timestamp("approved_at"),
+    approvalActionId: integer("approval_action_id"),
+    linkedDeliveryOrderId: integer("linked_delivery_order_id"),
+    linkedDeliveryReference: text("linked_delivery_reference"),
+    carrierProfileId: uuid("carrier_profile_id"),
+    carrierDeliveryQuoteId: uuid("carrier_delivery_quote_id"),
+    carrierBookingAuthorizationId: uuid("carrier_booking_authorization_id"),
+    quotedCost: decimal("quoted_cost", { precision: 16, scale: 2 }),
+    currencyCode: text("currency_code"),
+    scheduledStartAt: timestamp("scheduled_start_at"),
+    scheduledEndAt: timestamp("scheduled_end_at"),
+    startedAt: timestamp("started_at"),
+    completedAt: timestamp("completed_at"),
+    performanceRating: integer("performance_rating"),
+    onTime: boolean("on_time"),
+    issueCount: integer("issue_count").notNull().default(0),
+    performanceNotes: text("performance_notes"),
+    internalNotes: text("internal_notes"),
+    metadata: jsonb("metadata")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default({}),
+    createdByUserId: integer("created_by_user_id").references(
+      () => eceUsers.id,
+      { onDelete: "set null" },
+    ),
+    updatedByUserId: integer("updated_by_user_id").references(
+      () => eceUsers.id,
+      { onDelete: "set null" },
+    ),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => ({
+    planServiceUnique: uniqueIndex(
+      "industrial_fulfillment_services_plan_type_unique",
+    ).on(t.planId, t.serviceType),
+    tenantStatusIndex: index(
+      "industrial_fulfillment_services_tenant_status_idx",
+    ).on(t.tenantId, t.status, t.updatedAt),
+    orderIndex: index("industrial_fulfillment_services_order_idx").on(
+      t.orderId,
+      t.serviceType,
+    ),
+  }),
+);
+
+export const industrialFulfillmentEvents = pgTable(
+  "industrial_fulfillment_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: integer("tenant_id")
+      .references(() => tenants.id, { onDelete: "cascade" })
+      .notNull(),
+    planId: uuid("plan_id")
+      .references(() => industrialFulfillmentPlans.id, { onDelete: "cascade" })
+      .notNull(),
+    orderId: uuid("order_id")
+      .references(() => industrialOrders.id, { onDelete: "cascade" })
+      .notNull(),
+    sequence: integer("sequence").notNull(),
+    idempotencyKey: text("idempotency_key").notNull(),
+    eventType: text("event_type").notNull(),
+    planStatus: industrialFulfillmentStatusEnum("plan_status"),
+    title: text("title").notNull(),
+    customerMessage: text("customer_message"),
+    internalNotes: text("internal_notes"),
+    customerVisible: boolean("customer_visible").notNull().default(false),
+    evidence: jsonb("evidence")
+      .$type<Array<Record<string, unknown>>>()
+      .notNull()
+      .default([]),
+    proof: jsonb("proof")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default({}),
+    source: industrialFulfillmentEventSourceEnum("source")
+      .notNull()
+      .default("staff"),
+    actorUserId: integer("actor_user_id").references(() => eceUsers.id, {
+      onDelete: "set null",
+    }),
+    occurredAt: timestamp("occurred_at").notNull().defaultNow(),
+    recordedAt: timestamp("recorded_at").notNull().defaultNow(),
+  },
+  (t) => ({
+    planSequenceUnique: uniqueIndex(
+      "industrial_fulfillment_events_plan_sequence_unique",
+    ).on(t.planId, t.sequence),
+    tenantIdempotencyUnique: uniqueIndex(
+      "industrial_fulfillment_events_tenant_idempotency_unique",
+    ).on(t.tenantId, t.idempotencyKey),
+    tenantOrderIndex: index(
+      "industrial_fulfillment_events_tenant_order_idx",
+    ).on(t.tenantId, t.orderId, t.occurredAt),
+    publicTimelineIndex: index(
+      "industrial_fulfillment_events_public_timeline_idx",
+    ).on(t.planId, t.customerVisible, t.sequence),
   }),
 );
 
@@ -1734,6 +2533,15 @@ export const industrialRequirementAttachments = pgTable(
     storageKey: text("storage_key").notNull(),
     mimeType: text("mime_type").notNull(),
     sizeBytes: integer("size_bytes").notNull(),
+    extractionStatus: text("extraction_status").notNull().default("pending"),
+    extractionMethod: text("extraction_method"),
+    extractedText: text("extracted_text"),
+    extractionWarning: text("extraction_warning"),
+    extractionMetadata: jsonb("extraction_metadata")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default({}),
+    extractedAt: timestamp("extracted_at"),
     visibility: industrialVisibilityEnum("visibility")
       .notNull()
       .default("factory_team_only"),
@@ -1743,6 +2551,131 @@ export const industrialRequirementAttachments = pgTable(
     requirementIndex: index(
       "industrial_requirement_attachments_requirement_idx",
     ).on(t.requirementId, t.visibility),
+    extractionIndex: index(
+      "industrial_requirement_attachments_extraction_idx",
+    ).on(t.tenantId, t.extractionStatus, t.createdAt),
+  }),
+);
+
+// Model and deterministic extraction output is only a candidate. A reviewer
+// must explicitly verify a separate proposal before any requirement field can
+// be changed, and applying approved fields is its own audited action.
+export const industrialAttachmentReviews = pgTable(
+  "industrial_attachment_reviews",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: integer("tenant_id")
+      .references(() => tenants.id, { onDelete: "cascade" })
+      .notNull(),
+    requirementId: uuid("requirement_id")
+      .references(() => industrialRequirements.id, { onDelete: "cascade" })
+      .notNull(),
+    attachmentId: uuid("attachment_id")
+      .references(() => industrialRequirementAttachments.id, {
+        onDelete: "cascade",
+      })
+      .notNull(),
+    reviewKind: industrialAttachmentReviewKindEnum("review_kind").notNull(),
+    status: industrialAttachmentReviewStatusEnum("status")
+      .notNull()
+      .default("under_review"),
+    analysisProposal: jsonb("analysis_proposal")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default({}),
+    reviewedProposal: jsonb("reviewed_proposal")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default({}),
+    generationMetadata: jsonb("generation_metadata")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default({}),
+    analysisWarning: text("analysis_warning"),
+    reviewNotes: text("review_notes"),
+    appliedFields: jsonb("applied_fields")
+      .$type<string[]>()
+      .notNull()
+      .default([]),
+    revision: integer("revision").notNull().default(1),
+    requestedByUserId: integer("requested_by_user_id").references(
+      () => eceUsers.id,
+      { onDelete: "set null" },
+    ),
+    requestedAt: timestamp("requested_at"),
+    reviewedByUserId: integer("reviewed_by_user_id").references(
+      () => eceUsers.id,
+      { onDelete: "set null" },
+    ),
+    reviewedAt: timestamp("reviewed_at"),
+    approvedByUserId: integer("approved_by_user_id").references(
+      () => eceUsers.id,
+      { onDelete: "set null" },
+    ),
+    approvedAt: timestamp("approved_at"),
+    rejectedByUserId: integer("rejected_by_user_id").references(
+      () => eceUsers.id,
+      { onDelete: "set null" },
+    ),
+    rejectedAt: timestamp("rejected_at"),
+    appliedByUserId: integer("applied_by_user_id").references(
+      () => eceUsers.id,
+      { onDelete: "set null" },
+    ),
+    appliedAt: timestamp("applied_at"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => ({
+    tenantAttachmentUnique: uniqueIndex(
+      "industrial_attachment_reviews_tenant_attachment_unique",
+    ).on(t.tenantId, t.attachmentId),
+    requirementStatusIndex: index(
+      "industrial_attachment_reviews_requirement_status_idx",
+    ).on(t.tenantId, t.requirementId, t.status, t.updatedAt),
+  }),
+);
+
+export const industrialAttachmentReviewEvents = pgTable(
+  "industrial_attachment_review_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tenantId: integer("tenant_id")
+      .references(() => tenants.id, { onDelete: "cascade" })
+      .notNull(),
+    reviewId: uuid("review_id")
+      .references(() => industrialAttachmentReviews.id, {
+        onDelete: "cascade",
+      })
+      .notNull(),
+    requirementId: uuid("requirement_id")
+      .references(() => industrialRequirements.id, { onDelete: "cascade" })
+      .notNull(),
+    attachmentId: uuid("attachment_id")
+      .references(() => industrialRequirementAttachments.id, {
+        onDelete: "cascade",
+      })
+      .notNull(),
+    action: text("action").notNull(),
+    fromStatus: industrialAttachmentReviewStatusEnum("from_status"),
+    toStatus: industrialAttachmentReviewStatusEnum("to_status").notNull(),
+    reason: text("reason"),
+    snapshot: jsonb("snapshot")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default({}),
+    actorUserId: integer("actor_user_id").references(() => eceUsers.id, {
+      onDelete: "set null",
+    }),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => ({
+    reviewTimelineIndex: index(
+      "industrial_attachment_review_events_review_timeline_idx",
+    ).on(t.reviewId, t.createdAt),
+    requirementTimelineIndex: index(
+      "industrial_attachment_review_events_requirement_timeline_idx",
+    ).on(t.tenantId, t.requirementId, t.createdAt),
   }),
 );
 

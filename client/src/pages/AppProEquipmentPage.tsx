@@ -4,6 +4,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 
 import { AppProBottomNav } from "@/components/agentic/AppProBottomNav";
 import { AppProTopBar } from "@/components/agentic/AppProTopBar";
+import { ProSideNav } from "@/components/agentic/ProSideNav";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -215,27 +216,29 @@ export default function AppProEquipmentPage() {
   const userId = (session.user as any)?.id as number | undefined;
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white pb-24">
-      <AppProTopBar />
-      <div className="px-4 pt-3">
+    <div className="min-h-screen bg-[#F7F8FA] pb-24 text-slate-950">
+      <ProSideNav activeKey="operations" />
+      <div className="md:ml-56">
+      <AppProTopBar subtitle="Equipment" />
+      <div className="px-4 py-6">
       <div className="max-w-5xl mx-auto">
         <div className="flex items-start justify-between gap-4">
           <div>
             <h1 className="text-xl font-semibold tracking-tight">Equipment</h1>
-            <p className="text-xs text-white/60 mt-1">List, publish, and manage rental/sale contracts.</p>
+            <p className="mt-1 text-xs text-slate-600">List, publish, and manage rental or sale contracts.</p>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" className="border-white/15 text-white/80 hover:bg-white/10" onClick={() => setEquipDialogOpen(true)}>
+            <Button variant="outline" className="border-slate-300 text-slate-700 hover:bg-slate-100" onClick={() => setEquipDialogOpen(true)}>
               Add equipment
             </Button>
-            <Button className="bg-amber-500 hover:bg-amber-600 text-black font-semibold" onClick={() => setListingDialogOpen(true)}>
+            <Button className="bg-[#F5A623] font-semibold text-[#07111F] hover:bg-[#F8C45B]" onClick={() => setListingDialogOpen(true)}>
               Create listing
             </Button>
           </div>
         </div>
 
         <Tabs defaultValue={initialTab} className="mt-6">
-          <TabsList className="bg-white/5 border border-white/10">
+          <TabsList className="border border-slate-200 bg-white">
             <TabsTrigger value="equipment">My Equipment</TabsTrigger>
             <TabsTrigger value="listings">Listings</TabsTrigger>
             <TabsTrigger value="contracts">Contracts</TabsTrigger>
@@ -243,24 +246,24 @@ export default function AppProEquipmentPage() {
 
           <TabsContent value="equipment" className="mt-4">
             {loadingEquipment ? (
-              <div className="text-sm text-white/60">Loading…</div>
+              <div className="text-sm text-slate-600">Loading…</div>
             ) : equipmentRows.length === 0 ? (
-              <div className="rounded-xl border border-white/10 bg-white/5 p-6 text-sm text-white/70">
+              <div className="rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-600 shadow-sm">
                 No equipment yet. Add your first machine.
               </div>
             ) : (
               <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {equipmentRows.map((row) => (
-                  <Card key={row.id} className="bg-white/5 border-white/10">
+                  <Card key={row.id} className="border-slate-200 bg-white shadow-sm">
                     <CardContent className="p-4 space-y-2">
-                      <div className="text-sm font-semibold text-white">{row.category}</div>
-                      <div className="text-xs text-white/60">
+                      <div className="text-sm font-semibold text-slate-950">{row.category}</div>
+                      <div className="text-xs text-slate-600">
                         {[row.make, row.model].filter(Boolean).join(" ")}{" "}
-                        {row.year ? <span className="text-white/40">· {row.year}</span> : null}
+                        {row.year ? <span className="text-slate-400">· {row.year}</span> : null}
                       </div>
                       <div className="flex items-center gap-2 text-[11px]">
-                        <span className="px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-white/70">{row.condition}</span>
-                        <span className="px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-white/70">{row.currentStatus}</span>
+                        <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-slate-600">{row.condition}</span>
+                        <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-slate-600">{row.currentStatus}</span>
                       </div>
                     </CardContent>
                   </Card>
@@ -271,28 +274,28 @@ export default function AppProEquipmentPage() {
 
           <TabsContent value="listings" className="mt-4">
             {loadingListings ? (
-              <div className="text-sm text-white/60">Loading…</div>
+              <div className="text-sm text-slate-600">Loading…</div>
             ) : listingRows.length === 0 ? (
-              <div className="rounded-xl border border-white/10 bg-white/5 p-6 text-sm text-white/70">No listings yet.</div>
+              <div className="rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-600 shadow-sm">No listings yet.</div>
             ) : (
               <div className="space-y-2">
                 {listingRows.map((row) => (
-                  <Card key={row.id} className="bg-white/5 border-white/10">
+                  <Card key={row.id} className="border-slate-200 bg-white shadow-sm">
                     <CardContent className="p-4 flex items-start justify-between gap-4">
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
                           <div className="text-sm font-semibold truncate">{row.title}</div>
-                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-white/70">
+                          <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] text-slate-600">
                             {row.listingType}
                           </span>
-                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-white/70">
+                          <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] text-slate-600">
                             {row.status}
                           </span>
-                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-white/70">
+                          <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] text-slate-600">
                             {row.visibility}
                           </span>
                         </div>
-                        <div className="text-xs text-white/60 mt-1">
+                        <div className="mt-1 text-xs text-slate-600">
                           Deposit: {fmtMoney(row.depositAmount)} ·{" "}
                           {row.priceDay ? `Day: ${fmtMoney(row.priceDay)}` : row.priceSale ? `Sale: ${fmtMoney(row.priceSale)}` : "Pricing TBD"}
                         </div>
@@ -301,7 +304,7 @@ export default function AppProEquipmentPage() {
                         {row.status !== "published" ? (
                           <Button
                             size="sm"
-                            className="bg-emerald-500 hover:bg-emerald-600 text-black font-semibold"
+                            className="bg-emerald-600 font-semibold text-white hover:bg-emerald-700"
                             onClick={() => publishListing.mutate(row.id)}
                             disabled={publishListing.isPending}
                           >
@@ -311,7 +314,7 @@ export default function AppProEquipmentPage() {
                           <Button
                             size="sm"
                             variant="outline"
-                            className="border-white/15 text-white/80 hover:bg-white/10"
+                            className="border-slate-300 text-slate-700 hover:bg-slate-100"
                             onClick={() => pauseListing.mutate(row.id)}
                             disabled={pauseListing.isPending}
                           >
@@ -328,20 +331,20 @@ export default function AppProEquipmentPage() {
 
           <TabsContent value="contracts" className="mt-4">
             {loadingContracts ? (
-              <div className="text-sm text-white/60">Loading…</div>
+              <div className="text-sm text-slate-600">Loading…</div>
             ) : contractRows.length === 0 ? (
-              <div className="rounded-xl border border-white/10 bg-white/5 p-6 text-sm text-white/70">No contracts yet.</div>
+              <div className="rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-600 shadow-sm">No contracts yet.</div>
             ) : (
               <div className="space-y-2">
                 {contractRows.map((row) => {
                   const canHold = userId != null && row.clientUserId === userId && row.escrowStatus !== "holding";
                   const canRelease = userId != null && row.ownerUserId === userId && row.escrowStatus === "holding";
                   return (
-                    <Card key={row.id} className="bg-white/5 border-white/10">
+                    <Card key={row.id} className="border-slate-200 bg-white shadow-sm">
                       <CardContent className="p-4 flex items-start justify-between gap-4">
                         <div className="min-w-0">
                           <div className="text-sm font-semibold">Contract · {row.contractType}</div>
-                          <div className="text-xs text-white/60 mt-1">
+                          <div className="mt-1 text-xs text-slate-600">
                             Status: {row.contractStatus} · Escrow: {row.escrowStatus} · Deposit: {fmtMoney(row.depositAmount)}
                           </div>
                         </div>
@@ -349,7 +352,7 @@ export default function AppProEquipmentPage() {
                           {canHold ? (
                             <Button
                               size="sm"
-                              className="bg-sky-500 hover:bg-sky-600 text-black font-semibold"
+                              className="bg-sky-600 font-semibold text-white hover:bg-sky-700"
                               onClick={() => holdEscrow.mutate(row.id)}
                               disabled={holdEscrow.isPending}
                             >
@@ -360,7 +363,7 @@ export default function AppProEquipmentPage() {
                             <Button
                               size="sm"
                               variant="outline"
-                              className="border-white/15 text-white/80 hover:bg-white/10"
+                              className="border-slate-300 text-slate-700 hover:bg-slate-100"
                               onClick={() => releaseEscrow.mutate(row.id)}
                               disabled={releaseEscrow.isPending}
                             >
@@ -379,7 +382,7 @@ export default function AppProEquipmentPage() {
       </div>
 
       <Dialog open={equipDialogOpen} onOpenChange={setEquipDialogOpen}>
-        <DialogContent className="bg-gray-950 border-white/10 text-white">
+        <DialogContent className="border-slate-200 bg-white text-slate-950">
           <DialogHeader>
             <DialogTitle>Add equipment</DialogTitle>
           </DialogHeader>
@@ -390,23 +393,23 @@ export default function AppProEquipmentPage() {
                 value={newEquip.category}
                 onChange={(e) => setNewEquip((p) => ({ ...p, category: e.target.value }))}
                 placeholder="Excavator / Trommel / Generator…"
-                className="bg-white/5 border-white/10"
+                className="border-slate-200 bg-white"
               />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label>Make</Label>
-                <Input value={newEquip.make} onChange={(e) => setNewEquip((p) => ({ ...p, make: e.target.value }))} className="bg-white/5 border-white/10" />
+                <Input value={newEquip.make} onChange={(e) => setNewEquip((p) => ({ ...p, make: e.target.value }))} className="border-slate-200 bg-white" />
               </div>
               <div className="space-y-1">
                 <Label>Model</Label>
-                <Input value={newEquip.model} onChange={(e) => setNewEquip((p) => ({ ...p, model: e.target.value }))} className="bg-white/5 border-white/10" />
+                <Input value={newEquip.model} onChange={(e) => setNewEquip((p) => ({ ...p, model: e.target.value }))} className="border-slate-200 bg-white" />
               </div>
             </div>
             <div className="space-y-1">
               <Label>Condition</Label>
               <select
-                className="h-10 w-full rounded-md bg-white/5 border border-white/10 text-white/80 px-3"
+                className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-slate-700"
                 value={newEquip.condition}
                 onChange={(e) => setNewEquip((p) => ({ ...p, condition: e.target.value }))}
               >
@@ -417,21 +420,21 @@ export default function AppProEquipmentPage() {
               </select>
             </div>
             <Button
-              className="w-full bg-amber-500 hover:bg-amber-600 text-black font-semibold"
+              className="w-full bg-[#F5A623] font-semibold text-[#07111F] hover:bg-[#F8C45B]"
               onClick={() => createEquipment.mutate()}
               disabled={createEquipment.isPending}
             >
               {createEquipment.isPending ? "Saving…" : "Save"}
             </Button>
             {createEquipment.error ? (
-              <div className="text-sm text-rose-200">{String((createEquipment.error as any)?.message || "Error")}</div>
+              <div className="text-sm text-rose-700">{String((createEquipment.error as any)?.message || "Error")}</div>
             ) : null}
           </div>
         </DialogContent>
       </Dialog>
 
       <Dialog open={listingDialogOpen} onOpenChange={setListingDialogOpen}>
-        <DialogContent className="bg-gray-950 border-white/10 text-white">
+        <DialogContent className="border-slate-200 bg-white text-slate-950">
           <DialogHeader>
             <DialogTitle>Create listing</DialogTitle>
           </DialogHeader>
@@ -439,7 +442,7 @@ export default function AppProEquipmentPage() {
             <div className="space-y-1">
               <Label>Equipment</Label>
               <select
-                className="h-10 w-full rounded-md bg-white/5 border border-white/10 text-white/80 px-3"
+                className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-slate-700"
                 value={newListing.equipmentId}
                 onChange={(e) => setNewListing((p) => ({ ...p, equipmentId: e.target.value }))}
               >
@@ -455,7 +458,7 @@ export default function AppProEquipmentPage() {
               <div className="space-y-1">
                 <Label>Type</Label>
                 <select
-                  className="h-10 w-full rounded-md bg-white/5 border border-white/10 text-white/80 px-3"
+                  className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-slate-700"
                   value={newListing.listingType}
                   onChange={(e) => setNewListing((p) => ({ ...p, listingType: e.target.value }))}
                 >
@@ -468,7 +471,7 @@ export default function AppProEquipmentPage() {
               <div className="space-y-1">
                 <Label>Visibility</Label>
                 <select
-                  className="h-10 w-full rounded-md bg-white/5 border border-white/10 text-white/80 px-3"
+                  className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-slate-700"
                   value={newListing.visibility}
                   onChange={(e) => setNewListing((p) => ({ ...p, visibility: e.target.value }))}
                 >
@@ -484,17 +487,17 @@ export default function AppProEquipmentPage() {
                 value={newListing.title}
                 onChange={(e) => setNewListing((p) => ({ ...p, title: e.target.value }))}
                 placeholder="22T excavator (tracked) — refurbished"
-                className="bg-white/5 border-white/10"
+                className="border-slate-200 bg-white"
               />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label>Price/day</Label>
-                <Input value={newListing.priceDay} onChange={(e) => setNewListing((p) => ({ ...p, priceDay: e.target.value }))} className="bg-white/5 border-white/10" />
+                <Input value={newListing.priceDay} onChange={(e) => setNewListing((p) => ({ ...p, priceDay: e.target.value }))} className="border-slate-200 bg-white" />
               </div>
               <div className="space-y-1">
                 <Label>Price (sale)</Label>
-                <Input value={newListing.priceSale} onChange={(e) => setNewListing((p) => ({ ...p, priceSale: e.target.value }))} className="bg-white/5 border-white/10" />
+                <Input value={newListing.priceSale} onChange={(e) => setNewListing((p) => ({ ...p, priceSale: e.target.value }))} className="border-slate-200 bg-white" />
               </div>
             </div>
             <div className="space-y-1">
@@ -502,18 +505,18 @@ export default function AppProEquipmentPage() {
               <Input
                 value={newListing.depositAmount}
                 onChange={(e) => setNewListing((p) => ({ ...p, depositAmount: e.target.value }))}
-                className="bg-white/5 border-white/10"
+                className="border-slate-200 bg-white"
               />
             </div>
             <Button
-              className="w-full bg-amber-500 hover:bg-amber-600 text-black font-semibold"
+              className="w-full bg-[#F5A623] font-semibold text-[#07111F] hover:bg-[#F8C45B]"
               onClick={() => createListing.mutate()}
               disabled={createListing.isPending}
             >
               {createListing.isPending ? "Saving…" : "Save draft"}
             </Button>
             {createListing.error ? (
-              <div className="text-sm text-rose-200">{String((createListing.error as any)?.message || "Error")}</div>
+              <div className="text-sm text-rose-700">{String((createListing.error as any)?.message || "Error")}</div>
             ) : null}
           </div>
         </DialogContent>
@@ -521,6 +524,7 @@ export default function AppProEquipmentPage() {
 
       </div>
       <AppProBottomNav activeKey="operations" />
+      </div>
     </div>
   );
 }

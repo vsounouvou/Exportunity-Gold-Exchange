@@ -7043,6 +7043,68 @@ export default function IndustrialHubPage() {
           view === "factoryWorkspace"
         ? "factories"
         : view;
+
+  useEffect(() => {
+    const metadataByView: Record<IndustrialView, { en: string; fr: string }> = {
+      home: {
+        en: "African Industrial Sourcing | Exportunity",
+        fr: "Sourcing industriel africain | Exportunity",
+      },
+      factories: {
+        en: "African Factory Network | Exportunity",
+        fr: "Réseau d'usines africaines | Exportunity",
+      },
+      factoryProfile: {
+        en: "Verified Factory Profile | Exportunity",
+        fr: "Profil d'usine vérifiée | Exportunity",
+      },
+      products: {
+        en: "African Export Products | Exportunity",
+        fr: "Produits africains pour l'export | Exportunity",
+      },
+      supply: {
+        en: "Industrial Supply Network | Exportunity",
+        fr: "Réseau d'approvisionnement industriel | Exportunity",
+      },
+      machinery: {
+        en: "Machinery Sourcing | Exportunity",
+        fr: "Sourcing de machines | Exportunity",
+      },
+      quote: {
+        en: "Industrial Quote Request | Exportunity",
+        fr: "Demande de devis industriel | Exportunity",
+      },
+      register: {
+        en: "Register a Factory | Exportunity",
+        fr: "Enregistrer une usine | Exportunity",
+      },
+      claim: {
+        en: "Claim a Factory Profile | Exportunity",
+        fr: "Revendiquer un profil d'usine | Exportunity",
+      },
+      map: {
+        en: "African Industrial Network Map | Exportunity",
+        fr: "Carte du réseau industriel africain | Exportunity",
+      },
+      factoryWorkspace: {
+        en: "Factory Workspace | Exportunity",
+        fr: "Espace usine | Exportunity",
+      },
+    };
+    document.title = metadataByView[view][locale];
+    const description =
+      locale === "fr"
+        ? "Découvrez des usines, produits, fournisseurs et parcours de sourcing industriel africains avec des preuves attribuables et l'assistance d'Awa."
+        : "Discover African factories, products, suppliers, and industrial sourcing workflows with attributable evidence and assistance from Awa.";
+    let meta = document.querySelector<HTMLMetaElement>('meta[name="description"]');
+    if (!meta) {
+      meta = document.createElement("meta");
+      meta.name = "description";
+      document.head.appendChild(meta);
+    }
+    meta.content = description;
+  }, [locale, view]);
+
   const copy =
     locale === "fr"
       ? {

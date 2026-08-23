@@ -1,125 +1,95 @@
-import { useState, useRef, useEffect } from "react";
+import type { KeyboardEvent } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Progress } from "@/components/ui/progress";
-import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { Truck } from "lucide-react";
+
+import {
+  ExportunityApplicationConversation,
+  ExportunityApplicationLoading,
+  ExportunityApplicationStatus,
+  type ExportunityApplicationMessage,
+  type ExportunityApplicationStep,
+} from "@/components/exportunity/ExportunityApplicationShell";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useSession } from "@/lib/session";
-import { useTenant } from "@/lib/tenant";
-import { 
-  Truck, MessageSquare, Send, ChevronRight, CheckCircle2, 
-  AlertCircle, ArrowLeft, Loader2, Bot, User as UserIcon,
-  Car, Shield, CreditCard
-} from "lucide-react";
-import { Link } from "wouter";
-
-interface Message {
-  id: string;
-  role: "user" | "assistant" | "system";
-  content: string;
-  timestamp: Date;
-}
 
 interface ApplicationStatus {
   id: number;
   status: string;
-  currentStep: number;
-  applicationData: Record<string, any>;
-  aiScore?: number;
-  aiDecision?: string;
   depositAmount?: string;
-  insuranceStatus?: string;
 }
 
-const APPLICATION_STEPS = [
-  { id: 1, title: "Welcome", description: "Introduction to delivery partnership" },
-  { id: 2, title: "Personal Info", description: "Your contact details" },
-  { id: 3, title: "Vehicle", description: "Your transportation" },
-  { id: 4, title: "Experience", description: "Delivery experience" },
-  { id: 5, title: "Deposit & Insurance", description: "Security requirements" },
-  { id: 6, title: "Review", description: "Submit for approval" },
+const APPLICATION_STEPS: ExportunityApplicationStep[] = [
+  { id: 1, title: "Welcome", description: "Understand delivery access" },
+  { id: 2, title: "Identity", description: "Confirm contact details" },
+  { id: 3, title: "Vehicle", description: "Describe transport capacity" },
+  { id: 4, title: "Experience", description: "Share operating history" },
+  { id: 5, title: "Risk controls", description: "Review evidence requirements" },
+  { id: 6, title: "Review", description: "Submit for human review" },
 ];
 
 export default function DeliveryApplicationPage() {
   const { toast } = useToast();
   const { user } = useSession();
-  const { brand } = useTenant();
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<ExportunityApplicationMessage[]>([]);
   const [input, setInput] = useState("");
   const [currentStep, setCurrentStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
-  const [applicationData, setApplicationData] = useState<Record<string, any>>({});
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [applicationData, setApplicationData] = useState<Record<string, unknown>>({});
 
   const { data: existingApplication, isLoading: loadingApplication } = useQuery<ApplicationStatus>({
-    queryKey: ['/api/admin/applications/delivery/my-application'],
-    enabled: !!user?.id
+    queryKey: ["/api/admin/applications/delivery/my-application"],
+    enabled: Boolean(user?.id),
   });
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
 
   useEffect(() => {
     if (!existingApplication) {
-      const welcomeMessage: Message = {
-        id: crypto.randomUUID(),
-        role: "assistant",
-        content: `Welcome to ${brand.name} — Delivery partner application.
+      setMessages([
+        {
+          id: crypto.randomUUID(),
+          role: "assistant",
+          content: `Welcome to Exportunity — delivery network access.
 
-This application assistant guides the submission process for delivery access.
+This application desk will collect the identity, vehicle, route, experience, and supporting information required to assess delivery access.
 
-Key points:
-• Secure delivery for high-value goods
-• Requirements depend on route and role
-• Supporting documents may be requested
-
-Access is subject to applicable compliance requirements.
+Coverage, insurance, deposit, and evidence requirements depend on the approved service and route. No partnership or assignment is confirmed until review is complete.
 
 To begin: what is your full legal name?`,
-        timestamp: new Date()
-      };
-      setMessages([welcomeMessage]);
-    } else if (existingApplication.status !== 'draft') {
+          timestamp: new Date(),
+        },
+      ]);
+    } else if (existingApplication.status !== "draft") {
       setCurrentStep(6);
     }
   }, [existingApplication]);
 
   const sendMessageMutation = useMutation({
-    mutationFn: async (userMessage: string) => {
-      const response = await apiRequest('/api/admin/applications/delivery/chat', {
-        method: 'POST',
+    mutationFn: async (userMessage: string) =>
+      apiRequest("/api/admin/applications/delivery/chat", {
+        method: "POST",
         body: JSON.stringify({
           message: userMessage,
           currentStep,
           applicationData,
-          conversationHistory: messages.slice(-10).map(m => ({
-            role: m.role,
-            content: m.content
-          }))
-        })
-      });
-      return response;
-    },
+          conversationHistory: messages.slice(-10).map((message) => ({
+            role: message.role,
+            content: message.content,
+          })),
+        }),
+      }),
     onSuccess: (data) => {
-      const aiMessage: Message = {
-        id: crypto.randomUUID(),
-        role: "assistant",
-        content: data.message,
-        timestamp: new Date()
-      };
-      setMessages(prev => [...prev, aiMessage]);
-      
+      setMessages((current) => [
+        ...current,
+        {
+          id: crypto.randomUUID(),
+          role: "assistant",
+          content: data.message,
+          timestamp: new Date(),
+        },
+      ]);
       if (data.extractedData) {
-        setApplicationData(prev => ({ ...prev, ...data.extractedData }));
+        setApplicationData((current) => ({ ...current, ...data.extractedData }));
       }
       if (data.nextStep && data.nextStep > currentStep) {
         setCurrentStep(data.nextStep);
@@ -127,327 +97,129 @@ To begin: what is your full legal name?`,
       setIsLoading(false);
     },
     onError: () => {
-      toast({ 
-        title: "Error", 
-        description: "Failed to get response. Please try again.",
-        variant: "destructive"
+      toast({
+        title: "Unable to continue",
+        description: "The application desk could not process that response. Please try again.",
+        variant: "destructive",
       });
       setIsLoading(false);
-    }
+    },
   });
 
   const submitApplicationMutation = useMutation({
-    mutationFn: async () => {
-      const response = await apiRequest('/api/admin/applications/delivery', {
-        method: 'POST',
+    mutationFn: async () =>
+      apiRequest("/api/admin/applications/delivery", {
+        method: "POST",
         body: JSON.stringify({
           applicationData,
-          conversationHistory: messages.map(m => ({
-            role: m.role,
-            content: m.content,
-            timestamp: m.timestamp
-          }))
-        })
-      });
-      return response;
-    },
+          conversationHistory: messages.map((message) => ({
+            role: message.role,
+            content: message.content,
+            timestamp: message.timestamp,
+          })),
+        }),
+      }),
     onSuccess: (data) => {
-      const submittedMessage: Message = {
-        id: crypto.randomUUID(),
-        role: "system",
-        content: `Application submitted.
+      const depositNotice = data.depositRequired
+        ? `\nSecurity requirement: $${data.depositAmount} (only after approval and formal instructions)`
+        : "";
+      setMessages((current) => [
+        ...current,
+        {
+          id: crypto.randomUUID(),
+          role: "system",
+          content: `Application submitted.
 
-Your file is under review. A notification will be sent once a decision is available.
+Your file is now under review. Exportunity will notify you when a decision or request for evidence is available.
 
 Application ID: #${data.applicationId}
-Status: ${data.status}
-${data.depositRequired ? `\nSecurity Deposit: $${data.depositAmount} (payable upon approval)` : ''}
-
-${brand.name}`,
-        timestamp: new Date()
-      };
-      setMessages(prev => [...prev, submittedMessage]);
+Status: ${data.status}${depositNotice}`,
+          timestamp: new Date(),
+        },
+      ]);
       setCurrentStep(6);
     },
     onError: () => {
       toast({
-        title: "Submission Failed",
-        description: "Unable to submit application. Please try again.",
-        variant: "destructive"
+        title: "Submission failed",
+        description: "Your application could not be submitted. Please try again.",
+        variant: "destructive",
       });
-    }
+    },
   });
 
   const handleSend = () => {
-    if (!input.trim() || isLoading) return;
-    
-    const userMessage: Message = {
-      id: crypto.randomUUID(),
-      role: "user",
-      content: input.trim(),
-      timestamp: new Date()
-    };
-    
-    setMessages(prev => [...prev, userMessage]);
+    const value = input.trim();
+    if (!value || isLoading) return;
+    setMessages((current) => [
+      ...current,
+      {
+        id: crypto.randomUUID(),
+        role: "user",
+        content: value,
+        timestamp: new Date(),
+      },
+    ]);
     setInput("");
     setIsLoading(true);
-    sendMessageMutation.mutate(input.trim());
+    sendMessageMutation.mutate(value);
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
+  const handleInputKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
       handleSend();
     }
   };
 
-  const getStepStatus = (stepId: number) => {
-    if (stepId < currentStep) return "completed";
-    if (stepId === currentStep) return "current";
-    return "pending";
-  };
-
   if (loadingApplication) {
-    return (
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-amber-500" />
-      </div>
-    );
+    return <ExportunityApplicationLoading testId="exportunity-delivery-application-loading" />;
   }
 
-  if (existingApplication && existingApplication.status !== 'draft') {
+  if (existingApplication && existingApplication.status !== "draft") {
+    const metrics = existingApplication.depositAmount
+      ? [
+          {
+            label: "Security requirement",
+            value: `$${existingApplication.depositAmount} after approval`,
+          },
+        ]
+      : [];
     return (
-      <div className="min-h-screen bg-gray-950 p-4 pb-20">
-        <div className="max-w-2xl mx-auto">
-          <Link href="/">
-            <Button variant="ghost" size="sm" className="mb-4 text-gray-400">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Marketplace
-            </Button>
-          </Link>
-
-          <Card className="bg-gray-900 border-gray-800">
-            <CardHeader className="text-center">
-              <div className="mx-auto mb-4 h-16 w-16 rounded-full bg-amber-500/20 flex items-center justify-center">
-                {existingApplication.status === 'approved' ? (
-                  <CheckCircle2 className="h-8 w-8 text-green-400" />
-                ) : existingApplication.status === 'rejected' ? (
-                  <AlertCircle className="h-8 w-8 text-red-400" />
-                ) : (
-                  <Truck className="h-8 w-8 text-amber-400" />
-                )}
-              </div>
-              <CardTitle className="text-xl text-white">
-                Application {existingApplication.status === 'approved' ? 'Approved' : 
-                            existingApplication.status === 'rejected' ? 'Declined' : 
-                            'Under Review'}
-              </CardTitle>
-              <CardDescription>
-                {existingApplication.status === 'approved' 
-                  ? "Congratulations! You're now a verified delivery partner."
-                  : existingApplication.status === 'rejected'
-                  ? "Unfortunately, your application was not approved at this time."
-                  : "Your application is being reviewed. We'll notify you soon."}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-400">Application ID</span>
-                <span className="text-white">#{existingApplication.id}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-400">Status</span>
-                <Badge 
-                  className={
-                    existingApplication.status === 'approved' ? 'bg-green-500/20 text-green-400' :
-                    existingApplication.status === 'rejected' ? 'bg-red-500/20 text-red-400' :
-                    'bg-yellow-500/20 text-yellow-400'
-                  }
-                >
-                  {existingApplication.status}
-                </Badge>
-              </div>
-              {existingApplication.depositAmount && (
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-400">Security Deposit</span>
-                  <span className="text-white">${existingApplication.depositAmount}</span>
-                </div>
-              )}
-              {existingApplication.aiScore && (
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-400">AI Score</span>
-                  <span className="text-white">{existingApplication.aiScore}/100</span>
-                </div>
-              )}
-              {existingApplication.status === 'approved' && (
-                <Link href="/delivery/agent">
-                  <Button className="w-full h-11 mt-4 bg-amber-500 hover:bg-amber-600 text-black font-semibold">
-                    Go to Delivery Dashboard
-                    <ChevronRight className="h-4 w-4 ml-2" />
-                  </Button>
-                </Link>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+      <ExportunityApplicationStatus
+        testId="exportunity-delivery-application-status"
+        icon={Truck}
+        status={existingApplication.status}
+        applicationId={existingApplication.id}
+        approvedTitle="Delivery access approved"
+        approvedDescription="You can now continue into the governed delivery workspace. Assignments remain subject to route, capacity, evidence, and risk controls."
+        rejectedDescription="This application was not approved in its current form. Exportunity will contact you if another review path is available."
+        reviewDescription="Your identity and operating information are being reviewed. We will notify you if supporting evidence or clarification is required."
+        metrics={metrics}
+        approvedAction={{ href: "/delivery/agent", label: "Open delivery workspace" }}
+        backLabel="Back to network"
+      />
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-950 flex flex-col">
-      <header className="border-b border-gray-800 bg-gray-900/50 backdrop-blur-sm sticky top-0 z-10">
-        <div className="max-w-4xl mx-auto px-4 py-3">
-          <div className="flex items-center justify-between mb-3">
-            <Link href="/">
-              <Button variant="ghost" size="sm" className="text-gray-400 -ml-2">
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back
-              </Button>
-            </Link>
-            <Badge variant="outline" className="text-amber-400 border-amber-500/30">
-              Step {currentStep} of {APPLICATION_STEPS.length}
-            </Badge>
-          </div>
-          <div className="flex items-center gap-3 mb-3">
-            <Truck className="h-5 w-5 text-amber-500" />
-            <h1 className="text-lg font-semibold text-white">Delivery Agent Application</h1>
-          </div>
-          <Progress value={(currentStep / APPLICATION_STEPS.length) * 100} className="h-1" />
-        </div>
-      </header>
-
-      <div className="hidden md:block border-b border-gray-800 bg-gray-900/30">
-        <div className="max-w-4xl mx-auto px-4 py-2">
-          <div className="flex gap-2 overflow-x-auto">
-            {APPLICATION_STEPS.map((step) => {
-              const status = getStepStatus(step.id);
-              return (
-                <div
-                  key={step.id}
-                  className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs whitespace-nowrap ${
-                    status === 'completed' ? 'bg-green-500/20 text-green-400' :
-                    status === 'current' ? 'bg-amber-500/20 text-amber-400' :
-                    'bg-gray-800 text-gray-500'
-                  }`}
-                >
-                  {status === 'completed' && <CheckCircle2 className="h-3 w-3" />}
-                  {step.title}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-
-      <ScrollArea className="flex-1 p-4">
-        <div className="max-w-2xl mx-auto space-y-4 pb-4">
-          {messages.map((message) => (
-            <div
-              key={message.id}
-              className={`flex gap-3 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-            >
-              {message.role !== 'user' && (
-                <div className={`h-8 w-8 rounded-full flex items-center justify-center flex-shrink-0 ${
-                  message.role === 'system' ? 'bg-green-500/20' : 'bg-amber-500/20'
-                }`}>
-                  <Bot className={`h-4 w-4 ${
-                    message.role === 'system' ? 'text-green-400' : 'text-amber-400'
-                  }`} />
-                </div>
-              )}
-              <div
-                className={`max-w-[80%] rounded-2xl px-4 py-3 ${
-                  message.role === 'user'
-                    ? 'bg-amber-500 text-black'
-                    : message.role === 'system'
-                    ? 'bg-green-500/10 border border-green-500/30 text-green-100'
-                    : 'bg-gray-800 text-gray-100'
-                }`}
-              >
-                <p className="text-sm whitespace-pre-wrap">{message.content}</p>
-              </div>
-              {message.role === 'user' && (
-                <div className="h-8 w-8 rounded-full bg-blue-500/20 flex items-center justify-center flex-shrink-0">
-                  <UserIcon className="h-4 w-4 text-blue-400" />
-                </div>
-              )}
-            </div>
-          ))}
-          {isLoading && (
-            <div className="flex gap-3 justify-start">
-              <div className="h-8 w-8 rounded-full bg-amber-500/20 flex items-center justify-center flex-shrink-0">
-                <Bot className="h-4 w-4 text-amber-400" />
-              </div>
-              <div className="bg-gray-800 rounded-2xl px-4 py-3">
-                <div className="flex gap-1">
-                  <span className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
-                  <span className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
-                  <span className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
-                </div>
-              </div>
-            </div>
-          )}
-          <div ref={messagesEndRef} />
-        </div>
-      </ScrollArea>
-
-      <div className="border-t border-gray-800 bg-gray-900/50 backdrop-blur-sm p-4 pb-safe">
-        <div className="max-w-2xl mx-auto">
-          {currentStep >= 5 && Object.keys(applicationData).length >= 4 ? (
-            <div className="flex gap-2">
-              <Input
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyPress={handleKeyPress}
-                placeholder="Add more details or submit..."
-                className="flex-1 bg-gray-800 border-gray-700 text-white h-11"
-                disabled={isLoading}
-              />
-              <Button
-                onClick={() => submitApplicationMutation.mutate()}
-                disabled={submitApplicationMutation.isPending}
-                className="h-11 bg-green-600 hover:bg-green-700"
-              >
-                {submitApplicationMutation.isPending ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <>Submit</>
-                )}
-              </Button>
-              <Button
-                onClick={handleSend}
-                disabled={!input.trim() || isLoading}
-                className="h-11 bg-amber-500 hover:bg-amber-600 text-black"
-              >
-                <Send className="h-4 w-4" />
-              </Button>
-            </div>
-          ) : (
-            <div className="flex gap-2">
-              <Input
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyPress={handleKeyPress}
-                placeholder="Type your response..."
-                className="flex-1 bg-gray-800 border-gray-700 text-white h-11"
-                disabled={isLoading}
-              />
-              <Button
-                onClick={handleSend}
-                disabled={!input.trim() || isLoading}
-                className="h-11 w-11 bg-amber-500 hover:bg-amber-600 text-black p-0"
-              >
-                {isLoading ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Send className="h-4 w-4" />
-                )}
-              </Button>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
+    <ExportunityApplicationConversation
+      testId="exportunity-delivery-application"
+      title="Delivery network application"
+      description="Apply to provide verified delivery capacity through the Exportunity Global Trade Network."
+      icon={Truck}
+      steps={APPLICATION_STEPS}
+      currentStep={currentStep}
+      messages={messages}
+      isLoading={isLoading}
+      input={input}
+      onInputChange={setInput}
+      onInputKeyDown={handleInputKeyDown}
+      onSend={handleSend}
+      canSubmit={currentStep >= 5 && Object.keys(applicationData).length >= 4}
+      onSubmit={() => submitApplicationMutation.mutate()}
+      submitPending={submitApplicationMutation.isPending}
+      backLabel="Back to network"
+    />
   );
 }

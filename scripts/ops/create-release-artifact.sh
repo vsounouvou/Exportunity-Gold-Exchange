@@ -91,7 +91,7 @@ if (( BUILD_DIST == 1 )); then
   log "building production bundle before packaging"
   (
     cd "$ROOT_DIR"
-    APP_NAME="$APP_NAME_VALUE" DEPLOY_TENANT="$DEPLOY_TENANT_VALUE" TENANT_DEFAULT="$TENANT_DEFAULT_VALUE" PUBLIC_BASE_URL="$PUBLIC_BASE_URL_VALUE" APP_BASE_URL="$APP_BASE_URL_VALUE" PASSWORD_SETUP_BASE_URL="$PASSWORD_SETUP_BASE_URL_VALUE" SKIP_MARKETING_QUALITY_GATE=1 npm run build >&2
+    APP_NAME="$APP_NAME_VALUE" DEPLOY_TENANT="$DEPLOY_TENANT_VALUE" TENANT_DEFAULT="$TENANT_DEFAULT_VALUE" PUBLIC_BASE_URL="$PUBLIC_BASE_URL_VALUE" APP_BASE_URL="$APP_BASE_URL_VALUE" PASSWORD_SETUP_BASE_URL="$PASSWORD_SETUP_BASE_URL_VALUE" SKIP_PUBLIC_SURFACE_QUALITY_GATE=1 npm run build >&2
   )
 fi
 
@@ -115,6 +115,17 @@ INCLUDE_DIST=false
 if [[ -d "${ROOT_DIR}/dist" ]]; then
   INCLUDE_DIST=true
   assert_dist_matches_tenant
+fi
+
+if [[ "$CANONICAL_TENANT" == "exportunity" ]]; then
+  surface_args=()
+  if [[ "$INCLUDE_DIST" == "true" ]]; then
+    surface_args+=("--dist")
+  fi
+  (
+    cd "$ROOT_DIR"
+    node scripts/verify-exportunity-public-surface.mjs "${surface_args[@]}"
+  )
 fi
 
 if [[ -n "$VERSION_LABEL" ]]; then

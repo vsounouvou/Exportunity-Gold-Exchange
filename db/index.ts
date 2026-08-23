@@ -1,5 +1,4 @@
 import "../env";
-import { drizzle as drizzleNeon } from "drizzle-orm/neon-serverless";
 import { drizzle as drizzleNode } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import ws from "ws";
@@ -23,9 +22,12 @@ const nodePool = useNeon
       connectionString: databaseUrl,
       ssl: isInternalPostgresHost ? false : undefined,
     });
+const neonDriver = useNeon
+  ? await import("drizzle-orm/neon-serverless")
+  : null;
 
-export const db = useNeon
-  ? drizzleNeon({
+export const db = neonDriver
+  ? neonDriver.drizzle({
       connection: databaseUrl,
       schema,
       ws: ws,

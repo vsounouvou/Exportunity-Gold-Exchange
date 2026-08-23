@@ -26,6 +26,11 @@ type ResolveProfileInput = {
 };
 
 const PROFILE_BY_AGENT_KEY: Record<string, { firstName: string; lastName: string; role: string }> = {
+  commercial: {
+    firstName: "Awa",
+    lastName: "Kouadio",
+    role: "Director of Commercial and Client Success",
+  },
   diego_alvarez: { firstName: "Diego", lastName: "Alvarez", role: "Platform Lead" },
   samuel_mensah: { firstName: "Samuel", lastName: "Mensah", role: "Operations Coordinator" },
   awa_bamba: { firstName: "Awa", lastName: "Bamba", role: "Treasury & Payments Controller" },

@@ -136,6 +136,68 @@ test("dispatchAgentActionIntents creates queue rows with correlation metadata", 
   assert.ok(typeof captured.payload.correlationId === "string" && captured.payload.correlationId.length > 10);
 });
 
+test("dispatchAgentActionIntents preserves outbound governance evidence", async () => {
+  const captured: any[] = [];
+  const text = [
+    `[[ACTION:SEND_EMAIL {"to":["supplier@example.com"],"subject":"RFQ","body":"Please quote","communicationPurpose":"supplier_rfq","contactBasis":"public_b2b_relevance","commitmentRisk":"commercial_discussion","recipientCountryCode":"CI","recipientTimeZone":"Africa/Abidjan","recipientProvenance":{"verificationStatus":"verified"},"supplierProfileId":"supplier-1"}]]`,
+    `[[ACTION:SEND_WHATSAPP {"toE164":"+2250102030405","body":"Please quote","communicationPurpose":"supplier_rfq","contactBasis":"explicit_opt_in","commitmentRisk":"commercial_discussion","whatsappOptInEvidence":"Recorded consent 2026-08-17","contentSid":"HX123","contentVariables":{"1":"Supplier"},"recipientProvenance":{"verificationStatus":"verified"}}]]`,
+  ].join("\n");
+
+  const result = await dispatchAgentActionIntents(
+    {
+      text,
+      allowHeuristics: false,
+      tenantId: 4,
+      conversationId: "conv-outbound-governance",
+      source: "test",
+      requestedByUserId: 17,
+      agent: { id: 88, role: "Sourcing Coordinator" },
+    },
+    {
+      createActionRequest: async (input: any) => {
+        captured.push(input);
+        return { id: 700 + captured.length, status: "REQUIRES_APPROVAL" };
+      },
+    },
+  );
+
+  assert.equal(result.created.length, 2);
+  assert.equal(captured[0].payload.communicationPurpose, "supplier_rfq");
+  assert.equal(captured[0].payload.contactBasis, "public_b2b_relevance");
+  assert.equal(captured[0].payload.recipientCountryCode, "CI");
+  assert.equal(captured[0].payload.recipientProvenance.verificationStatus, "verified");
+  assert.equal(captured[0].payload.supplierProfileId, "supplier-1");
+  assert.equal(captured[1].payload.whatsappOptInEvidence, "Recorded consent 2026-08-17");
+  assert.equal(captured[1].payload.contentSid, "HX123");
+  assert.deepEqual(captured[1].payload.contentVariables, { "1": "Supplier" });
+  assert.equal(captured[1].payload.mode, "template");
+});
+
+test("meeting invite intents carry service-request governance defaults", async () => {
+  let captured: any = null;
+  const result = await dispatchAgentActionIntents(
+    {
+      text: `[[ACTION:SEND_MEETING_INVITE {"meetingId":"meeting-123456","recipients":["guest@example.com"]}]]`,
+      allowHeuristics: false,
+      tenantId: 4,
+      conversationId: "conv-meeting-governance",
+      source: "test",
+      requestedByUserId: 17,
+    },
+    {
+      createActionRequest: async (input: any) => {
+        captured = input;
+        return { id: 799, status: "REQUIRES_APPROVAL" };
+      },
+    },
+  );
+
+  assert.equal(result.created.length, 1);
+  assert.equal(captured.payload.communicationPurpose, "meeting_invite");
+  assert.equal(captured.payload.contactBasis, "service_requested");
+  assert.equal(captured.payload.commitmentRisk, "none");
+});
+
 test("dispatchAgentActionIntents upgrades CREATE_AGENT count payload into BULK_CREATE_AGENTS", async () => {
   let captured: any = null;
   const result = await dispatchAgentActionIntents(

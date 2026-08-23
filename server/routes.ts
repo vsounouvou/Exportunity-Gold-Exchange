@@ -49,6 +49,8 @@ import authOtpRouter from "./routes/auth-otp";
 import passwordSetupRouter from "./routes/password-setup";
 import marketplaceRouter from "./routes/marketplace"; // Marketplace routes
 import industrialRouter from "./routes/industrial";
+import tradeIntelligenceRouter from "./routes/trade-intelligence";
+import groupBuyingRouter from "./routes/group-buying";
 import equipmentOpsRouter from "./routes/equipment-ops"; // Equipment marketplace + rentals
 import stampedGoldRouter from "./routes/stamped-gold";
 import pickupRouter from "./routes/pickup";
@@ -95,6 +97,7 @@ import adminNotificationsRouter from "./routes/admin-notifications";
 import adminContactsRouter, { contactsCaptureRouter } from "./routes/admin-contacts";
 import adminActionsRouter from "./routes/admin-actions";
 import twilioWebhooksRouter from "./routes/twilio-webhooks";
+import metaSocialWebhooksRouter from "./routes/meta-social-webhooks";
 import agentActionsRouter from "./routes/agent-actions";
 import chairmanActionsRouter from "./routes/chairman-actions";
 import actionsRouter from "./routes/actions";
@@ -116,6 +119,11 @@ import bulkQuotesRouter from "./routes/bulk-quotes";
 import marketingRouter from "./routes/marketing";
 import investRouter from "./routes/invest";
 import talkRouter from "./routes/talk";
+import exportunityIntegrationsRouter from "./routes/exportunity-integrations";
+import exportunitySupplierDiscoveryRouter from "./routes/exportunity-supplier-discovery";
+import exportunitySupplierRfqsRouter from "./routes/exportunity-supplier-rfqs";
+import exportunityCommercialOffersRouter from "./routes/exportunity-commercial-offers";
+import exportunityOrderRecordsRouter from "./routes/exportunity-order-records";
 import pageRegistryRouter from "./routes/page-registry";
 import cadastreRouter from "./routes/cadastre";
 import mindbaseRouter from "./routes/mindbase";
@@ -138,6 +146,7 @@ import bdoProRouter from "./routes/bdo-pro";
 import debugRouter from "./routes/debug";
 import telemetryRouter from "./routes/telemetry";
 import adminMarketingRouter from "./routes/admin-marketing";
+import adminCarrierNetworkRouter from "./routes/admin-carrier-network";
 import adminInvestRouter from "./routes/admin-invest";
 import adminContextRouter from "./routes/admin-context";
 import companyBrainGovernanceRouter from "./routes/company-brain-governance";
@@ -409,8 +418,8 @@ const TENANT_MANIFEST_OVERRIDES: Record<string, TenantManifestOverride> = {
   exportunity: {
     name: "Exportunity",
     short_name: "Exportunity",
-    description: "Industrial sourcing, manufacturing, quality control, logistics, and export readiness across Africa.",
-    start_url: "/industrial",
+    description: "A proximity-first marketplace for products, verified factories, sourcing, and trade expansion across Africa.",
+    start_url: "/marketplace",
     background_color: "#07111F",
     theme_color: "#F5A623",
   },
@@ -1093,6 +1102,10 @@ export function registerRoutes(app: Express): Server {
     app.use("/api/marketplace", marketplaceRouter);
     // Exportunity's factory-first industrial platform routes.
     app.use("/api/industrial", industrialRouter);
+    // Public trade intelligence plus its staff command-center API.
+    app.use("/api/trade", tradeIntelligenceRouter);
+    // Producer Exchange group-purchase commerce plus its governed admin API.
+    app.use("/api/group-buying", groupBuyingRouter);
     // Equipment marketplace + rentals (multi-tenant)
   app.use("/api", equipmentOpsRouter);
   // Stamped Gold SKU+Item verification + admin
@@ -1143,6 +1156,8 @@ export function registerRoutes(app: Express): Server {
   app.use("/api/admin/company-brain", companyBrainGovernanceRouter);
   // Marketing CMS admin API (posts, press, library, media)
   app.use("/api/admin", adminMarketingRouter);
+  // Evidence-backed carrier registry and governed logistics preparation.
+  app.use("/api/admin/carrier-network", adminCarrierNetworkRouter);
   // Investment CMS admin API (opportunities + lead review)
   app.use("/api/admin/invest", adminInvestRouter);
   // Public directory endpoints (safe, read-only)
@@ -1166,6 +1181,21 @@ export function registerRoutes(app: Express): Server {
   app.use("/", marketingRouter);
   // Public marketing chat desk (Talk to us)
   app.use("/", talkRouter);
+  // Exportunity-owned Google, Meta, and Twilio provider control plane
+  app.use("/api/exportunity/integrations", exportunityIntegrationsRouter);
+  // Provenance-backed, unverified external supplier discovery review queue
+  app.use(
+    "/api/exportunity/supplier-discovery",
+    exportunitySupplierDiscoveryRouter,
+  );
+  // Content-hashed RFQ drafting and human approval; this route has no sender.
+  app.use("/api/exportunity/supplier-rfqs", exportunitySupplierRfqsRouter);
+  app.use(
+    "/api/exportunity/commercial-offers",
+    exportunityCommercialOffersRouter,
+  );
+  // Signed-in, tenant-scoped read model for the GTN buyer order interface.
+  app.use("/api/exportunity/order-records", exportunityOrderRecordsRouter);
   // Public investment opportunities + investor lead capture API
   app.use("/", investRouter);
   // Tenant-scoped settings (feature flags, onboarding copy, etc.)
@@ -1352,6 +1382,8 @@ export function registerRoutes(app: Express): Server {
   app.post("/api/webhooks/meta-whatsapp", whatsappWebhook);
   // Twilio webhook endpoints (public)
   app.use("/api/webhooks/twilio", twilioWebhooksRouter);
+  // Feature-gated Meta Page/Instagram webhook endpoint (public, signed, durable).
+  app.use("/api/webhooks/meta/social", metaSocialWebhooksRouter);
   // KKiaPay webhook endpoint (public)
   app.post("/api/webhooks/kkiapay", kkiapayWebhook);
   // Flutterwave webhook endpoint (public)

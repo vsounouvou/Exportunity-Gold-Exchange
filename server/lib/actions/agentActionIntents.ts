@@ -775,6 +775,9 @@ function parseHeuristicMeetingIntent(text: string): ParsedAgentActionIntent | nu
       payload: {
         meetingId,
         recipients: emails,
+        communicationPurpose: "meeting_invite",
+        contactBasis: "service_requested",
+        commitmentRisk: "none",
       },
       source: "heuristic",
     };
@@ -1022,6 +1025,40 @@ function shouldUseCurrentUserFallbackRecipient(rawText: string) {
   return /\b(current user|platform admin|admin user|send (it )?to me|send me)\b/i.test(normalized);
 }
 
+function preserveOutboundGovernancePayload(
+  payload: Record<string, unknown>,
+  defaults: Record<string, unknown> = {},
+) {
+  const governance: Record<string, unknown> = { ...defaults };
+  const aliases: Array<[string, string[]]> = [
+    ["communicationPurpose", ["communicationPurpose", "communication_purpose"]],
+    ["contactBasis", ["contactBasis", "contact_basis"]],
+    ["commitmentRisk", ["commitmentRisk", "commitment_risk"]],
+    ["recipientCountryCode", ["recipientCountryCode", "recipient_country_code"]],
+    ["recipientTimeZone", ["recipientTimeZone", "recipient_time_zone"]],
+    ["optInEvidence", ["optInEvidence", "opt_in_evidence"]],
+    ["whatsappOptInEvidence", ["whatsappOptInEvidence", "whatsapp_opt_in_evidence"]],
+    ["contentSid", ["contentSid", "content_sid"]],
+    ["contentVariables", ["contentVariables", "content_variables"]],
+    ["whatsappSessionActive", ["whatsappSessionActive", "whatsapp_session_active"]],
+    ["recipientProvenance", ["recipientProvenance", "recipient_provenance"]],
+    ["recipientVerificationStatus", ["recipientVerificationStatus", "recipient_verification_status"]],
+    ["supplierProfileId", ["supplierProfileId", "supplier_profile_id"]],
+  ];
+
+  for (const [canonicalKey, candidates] of aliases) {
+    for (const candidate of candidates) {
+      const value = payload[candidate];
+      if (value !== undefined && value !== null && value !== "") {
+        governance[canonicalKey] = value;
+        break;
+      }
+    }
+  }
+
+  return governance;
+}
+
 function ensureEmailPayload(
   payload: Record<string, unknown>,
   fallbackBody: string,
@@ -1049,6 +1086,11 @@ function ensureEmailPayload(
   return {
     valid: to.length > 0,
     payload: {
+      ...preserveOutboundGovernancePayload(payload, {
+        communicationPurpose: "unspecified",
+        contactBasis: "unknown",
+        commitmentRisk: "none",
+      }),
       agentKey,
       to,
       subject,
@@ -1061,10 +1103,16 @@ function ensureMessagePayload(payload: Record<string, unknown>, fallbackBody: st
   const toE164 = typeof payload.toE164 === "string" ? payload.toE164.trim() : typeof payload.to === "string" ? payload.to.trim() : "";
   const bodyRaw = typeof payload.body === "string" && payload.body.trim() ? payload.body.trim() : fallbackBody;
   const body = stripAgentActionMarkers(bodyRaw) || bodyRaw;
-  const mode = typeof payload.mode === "string" && payload.mode.trim() ? payload.mode.trim() : "text";
+  const contentSid = firstNonEmptyString(payload.contentSid, payload.content_sid);
+  const mode = typeof payload.mode === "string" && payload.mode.trim() ? payload.mode.trim() : contentSid ? "template" : "text";
   return {
     valid: Boolean(toE164),
     payload: {
+      ...preserveOutboundGovernancePayload(payload, {
+        communicationPurpose: "unspecified",
+        contactBasis: "unknown",
+        commitmentRisk: "none",
+      }),
       agentKey,
       toE164,
       body,
@@ -1348,6 +1396,11 @@ function ensureStructuredActionPayload(
     return {
       valid: Boolean(meetingId && recipients.length > 0),
       payload: {
+        ...preserveOutboundGovernancePayload(payload, {
+          communicationPurpose: "meeting_invite",
+          contactBasis: "service_requested",
+          commitmentRisk: "none",
+        }),
         meetingId,
         recipients,
         role: typeof payload.role === "string" && payload.role.trim() ? payload.role.trim().toLowerCase() : "attendee",

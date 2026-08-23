@@ -181,6 +181,20 @@ export async function extractAttachmentText(
       };
     }
 
+    if (
+      [".dxf", ".dwg", ".step", ".stp", ".stl", ".iges", ".igs"].includes(
+        extension,
+      )
+    ) {
+      return {
+        text: "",
+        status: "visual_review_required",
+        method: "cad",
+        warning:
+          "The CAD file is linked as technical evidence. A compatible CAD viewer and accountable technical review are required before using its contents.",
+      };
+    }
+
     if (extension === ".doc" || extension === ".ppt") {
       return {
         text: "",

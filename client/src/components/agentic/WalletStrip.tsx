@@ -48,7 +48,7 @@ function isSameLocalDay(a: Date, b: Date) {
 
 export function WalletStrip({
   className,
-  href = "/inbox/wallet",
+  href = "/pro/money",
   topOffset = 0,
   sticky = true,
 }: {
@@ -84,7 +84,7 @@ export function WalletStrip({
 
   return (
     <div
-      className={cn(sticky ? "sticky z-40" : "relative z-10", "bg-black/70 backdrop-blur border-b border-white/10", className)}
+      className={cn(sticky ? "sticky z-40" : "relative z-10", "border-b border-slate-200 bg-white/95 text-[#07111F] backdrop-blur-xl", className)}
       style={sticky ? { top: `${Math.max(0, Number(topOffset) || 0)}px` } : undefined}
       data-testid="wallet-strip"
     >
@@ -95,19 +95,19 @@ export function WalletStrip({
               <Wallet className="h-4 w-4 text-amber-400" />
             </div>
             <div className="min-w-0">
-              <div className="text-xs text-white/60 leading-none">Wallet</div>
-              <div className="text-sm font-semibold text-white truncate">
+              <div className="text-xs leading-none text-slate-500">Wallet</div>
+              <div className="truncate text-sm font-black text-slate-950">
                 {isLoading ? "Loading..." : formatMoney(computed.balance, computed.currency)}
               </div>
             </div>
           </div>
 
           <div className="text-right">
-            <div className="text-[11px] text-white/50 leading-none">Today</div>
+            <div className="text-[11px] leading-none text-slate-400">Today</div>
             <div
               className={cn(
                 "text-xs font-medium",
-                computed.todayNet > 0 ? "text-emerald-400" : computed.todayNet < 0 ? "text-red-400" : "text-white/70",
+                computed.todayNet > 0 ? "text-emerald-700" : computed.todayNet < 0 ? "text-red-700" : "text-slate-600",
               )}
             >
               {isLoading ? "—" : (computed.todayNet > 0 ? "+" : "") + formatMoney(computed.todayNet, computed.currency)}

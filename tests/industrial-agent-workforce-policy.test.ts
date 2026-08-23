@@ -338,11 +338,15 @@ test("qualified opportunities dispatch visible employee work through the governe
   assert.match(execution, /externalActionStarted: false/);
   assert.match(agentRouter, /industrial_opportunity_workstream/);
   assert.match(agentRouter, /allowsDirectMemoryAnswer/);
-  assert.match(route, /commercialContext\?\.suggestedAction === "ACT"/);
   assert.match(
     route,
-    /workstreams\/:taskId\/run/,
+    /industrial_requirement\.agent_work_auto_dispatched/,
   );
-  assert.match(room, /Run agent/);
+  assert.match(
+    route,
+    /workstreams\/auto-dispatch/,
+  );
+  assert.match(room, /Automatic dispatch/);
+  assert.doesNotMatch(room, /Run agent/);
   assert.match(room, /Review employee output/);
 });

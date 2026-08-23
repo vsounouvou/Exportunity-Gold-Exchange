@@ -5,7 +5,17 @@ type BeforeInstallPromptEvent = Event & {
   userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
 };
 
-const INSTALLED_KEY = "zone_install_prompt_installed";
+const storageNamespace = String(__BUILD_APP_NAME__ || "platform")
+  .trim()
+  .toLowerCase()
+  .replace(/[^a-z0-9_-]+/g, "-");
+
+export const PWA_INSTALL_STORAGE_KEYS = Object.freeze({
+  installed: `${storageNamespace}_pwa_installed`,
+  installedAt: `${storageNamespace}_pwa_installed_at`,
+  installedAcknowledgedAt: `${storageNamespace}_pwa_installed_ack_at`,
+  promptAt: `${storageNamespace}_pwa_install_prompt_at`,
+});
 
 function isStandaloneMode() {
   const nav = navigator as any;
@@ -14,7 +24,7 @@ function isStandaloneMode() {
 
 function readInstalledFlag() {
   try {
-    return localStorage.getItem(INSTALLED_KEY) === "true";
+    return localStorage.getItem(PWA_INSTALL_STORAGE_KEYS.installed) === "true";
   } catch {
     return false;
   }
@@ -42,9 +52,9 @@ export function PwaInstallProvider({ children }: { children: ReactNode }) {
       setInstalled(true);
       setDeferredPrompt(null);
       try {
-        localStorage.setItem(INSTALLED_KEY, "true");
-        localStorage.setItem("bdo_pwa_installed_at", String(Date.now()));
-        localStorage.removeItem("bdo_pwa_installed_ack_at");
+        localStorage.setItem(PWA_INSTALL_STORAGE_KEYS.installed, "true");
+        localStorage.setItem(PWA_INSTALL_STORAGE_KEYS.installedAt, String(Date.now()));
+        localStorage.removeItem(PWA_INSTALL_STORAGE_KEYS.installedAcknowledgedAt);
       } catch {
         // ignore
       }
@@ -62,7 +72,7 @@ export function PwaInstallProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!installed) return;
     try {
-      localStorage.setItem(INSTALLED_KEY, "true");
+      localStorage.setItem(PWA_INSTALL_STORAGE_KEYS.installed, "true");
     } catch {
       // ignore
     }

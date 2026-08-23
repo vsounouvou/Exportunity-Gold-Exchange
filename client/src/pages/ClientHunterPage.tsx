@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
@@ -88,12 +88,12 @@ interface TerritoryMetric {
 }
 
 const STATUS_COLORS: Record<string, string> = {
-  new: 'bg-blue-500/20 text-blue-400',
-  contacted: 'bg-yellow-500/20 text-yellow-400',
-  responded: 'bg-purple-500/20 text-purple-400',
-  qualified: 'bg-green-500/20 text-green-400',
-  converted: 'bg-emerald-500/20 text-emerald-400',
-  disqualified: 'bg-red-500/20 text-red-400',
+  new: 'border border-blue-200 bg-blue-50 text-blue-700',
+  contacted: 'border border-amber-200 bg-amber-50 text-amber-800',
+  responded: 'border border-violet-200 bg-violet-50 text-violet-700',
+  qualified: 'border border-emerald-200 bg-emerald-50 text-emerald-700',
+  converted: 'border border-teal-200 bg-teal-50 text-teal-700',
+  disqualified: 'border border-rose-200 bg-rose-50 text-rose-700',
 };
 
 export default function ClientHunterPage() {
@@ -102,8 +102,6 @@ export default function ClientHunterPage() {
   const session = useSession();
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [filterStatus, setFilterStatus] = useState<string>('all');
-  const [isDiscovering, setIsDiscovering] = useState(false);
-  const [isQualifying, setIsQualifying] = useState(false);
   const [showOutreachDialog, setShowOutreachDialog] = useState(false);
   const [outreachType, setOutreachType] = useState<'email' | 'sms' | 'whatsapp'>('email');
   const [generatedOutreach, setGeneratedOutreach] = useState<{ subject?: string; content: string } | null>(null);
@@ -215,7 +213,6 @@ export default function ClientHunterPage() {
       });
       queryClient.invalidateQueries({ queryKey: ['/api/admin/leads'] });
       queryClient.invalidateQueries({ queryKey: ['/api/admin/campaigns'] });
-      setIsDiscovering(false);
     },
     onError: () => {
       toast({ 
@@ -223,7 +220,6 @@ export default function ClientHunterPage() {
         description: "Could not complete AI discovery. Try again later.",
         variant: "destructive"
       });
-      setIsDiscovering(false);
     }
   });
 
@@ -239,14 +235,12 @@ export default function ClientHunterPage() {
         description: `Processed ${data.processed} leads. ${data.qualified} qualified for outreach.` 
       });
       queryClient.invalidateQueries({ queryKey: ['/api/admin/leads'] });
-      setIsQualifying(false);
     },
     onError: () => {
       toast({ 
         title: "Qualification failed", 
         variant: "destructive"
       });
-      setIsQualifying(false);
     }
   });
 
@@ -299,10 +293,10 @@ export default function ClientHunterPage() {
   }) || [];
 
   const getScoreColor = (score: number) => {
-    if (score >= 80) return 'text-green-400';
-    if (score >= 60) return 'text-yellow-400';
-    if (score >= 40) return 'text-orange-400';
-    return 'text-red-400';
+    if (score >= 80) return 'text-emerald-700';
+    if (score >= 60) return 'text-amber-700';
+    if (score >= 40) return 'text-orange-700';
+    return 'text-rose-700';
   };
 
   const handleGenerateOutreach = (lead: Lead) => {
@@ -312,38 +306,39 @@ export default function ClientHunterPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-950 p-4 md:p-6 pb-20">
-      <div className="max-w-7xl mx-auto">
+    <div
+      className="min-h-[calc(100vh-var(--admin-header-height))] bg-[#F7F8FA] px-4 py-5 text-[#07111F] md:px-6"
+      data-testid="exportunity-lead-operations-page"
+    >
+      <div className="mx-auto max-w-7xl">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div>
-            <h1 className="text-xl md:text-2xl font-bold text-white flex items-center gap-2">
-              <Bot className="h-6 w-6 text-amber-500" />
-              AI Client Hunter
+            <div className="text-[10px] font-black uppercase tracking-[0.18em] text-[#9A6200]">Global Trade Network</div>
+            <h1 className="mt-2 flex items-center gap-2 text-xl font-black text-slate-950 md:text-2xl">
+              <Bot className="h-6 w-6 text-[#F5A623]" />
+              Lead operations
             </h1>
-            <p className="text-sm text-gray-400">Automated lead discovery, scoring & outreach</p>
+            <p className="mt-1 text-sm text-slate-500">Demand-driven discovery, scoring, and governed outreach drafts.</p>
           </div>
         </div>
 
-        <Card className="bg-gradient-to-r from-amber-900/30 to-purple-900/30 border-amber-500/30 mb-6">
+        <Card className="mb-6 border-[#F5A623]/35 bg-gradient-to-r from-[#FFF8E8] to-white shadow-sm">
           <CardContent className="p-4 md:p-6">
             <div className="flex flex-col md:flex-row md:items-center gap-4">
               <div className="flex-1">
-                <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-                  <Sparkles className="h-5 w-5 text-amber-400" />
-                  AI-Powered Lead Generation
+                <h3 className="flex items-center gap-2 text-lg font-black text-slate-950">
+                  <Sparkles className="h-5 w-5 text-[#F5A623]" />
+                  AI-assisted lead preparation
                 </h3>
-                <p className="text-sm text-gray-300 mt-1">
-                  Let AI discover, score, and qualify potential clients in the African commodities market automatically.
+                <p className="mt-1 text-sm text-slate-600">
+                  Use current sourcing demand to identify and qualify potential clients. Outreach remains a draft until a person reviews it.
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
                 <Button 
-                  onClick={() => {
-                    setIsDiscovering(true);
-                    aiDiscoverMutation.mutate();
-                  }}
+                  onClick={() => aiDiscoverMutation.mutate()}
                   disabled={aiDiscoverMutation.isPending}
-                  className="h-11 bg-amber-500 hover:bg-amber-600 text-black font-medium"
+                  className="h-11 bg-[#F5A623] font-black text-[#07111F] hover:bg-[#F8C45B]"
                 >
                   {aiDiscoverMutation.isPending ? (
                     <Loader2 className="h-4 w-4 animate-spin mr-2" />
@@ -354,12 +349,9 @@ export default function ClientHunterPage() {
                 </Button>
                 <Button 
                   variant="outline"
-                  onClick={() => {
-                    setIsQualifying(true);
-                    aiQualifyBatchMutation.mutate();
-                  }}
+                  onClick={() => aiQualifyBatchMutation.mutate()}
                   disabled={aiQualifyBatchMutation.isPending}
-                  className="h-11 border-purple-500/50 text-purple-300 hover:bg-purple-500/20"
+                  className="h-11 border-slate-300 bg-white font-bold text-slate-700 hover:border-[#F5A623] hover:bg-[#FFF8E8] hover:text-slate-950"
                 >
                   {aiQualifyBatchMutation.isPending ? (
                     <Loader2 className="h-4 w-4 animate-spin mr-2" />
@@ -374,36 +366,36 @@ export default function ClientHunterPage() {
         </Card>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6">
-          <Card className="bg-gray-900 border-gray-800">
+          <Card className="border-slate-200 bg-white shadow-sm">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs text-gray-400">Total Leads</p>
-                  <p className="text-xl md:text-2xl font-bold text-white">{leadsData?.pagination?.total || 0}</p>
+                  <p className="text-xs font-bold text-slate-500">Total Leads</p>
+                  <p className="text-xl font-black text-slate-950 md:text-2xl">{leadsData?.pagination?.total || 0}</p>
                 </div>
                 <Target className="h-8 w-8 text-amber-500 opacity-50" />
               </div>
             </CardContent>
           </Card>
-          <Card className="bg-gray-900 border-gray-800">
+          <Card className="border-slate-200 bg-white shadow-sm">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs text-gray-400">AI Discovered</p>
-                  <p className="text-xl md:text-2xl font-bold text-white">
+                  <p className="text-xs font-bold text-slate-500">AI Discovered</p>
+                  <p className="text-xl font-black text-slate-950 md:text-2xl">
                     {leadsData?.leads?.filter(l => l.source === 'ai_discovery').length || 0}
                   </p>
                 </div>
-                <Bot className="h-8 w-8 text-purple-500 opacity-50" />
+                <Bot className="h-8 w-8 text-violet-500 opacity-60" />
               </div>
             </CardContent>
           </Card>
-          <Card className="bg-gray-900 border-gray-800">
+          <Card className="border-slate-200 bg-white shadow-sm">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs text-gray-400">Qualified</p>
-                  <p className="text-xl md:text-2xl font-bold text-white">
+                  <p className="text-xs font-bold text-slate-500">Qualified</p>
+                  <p className="text-xl font-black text-slate-950 md:text-2xl">
                     {leadsData?.leads?.filter(l => l.status === 'qualified').length || 0}
                   </p>
                 </div>
@@ -411,12 +403,12 @@ export default function ClientHunterPage() {
               </div>
             </CardContent>
           </Card>
-          <Card className="bg-gray-900 border-gray-800">
+          <Card className="border-slate-200 bg-white shadow-sm">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs text-gray-400">Avg Score</p>
-                  <p className="text-xl md:text-2xl font-bold text-white">
+                  <p className="text-xs font-bold text-slate-500">Avg Score</p>
+                  <p className="text-xl font-black text-slate-950 md:text-2xl">
                     {Math.round(
                       (leadsData?.leads?.reduce((sum, l) => sum + (l.score || 0), 0) || 0) / 
                       Math.max(leadsData?.leads?.length || 1, 1)
@@ -430,20 +422,20 @@ export default function ClientHunterPage() {
         </div>
 
         <Tabs defaultValue="leads" className="w-full">
-          <TabsList className="grid w-full grid-cols-4 bg-gray-800 h-11 mb-4">
-            <TabsTrigger value="sourcing" className="h-10">
+          <TabsList className="mb-4 grid h-auto w-full grid-cols-2 gap-1 border border-slate-200 bg-white p-1 sm:grid-cols-4">
+            <TabsTrigger value="sourcing" className="h-10 data-[state=active]:bg-[#FFF8E8] data-[state=active]:text-[#8A5700]">
               <Search className="h-4 w-4 mr-2" />
               Sourcing
             </TabsTrigger>
-            <TabsTrigger value="access" className="h-10">
+            <TabsTrigger value="access" className="h-10 data-[state=active]:bg-[#FFF8E8] data-[state=active]:text-[#8A5700]">
               <FileText className="h-4 w-4 mr-2" />
               Access
             </TabsTrigger>
-            <TabsTrigger value="leads" className="h-10">
+            <TabsTrigger value="leads" className="h-10 data-[state=active]:bg-[#FFF8E8] data-[state=active]:text-[#8A5700]">
               <Users className="h-4 w-4 mr-2" />
               Lead Pipeline
             </TabsTrigger>
-            <TabsTrigger value="campaigns" className="h-10">
+            <TabsTrigger value="campaigns" className="h-10 data-[state=active]:bg-[#FFF8E8] data-[state=active]:text-[#8A5700]">
               <Zap className="h-4 w-4 mr-2" />
               AI Campaigns
             </TabsTrigger>
@@ -451,10 +443,10 @@ export default function ClientHunterPage() {
 
           <TabsContent value="sourcing" className="space-y-4">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-              <Card className="bg-gray-900 border-gray-800 lg:col-span-2">
+              <Card className="border-slate-200 bg-white shadow-sm lg:col-span-2">
                 <CardHeader>
-                  <CardTitle className="text-white flex items-center gap-2">
-                    <Search className="h-5 w-5 text-amber-400" />
+                  <CardTitle className="flex items-center gap-2 text-slate-950">
+                    <Search className="h-5 w-5 text-[#F5A623]" />
                     Open Sourcing Requests
                   </CardTitle>
                   <CardDescription>
@@ -463,17 +455,17 @@ export default function ClientHunterPage() {
                 </CardHeader>
                 <CardContent className="p-0">
                   <ScrollArea className="h-[420px]">
-                    <div className="divide-y divide-gray-800">
+                    <div className="divide-y divide-slate-100">
                       {sourcingLoading ? (
                         <div className="p-8 text-center">
                           <Loader2 className="h-8 w-8 animate-spin text-amber-500 mx-auto" />
-                          <p className="text-gray-400 mt-2">Loading sourcing requests...</p>
+                          <p className="mt-2 text-slate-500">Loading sourcing requests...</p>
                         </div>
                       ) : (sourcingData?.requests?.length || 0) === 0 ? (
-                        <div className="p-8 text-center text-gray-400">
+                        <div className="p-8 text-center text-slate-500">
                           <Search className="h-12 w-12 mx-auto mb-4 opacity-50" />
                           <p>No open sourcing requests yet.</p>
-                          <p className="text-sm text-gray-500 mt-1">They appear automatically when buyers search and supply is missing.</p>
+                          <p className="mt-1 text-sm text-slate-400">They appear automatically when buyers search and supply is missing.</p>
                         </div>
                       ) : (
                         (sourcingData?.requests || []).map((r) => {
@@ -487,15 +479,15 @@ export default function ClientHunterPage() {
                             <div key={r.id} className="p-4">
                               <div className="flex items-start justify-between gap-3">
                                 <div className="min-w-0">
-                                  <p className="text-white font-semibold truncate">{r.productQuery}</p>
-                                  <p className="text-xs text-gray-400 mt-1 truncate">
+                                  <p className="truncate font-bold text-slate-950">{r.productQuery}</p>
+                                  <p className="mt-1 truncate text-xs text-slate-500">
                                     {label} • {new Date(r.createdAt).toLocaleString()}
                                   </p>
                                   {r.quantityIntent ? (
-                                    <p className="text-xs text-gray-400 mt-1">Qty/intent: {r.quantityIntent}</p>
+                                    <p className="mt-1 text-xs text-slate-500">Qty/intent: {r.quantityIntent}</p>
                                   ) : null}
                                 </div>
-                                <Badge className="bg-blue-500/15 text-blue-300 border-blue-400/20 text-[10px]">
+                                <Badge className="border border-blue-200 bg-blue-50 text-[10px] text-blue-700">
                                   {r.status}
                                 </Badge>
                               </div>
@@ -510,7 +502,7 @@ export default function ClientHunterPage() {
                                 </Button>
                                 <Button
                                   size="sm"
-                                  className="bg-green-600 hover:bg-green-700"
+                                  className="bg-emerald-600 hover:bg-emerald-700"
                                   disabled={updateSourcingRequest.isPending}
                                   onClick={() => updateSourcingRequest.mutate({ id: r.id, status: "matched" })}
                                 >
@@ -519,7 +511,7 @@ export default function ClientHunterPage() {
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  className="border-gray-700"
+                                  className="border-slate-300 text-slate-700"
                                   disabled={updateSourcingRequest.isPending}
                                   onClick={() => updateSourcingRequest.mutate({ id: r.id, status: "closed" })}
                                 >
@@ -535,9 +527,9 @@ export default function ClientHunterPage() {
                 </CardContent>
               </Card>
 
-              <Card className="bg-gray-900 border-gray-800">
+              <Card className="border-slate-200 bg-white shadow-sm">
                 <CardHeader>
-                  <CardTitle className="text-white flex items-center gap-2">
+                  <CardTitle className="flex items-center gap-2 text-slate-950">
                     <TrendingUp className="h-5 w-5 text-emerald-400" />
                     Territory Demand
                   </CardTitle>
@@ -545,18 +537,18 @@ export default function ClientHunterPage() {
                 </CardHeader>
                 <CardContent className="space-y-3">
                   {(territoryMetrics?.territories || []).slice(0, 8).map((t) => (
-                    <div key={t.key} className="rounded-lg border border-gray-800 bg-gray-950 p-3">
+                    <div key={t.key} className="rounded-lg border border-slate-200 bg-slate-50 p-3">
                       <div className="flex items-center justify-between gap-3">
-                        <p className="text-sm text-white truncate">{t.label}</p>
-                        <Badge className="bg-amber-500/15 text-amber-300 border-amber-400/20 text-[10px]">
+                        <p className="truncate text-sm font-bold text-slate-900">{t.label}</p>
+                        <Badge className="border border-[#F5A623]/30 bg-[#FFF8E8] text-[10px] text-[#8A5700]">
                           {t.counts.open || 0} open
                         </Badge>
                       </div>
-                      <p className="text-[11px] text-gray-500 mt-1">Last seen: {new Date(t.lastSeenAt).toLocaleString()}</p>
+                      <p className="mt-1 text-[11px] text-slate-400">Last seen: {new Date(t.lastSeenAt).toLocaleString()}</p>
                     </div>
                   ))}
                   {(territoryMetrics?.territories || []).length === 0 ? (
-                    <p className="text-sm text-gray-500">No data yet.</p>
+                    <p className="text-sm text-slate-500">No data yet.</p>
                   ) : null}
                 </CardContent>
               </Card>
@@ -564,24 +556,24 @@ export default function ClientHunterPage() {
           </TabsContent>
 
           <TabsContent value="access" className="space-y-4">
-            <Card className="bg-gray-900 border-gray-800">
+            <Card className="border-slate-200 bg-white shadow-sm">
               <CardHeader>
-                <CardTitle className="text-white flex items-center gap-2">
-                  <FileText className="h-5 w-5 text-amber-400" />
+                <CardTitle className="flex items-center gap-2 text-slate-950">
+                  <FileText className="h-5 w-5 text-[#F5A623]" />
                   Wholesale Gold Access Requests
                 </CardTitle>
                 <CardDescription>Approve or reject private market access.</CardDescription>
               </CardHeader>
               <CardContent className="p-0">
                 <ScrollArea className="h-[500px]">
-                  <div className="divide-y divide-gray-800">
+                  <div className="divide-y divide-slate-100">
                     {accessLoading ? (
                       <div className="p-8 text-center">
                         <Loader2 className="h-8 w-8 animate-spin text-amber-500 mx-auto" />
-                        <p className="text-gray-400 mt-2">Loading access requests...</p>
+                        <p className="mt-2 text-slate-500">Loading access requests...</p>
                       </div>
                     ) : (accessData?.requests || []).length === 0 ? (
-                      <div className="p-8 text-center text-gray-400">
+                      <div className="p-8 text-center text-slate-500">
                         <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
                         <p>No access requests.</p>
                       </div>
@@ -590,22 +582,22 @@ export default function ClientHunterPage() {
                         <div key={r.id} className="p-4">
                           <div className="flex items-start justify-between gap-3">
                             <div className="min-w-0">
-                              <p className="text-white font-semibold truncate">{r.user?.displayName || r.user?.email || `User ${r.user?.id}`}</p>
-                              <p className="text-xs text-gray-400 mt-1 truncate">
+                              <p className="truncate font-bold text-slate-950">{r.user?.displayName || r.user?.email || `User ${r.user?.id}`}</p>
+                              <p className="mt-1 truncate text-xs text-slate-500">
                                 {r.businessName || "Business name not provided"} • {new Date(r.createdAt).toLocaleString()}
                               </p>
                               {r.licenseFileName ? (
-                                <p className="text-xs text-gray-500 mt-1 truncate">License file: {r.licenseFileName}</p>
+                                <p className="mt-1 truncate text-xs text-slate-400">License file: {r.licenseFileName}</p>
                               ) : null}
                             </div>
-                            <Badge className="bg-purple-500/15 text-purple-300 border-purple-400/20 text-[10px]">
+                            <Badge className="border border-violet-200 bg-violet-50 text-[10px] text-violet-700">
                               {r.status}
                             </Badge>
                           </div>
                           <div className="mt-3 flex gap-2">
                             <Button
                               size="sm"
-                              className="bg-green-600 hover:bg-green-700"
+                              className="bg-emerald-600 hover:bg-emerald-700"
                               disabled={updateMarketAccessRequest.isPending || r.status !== "pending"}
                               onClick={() => updateMarketAccessRequest.mutate({ id: r.id, status: "approved" })}
                             >
@@ -614,7 +606,7 @@ export default function ClientHunterPage() {
                             <Button
                               size="sm"
                               variant="outline"
-                              className="border-gray-700 text-gray-200"
+                              className="border-slate-300 text-slate-700"
                               disabled={updateMarketAccessRequest.isPending || r.status !== "pending"}
                               onClick={() => updateMarketAccessRequest.mutate({ id: r.id, status: "rejected" })}
                             >
@@ -636,7 +628,11 @@ export default function ClientHunterPage() {
                 variant={filterStatus === 'all' ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => setFilterStatus('all')}
-                className="h-9"
+                className={
+                  filterStatus === 'all'
+                    ? "h-9 bg-[#F5A623] font-bold text-[#07111F] hover:bg-[#F8C45B]"
+                    : "h-9 border-slate-300 bg-white text-slate-700 hover:border-[#F5A623] hover:bg-[#FFF8E8]"
+                }
               >
                 All
               </Button>
@@ -646,24 +642,28 @@ export default function ClientHunterPage() {
                   variant={filterStatus === status ? 'default' : 'outline'}
                   size="sm"
                   onClick={() => setFilterStatus(status)}
-                  className="h-9 capitalize"
+                  className={
+                    filterStatus === status
+                      ? "h-9 bg-[#F5A623] font-bold capitalize text-[#07111F] hover:bg-[#F8C45B]"
+                      : "h-9 border-slate-300 bg-white capitalize text-slate-700 hover:border-[#F5A623] hover:bg-[#FFF8E8]"
+                  }
                 >
                   {status}
                 </Button>
               ))}
             </div>
 
-            <Card className="bg-gray-900 border-gray-800">
+            <Card className="border-slate-200 bg-white shadow-sm">
               <CardContent className="p-0">
                 <ScrollArea className="h-[500px]">
-                  <div className="divide-y divide-gray-800">
+                  <div className="divide-y divide-slate-100">
                     {leadsLoading ? (
                       <div className="p-8 text-center">
                         <Loader2 className="h-8 w-8 animate-spin text-amber-500 mx-auto" />
-                        <p className="text-gray-400 mt-2">Loading leads...</p>
+                        <p className="mt-2 text-slate-500">Loading leads...</p>
                       </div>
                     ) : filteredLeads.length === 0 ? (
-                      <div className="p-8 text-center text-gray-400">
+                      <div className="p-8 text-center text-slate-500">
                         <Bot className="h-12 w-12 mx-auto mb-4 opacity-50" />
                         <p className="mb-4">
                           No leads found. Leads should be created from real demand (Sourcing Requests) rather than random outreach.
@@ -677,10 +677,9 @@ export default function ClientHunterPage() {
                               });
                               return;
                             }
-                            setIsDiscovering(true);
                             aiDiscoverMutation.mutate();
                           }}
-                          className="bg-amber-500 hover:bg-amber-600"
+                          className="bg-[#F5A623] font-black text-[#07111F] hover:bg-[#F8C45B]"
                           disabled={(sourcingData?.requests?.length || 0) === 0}
                         >
                           <Radar className="h-4 w-4 mr-2" />
@@ -691,25 +690,25 @@ export default function ClientHunterPage() {
                       filteredLeads.map(lead => (
                         <div
                           key={lead.id}
-                          className="p-4 hover:bg-gray-800/50 transition-colors"
+                          className="p-4 transition-colors hover:bg-slate-50"
                         >
                           <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2 mb-1 flex-wrap">
-                                <h3 className="text-sm font-medium text-white">
+                                <h3 className="text-sm font-bold text-slate-950">
                                   {lead.companyName || lead.contactName || 'Unknown'}
                                 </h3>
-                                <Badge className={STATUS_COLORS[lead.status] || 'bg-gray-500/20'}>
+                                <Badge className={STATUS_COLORS[lead.status] || 'border border-slate-200 bg-slate-50 text-slate-600'}>
                                   {lead.status}
                                 </Badge>
                                 {lead.source === 'ai_discovery' && (
-                                  <Badge className="bg-purple-500/20 text-purple-300">
+                                  <Badge className="border border-violet-200 bg-violet-50 text-violet-700">
                                     <Bot className="h-3 w-3 mr-1" />
                                     AI Found
                                   </Badge>
                                 )}
                               </div>
-                              <div className="flex flex-wrap gap-3 text-xs text-gray-400">
+                              <div className="flex flex-wrap gap-3 text-xs text-slate-500">
                                 {lead.contactName && (
                                   <span>{lead.contactName}</span>
                                 )}
@@ -732,7 +731,7 @@ export default function ClientHunterPage() {
                                 <div className={`text-lg font-bold ${getScoreColor(lead.score)}`}>
                                   {lead.score}
                                 </div>
-                                <div className="text-xs text-gray-500">Score</div>
+                                <div className="text-xs text-slate-400">Score</div>
                               </div>
                               <Button
                                 size="sm"
@@ -748,7 +747,7 @@ export default function ClientHunterPage() {
                                 size="sm"
                                 variant="outline"
                                 onClick={() => handleGenerateOutreach(lead)}
-                                className="h-9 border-amber-500/50 text-amber-300"
+                                className="h-9 border-[#F5A623]/50 text-[#8A5700] hover:bg-[#FFF8E8]"
                               >
                                 <FileText className="h-3 w-3 mr-1" />
                                 Outreach
@@ -757,10 +756,10 @@ export default function ClientHunterPage() {
                                 value={lead.status}
                                 onValueChange={(v) => updateLeadMutation.mutate({ id: lead.id, updates: { status: v } })}
                               >
-                                <SelectTrigger className="w-28 h-9 bg-gray-800 border-gray-700 text-xs">
+                                <SelectTrigger className="h-9 w-28 border-slate-300 bg-white text-xs text-slate-700">
                                   <SelectValue />
                                 </SelectTrigger>
-                                <SelectContent className="bg-gray-800 border-gray-700">
+                                <SelectContent className="border-slate-200 bg-white text-slate-800">
                                   {Object.keys(STATUS_COLORS).map(s => (
                                     <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>
                                   ))}
@@ -769,7 +768,7 @@ export default function ClientHunterPage() {
                             </div>
                           </div>
                           {lead.notes && (
-                            <p className="text-xs text-gray-500 mt-2 line-clamp-2">{lead.notes}</p>
+                            <p className="mt-2 line-clamp-2 text-xs text-slate-400">{lead.notes}</p>
                           )}
                         </div>
                       ))
@@ -781,25 +780,24 @@ export default function ClientHunterPage() {
           </TabsContent>
 
           <TabsContent value="campaigns" className="space-y-4">
-            <Card className="bg-gray-900 border-gray-800">
+            <Card className="border-slate-200 bg-white shadow-sm">
               <CardHeader>
-                <CardTitle className="text-white text-base flex items-center gap-2">
-                  <Zap className="h-5 w-5 text-amber-400" />
+                <CardTitle className="flex items-center gap-2 text-base text-slate-950">
+                  <Zap className="h-5 w-5 text-[#F5A623]" />
                   AI Discovery Campaigns
                 </CardTitle>
-                <CardDescription>Automated lead generation campaigns run by AI</CardDescription>
+                <CardDescription>Recorded lead-discovery campaigns and their measured outcomes.</CardDescription>
               </CardHeader>
               <CardContent>
                 {!campaignsData?.campaigns?.length ? (
-                  <div className="text-center py-8 text-gray-400">
+                  <div className="py-8 text-center text-slate-500">
                     <Radar className="h-12 w-12 mx-auto mb-4 opacity-50" />
                     <p className="mb-4">No campaigns yet. Start an AI Discovery to create your first campaign.</p>
                     <Button 
                       onClick={() => {
-                        setIsDiscovering(true);
                         aiDiscoverMutation.mutate();
                       }}
-                      className="bg-amber-500 hover:bg-amber-600"
+                      className="bg-[#F5A623] font-black text-[#07111F] hover:bg-[#F8C45B]"
                     >
                       <Bot className="h-4 w-4 mr-2" />
                       Launch AI Discovery
@@ -808,24 +806,24 @@ export default function ClientHunterPage() {
                 ) : (
                   <div className="space-y-4">
                     {campaignsData?.campaigns?.map(campaign => (
-                      <div key={campaign.id} className="p-4 bg-gray-800/50 rounded-lg border border-gray-700">
+                      <div key={campaign.id} className="rounded-lg border border-slate-200 bg-slate-50 p-4">
                         <div className="flex items-center justify-between mb-2">
-                          <h4 className="text-sm font-medium text-white flex items-center gap-2">
-                            {campaign.type === 'ai_discovery' && <Bot className="h-4 w-4 text-purple-400" />}
+                          <h4 className="flex items-center gap-2 text-sm font-bold text-slate-950">
+                            {campaign.type === 'ai_discovery' && <Bot className="h-4 w-4 text-violet-600" />}
                             {campaign.name}
                           </h4>
                           <Badge variant="outline" className={
-                            campaign.status === 'completed' ? 'border-green-500 text-green-400' :
-                            campaign.status === 'running' ? 'border-blue-500 text-blue-400' :
-                            'border-gray-500'
+                            campaign.status === 'completed' ? 'border-emerald-300 text-emerald-700' :
+                            campaign.status === 'running' ? 'border-blue-300 text-blue-700' :
+                            'border-slate-300 text-slate-600'
                           }>
                             {campaign.status}
                           </Badge>
                         </div>
                         {campaign.description && (
-                          <p className="text-xs text-gray-400 mb-3">{campaign.description}</p>
+                          <p className="mb-3 text-xs text-slate-500">{campaign.description}</p>
                         )}
-                        <div className="flex items-center gap-4 text-xs text-gray-400">
+                        <div className="flex flex-wrap items-center gap-4 text-xs text-slate-500">
                           <span className="flex items-center gap-1">
                             <Target className="h-3 w-3" />
                             {campaign.leadsGenerated} leads found
@@ -853,11 +851,11 @@ export default function ClientHunterPage() {
         </Tabs>
 
         <Dialog open={showOutreachDialog} onOpenChange={setShowOutreachDialog}>
-          <DialogContent className="bg-gray-900 border-gray-800 max-w-2xl">
+          <DialogContent className="max-w-2xl border-slate-200 bg-white text-slate-900">
             <DialogHeader>
-              <DialogTitle className="text-white flex items-center gap-2">
-                <Sparkles className="h-5 w-5 text-amber-400" />
-                AI Outreach Generator
+              <DialogTitle className="flex items-center gap-2 text-slate-950">
+                <Sparkles className="h-5 w-5 text-[#F5A623]" />
+                AI outreach draft
               </DialogTitle>
               <DialogDescription>
                 Generate personalized outreach for {selectedLead?.companyName || selectedLead?.contactName}
@@ -865,7 +863,7 @@ export default function ClientHunterPage() {
             </DialogHeader>
             <div className="space-y-4">
               <div>
-                <Label className="text-gray-300">Channel</Label>
+                <Label className="text-slate-700">Channel</Label>
                 <div className="flex gap-2 mt-2">
                   {(['email', 'sms', 'whatsapp'] as const).map(type => (
                     <Button
@@ -890,7 +888,7 @@ export default function ClientHunterPage() {
               <Button
                 onClick={() => selectedLead && aiOutreachMutation.mutate({ leadId: selectedLead.id, type: outreachType })}
                 disabled={aiOutreachMutation.isPending}
-                className="w-full h-11 bg-amber-500 hover:bg-amber-600"
+                className="h-11 w-full bg-[#F5A623] font-black text-[#07111F] hover:bg-[#F8C45B]"
               >
                 {aiOutreachMutation.isPending ? (
                   <Loader2 className="h-4 w-4 animate-spin mr-2" />
@@ -904,20 +902,20 @@ export default function ClientHunterPage() {
                 <div className="space-y-3">
                   {generatedOutreach.subject && (
                     <div>
-                      <Label className="text-gray-300">Subject</Label>
+                      <Label className="text-slate-700">Subject</Label>
                       <Input
                         value={generatedOutreach.subject}
                         readOnly
-                        className="bg-gray-800 border-gray-700 text-white mt-1"
+                        className="mt-1 border-slate-300 bg-slate-50 text-slate-900"
                       />
                     </div>
                   )}
                   <div>
-                    <Label className="text-gray-300">Message</Label>
+                    <Label className="text-slate-700">Message</Label>
                     <Textarea
                       value={generatedOutreach.content}
                       readOnly
-                      className="bg-gray-800 border-gray-700 text-white mt-1 min-h-[200px]"
+                      className="mt-1 min-h-[200px] border-slate-300 bg-slate-50 text-slate-900"
                     />
                   </div>
                   <div className="flex gap-2">
@@ -942,10 +940,10 @@ export default function ClientHunterPage() {
                         setShowOutreachDialog(false);
                         toast({ title: "Lead marked as contacted" });
                       }}
-                      className="flex-1 h-11 bg-green-600 hover:bg-green-700"
+                      className="h-11 flex-1 bg-emerald-600 hover:bg-emerald-700"
                     >
                       <Send className="h-4 w-4 mr-2" />
-                      Mark as Sent
+                      Mark as contacted
                     </Button>
                   </div>
                 </div>

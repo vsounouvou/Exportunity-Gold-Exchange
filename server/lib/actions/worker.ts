@@ -42,8 +42,12 @@ import {
 import {
   externalCommunicationsEnabled,
   isExternalCommunicationAction,
+  releasedOwnerOnlyTestBypassesGlobalGate,
 } from "./externalCommunications";
+import { evaluateOutboundActionPolicy } from "../communications/outboundDecisionService";
 import { executeIndustrialOpportunityAgentWork } from "../industrial/agentWorkExecution";
+import { executeTradeSectorProposalAgentWork } from "../trade-intelligence/agentSectorProposal";
+import { TRADE_SECTOR_PROPOSAL_EXECUTION_SCOPE } from "../trade-intelligence/agentSectorProposalFoundation";
 
 type ActionRequestRow = typeof actionRequests.$inferSelect;
 type ActionRunOutcome = "SUCCESS" | "FAILED" | "NO_EFFECT" | "APPROVAL_PENDING";
@@ -848,8 +852,11 @@ async function dequeueNextQueuedAction(
   const scopeFilter =
     options.workerScope === "tenant"
       ? sql`
-          and action_type = 'RUN_AGENT_TASK'
           and metadata->>'workerScope' = 'tenant'
+          and (
+            (metadata->>'tenantRunAt') is null
+            or (metadata->>'tenantRunAt')::timestamptz <= now()
+          )
         `
       : sql`
           and coalesce(metadata->>'workerScope', '') <> 'tenant'
@@ -1443,9 +1450,34 @@ export async function runActionWorkerOnce(
     return { ok: true, processed: 1, id: Number(next.id), simulated: true } as const;
   }
 
+  const isExternalAction = isExternalCommunicationAction(actionType);
+  const globalExternalCommunicationsEnabled = externalCommunicationsEnabled(
+    process.env.FEATURE_EXTERNAL_COMMUNICATIONS,
+  );
+  const outboundExecutionPolicy = isExternalAction
+    ? await evaluateOutboundActionPolicy({
+        tenantId,
+        actionType,
+        payload,
+        executionRequested: true,
+        approvalGranted: Boolean(
+          ((next as any).approved_by_user_id ?? (next as any).approvedByUserId) &&
+            ((next as any).approved_at ?? (next as any).approvedAt),
+        ),
+        requestedByUserId: requestedByUserId ? Number(requestedByUserId) : null,
+        requestedByAgentKey:
+          firstNonEmptyString(
+            (next as any).requested_by_agent_key,
+            (next as any).requestedByAgentKey,
+          ) || null,
+        externalCommunicationsEnabled: globalExternalCommunicationsEnabled,
+      })
+    : null;
+
   if (
-    isExternalCommunicationAction(actionType) &&
-    !externalCommunicationsEnabled(process.env.FEATURE_EXTERNAL_COMMUNICATIONS)
+    isExternalAction &&
+    !globalExternalCommunicationsEnabled &&
+    !releasedOwnerOnlyTestBypassesGlobalGate(outboundExecutionPolicy?.ownerTest)
   ) {
     const error = {
       code: "EXTERNAL_COMMUNICATIONS_DISABLED",
@@ -1493,6 +1525,70 @@ export async function runActionWorkerOnce(
       blocked: true,
       error: error.message,
     } as const;
+  }
+
+  if (isExternalAction) {
+    if (outboundExecutionPolicy) {
+      await db
+        .update(actionRequests)
+        .set({
+          metadata: {
+            ...meta,
+            outboundExecutionPolicy,
+          },
+          updatedAt: new Date(),
+        } as any)
+        .where(eq(actionRequests.id, Number(next.id)));
+      if (!outboundExecutionPolicy.mayExecute) {
+        const error = {
+          code: `OUTBOUND_COMMUNICATION_${outboundExecutionPolicy.decision}`,
+          message: `Outbound communication ${outboundExecutionPolicy.decision.toLowerCase()}: ${outboundExecutionPolicy.reasons.join(", ")}`,
+        };
+        await finalize({
+          action: next,
+          status: "FAILED",
+          actionType,
+          result: {
+            actionType,
+            blocked: true,
+            outboundPolicy: outboundExecutionPolicy,
+          },
+          error,
+          outcome: "FAILED",
+        });
+        await logAudit({
+          tenantId,
+          userId: requestedByUserId ? Number(requestedByUserId) : null,
+          action: "action_request.outbound_policy_blocked",
+          entityId: Number(next.id),
+          metadata: {
+            actionType,
+            mode,
+            correlationId,
+            decision: outboundExecutionPolicy.decision,
+            reasons: outboundExecutionPolicy.reasons,
+            policyVersion: outboundExecutionPolicy.policyVersion,
+            finishedAt: nowIso(),
+          },
+        });
+        await postActionOutcomeMessage({
+          action: next,
+          actionType,
+          correlationId,
+          conversationId,
+          success: false,
+          detail: error.message,
+        });
+        console.warn(`${actionLogPrefix} status=FAILED code=${error.code}`);
+        return {
+          ok: false,
+          processed: 1,
+          id: Number(next.id),
+          blocked: true,
+          error: error.message,
+        } as const;
+      }
+    }
   }
 
   const actionActorId = parseOptionalNumber(payload.agentId ?? payload.agent_id ?? meta.agentId ?? meta.agent_id);
@@ -1625,6 +1721,7 @@ export async function runActionWorkerOnce(
 
       const out = await sendCommunicationAsStaff({
         tenantId,
+        actionRequestId: Number(next.id),
         agentKey,
         channel: actionType === "SEND_SMS" ? "sms" : "whatsapp",
         toE164,
@@ -3366,10 +3463,90 @@ export async function runActionWorkerOnce(
         payload.requirementId,
         payload.requirement_id,
       );
+      const missionId = firstNonEmptyString(
+        payload.missionId,
+        payload.mission_id,
+      );
+      const executionScope = firstNonEmptyString(
+        payload.executionScope,
+        payload.execution_scope,
+      );
       const payloadAgentId = parseOptionalNumber(
         payload.agentId ?? payload.agent_id,
       );
       if (!taskId) throw new Error("RUN_AGENT_TASK requires taskId.");
+      if (executionScope === TRADE_SECTOR_PROPOSAL_EXECUTION_SCOPE) {
+        if (!missionId) {
+          throw new Error("A trade-sector proposal requires missionId.");
+        }
+        const result = await executeTradeSectorProposalAgentWork({
+          tenantId,
+          actionRequestId: Number(next.id),
+          missionId,
+          taskId,
+          payloadAgentId,
+          correlationId,
+          conversationId,
+        });
+        await finalize({
+          action: next,
+          status: "DONE",
+          actionType,
+          result,
+          receipts: [
+            {
+              receiptType: "DB_MUTATION",
+              entityType: "task",
+              entityIds: [taskId],
+              affectedRows: 1,
+              externalRef: result.jobId,
+            },
+            {
+              receiptType: "DB_MUTATION",
+              entityType: "trade_research_mission",
+              entityIds: [missionId],
+              affectedRows: 1,
+              externalRef: result.jobId,
+            },
+            {
+              receiptType: "DB_MUTATION",
+              entityType: "trade_industry_sector",
+              entityIds: [result.sectorId],
+              affectedRows: result.sectorCreated ? 1 : 0,
+              externalRef: result.jobId,
+            },
+          ],
+        });
+        await logAudit({
+          tenantId,
+          userId: requestedByUserId ? Number(requestedByUserId) : null,
+          action: "action_request.done",
+          entityId: Number(next.id),
+          metadata: {
+            actionType,
+            taskId,
+            missionId,
+            sectorId: result.sectorId,
+            agentId: result.agentId,
+            agentJobId: result.jobId,
+            reviewRequired: true,
+            externalActionStarted: false,
+            finishedAt: nowIso(),
+          },
+        });
+        console.log(
+          `${actionLogPrefix} status=DONE taskId=${taskId} missionId=${missionId} agentJobId=${result.jobId}`,
+        );
+        return {
+          ok: true,
+          processed: 1,
+          id: Number(next.id),
+          taskId,
+          missionId,
+          agentJobId: result.jobId,
+          sectorId: result.sectorId,
+        } as const;
+      }
       if (!requirementId) {
         throw new Error("RUN_AGENT_TASK requires requirementId.");
       }

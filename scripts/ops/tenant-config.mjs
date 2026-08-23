@@ -129,7 +129,13 @@ function printShell(config) {
     DOMAIN: config.domain ?? "",
     KEEP_LOCAL_RELEASES: String(config.keepLocalReleases ?? 3),
     KEEP_LOCAL_BACKUPS: String(config.keepLocalBackups ?? 3),
-    KEEP_REMOTE_RELEASES: String(config.keepRemoteReleases ?? 3)
+    KEEP_LOCAL_ARCHIVED_RELEASES: String(
+      config.keepLocalArchivedReleases ?? config.keepLocalBackups ?? 3,
+    ),
+    KEEP_REMOTE_RELEASES: String(config.keepRemoteReleases ?? 3),
+    KEEP_REMOTE_ARCHIVES: String(
+      config.keepRemoteArchives ?? config.keepRemoteReleases ?? 3,
+    )
   };
 
   for (const [key, value] of Object.entries(scalarEntries)) {

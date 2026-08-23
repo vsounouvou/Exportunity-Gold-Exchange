@@ -16,12 +16,13 @@ import multer from "multer";
 import { z } from "zod";
 
 import { db } from "@db";
+import { deliveryService } from "../lib/deliveryService";
 import {
   actionRequests,
+  deliveryOrders,
   industrialAuditLogs,
   industrialCatalogItems,
   industrialChallenges,
-  industrialCommercialOffers,
   industrialFactoryClaims,
   industrialFactoryDocuments,
   industrialFactories,
@@ -34,6 +35,8 @@ import {
   industrialPartRecordDocuments,
   industrialPartRecords,
   industrialProductRequirements,
+  industrialProcurementAuthorizations,
+  industrialSupplierPurchaseOrderPackages,
   industrialProductionLines,
   industrialRequirementAttachments,
   industrialRequirementMatches,
@@ -76,7 +79,6 @@ import {
   nextFactoryRelationshipStages,
 } from "../lib/industrial/factoryRelationships";
 import {
-  canTransitionIndustrialQuote,
   classificationForRequirementType,
   INDUSTRIAL_CATALOG_STATUSES,
   INDUSTRIAL_QUOTE_STATUSES,
@@ -94,6 +96,56 @@ import {
   canTransitionIndustrialOrder,
   INDUSTRIAL_ORDER_STATUSES,
 } from "../lib/industrial/orders";
+import {
+  appendIndustrialFulfillmentEvent,
+  configureIndustrialFulfillmentService,
+  customerIndustrialFulfillmentSummary,
+  ensureIndustrialFulfillmentPlan,
+  IndustrialFulfillmentError,
+  loadIndustrialFulfillment,
+  staffIndustrialFulfillmentSummary,
+  transitionIndustrialFulfillmentPlan,
+  transitionIndustrialFulfillmentService,
+} from "../lib/industrial/fulfillment";
+import {
+  INDUSTRIAL_FULFILLMENT_MANUAL_EVENT_TYPES,
+  INDUSTRIAL_FULFILLMENT_KINDS,
+  INDUSTRIAL_FULFILLMENT_SERVICE_STATUSES,
+  INDUSTRIAL_FULFILLMENT_SERVICE_TYPES,
+  INDUSTRIAL_FULFILLMENT_STATUSES,
+} from "../lib/industrial/fulfillmentPolicy";
+import {
+  approveIndustrialProcurementAuthorization,
+  IndustrialProcurementAuthorizationError,
+  loadIndustrialProcurementAuthorization,
+  prepareIndustrialProcurementAuthorization,
+  staffIndustrialProcurementAuthorizationSummary,
+} from "../lib/industrial/procurementAuthorization";
+import {
+  approveIndustrialSupplierPurchaseOrderPackage,
+  IndustrialSupplierPurchaseOrderError,
+  loadIndustrialSupplierPurchaseOrderPackage,
+  prepareIndustrialSupplierPurchaseOrderPackage,
+  staffIndustrialSupplierPurchaseOrderPackageSummary,
+} from "../lib/industrial/supplierPurchaseOrder";
+import {
+  approveIndustrialRevenueRecognition,
+  IndustrialDeliveryAccountingError,
+  loadIndustrialDeliveryAccounting,
+  prepareIndustrialRevenueRecognition,
+  recordIndustrialActualCost,
+  staffIndustrialDeliveryAccountingSummary,
+} from "../lib/industrial/deliveryAccounting";
+import {
+  INDUSTRIAL_ACTUAL_COST_CATEGORIES,
+  INDUSTRIAL_ACTUAL_COST_DIRECTIONS,
+} from "../lib/industrial/deliveryAccountingPolicy";
+import {
+  approveIndustrialRelationshipContinuity,
+  IndustrialRelationshipContinuityError,
+  loadIndustrialRelationshipContinuity,
+  staffIndustrialRelationshipContinuitySummary,
+} from "../lib/industrial/relationshipContinuity";
 import {
   canTransitionRecurringRequirement,
   INDUSTRIAL_RECURRING_REQUIREMENT_STATUSES,
@@ -130,6 +182,21 @@ import {
   resolveIndustrialRequirementAttachment,
   validateIndustrialRequirementAttachment,
 } from "../lib/industrial/requirementAttachments";
+import {
+  applyIndustrialAttachmentReview,
+  decideIndustrialAttachmentReview,
+  industrialAttachmentVisionRuntimeStatus,
+  IndustrialAttachmentIntelligenceError,
+  loadIndustrialAttachmentReviewEvents,
+  loadIndustrialAttachmentReviews,
+  requestIndustrialAttachmentImageAnalysis,
+  saveIndustrialAttachmentHumanReview,
+} from "../lib/industrial/attachmentIntelligence";
+import {
+  INDUSTRIAL_ATTACHMENT_APPLY_FIELDS,
+  INDUSTRIAL_ATTACHMENT_REVIEW_KINDS,
+} from "../lib/industrial/attachmentIntelligencePolicy";
+import { extractAttachmentText } from "../lib/uploads/extractAttachmentText";
 import {
   persistIndustrialPartRecordDocument,
   resolveIndustrialPartRecordDocument,
@@ -204,9 +271,7 @@ import {
   ensureIndustrialCustomerContact,
 } from "../lib/industrial/commercialExecution";
 import {
-  buildCustomerQuoteSnapshot,
   buildIndustrialRfqMessage,
-  calculateIndustrialCommercialPricing,
 } from "../lib/industrial/commercialPricing";
 import { createActionRequest } from "../lib/actions/ActionRouter";
 import {
@@ -219,6 +284,16 @@ import {
   updateTaskStatus,
   type TaskStatus,
 } from "../lib/taskLifecycleService";
+import {
+  IndustrialPaymentError,
+  loadAuthorizedIndustrialOrder,
+  resolveIndustrialOrderPaymentAmount,
+} from "../lib/industrial/orderPayments";
+import { recordTradeDemandEvent } from "../lib/trade-intelligence/service";
+import {
+  inferAfricaDestinationCountryCode,
+  inferTradeSectorCode,
+} from "../lib/trade-intelligence/foundation";
 
 const router = Router();
 
@@ -895,48 +970,6 @@ const supplierCapabilityMatchUpdateSchema = z.object({
   internalNotes: z.string().trim().max(4000).optional().nullable(),
 });
 
-const quoteLineItemSchema = z.object({
-  description: z.string().trim().min(2).max(500),
-  quantity: z.string().trim().max(120).optional().nullable(),
-  unit: z.string().trim().max(80).optional().nullable(),
-  amount: z.string().trim().max(120).optional().nullable(),
-});
-
-const industrialQuoteCreateSchema = z.object({
-  requirementMatchId: z.string().uuid(),
-  currencyCode: z
-    .string()
-    .trim()
-    .regex(/^[A-Za-z]{3}$/)
-    .transform((value) => value.toUpperCase())
-    .default("XOF"),
-  totalAmount: z.coerce
-    .number()
-    .nonnegative()
-    .max(99999999999999.99)
-    .optional()
-    .nullable(),
-  lineItems: z.array(quoteLineItemSchema).max(30).optional().default([]),
-  leadTimeText: z.string().trim().max(240).optional().nullable(),
-  validUntil: z.string().trim().max(80).optional().nullable(),
-  commercialTerms: z.string().trim().max(6000).optional().nullable(),
-  customerNotes: z.string().trim().max(6000).optional().nullable(),
-  internalNotes: z.string().trim().max(6000).optional().nullable(),
-});
-
-const industrialQuoteStatusSchema = z.object({
-  status: z.enum(QUOTE_STATUSES),
-  reason: z.string().trim().min(2).max(1200),
-  customerNotes: z.string().trim().max(6000).optional().nullable(),
-  internalNotes: z.string().trim().max(6000).optional().nullable(),
-});
-
-const industrialOrderCreateSchema = z.object({
-  humanConfirmed: z.literal(true),
-  confirmationNote: z.string().trim().min(2).max(1600),
-  plannedDeliveryAt: z.string().trim().max(80).optional().nullable(),
-});
-
 const industrialOrderStatusSchema = z.object({
   status: z.enum(ORDER_STATUSES),
   reason: z.string().trim().min(2).max(1600),
@@ -944,6 +977,201 @@ const industrialOrderStatusSchema = z.object({
   deliveryNotes: z.string().trim().max(6000).optional().nullable(),
   internalNotes: z.string().trim().max(6000).optional().nullable(),
 });
+
+const industrialFulfillmentInitializeSchema = z.object({
+  kind: z.enum(INDUSTRIAL_FULFILLMENT_KINDS).default("standard_order"),
+  reason: z.string().trim().min(8).max(1600),
+});
+
+const industrialActualCostEvidenceSchema = z
+  .object({
+    kind: z.string().trim().min(2).max(120).default("document_reference"),
+    reference: z.string().trim().min(3).max(1000),
+    url: z.string().trim().url().max(1000).optional().nullable(),
+    digest: z
+      .string()
+      .trim()
+      .regex(/^[a-f0-9]{64}$/)
+      .optional()
+      .nullable(),
+  })
+  .superRefine((value, context) => {
+    if (value.url && !/^https:\/\//i.test(value.url)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["url"],
+        message: "Actual-cost evidence URLs must use HTTPS.",
+      });
+    }
+  });
+
+const industrialActualCostSchema = z.object({
+  direction: z.enum(INDUSTRIAL_ACTUAL_COST_DIRECTIONS).default("cost"),
+  category: z.enum(INDUSTRIAL_ACTUAL_COST_CATEGORIES),
+  currencyCode: z
+    .string()
+    .trim()
+    .regex(/^[A-Za-z]{3}$/)
+    .transform((value) => value.toUpperCase()),
+  amountMinor: z.string().trim().regex(/^[1-9]\d*$/).max(30),
+  costReference: z.string().trim().min(3).max(500),
+  description: z.string().trim().min(3).max(1600),
+  evidence: z.array(industrialActualCostEvidenceSchema).min(1).max(20),
+  incurredAt: z.string().trim().min(10).max(80),
+  reason: z.string().trim().min(12).max(1200),
+  reversesCostEntryId: z.string().uuid().optional().nullable(),
+});
+
+const industrialRevenueRecognitionPrepareSchema = z.object({
+  reason: z.string().trim().min(12).max(1200),
+});
+
+const industrialFulfillmentServiceConfigureSchema = z.object({
+  providerKind: z.enum([
+    "internal_team",
+    "verified_partner",
+    "existing_delivery_network",
+    "external_provider",
+  ]),
+  providerName: z.string().trim().max(240).optional().nullable(),
+  providerReference: z.string().trim().max(240).optional().nullable(),
+  externalReference: z.string().trim().max(240).optional().nullable(),
+  publicLabel: z.string().trim().max(240).optional().nullable(),
+  quotedCost: z.coerce
+    .number()
+    .nonnegative()
+    .max(99999999999999.99)
+    .optional()
+    .nullable(),
+  currencyCode: z
+    .string()
+    .trim()
+    .regex(/^[A-Za-z]{3}$/)
+    .transform((value) => value.toUpperCase())
+    .optional()
+    .nullable(),
+  linkedDeliveryOrderId: z.coerce.number().int().positive().optional().nullable(),
+  linkedDeliveryReference: z.string().trim().max(240).optional().nullable(),
+  scheduledStartAt: z.string().trim().max(80).optional().nullable(),
+  scheduledEndAt: z.string().trim().max(80).optional().nullable(),
+  internalNotes: z.string().trim().max(6000).optional().nullable(),
+  reason: z.string().trim().min(8).max(1600),
+});
+
+const industrialFulfillmentServiceStatusSchema = z.object({
+  status: z.enum(INDUSTRIAL_FULFILLMENT_SERVICE_STATUSES),
+  reason: z.string().trim().min(8).max(1600),
+  humanConfirmed: z.boolean().optional(),
+  customerMessage: z.string().trim().max(1000).optional().nullable(),
+  performanceRating: z.coerce.number().int().min(1).max(5).optional().nullable(),
+  onTime: z.boolean().optional().nullable(),
+  issueCount: z.coerce.number().int().min(0).max(10000).optional().nullable(),
+  performanceNotes: z.string().trim().max(4000).optional().nullable(),
+});
+
+const industrialLastMileJobSchema = z.object({
+  humanConfirmed: z.literal(true),
+  reason: z.string().trim().min(8).max(1600),
+  deliveryFee: z.coerce.number().positive().max(99999999999999.99),
+  pickupAddress: z.string().trim().min(5).max(1000),
+  pickupLatitude: z.coerce.number().min(-90).max(90),
+  pickupLongitude: z.coerce.number().min(-180).max(180),
+  pickupContactName: z.string().trim().max(240).optional().nullable(),
+  pickupContactPhone: z.string().trim().max(80).optional().nullable(),
+  pickupInstructions: z.string().trim().max(1000).optional().nullable(),
+  dropoffAddress: z.string().trim().min(5).max(1000),
+  dropoffLatitude: z.coerce.number().min(-90).max(90),
+  dropoffLongitude: z.coerce.number().min(-180).max(180),
+  dropoffContactName: z.string().trim().max(240).optional().nullable(),
+  dropoffContactPhone: z.string().trim().max(80).optional().nullable(),
+  dropoffInstructions: z.string().trim().max(1000).optional().nullable(),
+  packageDescription: z.string().trim().max(1000).optional().nullable(),
+  packageWeight: z.coerce.number().positive().max(1000000).optional().nullable(),
+  packageSize: z
+    .enum(["small", "medium", "large", "extra_large"])
+    .optional()
+    .nullable(),
+  isFragile: z.boolean().default(false),
+  requiresSignature: z.boolean().default(true),
+  scheduledPickupTime: z.string().trim().max(80).optional().nullable(),
+});
+
+const industrialFulfillmentPlanStatusSchema = z.object({
+  status: z.enum(INDUSTRIAL_FULFILLMENT_STATUSES),
+  reason: z.string().trim().min(8).max(1600),
+  customerMessage: z.string().trim().max(1000).optional().nullable(),
+  publicEta: z.string().trim().max(80).optional().nullable(),
+});
+
+const industrialFulfillmentEvidenceSchema = z
+  .object({
+    label: z.string().trim().min(2).max(240),
+    url: z.string().trim().max(1000).optional().nullable(),
+    reference: z.string().trim().max(500).optional().nullable(),
+    public: z.boolean().default(false),
+  })
+  .superRefine((value, context) => {
+    if (value.public && value.url && !/^https:\/\//i.test(value.url)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["url"],
+        message: "Customer-visible evidence URLs must use HTTPS.",
+      });
+    }
+  });
+
+const industrialFulfillmentProofSchema = z.object({
+  method: z
+    .enum(["signature", "photo", "qr", "document", "carrier_confirmation"])
+    .optional(),
+  recipientName: z.string().trim().max(240).optional().nullable(),
+  condition: z.string().trim().max(500).optional().nullable(),
+  deliveredAt: z.string().trim().max(80).optional().nullable(),
+  reference: z.string().trim().max(500).optional().nullable(),
+});
+
+const industrialFulfillmentEventSchema = z
+  .object({
+    idempotencyKey: z.string().trim().min(12).max(240),
+    eventType: z.enum(INDUSTRIAL_FULFILLMENT_MANUAL_EVENT_TYPES),
+    title: z.string().trim().min(3).max(240),
+    customerMessage: z.string().trim().max(1000).optional().nullable(),
+    internalNotes: z.string().trim().max(6000).optional().nullable(),
+    customerVisible: z.boolean().default(false),
+    evidence: z.array(industrialFulfillmentEvidenceSchema).max(20).default([]),
+    proof: industrialFulfillmentProofSchema.default({}),
+    occurredAt: z.string().trim().max(80).optional().nullable(),
+  })
+  .superRefine((value, context) => {
+    if (
+      value.eventType === "inspection_passed" &&
+      !value.evidence.length &&
+      !value.proof.method
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["evidence"],
+        message: "Inspection evidence or a proof reference is required.",
+      });
+    }
+    if (
+      value.eventType === "delivery_proof_recorded" &&
+      (!value.proof.method || !value.proof.deliveredAt)
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["proof"],
+        message: "Delivery proof requires a method and delivery time.",
+      });
+    }
+    if (value.customerVisible && !value.customerMessage) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["customerMessage"],
+        message: "A customer-safe message is required for a public milestone.",
+      });
+    }
+  });
 
 const industrialRfqDraftSchema = z
   .object({
@@ -979,60 +1207,6 @@ const industrialRfqDraftSchema = z
       });
     }
   });
-
-const industrialSupplierQuoteCreateSchema = z.object({
-  supplierMatchId: z.string().uuid(),
-  product: z.string().trim().max(240).optional(),
-  specification: z.string().trim().max(2000).optional().nullable(),
-  quantityText: z.string().trim().max(240).optional().nullable(),
-  unit: z.string().trim().max(80).optional().nullable(),
-  unitPrice: z.coerce.number().nonnegative().max(99999999999999.9999).optional().nullable(),
-  totalCost: z.coerce.number().positive().max(99999999999999.99),
-  currencyCode: z
-    .string()
-    .trim()
-    .regex(/^[A-Za-z]{3}$/)
-    .transform((value) => value.toUpperCase())
-    .default("XOF"),
-  incoterm: z.string().trim().max(16).optional().nullable(),
-  origin: z.string().trim().max(240).optional().nullable(),
-  destination: z.string().trim().max(240).optional().nullable(),
-  packaging: z.string().trim().max(500).optional().nullable(),
-  minimumOrderQuantity: z.string().trim().max(240).optional().nullable(),
-  leadTimeDays: z.coerce.number().int().min(0).max(3650).optional().nullable(),
-  paymentTerms: z.string().trim().max(2000).optional().nullable(),
-  validUntil: z.string().trim().max(80).optional().nullable(),
-  certifications: z.array(z.string().trim().min(1).max(180)).max(30).optional().default([]),
-  sourceChannel: z.enum(["email", "whatsapp", "phone", "document", "manual"]).default("manual"),
-  sourceText: z.string().trim().min(10).max(12000),
-  internalNotes: z.string().trim().max(6000).optional().nullable(),
-  humanReviewed: z.literal(true),
-});
-
-const industrialCommercialOfferCreateSchema = z.object({
-  supplierQuoteIds: z.array(z.string().uuid()).min(1).max(20),
-  additionalCosts: z
-    .record(z.string().trim().min(1).max(120), z.coerce.number().nonnegative().max(99999999999999.99))
-    .optional()
-    .default({}),
-  customerPrice: z.coerce.number().positive().max(99999999999999.99),
-  currencyCode: z
-    .string()
-    .trim()
-    .regex(/^[A-Za-z]{3}$/)
-    .transform((value) => value.toUpperCase())
-    .default("XOF"),
-  incoterm: z.string().trim().max(16).optional().nullable(),
-  deliveryEstimate: z.string().trim().max(500).optional().nullable(),
-  paymentTerms: z.string().trim().max(2000).optional().nullable(),
-  offerValidUntil: z.string().trim().max(80).optional().nullable(),
-  terms: z.string().trim().max(6000).optional().nullable(),
-});
-
-const industrialCommercialOfferApprovalSchema = z.object({
-  humanApproved: z.literal(true),
-  reason: z.string().trim().min(2).max(1600),
-});
 
 const factoryClaimSchema = z
   .object({
@@ -1302,6 +1476,68 @@ const factoryDocumentUploadSchema = z.object({
   expiresAt: z.string().trim().max(80).optional().nullable().or(z.literal("")),
 });
 
+const industrialAttachmentProposalSchema = z.object({
+  objectIdentified: z.boolean().default(false),
+  likelyProduct: z.string().trim().max(240).nullable().default(null),
+  productCategory: z.string().trim().max(160).nullable().default(null),
+  brand: z.string().trim().max(120).nullable().default(null),
+  model: z.string().trim().max(120).nullable().default(null),
+  specificationSummary: z
+    .string()
+    .trim()
+    .max(4000)
+    .nullable()
+    .default(null),
+  visibleText: z.array(z.string().trim().max(300)).max(30).default([]),
+  observableCharacteristics: z
+    .array(z.string().trim().max(300))
+    .max(30)
+    .default([]),
+  proposedSpecifications: z
+    .array(
+      z.object({
+        field: z.string().trim().min(1).max(120),
+        value: z.string().trim().min(1).max(500),
+        evidence: z.string().trim().min(1).max(500),
+        confidence: z.number().min(0).max(1),
+      }),
+    )
+    .max(20)
+    .default([]),
+  clarificationQuestions: z
+    .array(z.string().trim().max(400))
+    .max(15)
+    .default([]),
+  limitations: z.array(z.string().trim().max(400)).max(15).default([]),
+  internalSearchTerms: z
+    .array(z.string().trim().max(180))
+    .max(15)
+    .default([]),
+  overallConfidence: z.number().min(0).max(1).default(0),
+});
+
+const industrialAttachmentAnalysisSchema = z.object({
+  confirmedExternalAi: z.boolean(),
+});
+
+const industrialAttachmentHumanReviewSchema = z.object({
+  reviewKind: z.enum(INDUSTRIAL_ATTACHMENT_REVIEW_KINDS).optional(),
+  proposal: industrialAttachmentProposalSchema,
+  reviewNotes: z.string().trim().max(6000).optional().nullable(),
+  humanConfirmed: z.boolean(),
+});
+
+const industrialAttachmentDecisionSchema = z.object({
+  decision: z.enum(["approve", "reject"]),
+  reason: z.string().trim().max(6000).default(""),
+  humanConfirmed: z.boolean(),
+});
+
+const industrialAttachmentApplySchema = z.object({
+  fields: z.array(z.enum(INDUSTRIAL_ATTACHMENT_APPLY_FIELDS)).min(1).max(3),
+  humanConfirmed: z.boolean(),
+});
+
 function resolveExportunityTenant(req: any, res: any) {
   const tenant = req?.tenant;
   if (
@@ -1315,6 +1551,50 @@ function resolveExportunityTenant(req: any, res: any) {
     return null;
   }
   return tenant;
+}
+
+function retiredLegacyCommercialWrite(req: any, res: any) {
+  const tenant = resolveExportunityTenant(req, res);
+  if (!tenant) return;
+  return res.status(410).json({
+    ok: false,
+    code: "EXPORTUNITY_LEGACY_COMMERCIAL_WRITE_RETIRED",
+    message:
+      "The legacy manual supplier-pricing, quotation-status, and order path is permanently read-only. Use the canonical RFQ intake and exact Exportunity offer, response, and order actions.",
+    canonicalSupplierWorkspace: "/api/exportunity/supplier-quote-intakes",
+    canonicalCommercialEndpoint: "/api/exportunity/commercial-offers",
+    canonicalCustomerResponseTemplate:
+      "/api/exportunity/commercial-offers/:offerId/customer-response",
+    canonicalOrderTemplate: "/api/exportunity/commercial-offers/:offerId/order",
+    historicalRowsPreserved: true,
+  });
+}
+
+function respondToIndustrialAttachmentIntelligenceError(
+  res: any,
+  error: any,
+  fallbackMessage: string,
+) {
+  if (error instanceof IndustrialAttachmentIntelligenceError) {
+    return res.status(error.statusCode).json({
+      ok: false,
+      code: error.code,
+      message: error.message,
+    });
+  }
+  if (
+    error?.name === "AiConsentRequiredError" &&
+    Number.isFinite(Number(error?.status))
+  ) {
+    return res.status(Number(error.status)).json({
+      ok: false,
+      code: "ai_consent_required",
+      message: error.message,
+      plan: error.plan || null,
+    });
+  }
+  console.error("[industrial] attachment intelligence failed", error);
+  return res.status(503).json({ ok: false, message: fallbackMessage });
 }
 
 function submissionKey(req: any, tenantId: number) {
@@ -2040,8 +2320,34 @@ function industrialRequirementAttachmentSummary(row: any) {
     fileName: row.fileName,
     mimeType: row.mimeType,
     sizeBytes: row.sizeBytes,
+    extractionStatus: row.extractionStatus || "pending",
+    extractionMethod: row.extractionMethod || null,
+    extractionWarning: row.extractionWarning || null,
+    hasExtractedText: Boolean(String(row.extractedText || "").trim()),
+    extractedAt: row.extractedAt || null,
     visibility: row.visibility,
     createdAt: row.createdAt,
+  };
+}
+
+async function extractIndustrialRequirementAttachmentIntelligence(
+  file: Express.Multer.File,
+) {
+  const extraction = await extractAttachmentText(file, { maxChars: 16_000 });
+  const extractedAt = new Date();
+  return {
+    extractionStatus: extraction.status,
+    extractionMethod: extraction.method,
+    extractedText: extraction.text || null,
+    extractionWarning: extraction.warning || null,
+    extractionMetadata: {
+      source: "deterministic_upload_extraction",
+      textLength: extraction.text.length,
+      requiresHumanReview: extraction.status !== "extracted",
+      structuredCommercialClaimsCreated: false,
+      externalActionCreated: false,
+    },
+    extractedAt,
   };
 }
 
@@ -2385,57 +2691,49 @@ function staffSupplierQuoteSummary(row: any, supplier?: any) {
     supplierProfileId: row.supplierProfileId,
     supplierMatchId: row.supplierMatchId,
     supplierName: supplier?.displayName || null,
-    product: row.product,
+    product: row.productName,
     specification: row.specification,
-    quantityText: row.quantityText,
-    unit: row.unit,
-    unitPrice: row.unitPrice == null ? null : String(row.unitPrice),
-    totalCost: row.totalCost == null ? null : String(row.totalCost),
+    quantityText: row.offeredQuantity,
+    unit: row.unitOfMeasure,
+    unitPrice:
+      row.legacyUnitPrice == null ? null : String(row.legacyUnitPrice),
+    totalCost:
+      row.legacyTotalCost == null ? null : String(row.legacyTotalCost),
     currencyCode: row.currencyCode,
     incoterm: row.incoterm,
-    origin: row.origin,
+    origin: row.countryOfOrigin,
     destination: row.destination,
     packaging: row.packaging,
     minimumOrderQuantity: row.minimumOrderQuantity,
-    leadTimeDays: row.leadTimeDays,
+    leadTimeDays: row.legacyLeadTimeDays,
     paymentTerms: row.paymentTerms,
-    validUntil: row.validUntil,
-    certifications: Array.isArray(row.certifications) ? row.certifications : [],
+    validUntil: row.legacyValidUntil,
+    certifications: Array.isArray(row.legacyCertifications)
+      ? row.legacyCertifications
+      : [],
     sourceChannel: row.sourceChannel,
     status: row.status,
     internalNotes: row.internalNotes,
     receivedAt: row.receivedAt,
     reviewedAt: row.reviewedAt,
-    createdAt: row.createdAt,
-    updatedAt: row.updatedAt,
-  };
-}
-
-function staffCommercialOfferSummary(row: any) {
-  return {
-    id: row.id,
-    referenceCode: row.referenceCode,
-    requirementId: row.requirementId,
-    customerContactId: row.customerContactId,
-    version: row.version,
-    supplierQuoteIds: Array.isArray(row.supplierQuoteIds)
-      ? row.supplierQuoteIds
-      : [],
-    costStack: safeRecord(row.costStack),
-    totalCost: String(row.totalCost),
-    internalMargin: String(row.internalMargin),
-    marginPercent: String(row.marginPercent),
-    customerPrice: String(row.customerPrice),
-    currencyCode: row.currencyCode,
-    incoterm: row.incoterm,
-    deliveryEstimate: row.deliveryEstimate,
-    paymentTerms: row.paymentTerms,
-    offerValidUntil: row.offerValidUntil,
-    terms: row.terms,
-    status: row.status,
-    pricingPolicy: safeRecord(row.pricingPolicy),
-    approvedByUserId: row.approvedByUserId,
-    approvedAt: row.approvedAt,
+    values: {
+      productName: row.productName || null,
+      specification: row.specification || null,
+      offeredQuantity: row.offeredQuantity || null,
+      unitOfMeasure: row.unitOfMeasure || null,
+      currencyCode: row.currencyCode || null,
+      totalAmount: row.totalAmount || null,
+      leadTime: row.leadTime || null,
+      incoterm: row.incoterm || null,
+    },
+    readiness: {
+      offerPreparation: {
+        ready: Boolean(row.offerPreparationReady),
+        blockers: Array.isArray(row.offerPreparationBlockers)
+          ? row.offerPreparationBlockers
+          : ["canonical_evidence_incomplete"],
+      },
+    },
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
@@ -2638,6 +2936,7 @@ function staffQuoteSummary(
     catalogItemId: row.catalogItemId,
     catalogItemName: catalogItem?.name || null,
     status: row.status,
+    canonicalExactPricing: Boolean(row.pricingVersion),
     currencyCode: row.currencyCode,
     totalAmount:
       row.totalAmount === null || row.totalAmount === undefined
@@ -2683,6 +2982,14 @@ function staffOrderSummary(
       order.totalAmount === null || order.totalAmount === undefined
         ? null
         : String(order.totalAmount),
+    paymentStatus: order.paymentStatus,
+    paidAmount:
+      order.paidAmount === null || order.paidAmount === undefined
+        ? null
+        : String(order.paidAmount),
+    paidCurrencyCode: order.paidCurrencyCode,
+    paidAt: order.paidAt,
+    lastPaymentId: order.lastPaymentId,
     lineItems: Array.isArray(order.lineItems) ? order.lineItems : [],
     commercialTerms: order.commercialTerms,
     deliveryNotes: order.deliveryNotes,
@@ -2736,10 +3043,111 @@ function actorIdFor(
   return Number.isFinite(value) ? value : null;
 }
 
+function tenantUserHasAdminAccess(user: any) {
+  const roles = Array.isArray(user?.roles) ? user.roles : [];
+  const permissions = Array.isArray(user?.permissions) ? user.permissions : [];
+  const normalizedRoles = roles.map((role: unknown) =>
+    String(role || "")
+      .trim()
+      .toLowerCase()
+      .replace(/[_-]+/g, " "),
+  );
+  return (
+    user?.currentMode === "admin" ||
+    permissions.includes("*") ||
+    permissions.includes("admin:*") ||
+    normalizedRoles.includes("admin") ||
+    normalizedRoles.includes("super admin") ||
+    normalizedRoles.includes("platform admin") ||
+    normalizedRoles.includes("chairman") ||
+    normalizedRoles.includes("chairman assistant")
+  );
+}
+
 function parseOptionalDate(value?: string | null) {
   if (!value) return null;
   const parsed = new Date(value);
   return Number.isNaN(parsed.valueOf()) ? null : parsed;
+}
+
+function industrialFulfillmentErrorResponse(
+  res: any,
+  error: unknown,
+  fallbackMessage: string,
+) {
+  if (error instanceof IndustrialFulfillmentError) {
+    return res.status(error.statusCode).json({
+      ok: false,
+      code: error.code,
+      message: error.message,
+    });
+  }
+  console.error("[industrial] fulfillment operation failed", error);
+  return res.status(500).json({ ok: false, message: fallbackMessage });
+}
+
+function industrialProcurementErrorResponse(
+  res: any,
+  error: unknown,
+  fallbackMessage: string,
+) {
+  if (error instanceof IndustrialProcurementAuthorizationError) {
+    return res.status(error.statusCode).json({
+      ok: false,
+      code: error.code,
+      message: error.message,
+    });
+  }
+  console.error("[industrial] procurement operation failed", error);
+  return res.status(500).json({ ok: false, message: fallbackMessage });
+}
+
+function industrialSupplierPurchaseOrderErrorResponse(
+  res: any,
+  error: unknown,
+  fallbackMessage: string,
+) {
+  if (error instanceof IndustrialSupplierPurchaseOrderError) {
+    return res.status(error.statusCode).json({
+      ok: false,
+      code: error.code,
+      message: error.message,
+    });
+  }
+  console.error("[industrial] supplier purchase-order operation failed", error);
+  return res.status(500).json({ ok: false, message: fallbackMessage });
+}
+
+function industrialDeliveryAccountingErrorResponse(
+  res: any,
+  error: unknown,
+  fallbackMessage: string,
+) {
+  if (error instanceof IndustrialDeliveryAccountingError) {
+    return res.status(error.statusCode).json({
+      ok: false,
+      code: error.code,
+      message: error.message,
+    });
+  }
+  console.error("[industrial] delivery accounting operation failed", error);
+  return res.status(500).json({ ok: false, message: fallbackMessage });
+}
+
+function industrialRelationshipContinuityErrorResponse(
+  res: any,
+  error: unknown,
+  fallbackMessage: string,
+) {
+  if (error instanceof IndustrialRelationshipContinuityError) {
+    return res.status(error.statusCode).json({
+      ok: false,
+      code: error.code,
+      message: error.message,
+    });
+  }
+  console.error("[industrial] relationship continuity operation failed", error);
+  return res.status(500).json({ ok: false, message: fallbackMessage });
 }
 
 function safeLimit(value: unknown, fallback = 24) {
@@ -2796,11 +3204,56 @@ router.post("/assistant/intake-preview", async (req: any, res) => {
     parsed.data.agentMode,
     parsed.data.requirementType,
   );
+  let tradeDemandEventId: string | null = null;
+  try {
+    const tradeDemandEvent = await recordTradeDemandEvent({
+      tenantId: tenant.id,
+      eventType: "assistant_intent",
+      sourceSurface: "industrial_assistant",
+      anonymousSessionId: submissionKey(req, tenant.id),
+      queryText: parsed.data.message,
+      normalizedProduct: intake.product?.name || intake.title,
+      productCategory: intake.product?.category || intake.categoryCode,
+      sectorCode: inferTradeSectorCode({
+        categoryCode: intake.categoryCode,
+        requirementType: intake.requirementType,
+        productName: intake.product?.name || intake.title,
+        details: parsed.data.message,
+      }),
+      destinationCountryCode: inferAfricaDestinationCountryCode(
+        intake.facts.deliveryDestination || parsed.data.message,
+      ),
+      destinationCity: intake.facts.deliveryDestination || null,
+      commercialIntent: intake.intent,
+      quantityText: intake.product?.quantity || intake.facts.quantityText || null,
+      currencyCode: intake.currency || null,
+      conversionStage: "assistant_qualification",
+      difficultyScore:
+        intake.suggestedAction === "ESCALATE"
+          ? 80
+          : intake.suggestedAction === "ACT"
+            ? 50
+            : 25,
+      metadata: {
+        suggestedAction: intake.suggestedAction,
+        missingFields: intake.missingFields,
+        responseMode: intake.responseMode,
+        classificationMode: intake.classificationMode,
+      },
+    });
+    tradeDemandEventId = tradeDemandEvent.id;
+  } catch (demandError) {
+    console.error("industrial_assistant_trade_demand_recording_failed", {
+      message:
+        demandError instanceof Error ? demandError.message : "unknown error",
+    });
+  }
   return res.json({
     ok: true,
     assistant: {
       name: parsed.data.agentMode === "commercial" ? "Awa Kouadio" : "Tassi",
       response: intake.response,
+      tradeDemandEventId,
       intake: {
         requirementType: intake.requirementType,
         categoryCode: intake.categoryCode,
@@ -2820,6 +3273,7 @@ router.post("/assistant/intake-preview", async (req: any, res) => {
         customerType: intake.customerType,
         missingFields: intake.missingFields,
         suggestedAction: intake.suggestedAction,
+        classificationMode: intake.classificationMode,
       },
     },
   });
@@ -5355,6 +5809,8 @@ router.post(
         });
       }
 
+      const extraction =
+        await extractIndustrialRequirementAttachmentIntelligence(file);
       const persisted = await persistIndustrialRequirementAttachment({
         tenantId: tenant.id,
         requirementId: row.requirement.id,
@@ -5391,6 +5847,7 @@ router.post(
               storageKey: persisted.storageKey,
               mimeType: validation.attachment.mimeType,
               sizeBytes: validation.attachment.sizeBytes,
+              ...extraction,
               visibility: "factory_team_only",
             })
             .returning();
@@ -5409,6 +5866,9 @@ router.post(
                 fileName: created.fileName,
                 mimeType: created.mimeType,
                 sizeBytes: created.sizeBytes,
+                extractionStatus: created.extractionStatus,
+                extractionMethod: created.extractionMethod,
+                hasExtractedText: Boolean(created.extractedText),
                 visibility: created.visibility,
                 source: "factory_challenge_owner_evidence",
               },
@@ -5426,6 +5886,9 @@ router.post(
                 fileName: created.fileName,
                 mimeType: created.mimeType,
                 sizeBytes: created.sizeBytes,
+                extractionStatus: created.extractionStatus,
+                extractionMethod: created.extractionMethod,
+                hasExtractedText: Boolean(created.extractedText),
                 visibility: created.visibility,
                 createsSupplierOutreach: false,
                 createsPurchaseOrder: false,
@@ -6879,6 +7342,63 @@ router.post("/requirements", async (req: any, res) => {
       });
     }
 
+    let tradeDemandEventId: string | null = null;
+    let tradeDemandRecordingError: string | null = null;
+    try {
+      const demandProductName =
+        commercialContext?.product.name ||
+        parsed.data.technicalDetails.productName ||
+        parsed.data.technicalDetails.detectedProductName ||
+        parsed.data.title;
+      const tradeDemandEvent = await recordTradeDemandEvent({
+        tenantId: tenant.id,
+        eventType: "requirement",
+        sourceSurface: "industrial_requirement",
+        industrialRequirementId: requirement.id,
+        sourceConversationId:
+          submittedCommercialContext?.sourceConversationId || null,
+        queryText: parsed.data.details,
+        normalizedProduct: demandProductName,
+        productCategory:
+          commercialContext?.product.category || parsed.data.categoryCode,
+        sectorCode: inferTradeSectorCode({
+          categoryCode: parsed.data.categoryCode,
+          requirementType: parsed.data.requirementType,
+          productName: demandProductName,
+          details: parsed.data.details,
+        }),
+        originCountryCode: null,
+        destinationCountryCode: parsed.data.deliveryCountryCode || null,
+        destinationCity:
+          commercialContext?.destination || parsed.data.deliveryCity || null,
+        commercialIntent: commercialContext?.intent || null,
+        quantityText:
+          commercialContext?.product.quantity || parsed.data.quantityText || null,
+        currencyCode: commercialContext?.currency || null,
+        conversionStage: "requirement_submitted",
+        difficultyScore:
+          parsed.data.urgency === "urgent"
+            ? 60
+            : parsed.data.urgency === "planned"
+              ? 20
+              : 30,
+        metadata: {
+          requirementReference: requirement.referenceCode,
+          requirementType: parsed.data.requirementType,
+          categoryCode: parsed.data.categoryCode,
+          suggestedAction: commercialContext?.suggestedAction || null,
+        },
+      });
+      tradeDemandEventId = tradeDemandEvent.id;
+    } catch (demandError) {
+      tradeDemandRecordingError =
+        demandError instanceof Error ? demandError.message : "unknown error";
+      console.error("industrial_requirement_trade_demand_recording_failed", {
+        requirementId: requirement.id,
+        message: tradeDemandRecordingError,
+      });
+    }
+
     await db.insert(industrialAuditLogs).values({
       tenantId: tenant.id,
       action: "industrial_requirement.submitted",
@@ -6892,6 +7412,9 @@ router.post("/requirements", async (req: any, res) => {
         commercialIntent: commercialContext?.intent || null,
         suggestedAction: commercialContext?.suggestedAction || null,
         missingFields: commercialContext?.missingFields || [],
+        tradeDemandEventId,
+        tradeDemandRecorded: Boolean(tradeDemandEventId),
+        tradeDemandRecordingError,
       },
     });
 
@@ -6968,29 +7491,32 @@ router.post("/requirements", async (req: any, res) => {
         });
 
         try {
-          if (commercialContext?.suggestedAction === "ACT") {
-            queuedAgentWork = await queueIndustrialOpportunityAgentWork({
-              tenantId: tenant.id,
-              requirementId: requirement.id,
-              referenceCode: requirement.referenceCode,
-              sourceConversationId:
-                submittedCommercialContext?.sourceConversationId || null,
-              handoff,
-            });
-          } else {
-            await db.insert(industrialAuditLogs).values({
-              tenantId: tenant.id,
-              action: "industrial_requirement.agent_work_deferred",
-              entityType: "industrial_requirement",
-              entityId: requirement.id,
-              reason: "Commercial qualification is incomplete.",
-              metadata: {
-                taskId: handoff.taskId,
-                missingFields: commercialContext?.missingFields || [],
-                externalActionStarted: false,
-              },
-            });
-          }
+          // Internal specialists own qualification as well as execution. Missing
+          // commercial fields are inputs to their governed review, not a reason
+          // to leave work waiting for a user to press a launch button.
+          queuedAgentWork = await queueIndustrialOpportunityAgentWork({
+            tenantId: tenant.id,
+            requirementId: requirement.id,
+            referenceCode: requirement.referenceCode,
+            sourceConversationId:
+              submittedCommercialContext?.sourceConversationId || null,
+            handoff,
+          });
+          await db.insert(industrialAuditLogs).values({
+            tenantId: tenant.id,
+            action: "industrial_requirement.agent_work_auto_dispatched",
+            entityType: "industrial_requirement",
+            entityId: requirement.id,
+            metadata: {
+              taskId: handoff.taskId,
+              qualificationSuggestedAction:
+                commercialContext?.suggestedAction || null,
+              missingFields: commercialContext?.missingFields || [],
+              queuedWorkstreamCount: queuedAgentWork.length,
+              automaticInternalExecution: true,
+              externalActionStarted: false,
+            },
+          });
         } catch (queueError) {
           const message =
             queueError instanceof Error
@@ -7170,6 +7696,10 @@ router.post("/requirements", async (req: any, res) => {
               missingFields: commercialContext.missingFields,
             }
           : null,
+        tradeIntelligence: {
+          demandEventId: tradeDemandEventId,
+          recorded: Boolean(tradeDemandEventId),
+        },
         commercialExecution: commercialExecution
           ? {
               status: commercialExecution.status,
@@ -7316,6 +7846,8 @@ router.post(
         });
       }
 
+      const extraction =
+        await extractIndustrialRequirementAttachmentIntelligence(file);
       const persisted = await persistIndustrialRequirementAttachment({
         tenantId: tenant.id,
         requirementId: requirement.id,
@@ -7350,6 +7882,7 @@ router.post(
               storageKey: persisted.storageKey,
               mimeType: validation.attachment.mimeType,
               sizeBytes: validation.attachment.sizeBytes,
+              ...extraction,
               visibility: "exportunity_internal",
             })
             .returning();
@@ -7363,6 +7896,9 @@ router.post(
               fileName: created.fileName,
               mimeType: created.mimeType,
               sizeBytes: created.sizeBytes,
+              extractionStatus: created.extractionStatus,
+              extractionMethod: created.extractionMethod,
+              hasExtractedText: Boolean(created.extractedText),
               visibility: created.visibility,
               source: "public_requirement_upload",
             },
@@ -7371,14 +7907,7 @@ router.post(
         });
         return res.status(201).json({
           ok: true,
-          attachment: {
-            id: attachment.id,
-            fileName: attachment.fileName,
-            mimeType: attachment.mimeType,
-            sizeBytes: attachment.sizeBytes,
-            visibility: attachment.visibility,
-            createdAt: attachment.createdAt,
-          },
+          attachment: industrialRequirementAttachmentSummary(attachment),
         });
       } catch (error: any) {
         await fs.unlink(persisted.absolutePath).catch(() => undefined);
@@ -7398,6 +7927,137 @@ router.post(
       return res.status(500).json({
         ok: false,
         message: "The technical document could not be stored privately.",
+      });
+    }
+  },
+);
+
+router.get(
+  "/orders/:orderId",
+  ensureTenantUser,
+  async (req: any, res) => {
+    const tenant = resolveExportunityTenant(req, res);
+    if (!tenant) return;
+
+    const orderId = String(req.params?.orderId || "").trim();
+    if (!z.string().uuid().safeParse(orderId).success) {
+      return res.status(400).json({
+        ok: false,
+        message: "Invalid industrial order identifier.",
+      });
+    }
+
+    try {
+      const context = await loadAuthorizedIndustrialOrder({
+        tenantId: tenant.id,
+        orderId,
+        userId: actorIdFor(req, "tenantUser"),
+        userEmail: req.tenantUser?.email || null,
+        isAdmin: tenantUserHasAdminAccess(req.tenantUser),
+      });
+      const order = context.order;
+      const requirement = context.requirement;
+      const fulfillment = await loadIndustrialFulfillment({
+        tenantId: tenant.id,
+        orderId: order.id,
+      });
+      let payable =
+        order.status !== "cancelled" &&
+        order.status !== "completed" &&
+        order.paymentStatus !== "paid";
+      let paymentBlockCode: string | null = null;
+      let paymentBlockMessage: string | null = null;
+      let canonicalAmount: string | null = null;
+      let canonicalCurrency = String(order.currencyCode || "XOF").toUpperCase();
+
+      if (order.paymentStatus === "paid") {
+        payable = false;
+        canonicalAmount = String(order.paidAmount || order.totalAmount || "").trim() || null;
+        canonicalCurrency = String(
+          order.paidCurrencyCode || order.currencyCode || "XOF",
+        ).toUpperCase();
+        paymentBlockCode = "industrial_order_already_paid";
+        paymentBlockMessage = "This industrial order has already been paid.";
+      } else if (order.status === "cancelled" || order.status === "completed") {
+        payable = false;
+        paymentBlockCode = "industrial_order_not_payable";
+        paymentBlockMessage = "This industrial order is no longer open for payment.";
+      } else {
+        try {
+          const canonical = resolveIndustrialOrderPaymentAmount({
+            totalAmount: order.totalAmount,
+            totalAmountMinor: order.totalAmountMinor,
+            currencyCode: order.currencyCode,
+          });
+          canonicalAmount = canonical.gatewayAmount;
+          canonicalCurrency = canonical.currency;
+        } catch (error) {
+          payable = false;
+          if (error instanceof IndustrialPaymentError) {
+            paymentBlockCode = error.code;
+            paymentBlockMessage = error.message;
+          } else {
+            throw error;
+          }
+        }
+      }
+
+      res.setHeader("Cache-Control", "no-store");
+      return res.json({
+        ok: true,
+        order: {
+          id: order.id,
+          referenceCode: order.referenceCode,
+          status: order.status,
+          currencyCode: order.currencyCode,
+          totalAmount:
+            order.totalAmount === null || order.totalAmount === undefined
+              ? null
+              : String(order.totalAmount),
+          lineItems: Array.isArray(order.lineItems) ? order.lineItems : [],
+          commercialTerms: order.commercialTerms,
+          deliveryNotes: order.deliveryNotes,
+          plannedDeliveryAt: order.plannedDeliveryAt,
+          confirmedAt: order.confirmedAt,
+          completedAt: order.completedAt,
+          paymentStatus: order.paymentStatus,
+          paidAmount:
+            order.paidAmount === null || order.paidAmount === undefined
+              ? null
+              : String(order.paidAmount),
+          paidCurrencyCode: order.paidCurrencyCode,
+          paidAt: order.paidAt,
+        },
+        requirement: {
+          id: requirement.id,
+          referenceCode: requirement.referenceCode,
+          title: requirement.title,
+          quantityText: requirement.quantityText,
+          deliveryCountryCode: requirement.deliveryCountryCode,
+          deliveryCity: requirement.deliveryCity,
+          requiredBy: requirement.requiredBy,
+        },
+        fulfillment: customerIndustrialFulfillmentSummary(fulfillment),
+        payment: {
+          payable,
+          amount: canonicalAmount,
+          currency: canonicalCurrency,
+          blockCode: paymentBlockCode,
+          blockMessage: paymentBlockMessage,
+          provider: "flutterwave",
+        },
+      });
+    } catch (error) {
+      if (error instanceof IndustrialPaymentError) {
+        return res.status(error.statusCode).json({
+          ok: false,
+          code: error.code,
+          message: error.message,
+        });
+      }
+      return res.status(500).json({
+        ok: false,
+        message: "The industrial order could not be loaded.",
       });
     }
   },
@@ -8291,6 +8951,115 @@ router.patch(
       return res.status(500).json({
         ok: false,
         message: "The factory lead review could not be saved.",
+      });
+    }
+  },
+);
+
+router.post(
+  "/admin/requirements/:requirementId/workstreams/auto-dispatch",
+  ensureTenantStaff,
+  async (req: any, res) => {
+    const tenant = resolveExportunityTenant(req, res);
+    if (!tenant) return;
+    const requirementId = String(req.params?.requirementId || "").trim();
+    if (!z.string().uuid().safeParse(requirementId).success) {
+      return res.status(400).json({
+        ok: false,
+        message: "A valid industrial opportunity is required.",
+      });
+    }
+
+    try {
+      const requirement = await db.query.industrialRequirements.findFirst({
+        where: and(
+          eq(industrialRequirements.id, requirementId),
+          eq(industrialRequirements.tenantId, tenant.id),
+        ),
+      });
+      if (!requirement) {
+        return res
+          .status(404)
+          .json({ ok: false, message: "Industrial requirement not found." });
+      }
+      const execution = (
+        await loadIndustrialOpportunityExecutions({
+          tenantId: tenant.id,
+          requirements: [{ id: requirement.id, metadata: requirement.metadata }],
+          includeTimeline: true,
+        })
+      ).get(requirement.id);
+      if (!execution) {
+        return res.status(409).json({
+          ok: false,
+          message: "The opportunity has no governed execution record yet.",
+        });
+      }
+
+      const eligible = execution.workstreams.filter(
+        (workstream) =>
+          workstream.status === "backlog" && Boolean(workstream.agentId),
+      );
+      const queued: QueuedIndustrialAgentWork[] = [];
+      const failed: Array<{ taskId: number; message: string }> = [];
+      for (const workstream of eligible) {
+        try {
+          queued.push(
+            await queueIndustrialOpportunityWorkstream({
+              tenantId: tenant.id,
+              requirementId: requirement.id,
+              taskId: workstream.id,
+              requestedByUserId: actorIdFor(req),
+              sourceConversationId:
+                String(req.body?.sourceConversationId || "").trim() || null,
+            }),
+          );
+        } catch (error) {
+          failed.push({
+            taskId: workstream.id,
+            message:
+              error instanceof Error
+                ? error.message
+                : "The assigned employee could not be queued.",
+          });
+        }
+      }
+
+      await db.insert(industrialAuditLogs).values({
+        tenantId: tenant.id,
+        actorUserId: actorIdFor(req),
+        action: "industrial_requirement.agent_work_auto_reconciled",
+        entityType: "industrial_requirement",
+        entityId: requirement.id,
+        nextValue: {
+          queuedTaskIds: queued.map((item) => item.taskId),
+          failedTaskIds: failed.map((item) => item.taskId),
+        },
+        metadata: {
+          eligibleTaskIds: eligible.map((item) => item.id),
+          automaticInternalExecution: true,
+          externalActionStarted: false,
+        },
+      });
+
+      return res.status(queued.length ? 202 : 200).json({
+        ok: failed.length === 0,
+        queued,
+        failed,
+        message: queued.length
+          ? `${queued.length} assigned employee workstream(s) are now running automatically.`
+          : failed.length
+            ? "Automatic employee dispatch needs operational attention."
+            : "No assigned backlog workstream is waiting for dispatch.",
+        automaticInternalExecution: true,
+        externalActionStarted: false,
+      });
+    } catch (error: any) {
+      return res.status(500).json({
+        ok: false,
+        message:
+          String(error?.message || "").trim() ||
+          "Automatic opportunity dispatch could not be reconciled.",
       });
     }
   },
@@ -10280,7 +11049,6 @@ router.get(
           includeTimeline: true,
         })
       ).get(requirement.id);
-
       return res.json({
         ok: true,
         requirement: {
@@ -10369,6 +11137,231 @@ router.get(
       return res
         .status(404)
         .json({ ok: false, message: "Technical document is unavailable." });
+    }
+  },
+);
+
+router.post(
+  "/admin/requirements/:requirementId/attachments/:attachmentId/analyze",
+  ensureTenantAdmin,
+  async (req: any, res) => {
+    const tenant = resolveExportunityTenant(req, res);
+    if (!tenant) return;
+    const requirementId = String(req.params?.requirementId || "").trim();
+    const attachmentId = String(req.params?.attachmentId || "").trim();
+    const parsed = industrialAttachmentAnalysisSchema.safeParse(req.body || {});
+    if (
+      !z.string().uuid().safeParse(requirementId).success ||
+      !z.string().uuid().safeParse(attachmentId).success ||
+      !parsed.success
+    ) {
+      return res.status(400).json({
+        ok: false,
+        message:
+          "Provide valid requirement and attachment identifiers plus explicit image-analysis confirmation.",
+      });
+    }
+    try {
+      const review = await requestIndustrialAttachmentImageAnalysis({
+        tenantId: tenant.id,
+        requirementId,
+        attachmentId,
+        actorUserId: actorIdFor(req),
+        confirmedExternalAi: parsed.data.confirmedExternalAi,
+      });
+      return res.json({
+        ok: true,
+        review,
+        message:
+          "A candidate image interpretation is ready for human review. No requirement fields were changed.",
+      });
+    } catch (error) {
+      return respondToIndustrialAttachmentIntelligenceError(
+        res,
+        error,
+        "The image interpretation request is temporarily unavailable.",
+      );
+    }
+  },
+);
+
+router.put(
+  "/admin/requirements/:requirementId/attachments/:attachmentId/review",
+  ensureTenantStaff,
+  async (req: any, res) => {
+    const tenant = resolveExportunityTenant(req, res);
+    if (!tenant) return;
+    const requirementId = String(req.params?.requirementId || "").trim();
+    const attachmentId = String(req.params?.attachmentId || "").trim();
+    const parsed = industrialAttachmentHumanReviewSchema.safeParse(req.body || {});
+    if (
+      !z.string().uuid().safeParse(requirementId).success ||
+      !z.string().uuid().safeParse(attachmentId).success ||
+      !parsed.success
+    ) {
+      return res.status(400).json({
+        ok: false,
+        message: "Provide a valid, bounded attachment-review proposal.",
+        details: parsed.success ? undefined : parsed.error.flatten(),
+      });
+    }
+    try {
+      const review = await saveIndustrialAttachmentHumanReview({
+        tenantId: tenant.id,
+        requirementId,
+        attachmentId,
+        actorUserId: actorIdFor(req),
+        reviewKind: parsed.data.reviewKind,
+        proposal: parsed.data.proposal,
+        reviewNotes: parsed.data.reviewNotes,
+        humanConfirmed: parsed.data.humanConfirmed,
+      });
+      return res.json({
+        ok: true,
+        review,
+        message:
+          "The reviewer proposal was saved. It remains non-authoritative until approval and a separate apply action.",
+      });
+    } catch (error) {
+      return respondToIndustrialAttachmentIntelligenceError(
+        res,
+        error,
+        "The attachment review could not be saved.",
+      );
+    }
+  },
+);
+
+router.post(
+  "/admin/requirements/:requirementId/attachments/:attachmentId/decision",
+  ensureTenantStaff,
+  async (req: any, res) => {
+    const tenant = resolveExportunityTenant(req, res);
+    if (!tenant) return;
+    const requirementId = String(req.params?.requirementId || "").trim();
+    const attachmentId = String(req.params?.attachmentId || "").trim();
+    const parsed = industrialAttachmentDecisionSchema.safeParse(req.body || {});
+    if (
+      !z.string().uuid().safeParse(requirementId).success ||
+      !z.string().uuid().safeParse(attachmentId).success ||
+      !parsed.success
+    ) {
+      return res.status(400).json({
+        ok: false,
+        message: "Provide a valid attachment-review decision.",
+      });
+    }
+    try {
+      const review = await decideIndustrialAttachmentReview({
+        tenantId: tenant.id,
+        requirementId,
+        attachmentId,
+        actorUserId: actorIdFor(req),
+        decision: parsed.data.decision,
+        reason: parsed.data.reason,
+        humanConfirmed: parsed.data.humanConfirmed,
+      });
+      return res.json({
+        ok: true,
+        review,
+        message:
+          parsed.data.decision === "approve"
+            ? "The human-reviewed proposal is approved. Applying selected fields remains a separate administrator action."
+            : "The proposal was rejected and no requirement fields were changed.",
+      });
+    } catch (error) {
+      return respondToIndustrialAttachmentIntelligenceError(
+        res,
+        error,
+        "The attachment-review decision could not be recorded.",
+      );
+    }
+  },
+);
+
+router.post(
+  "/admin/requirements/:requirementId/attachments/:attachmentId/apply",
+  ensureTenantAdmin,
+  async (req: any, res) => {
+    const tenant = resolveExportunityTenant(req, res);
+    if (!tenant) return;
+    const requirementId = String(req.params?.requirementId || "").trim();
+    const attachmentId = String(req.params?.attachmentId || "").trim();
+    const parsed = industrialAttachmentApplySchema.safeParse(req.body || {});
+    if (
+      !z.string().uuid().safeParse(requirementId).success ||
+      !z.string().uuid().safeParse(attachmentId).success ||
+      !parsed.success
+    ) {
+      return res.status(400).json({
+        ok: false,
+        message: "Select valid approved fields and explicitly confirm the apply action.",
+      });
+    }
+    try {
+      const result = await applyIndustrialAttachmentReview({
+        tenantId: tenant.id,
+        requirementId,
+        attachmentId,
+        actorUserId: actorIdFor(req),
+        fields: parsed.data.fields,
+        humanConfirmed: parsed.data.humanConfirmed,
+      });
+      return res.json({
+        ok: true,
+        ...result,
+        message:
+          "Only the selected approved fields were applied to the product requirement and recorded in the audit trail.",
+      });
+    } catch (error) {
+      return respondToIndustrialAttachmentIntelligenceError(
+        res,
+        error,
+        "The approved attachment fields could not be applied.",
+      );
+    }
+  },
+);
+
+router.get(
+  "/admin/requirements/:requirementId/attachment-reviews/:reviewId/events",
+  ensureTenantStaff,
+  async (req: any, res) => {
+    const tenant = resolveExportunityTenant(req, res);
+    if (!tenant) return;
+    const requirementId = String(req.params?.requirementId || "").trim();
+    const reviewId = String(req.params?.reviewId || "").trim();
+    if (
+      !z.string().uuid().safeParse(requirementId).success ||
+      !z.string().uuid().safeParse(reviewId).success
+    ) {
+      return res.status(400).json({
+        ok: false,
+        message: "Invalid attachment-review identifier.",
+      });
+    }
+    try {
+      const reviews = await loadIndustrialAttachmentReviews({
+        tenantId: tenant.id,
+        requirementId,
+      });
+      if (!reviews.some((review) => review.id === reviewId)) {
+        return res.status(404).json({
+          ok: false,
+          message: "Attachment review not found.",
+        });
+      }
+      const events = await loadIndustrialAttachmentReviewEvents({
+        tenantId: tenant.id,
+        reviewId,
+      });
+      return res.json({ ok: true, events });
+    } catch (error) {
+      return respondToIndustrialAttachmentIntelligenceError(
+        res,
+        error,
+        "The attachment-review timeline is temporarily unavailable.",
+      );
     }
   },
 );
@@ -11300,10 +12293,10 @@ router.get(
         productRequirement,
         matchRows,
         supplierQuoteRows,
-        commercialOffers,
         quotes,
         orders,
         attachments,
+        attachmentReviews,
         tenantAudit,
         tenantActions,
       ] = await Promise.all([
@@ -11373,16 +12366,6 @@ router.get(
           .orderBy(desc(industrialSupplierQuotes.updatedAt)),
         db
           .select()
-          .from(industrialCommercialOffers)
-          .where(
-            and(
-              eq(industrialCommercialOffers.tenantId, tenant.id),
-              eq(industrialCommercialOffers.requirementId, requirement.id),
-            ),
-          )
-          .orderBy(desc(industrialCommercialOffers.version)),
-        db
-          .select()
           .from(industrialQuotes)
           .where(
             and(
@@ -11414,6 +12397,10 @@ router.get(
             ),
           )
           .orderBy(desc(industrialRequirementAttachments.createdAt)),
+        loadIndustrialAttachmentReviews({
+          tenantId: tenant.id,
+          requirementId: requirement.id,
+        }),
         db
           .select()
           .from(industrialAuditLogs)
@@ -11428,13 +12415,114 @@ router.get(
           .limit(300),
       ]);
 
+      const fulfillmentEntries = await Promise.all(
+        orders.map(async (order) => [
+          String(order.id),
+          await loadIndustrialFulfillment({
+            tenantId: tenant.id,
+            orderId: String(order.id),
+          }),
+        ] as const),
+      );
+      const fulfillmentByOrderId = new Map(fulfillmentEntries);
+      const deliveryAccountingEntries = await Promise.all(
+        orders.map(
+          async (order) =>
+            [
+              String(order.id),
+              await loadIndustrialDeliveryAccounting({
+                tenantId: tenant.id,
+                orderId: String(order.id),
+              }),
+            ] as const,
+        ),
+      );
+      const deliveryAccountingByOrderId = new Map(deliveryAccountingEntries);
+      const relationshipContinuityEntries = await Promise.all(
+        orders.map(
+          async (order) =>
+            [
+              String(order.id),
+              await loadIndustrialRelationshipContinuity({
+                tenantId: tenant.id,
+                orderId: String(order.id),
+              }),
+            ] as const,
+        ),
+      );
+      const relationshipContinuityByOrderId = new Map(
+        relationshipContinuityEntries,
+      );
+      const procurementAuthorizations = orders.length
+        ? await db
+            .select()
+            .from(industrialProcurementAuthorizations)
+            .where(
+              and(
+                eq(industrialProcurementAuthorizations.tenantId, tenant.id),
+                inArray(
+                  industrialProcurementAuthorizations.orderId,
+                  orders.map((order) => order.id),
+                ),
+              ),
+            )
+        : [];
+      const procurementByOrderId = new Map(
+        procurementAuthorizations.map((authorization) => [
+          String(authorization.orderId),
+          authorization,
+        ]),
+      );
+      const supplierPurchaseOrderPackages = orders.length
+        ? await db
+            .select()
+            .from(industrialSupplierPurchaseOrderPackages)
+            .where(
+              and(
+                eq(industrialSupplierPurchaseOrderPackages.tenantId, tenant.id),
+                inArray(
+                  industrialSupplierPurchaseOrderPackages.orderId,
+                  orders.map((order) => order.id),
+                ),
+              ),
+            )
+        : [];
+      const supplierPurchaseOrderPackageByOrderId = new Map(
+        supplierPurchaseOrderPackages.map((purchaseOrderPackage) => [
+          String(purchaseOrderPackage.orderId),
+          purchaseOrderPackage,
+        ]),
+      );
+      const fulfillmentEntityIds = fulfillmentEntries.flatMap(([, value]) =>
+        value
+          ? [
+              String(value.plan.id),
+              ...value.services.map((service) => String(service.id)),
+              ...value.events.map((event) => String(event.id)),
+            ]
+          : [],
+      );
       const relatedIds = new Set<string>([
         requirement.id,
         ...matchRows.map(({ match }) => String(match.id)),
         ...supplierQuoteRows.map(({ quote }) => String(quote.id)),
-        ...commercialOffers.map((offer) => String(offer.id)),
         ...quotes.map((quote) => String(quote.id)),
         ...orders.map((order) => String(order.id)),
+        ...procurementAuthorizations.map((authorization) =>
+          String(authorization.id),
+        ),
+        ...supplierPurchaseOrderPackages.map((purchaseOrderPackage) =>
+          String(purchaseOrderPackage.id),
+        ),
+        ...deliveryAccountingEntries.flatMap(([, accounting]) => [
+          ...accounting.actualCostEntries.map((entry) => String(entry.id)),
+          ...(accounting.recognition ? [String(accounting.recognition.id)] : []),
+        ]),
+        ...relationshipContinuityEntries.flatMap(([, continuity]) => [
+          ...(continuity.memory ? [String(continuity.memory.id)] : []),
+          ...(continuity.review ? [String(continuity.review.id)] : []),
+        ]),
+        ...fulfillmentEntityIds,
       ]);
       const audit = tenantAudit.filter((row) => {
         const metadata = safeRecord(row.metadata);
@@ -11449,6 +12537,9 @@ router.get(
           requirement.id,
       );
       const lifecycle = requirementLifecycleFor(requirement, quotes, orders);
+      const attachmentReviewByAttachmentId = new Map(
+        attachmentReviews.map((review) => [review.attachmentId, review]),
+      );
       const execution = (
         await loadIndustrialOpportunityExecutions({
           tenantId: tenant.id,
@@ -11456,6 +12547,18 @@ router.get(
           includeTimeline: true,
         })
       ).get(requirement.id);
+      const customerVisibleQuoteStatuses = new Set([
+        "issued",
+        "accepted",
+        "declined",
+        "expired",
+        "cancelled",
+      ]);
+      const canonicalCustomerQuotes = quotes.filter(
+        (quote) =>
+          Boolean(quote.pricingVersion) &&
+          customerVisibleQuoteStatuses.has(quote.status),
+      );
 
       return res.json({
         ok: true,
@@ -11476,17 +12579,37 @@ router.get(
           supplierQuotes: supplierQuoteRows.map(({ quote, supplier }) =>
             staffSupplierQuoteSummary(quote, supplier),
           ),
-          commercialOffers: commercialOffers.map(
-            staffCommercialOfferSummary,
-          ),
-          customerQuotes: quotes.map((quote) =>
+          customerQuotes: canonicalCustomerQuotes.map((quote) =>
             staffQuoteSummary(quote, requirement),
           ),
-          orders: orders.map((order) =>
-            staffOrderSummary(order, undefined, requirement),
-          ),
+          orders: orders.map((order) => ({
+            ...staffOrderSummary(order, undefined, requirement),
+            fulfillment: staffIndustrialFulfillmentSummary(
+              fulfillmentByOrderId.get(String(order.id)) || null,
+            ),
+            procurementAuthorization:
+              staffIndustrialProcurementAuthorizationSummary(
+                procurementByOrderId.get(String(order.id)) || null,
+              ),
+            supplierPurchaseOrderPackage:
+              staffIndustrialSupplierPurchaseOrderPackageSummary(
+                supplierPurchaseOrderPackageByOrderId.get(String(order.id)) ||
+                  null,
+              ),
+            deliveryAccounting: staffIndustrialDeliveryAccountingSummary(
+              deliveryAccountingByOrderId.get(String(order.id)) || null,
+            ),
+            relationshipContinuity:
+              staffIndustrialRelationshipContinuitySummary(
+                relationshipContinuityByOrderId.get(String(order.id)) || null,
+              ),
+          })),
           approvalActions: actions.map(staffActionRequestSummary),
-          attachments,
+          attachments: attachments.map((attachment) => ({
+            ...attachment,
+            intelligenceReview:
+              attachmentReviewByAttachmentId.get(attachment.id) || null,
+          })),
           audit,
           execution: execution || null,
           controls: {
@@ -11495,6 +12618,9 @@ router.get(
             ),
             supplierCostsArePrivate: true,
             customerQuoteRequiresApprovedOffer: true,
+            legacyCommercialUiRetired: true,
+            historicalCommercialRowsPreserved: true,
+            attachmentVision: industrialAttachmentVisionRuntimeStatus(),
           },
         },
       });
@@ -11838,6 +12964,13 @@ router.post(
           supplierProfileId: supplier.id,
           supplierMatchId: match.id,
           product,
+          communicationPurpose: "supplier_rfq",
+          contactBasis:
+            parsed.data.channel === "whatsapp"
+              ? "explicit_opt_in"
+              : "public_b2b_relevance",
+          commitmentRisk: "commercial_discussion",
+          recipientCountryCode: supplier.countryCode,
           humanApprovalRequired: true,
           externalActivationRequired: true,
           recipientProvenance: {
@@ -11972,649 +13105,23 @@ router.post(
 router.post(
   "/admin/requirements/:requirementId/supplier-quotes",
   ensureTenantStaff,
-  async (req: any, res) => {
-    const tenant = resolveExportunityTenant(req, res);
-    if (!tenant) return;
-    const requirementId = String(req.params?.requirementId || "").trim();
-    if (!z.string().uuid().safeParse(requirementId).success) {
-      return res.status(400).json({
-        ok: false,
-        message: "Invalid industrial requirement identifier.",
-      });
-    }
-    const parsed = industrialSupplierQuoteCreateSchema.safeParse(req.body || {});
-    if (!parsed.success) {
-      return res.status(400).json({
-        ok: false,
-        message: "A human-reviewed supplier quotation is required.",
-        issues: parsed.error.flatten(),
-      });
-    }
-    const validUntil = parseOptionalDate(parsed.data.validUntil);
-    if (parsed.data.validUntil && !validUntil) {
-      return res.status(400).json({
-        ok: false,
-        message: "The supplier quotation validity date is invalid.",
-      });
-    }
-
-    try {
-      const [requirement, productRequirement, matchRow] = await Promise.all([
-        db.query.industrialRequirements.findFirst({
-          where: and(
-            eq(industrialRequirements.id, requirementId),
-            eq(industrialRequirements.tenantId, tenant.id),
-          ),
-        }),
-        db.query.industrialProductRequirements.findFirst({
-          where: and(
-            eq(industrialProductRequirements.requirementId, requirementId),
-            eq(industrialProductRequirements.tenantId, tenant.id),
-          ),
-        }),
-        db
-          .select({
-            match: industrialRequirementSupplierMatches,
-            supplier: industrialSupplierProfiles,
-          })
-          .from(industrialRequirementSupplierMatches)
-          .innerJoin(
-            industrialSupplierProfiles,
-            and(
-              eq(
-                industrialRequirementSupplierMatches.supplierProfileId,
-                industrialSupplierProfiles.id,
-              ),
-              eq(
-                industrialRequirementSupplierMatches.tenantId,
-                industrialSupplierProfiles.tenantId,
-              ),
-            ),
-          )
-          .where(
-            and(
-              eq(
-                industrialRequirementSupplierMatches.id,
-                parsed.data.supplierMatchId,
-              ),
-              eq(
-                industrialRequirementSupplierMatches.requirementId,
-                requirementId,
-              ),
-              eq(industrialRequirementSupplierMatches.tenantId, tenant.id),
-            ),
-          )
-          .limit(1),
-      ]);
-      if (!requirement) {
-        return res
-          .status(404)
-          .json({ ok: false, message: "Industrial requirement not found." });
-      }
-      const matched = matchRow[0];
-      if (!matched || !isSupplierEligibleForCapabilityMatching(matched.supplier)) {
-        return res.status(409).json({
-          ok: false,
-          message: "The supplier match is unavailable or no longer eligible.",
-        });
-      }
-
-      const now = new Date();
-      const actorUserId = actorIdFor(req);
-      const [quote] = await db
-        .insert(industrialSupplierQuotes)
-        .values({
-          tenantId: tenant.id,
-          requirementId: requirement.id,
-          supplierProfileId: matched.supplier.id,
-          supplierMatchId: matched.match.id,
-          referenceCode: makeReference("SQ"),
-          product:
-            parsed.data.product ||
-            productRequirement?.productName ||
-            requirement.title,
-          specification:
-            parsed.data.specification ??
-            productRequirement?.specification ??
-            null,
-          quantityText:
-            parsed.data.quantityText ??
-            productRequirement?.quantityText ??
-            requirement.quantityText ??
-            null,
-          unit: parsed.data.unit ?? productRequirement?.unit ?? null,
-          unitPrice:
-            parsed.data.unitPrice == null
-              ? null
-              : String(parsed.data.unitPrice),
-          totalCost: String(parsed.data.totalCost),
-          currencyCode: parsed.data.currencyCode,
-          incoterm:
-            parsed.data.incoterm ?? productRequirement?.incoterm ?? null,
-          origin: parsed.data.origin ?? productRequirement?.origin ?? null,
-          destination:
-            parsed.data.destination ??
-            productRequirement?.destination ??
-            ([requirement.deliveryCity, requirement.deliveryCountryCode]
-              .filter(Boolean)
-              .join(", ") || null),
-          packaging: parsed.data.packaging || null,
-          minimumOrderQuantity: parsed.data.minimumOrderQuantity || null,
-          leadTimeDays: parsed.data.leadTimeDays ?? null,
-          paymentTerms: parsed.data.paymentTerms || null,
-          validUntil,
-          certifications: parsed.data.certifications,
-          sourceChannel: parsed.data.sourceChannel,
-          rawSourceText: parsed.data.sourceText,
-          status: "reviewed",
-          internalNotes: parsed.data.internalNotes || null,
-          createdByUserId: actorUserId,
-          receivedAt: now,
-          reviewedAt: now,
-          updatedAt: now,
-        })
-        .returning();
-
-      await Promise.all([
-        db
-          .update(industrialRequirementSupplierMatches)
-          .set({ status: "shortlisted", updatedAt: now })
-          .where(
-            and(
-              eq(
-                industrialRequirementSupplierMatches.id,
-                matched.match.id,
-              ),
-              eq(industrialRequirementSupplierMatches.tenantId, tenant.id),
-            ),
-          ),
-        db
-          .update(industrialRequirements)
-          .set({
-            status: "quote_preparation",
-            nextAction:
-              "Review supplier costs and prepare the internal commercial offer.",
-            nextActionAt: now,
-            updatedAt: now,
-          })
-          .where(
-            and(
-              eq(industrialRequirements.id, requirement.id),
-              eq(industrialRequirements.tenantId, tenant.id),
-            ),
-          ),
-      ]);
-      await db.insert(industrialAuditLogs).values({
-        tenantId: tenant.id,
-        actorUserId,
-        action: "industrial_supplier_quote.reviewed_recorded",
-        entityType: "industrial_supplier_quote",
-        entityId: quote.id,
-        reason: "A human reviewed and recorded the supplier source evidence.",
-        nextValue: {
-          status: quote.status,
-          supplierProfileId: quote.supplierProfileId,
-          referenceCode: quote.referenceCode,
-        },
-        metadata: {
-          requirementId: requirement.id,
-          internalOnly: true,
-          customerVisible: false,
-        },
-      });
-
-      return res.status(201).json({
-        ok: true,
-        supplierQuote: staffSupplierQuoteSummary(quote, matched.supplier),
-      });
-    } catch (error) {
-      console.error("[industrial] supplier quote capture failed", error);
-      return res.status(500).json({
-        ok: false,
-        message: "The supplier quotation could not be recorded.",
-      });
-    }
-  },
+  retiredLegacyCommercialWrite,
 );
-
 router.post(
   "/admin/requirements/:requirementId/commercial-offers",
   ensureTenantStaff,
-  async (req: any, res) => {
-    const tenant = resolveExportunityTenant(req, res);
-    if (!tenant) return;
-    const requirementId = String(req.params?.requirementId || "").trim();
-    if (!z.string().uuid().safeParse(requirementId).success) {
-      return res.status(400).json({
-        ok: false,
-        message: "Invalid industrial requirement identifier.",
-      });
-    }
-    const parsed = industrialCommercialOfferCreateSchema.safeParse(req.body || {});
-    if (!parsed.success) {
-      return res.status(400).json({
-        ok: false,
-        message: "A valid internal commercial offer is required.",
-        issues: parsed.error.flatten(),
-      });
-    }
-    const offerValidUntil = parseOptionalDate(parsed.data.offerValidUntil);
-    if (parsed.data.offerValidUntil && !offerValidUntil) {
-      return res.status(400).json({
-        ok: false,
-        message: "The commercial offer validity date is invalid.",
-      });
-    }
-
-    try {
-      const uniqueQuoteIds = Array.from(new Set(parsed.data.supplierQuoteIds));
-      const [requirement, supplierQuotes, existingOffers] = await Promise.all([
-        db.query.industrialRequirements.findFirst({
-          where: and(
-            eq(industrialRequirements.id, requirementId),
-            eq(industrialRequirements.tenantId, tenant.id),
-          ),
-        }),
-        db
-          .select()
-          .from(industrialSupplierQuotes)
-          .where(
-            and(
-              eq(industrialSupplierQuotes.tenantId, tenant.id),
-              eq(industrialSupplierQuotes.requirementId, requirementId),
-              inArray(industrialSupplierQuotes.id, uniqueQuoteIds),
-            ),
-          ),
-        db
-          .select({ version: industrialCommercialOffers.version })
-          .from(industrialCommercialOffers)
-          .where(
-            and(
-              eq(industrialCommercialOffers.tenantId, tenant.id),
-              eq(industrialCommercialOffers.requirementId, requirementId),
-            ),
-          )
-          .orderBy(desc(industrialCommercialOffers.version))
-          .limit(1),
-      ]);
-      if (!requirement) {
-        return res
-          .status(404)
-          .json({ ok: false, message: "Industrial requirement not found." });
-      }
-      if (supplierQuotes.length !== uniqueQuoteIds.length) {
-        return res.status(409).json({
-          ok: false,
-          message: "One or more supplier quotations are unavailable.",
-        });
-      }
-      if (supplierQuotes.some((quote) => quote.status !== "reviewed")) {
-        return res.status(409).json({
-          ok: false,
-          message: "Only human-reviewed supplier quotations can be priced.",
-        });
-      }
-      if (
-        supplierQuotes.some(
-          (quote) => quote.currencyCode !== parsed.data.currencyCode,
-        )
-      ) {
-        return res.status(409).json({
-          ok: false,
-          message:
-            "Supplier quotation currencies must match the commercial offer currency.",
-        });
-      }
-
-      let pricing;
-      try {
-        pricing = calculateIndustrialCommercialPricing({
-          supplierCosts: supplierQuotes.map((quote) => Number(quote.totalCost)),
-          additionalCosts: parsed.data.additionalCosts,
-          customerPrice: parsed.data.customerPrice,
-        });
-      } catch (error: any) {
-        return res.status(400).json({
-          ok: false,
-          message:
-            String(error?.message || "").trim() ||
-            "The internal pricing calculation is invalid.",
-        });
-      }
-
-      const now = new Date();
-      const actorUserId = actorIdFor(req);
-      const version = Number(existingOffers[0]?.version || 0) + 1;
-      const [offer] = await db
-        .insert(industrialCommercialOffers)
-        .values({
-          tenantId: tenant.id,
-          requirementId: requirement.id,
-          customerContactId: requirement.customerContactId || null,
-          referenceCode: makeReference("CO"),
-          version,
-          supplierQuoteIds: uniqueQuoteIds,
-          costStack: pricing.costStack,
-          totalCost: pricing.totalCost.toFixed(2),
-          internalMargin: pricing.internalMargin.toFixed(2),
-          marginPercent: pricing.marginPercent.toFixed(3),
-          customerPrice: pricing.customerPrice.toFixed(2),
-          currencyCode: parsed.data.currencyCode,
-          incoterm: parsed.data.incoterm || null,
-          deliveryEstimate: parsed.data.deliveryEstimate || null,
-          paymentTerms: parsed.data.paymentTerms || null,
-          offerValidUntil,
-          terms: parsed.data.terms || null,
-          status: "draft",
-          pricingPolicy: {
-            calculatedServerSide: true,
-            supplierQuoteCount: uniqueQuoteIds.length,
-            supplyPlanMode:
-              uniqueQuoteIds.length > 1
-                ? "combined_supplier_plan"
-                : "single_supplier_quote",
-            additionalCostLabels: Object.keys(parsed.data.additionalCosts),
-            approvalRequired: true,
-          },
-          createdByUserId: actorUserId,
-          updatedAt: now,
-        })
-        .returning();
-      await db
-        .update(industrialRequirements)
-        .set({
-          status: "quote_preparation",
-          nextAction:
-            "A tenant administrator must approve the internal price before a customer quote is created.",
-          nextActionAt: now,
-          updatedAt: now,
-        })
-        .where(
-          and(
-            eq(industrialRequirements.id, requirement.id),
-            eq(industrialRequirements.tenantId, tenant.id),
-          ),
-        );
-      await db.insert(industrialAuditLogs).values({
-        tenantId: tenant.id,
-        actorUserId,
-        action: "industrial_commercial_offer.draft_created",
-        entityType: "industrial_commercial_offer",
-        entityId: offer.id,
-        reason:
-          "The internal commercial price was calculated from reviewed supplier evidence.",
-        nextValue: {
-          status: offer.status,
-          version: offer.version,
-          referenceCode: offer.referenceCode,
-        },
-        metadata: {
-          requirementId: requirement.id,
-          supplierQuoteIds: uniqueQuoteIds,
-          internalOnly: true,
-          customerQuoteCreated: false,
-        },
-      });
-      return res.status(201).json({
-        ok: true,
-        commercialOffer: staffCommercialOfferSummary(offer),
-      });
-    } catch (error) {
-      console.error("[industrial] commercial offer creation failed", error);
-      return res.status(500).json({
-        ok: false,
-        message: "The internal commercial offer could not be prepared.",
-      });
-    }
-  },
+  retiredLegacyCommercialWrite,
 );
-
 router.post(
   "/admin/commercial-offers/:offerId/approve",
   ensureTenantAdmin,
-  async (req: any, res) => {
-    const tenant = resolveExportunityTenant(req, res);
-    if (!tenant) return;
-    const offerId = String(req.params?.offerId || "").trim();
-    if (!z.string().uuid().safeParse(offerId).success) {
-      return res.status(400).json({
-        ok: false,
-        message: "Invalid commercial offer identifier.",
-      });
-    }
-    const parsed = industrialCommercialOfferApprovalSchema.safeParse(req.body || {});
-    if (!parsed.success) {
-      return res.status(400).json({
-        ok: false,
-        message: "Human approval and a reason are required.",
-        issues: parsed.error.flatten(),
-      });
-    }
-    try {
-      const existing = await db.query.industrialCommercialOffers.findFirst({
-        where: and(
-          eq(industrialCommercialOffers.id, offerId),
-          eq(industrialCommercialOffers.tenantId, tenant.id),
-        ),
-      });
-      if (!existing) {
-        return res.status(404).json({
-          ok: false,
-          message: "Internal commercial offer not found.",
-        });
-      }
-      if (!['draft', 'under_review'].includes(existing.status)) {
-        return res.status(409).json({
-          ok: false,
-          message: "Only a draft or reviewed internal offer can be approved.",
-        });
-      }
-      const now = new Date();
-      const actorUserId = actorIdFor(req, "adminUser");
-      const [offer] = await db
-        .update(industrialCommercialOffers)
-        .set({
-          status: "approved",
-          approvedByUserId: actorUserId,
-          approvedAt: now,
-          updatedAt: now,
-        })
-        .where(
-          and(
-            eq(industrialCommercialOffers.id, existing.id),
-            eq(industrialCommercialOffers.tenantId, tenant.id),
-          ),
-        )
-        .returning();
-      await db.insert(industrialAuditLogs).values({
-        tenantId: tenant.id,
-        actorUserId,
-        action: "industrial_commercial_offer.approved",
-        entityType: "industrial_commercial_offer",
-        entityId: offer.id,
-        reason: parsed.data.reason,
-        previousValue: { status: existing.status },
-        nextValue: { status: offer.status, approvedAt: offer.approvedAt },
-        metadata: {
-          requirementId: offer.requirementId,
-          humanApproved: true,
-        },
-      });
-      return res.json({
-        ok: true,
-        commercialOffer: staffCommercialOfferSummary(offer),
-      });
-    } catch (error) {
-      console.error("[industrial] commercial offer approval failed", error);
-      return res.status(500).json({
-        ok: false,
-        message: "The internal commercial offer could not be approved.",
-      });
-    }
-  },
+  retiredLegacyCommercialWrite,
 );
-
 router.post(
   "/admin/commercial-offers/:offerId/customer-quote",
   ensureTenantStaff,
-  async (req: any, res) => {
-    const tenant = resolveExportunityTenant(req, res);
-    if (!tenant) return;
-    const offerId = String(req.params?.offerId || "").trim();
-    if (!z.string().uuid().safeParse(offerId).success) {
-      return res.status(400).json({
-        ok: false,
-        message: "Invalid commercial offer identifier.",
-      });
-    }
-    try {
-      const [offer, existingQuote] = await Promise.all([
-        db.query.industrialCommercialOffers.findFirst({
-          where: and(
-            eq(industrialCommercialOffers.id, offerId),
-            eq(industrialCommercialOffers.tenantId, tenant.id),
-          ),
-        }),
-        db.query.industrialQuotes.findFirst({
-          where: and(
-            eq(industrialQuotes.commercialOfferId, offerId),
-            eq(industrialQuotes.tenantId, tenant.id),
-          ),
-        }),
-      ]);
-      if (!offer) {
-        return res.status(404).json({
-          ok: false,
-          message: "Internal commercial offer not found.",
-        });
-      }
-      if (offer.status !== "approved" || !offer.approvedAt) {
-        return res.status(409).json({
-          ok: false,
-          message:
-            "The internal commercial offer must be human-approved first.",
-        });
-      }
-      if (existingQuote) {
-        return res.status(409).json({
-          ok: false,
-          message: "This internal offer already has a customer quotation.",
-          quoteId: existingQuote.id,
-        });
-      }
-      const [requirement, productRequirement] = await Promise.all([
-        db.query.industrialRequirements.findFirst({
-          where: and(
-            eq(industrialRequirements.id, offer.requirementId),
-            eq(industrialRequirements.tenantId, tenant.id),
-          ),
-        }),
-        db.query.industrialProductRequirements.findFirst({
-          where: and(
-            eq(
-              industrialProductRequirements.requirementId,
-              offer.requirementId,
-            ),
-            eq(industrialProductRequirements.tenantId, tenant.id),
-          ),
-        }),
-      ]);
-      if (!requirement) {
-        return res.status(409).json({
-          ok: false,
-          message: "The source industrial requirement is unavailable.",
-        });
-      }
-      const customerPrice = Number(offer.customerPrice);
-      const lineItems = buildCustomerQuoteSnapshot({
-        product: productRequirement?.productName || requirement.title,
-        specification: productRequirement?.specification,
-        quantity:
-          productRequirement?.quantityText || requirement.quantityText,
-        unit: productRequirement?.unit,
-        customerPrice,
-      });
-      const commercialTerms = [
-        offer.incoterm ? `Incoterm: ${offer.incoterm}` : null,
-        offer.paymentTerms ? `Payment terms: ${offer.paymentTerms}` : null,
-        offer.terms,
-      ]
-        .filter(Boolean)
-        .join("\n");
-      const now = new Date();
-      const actorUserId = actorIdFor(req);
-      const [quote] = await db
-        .insert(industrialQuotes)
-        .values({
-          tenantId: tenant.id,
-          requirementId: requirement.id,
-          requirementMatchId: null,
-          factoryId: null,
-          catalogItemId: null,
-          commercialOfferId: offer.id,
-          referenceCode: makeReference("QT"),
-          status: "draft",
-          currencyCode: offer.currencyCode,
-          totalAmount: offer.customerPrice,
-          lineItems,
-          leadTimeText: offer.deliveryEstimate,
-          validUntil: offer.offerValidUntil,
-          commercialTerms: commercialTerms || null,
-          customerNotes: null,
-          internalNotes: `Generated from approved internal commercial offer ${offer.referenceCode}.`,
-          visibility: "parties_to_transaction",
-          createdByUserId: actorUserId,
-          updatedAt: now,
-        })
-        .returning();
-      await db
-        .update(industrialRequirements)
-        .set({
-          status: "quote_preparation",
-          nextAction:
-            "Review the sanitized customer quotation, then move it through account-manager approval before issue.",
-          nextActionAt: now,
-          updatedAt: now,
-        })
-        .where(
-          and(
-            eq(industrialRequirements.id, requirement.id),
-            eq(industrialRequirements.tenantId, tenant.id),
-          ),
-        );
-      await db.insert(industrialAuditLogs).values({
-        tenantId: tenant.id,
-        actorUserId,
-        action: "industrial_quote.created_from_approved_offer",
-        entityType: "industrial_quote",
-        entityId: quote.id,
-        reason:
-          "A customer quotation was generated from a human-approved internal commercial offer.",
-        nextValue: {
-          status: quote.status,
-          referenceCode: quote.referenceCode,
-          commercialOfferId: offer.id,
-        },
-        metadata: {
-          requirementId: requirement.id,
-          supplierCostsExcluded: true,
-          marginExcluded: true,
-        },
-      });
-      return res.status(201).json({
-        ok: true,
-        quote: staffQuoteSummary(quote, requirement),
-      });
-    } catch (error) {
-      console.error("[industrial] customer quote conversion failed", error);
-      return res.status(500).json({
-        ok: false,
-        message: "The customer quotation could not be created.",
-      });
-    }
-  },
+  retiredLegacyCommercialWrite,
 );
-
 router.get("/admin/quotes", ensureTenantStaff, async (req: any, res) => {
   const tenant = resolveExportunityTenant(req, res);
   if (!tenant) return;
@@ -12758,556 +13265,18 @@ router.get(
 router.post(
   "/admin/requirements/:requirementId/quotes",
   ensureTenantStaff,
-  async (req: any, res) => {
-    const tenant = resolveExportunityTenant(req, res);
-    if (!tenant) return;
-
-    const requirementId = String(req.params?.requirementId || "").trim();
-    if (!z.string().uuid().safeParse(requirementId).success) {
-      return res.status(400).json({
-        ok: false,
-        message: "Invalid industrial requirement identifier.",
-      });
-    }
-    const parsed = industrialQuoteCreateSchema.safeParse(req.body || {});
-    if (!parsed.success) {
-      return res.status(400).json({
-        ok: false,
-        message: "A valid quotation draft is required.",
-        issues: parsed.error.flatten(),
-      });
-    }
-    const validUntil = parseOptionalDate(parsed.data.validUntil);
-    if (parsed.data.validUntil && !validUntil) {
-      return res.status(400).json({
-        ok: false,
-        message: "The quotation validity date is not valid.",
-      });
-    }
-
-    try {
-      const [requirement, match] = await Promise.all([
-        db.query.industrialRequirements.findFirst({
-          where: and(
-            eq(industrialRequirements.id, requirementId),
-            eq(industrialRequirements.tenantId, tenant.id),
-          ),
-        }),
-        db.query.industrialRequirementMatches.findFirst({
-          where: and(
-            eq(industrialRequirementMatches.id, parsed.data.requirementMatchId),
-            eq(industrialRequirementMatches.requirementId, requirementId),
-            eq(industrialRequirementMatches.tenantId, tenant.id),
-          ),
-        }),
-      ]);
-      if (!requirement)
-        return res
-          .status(404)
-          .json({ ok: false, message: "Industrial requirement not found." });
-      if (!match || match.status !== "selected") {
-        return res.status(400).json({
-          ok: false,
-          message:
-            "Select a verified catalog match before preparing a quotation.",
-        });
-      }
-      const [catalogItem, factory] = await Promise.all([
-        db.query.industrialCatalogItems.findFirst({
-          where: and(
-            eq(industrialCatalogItems.id, match.catalogItemId),
-            eq(industrialCatalogItems.tenantId, tenant.id),
-          ),
-        }),
-        db.query.industrialFactories.findFirst({
-          where: and(
-            eq(industrialFactories.id, match.factoryId),
-            eq(industrialFactories.tenantId, tenant.id),
-          ),
-        }),
-      ]);
-      if (!catalogItem || !factory)
-        return res.status(400).json({
-          ok: false,
-          message: "The selected match is no longer available.",
-        });
-
-      const lineItems = parsed.data.lineItems.map((line) =>
-        Object.entries(line).reduce<Record<string, string>>(
-          (output, [key, value]) => {
-            if (typeof value === "string" && value.trim().length > 0)
-              output[key] = value;
-            return output;
-          },
-          {},
-        ),
-      );
-      const now = new Date();
-      const actorUserId = actorIdFor(req);
-      const [quote] = await db
-        .insert(industrialQuotes)
-        .values({
-          tenantId: tenant.id,
-          requirementId: requirement.id,
-          requirementMatchId: match.id,
-          factoryId: factory.id,
-          catalogItemId: catalogItem.id,
-          referenceCode: makeReference("QT"),
-          status: "draft",
-          currencyCode: parsed.data.currencyCode,
-          totalAmount:
-            parsed.data.totalAmount === null ||
-            parsed.data.totalAmount === undefined
-              ? null
-              : String(parsed.data.totalAmount),
-          lineItems,
-          leadTimeText: parsed.data.leadTimeText || null,
-          validUntil,
-          commercialTerms: parsed.data.commercialTerms || null,
-          customerNotes: parsed.data.customerNotes || null,
-          internalNotes: parsed.data.internalNotes || null,
-          visibility: "parties_to_transaction",
-          createdByUserId: actorUserId,
-        })
-        .returning();
-
-      if (!["closed", "cancelled"].includes(requirement.status)) {
-        await db
-          .update(industrialRequirements)
-          .set({ status: "quote_preparation", updatedAt: now })
-          .where(
-            and(
-              eq(industrialRequirements.id, requirement.id),
-              eq(industrialRequirements.tenantId, tenant.id),
-            ),
-          );
-      }
-      await db.insert(industrialAuditLogs).values({
-        tenantId: tenant.id,
-        actorUserId,
-        action: "industrial_quote.draft_created",
-        entityType: "industrial_quote",
-        entityId: quote.id,
-        nextValue: {
-          status: quote.status,
-          requirementId: requirement.id,
-          matchId: match.id,
-        },
-        metadata: {
-          referenceCode: quote.referenceCode,
-          factoryId: factory.id,
-          catalogItemId: catalogItem.id,
-        },
-      });
-
-      return res.status(201).json({
-        ok: true,
-        quote: staffQuoteSummary(quote, requirement, factory, catalogItem),
-      });
-    } catch {
-      return res.status(500).json({
-        ok: false,
-        message: "The industrial quotation draft could not be saved.",
-      });
-    }
-  },
+  retiredLegacyCommercialWrite,
 );
-
 router.post(
   "/admin/quotes/:quoteId/status",
   ensureTenantStaff,
-  async (req: any, res) => {
-    const tenant = resolveExportunityTenant(req, res);
-    if (!tenant) return;
-
-    const quoteId = String(req.params?.quoteId || "").trim();
-    if (!z.string().uuid().safeParse(quoteId).success) {
-      return res
-        .status(400)
-        .json({ ok: false, message: "Invalid quotation identifier." });
-    }
-    const parsed = industrialQuoteStatusSchema.safeParse(req.body || {});
-    if (!parsed.success) {
-      return res.status(400).json({
-        ok: false,
-        message: "A valid quotation status and note are required.",
-        issues: parsed.error.flatten(),
-      });
-    }
-
-    try {
-      const quote = await db.query.industrialQuotes.findFirst({
-        where: and(
-          eq(industrialQuotes.id, quoteId),
-          eq(industrialQuotes.tenantId, tenant.id),
-        ),
-      });
-      if (!quote)
-        return res
-          .status(404)
-          .json({ ok: false, message: "Industrial quotation not found." });
-      if (
-        !canTransitionIndustrialQuote(
-          quote.status as any,
-          parsed.data.status as any,
-        )
-      ) {
-        return res.status(400).json({
-          ok: false,
-          message:
-            "This quotation cannot move to the requested status from its current state.",
-        });
-      }
-      const hasLineItems =
-        Array.isArray(quote.lineItems) && quote.lineItems.length > 0;
-      if (
-        parsed.data.status === "issued" &&
-        quote.totalAmount === null &&
-        !hasLineItems
-      ) {
-        return res.status(400).json({
-          ok: false,
-          message:
-            "Record a price or at least one quotation line before marking a quotation as issued.",
-        });
-      }
-
-      const now = new Date();
-      const actorUserId = actorIdFor(req);
-      const [updated] = await db
-        .update(industrialQuotes)
-        .set({
-          status: parsed.data.status,
-          customerNotes:
-            parsed.data.customerNotes === undefined
-              ? quote.customerNotes
-              : parsed.data.customerNotes || null,
-          internalNotes:
-            parsed.data.internalNotes === undefined
-              ? quote.internalNotes
-              : parsed.data.internalNotes || null,
-          issuedByUserId:
-            parsed.data.status === "issued"
-              ? actorUserId
-              : quote.issuedByUserId,
-          issuedAt: parsed.data.status === "issued" ? now : quote.issuedAt,
-          respondedAt: ["accepted", "declined"].includes(parsed.data.status)
-            ? now
-            : quote.respondedAt,
-          closedAt: ["accepted", "cancelled", "expired"].includes(
-            parsed.data.status,
-          )
-            ? now
-            : quote.closedAt,
-          updatedAt: now,
-        })
-        .where(
-          and(
-            eq(industrialQuotes.id, quote.id),
-            eq(industrialQuotes.tenantId, tenant.id),
-          ),
-        )
-        .returning();
-
-      const requirement = await db.query.industrialRequirements.findFirst({
-        where: and(
-          eq(industrialRequirements.id, quote.requirementId),
-          eq(industrialRequirements.tenantId, tenant.id),
-        ),
-      });
-      if (requirement) {
-        const metadata = safeRecord(requirement.metadata);
-        const workflow = safeRecord(metadata.internalWorkflow);
-        const requirementUpdate =
-          parsed.data.status === "issued"
-            ? {
-                status: "quoted" as const,
-                nextAction:
-                  "Record account-manager follow-up after presenting the quotation.",
-              }
-            : parsed.data.status === "accepted"
-              ? {
-                  status: "closed" as const,
-                  nextAction:
-                    "Create the order only after the accepted quotation is confirmed.",
-                }
-              : parsed.data.status === "declined"
-                ? {
-                    status: "supplier_matching" as const,
-                    nextAction:
-                      "Select an alternative supplier or close the requirement.",
-                  }
-                : null;
-        if (requirementUpdate) {
-          await db
-            .update(industrialRequirements)
-            .set({
-              status: requirementUpdate.status,
-              metadata: {
-                ...metadata,
-                internalWorkflow: {
-                  ...workflow,
-                  nextAction: requirementUpdate.nextAction,
-                  quoteStatus: updated.status,
-                  quoteReferenceCode: updated.referenceCode,
-                  commercialPhase: null,
-                  closureOutcome: null,
-                  lastReviewedAt: now.toISOString(),
-                  lastReviewedByUserId: actorUserId,
-                },
-              },
-              updatedAt: now,
-            })
-            .where(
-              and(
-                eq(industrialRequirements.id, requirement.id),
-                eq(industrialRequirements.tenantId, tenant.id),
-              ),
-            );
-        }
-      }
-
-      await db.insert(industrialAuditLogs).values({
-        tenantId: tenant.id,
-        actorUserId,
-        action: "industrial_quote.status_updated",
-        entityType: "industrial_quote",
-        entityId: updated.id,
-        reason: parsed.data.reason,
-        previousValue: { status: quote.status },
-        nextValue: {
-          status: updated.status,
-          issuedAt: updated.issuedAt,
-          respondedAt: updated.respondedAt,
-        },
-        metadata: {
-          referenceCode: updated.referenceCode,
-          requirementId: updated.requirementId,
-        },
-      });
-
-      const [factory, catalogItem] = await Promise.all([
-        updated.factoryId
-          ? db.query.industrialFactories.findFirst({
-              where: and(
-                eq(industrialFactories.id, updated.factoryId),
-                eq(industrialFactories.tenantId, tenant.id),
-              ),
-            })
-          : Promise.resolve(null),
-        updated.catalogItemId
-          ? db.query.industrialCatalogItems.findFirst({
-              where: and(
-                eq(industrialCatalogItems.id, updated.catalogItemId),
-                eq(industrialCatalogItems.tenantId, tenant.id),
-              ),
-            })
-          : Promise.resolve(null),
-      ]);
-      return res.json({
-        ok: true,
-        quote: staffQuoteSummary(updated, requirement, factory, catalogItem),
-      });
-    } catch {
-      return res.status(500).json({
-        ok: false,
-        message: "The industrial quotation status could not be updated.",
-      });
-    }
-  },
+  retiredLegacyCommercialWrite,
 );
 
 router.post(
   "/admin/quotes/:quoteId/orders",
   ensureTenantStaff,
-  async (req: any, res) => {
-    const tenant = resolveExportunityTenant(req, res);
-    if (!tenant) return;
-
-    const quoteId = String(req.params?.quoteId || "").trim();
-    if (!z.string().uuid().safeParse(quoteId).success) {
-      return res
-        .status(400)
-        .json({ ok: false, message: "Invalid quotation identifier." });
-    }
-    const parsed = industrialOrderCreateSchema.safeParse(req.body || {});
-    if (!parsed.success) {
-      return res.status(400).json({
-        ok: false,
-        message:
-          "A human confirmation and a documented reason are required before creating an industrial order.",
-        issues: parsed.error.flatten(),
-      });
-    }
-    const plannedDeliveryAt = parseOptionalDate(
-      parsed.data.plannedDeliveryAt || null,
-    );
-    if (parsed.data.plannedDeliveryAt && !plannedDeliveryAt) {
-      return res.status(400).json({
-        ok: false,
-        message: "The planned delivery date is not valid.",
-      });
-    }
-
-    try {
-      const [quote, existingOrder] = await Promise.all([
-        db.query.industrialQuotes.findFirst({
-          where: and(
-            eq(industrialQuotes.id, quoteId),
-            eq(industrialQuotes.tenantId, tenant.id),
-          ),
-        }),
-        db.query.industrialOrders.findFirst({
-          where: and(
-            eq(industrialOrders.quoteId, quoteId),
-            eq(industrialOrders.tenantId, tenant.id),
-          ),
-        }),
-      ]);
-      if (!quote)
-        return res
-          .status(404)
-          .json({ ok: false, message: "Industrial quotation not found." });
-      if (quote.status !== "accepted") {
-        return res.status(400).json({
-          ok: false,
-          message:
-            "Only a recorded accepted quotation can be converted into an industrial order.",
-        });
-      }
-      if (existingOrder) {
-        return res.status(409).json({
-          ok: false,
-          message:
-            "This accepted quotation already has a tracked industrial order.",
-          orderId: existingOrder.id,
-        });
-      }
-
-      const [requirement, factory, catalogItem] = await Promise.all([
-        db.query.industrialRequirements.findFirst({
-          where: and(
-            eq(industrialRequirements.id, quote.requirementId),
-            eq(industrialRequirements.tenantId, tenant.id),
-          ),
-        }),
-        quote.factoryId
-          ? db.query.industrialFactories.findFirst({
-              where: and(
-                eq(industrialFactories.id, quote.factoryId),
-                eq(industrialFactories.tenantId, tenant.id),
-              ),
-            })
-          : Promise.resolve(null),
-        quote.catalogItemId
-          ? db.query.industrialCatalogItems.findFirst({
-              where: and(
-                eq(industrialCatalogItems.id, quote.catalogItemId),
-                eq(industrialCatalogItems.tenantId, tenant.id),
-              ),
-            })
-          : Promise.resolve(null),
-      ]);
-      if (!requirement)
-        return res.status(409).json({
-          ok: false,
-          message: "The source industrial requirement is no longer available.",
-        });
-
-      const now = new Date();
-      const actorUserId = actorIdFor(req);
-      const [order] = await db
-        .insert(industrialOrders)
-        .values({
-          tenantId: tenant.id,
-          quoteId: quote.id,
-          requirementId: quote.requirementId,
-          factoryId: quote.factoryId,
-          catalogItemId: quote.catalogItemId,
-          referenceCode: makeReference("ORD"),
-          status: "confirmed",
-          currencyCode: quote.currencyCode,
-          totalAmount:
-            quote.totalAmount === null || quote.totalAmount === undefined
-              ? null
-              : String(quote.totalAmount),
-          lineItems: Array.isArray(quote.lineItems) ? quote.lineItems : [],
-          commercialTerms: quote.commercialTerms,
-          internalNotes: parsed.data.confirmationNote,
-          sourceQuoteSnapshot: {
-            quoteReferenceCode: quote.referenceCode,
-            quoteStatus: quote.status,
-            totalAmount:
-              quote.totalAmount === null || quote.totalAmount === undefined
-                ? null
-                : String(quote.totalAmount),
-            currencyCode: quote.currencyCode,
-            leadTimeText: quote.leadTimeText,
-            validUntil: quote.validUntil
-              ? new Date(quote.validUntil).toISOString()
-              : null,
-            issuedAt: quote.issuedAt
-              ? new Date(quote.issuedAt).toISOString()
-              : null,
-            acceptedAt: quote.respondedAt
-              ? new Date(quote.respondedAt).toISOString()
-              : null,
-          },
-          visibility: "parties_to_transaction",
-          confirmedByUserId: actorUserId,
-          confirmedAt: now,
-          plannedDeliveryAt,
-          createdByUserId: actorUserId,
-          updatedByUserId: actorUserId,
-        })
-        .onConflictDoNothing({
-          target: [industrialOrders.tenantId, industrialOrders.quoteId],
-        })
-        .returning();
-
-      if (!order) {
-        return res.status(409).json({
-          ok: false,
-          message:
-            "This accepted quotation already has a tracked industrial order.",
-        });
-      }
-      await db.insert(industrialAuditLogs).values({
-        tenantId: tenant.id,
-        actorUserId,
-        action: "industrial_order.confirmed_from_accepted_quote",
-        entityType: "industrial_order",
-        entityId: order.id,
-        reason: parsed.data.confirmationNote,
-        nextValue: {
-          status: order.status,
-          quoteId: quote.id,
-          requirementId: quote.requirementId,
-        },
-        metadata: {
-          orderReferenceCode: order.referenceCode,
-          quoteReferenceCode: quote.referenceCode,
-          factoryId: quote.factoryId,
-          catalogItemId: quote.catalogItemId,
-        },
-      });
-      return res.status(201).json({
-        ok: true,
-        order: staffOrderSummary(
-          order,
-          quote,
-          requirement,
-          factory,
-          catalogItem,
-        ),
-      });
-    } catch {
-      return res.status(500).json({
-        ok: false,
-        message: "The industrial order could not be created.",
-      });
-    }
-  },
+  retiredLegacyCommercialWrite,
 );
 
 router.get("/admin/orders", ensureTenantStaff, async (req: any, res) => {
@@ -13424,7 +13393,18 @@ router.get(
         return res
           .status(404)
           .json({ ok: false, message: "Industrial order not found." });
-      const [quote, requirement, factory, catalogItem, audit] =
+      const [
+        quote,
+        requirement,
+        factory,
+        catalogItem,
+        audit,
+        fulfillment,
+        procurementAuthorization,
+        supplierPurchaseOrderPackage,
+        deliveryAccounting,
+        relationshipContinuity,
+      ] =
         await Promise.all([
           db.query.industrialQuotes.findFirst({
             where: and(
@@ -13466,6 +13446,23 @@ router.get(
             )
             .orderBy(desc(industrialAuditLogs.createdAt))
             .limit(30),
+          loadIndustrialFulfillment({ tenantId: tenant.id, orderId: order.id }),
+          loadIndustrialProcurementAuthorization({
+            tenantId: tenant.id,
+            orderId: order.id,
+          }),
+          loadIndustrialSupplierPurchaseOrderPackage({
+            tenantId: tenant.id,
+            orderId: order.id,
+          }),
+          loadIndustrialDeliveryAccounting({
+            tenantId: tenant.id,
+            orderId: order.id,
+          }),
+          loadIndustrialRelationshipContinuity({
+            tenantId: tenant.id,
+            orderId: order.id,
+          }),
         ]);
       return res.json({
         ok: true,
@@ -13476,6 +13473,21 @@ router.get(
           factory,
           catalogItem,
         ),
+        fulfillment: staffIndustrialFulfillmentSummary(fulfillment),
+        procurementAuthorization:
+          staffIndustrialProcurementAuthorizationSummary(
+            procurementAuthorization,
+          ),
+        supplierPurchaseOrderPackage:
+          staffIndustrialSupplierPurchaseOrderPackageSummary(
+            supplierPurchaseOrderPackage,
+          ),
+        deliveryAccounting:
+          staffIndustrialDeliveryAccountingSummary(deliveryAccounting),
+        relationshipContinuity:
+          staffIndustrialRelationshipContinuitySummary(
+            relationshipContinuity,
+          ),
         audit,
       });
     } catch {
@@ -13483,6 +13495,1084 @@ router.get(
         ok: false,
         message: "The industrial order is temporarily unavailable.",
       });
+    }
+  },
+);
+
+router.post(
+  "/admin/orders/:orderId/fulfillment/initialize",
+  ensureTenantStaff,
+  async (req: any, res) => {
+    const tenant = resolveExportunityTenant(req, res);
+    if (!tenant) return;
+    const orderId = String(req.params?.orderId || "").trim();
+    const parsed = industrialFulfillmentInitializeSchema.safeParse(req.body || {});
+    if (!z.string().uuid().safeParse(orderId).success || !parsed.success) {
+      return res.status(400).json({
+        ok: false,
+        message: "A paid industrial order, fulfillment kind, and documented reason are required.",
+        issues: parsed.success ? undefined : parsed.error.flatten(),
+      });
+    }
+    try {
+      const [row] = await db
+        .select({ order: industrialOrders, requirement: industrialRequirements })
+        .from(industrialOrders)
+        .innerJoin(
+          industrialRequirements,
+          and(
+            eq(industrialRequirements.id, industrialOrders.requirementId),
+            eq(industrialRequirements.tenantId, industrialOrders.tenantId),
+          ),
+        )
+        .where(
+          and(
+            eq(industrialOrders.id, orderId),
+            eq(industrialOrders.tenantId, tenant.id),
+          ),
+        )
+        .limit(1);
+      if (!row?.order) {
+        return res.status(404).json({ ok: false, message: "Industrial order not found." });
+      }
+      if (row.order.paymentStatus !== "paid") {
+        return res.status(409).json({
+          ok: false,
+          code: "industrial_fulfillment_payment_required",
+          message: "Verified customer payment is required before fulfillment is initialized.",
+        });
+      }
+      const actorUserId = actorIdFor(req);
+      const initialized = await ensureIndustrialFulfillmentPlan({
+        tenantId: tenant.id,
+        orderId,
+        paymentId: row.order.lastPaymentId || `verified-order:${orderId}`,
+        kind: parsed.data.kind,
+        publicEta: row.order.plannedDeliveryAt || null,
+        routeSnapshot: {
+          destinationCountryCode: row.requirement.deliveryCountryCode || null,
+          destinationCity: row.requirement.deliveryCity || null,
+          requirementReferenceCode: row.requirement.referenceCode,
+        },
+        actorUserId,
+      });
+      if (initialized.created) {
+        await db.insert(industrialAuditLogs).values({
+          tenantId: tenant.id,
+          actorUserId,
+          action: "industrial_fulfillment.initialized",
+          entityType: "industrial_fulfillment_plan",
+          entityId: initialized.plan.id,
+          reason: parsed.data.reason,
+          nextValue: {
+            orderId,
+            status: initialized.plan.status,
+            kind: initialized.plan.kind,
+            trackingCode: initialized.plan.trackingCode,
+          },
+          metadata: {
+            externalActionsStarted: false,
+            providerBookingsCreated: false,
+          },
+        });
+      }
+      const fulfillment = await loadIndustrialFulfillment({
+        tenantId: tenant.id,
+        orderId,
+      });
+      return res.status(initialized.created ? 201 : 200).json({
+        ok: true,
+        created: initialized.created,
+        fulfillment: staffIndustrialFulfillmentSummary(fulfillment),
+        message:
+          "Fulfillment is tracked internally. No supplier, carrier, customs, or delivery provider was contacted or booked.",
+      });
+    } catch (error) {
+      return industrialFulfillmentErrorResponse(
+        res,
+        error,
+        "The industrial fulfillment plan could not be initialized.",
+      );
+    }
+  },
+);
+
+router.post(
+  "/admin/orders/:orderId/procurement/prepare",
+  ensureTenantStaff,
+  async (req: any, res) => {
+    const tenant = resolveExportunityTenant(req, res);
+    if (!tenant) return;
+    const orderId = String(req.params?.orderId || "").trim();
+    const actorUserId =
+      actorIdFor(req, "staffUser") || actorIdFor(req, "adminUser");
+    if (!z.string().uuid().safeParse(orderId).success || !actorUserId) {
+      return res.status(400).json({
+        ok: false,
+        message:
+          "A valid paid industrial order and accountable staff user are required.",
+      });
+    }
+    try {
+      const result = await prepareIndustrialProcurementAuthorization({
+        tenantId: tenant.id,
+        orderId,
+        actorUserId,
+        preparationReason: req.body?.reason,
+      });
+      return res.status(result.created ? 201 : 200).json({
+        ok: true,
+        created: result.created,
+        procurementAuthorization:
+          staffIndustrialProcurementAuthorizationSummary(result.authorization),
+        controls: {
+          externalActionExecuted: false,
+          supplierContacted: false,
+          supplierCommitmentCreated: false,
+        },
+        message: result.created
+          ? "The exact internal procurement authorization is awaiting administrator approval. No supplier was contacted."
+          : "The current exact procurement authorization already exists. No supplier was contacted.",
+      });
+    } catch (error) {
+      return industrialProcurementErrorResponse(
+        res,
+        error,
+        "The procurement authorization could not be prepared.",
+      );
+    }
+  },
+);
+
+router.post(
+  "/admin/orders/:orderId/procurement/:authorizationId/approve",
+  ensureTenantAdmin,
+  async (req: any, res) => {
+    const tenant = resolveExportunityTenant(req, res);
+    if (!tenant) return;
+    const orderId = String(req.params?.orderId || "").trim();
+    const authorizationId = String(
+      req.params?.authorizationId || "",
+    ).trim();
+    const actorUserId =
+      actorIdFor(req, "adminUser") || actorIdFor(req, "staffUser");
+    if (
+      !z.string().uuid().safeParse(orderId).success ||
+      !z.string().uuid().safeParse(authorizationId).success ||
+      !actorUserId
+    ) {
+      return res.status(400).json({
+        ok: false,
+        message:
+          "A valid procurement authorization and administrator are required.",
+      });
+    }
+    try {
+      const result = await approveIndustrialProcurementAuthorization({
+        tenantId: tenant.id,
+        orderId,
+        authorizationId,
+        actorUserId,
+        approval: req.body,
+      });
+      return res.json({
+        ok: true,
+        approved: result.approved,
+        procurementAuthorization:
+          staffIndustrialProcurementAuthorizationSummary(result.authorization),
+        controls: {
+          externalActionExecuted: false,
+          supplierContacted: false,
+          supplierCommitmentCreated: false,
+        },
+        message: result.approved
+          ? "Internal procurement was released from exact paid-order evidence. Supplier contact and purchase-order submission remain separate."
+          : "This exact internal procurement release was already approved. No supplier action was executed.",
+      });
+    } catch (error) {
+      return industrialProcurementErrorResponse(
+        res,
+        error,
+        "The procurement authorization could not be approved.",
+      );
+    }
+  },
+);
+
+router.post(
+  "/admin/orders/:orderId/procurement/purchase-order-package/prepare",
+  ensureTenantStaff,
+  async (req: any, res) => {
+    const tenant = resolveExportunityTenant(req, res);
+    if (!tenant) return;
+    const orderId = String(req.params?.orderId || "").trim();
+    const actorUserId =
+      actorIdFor(req, "staffUser") || actorIdFor(req, "adminUser");
+    if (!z.string().uuid().safeParse(orderId).success || !actorUserId) {
+      return res.status(400).json({
+        ok: false,
+        message:
+          "A valid industrial order and accountable staff user are required.",
+      });
+    }
+    try {
+      const result = await prepareIndustrialSupplierPurchaseOrderPackage({
+        tenantId: tenant.id,
+        orderId,
+        actorUserId,
+        preparationReason: req.body?.reason,
+      });
+      return res.status(result.created ? 201 : 200).json({
+        ok: true,
+        created: result.created,
+        supplierPurchaseOrderPackage:
+          staffIndustrialSupplierPurchaseOrderPackageSummary(result.package),
+        controls: {
+          externalActionExecuted: false,
+          transmittedToSupplier: false,
+          supplierAccepted: false,
+          externalPurchaseOrderReference: null,
+        },
+        message: result.created
+          ? "The exact supplier purchase-order package is awaiting administrator approval. It has not been transmitted to the supplier."
+          : "The current exact supplier purchase-order package already exists. It has not been transmitted to the supplier.",
+      });
+    } catch (error) {
+      return industrialSupplierPurchaseOrderErrorResponse(
+        res,
+        error,
+        "The supplier purchase-order package could not be prepared.",
+      );
+    }
+  },
+);
+
+router.post(
+  "/admin/orders/:orderId/procurement/purchase-order-package/:packageId/approve",
+  ensureTenantAdmin,
+  async (req: any, res) => {
+    const tenant = resolveExportunityTenant(req, res);
+    if (!tenant) return;
+    const orderId = String(req.params?.orderId || "").trim();
+    const packageId = String(req.params?.packageId || "").trim();
+    const actorUserId =
+      actorIdFor(req, "adminUser") || actorIdFor(req, "staffUser");
+    if (
+      !z.string().uuid().safeParse(orderId).success ||
+      !z.string().uuid().safeParse(packageId).success ||
+      !actorUserId
+    ) {
+      return res.status(400).json({
+        ok: false,
+        message:
+          "A valid supplier purchase-order package and administrator are required.",
+      });
+    }
+    try {
+      const result = await approveIndustrialSupplierPurchaseOrderPackage({
+        tenantId: tenant.id,
+        orderId,
+        packageId,
+        actorUserId,
+        approval: req.body,
+      });
+      return res.json({
+        ok: true,
+        approved: result.approved,
+        supplierPurchaseOrderPackage:
+          staffIndustrialSupplierPurchaseOrderPackageSummary(result.package),
+        controls: {
+          externalActionExecuted: false,
+          transmittedToSupplier: false,
+          supplierAccepted: false,
+          externalPurchaseOrderReference: null,
+        },
+        message: result.approved
+          ? "The exact package is approved internally for a future governed submission. It has not been transmitted or accepted by the supplier."
+          : "This exact package was already approved internally. It has not been transmitted or accepted by the supplier.",
+      });
+    } catch (error) {
+      return industrialSupplierPurchaseOrderErrorResponse(
+        res,
+        error,
+        "The supplier purchase-order package could not be approved.",
+      );
+    }
+  },
+);
+
+router.post(
+  "/admin/orders/:orderId/accounting/actual-costs",
+  ensureTenantStaff,
+  async (req: any, res) => {
+    const tenant = resolveExportunityTenant(req, res);
+    if (!tenant) return;
+    const orderId = String(req.params?.orderId || "").trim();
+    const actorUserId = actorIdFor(req, "staffUser") || actorIdFor(req, "adminUser");
+    const parsed = industrialActualCostSchema.safeParse(req.body || {});
+    if (
+      !z.string().uuid().safeParse(orderId).success ||
+      !actorUserId ||
+      !parsed.success
+    ) {
+      return res.status(400).json({
+        ok: false,
+        message:
+          "A valid exact actual-cost entry, attributable evidence, and accountable staff user are required.",
+        issues: parsed.success ? undefined : parsed.error.flatten(),
+      });
+    }
+    try {
+      const result = await recordIndustrialActualCost({
+        tenantId: tenant.id,
+        orderId,
+        actorUserId,
+        entry: parsed.data,
+      });
+      const accounting = await loadIndustrialDeliveryAccounting({
+        tenantId: tenant.id,
+        orderId,
+      });
+      return res.status(result.created ? 201 : 200).json({
+        ok: true,
+        created: result.created,
+        deliveryAccounting: staffIndustrialDeliveryAccountingSummary(accounting),
+        controls: {
+          exactMinorUnits: true,
+          immutableEvidence: true,
+          privateFinancialEvidence: true,
+          externalAccountingPosted: false,
+        },
+        message: result.created
+          ? "The private exact actual cost was recorded as immutable evidence. No external accounting journal was posted."
+          : "This immutable exact actual-cost evidence already exists. No external accounting journal was posted.",
+      });
+    } catch (error) {
+      return industrialDeliveryAccountingErrorResponse(
+        res,
+        error,
+        "The actual-cost evidence could not be recorded.",
+      );
+    }
+  },
+);
+
+router.post(
+  "/admin/orders/:orderId/accounting/recognition/prepare",
+  ensureTenantStaff,
+  async (req: any, res) => {
+    const tenant = resolveExportunityTenant(req, res);
+    if (!tenant) return;
+    const orderId = String(req.params?.orderId || "").trim();
+    const actorUserId = actorIdFor(req, "staffUser") || actorIdFor(req, "adminUser");
+    const parsed = industrialRevenueRecognitionPrepareSchema.safeParse(req.body || {});
+    if (
+      !z.string().uuid().safeParse(orderId).success ||
+      !actorUserId ||
+      !parsed.success
+    ) {
+      return res.status(400).json({
+        ok: false,
+        message:
+          "A delivered industrial order, complete actual-cost ledger, and documented preparation reason are required.",
+        issues: parsed.success ? undefined : parsed.error.flatten(),
+      });
+    }
+    try {
+      const result = await prepareIndustrialRevenueRecognition({
+        tenantId: tenant.id,
+        orderId,
+        actorUserId,
+        preparationReason: parsed.data.reason,
+      });
+      const accounting = await loadIndustrialDeliveryAccounting({
+        tenantId: tenant.id,
+        orderId,
+      });
+      return res.status(result.created ? 201 : 200).json({
+        ok: true,
+        created: result.created,
+        deliveryAccounting: staffIndustrialDeliveryAccountingSummary(accounting),
+        controls: {
+          deliveryBound: true,
+          exactMinorUnits: true,
+          privateFinancialEvidence: true,
+          externalJournalPosted: false,
+        },
+        message:
+          "The exact delivery-bound revenue and margin proposal is awaiting administrator approval. No external journal was posted.",
+      });
+    } catch (error) {
+      return industrialDeliveryAccountingErrorResponse(
+        res,
+        error,
+        "Revenue recognition could not be prepared.",
+      );
+    }
+  },
+);
+
+router.post(
+  "/admin/orders/:orderId/accounting/recognition/:recognitionId/approve",
+  ensureTenantAdmin,
+  async (req: any, res) => {
+    const tenant = resolveExportunityTenant(req, res);
+    if (!tenant) return;
+    const orderId = String(req.params?.orderId || "").trim();
+    const recognitionId = String(req.params?.recognitionId || "").trim();
+    const actorUserId = actorIdFor(req, "adminUser") || actorIdFor(req, "staffUser");
+    if (
+      !z.string().uuid().safeParse(orderId).success ||
+      !z.string().uuid().safeParse(recognitionId).success ||
+      !actorUserId
+    ) {
+      return res.status(400).json({
+        ok: false,
+        message:
+          "A valid delivery-bound recognition proposal and administrator are required.",
+      });
+    }
+    try {
+      const result = await approveIndustrialRevenueRecognition({
+        tenantId: tenant.id,
+        orderId,
+        recognitionId,
+        actorUserId,
+        approval: req.body,
+      });
+      const [accounting, relationshipContinuity] = await Promise.all([
+        loadIndustrialDeliveryAccounting({
+          tenantId: tenant.id,
+          orderId,
+        }),
+        loadIndustrialRelationshipContinuity({
+          tenantId: tenant.id,
+          orderId,
+        }),
+      ]);
+      return res.json({
+        ok: true,
+        recognized: result.recognized,
+        deliveryAccounting: staffIndustrialDeliveryAccountingSummary(accounting),
+        relationshipContinuity:
+          staffIndustrialRelationshipContinuitySummary(
+            relationshipContinuity,
+          ),
+        controls: {
+          deliveryBound: true,
+          exactMinorUnits: true,
+          privateFinancialEvidence: true,
+          externalJournalPosted: false,
+          relationshipMemoryRecorded: true,
+          externalCommunicationAuthorized: false,
+        },
+        message: result.recognized
+          ? "Revenue and actual gross margin were recognized internally, and immutable customer/supplier relationship memory was recorded. No external journal or message was created."
+          : "This exact delivery-bound recognition and relationship memory already exist. No external journal or message was created.",
+      });
+    } catch (error) {
+      return industrialDeliveryAccountingErrorResponse(
+        res,
+        error,
+        "Revenue recognition could not be approved.",
+      );
+    }
+  },
+);
+
+router.post(
+  "/admin/orders/:orderId/relationship-continuity/:reviewId/approve",
+  ensureTenantAdmin,
+  async (req: any, res) => {
+    const tenant = resolveExportunityTenant(req, res);
+    if (!tenant) return;
+    const orderId = String(req.params?.orderId || "").trim();
+    const reviewId = String(req.params?.reviewId || "").trim();
+    const actorUserId = actorIdFor(req, "adminUser") || actorIdFor(req, "staffUser");
+    if (
+      !z.string().uuid().safeParse(orderId).success ||
+      !z.string().uuid().safeParse(reviewId).success ||
+      !actorUserId
+    ) {
+      return res.status(400).json({
+        ok: false,
+        message:
+          "A valid delivered order, relationship review, and administrator are required.",
+      });
+    }
+    try {
+      const result = await approveIndustrialRelationshipContinuity({
+        tenantId: tenant.id,
+        orderId,
+        reviewId,
+        actorUserId,
+        approval: req.body,
+      });
+      const relationshipContinuity =
+        await loadIndustrialRelationshipContinuity({
+          tenantId: tenant.id,
+          orderId,
+        });
+      return res.json({
+        ok: true,
+        approved: result.approved,
+        relationshipContinuity:
+          staffIndustrialRelationshipContinuitySummary(
+            relationshipContinuity,
+          ),
+        controls: {
+          internalReviewOnly: true,
+          privateFinancialEvidence: true,
+          externalCommunicationAuthorized: false,
+          externalCommunicationExecuted: false,
+        },
+        message: result.approved
+          ? "The internal relationship review date was approved from immutable delivered-transaction memory. No customer or supplier message was sent."
+          : "This internal relationship continuity plan was already approved. No customer or supplier message was sent.",
+      });
+    } catch (error) {
+      return industrialRelationshipContinuityErrorResponse(
+        res,
+        error,
+        "The internal relationship continuity plan could not be approved.",
+      );
+    }
+  },
+);
+
+router.put(
+  "/admin/orders/:orderId/fulfillment/services/:serviceType",
+  ensureTenantStaff,
+  async (req: any, res) => {
+    const tenant = resolveExportunityTenant(req, res);
+    if (!tenant) return;
+    const orderId = String(req.params?.orderId || "").trim();
+    const serviceType = z
+      .enum(INDUSTRIAL_FULFILLMENT_SERVICE_TYPES)
+      .safeParse(String(req.params?.serviceType || "").trim());
+    const parsed = industrialFulfillmentServiceConfigureSchema.safeParse(req.body || {});
+    if (
+      !z.string().uuid().safeParse(orderId).success ||
+      !serviceType.success ||
+      !parsed.success
+    ) {
+      return res.status(400).json({
+        ok: false,
+        message: "A valid fulfillment service configuration and reason are required.",
+        issues: parsed.success ? undefined : parsed.error.flatten(),
+      });
+    }
+    const scheduledStartAt = parseOptionalDate(parsed.data.scheduledStartAt || null);
+    const scheduledEndAt = parseOptionalDate(parsed.data.scheduledEndAt || null);
+    if (
+      (parsed.data.scheduledStartAt && !scheduledStartAt) ||
+      (parsed.data.scheduledEndAt && !scheduledEndAt)
+    ) {
+      return res.status(400).json({ ok: false, message: "A service schedule date is invalid." });
+    }
+    if (
+      parsed.data.quotedCost !== null &&
+      parsed.data.quotedCost !== undefined &&
+      !parsed.data.currencyCode
+    ) {
+      return res.status(400).json({
+        ok: false,
+        message: "A three-letter currency is required with a private provider cost.",
+      });
+    }
+    try {
+      if (parsed.data.linkedDeliveryOrderId) {
+        const [delivery] = await db
+          .select()
+          .from(deliveryOrders)
+          .where(eq(deliveryOrders.id, parsed.data.linkedDeliveryOrderId))
+          .limit(1);
+        const metadata = safeRecord(delivery?.metadata);
+        if (
+          !delivery ||
+          Number(metadata.tenantId || 0) !== tenant.id ||
+          String(metadata.industrialOrderId || "") !== orderId ||
+          (parsed.data.linkedDeliveryReference &&
+            delivery.orderId !== parsed.data.linkedDeliveryReference)
+        ) {
+          return res.status(409).json({
+            ok: false,
+            code: "industrial_fulfillment_delivery_link_invalid",
+            message: "The delivery job is not a tenant-scoped job created for this industrial order.",
+          });
+        }
+      }
+      const actorUserId = actorIdFor(req);
+      const result = await configureIndustrialFulfillmentService({
+        tenantId: tenant.id,
+        orderId,
+        serviceType: serviceType.data,
+        providerKind: parsed.data.providerKind,
+        providerName: parsed.data.providerName,
+        providerReference: parsed.data.providerReference,
+        externalReference: parsed.data.externalReference,
+        publicLabel: parsed.data.publicLabel,
+        quotedCost:
+          parsed.data.quotedCost === null || parsed.data.quotedCost === undefined
+            ? null
+            : String(parsed.data.quotedCost),
+        currencyCode: parsed.data.currencyCode,
+        linkedDeliveryOrderId: parsed.data.linkedDeliveryOrderId,
+        linkedDeliveryReference: parsed.data.linkedDeliveryReference,
+        scheduledStartAt,
+        scheduledEndAt,
+        internalNotes: parsed.data.internalNotes,
+        reason: parsed.data.reason,
+        actorUserId,
+      });
+      await db.insert(industrialAuditLogs).values({
+        tenantId: tenant.id,
+        actorUserId,
+        action: "industrial_fulfillment.service_configured",
+        entityType: "industrial_fulfillment_service",
+        entityId: result.service.id,
+        reason: parsed.data.reason,
+        previousValue: {
+          status: result.previous.status,
+          providerKind: result.previous.providerKind,
+          providerName: result.previous.providerName,
+        },
+        nextValue: {
+          status: result.service.status,
+          providerKind: result.service.providerKind,
+          providerName: result.service.providerName,
+          linkedDeliveryReference: result.service.linkedDeliveryReference,
+        },
+        metadata: {
+          orderId,
+          serviceType: serviceType.data,
+          quotedCostPrivate: true,
+          externalActionExecuted: false,
+          providerBookingExecuted: false,
+        },
+      });
+      return res.json({
+        ok: true,
+        service: result.service,
+        message:
+          "The service record was configured. No external provider action or booking was executed.",
+      });
+    } catch (error) {
+      return industrialFulfillmentErrorResponse(
+        res,
+        error,
+        "The fulfillment service could not be configured.",
+      );
+    }
+  },
+);
+
+router.post(
+  "/admin/orders/:orderId/fulfillment/last-mile-job",
+  ensureTenantStaff,
+  async (req: any, res) => {
+    const tenant = resolveExportunityTenant(req, res);
+    if (!tenant) return;
+    const orderId = String(req.params?.orderId || "").trim();
+    const parsed = industrialLastMileJobSchema.safeParse(req.body || {});
+    if (!z.string().uuid().safeParse(orderId).success || !parsed.success) {
+      return res.status(400).json({
+        ok: false,
+        message: "A confirmed, fully specified last-mile delivery job is required.",
+        issues: parsed.success ? undefined : parsed.error.flatten(),
+      });
+    }
+    const scheduledPickupTime = parseOptionalDate(
+      parsed.data.scheduledPickupTime || null,
+    );
+    if (parsed.data.scheduledPickupTime && !scheduledPickupTime) {
+      return res.status(400).json({
+        ok: false,
+        message: "The scheduled pickup time is invalid.",
+      });
+    }
+    try {
+      const [order] = await db
+        .select()
+        .from(industrialOrders)
+        .where(
+          and(
+            eq(industrialOrders.id, orderId),
+            eq(industrialOrders.tenantId, tenant.id),
+          ),
+        )
+        .limit(1);
+      if (!order) {
+        return res.status(404).json({ ok: false, message: "Industrial order not found." });
+      }
+      if (order.paymentStatus !== "paid") {
+        return res.status(409).json({
+          ok: false,
+          code: "industrial_fulfillment_payment_required",
+          message: "Verified payment is required before creating a last-mile job.",
+        });
+      }
+      const fulfillment = await loadIndustrialFulfillment({ tenantId: tenant.id, orderId });
+      if (!fulfillment) {
+        return res.status(409).json({
+          ok: false,
+          code: "industrial_fulfillment_not_found",
+          message: "Initialize the industrial fulfillment plan first.",
+        });
+      }
+      const lastMile = fulfillment.services.find(
+        (service) => service.serviceType === "last_mile",
+      );
+      if (!lastMile) {
+        return res.status(409).json({
+          ok: false,
+          message: "The last-mile service slot is unavailable.",
+        });
+      }
+      if (lastMile.linkedDeliveryOrderId && lastMile.linkedDeliveryReference) {
+        const [existingDelivery] = await db
+          .select()
+          .from(deliveryOrders)
+          .where(eq(deliveryOrders.id, lastMile.linkedDeliveryOrderId))
+          .limit(1);
+        const existingMetadata = safeRecord(existingDelivery?.metadata);
+        if (
+          existingDelivery &&
+          Number(existingMetadata.tenantId || 0) === tenant.id &&
+          String(existingMetadata.industrialOrderId || "") === order.id
+        ) {
+          return res.json({
+            ok: true,
+            created: false,
+            deliveryJob: {
+              id: existingDelivery.id,
+              referenceCode: existingDelivery.orderId,
+              status: existingDelivery.status,
+            },
+            service: lastMile,
+            message: "The tenant-scoped last-mile delivery job already exists.",
+          });
+        }
+        return res.status(409).json({
+          ok: false,
+          code: "industrial_fulfillment_delivery_link_invalid",
+          message: "The stored last-mile link no longer resolves to this tenant and order.",
+        });
+      }
+      const declaredValue = Number(order.totalAmount);
+      if (!Number.isFinite(declaredValue) || declaredValue <= 0) {
+        return res.status(409).json({
+          ok: false,
+          message: "The industrial order must have a valid declared value.",
+        });
+      }
+      const externalOrderId = `DEL-${fulfillment.plan.trackingCode.replace(/^EXF-/, "")}`;
+      const actorUserId = actorIdFor(req);
+      const delivery = await deliveryService.createOrder({
+        externalOrderId,
+        orderValue: declaredValue,
+        deliveryFee: parsed.data.deliveryFee,
+        pickupAddress: parsed.data.pickupAddress,
+        pickupLatitude: parsed.data.pickupLatitude,
+        pickupLongitude: parsed.data.pickupLongitude,
+        pickupContactName: parsed.data.pickupContactName || undefined,
+        pickupContactPhone: parsed.data.pickupContactPhone || undefined,
+        pickupInstructions: parsed.data.pickupInstructions || undefined,
+        dropoffAddress: parsed.data.dropoffAddress,
+        dropoffLatitude: parsed.data.dropoffLatitude,
+        dropoffLongitude: parsed.data.dropoffLongitude,
+        dropoffContactName: parsed.data.dropoffContactName || undefined,
+        dropoffContactPhone: parsed.data.dropoffContactPhone || undefined,
+        dropoffInstructions: parsed.data.dropoffInstructions || undefined,
+        packageDescription: parsed.data.packageDescription || undefined,
+        packageWeight: parsed.data.packageWeight || undefined,
+        packageSize: parsed.data.packageSize || undefined,
+        isFragile: parsed.data.isFragile,
+        requiresSignature: parsed.data.requiresSignature,
+        scheduledPickupTime: scheduledPickupTime || undefined,
+        metadata: {
+          tenantId: tenant.id,
+          industrialOrderId: order.id,
+          industrialFulfillmentPlanId: fulfillment.plan.id,
+          industrialTrackingCode: fulfillment.plan.trackingCode,
+          createdByUserId: actorUserId,
+          assignmentOffersCreated: false,
+          externalProviderActionExecuted: false,
+        },
+      });
+      const deliveryMetadata = safeRecord(delivery.metadata);
+      if (
+        Number(deliveryMetadata.tenantId || 0) !== tenant.id ||
+        String(deliveryMetadata.industrialOrderId || "") !== order.id
+      ) {
+        throw new IndustrialFulfillmentError(
+          "industrial_fulfillment_delivery_id_conflict",
+          "The deterministic delivery reference is already linked to another order.",
+        );
+      }
+      const configured = await configureIndustrialFulfillmentService({
+        tenantId: tenant.id,
+        orderId,
+        serviceType: "last_mile",
+        providerKind: "existing_delivery_network",
+        providerName: "Exportunity Delivery Network",
+        providerReference: delivery.orderId,
+        publicLabel: "Last-mile delivery",
+        quotedCost: String(parsed.data.deliveryFee),
+        currencyCode: order.currencyCode,
+        linkedDeliveryOrderId: delivery.id,
+        linkedDeliveryReference: delivery.orderId,
+        scheduledStartAt: scheduledPickupTime,
+        reason: parsed.data.reason,
+        actorUserId,
+      });
+      await db.insert(industrialAuditLogs).values({
+        tenantId: tenant.id,
+        actorUserId,
+        action: "industrial_fulfillment.last_mile_job_created",
+        entityType: "industrial_fulfillment_service",
+        entityId: configured.service.id,
+        reason: parsed.data.reason,
+        nextValue: {
+          status: configured.service.status,
+          deliveryOrderId: delivery.id,
+          deliveryReference: delivery.orderId,
+        },
+        metadata: {
+          orderId,
+          assignmentOffersCreated: false,
+          deliveryAgentAssigned: false,
+          externalProviderActionExecuted: false,
+        },
+      });
+      return res.status(201).json({
+        ok: true,
+        created: true,
+        deliveryJob: {
+          id: delivery.id,
+          referenceCode: delivery.orderId,
+          status: delivery.status,
+        },
+        service: configured.service,
+        message:
+          "A tenant-scoped delivery job was created in the existing delivery network. No agent offer or external booking was issued.",
+      });
+    } catch (error) {
+      return industrialFulfillmentErrorResponse(
+        res,
+        error,
+        "The last-mile delivery job could not be created.",
+      );
+    }
+  },
+);
+
+router.post(
+  "/admin/orders/:orderId/fulfillment/services/:serviceId/status",
+  ensureTenantStaff,
+  async (req: any, res) => {
+    const tenant = resolveExportunityTenant(req, res);
+    if (!tenant) return;
+    const orderId = String(req.params?.orderId || "").trim();
+    const serviceId = String(req.params?.serviceId || "").trim();
+    const parsed = industrialFulfillmentServiceStatusSchema.safeParse(req.body || {});
+    if (
+      !z.string().uuid().safeParse(orderId).success ||
+      !z.string().uuid().safeParse(serviceId).success ||
+      !parsed.success
+    ) {
+      return res.status(400).json({
+        ok: false,
+        message: "A valid fulfillment service transition and reason are required.",
+        issues: parsed.success ? undefined : parsed.error.flatten(),
+      });
+    }
+    try {
+      const actorUserId = actorIdFor(req);
+      const result = await transitionIndustrialFulfillmentService({
+        tenantId: tenant.id,
+        orderId,
+        serviceId,
+        status: parsed.data.status,
+        reason: parsed.data.reason,
+        humanConfirmed: parsed.data.humanConfirmed,
+        customerMessage: parsed.data.customerMessage,
+        performanceRating: parsed.data.performanceRating,
+        onTime: parsed.data.onTime,
+        issueCount: parsed.data.issueCount,
+        performanceNotes: parsed.data.performanceNotes,
+        actorUserId,
+      });
+      await db.insert(industrialAuditLogs).values({
+        tenantId: tenant.id,
+        actorUserId,
+        action: "industrial_fulfillment.service_status_recorded",
+        entityType: "industrial_fulfillment_service",
+        entityId: result.service.id,
+        reason: parsed.data.reason,
+        previousValue: { status: result.previous.status },
+        nextValue: { status: result.service.status },
+        metadata: {
+          orderId,
+          serviceType: result.service.serviceType,
+          externalActionExecuted: false,
+          existingExternalCommitmentRecorded:
+            result.service.status === "in_progress" &&
+            result.service.providerKind !== "internal_team",
+        },
+      });
+      return res.json({
+        ok: true,
+        service: result.service,
+        message:
+          "The real service state was recorded. This endpoint did not contact or book the provider.",
+      });
+    } catch (error) {
+      return industrialFulfillmentErrorResponse(
+        res,
+        error,
+        "The fulfillment service status could not be recorded.",
+      );
+    }
+  },
+);
+
+router.post(
+  "/admin/orders/:orderId/fulfillment/status",
+  ensureTenantStaff,
+  async (req: any, res) => {
+    const tenant = resolveExportunityTenant(req, res);
+    if (!tenant) return;
+    const orderId = String(req.params?.orderId || "").trim();
+    const parsed = industrialFulfillmentPlanStatusSchema.safeParse(req.body || {});
+    if (!z.string().uuid().safeParse(orderId).success || !parsed.success) {
+      return res.status(400).json({
+        ok: false,
+        message: "A valid fulfillment transition and documented reason are required.",
+        issues: parsed.success ? undefined : parsed.error.flatten(),
+      });
+    }
+    const publicEta =
+      parsed.data.publicEta === undefined
+        ? undefined
+        : parseOptionalDate(parsed.data.publicEta || null);
+    if (parsed.data.publicEta && !publicEta) {
+      return res.status(400).json({ ok: false, message: "The public ETA is invalid." });
+    }
+    try {
+      const actorUserId = actorIdFor(req);
+      const result = await transitionIndustrialFulfillmentPlan({
+        tenantId: tenant.id,
+        orderId,
+        status: parsed.data.status,
+        reason: parsed.data.reason,
+        customerMessage: parsed.data.customerMessage,
+        publicEta,
+        actorUserId,
+      });
+      await db.insert(industrialAuditLogs).values({
+        tenantId: tenant.id,
+        actorUserId,
+        action: "industrial_fulfillment.status_recorded",
+        entityType: "industrial_fulfillment_plan",
+        entityId: result.plan.id,
+        reason: parsed.data.reason,
+        previousValue: { status: result.previous.status },
+        nextValue: {
+          status: result.plan.status,
+          orderStatus: result.orderStatus,
+          publicEta: result.plan.publicEta,
+        },
+        metadata: { orderId, evidenceValidated: true },
+      });
+      const fulfillment = await loadIndustrialFulfillment({ tenantId: tenant.id, orderId });
+      return res.json({
+        ok: true,
+        fulfillment: staffIndustrialFulfillmentSummary(fulfillment),
+      });
+    } catch (error) {
+      return industrialFulfillmentErrorResponse(
+        res,
+        error,
+        "The fulfillment status could not be recorded.",
+      );
+    }
+  },
+);
+
+router.post(
+  "/admin/orders/:orderId/fulfillment/milestones",
+  ensureTenantStaff,
+  async (req: any, res) => {
+    const tenant = resolveExportunityTenant(req, res);
+    if (!tenant) return;
+    const orderId = String(req.params?.orderId || "").trim();
+    const parsed = industrialFulfillmentEventSchema.safeParse(req.body || {});
+    if (!z.string().uuid().safeParse(orderId).success || !parsed.success) {
+      return res.status(400).json({
+        ok: false,
+        message: "A valid, evidence-backed fulfillment milestone is required.",
+        issues: parsed.success ? undefined : parsed.error.flatten(),
+      });
+    }
+    const occurredAt = parseOptionalDate(parsed.data.occurredAt || null);
+    const deliveredAt = parseOptionalDate(parsed.data.proof.deliveredAt || null);
+    if (
+      (parsed.data.occurredAt && !occurredAt) ||
+      (parsed.data.proof.deliveredAt && !deliveredAt)
+    ) {
+      return res.status(400).json({ ok: false, message: "A milestone date is invalid." });
+    }
+    try {
+      const actorUserId = actorIdFor(req);
+      const result = await appendIndustrialFulfillmentEvent({
+        tenantId: tenant.id,
+        orderId,
+        idempotencyKey: parsed.data.idempotencyKey,
+        eventType: parsed.data.eventType,
+        title: parsed.data.title,
+        customerMessage: parsed.data.customerMessage,
+        internalNotes: parsed.data.internalNotes,
+        customerVisible: parsed.data.customerVisible,
+        evidence: parsed.data.evidence,
+        proof: {
+          ...parsed.data.proof,
+          ...(deliveredAt ? { deliveredAt: deliveredAt.toISOString() } : {}),
+        },
+        occurredAt: occurredAt || undefined,
+        actorUserId,
+      });
+      if (result.created) {
+        await db.insert(industrialAuditLogs).values({
+          tenantId: tenant.id,
+          actorUserId,
+          action: "industrial_fulfillment.milestone_recorded",
+          entityType: "industrial_fulfillment_event",
+          entityId: result.event.id,
+          reason: parsed.data.internalNotes || parsed.data.title,
+          nextValue: {
+            eventType: result.event.eventType,
+            customerVisible: result.event.customerVisible,
+            occurredAt: result.event.occurredAt,
+          },
+          metadata: {
+            orderId,
+            idempotencyKey: parsed.data.idempotencyKey,
+            immutable: true,
+          },
+        });
+      }
+      return res.status(result.created ? 201 : 200).json({
+        ok: true,
+        created: result.created,
+        event: result.event,
+      });
+    } catch (error) {
+      return industrialFulfillmentErrorResponse(
+        res,
+        error,
+        "The fulfillment milestone could not be recorded.",
+      );
     }
   },
 );
@@ -13530,6 +14620,19 @@ router.post(
         return res
           .status(404)
           .json({ ok: false, message: "Industrial order not found." });
+      const fulfillment = await loadIndustrialFulfillment({
+        tenantId: tenant.id,
+        orderId: order.id,
+      });
+      if (parsed.data.status !== order.status && (fulfillment || order.paymentStatus === "paid")) {
+        return res.status(409).json({
+          ok: false,
+          code: "industrial_order_status_managed_by_fulfillment",
+          message: fulfillment
+            ? "This paid order's status is controlled by its evidence-gated fulfillment plan."
+            : "Initialize the paid order's fulfillment plan before changing its operational status.",
+        });
+      }
       if (
         !canTransitionIndustrialOrder(
           order.status as any,

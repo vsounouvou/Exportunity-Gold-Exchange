@@ -1,5 +1,5 @@
 import type { Agent } from "@db/schema";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Pencil } from "lucide-react";
 
 type OrgChartTreeProps = {
@@ -51,6 +51,16 @@ export function OrgChartTree({ agents, onAgentClick }: OrgChartTreeProps) {
       .filter((a) => a.managerId == null || !agentIdSet.has(a.managerId))
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [agents, agentIdSet]);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    const frame = window.requestAnimationFrame(() => {
+      container.scrollLeft = Math.max(0, (container.scrollWidth - container.clientWidth) / 2);
+      container.scrollTop = 0;
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [agents]);
 
   const visited = new Set<number>();
 

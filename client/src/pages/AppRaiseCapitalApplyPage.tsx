@@ -61,39 +61,39 @@ export default function AppRaiseCapitalApplyPage() {
   });
 
   return (
-    <div className="min-h-screen bg-gray-950 pb-32 text-white">
+    <div data-testid="exportunity-raise-capital" className="min-h-screen bg-[#F7F8FA] pb-24 text-[#07111F]">
       <AppProTopBar subtitle="Raise capital" />
-      <main className="mx-auto w-full max-w-xl px-4 pb-4 pt-6">
-        <Card className="border-white/10 bg-white/5">
+      <main className="mx-auto w-full max-w-xl px-4 py-4">
+        <Card className="border-slate-200 bg-white shadow-sm">
           <CardContent className="p-5 space-y-4">
-            <div className="text-sm text-white/70">
+            <div className="rounded-xl border border-[#F5A623]/25 bg-[#FFF8E8] p-3 text-sm leading-6 text-slate-700">
               Raise capital request ties to controlled procurement and milestone releases (no cash diversion).
             </div>
             <div className="space-y-2">
-              <Label className="text-white/80">Company</Label>
-              <Input value={companyName} onChange={(e) => setCompanyName(e.target.value)} className="border-white/15 bg-black/30 text-white" />
+              <Label className="text-slate-700">Company</Label>
+              <Input value={companyName} onChange={(e) => setCompanyName(e.target.value)} className="border-slate-200 bg-white text-slate-950" />
             </div>
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
               <div className="space-y-2">
-                <Label className="text-white/80">Contact name</Label>
-                <Input value={name} onChange={(e) => setName(e.target.value)} className="border-white/15 bg-black/30 text-white" />
+                <Label className="text-slate-700">Contact name</Label>
+                <Input value={name} onChange={(e) => setName(e.target.value)} className="border-slate-200 bg-white text-slate-950" />
               </div>
               <div className="space-y-2">
-                <Label className="text-white/80">Contact email</Label>
-                <Input value={email} onChange={(e) => setEmail(e.target.value)} className="border-white/15 bg-black/30 text-white" />
+                <Label className="text-slate-700">Contact email</Label>
+                <Input value={email} onChange={(e) => setEmail(e.target.value)} className="border-slate-200 bg-white text-slate-950" />
               </div>
             </div>
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
               <div className="space-y-2">
-                <Label className="text-white/80">Country (optional)</Label>
-                <Input value={country} onChange={(e) => setCountry(e.target.value)} className="border-white/15 bg-black/30 text-white" />
+                <Label className="text-slate-700">Country (optional)</Label>
+                <Input value={country} onChange={(e) => setCountry(e.target.value)} className="border-slate-200 bg-white text-slate-950" />
               </div>
               <div className="space-y-2">
-                <Label className="text-white/80">Class</Label>
+                <Label className="text-slate-700">Class</Label>
                 <select
                   value={type}
                   onChange={(e) => setType(e.target.value)}
-                  className="h-10 w-full rounded-md border border-white/15 bg-black/30 px-3 text-sm text-white"
+                  className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-950"
                 >
                   <option value="sme">SME / Online shop</option>
                   <option value="farm">Farm / Production</option>
@@ -103,29 +103,29 @@ export default function AppRaiseCapitalApplyPage() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label className="text-white/80">Target amount (optional)</Label>
-              <Input value={amount} onChange={(e) => setAmount(e.target.value)} className="border-white/15 bg-black/30 text-white" placeholder="e.g. USD 120,000" />
+              <Label className="text-slate-700">Target amount (optional)</Label>
+              <Input value={amount} onChange={(e) => setAmount(e.target.value)} className="border-slate-200 bg-white text-slate-950" placeholder="e.g. USD 120,000" />
             </div>
             <div className="space-y-2">
-              <Label className="text-white/80">Message</Label>
+              <Label className="text-slate-700">Message</Label>
               <textarea
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
-                className="min-h-[110px] w-full rounded-md border border-white/15 bg-black/30 px-3 py-2 text-sm text-white"
+                className="min-h-[110px] w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-950"
               />
             </div>
             <div className="flex gap-2">
               <Button
                 type="button"
                 variant="outline"
-                className="border-white/15 text-white/80 hover:bg-white/10"
+                className="border-slate-200 bg-white text-slate-700 hover:border-[#F5A623] hover:bg-[#FFF8E8]"
                 onClick={() => setLocation("/app/invest/opportunities")}
               >
                 Cancel
               </Button>
               <Button
                 type="button"
-                className="bg-amber-500 hover:bg-amber-600 text-black font-semibold"
+                className="bg-[#F5A623] font-black text-[#07111F] hover:bg-[#F8C45B]"
                 onClick={() => submit.mutate()}
                 disabled={submit.isPending}
               >

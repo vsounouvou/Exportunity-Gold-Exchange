@@ -45,7 +45,10 @@ test("agenda creation submits a real objective and hierarchy reads the same plan
   assert.match(agenda, /selectedMeetingDetail\?\.participants/);
   assert.match(agenda, /selectedObjective\?\.title/);
   assert.match(agenda, /\/ai-team\?conversation=/);
-  assert.match(agenda, /exportunity-operations-light/);
+  assert.match(agenda, /data-testid="exportunity-agenda-workspace"/);
+  assert.match(agenda, /const confirmMeetingCreation/);
+  assert.match(agenda, /const confirmMeetingStart/);
+  assert.doesNotMatch(agenda, /exportunity-operations-light|bg-gray-9(?:00|50)|border-gray-8(?:00|50)/);
   assert.match(operationsCenter, /params\.get\("conversation"\)/);
   assert.match(operationsCenter, /setCurrentMeeting\(requestedRoom\)/);
   assert.match(operationsCenter, /isArchivedTestMeeting/);
@@ -92,7 +95,9 @@ test("working agents expose a direct identity and face editor", () => {
   assert.match(registry, /\/operations\/agents\/\$\{runtimeAgentId\}\?edit=1/);
   assert.match(registry, /\/operations\/agents\/\$\{runtimeAgentId\}\?tab=memory/);
   assert.match(registry, /More actions for \$\{item\.display_name\}/);
-  assert.match(registry, /agents-os-secondary-action/);
+  assert.match(registry, /data-testid="exportunity-agents-os-workspace"/);
+  assert.match(registry, /confirmCloneAgent/);
+  assert.doesNotMatch(registry, /agents-os-secondary-action/);
   assert.match(registryApi, /as runtime_agent_id/);
 });
 
@@ -191,6 +196,10 @@ test("People and Access is tenant scoped and exposes real account controls", () 
   assert.match(people, /method: "PATCH"/);
   assert.match(people, /regenerate-setup-link/);
   assert.match(people, /Only users assigned to this tenant are shown/);
+  assert.match(people, /data-testid="exportunity-people-access-workspace"/);
+  assert.match(people, /confirmSetupLinkGeneration/);
+  assert.match(people, /confirmAccessUpdate/);
+  assert.doesNotMatch(people, /exportunity-operations-light/);
   assert.match(hierarchy, /Human oversight/);
   assert.match(hierarchy, /Manage people & access/);
   assert.match(hierarchy, /identity, face, instructions, model, permissions, and memory/);
@@ -202,4 +211,8 @@ test("People and Access is tenant scoped and exposes real account controls", () 
   assert.match(hierarchy, /for \(const department of departments \|\| \[\]\)/);
   assert.match(hierarchy, /apiRequest\("\/api\/admin\/agents-os\/role-seats", "GET"\)/);
   assert.match(hierarchy, /aria-label="Operating markets"/);
+  assert.match(hierarchy, /data-testid="exportunity-organization-workspace"/);
+  assert.match(hierarchy, /confirmCreateDepartment/);
+  assert.match(hierarchy, /confirmDepartmentUpdate/);
+  assert.doesNotMatch(hierarchy, /exportunity-operations-light/);
 });

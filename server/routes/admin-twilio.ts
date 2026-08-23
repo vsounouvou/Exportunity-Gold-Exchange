@@ -13,7 +13,14 @@ import {
 } from "@db/schema";
 import { ensureTenantAdmin } from "./utils/auth";
 import { normalizeAgentKey } from "../lib/mail/agentSlugs";
-import { getTwilioConfig, normalizeE164, normalizeTwilioAddress, sendTenantMessage } from "../lib/communications/twilio";
+import {
+  getTwilioConfig,
+  normalizeE164,
+  normalizeTwilioAddress,
+  sendTenantMessage,
+  TwilioAccountVerificationError,
+  verifyTwilioAccountReadOnly,
+} from "../lib/communications/twilio";
 import { resolveAgentIdentityForTenant, seedTenantCommunicationProfiles } from "../lib/communications/sender-resolution";
 
 const router = Router();
@@ -136,6 +143,32 @@ router.get("/twilio/status", async (_req: any, res) => {
       webhookPath: (cfg as any).webhookPath ?? null,
     },
   });
+});
+
+router.post("/twilio/verify-account", async (_req: any, res) => {
+  try {
+    const verification = await verifyTwilioAccountReadOnly();
+    res.json({ ok: true, verification });
+  } catch (error: any) {
+    if (error instanceof TwilioAccountVerificationError) {
+      return res.status(error.status).json({
+        ok: false,
+        code: error.code,
+        message: error.message,
+        externalActionPerformed: false,
+        messageSent: false,
+        credentialsExposed: false,
+      });
+    }
+    res.status(502).json({
+      ok: false,
+      code: "TWILIO_ACCOUNT_VERIFICATION_FAILED",
+      message: "Twilio account verification failed.",
+      externalActionPerformed: false,
+      messageSent: false,
+      credentialsExposed: false,
+    });
+  }
 });
 
 router.get("/twilio/profile", async (req: any, res) => {

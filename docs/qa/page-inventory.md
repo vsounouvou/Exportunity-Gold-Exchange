@@ -15,15 +15,15 @@ Generated: 2026-02-02T02:39:26.434Z
 | /orders/:orderNumber | Order Detail | no | yes | Detail page linked from orders list. | MyOrdersPage |  |  |
 | /delivery | Delivery Hub | no | yes | Delivery hub entry accessed from CTA. | DeliveryHubPage |  |  |
 | /marketplace-old | Legacy Marketplace | no | yes | Legacy route kept for backwards compatibility. | MarketplacePage |  |  |
-| /product/:id | Product Detail | no | yes | Detail page linked from marketplace listings. | ProductPublicPage |  |  |
+| /product/:slug | Product Detail | no | yes | Governed product deep link handled by the current tenant storefront or Exportunity industrial alias. | ExportunityLegacyCommerceGuard | /industrial |  |
 | /verify/:serial | Stamped Gold Verification | no | yes | Verification page reached via QR/deep links; not a navigation destination. | StampedGoldVerifyPage |  |  |
 | /login | Login | no | yes | Authentication entry screen. | ECELoginPage |  |  |
 | /register | Register | no | yes | Authentication entry screen. | ECELoginPage |  |  |
 | /account | Account | no | yes | Account entry accessed from user menu. | AccountPage |  |  |
 | /app/login | Pro App Login | no | yes | Professional app entry; accessed via deep links/CTA. | AppProLoginPage |  |  |
 | /app/join/:role | Pro App Join | no | yes | Professional app onboarding flow. | AppProJoinPage |  |  |
-| /app | Pro App | no | yes | Professional app home; entry is role-driven. | AppProInboxPage |  |  |
-| /app/room/:roomKey | Pro App Room | no | yes | Professional app conversation room linked from pro inbox. | AppProRoomPage |  |  |
+| /app | GTN Operations Alias | no | yes | Legacy app entry redirects to the canonical GTN operations workspace. |  | /pro/operations |  |
+| /app/room/:roomKey | GTN Operations Room Alias | no | yes | Legacy room deep links redirect to the canonical GTN operations room. |  | /pro/operations/:roomKey |  |
 | /app/equipment | Pro App Equipment | no | yes | Professional equipment tools accessed from the pro app. | AppProEquipmentPage |  |  |
 | /app/:rest* | Pro App Redirect | no | yes | Catch-all redirect for professional app deep links. |  | /app |  |
 | /inbox | Inbox | no | yes | Conversation hub accessed from contextual entry points (e.g. Wallet strip, buttons, notifications). | InboxPage |  |  |

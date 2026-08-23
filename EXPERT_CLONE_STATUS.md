@@ -50,27 +50,9 @@
 3. Updates expert's `totalHires` counter
 4. Returns hire ID + vault ID
 
-### 4. Frontend UI (Complete Marketplace Experience)
-✅ **ExpertMarketplacePage** - Browse & filter experts:
-- Hero section with search bar
-- Filters: expertise, industry, language, minimum rating
-- Featured experts section (highlighted with badges)
-- Grid layout with expert cards showing: avatar, bio, rating, hires, success rate, skills, pricing
-- Click to view full profile
+### 4. Frontend UI (Current governed workspace)
 
-✅ **ExpertProfileDetailPage** - Full expert profile view:
-- Cover image + large avatar
-- Stats dashboard (rating, total hires, success rate, avg response time)
-- Contact buttons (WhatsApp, LinkedIn, Email, Website)
-- **"Hire Expert Clone"** button with modal
-- Tabs: About, Reviews, Pricing
-- Skills, industries, languages, experience display
-- Recent client reviews
-- Custom pricing tiers (if configured)
-
-**Navigation:**
-- Added "Expert Marketplace" to main navigation
-- Routes: `/experts` (marketplace), `/experts/:shortCode` (detail page)
+The unreferenced `ExpertMarketplacePage` and `ExpertProfileDetailPage` prototypes were retired. Expert records and assignments now render through `ExpertClonesHubPage` at `/expert-clones`, which uses the current Exportunity workspace and governed assignment flow. The former `/experts` prototype routes are not part of the active route graph.
 
 ## ⚠️ CRITICAL SECURITY ISSUES (Must Fix Before Production)
 

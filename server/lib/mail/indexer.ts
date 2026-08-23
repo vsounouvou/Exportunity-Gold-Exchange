@@ -17,6 +17,7 @@ import {
 import { normalizeAgentKey } from "./agentSlugs";
 import { normalizeEmailSubject } from "./threading";
 import { MAIL_DELIVERY_STATUSES } from "./deliveryStatus";
+import { captureSupplierQuoteFromEmail } from "../exportunity/supplierQuoteIntake";
 
 type IndexerMailboxResult = {
   mailboxId: number;
@@ -609,6 +610,20 @@ async function indexMessageFile(opts: {
       maildirPath: opts.filePath,
       createdAt: new Date(),
     });
+  }
+
+  if (opts.direction === "inbound") {
+    try {
+      await captureSupplierQuoteFromEmail({
+        tenantId: opts.tenantId,
+        emailMessageId: row.id,
+      });
+    } catch (error: any) {
+      console.error("[Exportunity supplier quote] email capture failed", {
+        emailMessageId: row.id,
+        code: String(error?.code || error?.name || "capture_failed").slice(0, 120),
+      });
+    }
   }
 
   return { skipped: false as const };

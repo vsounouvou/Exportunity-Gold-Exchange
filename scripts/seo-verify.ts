@@ -16,20 +16,21 @@ function resolveRequestedHost(req: any) {
   return normalizeHost(raw);
 }
 
-function isMarketingHost(host: string) {
-  return host === "exportunity.com" || host === "www.exportunity.com";
-}
-
 function isExportunityStagingHost(host: string) {
   return host === "clone.exportunity.net" || host === "www.clone.exportunity.net";
 }
 
-function isExportunityNetHost(host: string) {
-  return host === "exportunity.net" || host === "www.exportunity.net";
+function isExportunityPublicHost(host: string) {
+  return (
+    host === "exportunity.com" ||
+    host === "www.exportunity.com" ||
+    host === "exportunity.net" ||
+    host === "www.exportunity.net"
+  );
 }
 
 function isExportunityFamilyHost(host: string) {
-  return isMarketingHost(host) || isExportunityNetHost(host) || isExportunityStagingHost(host);
+  return isExportunityPublicHost(host) || isExportunityStagingHost(host);
 }
 
 function extractTag(html: string, re: RegExp) {
@@ -64,12 +65,12 @@ async function main() {
 
   app.get("/robots.txt", (req: any, res) => {
     const host = resolveRequestedHost(req);
-    if (isExportunityStagingHost(host) || isExportunityNetHost(host)) {
+    if (isExportunityStagingHost(host)) {
       res.type("text/plain").send(["User-agent: *", "Disallow: /", ""].join("\n"));
       return;
     }
 
-    const sitemapHost = isMarketingHost(host) ? "exportunity.com" : host || "boursedelor.com";
+    const sitemapHost = isExportunityPublicHost(host) ? "exportunity.net" : host || "boursedelor.com";
 
     const disallow = ["/admin", "/dashboard", "/ai-team", "/tasks", "/goals", "/hierarchy", "/app"];
     const lines = ["User-agent: *", ...disallow.map((p) => `Disallow: ${p}`), "", `Sitemap: https://${sitemapHost}/sitemap.xml`, ""];
@@ -78,11 +79,11 @@ async function main() {
 
   app.get("/sitemap.xml", (req: any, res) => {
     const host = resolveRequestedHost(req);
-    const base = isExportunityFamilyHost(host) ? "https://exportunity.com" : `https://${host || "boursedelor.com"}`;
+    const base = isExportunityFamilyHost(host) ? "https://exportunity.net" : `https://${host || "boursedelor.com"}`;
     const now = new Date().toISOString();
 
     const paths = isExportunityFamilyHost(host)
-      ? ["/", "/our-journey", "/solutions", "/platform", "/media", "/talk", "/invest", "/privacy", "/terms"]
+      ? ["/", "/marketplace", "/trade", "/industrial", "/industrial-map", "/factories", "/export-products", "/producer-exchange", "/ai-team", "/privacy", "/terms"]
       : ["/zone", "/gateway", "/about", "/how-it-works", "/sellers", "/terms", "/privacy", "/cadre-conformite"];
 
     const urls = paths
@@ -126,11 +127,12 @@ async function main() {
   };
 
   const checks: Array<{ host: string; path: string; expectCanonical: string; expectRobots: string }> = [
-    { host: "www.exportunity.com", path: "/", expectCanonical: "https://exportunity.com/", expectRobots: "index, follow" },
-    { host: "www.exportunity.com", path: "/contact-8", expectCanonical: "https://exportunity.com/talk", expectRobots: "noindex, follow" },
-    { host: "exportunity.com", path: "/", expectCanonical: "https://exportunity.com/", expectRobots: "index, follow" },
-    { host: "exportunity.com", path: "/contact-8", expectCanonical: "https://exportunity.com/talk", expectRobots: "noindex, follow" },
-    { host: "boursedelor.com", path: "/", expectCanonical: "https://boursedelor.com/zone", expectRobots: "noindex, follow" },
+    { host: "www.exportunity.com", path: "/", expectCanonical: "https://exportunity.net/", expectRobots: "index, follow" },
+    { host: "www.exportunity.com", path: "/contact-8", expectCanonical: "https://exportunity.net/", expectRobots: "noindex, follow" },
+    { host: "exportunity.com", path: "/", expectCanonical: "https://exportunity.net/", expectRobots: "index, follow" },
+    { host: "exportunity.com", path: "/contact-8", expectCanonical: "https://exportunity.net/", expectRobots: "noindex, follow" },
+    { host: "exportunity.net", path: "/zone", expectCanonical: "https://exportunity.net/marketplace", expectRobots: "noindex, follow" },
+    { host: "boursedelor.com", path: "/", expectCanonical: "https://boursedelor.com/", expectRobots: "index, follow" },
     { host: "boursedelor.com", path: "/admin", expectCanonical: "https://boursedelor.com/admin", expectRobots: "noindex, nofollow" },
   ];
 
@@ -140,12 +142,12 @@ async function main() {
       const { resp, text } = await fetchWithHost("/robots.txt", "www.exportunity.com");
       assert.equal(resp.ok, true);
       assert.ok(text.includes("Disallow: /admin"));
-      assert.ok(text.includes("Sitemap: https://exportunity.com/sitemap.xml"));
+      assert.ok(text.includes("Sitemap: https://exportunity.net/sitemap.xml"));
     }
     {
       const { resp, text } = await fetchWithHost("/robots.txt", "exportunity.com");
       assert.equal(resp.ok, true);
-      assert.ok(text.includes("Sitemap: https://exportunity.com/sitemap.xml"));
+      assert.ok(text.includes("Sitemap: https://exportunity.net/sitemap.xml"));
     }
     {
       const { resp, text } = await fetchWithHost("/robots.txt", "clone.exportunity.net");
@@ -156,21 +158,23 @@ async function main() {
     {
       const { resp, text } = await fetchWithHost("/robots.txt", "exportunity.net");
       assert.equal(resp.ok, true);
-      assert.ok(text.includes("Disallow: /"));
-      assert.ok(!text.includes("Sitemap:"));
+      assert.ok(text.includes("Disallow: /admin"));
+      assert.ok(text.includes("Sitemap: https://exportunity.net/sitemap.xml"));
     }
 
     {
       const { resp, text } = await fetchWithHost("/sitemap.xml", "www.exportunity.com");
       assert.equal(resp.ok, true);
-      assert.ok(text.includes("<loc>https://exportunity.com/</loc>"));
-      assert.ok(text.includes("<loc>https://exportunity.com/talk</loc>"));
+      assert.ok(text.includes("<loc>https://exportunity.net/</loc>"));
+      assert.ok(text.includes("<loc>https://exportunity.net/trade</loc>"));
+      assert.ok(!text.includes("<loc>https://exportunity.net/talk</loc>"));
       assert.ok(!text.includes("<loc>https://www.exportunity.com/zone</loc>"));
     }
     {
       const { resp, text } = await fetchWithHost("/sitemap.xml", "exportunity.net");
       assert.equal(resp.ok, true);
-      assert.ok(text.includes("<loc>https://exportunity.com/</loc>"));
+      assert.ok(text.includes("<loc>https://exportunity.net/</loc>"));
+      assert.ok(text.includes("<loc>https://exportunity.net/industrial</loc>"));
       assert.ok(!text.includes("<loc>https://exportunity.net/zone</loc>"));
     }
     {

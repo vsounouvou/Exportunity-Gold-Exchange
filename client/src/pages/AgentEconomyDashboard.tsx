@@ -98,7 +98,7 @@ function hierarchyBadge(level: string, isSuper: boolean) {
   }
   if (normalized === "director") return <Badge className="bg-purple-600 text-white">DIRECTOR</Badge>;
   if (normalized === "manager") return <Badge className="bg-blue-600 text-white">MANAGER</Badge>;
-  return <Badge variant="outline">EXECUTOR</Badge>;
+  return <Badge variant="outline" className="border-slate-200 bg-white text-slate-700 hover:bg-white">EXECUTOR</Badge>;
 }
 
 export default function AgentEconomyDashboard() {
@@ -184,8 +184,8 @@ export default function AgentEconomyDashboard() {
 
   if (isLoading || !data) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-950">
-        <RefreshCw className="h-8 w-8 animate-spin text-amber-500" />
+      <div className="flex min-h-[calc(100vh-var(--admin-header-height,4rem))] items-center justify-center bg-[#F7F8FA]">
+        <RefreshCw className="h-8 w-8 animate-spin text-[#F5A623]" />
       </div>
     );
   }
@@ -193,15 +193,19 @@ export default function AgentEconomyDashboard() {
   const spendPct = data.metrics.dailyLimit > 0 ? Math.min(100, (data.metrics.dailySpend / data.metrics.dailyLimit) * 100) : 0;
 
   return (
-    <div className="min-h-screen bg-gray-950 p-4 pb-24 md:p-6">
+    <div
+      data-testid="exportunity-agent-economy-workspace"
+      className="min-h-[calc(100vh-var(--admin-header-height,4rem))] bg-[#F7F8FA] p-4 pb-24 text-[#07111F] md:p-6"
+    >
       <div className="mx-auto max-w-7xl space-y-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="flex items-center gap-2 text-2xl font-bold text-white">
-              <Coins className="h-6 w-6 text-amber-500" />
-              AI Economic Command Center
+            <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#8A5700]">GTN agent governance</p>
+            <h1 className="mt-1 flex items-center gap-2 text-2xl font-black tracking-tight text-slate-950">
+              <Coins className="h-6 w-6 text-[#F5A623]" />
+              Agent economy command center
             </h1>
-            <p className="mt-1 text-gray-400">
+            <p className="mt-1 text-slate-500">
               Wallets, token governance, CRON army, and hierarchy controls
             </p>
           </div>
@@ -215,7 +219,7 @@ export default function AgentEconomyDashboard() {
                     setScopeMode(nextScope);
                     if (nextScope !== "global") setSelectedTenantId("");
                   }}
-                  className="rounded-md border border-gray-700 bg-gray-900 px-2 py-1 text-sm text-gray-100"
+                  className="rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm"
                 >
                   <option value="tenant">Tenant View</option>
                   <option value="global">Global View</option>
@@ -227,7 +231,7 @@ export default function AgentEconomyDashboard() {
                       const next = Number(event.target.value);
                       setSelectedTenantId(Number.isFinite(next) && next > 0 ? next : "");
                     }}
-                    className="rounded-md border border-gray-700 bg-gray-900 px-2 py-1 text-sm text-gray-100"
+                    className="rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm"
                   >
                     <option value="">All tenants</option>
                     {data.tenantOptions.map((tenant) => (
@@ -242,7 +246,7 @@ export default function AgentEconomyDashboard() {
             <Button
               variant="outline"
               size="sm"
-              className="border-gray-700 text-gray-200 hover:text-white"
+              className="border-slate-200 bg-white text-slate-700 hover:border-[#F5A623] hover:bg-[#FFF8E8] hover:text-slate-950"
               onClick={() => refetch()}
             >
               <RefreshCw className="mr-2 h-4 w-4" />
@@ -252,7 +256,7 @@ export default function AgentEconomyDashboard() {
         </div>
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <Card>
+          <Card className="border-slate-200 bg-white text-slate-950 shadow-sm">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium">Total Credits</CardTitle>
             </CardHeader>
@@ -260,7 +264,7 @@ export default function AgentEconomyDashboard() {
               <div className="text-2xl font-bold">{asMoney(data.metrics.totalCredits)}</div>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="border-slate-200 bg-white text-slate-950 shadow-sm">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium">Active Wallets</CardTitle>
             </CardHeader>
@@ -268,7 +272,7 @@ export default function AgentEconomyDashboard() {
               <div className="text-2xl font-bold">{data.metrics.activeWallets}</div>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="border-slate-200 bg-white text-slate-950 shadow-sm">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium">Avg Spend / Agent</CardTitle>
             </CardHeader>
@@ -276,7 +280,7 @@ export default function AgentEconomyDashboard() {
               <div className="text-2xl font-bold">{asMoney(data.metrics.avgSpendPerAgent)}</div>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="border-slate-200 bg-white text-slate-950 shadow-sm">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium">Daily Spend</CardTitle>
             </CardHeader>
@@ -291,7 +295,7 @@ export default function AgentEconomyDashboard() {
         </div>
 
         <Tabs defaultValue="wallets" className="space-y-4">
-          <TabsList>
+          <TabsList className="border border-slate-200 bg-white p-1 shadow-sm">
             <TabsTrigger value="wallets">
               <Wallet className="mr-2 h-4 w-4" />
               Agent Wallets
@@ -307,7 +311,7 @@ export default function AgentEconomyDashboard() {
           </TabsList>
 
           <TabsContent value="wallets">
-            <Card>
+            <Card className="border-slate-200 bg-white text-slate-950 shadow-sm">
               <CardHeader>
                 <CardTitle>Wallet Governance</CardTitle>
                 <CardDescription>
@@ -338,7 +342,10 @@ export default function AgentEconomyDashboard() {
                           <TableCell>{hierarchyBadge(wallet.hierarchyLevel, wallet.isSuperAgent)}</TableCell>
                           <TableCell>{wallet.tier}</TableCell>
                           <TableCell>
-                            <Badge variant={wallet.walletStatus === "active" ? "secondary" : "outline"}>
+                            <Badge
+                              variant={wallet.walletStatus === "active" ? "secondary" : "outline"}
+                              className={wallet.walletStatus === "active" ? "bg-slate-900 text-white hover:bg-slate-900" : "border-slate-200 bg-white text-slate-700 hover:bg-white"}
+                            >
                               {wallet.walletStatus}
                             </Badge>
                           </TableCell>
@@ -355,6 +362,7 @@ export default function AgentEconomyDashboard() {
                                 <Button
                                   size="sm"
                                   variant="outline"
+                                  className="border-slate-200 bg-white text-slate-700 hover:border-[#F5A623] hover:bg-[#FFF8E8] hover:text-slate-950"
                                   disabled={elevateMutation.isPending}
                                   onClick={() =>
                                     elevateMutation.mutate({
@@ -368,6 +376,7 @@ export default function AgentEconomyDashboard() {
                                 <Button
                                   size="sm"
                                   variant="outline"
+                                  className="border-slate-200 bg-white text-slate-700 hover:border-[#F5A623] hover:bg-[#FFF8E8] hover:text-slate-950"
                                   disabled={freezeMutation.isPending}
                                   onClick={() =>
                                     freezeMutation.mutate({
@@ -391,7 +400,7 @@ export default function AgentEconomyDashboard() {
           </TabsContent>
 
           <TabsContent value="performance">
-            <Card>
+            <Card className="border-slate-200 bg-white text-slate-950 shadow-sm">
               <CardHeader>
                 <CardTitle>Execution Performance</CardTitle>
                 <CardDescription>
@@ -432,7 +441,7 @@ export default function AgentEconomyDashboard() {
                                 {row.anomaly}
                               </Badge>
                             ) : (
-                              <Badge variant="outline">ok</Badge>
+                              <Badge variant="outline" className="border-slate-200 bg-white text-slate-700 hover:bg-white">ok</Badge>
                             )}
                           </TableCell>
                         </TableRow>
@@ -445,7 +454,7 @@ export default function AgentEconomyDashboard() {
           </TabsContent>
 
           <TabsContent value="cron">
-            <Card>
+            <Card className="border-slate-200 bg-white text-slate-950 shadow-sm">
               <CardHeader>
                 <CardTitle>CRON Army Registry</CardTitle>
                 <CardDescription>
@@ -471,7 +480,7 @@ export default function AgentEconomyDashboard() {
                       {data.crons.map((cron) => (
                         <TableRow key={`${cron.source}-${cron.id}`}>
                           <TableCell>
-                            <Badge variant="outline">{cron.source}</Badge>
+                            <Badge variant="outline" className="border-slate-200 bg-white text-slate-700 hover:bg-white">{cron.source}</Badge>
                           </TableCell>
                           <TableCell>{cron.agentName || (cron.agentId ? `#${cron.agentId}` : "Unassigned")}</TableCell>
                           <TableCell>{cron.cronType}</TableCell>
@@ -479,7 +488,10 @@ export default function AgentEconomyDashboard() {
                           <TableCell className="font-mono text-xs">{cron.scriptReference || "-"}</TableCell>
                           <TableCell className="text-right font-mono">{(cron.budgetTokens || 0).toLocaleString()}</TableCell>
                           <TableCell className="text-right">
-                            <Badge variant={cron.isActive ? "secondary" : "outline"}>
+                            <Badge
+                              variant={cron.isActive ? "secondary" : "outline"}
+                              className={cron.isActive ? "bg-slate-900 text-white hover:bg-slate-900" : "border-slate-200 bg-white text-slate-700 hover:bg-white"}
+                            >
                               {cron.isActive ? "active" : "paused"}
                             </Badge>
                           </TableCell>
@@ -487,6 +499,7 @@ export default function AgentEconomyDashboard() {
                             <Button
                               size="sm"
                               variant="outline"
+                              className="border-slate-200 bg-white text-slate-700 hover:border-[#F5A623] hover:bg-[#FFF8E8] hover:text-slate-950"
                               disabled={cronToggleMutation.isPending}
                               onClick={() =>
                                 cronToggleMutation.mutate({

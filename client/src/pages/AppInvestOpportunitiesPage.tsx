@@ -68,22 +68,22 @@ export default function AppInvestOpportunitiesPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-950 pb-32 text-white">
+    <div data-testid="exportunity-invest-opportunities" className="min-h-screen bg-[#F7F8FA] pb-24 text-[#07111F]">
       <AppProTopBar subtitle="Invest opportunities" />
-      <main className="mx-auto w-full max-w-4xl px-4 pb-4 pt-6">
+      <main className="mx-auto w-full max-w-4xl px-4 py-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="text-sm text-white/70">Pick a class, then open the real opportunity detail.</div>
+          <div className="text-sm font-medium text-slate-600">Review published opportunities and their governed operating records.</div>
           <div className="flex flex-wrap gap-2">
             <Button
               variant="outline"
-              className="border-white/15 text-white/80 hover:bg-white/10"
+              className="border-slate-200 bg-white text-slate-700 hover:border-[#F5A623] hover:bg-[#FFF8E8]"
               onClick={() => setLocation("/app/invest/onboarding")}
               data-testid="app-invest-start-onboarding"
             >
               Start onboarding
             </Button>
             <Button
-              className="bg-amber-500 hover:bg-amber-600 text-black font-semibold"
+              className="bg-[#F5A623] font-black text-[#07111F] hover:bg-[#F8C45B]"
               onClick={() => setLocation("/app/raise-capital/apply")}
               data-testid="app-invest-raise-capital"
             >
@@ -108,8 +108,8 @@ export default function AppInvestOpportunitiesPage() {
               onClick={() => setType(opt.key)}
               className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${
                 type === opt.key
-                  ? "border-amber-400/40 bg-amber-500/15 text-amber-100"
-                  : "border-white/15 bg-white/5 text-white/75 hover:bg-white/10"
+                  ? "border-[#F5A623]/45 bg-[#FFF8E8] text-[#8A5700]"
+                  : "border-slate-200 bg-white text-slate-600 hover:border-[#F5A623]/45 hover:bg-[#FFF8E8]"
               }`}
             >
               {opt.label}
@@ -120,15 +120,15 @@ export default function AppInvestOpportunitiesPage() {
         <section className="mt-5 space-y-3" data-testid="app-invest-opportunities-list">
           {query.isLoading ? (
             <div className="space-y-2">
-              <div className="h-20 animate-pulse rounded-xl border border-white/10 bg-white/5" />
-              <div className="h-20 animate-pulse rounded-xl border border-white/10 bg-white/5" />
-              <div className="h-20 animate-pulse rounded-xl border border-white/10 bg-white/5" />
+              <div className="h-20 animate-pulse rounded-xl border border-slate-200 bg-white" />
+              <div className="h-20 animate-pulse rounded-xl border border-slate-200 bg-white" />
+              <div className="h-20 animate-pulse rounded-xl border border-slate-200 bg-white" />
             </div>
           ) : null}
 
           {!query.isLoading && !items.length ? (
-            <Card className="border-white/10 bg-white/5">
-              <CardContent className="p-5 text-sm text-white/70">No opportunities published yet for this filter.</CardContent>
+            <Card className="border-slate-200 bg-white shadow-sm">
+              <CardContent className="p-5 text-sm text-slate-600">No opportunities published yet for this filter.</CardContent>
             </Card>
           ) : null}
 
@@ -137,25 +137,25 @@ export default function AppInvestOpportunitiesPage() {
               key={item.slug}
               type="button"
               data-testid={`app-invest-opportunity-${item.slug}`}
-              className="w-full rounded-xl border border-white/10 bg-white/5 p-4 text-left hover:bg-white/10"
+              className="w-full rounded-xl border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:border-[#F5A623]/50 hover:bg-[#FFFCF5]"
               onClick={() => setLocation(`/app/invest/opportunities/${encodeURIComponent(item.slug)}`)}
             >
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="text-xs uppercase tracking-[0.14em] text-sky-200/70">{item.type}</div>
+                <div className="text-xs font-black uppercase tracking-[0.14em] text-[#8A5700]">{item.type}</div>
                 {item.trackRecordBadge ? (
-                  <div className="rounded-full border border-emerald-300/30 bg-emerald-500/10 px-2 py-1 text-[11px] text-emerald-100">
+                  <div className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-1 text-[11px] font-bold text-emerald-800">
                     {item.trackRecordBadge}
                   </div>
                 ) : null}
               </div>
-              <div className="mt-2 text-base font-semibold text-white">{item.title}</div>
-              {item.summary ? <div className="mt-1 text-sm text-white/70">{item.summary}</div> : null}
-              <div className="mt-3 flex flex-wrap gap-2 text-xs text-white/60">
-                <span className="rounded-lg border border-white/10 bg-black/20 px-2 py-1">{item.country || "Multi-market"}</span>
-                <span className="rounded-lg border border-white/10 bg-black/20 px-2 py-1">
+              <div className="mt-2 text-base font-black text-slate-950">{item.title}</div>
+              {item.summary ? <div className="mt-1 text-sm leading-6 text-slate-600">{item.summary}</div> : null}
+              <div className="mt-3 flex flex-wrap gap-2 text-xs text-slate-600">
+                <span className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1">{item.country || "Multi-market"}</span>
+                <span className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1">
                   {item.contractDurationMonths ? `${item.contractDurationMonths} months` : "Flexible duration"}
                 </span>
-                <span className="rounded-lg border border-amber-400/20 bg-amber-500/10 px-2 py-1 text-amber-100/90">
+                <span className="rounded-lg border border-[#F5A623]/35 bg-[#FFF8E8] px-2 py-1 font-bold text-[#8A5700]">
                   {String(item.currency || "USD").toUpperCase()} {item.fundingGoalMin || "?"} {item.fundingGoalMax ? `- ${item.fundingGoalMax}` : ""}
                 </span>
               </div>

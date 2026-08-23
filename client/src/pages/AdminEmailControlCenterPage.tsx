@@ -620,7 +620,13 @@ export function AdminEmailControlCenterPage() {
               DKIM: {statusQuery.data?.mail?.authDiagnostics?.dkim?.ok ? "pass" : "fail"}
             </Badge>
             <Badge className={statusQuery.data?.mail?.authDiagnostics?.dmarc?.ok ? "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30" : "bg-amber-500/15 text-amber-300 border border-amber-500/30"}>
-              DMARC: {statusQuery.data?.mail?.authDiagnostics?.dmarc?.ok ? "present" : "missing"}
+              DMARC: {statusQuery.data?.mail?.authDiagnostics?.dmarc?.ok
+                ? "valid"
+                : (statusQuery.data?.mail?.authDiagnostics?.dmarc?.records || []).filter((record) =>
+                    String(record).trim().toLowerCase().startsWith("v=dmarc1"),
+                  ).length > 1
+                  ? "conflict"
+                  : "missing"}
             </Badge>
             <Badge className={statusQuery.data?.mail?.authDiagnostics?.ptr?.ok === false ? "bg-red-500/15 text-red-300 border border-red-500/30" : "bg-slate-500/15 text-slate-200 border border-slate-500/30"}>
               PTR: {statusQuery.data?.mail?.authDiagnostics?.ptr?.ok == null ? "n/a" : statusQuery.data?.mail?.authDiagnostics?.ptr?.ok ? "match" : "mismatch"}

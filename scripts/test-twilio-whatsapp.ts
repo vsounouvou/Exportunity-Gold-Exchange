@@ -51,7 +51,7 @@ async function main() {
   const statusUrl = new URL("/api/webhooks/twilio/message/status", baseUrl).toString();
   const voiceInboundUrl = new URL("/api/webhooks/twilio/voice/inbound", baseUrl).toString();
 
-  const from = String(process.env.TWILIO_TEST_FROM || "whatsapp:+2250100000229").trim();
+  const from = String(process.env.TWILIO_TEST_FROM || "whatsapp:+15555550100").trim();
   const to = String(process.env.TWILIO_TEST_TO || "whatsapp:+14155238886").trim();
   const messageSid = `SMOKE_${Date.now()}`;
 
@@ -81,7 +81,7 @@ async function main() {
 
   assert.equal(status.status, 200, `Status webhook failed: ${status.status} ${status.text}`);
 
-  const voiceFrom = String(process.env.TWILIO_TEST_VOICE_FROM || "+2250100000229").trim();
+  const voiceFrom = String(process.env.TWILIO_TEST_VOICE_FROM || "+15555550100").trim();
   const voiceTo = String(process.env.TWILIO_TEST_VOICE_TO || "+14155238886").trim();
   const callSid = `CALL_SMOKE_${Date.now()}`;
   const voiceInbound = await postForm({

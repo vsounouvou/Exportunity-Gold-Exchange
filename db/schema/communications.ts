@@ -4,6 +4,27 @@ import { agents } from "../schema";
 
 // Shared communications layer (SMS/WhatsApp/… providers). Twilio is the first provider.
 
+export const COMMUNICATION_PROVIDERS = ["twilio", "meta", "google", "tiktok", "linkedin", "x", "manual"] as const;
+export type CommunicationProvider = (typeof COMMUNICATION_PROVIDERS)[number];
+
+export const COMMUNICATION_CHANNELS = [
+  "sms",
+  "whatsapp",
+  "voice",
+  "facebook_comment",
+  "facebook_messenger",
+  "instagram_comment",
+  "instagram_dm",
+  "youtube_comment",
+  "tiktok_comment",
+  "tiktok_dm",
+  "linkedin_comment",
+  "linkedin_dm",
+  "x_reply",
+  "x_dm",
+] as const;
+export type CommunicationChannel = (typeof COMMUNICATION_CHANNELS)[number];
+
 export const communicationsRoutingMap = pgTable(
   "communications_routing_map",
   {
@@ -60,7 +81,7 @@ export const communicationsThreads = pgTable(
       .references(() => tenants.id, { onDelete: "cascade" })
       .notNull(),
     agentKey: text("agent_key").notNull(),
-    channel: text("channel", { enum: ["sms", "whatsapp", "voice"] }).notNull(),
+    channel: text("channel", { enum: COMMUNICATION_CHANNELS }).notNull(),
     peerAddress: text("peer_address").notNull(),
     lastMessageAt: timestamp("last_message_at", { withTimezone: true }).notNull().defaultNow(),
     metadata: jsonb("metadata").$type<Record<string, unknown>>().notNull().default({}),
@@ -87,8 +108,8 @@ export const communicationsMessages = pgTable(
       .notNull(),
     direction: text("direction", { enum: ["inbound", "outbound"] }).notNull(),
     status: text("status").notNull(),
-    provider: text("provider", { enum: ["twilio"] }).notNull().default("twilio"),
-    channel: text("channel", { enum: ["sms", "whatsapp", "voice"] }).notNull(),
+    provider: text("provider", { enum: COMMUNICATION_PROVIDERS }).notNull().default("twilio"),
+    channel: text("channel", { enum: COMMUNICATION_CHANNELS }).notNull(),
     fromAddress: text("from_address").notNull(),
     toAddress: text("to_address").notNull(),
     body: text("body"),
@@ -119,7 +140,7 @@ export const communicationsWorkOrders = pgTable(
       .references(() => tenants.id, { onDelete: "cascade" })
       .notNull(),
     agentKey: text("agent_key").notNull(),
-    channel: text("channel", { enum: ["sms", "whatsapp", "voice"] }).notNull(),
+    channel: text("channel", { enum: COMMUNICATION_CHANNELS }).notNull(),
     threadId: integer("thread_id")
       .references(() => communicationsThreads.id, { onDelete: "cascade" })
       .notNull(),
@@ -151,7 +172,7 @@ export const communicationsEvents = pgTable(
     tenantId: integer("tenant_id")
       .references(() => tenants.id, { onDelete: "cascade" })
       .notNull(),
-    provider: text("provider", { enum: ["twilio"] }).notNull().default("twilio"),
+    provider: text("provider", { enum: COMMUNICATION_PROVIDERS }).notNull().default("twilio"),
     eventType: text("event_type").notNull(),
     eventAt: timestamp("event_at", { withTimezone: true }).notNull().defaultNow(),
     data: jsonb("data").$type<Record<string, unknown>>().notNull().default({}),

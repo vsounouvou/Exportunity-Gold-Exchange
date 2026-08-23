@@ -717,7 +717,15 @@ router.post("/:id/approve", async (req: any, res) => {
     const row = await approveActionRequest({ tenantId: tenant.id, actionRequestId: id, approvedByUserId: staffUser.id });
     res.json({ ok: true, actionRequest: withActionIdentity(row as any) });
   } catch (err: any) {
-    res.status(500).json({ message: err?.message || "Failed to approve" });
+    const status =
+      typeof err?.status === "number" && err.status >= 400 && err.status <= 599
+        ? err.status
+        : 500;
+    res.status(status).json({
+      message: err?.message || "Failed to approve",
+      code: err?.code || null,
+      ...(err?.evaluation ? { outboundPolicy: err.evaluation } : {}),
+    });
   }
 });
 

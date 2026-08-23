@@ -28,7 +28,7 @@ export type FlutterwaveV4ChargeAction =
 
 export type FlutterwaveV4Charge = {
   id: string | null;
-  amount: number | null;
+  amount: string | null;
   currency: string | null;
   reference: string | null;
   redirectUrl: string | null;
@@ -58,10 +58,10 @@ function resolveTokenUrl() {
   return value || "https://idp.flutterwave.com/realms/flutterwave/protocol/openid-connect/token";
 }
 
-function asRoundedAmount(value: unknown): number | null {
-  const parsed = typeof value === "number" ? value : Number(String(value ?? "").trim());
-  if (!Number.isFinite(parsed)) return null;
-  return Math.round(parsed);
+function asExactAmount(value: unknown): string | null {
+  const exact = String(value ?? "").trim();
+  if (!/^(0|[1-9]\d*)(?:\.\d+)?$/.test(exact)) return null;
+  return exact;
 }
 
 function asUpperCurrency(value: unknown): string | null {
@@ -99,7 +99,7 @@ function normalizeCharge(raw: FlutterwaveV4ApiResponse | null): FlutterwaveV4Cha
   const data = raw?.data || {};
   return {
     id: data?.id ? String(data.id) : null,
-    amount: asRoundedAmount(data?.amount),
+    amount: asExactAmount(data?.amount),
     currency: asUpperCurrency(data?.currency),
     reference: typeof data?.reference === "string" && data.reference.trim() ? data.reference.trim() : null,
     redirectUrl: typeof data?.redirect_url === "string" && data.redirect_url.trim() ? data.redirect_url.trim() : null,
@@ -193,6 +193,7 @@ async function callV4<T = FlutterwaveV4ApiResponse>(input: {
   method: "GET" | "POST" | "PATCH";
   path: string;
   body?: Record<string, unknown> | null;
+  bodyText?: string | null;
   retry?: boolean;
 }) {
   const accessToken = await getV4AccessToken({
@@ -209,7 +210,7 @@ async function callV4<T = FlutterwaveV4ApiResponse>(input: {
       "Content-Type": "application/json",
       Accept: "application/json",
     },
-    body: input.body ? JSON.stringify(input.body) : undefined,
+    body: input.bodyText || (input.body ? JSON.stringify(input.body) : undefined),
   });
 
   const raw = (await resp.json().catch(() => null)) as T | null;
@@ -229,6 +230,25 @@ async function callV4<T = FlutterwaveV4ApiResponse>(input: {
   }
 
   return raw;
+}
+
+function exactTransportAmount(value: unknown) {
+  const exact = String(value ?? "").trim();
+  if (!/^(0|[1-9]\d{0,23})(?:\.\d{1,3})?$/.test(exact) || /^0(?:\.0+)?$/.test(exact)) {
+    throw new Error("Flutterwave charge amount must be a positive exact decimal");
+  }
+  return exact;
+}
+
+export function serializeFlutterwaveV4ChargeBody(
+  body: Record<string, unknown> & { amount: unknown },
+) {
+  const amount = exactTransportAmount(body.amount);
+  const rest: Record<string, unknown> = { ...body };
+  delete rest.amount;
+  const restJson = JSON.stringify(rest);
+  const suffix = restJson === "{}" ? "" : `,${restJson.slice(1, -1)}`;
+  return `{"amount":${amount}${suffix}}`;
 }
 
 export async function flutterwaveV4CreateCustomer(input: {
@@ -294,7 +314,7 @@ export async function flutterwaveV4CreateCharge(input: {
   mode: FlutterwaveMode;
   clientId: string;
   clientSecret: string;
-  amount: number;
+  amount: number | string;
   currency: string;
   redirectUrl: string;
   customerId: string;
@@ -302,21 +322,22 @@ export async function flutterwaveV4CreateCharge(input: {
   reference: string;
   meta?: Record<string, unknown> | null;
 }) {
+  const body = {
+    amount: input.amount,
+    currency: input.currency,
+    redirect_url: input.redirectUrl,
+    customer_id: input.customerId,
+    payment_method_id: input.paymentMethodId,
+    reference: input.reference,
+    meta: input.meta || undefined,
+  };
   const raw = await callV4<FlutterwaveV4ApiResponse>({
     mode: input.mode,
     clientId: input.clientId,
     clientSecret: input.clientSecret,
     method: "POST",
     path: "/charges",
-    body: {
-      amount: input.amount,
-      currency: input.currency,
-      redirect_url: input.redirectUrl,
-      customer_id: input.customerId,
-      payment_method_id: input.paymentMethodId,
-      reference: input.reference,
-      meta: input.meta || undefined,
-    },
+    bodyText: serializeFlutterwaveV4ChargeBody(body),
   });
 
   return normalizeCharge(raw);

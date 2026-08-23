@@ -532,39 +532,57 @@
       "redirectTo": "/admin/media/assets?tab=presets&scope=landing"
     },
     {
-      "route": "/admin/website/visits",
-      "pageTitle": "Visits Intelligence",
-      "module": "Website",
-      "capabilityTag": "admin_website_visits_intelligence",
-      "apiEndpointsCalled": ["/api/admin/telemetry/summary", "/api/admin/telemetry/sessions/recent"],
-      "navEntryName": "Visits Intelligence",
+      "route": "/admin/seo",
+      "pageTitle": "Website Intelligence",
+      "module": "Admin",
+      "capabilityTag": "admin_website_intelligence",
+      "apiEndpointsCalled": [
+        "/api/admin/seo/issues",
+        "/api/admin/seo/snapshots",
+        "/api/admin/seo/scan",
+        "/api/admin/seo/recommendations",
+        "/api/admin/seo/patches",
+        "/api/admin/telemetry/summary",
+        "/api/admin/telemetry/sessions/recent",
+        "/api/admin/ux-audit",
+        "/api/admin/ia/pages-audit"
+      ],
+      "navEntryName": "Website Intelligence",
       "icon": "BarChart3",
       "visibleInNav": true
     },
     {
+      "route": "/admin/website/visits",
+      "pageTitle": "Visits intelligence alias",
+      "module": "Admin",
+      "capabilityTag": "admin_website_intelligence_alias",
+      "apiEndpointsCalled": [],
+      "navEntryName": null,
+      "icon": "BarChart3",
+      "visibleInNav": false,
+      "redirectTo": "/admin/seo?view=visits"
+    },
+    {
       "route": "/admin/website/seo",
-      "pageTitle": "SEO Health",
-      "module": "Website",
-      "capabilityTag": "admin_website_seo_health",
-      "apiEndpointsCalled": ["/api/admin/seo/issues", "/api/admin/seo/snapshots", "/api/admin/seo/scan"],
-      "navEntryName": "SEO Health",
+      "pageTitle": "SEO health alias",
+      "module": "Admin",
+      "capabilityTag": "admin_website_intelligence_alias",
+      "apiEndpointsCalled": [],
+      "navEntryName": null,
       "icon": "Search",
-      "visibleInNav": true
+      "visibleInNav": false,
+      "redirectTo": "/admin/seo?view=seo"
     },
     {
       "route": "/admin/website/seo-autopilot",
-      "pageTitle": "SEO Autopilot Queue",
-      "module": "Website",
-      "capabilityTag": "admin_website_seo_autopilot",
-      "apiEndpointsCalled": [
-        "/api/admin/seo/recommendations",
-        "/api/admin/seo/patches",
-        "/api/admin/seo/patches/:id/apply",
-        "/api/admin/seo/patches/:id/rollback"
-      ],
-      "navEntryName": "SEO Autopilot",
+      "pageTitle": "SEO governance alias",
+      "module": "Admin",
+      "capabilityTag": "admin_website_intelligence_alias",
+      "apiEndpointsCalled": [],
+      "navEntryName": null,
       "icon": "Zap",
-      "visibleInNav": true
+      "visibleInNav": false,
+      "redirectTo": "/admin/seo?view=governance"
     },
     {
       "route": "/marketing",
@@ -672,13 +690,14 @@
     },
     {
       "route": "/admin/ux-audit",
-      "pageTitle": "UX Audit Runner",
+      "pageTitle": "Navigation audit alias",
       "module": "Admin",
-      "capabilityTag": "admin_ux_audit",
-      "apiEndpointsCalled": ["/api/admin/ux-audit", "/api/admin/ia/pages-audit"],
-      "navEntryName": "UX Audit",
+      "capabilityTag": "admin_website_intelligence_alias",
+      "apiEndpointsCalled": [],
+      "navEntryName": null,
       "icon": "ClipboardList",
-      "visibleInNav": true
+      "visibleInNav": false,
+      "redirectTo": "/admin/seo?view=navigation"
     },
     {
       "route": "/profile",

@@ -193,8 +193,8 @@ const CORE_CATEGORY_SEEDS: ExportunityCategorySeed[] = [
     title: "AI Agents",
     href: "/marketplace/agents",
     image: "/assets/exportunity/519f378b430f043d854a92e22300af362625c1982a1744d473515bb102e4cfdb.jpg",
-    summary: "MindBase-driven agents for onboarding, payments, contracts, media, logistics, and admin operations.",
-    source: "MindBase by Exportunity",
+    summary: "Exportunity-native agents for onboarding, payments, contracts, media, logistics, and admin operations.",
+    source: "Exportunity AI Operations",
     paymentOptions: ["Subscription", "Deployment fee", "Task-based billing"],
     logisticsOptions: ["Digital fulfillment", "Tenant handoff"],
     compliance: "Agent assignments inherit tenant governance rules.",
@@ -613,7 +613,7 @@ const EXPANDED_CATEGORY_SEEDS: ExportunityCategorySeed[] = [
     agentId: "chairman-agent",
     color: "#14b8a6",
     ctaLabel: "Open smart infrastructure",
-    featuredProviders: ["MindBase by Exportunity", "Exportunity Pay / XportCARD"],
+    featuredProviders: ["Exportunity AI Operations", "Exportunity Pay / XportCARD"],
     relatedCategorySlugs: ["agents", "payments", "machinery"],
   },
   {
@@ -732,14 +732,14 @@ const EXPANDED_CATEGORY_SEEDS: ExportunityCategorySeed[] = [
     bannerImage: "/assets/exportunity/e87a54c7df40acb9db2432894261c054460caf9085d4c6aa86fa230d5da56d4b.png",
     summary: "Operational software, dashboards, and SaaS products tied to Exportunity workflows.",
     intro: "A software lane for modules that behave like products and services with deployment actions.",
-    source: "MindBase and Exportunity",
+    source: "Exportunity GTN",
     paymentOptions: ["Subscription", "Invoice", "Wallet"],
     logisticsOptions: ["Digital deployment"],
     compliance: "Workspace governance and tenant permissions apply.",
     agentId: "chairman-agent",
     color: "#6366f1",
     ctaLabel: "Explore software products",
-    featuredProviders: ["MindBase by Exportunity", "Exportunity Pay / XportCARD"],
+    featuredProviders: ["Exportunity AI Operations", "Exportunity Pay / XportCARD"],
     relatedCategorySlugs: ["agents", "payments", "services"],
   },
   {
@@ -847,7 +847,7 @@ const EXPANDED_CATEGORY_SEEDS: ExportunityCategorySeed[] = [
     agentId: "media-agent",
     color: "#fb7185",
     ctaLabel: "Explore marketing services",
-    featuredProviders: ["Exportunity Media", "MindBase by Exportunity"],
+    featuredProviders: ["Exportunity Media", "Exportunity AI Operations"],
     relatedCategorySlugs: ["media", "services", "agents"],
   },
   {
@@ -883,7 +883,7 @@ const EXPANDED_CATEGORY_SEEDS: ExportunityCategorySeed[] = [
     agentId: "support-agent",
     color: "#38bdf8",
     ctaLabel: "Browse services",
-    featuredProviders: ["Exportunity Trade Desk", "MindBase by Exportunity"],
+    featuredProviders: ["Exportunity Trade Desk", "Exportunity AI Operations"],
     relatedCategorySlugs: ["services"],
   },
   {
@@ -1083,7 +1083,7 @@ const EXPANDED_CATEGORY_SEEDS: ExportunityCategorySeed[] = [
     agentId: "marketplace-agent",
     color: "#f59e0b",
     ctaLabel: "Open procurement",
-    featuredProviders: ["Exportunity Trade Desk", "MindBase by Exportunity"],
+    featuredProviders: ["Exportunity Trade Desk", "Exportunity AI Operations"],
     relatedCategorySlugs: ["products", "services", "contracts"],
   },
   {
@@ -1101,7 +1101,7 @@ const EXPANDED_CATEGORY_SEEDS: ExportunityCategorySeed[] = [
     agentId: "marketplace-agent",
     color: "#38bdf8",
     ctaLabel: "Browse marketplace services",
-    featuredProviders: ["Exportunity Marketplace", "MindBase by Exportunity"],
+    featuredProviders: ["Exportunity Marketplace", "Exportunity AI Operations"],
     relatedCategorySlugs: ["services", "agents"],
   },
   {
@@ -1112,14 +1112,14 @@ const EXPANDED_CATEGORY_SEEDS: ExportunityCategorySeed[] = [
     bannerImage: "/assets/exportunity/e87a54c7df40acb9db2432894261c054460caf9085d4c6aa86fa230d5da56d4b.png",
     summary: "Agent-powered operations, workflow automation, and command-center services.",
     intro: "A category for turning internal tasks and commercial follow-up into repeatable automated systems.",
-    source: "MindBase by Exportunity",
+    source: "Exportunity AI Operations",
     paymentOptions: ["Subscription", "Task-based billing", "Invoice"],
     logisticsOptions: ["Digital deployment"],
     compliance: "Agent governance rules apply.",
     agentId: "chairman-agent",
     color: "#8b5cf6",
     ctaLabel: "Explore automation",
-    featuredProviders: ["MindBase by Exportunity"],
+    featuredProviders: ["Exportunity AI Operations"],
     relatedCategorySlugs: ["agents", "services"],
   },
   {
@@ -1157,7 +1157,7 @@ const categoryImage: Record<string, string> = {
   mining: "/tenants/exportunity/brand/mining-banner.png",
   gold: "/tenants/exportunity/brand/gold-banner.png",
   payments: "/tenants/exportunity/brand/payments-banner.png",
-  agents: "/tenants/exportunity/brand/mindbase-banner.png",
+  agents: "/assets/exportunity/e87a54c7df40acb9db2432894261c054460caf9085d4c6aa86fa230d5da56d4b.png",
   media: "/tenants/exportunity/brand/media-books-banner.png",
   books: "/tenants/exportunity/brand/media-books-banner.png",
   contracts: "/tenants/exportunity/brand/legal-banner.png",
@@ -1198,7 +1198,7 @@ function getBrandCategoryVisual(categoryId: string) {
     return "/tenants/exportunity/brand/payments-banner.png";
   }
   if (["agents", "ai-agents", "software-saas", "automation-operations", "research-innovation"].includes(categoryId)) {
-    return "/tenants/exportunity/brand/mindbase-banner.png";
+    return "/assets/exportunity/e87a54c7df40acb9db2432894261c054460caf9085d4c6aa86fa230d5da56d4b.png";
   }
   if (["media", "media-content", "books", "books-publishing", "photography-video", "marketing-advertising", "cultural-products-heritage", "kids-education", "afro-futuristic-design", "training", "education-training"].includes(categoryId)) {
     return "/tenants/exportunity/brand/media-books-banner.png";
@@ -1821,17 +1821,17 @@ const CORE_SEEDED_LISTINGS: ExportunityListingSeed[] = [
       location: "Merchant collection operations",
     },
   ]),
-  ...buildSeed("agents", "MindBase by Exportunity", "MindBase", "https://mindbase.cloud", "chairman-agent", "/agents", [
+  ...buildSeed("agents", "Exportunity AI Operations", "Exportunity GTN", "https://exportunity.net/agents", "chairman-agent", "/agents", [
     {
       title: "Marketplace Onboarding Agent",
       subcategory: "Onboarding",
       price: 120000,
       shortDescription: "Helps onboard suppliers, structure listings, and follow up with sellers inside Exportunity.",
-      description: "A MindBase-powered agent product assigned to marketplace onboarding. It structures listings, validates missing data, prepares seller follow-up, and keeps new providers moving toward live status.",
+      description: "An Exportunity-native agent product assigned to marketplace onboarding. It structures listings, validates missing data, prepares seller follow-up, and keeps new providers moving toward live status.",
       ctaLabel: "View Agent",
       assignedAgentId: "marketplace-agent",
       moduleHref: "/marketplace",
-      location: "MindBase command center",
+      location: "GTN Operations Center",
       tags: ["agent", "marketplace", "onboarding"],
     },
     {
@@ -1843,7 +1843,7 @@ const CORE_SEEDED_LISTINGS: ExportunityListingSeed[] = [
       ctaLabel: "View Agent",
       assignedAgentId: "marketplace-agent",
       moduleHref: "/marketplace/services",
-      location: "MindBase verification queue",
+      location: "GTN verification queue",
     },
     {
       title: "Payment Follow-up Agent",
@@ -1854,7 +1854,7 @@ const CORE_SEEDED_LISTINGS: ExportunityListingSeed[] = [
       ctaLabel: "View Agent",
       assignedAgentId: "payment-agent",
       moduleHref: "/pay",
-      location: "MindBase payments desk",
+      location: "Exportunity payments desk",
     },
     {
       title: "Contract Generation Agent",
@@ -1865,7 +1865,7 @@ const CORE_SEEDED_LISTINGS: ExportunityListingSeed[] = [
       ctaLabel: "View Agent",
       assignedAgentId: "contract-agent",
       moduleHref: "/contracts",
-      location: "MindBase legal desk",
+      location: "Exportunity legal desk",
     },
     {
       title: "Media Publishing Agent",
@@ -1876,7 +1876,7 @@ const CORE_SEEDED_LISTINGS: ExportunityListingSeed[] = [
       ctaLabel: "View Agent",
       assignedAgentId: "media-agent",
       moduleHref: "/media-bank",
-      location: "MindBase media queue",
+      location: "Exportunity media queue",
     },
     {
       title: "Machinery Quote Agent",
@@ -1887,7 +1887,7 @@ const CORE_SEEDED_LISTINGS: ExportunityListingSeed[] = [
       ctaLabel: "View Agent",
       assignedAgentId: "machinery-agent",
       moduleHref: "/machinery",
-      location: "MindBase machinery queue",
+      location: "GTN machinery queue",
     },
     {
       title: "Mining Compliance Agent",
@@ -1898,7 +1898,7 @@ const CORE_SEEDED_LISTINGS: ExportunityListingSeed[] = [
       ctaLabel: "View Agent",
       assignedAgentId: "mining-agent",
       moduleHref: "/mining",
-      location: "MindBase mining desk",
+      location: "GTN mining desk",
     },
     {
       title: "Gold Certification Agent",
@@ -1909,7 +1909,7 @@ const CORE_SEEDED_LISTINGS: ExportunityListingSeed[] = [
       ctaLabel: "View Agent",
       assignedAgentId: "gold-agent",
       moduleHref: "/marketplace/gold",
-      location: "MindBase gold desk",
+      location: "GTN gold desk",
     },
     {
       title: "Logistics Coordination Agent",
@@ -1920,7 +1920,7 @@ const CORE_SEEDED_LISTINGS: ExportunityListingSeed[] = [
       ctaLabel: "View Agent",
       assignedAgentId: "logistics-agent",
       moduleHref: "/rayon",
-      location: "MindBase logistics desk",
+      location: "GTN logistics desk",
     },
     {
       title: "Customer Support Agent",
@@ -1931,7 +1931,7 @@ const CORE_SEEDED_LISTINGS: ExportunityListingSeed[] = [
       ctaLabel: "View Agent",
       assignedAgentId: "support-agent",
       moduleHref: "/agents",
-      location: "MindBase support desk",
+      location: "GTN support desk",
     },
     {
       title: "Chairman Assistant Agent",
@@ -1942,7 +1942,7 @@ const CORE_SEEDED_LISTINGS: ExportunityListingSeed[] = [
       ctaLabel: "View Agent",
       assignedAgentId: "chairman-agent",
       moduleHref: "/dashboard",
-      location: "MindBase chairman lane",
+      location: "GTN executive operations",
     },
     {
       title: "Social Media Agent",
@@ -1953,7 +1953,7 @@ const CORE_SEEDED_LISTINGS: ExportunityListingSeed[] = [
       ctaLabel: "View Agent",
       assignedAgentId: "media-agent",
       moduleHref: "/media-bank",
-      location: "MindBase publishing queue",
+      location: "Exportunity publishing queue",
     },
   ]),
   ...buildSeed("media", "Exportunity Media", "Exportunity Media", "https://exportunity.net/media-bank", "media-agent", "/media-bank", [
@@ -2257,10 +2257,10 @@ const CORE_SEEDED_LISTINGS: ExportunityListingSeed[] = [
       title: "Agent Deployment Workshop",
       subcategory: "AI operations",
       price: 72000,
-      shortDescription: "Workshop on deploying MindBase-driven agents into real Exportunity module workflows.",
+      shortDescription: "Workshop on deploying Exportunity-native agents into real GTN module workflows.",
       description: "A training listing focused on practical agent setup, task routing, evidence capture, and governance inside the parent platform.",
       ctaLabel: "View workshop",
-      location: "MindBase workshop",
+      location: "Exportunity AI Operations workshop",
     },
     {
       title: "Construction Site Training Pack",
@@ -2536,7 +2536,7 @@ const EXPANDED_SEEDED_LISTINGS: ExportunityListingSeed[] = [
       location: "Infrastructure engineering desk",
     },
   ]),
-  ...buildSeed("smart-infrastructure", "MindBase by Exportunity", "MindBase", "https://mindbase.cloud", "chairman-agent", "/marketplace/smart-infrastructure", [
+  ...buildSeed("smart-infrastructure", "Exportunity AI Operations", "Exportunity GTN", "https://exportunity.net/pro/operations", "chairman-agent", "/marketplace/smart-infrastructure", [
     {
       title: "Smart Ops Infrastructure Layer",
       subcategory: "Connected operations",
@@ -2544,7 +2544,7 @@ const EXPANDED_SEEDED_LISTINGS: ExportunityListingSeed[] = [
       shortDescription: "An operations layer combining dashboards, payments, alerts, and agents for infrastructure projects.",
       description: "This offer is designed for operators who want infrastructure assets to plug directly into digital monitoring and task workflows.",
       ctaLabel: "View layer",
-      location: "MindBase command center",
+      location: "GTN Operations Center",
     },
   ]),
   ...buildSeed("manufacturing-services", "Exportunity Machinery", "Exportunity Machinery", "https://exportunity.net/machinery", "machinery-agent", "/marketplace/manufacturing-services", [
@@ -2613,7 +2613,7 @@ const EXPANDED_SEEDED_LISTINGS: ExportunityListingSeed[] = [
       location: "Knowledge network",
     },
   ]),
-  ...buildSeed("software-saas", "MindBase by Exportunity", "MindBase", "https://mindbase.cloud", "chairman-agent", "/marketplace/software-saas", [
+  ...buildSeed("software-saas", "Exportunity AI Operations", "Exportunity GTN", "https://exportunity.net/pro/operations", "chairman-agent", "/marketplace/software-saas", [
     {
       title: "Operations Workspace Suite",
       subcategory: "SaaS modules",
@@ -2621,7 +2621,7 @@ const EXPANDED_SEEDED_LISTINGS: ExportunityListingSeed[] = [
       shortDescription: "A workspace suite for tasks, inbox, evidence, and AI-assisted operations across teams.",
       description: "This SaaS-style listing is positioned for teams that need a command surface instead of isolated tools and spreadsheets.",
       ctaLabel: "View suite",
-      location: "MindBase workspace",
+      location: "GTN Operations workspace",
     },
   ]),
   ...buildSeed("payments-fintech", "Exportunity Pay / XportCARD", "Exportunity Pay / XportCARD", "https://exportunity.net/pay", "payment-agent", "/marketplace/payments-fintech", [
@@ -2844,7 +2844,7 @@ const EXPANDED_SEEDED_LISTINGS: ExportunityListingSeed[] = [
       location: "Seller success desk",
     },
   ]),
-  ...buildSeed("automation-operations", "MindBase by Exportunity", "MindBase", "https://mindbase.cloud", "chairman-agent", "/marketplace/automation-operations", [
+  ...buildSeed("automation-operations", "Exportunity AI Operations", "Exportunity GTN", "https://exportunity.net/pro/operations", "chairman-agent", "/marketplace/automation-operations", [
     {
       title: "Operations Automation Stack",
       subcategory: "Automation services",
@@ -2852,7 +2852,7 @@ const EXPANDED_SEEDED_LISTINGS: ExportunityListingSeed[] = [
       shortDescription: "A stack of deployable agents and workflow automations for admin, sales, logistics, and support teams.",
       description: "This automation product packages AI agents into a clear operational offer for real businesses on the platform.",
       ctaLabel: "View stack",
-      location: "MindBase automation desk",
+      location: "GTN automation desk",
     },
   ]),
   ...buildSeed("research-innovation", "Exportunity Knowledge Network", "Exportunity", "https://exportunity.net/books", "chairman-agent", "/marketplace/research-innovation", [
@@ -2969,17 +2969,17 @@ const PROVIDER_SEEDS: ExportunityMarketplaceProvider[] = [
     ctaLabel: "Open construction",
   },
   {
-    id: "mindbase",
-    name: "MindBase",
-    providerNames: ["MindBase by Exportunity"],
-    sourcePlatform: "MindBase",
-    sourceUrl: "https://mindbase.cloud",
+    id: "gtn-operations",
+    name: "Exportunity AI Operations",
+    providerNames: ["Exportunity AI Operations"],
+    sourcePlatform: "Exportunity GTN",
+    sourceUrl: "https://exportunity.net/pro/operations",
     href: "/agents",
     bannerImage: "/assets/exportunity/e87a54c7df40acb9db2432894261c054460caf9085d4c6aa86fa230d5da56d4b.png",
-    logoLabel: "MB",
+    logoLabel: "GTN",
     summary: "AI agents, operational workspaces, automation flows, and the Exportunity command-center layer.",
     categorySlugs: ["agents", "software-saas", "automation-operations", "smart-infrastructure"],
-    ctaLabel: "Open MindBase",
+    ctaLabel: "Open GTN Operations",
   },
   {
     id: "rayon",
@@ -3089,7 +3089,9 @@ const PROVIDER_SEEDS: ExportunityMarketplaceProvider[] = [
 
 function getProviderBanner(providerId: string) {
   if (providerId === "maison-en-terre") return "/tenants/exportunity/brand/construction-banner.png";
-  if (providerId === "mindbase") return "/tenants/exportunity/brand/mindbase-banner.png";
+  if (providerId === "gtn-operations") {
+    return "/assets/exportunity/e87a54c7df40acb9db2432894261c054460caf9085d4c6aa86fa230d5da56d4b.png";
+  }
   if (providerId === "rayon") return "/tenants/exportunity/brand/logistics-banner.png";
   if (providerId === "bourse-de-lor") return "/tenants/exportunity/brand/gold-banner.png";
   if (providerId === "house-of-zogue") return "/tenants/exportunity/brand/media-books-banner.png";

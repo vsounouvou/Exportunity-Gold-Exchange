@@ -1,5 +1,6 @@
 import fs from "fs";
 import path from "path";
+import crypto from "crypto";
 import { execFileSync, execSync } from "child_process";
 
 const repoRoot = process.cwd();
@@ -11,6 +12,10 @@ const APP_NAME =
   process.env.DEPLOY_TENANT ||
   process.env.TENANT_DEFAULT ||
   "";
+
+const EXPORTUNITY_SURFACE_REVISION = 5;
+const EXPORTUNITY_HOMEPAGE_SOURCE_SHA256 =
+  "0c40d6a498340288889fc3d9e112df085442cbc0f7018ce41b131deb014c2816";
 
 function readJsonFile(filePath) {
   try {
@@ -26,6 +31,11 @@ function readJsonFile(filePath) {
 
 function sanitizeId(value) {
   return String(value).replace(/[^A-Za-z0-9._-]+/g, "-");
+}
+
+function resolveServiceWorkerTenant(appName) {
+  const normalized = sanitizeId(appName || "platform").toLowerCase() || "platform";
+  return normalized === "boursedelor" ? "bdo" : normalized;
 }
 
 function normalizeGitSha(raw) {
@@ -145,20 +155,25 @@ function resolveBuildInfo(repoRootDir) {
   return { buildId, builtAt, gitSha, gitDirty, sourceVersion };
 }
 
-function updateSwVersion(swPath, buildId) {
+function updateSwVersion(swPath, buildId, appName) {
   if (!fs.existsSync(swPath)) return;
   const text = fs.readFileSync(swPath, "utf8");
-  const suffixMatch = text.match(/const\s+BUILD_SUFFIX\s*=\s*["']([^"']+)["']/);
+  const tenant = resolveServiceWorkerTenant(appName);
+  let updated = text.replace(
+    /const\s+TENANT\s*=\s*["'][^"']*["']/,
+    `const TENANT = "${tenant}"`,
+  );
+  const suffixMatch = updated.match(/const\s+BUILD_SUFFIX\s*=\s*["']([^"']+)["']/);
   if (suffixMatch) {
-    const updated = text.replace(suffixMatch[0], `const BUILD_SUFFIX = "${buildId}"`);
+    updated = updated.replace(suffixMatch[0], `const BUILD_SUFFIX = "${buildId}"`);
     fs.writeFileSync(swPath, updated, "utf8");
     return;
   }
-  const match = text.match(/const\s+VERSION\s*=\s*["']([^"']+)["']/);
+  const match = updated.match(/const\s+VERSION\s*=\s*["']([^"']+)["']/);
   if (!match) return;
   const base = match[1].replace(/-build-[A-Za-z0-9._-]+$/, "");
   const next = `${base}-build-${buildId}`;
-  const updated = text.replace(match[0], `const VERSION = "${next}"`);
+  updated = updated.replace(match[0], `const VERSION = "${next}"`);
   fs.writeFileSync(swPath, updated, "utf8");
 }
 
@@ -203,6 +218,46 @@ function statOrNull(publicDir, relPath) {
   return { path: relPath, size: stat.size, mtime: stat.mtime.toISOString() };
 }
 
+function readPublicSurface(publicDir) {
+  const markerPath = path.join(publicDir, "exportunity-surface.json");
+  const marker = readJsonFile(markerPath);
+
+  if (APP_NAME === "exportunity") {
+    if (
+      marker?.schemaVersion !== 2 ||
+      marker?.surfaceRevision !== EXPORTUNITY_SURFACE_REVISION ||
+      marker?.canonicalSurface !== "global-trade-network" ||
+      marker?.homepageComponent !== "MarketplacePage" ||
+      marker?.homepageSourceSha256 !== EXPORTUNITY_HOMEPAGE_SOURCE_SHA256 ||
+      marker?.legacyHomepageRetired !== true
+    ) {
+      throw new Error(
+        `[stamp-build] refusing to stamp Exportunity without the canonical proximity-marketplace marker: ${markerPath}`,
+      );
+    }
+
+    const homepagePath = path.join(
+      repoRoot,
+      "client",
+      "src",
+      "pages",
+      "exportunity",
+      "MarketplacePage.tsx",
+    );
+    const homepageSourceSha256 = crypto
+      .createHash("sha256")
+      .update(fs.readFileSync(homepagePath))
+      .digest("hex");
+    if (homepageSourceSha256 !== EXPORTUNITY_HOMEPAGE_SOURCE_SHA256) {
+      throw new Error(
+        `[stamp-build] refusing to stamp an unreviewed Exportunity homepage source: ${homepageSourceSha256}`,
+      );
+    }
+  }
+
+  return marker;
+}
+
 function writeBuildJson(publicDir, build) {
   const indexPath = path.join(publicDir, "index.html");
   const indexHtml = fs.existsSync(indexPath) ? fs.readFileSync(indexPath, "utf8") : "";
@@ -213,7 +268,8 @@ function writeBuildJson(publicDir, build) {
   const swText = fs.existsSync(swPath) ? fs.readFileSync(swPath, "utf8") : "";
   const swVersionMatch = swText.match(/const\s+VERSION\s*=\s*["']([^"']+)["']/);
   const swBuildSuffixMatch = swText.match(/const\s+BUILD_SUFFIX\s*=\s*["']([^"']+)["']/);
-  const swAppPrefix = APP_NAME === "boursedelor" ? "bdo" : sanitizeId(APP_NAME || "tenant");
+  const swAppPrefix = resolveServiceWorkerTenant(APP_NAME);
+  const publicSurface = readPublicSurface(publicDir);
 
   const payload = {
     app: APP_NAME ? sanitizeId(APP_NAME) : null,
@@ -228,6 +284,11 @@ function writeBuildJson(publicDir, build) {
     mainJs: statOrNull(publicDir, mainJs),
     mainCss: statOrNull(publicDir, mainCss),
     sw: swVersionMatch?.[1] ?? (swBuildSuffixMatch ? `${swAppPrefix}-sw-v1-build-${swBuildSuffixMatch[1]}` : null),
+    publicSurface: publicSurface?.canonicalSurface ?? null,
+    publicSurfaceRevision: publicSurface?.surfaceRevision ?? null,
+    homepageComponent: publicSurface?.homepageComponent ?? null,
+    homepageSourceSha256: publicSurface?.homepageSourceSha256 ?? null,
+    legacyHomepageRetired: publicSurface?.legacyHomepageRetired === true,
   };
 
   fs.writeFileSync(path.join(publicDir, "build.json"), JSON.stringify(payload, null, 2), "utf8");
@@ -241,7 +302,7 @@ function main() {
   }
 
   const build = resolveBuildInfo(repoRoot);
-  updateSwVersion(path.join(DIST_PUBLIC, "sw.js"), build.buildId);
+  updateSwVersion(path.join(DIST_PUBLIC, "sw.js"), build.buildId, APP_NAME);
   updateConfig(path.join(DIST_PUBLIC, "config.js"), build);
   const stamped = writeBuildJson(DIST_PUBLIC, build);
 

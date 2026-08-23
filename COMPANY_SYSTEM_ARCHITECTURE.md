@@ -191,7 +191,7 @@ Drizzle ORM Query with Relations
 Return Complete Company Object
     │
     ▼
-CompanyProfilePage Renders
+Current `/companies` workspace renders
     │
     ├─▶ Overview Tab (vision, goals, industry)
     ├─▶ Shareholders Tab (ownership breakdown)
@@ -281,8 +281,8 @@ GET    /api/companies/:id/revenue      # Get revenue transactions
 ## Frontend Routes
 
 ```
-/companies          → CompanyListPage (grid view with filters)
-/company?id=X       → CompanyProfilePage (detailed view with tabs)
+/companies          → CompanyListPage (current tenant-scoped company registry)
+/company?id=X       → Retired public corporate URL; no legacy company-profile renderer
 ```
 
 ## Database Schema Details

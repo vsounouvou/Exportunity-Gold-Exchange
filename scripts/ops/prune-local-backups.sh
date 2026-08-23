@@ -24,6 +24,7 @@ fi
 
 load_tenant_config "$TENANT"
 KEEP_COUNT="${KEEP_OVERRIDE:-$KEEP_LOCAL_BACKUPS}"
+ARCHIVED_KEEP_COUNT="${KEEP_OVERRIDE:-$KEEP_LOCAL_ARCHIVED_RELEASES}"
 TARGET_DIR="$(canonical_dir "$LOCAL_BACKUP_DIR_ABS")"
 ARCHIVED_RELEASES_DIR="${TARGET_DIR}/archived-releases"
 
@@ -35,16 +36,17 @@ fi
 prune_backup_directory() {
   local directory="$1"
   local label="$2"
+  local keep_count="$3"
   local -a backups=()
 
   mapfile -t backups < <(find "$directory" -maxdepth 1 -type f \( -name '*.tar.gz' -o -name '*.tgz' -o -name '*.zip' -o -name '*.sql.gz' -o -name '*.dump' -o -name '*.bak' -o -name '*.backup' \) | sort -r)
 
-  if (( ${#backups[@]} <= KEEP_COUNT )); then
+  if (( ${#backups[@]} <= keep_count )); then
     log "${label} for ${CANONICAL_TENANT}: nothing to prune"
     return
   fi
 
-  for backup in "${backups[@]:KEEP_COUNT}"; do
+  for backup in "${backups[@]:keep_count}"; do
     log "prune ${label%?} artifact ${backup}"
     if (( DRY_RUN == 0 )); then
       rm -f "$backup"
@@ -59,7 +61,7 @@ prune_backup_directory() {
   done
 }
 
-prune_backup_directory "$TARGET_DIR" "local backups"
+prune_backup_directory "$TARGET_DIR" "local backups" "$KEEP_COUNT"
 if [[ -d "$ARCHIVED_RELEASES_DIR" ]]; then
-  prune_backup_directory "$ARCHIVED_RELEASES_DIR" "archived releases"
+  prune_backup_directory "$ARCHIVED_RELEASES_DIR" "archived releases" "$ARCHIVED_KEEP_COUNT"
 fi

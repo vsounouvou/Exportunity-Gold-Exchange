@@ -35,5 +35,4 @@ crawl/*.json
 crawl/*.md
 mirror/
 client/public/assets/original/exportunity/
-client/public/exportunity/legal/*.html
 client/public/exportunity/posts/*.html

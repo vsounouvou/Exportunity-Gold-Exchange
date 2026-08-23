@@ -1,6 +1,9 @@
 import { relations } from "drizzle-orm";
-import { boolean, integer, jsonb, pgTable, serial, text, timestamp, decimal } from "drizzle-orm/pg-core";
+import { boolean, integer, jsonb, pgTable, serial, text, timestamp, decimal, uuid } from "drizzle-orm/pg-core";
 import { companies, agents } from "../schema";
+import { chatLeads } from "./chat-desk";
+import { industrialRequirements } from "./industrial";
+import { tenants } from "./tenants";
 
 export const channelTypeEnum = ['all-team', 'management', 'sales', 'marketing', 'operations', 'support', 'general', 'custom'] as const;
 export type ChannelType = typeof channelTypeEnum[number];
@@ -97,7 +100,9 @@ export const channelMemberships = pgTable('channel_memberships', {
 
 export const salesLeads = pgTable('sales_leads', {
   id: serial('id').primaryKey(),
+  tenantId: integer('tenant_id').references(() => tenants.id, { onDelete: 'cascade' }),
   companyId: integer('company_id').references(() => companies.id, { onDelete: 'cascade' }).notNull(),
+  sourceChatLeadId: uuid('source_chat_lead_id').references(() => chatLeads.id, { onDelete: 'set null' }),
   
   name: text('name').notNull(),
   email: text('email'),
@@ -132,8 +137,12 @@ export const salesLeads = pgTable('sales_leads', {
 
 export const deals = pgTable('deals', {
   id: serial('id').primaryKey(),
+  tenantId: integer('tenant_id').references(() => tenants.id, { onDelete: 'cascade' }),
   companyId: integer('company_id').references(() => companies.id, { onDelete: 'cascade' }).notNull(),
   leadId: integer('lead_id').references(() => salesLeads.id, { onDelete: 'set null' }),
+  sourceChatLeadId: uuid('source_chat_lead_id').references(() => chatLeads.id, { onDelete: 'set null' }),
+  industrialRequirementId: uuid('industrial_requirement_id').references(() => industrialRequirements.id, { onDelete: 'set null' }),
+  referenceCode: text('reference_code'),
   
   name: text('name').notNull(),
   value: decimal('value', { precision: 15, scale: 2 }).default('0'),

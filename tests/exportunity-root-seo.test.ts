@@ -30,7 +30,18 @@ test("exportunity.net keeps the global company homepage canonical", async () => 
   assert.doesNotMatch(head.title, /zone/i);
 });
 
-test("legacy tenant roots continue to resolve to Zone without changing its explicit route", async () => {
+test("exportunity.com is the same GTN surface and canonically resolves to .net", async () => {
+  assert.equal(await canonicalize("/", "exportunity.com"), "/");
+  assert.equal(await canonicalize("/zone", "www.exportunity.com"), "/marketplace");
+  assert.equal(await canonicalize("/company", "exportunity.com"), "/");
+
+  const head = await resolveRootHead("exportunity.com");
+  assert.equal(head.title, "Exportunity");
+  assert.equal(head.canonicalUrl, "https://exportunity.net/");
+  assert.equal(head.robots, "index, follow");
+});
+
+test("non-Exportunity roots retain Zone while Exportunity absorbs it into Marketplace", async () => {
   assert.equal(await canonicalize("/", "example.test"), "/zone");
-  assert.equal(await canonicalize("/zone", "exportunity.net"), "/zone");
+  assert.equal(await canonicalize("/zone", "exportunity.net"), "/marketplace");
 });

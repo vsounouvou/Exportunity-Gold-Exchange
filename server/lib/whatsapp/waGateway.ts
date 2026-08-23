@@ -1,5 +1,6 @@
 import crypto from "crypto";
 import { sendTwilioMessage } from "../communications/twilio";
+import { verifyMetaWebhookSignature } from "../integrations/metaWebhookSecurity";
 
 export type WaSendDebugInfo = {
   request?: {
@@ -37,20 +38,18 @@ export function createOtpCode() {
 }
 
 export function verifyMetaSignature(rawBody: Buffer | undefined, signatureHeader: string | undefined): boolean {
-  const appSecret = process.env.WHATSAPP_APP_SECRET;
-  if (!appSecret) return true; // allow in dev when not configured
-  if (!rawBody || !signatureHeader) return false;
-
-  const expected = crypto.createHmac("sha256", appSecret).update(rawBody).digest("hex");
-  const provided = signatureHeader.replace(/^sha256=/, "").trim();
-  try {
-    return crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(provided));
-  } catch {
-    return false;
-  }
+  return verifyMetaWebhookSignature({
+    purpose: "whatsapp",
+    rawBody,
+    signatureHeader,
+  }).ok;
 }
 
-export async function sendWaText(toE164: string, text: string): Promise<WaSendResult> {
+export async function sendWaText(
+  toE164: string,
+  text: string,
+  options: { maxProviderAttempts?: number; tenantKey?: string | null } = {},
+): Promise<WaSendResult> {
   const to = normalizeWaPhoneE164(toE164);
   const message = String(text || "").trim();
   if (!to) {
@@ -71,7 +70,9 @@ export async function sendWaText(toE164: string, text: string): Promise<WaSendRe
   const out = await sendTwilioMessage({
     channel: "whatsapp",
     toE164: to,
+    tenantKey: options.tenantKey,
     body: message,
+    maxProviderAttempts: options.maxProviderAttempts,
   });
 
   if (!out.ok) {

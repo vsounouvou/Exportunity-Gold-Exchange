@@ -15,6 +15,19 @@ test("resolveAgentProfessionalProfile returns fixed persona for known agent key"
   assert.equal(profile.emailAddress, "samuel.mensah@boursedelor.com");
 });
 
+test("Exportunity commercial mail is owned by Awa Kouadio", () => {
+  const profile = resolveAgentProfessionalProfile({
+    tenantKey: "exportunity",
+    tenantName: "Exportunity",
+    agentKey: "commercial",
+    preferredDomain: "exportunity.net",
+  });
+
+  assert.equal(profile.displayName, "Awa Kouadio");
+  assert.equal(profile.role, "Director of Commercial and Client Success");
+  assert.equal(profile.emailAddress, "awa.kouadio@exportunity.net");
+});
+
 test("resolveAgentProfessionalProfile generates deterministic human fallback", () => {
   const profile = resolveAgentProfessionalProfile({
     tenantKey: "exportunity",

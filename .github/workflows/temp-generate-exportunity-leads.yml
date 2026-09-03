@@ -1,0 +1,37 @@
+name: Temporary Exportunity lead dataset
+
+on:
+  push:
+    branches:
+      - temporary/regenerate-2000-leads-20260903
+    paths:
+      - scripts/temp/generate_exportunity_leads.py
+      - .github/workflows/temp-generate-exportunity-leads.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Check out temporary branch
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Collect and qualify public-source records
+        run: python scripts/temp/generate_exportunity_leads.py
+
+      - name: Upload CSV research batch
+        uses: actions/upload-artifact@v4
+        with:
+          name: exportunity-qualified-leads-data
+          path: out/
+          if-no-files-found: error
+          retention-days: 7

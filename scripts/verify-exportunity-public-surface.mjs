@@ -1,3 +1,5 @@
+import { verifyOperationsEntry } from "./lib/verify-operations-entry.mjs";
+import { workspaceOperationsEntry } from "../client/src/lib/workspaceEntry.ts";
 import assert from "node:assert/strict";
 import crypto from "node:crypto";
 import fs from "node:fs";
@@ -178,7 +180,7 @@ assert.match(
 assert.match(appSource, /function TenantDashboardRoute\(\)[\s\S]*tenant\.key === "exportunity"[\s\S]*<ExportunityAdminDashboardPage \/>/);
 assert.match(appSource, /function TenantOperationsCenterRoute\(\)[\s\S]*tenant\.key === "exportunity"[\s\S]*<ExportunityOperationsCenterPage \/>/);
 assert.match(appSource, /<Route path="\/dashboard">[\s\S]*<TenantDashboardRoute \/>/);
-assert.match(appSource, /<Route path="\/ai-team">[\s\S]*<TenantOperationsCenterRoute \/>/);
+verifyOperationsEntry(appSource, workspaceOperationsEntry);
 assert.match(appSource, /includeSharedStorefront[\s\S]*import\("@\/pages\/store\/StorePage"\)/);
 assert.match(appSource, /includeMindbase[\s\S]*import\("@\/pages\/mindbase\/MindbaseLandingPage"\)/);
 assert.match(appSource, /includeOtherTenantUi[\s\S]*import\("@\/pages\/bdo\/BdoAuthorityPages"\)/);

@@ -3,16 +3,22 @@ export async function runContracts(routing, conversations, assert) {
   let passed = 0;
   const check = (name, actual, expected) => { assert(JSON.stringify(actual) === JSON.stringify(expected), name); passed++; };
   const equal = (name, run, expected) => check(name, run(), expected);
-  equal("staff enters Tassi without a home screen", () => routing.workspaceDefault("exportunity", "employee", "", "", "/pro"), "/pro/tassi");
+  equal("ordinary employee retains the existing workspace", () => routing.workspaceDefault("exportunity", "employee", "", "", "/pro"), "/pro");
   equal("administrator enters Tassi", () => routing.workspaceDefault("exportunity", "admin", "", "", "/ai-team"), "/pro/tassi");
-  equal("existing permission chooses Tassi without changing it", () => routing.workspaceDefault("exportunity", "", "view_admin_dashboard", "", "/ai-team"), "/pro/tassi");
+  equal("existing admin capability enters Tassi", () => routing.workspaceDefault("exportunity", "", "admin:*", "", "/ai-team"), "/pro/tassi");
+  equal("chairman assistant enters Tassi", () => routing.workspaceDefault("exportunity", "chairman_assistant", "", "", "/ai-team"), "/pro/tassi");
+  equal("operator keeps its current workspace", () => routing.workspaceDefault("exportunity", "operator", "", "", "/ai-team"), "/ai-team");
+  equal("tenant admin label alone is not a chairman capability", () => routing.workspaceDefault("exportunity", "tenant_admin", "", "", "/ai-team"), "/ai-team");
+  equal("chairman mode alone does not invent an account role", () => routing.workspaceDefault("exportunity", "buyer", "", "chairman", "/ai-team"), "/ai-team");
+
+  equal("dashboard visibility does not grant Tassi access", () => routing.workspaceDefault("exportunity", "", "view_admin_dashboard", "", "/ai-team"), "/ai-team");
   equal("buyer keeps its original entry", () => routing.workspaceDefault("exportunity", "buyer", "", "", "/pro/operations"), "/pro/operations");
   equal("other tenant keeps its original entry", () => routing.workspaceDefault("bdo", "admin", "*", "", "/dashboard"), "/dashboard");
   equal("explicit task deep link wins", () => routing.workspaceEntry("/admin?next=%2Ftasks%3Fid%3D42%23proof", "/pro/tassi"), "/tasks?id=42#proof");
   equal("password rotation wins over next", () => routing.workspaceEntry("/admin?next=%2Ftasks", "/pro/tassi", true), "/admin/password");
   equal("default entry without next", () => routing.workspaceEntry("/admin", "/pro/tassi"), "/pro/tassi");
-  equal("welcome ai-team link opens Tassi for employee", () => routing.workspaceOperationsEntry("/ai-team", "exportunity", "employee"), "/pro/tassi");
-  equal("welcome ai-team link opens Tassi for existing admin permission", () => routing.workspaceOperationsEntry("/ai-team", "exportunity", "", "view_admin_dashboard"), "/pro/tassi");
+  equal("employee welcome link retains its protected workspace", () => routing.workspaceOperationsEntry("/ai-team", "exportunity", "employee"), null);
+  equal("dashboard-only welcome link retains its workspace", () => routing.workspaceOperationsEntry("/ai-team", "exportunity", "", "view_admin_dashboard"), null);
   equal("explicit conversation deep link is preserved", () => routing.workspaceOperationsEntry("/ai-team?conversation=fixture-42", "exportunity", "employee"), null);
   equal("verified Machinery company context is preserved", () => routing.workspaceOperationsEntry("/ai-team?company=machinery", "exportunity", "admin"), null);
   equal("explicit diagnostics link is preserved", () => routing.workspaceOperationsEntry("/ai-team?build=1", "exportunity", "admin"), null);

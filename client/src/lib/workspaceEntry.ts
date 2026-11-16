@@ -34,10 +34,15 @@ export function workspaceEntry(location = "", fallback = "/pro/tassi", mustChang
 
 // This chooses a screen only. Server-side permissions remain unchanged.
 export function workspaceDefault(tenantKey = "", roles = "", permissions = "", currentMode = "", fallback = "/pro/operations") {
-  const labels = (roles + "|" + currentMode).toLowerCase().replace(/[_-]+/g, " ").split("|").map((role) => role.trim());
-  const staff = ["admin", "super admin", "platform admin", "tenant admin", "chairman", "chairman assistant", "terminal assistant", "operator", "agent operator", "staff", "employee", "agent"];
-  const allowed = labels.some((role) => staff.includes(role)) || permissions.split("|").some((permission) => ["*", "admin:*", "view_admin_dashboard"].includes(permission));
-  return tenantKey === "exportunity" && allowed ? "/pro/tassi" : fallback;
+  const labels = roles.split("|").map((role) => role.toLowerCase()
+    .replace(/['’]/g, "").replace(/[_-]+/g, " ").replace(/[^\w\s]/g, " ").replace(/\s+/g, " ").trim());
+  // A staff label or dashboard visibility is not authorization for the
+  // chairman API. Keep ordinary employees on their existing workspace.
+  const chairman = labels.some((role) => ["chairman", "chairman assistant", "terminal assistant"].includes(role));
+  const admin = currentMode.trim().toLowerCase() === "admin"
+    || permissions.split("|").some((permission) => ["*", "admin:*"].includes(permission))
+    || labels.some((role) => ["admin", "super admin", "platform admin"].includes(role));
+  return tenantKey === "exportunity" && (chairman || admin) ? "/pro/tassi" : fallback;
 }
 
 export function workspaceLoginUrl(destination = "", loginPath = "/pro/login") {

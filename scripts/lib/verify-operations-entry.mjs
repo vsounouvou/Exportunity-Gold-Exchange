@@ -25,7 +25,8 @@ export function verifyOperationsEntry(appSource, entryFor) {
   require(/if \(tenant\.key === "exportunity"\) return <ExportunityOperationsCenterPage \/>;/.test(center), "Exportunity must retain its dedicated operations interface");
   require(/return <AITeamHubPage \/>;\s*$/.test(center), "Other tenants must retain their existing operations renderer");
   const cases = [
-    ["/ai-team", "exportunity", "employee", "", "", "/pro/tassi"],
+    ["/ai-team", "exportunity", "admin", "", "", "/pro/tassi"],
+    ["/ai-team", "exportunity", "employee", "", "", null],
     ["/ai-team?company=machinery", "exportunity", "admin", "", "", null],
     ["/ai-team?conversation=fixture-42", "exportunity", "admin", "", "", null],
     ["/ai-team?build=1", "exportunity", "admin", "", "", null],

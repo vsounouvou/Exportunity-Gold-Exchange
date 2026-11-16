@@ -12,7 +12,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { VoiceInput } from "@/components/VoiceInput";
 import { PWA_INSTALL_STORAGE_KEYS, usePwaInstall } from "@/contexts/PwaInstallContext";
-import { roomKeyFromSlug } from "@/config/chatRooms";
+import { resolveRoomKeyFromSlug, type ChatRoomKey } from "@/config/chatRooms";
+import { workspaceLoginUrl } from "@/lib/workspaceEntry";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { useSession } from "@/lib/session";
@@ -111,8 +112,8 @@ function normalizeQuickReply(value: string) {
 }
 
 export default function AppProRoomPage() {
-  const { isAuthenticated, isGuest, user } = useSession();
-  const [location, setLocation] = useLocation();
+  const { isAuthenticated, isGuest } = useSession();
+  const [location] = useLocation();
   const [, nextParams] = useRoute("/app/chats/:roomKey");
   const [, proOpsParams] = useRoute("/pro/operations/:roomKey");
   const [, proParams] = useRoute("/pro/threads/:roomKey");
@@ -126,7 +127,31 @@ export default function AppProRoomPage() {
       (legacyParams as any)?.roomKey ||
       "",
   ).trim();
-  const roomKey = roomKeyFromSlug(roomSlug);
+  const roomKey = resolveRoomKeyFromSlug(roomSlug);
+  const search = typeof window === "undefined" ? "" : window.location.search;
+  const hash = typeof window === "undefined" ? "" : window.location.hash;
+  const requested = typeof window === "undefined" ? location : window.location.pathname + search + hash;
+
+  if (!isAuthenticated || isGuest) {
+    return <Redirect to={workspaceLoginUrl(requested)} />;
+  }
+
+  if (!roomKey) {
+    return (
+      <main className="mx-auto max-w-xl space-y-4 px-4 py-12" data-testid="unknown-room">
+        <h1 className="text-xl font-semibold">Salle introuvable</h1>
+        <p>Ce lien ne correspond à aucune salle. Aucune autre conversation n’a été ouverte.</p>
+        <a className="underline" href={`/pro/chats${search}${hash}`}>Choisir une salle</a>
+      </main>
+    );
+  }
+
+  return <AppProRoomContent key={roomKey} roomKey={roomKey} />;
+}
+
+function AppProRoomContent({ roomKey }: { roomKey: ChatRoomKey }) {
+  const { isAuthenticated, isGuest, user } = useSession();
+  const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { installed, canPrompt, promptInstall } = usePwaInstall();
@@ -351,14 +376,6 @@ export default function AppProRoomPage() {
       // ignore
     }
   }, [installed, showPostInstallMessage]);
-
-  if (!isAuthenticated || isGuest) {
-    return <Redirect to={`/pro/login?next=${encodeURIComponent(location)}`} />;
-  }
-
-  if (!roomKey) {
-    return <Redirect to="/app" />;
-  }
 
   const messages = messagesResp?.messages || [];
   const pwaPrompt = installConfig?.message;

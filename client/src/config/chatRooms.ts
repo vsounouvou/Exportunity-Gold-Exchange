@@ -88,11 +88,17 @@ const SLUG_TO_KEY: Record<string, ChatRoomKey> = {
   legal: "legal",
 };
 
-export function roomKeyFromSlug(value: string): ChatRoomKey {
+// Route resolution is strict: an unknown slug must never open another room.
+export function resolveRoomKeyFromSlug(value: string): ChatRoomKey | null {
   const normalized = String(value || "")
     .trim()
     .toLowerCase();
-  return SLUG_TO_KEY[normalized] || PRIMARY_ROOM_KEY;
+  return Object.prototype.hasOwnProperty.call(SLUG_TO_KEY, normalized) ? SLUG_TO_KEY[normalized] : null;
+}
+
+// Preserve the legacy default for non-route consumers.
+export function roomKeyFromSlug(value: string): ChatRoomKey {
+  return resolveRoomKeyFromSlug(value) || PRIMARY_ROOM_KEY;
 }
 
 export function roomSlugFromKey(value: string): string {

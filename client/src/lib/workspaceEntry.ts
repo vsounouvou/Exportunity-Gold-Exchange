@@ -44,3 +44,9 @@ export function workspaceLoginUrl(destination = "", loginPath = "/pro/login") {
   const next = normalizeWorkspaceNext(destination);
   return next ? loginPath + "?next=" + encodeURIComponent(next) : loginPath;
 }
+
+export function workspaceOperationsEntry(location = "", tenantKey = "", roles = "", permissions = "", currentMode = "") {
+  // A conversation/debug deep link is an explicit destination, not a default entry.
+  if (location !== "/ai-team") return null;
+  return workspaceDefault(tenantKey, roles, permissions, currentMode, "") || null;
+}

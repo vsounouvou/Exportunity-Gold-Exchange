@@ -1,4 +1,4 @@
-import { workspaceLoginUrl } from "@/lib/workspaceEntry";
+import { workspaceLoginUrl, workspaceOperationsEntry } from "@/lib/workspaceEntry";
 import { Component, Suspense, lazy, useEffect, useRef, type ComponentType, type ErrorInfo } from "react";
 import { Switch, Route, Redirect, useLocation } from "wouter";
 import { useSession } from "@/lib/session";
@@ -626,6 +626,18 @@ function TenantDashboardRoute() {
   const { tenant } = useTenant();
   if (tenant.key === "exportunity") return <ExportunityAdminDashboardPage />;
   return <AdminDashboardPage />;
+}
+
+function AiTeamEntryRoute() {
+  const { isAuthenticated, isGuest, user } = useSession();
+  const { tenant } = useTenant();
+  const [location] = useLocation();
+  const requested = typeof window === "undefined" ? location : window.location.pathname + window.location.search + window.location.hash;
+  const destination = workspaceOperationsEntry(requested, tenant.key, (user?.roles || []).join("|"), (user?.permissions || []).join("|"), String(user?.currentMode || ""));
+  if (isAuthenticated && !isGuest && !user?.mustChangePassword && destination) {
+    return <Redirect to={destination} />;
+  }
+  return <ProtectedRoute><TenantOperationsCenterRoute /></ProtectedRoute>;
 }
 
 function TenantOperationsCenterRoute() {
@@ -1822,11 +1834,7 @@ function App() {
           </ProtectedRoute>
         </Route>
 
-        <Route path="/ai-team">
-          <ProtectedRoute>
-            <TenantOperationsCenterRoute />
-          </ProtectedRoute>
-        </Route>
+        <Route path="/ai-team" component={AiTeamEntryRoute} />
 
         <Route path="/agenda">
           <ProtectedRoute>

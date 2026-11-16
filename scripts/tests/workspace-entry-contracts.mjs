@@ -11,6 +11,13 @@ export async function runContracts(routing, conversations, assert) {
   equal("explicit task deep link wins", () => routing.workspaceEntry("/admin?next=%2Ftasks%3Fid%3D42%23proof", "/pro/tassi"), "/tasks?id=42#proof");
   equal("password rotation wins over next", () => routing.workspaceEntry("/admin?next=%2Ftasks", "/pro/tassi", true), "/admin/password");
   equal("default entry without next", () => routing.workspaceEntry("/admin", "/pro/tassi"), "/pro/tassi");
+  equal("welcome ai-team link opens Tassi for employee", () => routing.workspaceOperationsEntry("/ai-team", "exportunity", "employee"), "/pro/tassi");
+  equal("welcome ai-team link opens Tassi for existing admin permission", () => routing.workspaceOperationsEntry("/ai-team", "exportunity", "", "view_admin_dashboard"), "/pro/tassi");
+  equal("explicit conversation deep link is preserved", () => routing.workspaceOperationsEntry("/ai-team?conversation=fixture-42", "exportunity", "employee"), null);
+  equal("verified Machinery company context is preserved", () => routing.workspaceOperationsEntry("/ai-team?company=machinery", "exportunity", "admin"), null);
+  equal("explicit diagnostics link is preserved", () => routing.workspaceOperationsEntry("/ai-team?build=1", "exportunity", "admin"), null);
+  equal("other tenant keeps its operations page", () => routing.workspaceOperationsEntry("/ai-team", "bdo", "admin"), null);
+  equal("ordinary non-staff user gets no Tassi default", () => routing.workspaceOperationsEntry("/ai-team", "exportunity", "buyer"), null);
   equal("unrelated query keeps default", () => routing.workspaceEntry("/admin?build=1", "/pro/tassi"), "/pro/tassi");
   equal("return through login round trips", () => routing.workspaceEntry(routing.workspaceLoginUrl("/ai-team?view=chat#result", "/admin")), "/ai-team?view=chat#result");
   for (const value of ["https://outside.invalid", "//outside.invalid", "/\\outside.invalid", "/%2foutside.invalid", "/%5coutside.invalid", "/%00outside", "/%2e%2e/admin", "/admin", "/admin/login?next=/tasks", "/auth", "/pro/login/", "/login", "/%zz"]) {

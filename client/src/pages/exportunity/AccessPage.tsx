@@ -1,3 +1,4 @@
+import { workspaceDefault, workspaceEntry } from "@/lib/workspaceEntry";
 import { useEffect, useMemo, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import {
@@ -43,17 +44,6 @@ type LoginResponse = {
 
 const inputClassName =
   "h-11 border-slate-200 bg-white text-[#07111F] shadow-none placeholder:text-slate-400 focus-visible:ring-[#F5A623]";
-
-function normalizedNext(location: string) {
-  try {
-    const parsed = new URL(location, "https://app.local");
-    const value = String(parsed.searchParams.get("next") || "").trim();
-    if (!value.startsWith("/") || value.startsWith("//") || value.includes("://")) return null;
-    return value;
-  } catch {
-    return null;
-  }
-}
 
 function errorMessage(error: unknown, fallback: string) {
   return error instanceof Error && error.message.trim() ? error.message : fallback;
@@ -192,7 +182,9 @@ export default function AccessPage() {
     city: "",
     address: "",
   }));
-  const next = useMemo(() => normalizedNext(location) || "/pro/operations", [location]);
+  const entryLocation = typeof window === "undefined" ? location : window.location.pathname + window.location.search + window.location.hash;
+  const fallback = workspaceDefault("exportunity", (session.user?.roles || []).join("|"), (session.user?.permissions || []).join("|"), String(session.user?.currentMode || ""), "/pro/operations");
+  const next = workspaceEntry(entryLocation, fallback, Boolean(session.user?.mustChangePassword));
 
   useEffect(() => {
     document.title =
@@ -226,7 +218,7 @@ export default function AccessPage() {
     },
     onSuccess: (response) => {
       session.login(response.token, response.user);
-      setLocation(response.user?.mustChangePassword ? "/admin/password" : next);
+      setLocation(workspaceEntry(entryLocation, workspaceDefault("exportunity", (response.user?.roles || []).join("|"), (response.user?.permissions || []).join("|"), String(response.user?.currentMode || ""), "/pro/operations"), Boolean(response.user?.mustChangePassword)));
     },
     onError: (error) => {
       toast({

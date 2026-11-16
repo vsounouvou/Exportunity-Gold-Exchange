@@ -1,3 +1,4 @@
+import { workspaceDefault, workspaceEntry } from "@/lib/workspaceEntry";
 import { useState, useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
@@ -29,8 +30,10 @@ export function AdminLoginPage() {
   const { language } = useLocale();
   const { toast } = useToast();
   const { login, isAuthenticated, isGuest, user } = useSession();
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
+  const entryLocation = typeof window === "undefined" ? location : window.location.pathname + window.location.search + window.location.hash;
   const defaultRoute = getTenantAdminHomeRoute(tenant.key);
+  const destination = workspaceEntry(entryLocation, workspaceDefault(tenant.key, (user?.roles || []).join("|"), (user?.permissions || []).join("|"), String(user?.currentMode || ""), defaultRoute), Boolean(user?.mustChangePassword));
   const isBdoTenant = tenant.key === "bdo";
   const bdoCopy = {
     fr: {
@@ -141,9 +144,9 @@ export function AdminLoginPage() {
 
   useEffect(() => {
     if (isAuthenticated && !isGuest) {
-      setLocation(user?.mustChangePassword ? "/admin/password" : defaultRoute);
+      setLocation(destination);
     }
-  }, [defaultRoute, isAuthenticated, isGuest, setLocation, user]);
+  }, [destination, isAuthenticated, isGuest, setLocation]);
 
   useEffect(() => {
     if (!useLightAdminShell) return;
@@ -175,7 +178,7 @@ export function AdminLoginPage() {
         title: copy.success,
         description: `Logged in as ${data.user.displayName}`
       });
-      setLocation(data.user.mustChangePassword ? "/admin/password" : defaultRoute);
+      setLocation(workspaceEntry(entryLocation, workspaceDefault(tenant.key, (data.user.roles || []).join("|"), (data.user.permissions || []).join("|"), String(data.user.currentMode || ""), defaultRoute), Boolean(data.user.mustChangePassword)));
     },
     onError: (error: any) => {
       toast({

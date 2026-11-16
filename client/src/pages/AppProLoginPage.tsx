@@ -1,3 +1,4 @@
+import { workspaceDefault, workspaceEntry } from "@/lib/workspaceEntry";
 import { useEffect, useMemo, useState } from "react";
 import { Redirect, useLocation } from "wouter";
 import { useMutation } from "@tanstack/react-query";
@@ -15,26 +16,6 @@ type PasswordLoginResponse = {
   token: string;
   user: any;
 };
-
-function normalizeNext(value: string | null) {
-  const raw = String(value || "").trim();
-  if (!raw) return null;
-  if (!raw.startsWith("/")) return null;
-  if (raw.startsWith("//")) return null;
-  if (raw.includes("://")) return null;
-  return raw;
-}
-
-function parseNextFromLocation(location: string) {
-  const idx = location.indexOf("?");
-  if (idx === -1) return null;
-  try {
-    const params = new URLSearchParams(location.slice(idx + 1));
-    return normalizeNext(params.get("next"));
-  } catch {
-    return null;
-  }
-}
 
 function getAppProLoginCopy(language: string) {
   if (language === "ar") {
@@ -92,12 +73,14 @@ function getAppProLoginCopy(language: string) {
 
 export default function AppProLoginPage() {
   const session = useSession();
-  const { brand } = useTenant();
+  const { brand, tenant } = useTenant();
   const { language } = useLocale();
   const { toast } = useToast();
   const [location, setLocation] = useLocation();
 
-  const next = useMemo(() => parseNextFromLocation(location) || "/pro", [location]);
+  const entryLocation = typeof window === "undefined" ? location : window.location.pathname + window.location.search + window.location.hash;
+  const fallback = workspaceDefault(tenant.key, (session.user?.roles || []).join("|"), (session.user?.permissions || []).join("|"), String(session.user?.currentMode || ""), "/pro");
+  const next = workspaceEntry(entryLocation, fallback, Boolean(session.user?.mustChangePassword));
   const copy = useMemo(() => getAppProLoginCopy(language), [language]);
 
   const [email, setEmail] = useState("");
@@ -125,7 +108,7 @@ export default function AppProLoginPage() {
     onSuccess: (res) => {
       session.login(res.token, res.user);
       toast({ title: copy.successTitle, description: copy.successDescription });
-      setLocation(next);
+      setLocation(workspaceEntry(entryLocation, workspaceDefault(tenant.key, (res.user.roles || []).join("|"), (res.user.permissions || []).join("|"), String(res.user.currentMode || ""), "/pro"), Boolean(res.user.mustChangePassword)));
     },
     onError: (error: any) => {
       toast({

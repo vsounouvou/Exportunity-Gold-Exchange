@@ -1,3 +1,4 @@
+import { workspaceLoginUrl } from "@/lib/workspaceEntry";
 import { Component, Suspense, lazy, useEffect, useRef, type ComponentType, type ErrorInfo } from "react";
 import { Switch, Route, Redirect, useLocation } from "wouter";
 import { useSession } from "@/lib/session";
@@ -219,6 +220,7 @@ const AppProMineHomePage = lazyPage(() => import("@/pages/AppProMineHomePage"));
 const AppProLoginPage = includeOtherTenantUi
   ? lazyPage(() => import("@/pages/AppProLoginPage"))
   : UnifiedAccessPage;
+const TassiConversationPage = lazyPage(() => import("@/pages/TassiConversationPage"));
 const AppProJoinPage = lazyPage(() => import("@/pages/AppProJoinPage"));
 const AppProShopPage = lazyPage(() => import("@/pages/AppProShopPage"));
 const AppProEquipmentPage = lazyPage(() => import("@/pages/AppProEquipmentPage"));
@@ -604,7 +606,8 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   
   if (!isAuthenticated || isGuest) {
-    return <Redirect to="/admin" />;
+    const requested = typeof window === "undefined" ? location : window.location.pathname + window.location.search + window.location.hash;
+    return <Redirect to={workspaceLoginUrl(requested, "/admin")} />;
   }
 
   if (user?.mustChangePassword) {
@@ -1315,6 +1318,7 @@ function App() {
           <Route path="/account" component={AccountPage} />
           {/* Pro (canonical) */}
           <Route path="/pro/login" component={AppProLoginPage} />
+          <Route path="/pro/tassi" component={TassiConversationPage} />
           <Route path="/pro/join/:role" component={AppProJoinPage} />
           <Route path="/pro/mine" component={AppProMineHomePage} />
           <Route path="/pro/operations/:roomKey" component={AppProRoomPage} />

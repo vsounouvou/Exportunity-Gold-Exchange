@@ -1,3 +1,4 @@
+import { workspaceDefault, workspaceEntry } from "@/lib/workspaceEntry";
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import {
@@ -146,18 +147,20 @@ export function ExportunityOperationsAccessPage() {
   const copy = adminCopy(language);
   const { toast } = useToast();
   const { login, isAuthenticated, isGuest, user } = useSession();
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
+  const entryLocation = typeof window === "undefined" ? location : window.location.pathname + window.location.search + window.location.hash;
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const defaultRoute = getTenantAdminHomeRoute("exportunity");
+  const destination = workspaceEntry(entryLocation, workspaceDefault("exportunity", (user?.roles || []).join("|"), (user?.permissions || []).join("|"), String(user?.currentMode || ""), defaultRoute), Boolean(user?.mustChangePassword));
 
   useDocumentMeta(copy.signIn, copy.description);
 
   useEffect(() => {
     if (isAuthenticated && !isGuest) {
-      setLocation(user?.mustChangePassword ? "/admin/password" : defaultRoute);
+      setLocation(destination);
     }
-  }, [defaultRoute, isAuthenticated, isGuest, setLocation, user]);
+  }, [destination, isAuthenticated, isGuest, setLocation]);
 
   const loginMutation = useMutation({
     mutationFn: async () => {
@@ -175,7 +178,7 @@ export function ExportunityOperationsAccessPage() {
     onSuccess: (response) => {
       login(response.token, response.user);
       toast({ title: copy.success, description: String(response.user?.displayName || response.user?.email || "") });
-      setLocation(response.user?.mustChangePassword ? "/admin/password" : defaultRoute);
+      setLocation(workspaceEntry(entryLocation, workspaceDefault("exportunity", (response.user?.roles || []).join("|"), (response.user?.permissions || []).join("|"), String(response.user?.currentMode || ""), defaultRoute), Boolean(response.user?.mustChangePassword)));
     },
     onError: (error) => {
       toast({
